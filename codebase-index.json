@@ -1,0 +1,750 @@
+{
+  "meta": {
+    "name": "Next.js Supabase SaaS Kit Turbo",
+    "description": "Production-ready SaaS monorepo with multi-tenant architecture, authentication, billing, and team collaboration",
+    "version": "3.0.0",
+    "lastUpdated": "2025-09-20",
+    "generator": "Claude Code",
+    "purpose": "Enable efficient AI agent navigation and understanding of the SaaS platform architecture",
+    "conventions": {
+      "packageNaming": "@kit/{domain}",
+      "componentPattern": "PascalCase with explicit exports",
+      "apiPattern": "Server actions with enhanceAction wrapper",
+      "routePattern": "App Router with parallel routes and layouts"
+    }
+  },
+  "architecture": {
+    "type": "turborepo-monorepo",
+    "packageManager": "pnpm",
+    "framework": "Next.js 15 + React 19",
+    "database": "Supabase (PostgreSQL) with Row Level Security",
+    "authentication": "Supabase Auth with MFA support",
+    "styling": "Tailwind CSS 4 + Shadcn UI",
+    "deployment": "Vercel/Custom",
+    "billing": "Stripe + LemonSqueezy",
+    "testing": {
+      "e2e": "Playwright",
+      "unit": "Vitest (when applicable)"
+    },
+    "monitoring": "Sentry",
+    "analytics": "Privacy-focused custom analytics"
+  },
+  "workspace": {
+    "root": {
+      "path": "./",
+      "description": "Monorepo root with shared configuration and tooling",
+      "key_files": [
+        "package.json - Root package configuration",
+        "turbo.json - Turborepo pipeline configuration",
+        "pnpm-workspace.yaml - PNPM workspace settings",
+        "CLAUDE.md - AI agent instructions for codebase",
+        "codebase-index.json - This navigation index"
+      ],
+      "scripts": {
+        "dev": "Start all applications in development mode",
+        "build": "Build all packages for production",
+        "typecheck": "Run TypeScript type checking",
+        "lint:fix": "Fix linting issues across monorepo",
+        "format:fix": "Format code with Prettier",
+        "supabase:web:start": "Start local Supabase instance",
+        "supabase:web:typegen": "Generate TypeScript types from database"
+      }
+    },
+    "apps": {
+      "web": {
+        "path": "./apps/web",
+        "name": "web",
+        "description": "Main Next.js 15 SaaS application with App Router and multi-tenant architecture",
+        "type": "nextjs-app",
+        "port": 3000,
+        "entry": "app/layout.tsx",
+        "architecture": {
+          "routing": "App Router with parallel routes",
+          "rendering": "Server Components by default, Client Components for interactivity",
+          "dataFetching": "Server Components with Supabase RLS, React Query for client",
+          "stateManagement": "Context API for workspace state, React Query for server state",
+          "authentication": "Middleware-based auth checks, Supabase Auth",
+          "multiTenancy": "URL-based tenant isolation (/home/[account]/*)"
+        },
+        "route_structure": {
+          "(marketing)": {
+            "description": "Public marketing pages",
+            "paths": ["landing", "pricing", "blog", "docs"],
+            "authentication": "public"
+          },
+          "(auth)": {
+            "description": "Authentication flows",
+            "paths": ["sign-in", "sign-up", "password-reset", "verify"],
+            "authentication": "public"
+          },
+          "home/(user)": {
+            "description": "Personal account dashboard",
+            "paths": ["dashboard", "settings", "billing"],
+            "authentication": "required",
+            "context": "UserWorkspaceProvider"
+          },
+          "home/[account]": {
+            "description": "Team workspace (account = team slug)",
+            "paths": ["dashboard", "members", "settings", "billing"],
+            "authentication": "required",
+            "context": "TeamAccountWorkspaceProvider",
+            "permissions": "RBAC via team_accounts_permissions"
+          },
+          "admin": {
+            "description": "Super admin dashboard",
+            "paths": ["users", "accounts", "subscriptions"],
+            "authentication": "required",
+            "authorization": "super_admin role only"
+          },
+          "api": {
+            "description": "API routes",
+            "patterns": "enhanceRouteHandler wrapper",
+            "authentication": "varies by endpoint"
+          }
+        },
+        "key_features": [
+          "Multi-tenant architecture with personal and team accounts",
+          "Complete authentication system with MFA",
+          "Stripe and LemonSqueezy billing integration",
+          "Real-time notifications via Supabase Realtime",
+          "Internationalization with React i18next",
+          "Dark mode with next-themes",
+          "Admin dashboard for platform management",
+          "CSRF protection and security headers",
+          "Server Actions with validation",
+          "Parallel data fetching patterns"
+        ],
+        "database": {
+          "migrations": "./supabase/migrations",
+          "schemas": "./supabase/schemas",
+          "types": "./lib/database.types.ts",
+          "seeds": "./supabase/seed.sql"
+        },
+        "configuration": {
+          "environment": ".env.local",
+          "featureFlags": "./config/feature-flags.config.ts",
+          "paths": "./config/paths.config.ts",
+          "navigation": "./config/*-navigation.config.tsx"
+        },
+        "dependencies": {
+          "internal": [
+            "@kit/auth", "@kit/accounts", "@kit/team-accounts",
+            "@kit/billing-gateway", "@kit/notifications", "@kit/ui",
+            "@kit/supabase", "@kit/i18n", "@kit/monitoring"
+          ],
+          "external": [
+            "next@15", "react@19", "react-dom@19",
+            "@supabase/supabase-js", "@tanstack/react-query",
+            "react-hook-form", "zod", "tailwind-merge"
+          ]
+        }
+      },
+      "e2e": {
+        "path": "./apps/e2e",
+        "name": "e2e",
+        "description": "End-to-end test suite with Playwright",
+        "type": "test-suite",
+        "framework": "Playwright",
+        "test_categories": {
+          "authentication": "Sign in, sign up, password reset flows",
+          "accounts": "Personal account management",
+          "teams": "Team creation, member management, permissions",
+          "billing": "Subscription flows, payment methods",
+          "settings": "Profile, preferences, account settings"
+        },
+        "configuration": "playwright.config.ts",
+        "scripts": {
+          "test": "Run all E2E tests",
+          "test:ui": "Open Playwright UI",
+          "test:debug": "Debug mode with headed browser"
+        }
+      },
+      "dev-tool": {
+        "path": "./apps/dev-tool",
+        "name": "dev-tool",
+        "description": "Development utilities for testing and debugging",
+        "type": "nextjs-app",
+        "port": 3010,
+        "features": [
+          "Email template preview and testing",
+          "Mock data generation",
+          "Webhook simulation",
+          "Database seeding utilities"
+        ]
+      }
+    },
+    "packages": {
+      "features": {
+        "@kit/auth": {
+          "path": "./packages/features/auth",
+          "description": "Complete authentication system with Supabase Auth",
+          "category": "Authentication",
+          "exports": {
+            "components": [
+              "SignInForm - Email/password sign in with validation",
+              "SignUpForm - User registration with email verification",
+              "PasswordResetForm - Secure password recovery",
+              "MfaVerificationForm - Two-factor authentication",
+              "AuthProvider - Authentication context provider"
+            ],
+            "hooks": [
+              "useAuth - Current user and auth methods",
+              "useSession - Session information",
+              "useSignIn - Sign in functionality",
+              "useSignUp - Registration logic"
+            ],
+            "server": [
+              "requireAuth - Server component auth guard",
+              "withAuth - API route protection",
+              "getServerSession - Server-side session retrieval"
+            ],
+            "schemas": [
+              "SignInSchema - Validation for sign in",
+              "SignUpSchema - Validation for registration",
+              "PasswordResetSchema - Password reset validation"
+            ]
+          },
+          "features": [
+            "Email/password authentication",
+            "OAuth provider support (Google, GitHub, etc.)",
+            "Multi-factor authentication (TOTP)",
+            "Email verification flow",
+            "Password strength validation",
+            "CAPTCHA integration for bot protection",
+            "Remember me functionality",
+            "Session management"
+          ],
+          "dependencies": ["@kit/supabase", "@kit/ui", "react-hook-form", "zod"]
+        },
+        "@kit/accounts": {
+          "path": "./packages/features/accounts",
+          "description": "Personal account management and user workspace",
+          "category": "Account Management",
+          "exports": {
+            "api": [
+              "createAccountsApi - Server API for account operations"
+            ],
+            "components": [
+              "AccountSettings - Account preferences UI",
+              "ProfileForm - User profile editing",
+              "AvatarUpload - Profile picture management",
+              "AccountDangerZone - Account deletion UI",
+              "UserWorkspaceProvider - Personal workspace context"
+            ],
+            "hooks": [
+              "useUserWorkspace - Access personal workspace data",
+              "useAccount - Current account information",
+              "useProfile - User profile data"
+            ],
+            "server": [
+              "getAccountWorkspace - Load workspace data",
+              "loadUserAccounts - Get all user accounts",
+              "getSubscription - Account subscription info"
+            ]
+          },
+          "features": [
+            "Profile management (name, avatar, bio)",
+            "Account preferences and settings",
+            "Email notification preferences",
+            "Account deletion with OTP verification",
+            "Personal workspace context",
+            "Subscription management integration"
+          ],
+          "database_tables": ["accounts", "accounts_billing_customer"],
+          "dependencies": ["@kit/supabase", "@kit/ui", "@kit/billing-gateway"]
+        },
+        "@kit/team-accounts": {
+          "path": "./packages/features/team-accounts",
+          "description": "Multi-tenant team collaboration system",
+          "category": "Team Management",
+          "exports": {
+            "api": [
+              "createTeamAccountsApi - Server API for team operations"
+            ],
+            "components": [
+              "TeamSettings - Team configuration UI",
+              "TeamMembersList - Member management table",
+              "InviteTeamMembers - Invitation flow",
+              "TeamSwitcher - Account switching UI",
+              "CreateTeamForm - Team creation wizard",
+              "TeamAccountWorkspaceProvider - Team workspace context"
+            ],
+            "hooks": [
+              "useTeamAccountWorkspace - Team workspace data",
+              "useTeam - Current team information",
+              "useTeamMembers - Team member list",
+              "useTeamPermissions - Permission checks"
+            ],
+            "server": [
+              "getTeamAccount - Load team by slug",
+              "getAccountWorkspace - Team workspace data",
+              "hasPermission - RBAC permission check",
+              "getMembersCount - Team size for billing"
+            ],
+            "billing": [
+              "createAccountPerSeatBillingService - Per-seat billing logic"
+            ]
+          },
+          "features": [
+            "Team creation and management",
+            "Member invitation via email",
+            "Role-based access control (owner, admin, member)",
+            "Team billing and subscription management",
+            "Per-seat billing support",
+            "Team switching interface",
+            "Invitation token management",
+            "Member removal and role updates"
+          ],
+          "permissions": [
+            "members.manage - Add/remove team members",
+            "billing.manage - Manage team subscription",
+            "settings.manage - Update team settings"
+          ],
+          "database_tables": [
+            "accounts",
+            "team_accounts",
+            "accounts_memberships",
+            "team_accounts_invitations",
+            "team_accounts_permissions"
+          ],
+          "dependencies": ["@kit/accounts", "@kit/supabase", "@kit/billing-gateway", "@kit/email-templates"]
+        },
+        "@kit/admin": {
+          "path": "./packages/features/admin",
+          "description": "Super admin dashboard and platform management",
+          "category": "Administration",
+          "exports": {
+            "components": [
+              "AdminGuard - Route protection for admin pages",
+              "AdminDashboard - Main admin interface",
+              "UsersList - User management table",
+              "AccountsList - All accounts overview",
+              "SubscriptionManager - Subscription administration"
+            ],
+            "hooks": [
+              "useAdminAuth - Admin authentication check",
+              "useAdminStats - Platform statistics"
+            ],
+            "utils": [
+              "isSuperAdmin - Check admin status",
+              "requireSuperAdmin - API route guard"
+            ]
+          },
+          "features": [
+            "User management and administration",
+            "Account oversight across all tenants",
+            "Subscription and billing management",
+            "Platform analytics and metrics",
+            "System monitoring and health checks",
+            "User impersonation for support",
+            "Audit logs and activity tracking"
+          ],
+          "authorization": "Requires is_super_admin flag on user",
+          "dependencies": ["@kit/supabase", "@kit/ui", "@kit/monitoring"]
+        },
+        "@kit/notifications": {
+          "path": "./packages/features/notifications",
+          "description": "Real-time in-app notification system",
+          "category": "Notifications",
+          "exports": {
+            "components": [
+              "NotificationCenter - Full notification UI",
+              "NotificationBell - Icon with unread count",
+              "NotificationsList - Notification feed",
+              "NotificationItem - Individual notification"
+            ],
+            "hooks": [
+              "useNotifications - Notification list and actions",
+              "useNotificationsStream - Real-time updates",
+              "useUnreadCount - Unread notification count"
+            ],
+            "server": [
+              "createNotification - Send notification",
+              "markAsRead - Mark notification read",
+              "markAllAsRead - Mark all as read"
+            ]
+          },
+          "features": [
+            "Real-time notifications via WebSocket",
+            "Notification center with filtering",
+            "Unread count badges",
+            "Mark as read/unread functionality",
+            "Notification preferences per user",
+            "Different notification types (info, success, warning, error)",
+            "Automatic connection management",
+            "Optimistic UI updates"
+          ],
+          "realtime": "Supabase Realtime channels",
+          "database_tables": ["notifications"],
+          "dependencies": ["@kit/supabase", "@kit/ui"]
+        }
+      },
+      "core": {
+        "@kit/ui": {
+          "path": "./packages/ui",
+          "description": "Comprehensive UI component library with Shadcn and Radix UI",
+          "category": "UI Components",
+          "exports": {
+            "components": {
+              "forms": [
+                "Form - React Hook Form wrapper",
+                "FormField - Field with validation",
+                "Input - Text input with variants",
+                "Select - Dropdown selection",
+                "Checkbox - Boolean input",
+                "RadioGroup - Single selection",
+                "DatePicker - Date selection"
+              ],
+              "feedback": [
+                "Toast - Notification toasts",
+                "Alert - Alert messages",
+                "LoadingSpinner - Loading indicator",
+                "Skeleton - Loading placeholder",
+                "Badge - Status indicators"
+              ],
+              "overlay": [
+                "Modal - Modal dialog",
+                "Dialog - Dialog component",
+                "Popover - Popover content",
+                "Tooltip - Hover tooltips",
+                "Sheet - Slide-out panel"
+              ],
+              "navigation": [
+                "Tabs - Tab navigation",
+                "Breadcrumb - Navigation path",
+                "Pagination - Page navigation",
+                "NavigationMenu - Dropdown navigation"
+              ],
+              "data": [
+                "Table - Data table with sorting",
+                "DataTable - Advanced table features",
+                "Card - Content cards",
+                "Avatar - User avatars"
+              ],
+              "layout": [
+                "Container - Max-width container",
+                "Separator - Visual separator",
+                "AspectRatio - Aspect ratio box"
+              ]
+            },
+            "utilities": [
+              "cn - Class name merger",
+              "cva - Class variance authority",
+              "Trans - Translation component"
+            ],
+            "hooks": [
+              "useToast - Toast notifications",
+              "useTheme - Theme management"
+            ]
+          },
+          "design_system": {
+            "colors": "Tailwind CSS with CSS variables",
+            "typography": "System font stack with responsive sizes",
+            "spacing": "4px base unit system",
+            "darkMode": "CSS variable based theming",
+            "responsive": "Mobile-first breakpoints"
+          },
+          "accessibility": "WCAG 2.1 AA compliant with ARIA labels",
+          "dependencies": ["radix-ui", "tailwindcss", "class-variance-authority", "tailwind-merge"]
+        },
+        "@kit/supabase": {
+          "path": "./packages/supabase",
+          "description": "Supabase client configuration and database utilities",
+          "category": "Database",
+          "exports": {
+            "clients": [
+              "getSupabaseServerClient - Server-side client with RLS",
+              "getSupabaseServerAdminClient - Admin client bypassing RLS",
+              "createSupabaseBrowserClient - Browser client"
+            ],
+            "hooks": [
+              "useSupabase - Access Supabase client",
+              "useRealtimeSubscription - Real-time data subscription"
+            ],
+            "types": [
+              "Database - Complete database schema types",
+              "Tables - Individual table types",
+              "Enums - Database enumerations"
+            ],
+            "auth": [
+              "requireUser - Ensure authenticated user",
+              "getUser - Get current user",
+              "withRLS - RLS-protected operations"
+            ]
+          },
+          "features": [
+            "TypeScript-first with generated types",
+            "Server/client separation for security",
+            "Admin client for privileged operations",
+            "Real-time subscription helpers",
+            "Row Level Security (RLS) integration",
+            "Connection pooling and retry logic",
+            "Type-safe query builders"
+          ],
+          "configuration": {
+            "url": "NEXT_PUBLIC_SUPABASE_URL",
+            "anonKey": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+            "serviceRoleKey": "SUPABASE_SERVICE_ROLE_KEY"
+          },
+          "dependencies": ["@supabase/supabase-js", "@supabase/ssr"]
+        },
+        "@kit/billing-gateway": {
+          "path": "./packages/billing/gateway",
+          "description": "Unified payment gateway supporting Stripe and LemonSqueezy",
+          "category": "Billing",
+          "exports": {
+            "services": [
+              "createBillingGateway - Initialize billing provider",
+              "createCheckout - Create checkout session",
+              "createPortalSession - Customer portal access",
+              "getSubscription - Retrieve subscription",
+              "cancelSubscription - Cancel subscription"
+            ],
+            "components": [
+              "PricingTable - Pricing plans display",
+              "CheckoutButton - Checkout trigger",
+              "SubscriptionManager - Subscription UI"
+            ],
+            "webhooks": [
+              "handleWebhook - Process provider webhooks",
+              "processSubscriptionUpdate - Update subscription"
+            ],
+            "types": [
+              "BillingProvider - Provider interface",
+              "Subscription - Subscription data",
+              "CheckoutSession - Checkout data"
+            ]
+          },
+          "providers": {
+            "stripe": "@kit/stripe package integration",
+            "lemonSqueezy": "@kit/lemon-squeezy package integration"
+          },
+          "features": [
+            "Provider abstraction for easy switching",
+            "Subscription lifecycle management",
+            "Checkout session creation",
+            "Customer portal integration",
+            "Webhook signature verification",
+            "Usage-based billing support",
+            "Trial period management",
+            "Coupon and discount codes"
+          ],
+          "configuration": "BILLING_PROVIDER env variable",
+          "dependencies": ["@kit/stripe", "@kit/lemon-squeezy", "@kit/supabase"]
+        },
+        "@kit/i18n": {
+          "path": "./packages/i18n",
+          "description": "Internationalization with React i18next",
+          "category": "Internationalization",
+          "exports": {
+            "components": [
+              "Trans - Translation component with interpolation",
+              "LanguageSwitcher - Language selection UI"
+            ],
+            "hooks": [
+              "useTranslation - Access translations",
+              "useLanguage - Current language"
+            ],
+            "server": [
+              "initI18n - Initialize i18n",
+              "loadTranslations - Load language files",
+              "withI18n - Page wrapper for translations"
+            ]
+          },
+          "features": [
+            "Multiple language support",
+            "Server and client translations",
+            "Dynamic language switching",
+            "Namespace organization",
+            "Interpolation and pluralization",
+            "Date/time formatting",
+            "Number formatting",
+            "Language detection"
+          ],
+          "languages": "Configured in lib/i18n/i18n.settings.ts",
+          "namespaces": [
+            "common - Shared translations",
+            "auth - Authentication strings",
+            "account - Account management",
+            "team - Team features",
+            "billing - Billing and payments"
+          ],
+          "dependencies": ["i18next", "react-i18next", "i18next-browser-languagedetector"]
+        },
+        "@kit/monitoring": {
+          "path": "./packages/monitoring/api",
+          "description": "Application monitoring and error tracking with Sentry",
+          "category": "Monitoring",
+          "exports": {
+            "services": [
+              "captureException - Log exceptions",
+              "captureMessage - Log messages",
+              "captureEvent - Custom events"
+            ],
+            "setup": [
+              "initMonitoring - Initialize monitoring",
+              "setUser - Set user context",
+              "addBreadcrumb - Add debug breadcrumb"
+            ],
+            "middleware": [
+              "errorMiddleware - Error handling",
+              "performanceMiddleware - Performance tracking"
+            ]
+          },
+          "features": [
+            "Error tracking and reporting",
+            "Performance monitoring",
+            "User session tracking",
+            "Custom event logging",
+            "Breadcrumb trails",
+            "Source map support",
+            "Environment separation",
+            "Alert configuration"
+          ],
+          "providers": {
+            "sentry": "@kit/sentry package"
+          },
+          "configuration": "SENTRY_DSN environment variable",
+          "dependencies": ["@kit/sentry", "@kit/monitoring-core"]
+        }
+      },
+      "email": {
+        "@kit/email-templates": {
+          "path": "./packages/email-templates",
+          "description": "React Email templates for transactional emails",
+          "category": "Email",
+          "exports": {
+            "templates": [
+              "WelcomeEmail - New user welcome",
+              "PasswordResetEmail - Password reset link",
+              "InvitationEmail - Team invitation",
+              "SubscriptionEmail - Billing notifications",
+              "NotificationEmail - General notifications"
+            ],
+            "components": [
+              "EmailLayout - Base email layout",
+              "EmailButton - CTA buttons",
+              "EmailHeader - Email header"
+            ],
+            "utils": [
+              "renderEmail - Render to HTML",
+              "previewEmail - Preview in browser"
+            ]
+          },
+          "features": [
+            "Responsive email designs",
+            "Cross-client compatibility",
+            "Dark mode support",
+            "Inline styles for email clients",
+            "Preview functionality",
+            "Variable interpolation"
+          ],
+          "testing": "Email preview at /dev-tool/emails",
+          "dependencies": ["@react-email/components", "react"]
+        },
+        "@kit/mailers": {
+          "path": "./packages/mailers/core",
+          "description": "Email delivery abstraction supporting multiple providers",
+          "category": "Email Delivery",
+          "exports": {
+            "services": [
+              "sendEmail - Send single email",
+              "sendBulkEmails - Batch sending"
+            ],
+            "interfaces": [
+              "Mailer - Provider interface",
+              "EmailMessage - Message structure"
+            ],
+            "factory": [
+              "createMailer - Initialize mailer"
+            ]
+          },
+          "providers": {
+            "resend": "@kit/resend for production",
+            "nodemailer": "@kit/nodemailer for development"
+          },
+          "features": [
+            "Provider abstraction",
+            "Template rendering",
+            "Attachment support",
+            "Bulk email sending",
+            "Delivery tracking",
+            "Retry logic",
+            "Rate limiting"
+          ],
+          "configuration": "MAILER_PROVIDER environment variable",
+          "dependencies": ["@kit/resend", "@kit/nodemailer", "@kit/email-templates"]
+        }
+      },
+      "tooling": {
+        "@kit/eslint-config": {
+          "path": "./tooling/eslint",
+          "description": "Shared ESLint configuration",
+          "rules": [
+            "TypeScript strict mode",
+            "React hooks rules",
+            "Next.js specific rules",
+            "Import ordering"
+          ]
+        },
+        "@kit/prettier-config": {
+          "path": "./tooling/prettier",
+          "description": "Shared Prettier configuration",
+          "features": [
+            "Import sorting",
+            "Tailwind class ordering",
+            "Consistent formatting"
+          ]
+        },
+        "@kit/tsconfig": {
+          "path": "./tooling/typescript",
+          "description": "Base TypeScript configurations",
+          "configs": [
+            "base.json - Shared settings",
+            "nextjs.json - Next.js apps",
+            "react-library.json - React packages",
+            "node.json - Node packages"
+          ]
+        }
+      }
+    }
+  },
+  "navigation_guide": {
+    "for_new_features": {
+      "authentication": "Start with @kit/auth package",
+      "user_features": "Use @kit/accounts for personal features",
+      "team_features": "Use @kit/team-accounts for collaboration",
+      "ui_components": "Import from @kit/ui",
+      "database": "Use @kit/supabase clients",
+      "payments": "Integrate via @kit/billing-gateway"
+    },
+    "common_patterns": {
+      "server_components": "Use getSupabaseServerClient() with RLS",
+      "client_components": "Use useSupabase() hook with React Query",
+      "server_actions": "Wrap with enhanceAction() from @kit/next",
+      "api_routes": "Use enhanceRouteHandler() from @kit/next",
+      "forms": "Use react-hook-form with Zod schemas",
+      "real_time": "Use @kit/notifications for WebSocket features"
+    },
+    "best_practices": {
+      "security": [
+        "Always use RLS for data access",
+        "Admin client only when absolutely necessary",
+        "CSRF protection on all mutations",
+        "Input validation with Zod"
+      ],
+      "performance": [
+        "Parallel data fetching with Promise.all",
+        "Server Components for initial load",
+        "React Query for client-side caching",
+        "Image optimization with next/image"
+      ],
+      "code_organization": [
+        "Feature-based package structure",
+        "_components for route-specific components",
+        "_lib/server for server utilities",
+        "Colocation of related code"
+      ]
+    }
+  }
+}

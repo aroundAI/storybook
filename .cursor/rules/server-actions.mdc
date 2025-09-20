@@ -1,0 +1,37 @@
+---
+description: Writing Server Actions for mutating data
+globs: apps/**","packages/**
+alwaysApply: false
+---
+# Server Actions
+
+- For Data Mutations from Client Components, always use Server Actions
+- Always name the server actions file as "server-actions.ts"
+- Always name exported Server Actions suffixed as "Action", ex. "createPostAction"
+- Always use the `enhanceAction` function from the "@kit/supabase/actions" package [index.ts](mdc:packages/next/src/actions/index.ts)
+- Always use the 'use server' directive at the top of the file
+- Place the Zod schema in a separate file so it can be reused with `react-hook-form`
+
+```tsx
+'use server';
+
+import { z } from 'zod';
+import { enhanceAction } from '@kit/next/actions';
+import { EntitySchema } from '../entity.schema.ts`;
+
+export const myServerAction = enhanceAction(
+  async function (data, user) {
+    // 1. "data" is already a valid EntitySchema and it's safe to use
+    // 2. "user" is the authenticated user
+
+    // ... your code here
+    return {
+      success: true,
+    };
+  },
+  {
+    auth: true,
+    schema: EntitySchema,
+  },
+);
+```

@@ -1,0 +1,58 @@
+{
+  "name": "@kit/team-accounts",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    "./api": "./src/server/api.ts",
+    "./components": "./src/components/index.ts",
+    "./hooks/*": "./src/hooks/*.ts",
+    "./webhooks": "./src/server/services/webhooks/index.ts"
+  },
+  "dependencies": {
+    "nanoid": "^5.1.5"
+  },
+  "devDependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@kit/accounts": "workspace:*",
+    "@kit/billing-gateway": "workspace:*",
+    "@kit/email-templates": "workspace:*",
+    "@kit/eslint-config": "workspace:*",
+    "@kit/mailers": "workspace:*",
+    "@kit/monitoring": "workspace:*",
+    "@kit/next": "workspace:*",
+    "@kit/otp": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
+    "@tanstack/react-query": "5.89.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "class-variance-authority": "^0.7.1",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.544.0",
+    "next": "15.5.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-hook-form": "^7.62.0",
+    "react-i18next": "^15.7.3",
+    "zod": "^3.25.74"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

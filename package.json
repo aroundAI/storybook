@@ -1,0 +1,55 @@
+{
+  "name": "next-supabase-saas-kit-turbo",
+  "version": "2.14.1",
+  "private": true,
+  "sideEffects": false,
+  "engines": {
+    "node": ">=v18.18.0"
+  },
+  "author": {
+    "url": "https://makerkit.dev",
+    "name": "MakerKit"
+  },
+  "scripts": {
+    "turbo": "turbo",
+    "preinstall": "pnpm run --filter scripts requirements",
+    "postinstall": "manypkg fix",
+    "build": "turbo build --cache-dir=.turbo",
+    "clean": "git clean -xdf node_modules dist .next",
+    "clean:workspaces": "turbo clean",
+    "dev": "cross-env FORCE_COLOR=1 turbo dev --parallel",
+    "format": "turbo format --cache-dir=.turbo --continue -- --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\"",
+    "format:fix": "turbo format --cache-dir=.turbo --continue -- --write --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\"",
+    "lint": "turbo lint --cache-dir=.turbo --affected --continue -- --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg check",
+    "lint:fix": "turbo lint --cache-dir=.turbo --affected --continue -- --fix --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg fix",
+    "typecheck": "turbo typecheck --affected --cache-dir=.turbo",
+    "test": "turbo test --cache-dir=.turbo",
+    "update": "pnpm update -r",
+    "syncpack:list": "pnpm dlx syncpack list-mismatches",
+    "syncpack:fix": "pnpm dlx syncpack fix-mismatches",
+    "supabase:web:start": "pnpm --filter web supabase:start",
+    "supabase:web:stop": "pnpm --filter web supabase:stop",
+    "supabase:web:typegen": "pnpm --filter web supabase:typegen",
+    "supabase:web:reset": "pnpm --filter web supabase:reset",
+    "supabase:web:test": "pnpm --filter web supabase:test",
+    "stripe:listen": "pnpm --filter '@kit/stripe' start",
+    "env:generate": "turbo gen env",
+    "env:validate": "turbo gen validate-env"
+  },
+  "prettier": "@kit/prettier-config",
+  "packageManager": "pnpm@10.14.0",
+  "pnpm": {
+    "overrides": {
+      "react-is": "19.0.0",
+      "require-in-the-middle": "7.5.2"
+    }
+  },
+  "devDependencies": {
+    "@manypkg/cli": "^0.25.1",
+    "@turbo/gen": "^2.5.6",
+    "cross-env": "^10.0.0",
+    "prettier": "^3.6.2",
+    "turbo": "2.5.6",
+    "typescript": "^5.9.2"
+  }
+}

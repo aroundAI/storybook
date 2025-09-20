@@ -1,0 +1,50 @@
+{
+  "name": "dev-tool",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "clean": "git clean -xdf .next .turbo node_modules",
+    "dev": "next dev --turbo --port=3010 | pino-pretty -c",
+    "format": "prettier --check --write \"**/*.{js,cjs,mjs,ts,tsx,md,json}\""
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.30",
+    "@faker-js/faker": "^10.0.0",
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "5.89.0",
+    "ai": "5.0.44",
+    "lucide-react": "^0.544.0",
+    "next": "15.5.3",
+    "nodemailer": "^7.0.6",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@kit/email-templates": "workspace:*",
+    "@kit/i18n": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^24.5.0",
+    "@types/nodemailer": "7.0.1",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "babel-plugin-react-compiler": "19.1.0-rc.3",
+    "pino-pretty": "13.0.0",
+    "react-hook-form": "^7.62.0",
+    "recharts": "2.15.3",
+    "tailwindcss": "4.1.13",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.9.2",
+    "zod": "^3.25.74"
+  },
+  "prettier": "@kit/prettier-config",
+  "browserslist": [
+    "last 1 versions",
+    "> 0.7%",
+    "not dead"
+  ]
+}

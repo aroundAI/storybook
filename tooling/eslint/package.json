@@ -1,0 +1,29 @@
+{
+  "name": "@kit/eslint-config",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "./apps.js",
+    "./base.js",
+    "./nextjs.js"
+  ],
+  "scripts": {
+    "clean": "rm -rf .turbo node_modules",
+    "format": "prettier --check \"**/*.{js,json}\""
+  },
+  "dependencies": {
+    "@next/eslint-plugin-next": "15.5.3",
+    "@types/eslint": "9.6.1",
+    "eslint-config-next": "15.5.3",
+    "eslint-config-turbo": "^2.5.6",
+    "typescript-eslint": "8.44.0"
+  },
+  "devDependencies": {
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "eslint": "^9.35.0",
+    "typescript": "^5.9.2"
+  },
+  "prettier": "@kit/prettier-config"
+}

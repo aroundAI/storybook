@@ -1,0 +1,45 @@
+{
+  "name": "@kit/admin",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "prettier": "@kit/prettier-config",
+  "devDependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@kit/eslint-config": "workspace:*",
+    "@kit/next": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "@makerkit/data-loader-supabase-core": "^0.0.10",
+    "@makerkit/data-loader-supabase-nextjs": "^1.2.5",
+    "@supabase/supabase-js": "2.57.4",
+    "@tanstack/react-query": "5.89.0",
+    "@tanstack/react-table": "^8.21.3",
+    "@types/react": "19.1.13",
+    "lucide-react": "^0.544.0",
+    "next": "15.5.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-hook-form": "^7.62.0",
+    "zod": "^3.25.74"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./components/*": "./src/components/*.tsx"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "name": "@kit/next",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "prettier": "@kit/prettier-config",
+  "exports": {
+    "./actions": "./src/actions/index.ts",
+    "./routes": "./src/routes/index.ts"
+  },
+  "devDependencies": {
+    "@kit/auth": "workspace:*",
+    "@kit/eslint-config": "workspace:*",
+    "@kit/monitoring": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
+    "next": "15.5.3",
+    "zod": "^3.25.74"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

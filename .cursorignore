@@ -1,0 +1,12 @@
+database.types.ts
+playwright-report
+test-results
+web/supabase/migrations
+pnpm-lock.yaml
+.env.local
+.env.production.local
+.idea
+.vscode
+.zed
+tsconfig.tsbuildinfo
+.windsurfrules

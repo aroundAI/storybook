@@ -1,0 +1,21 @@
+{
+  "name": "web-e2e",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "report": "playwright show-report",
+    "test": "playwright test --max-failures=1",
+    "test:ui": "playwright test --ui"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^24.5.0",
+    "dotenv": "17.2.2",
+    "node-html-parser": "^7.0.1",
+    "totp-generator": "^2.0.0"
+  }
+}
