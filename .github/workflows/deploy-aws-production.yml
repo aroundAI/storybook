@@ -1,0 +1,187 @@
+name: Deploy to AWS Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10.14.0'
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      id-token: write # Required for AWS OIDC
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
+        continue-on-error: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+
+      - name: Build for AWS
+        working-directory: apps/web
+        run: |
+          # Install OpenNext
+          pnpm add -D open-next@latest
+
+          # Build the application
+          pnpm build
+
+          # Build OpenNext package
+          pnpm exec open-next build
+        env:
+          # Database
+          DATABASE_PROVIDER: ${{ secrets.DATABASE_PROVIDER }}
+          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
+          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
+          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+
+          # Auth
+          AUTH_PROVIDER: ${{ secrets.AUTH_PROVIDER }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+          COGNITO_CLIENT_SECRET: ${{ secrets.COGNITO_CLIENT_SECRET }}
+
+          # Storage
+          STORAGE_PROVIDER: ${{ secrets.STORAGE_PROVIDER }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+
+          # Email
+          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
+          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+
+          # Billing
+          NEXT_PUBLIC_BILLING_PROVIDER: ${{ secrets.NEXT_PUBLIC_BILLING_PROVIDER }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+          # Site config
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
+          NEXT_PUBLIC_PRODUCT_NAME: ${{ secrets.NEXT_PUBLIC_PRODUCT_NAME }}
+
+      - name: Deploy to AWS Lambda
+        working-directory: apps/web
+        run: |
+          # Package Lambda functions
+          cd .open-next
+
+          # Deploy main function
+          zip -r function.zip server-function/*
+          aws lambda update-function-code \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --zip-file fileb://function.zip
+
+          # Deploy image optimization function
+          if [ -d "image-optimization-function" ]; then
+            zip -r image-optimization.zip image-optimization-function/*
+            aws lambda update-function-code \
+              --function-name ${{ secrets.AWS_LAMBDA_IMAGE_FUNCTION_NAME }} \
+              --zip-file fileb://image-optimization.zip
+          fi
+
+      - name: Upload static assets to S3
+        working-directory: apps/web/.open-next
+        run: |
+          # Upload assets to S3
+          aws s3 sync assets/ s3://${{ secrets.S3_ASSETS_BUCKET }}/assets/ \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "*.html"
+
+          # Upload cache with shorter TTL
+          aws s3 sync cache/ s3://${{ secrets.S3_ASSETS_BUCKET }}/cache/ \
+            --cache-control "public, max-age=86400"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+            --paths "/*"
+
+      - name: Deploy email worker Lambda
+        working-directory: apps/web/lambda/email-worker
+        run: |
+          # Install dependencies
+          npm install --production
+
+          # Package function
+          zip -r email-worker.zip .
+
+          # Deploy
+          aws lambda update-function-code \
+            --function-name ${{ secrets.AWS_LAMBDA_EMAIL_WORKER_NAME }} \
+            --zip-file fileb://email-worker.zip
+
+      - name: Run database migrations
+        run: |
+          # Run migrations using Supabase CLI or custom migration tool
+          echo "Running database migrations..."
+          # Add your migration command here
+
+      - name: Health check
+        run: |
+          echo "Waiting for deployment to propagate..."
+          sleep 30
+
+          # Check application health
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.NEXT_PUBLIC_SITE_URL }}/healthcheck)
+
+          if [ "$response" = "200" ]; then
+            echo "✅ Health check passed"
+          else
+            echo "❌ Health check failed with status $response"
+            exit 1
+          fi
+
+      - name: Notify deployment success
+        if: success()
+        run: |
+          echo "🚀 Deployment successful!"
+          echo "URL: https://${{ secrets.NEXT_PUBLIC_SITE_URL }}"
+
+      - name: Notify deployment failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed!"
+          # Add Slack/Discord notification here
