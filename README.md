@@ -84,7 +84,7 @@ Visit http://localhost:3000
 | Stack | Monthly Cost | Deploy Time | Best For |
 |-------|--------------|-------------|----------|
 | **Supabase** | $35 | 10 mins | MVPs, rapid development |
-| **AWS** | $165 | 2-4 hours | Enterprise, scale, compliance |
+| **AWS** | $95 | 2-4 hours | Enterprise, scale, compliance |
 | **Hybrid** | $37 | 1 hour | **Recommended** - best value |
 
 See [SUPABASE_VENDOR_LOCKIN_REPORT.md](./SUPABASE_VENDOR_LOCKIN_REPORT.md) for detailed breakdown.

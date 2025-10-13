@@ -56,7 +56,7 @@ pnpm run deploy:aws           # AWS via GitHub Actions
 | Platform | Time to Deploy | Monthly Cost | Best For | Difficulty |
 |----------|----------------|--------------|----------|------------|
 | **Vercel + Supabase** | 10 mins | $35 | MVPs, rapid iteration | Easy |
-| **AWS** | 2-4 hours | $165 | Scale, compliance | Medium |
+| **AWS** | 2-4 hours | $95 | Scale, compliance | Medium |
 | **Hybrid** | 1 hour | $37 | Cost optimization | Easy |
 
 ---

@@ -122,7 +122,7 @@
 4. Users re-authenticate on first login (password reset email)
 
 **Estimated Time**: 4-8 hours
-**Estimated Cost**: Cognito = $0.00550 per MAU (first 50K users) vs Supabase included
+**Estimated Cost**: Cognito = **FREE for first 50K MAUs** (then $0.00550/MAU) vs Supabase included
 
 ---
 
@@ -188,8 +188,8 @@ await storage.upload('avatars', 'user-1.png', file);
 
 | Provider | Cost | Features | Best For |
 |----------|------|----------|----------|
-| **Pusher** | $49/month | WebSocket, Presence | Chat, notifications |
-| **AWS API Gateway WebSocket** | Pay-per-use | Full control | Custom implementations |
+| **AWS API Gateway WebSocket** | ~$8/month (10K users) | Full control, pay-per-use | **Best for AWS stack** |
+| **Pusher** | $49/month | WebSocket, Presence | Simple but expensive |
 | **Ably** | $29/month | Realtime messaging | Production apps |
 
 **Migration Example** (Supabase → Pusher):
@@ -271,18 +271,20 @@ The following services can be switched via environment variables **with zero cod
 
 ### Monthly Costs Comparison (10K Users, 50GB Storage, 100K Emails)
 
-| Service | Supabase | AWS | Hybrid | Savings |
-|---------|----------|-----|--------|---------|
-| **Database** | $25 (Pro) | $60 (RDS t3.medium) | $25 (Supabase) | - |
-| **Auth** | Included | $27.50 (50K MAU) | Included | -$27.50 |
-| **Storage** | $10 (50GB over free tier) | $1.15 (S3) | $1.15 (S3) | -$8.85 |
-| **Email** | - | $10 (SES) | $0 (Resend free) | -$10 |
-| **Realtime** | Included | $50 (Pusher) | Included | -$50 |
-| **Queue** | - | $1 (SQS) | $1 (SQS) | - |
-| **Cache** | - | $15 (ElastiCache) | $10 (Upstash) | -$5 |
-| **Total** | **$35/month** | **$164.65/month** | **$37.15/month** | **💰 Save $127/month** |
+| Service | Supabase | AWS | Hybrid | Notes |
+|---------|----------|-----|--------|-------|
+| **Database** | $25 (Pro) | $60 (RDS t3.medium) | $25 (Supabase) | AWS scales better |
+| **Auth** | Included | $0 (< 50K MAU free) | Included | Cognito free tier! |
+| **Storage** | $10 (50GB) | $1.15 (S3) | $1.15 (S3) | S3 cheaper |
+| **Email** | - | $10 (SES) | $0 (Resend free) | Resend 3K/mo free |
+| **Realtime** | Included | $8 (API Gateway WS) | Included | AWS native |
+| **Queue** | - | $1 (SQS) | $1 (SQS) | Pay per use |
+| **Cache** | - | $15 (ElastiCache) | $10 (Upstash) | Redis options |
+| **Total** | **$35/month** | **~$95/month** | **~$37/month** | **Hybrid = best value** |
 
-**Recommendation**: **Hybrid approach** (Supabase + S3 + SQS) offers best value!
+**Key Insight**: AWS is actually **competitive** when you use native services (not 3rd party like Pusher)!
+
+**Recommendation**: **Hybrid approach** offers best DX + cost optimization
 
 ---
 
@@ -299,16 +301,18 @@ The following services can be switched via environment variables **with zero cod
 4. Week 4: Testing + cutover
 
 **Total Time**: 4 weeks
-**Total Cost**: ~$165/month
+**Total Cost**: ~$95/month
 
 **Pros**:
 - ✅ Full control
 - ✅ Better performance at scale
 - ✅ Enterprise compliance (HIPAA, SOC2)
+- ✅ Cognito auth is FREE (< 50K users)
+- ✅ Pay-per-use pricing scales down
 
 **Cons**:
-- ❌ Higher cost for small apps
-- ❌ More complex management
+- ❌ More setup complexity
+- ❌ Requires AWS expertise
 
 ---
 
@@ -370,9 +374,11 @@ CACHE_PROVIDER=redis            # Upstash serverless Redis
 4. ✅ Migrate database/auth last (highest impact)
 
 ### Cost Optimization Strategy
-1. **< 10K users**: Supabase (free tier + $25 Pro)
-2. **10K-100K users**: Hybrid (Supabase + S3 + SQS) = $37/month
-3. **> 100K users**: Full AWS = better economics at scale
+1. **< 5K users**: Supabase free tier ($0)
+2. **5K-50K users**: Supabase Pro ($25) or Hybrid ($37) or AWS ($95)
+3. **> 50K users**: AWS becomes cheaper (Cognito starts charging, but overall better value)
+
+**Sweet Spot**: Hybrid approach gives Supabase DX + AWS scalability at ~$37/month
 
 ---
 
