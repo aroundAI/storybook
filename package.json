@@ -34,7 +34,16 @@
     "supabase:web:test": "pnpm --filter web supabase:test",
     "stripe:listen": "pnpm --filter '@kit/stripe' start",
     "env:generate": "turbo gen env",
-    "env:validate": "turbo gen validate-env"
+    "env:validate": "turbo gen validate-env",
+    "sst": "sst",
+    "sst:deploy": "sst deploy",
+    "sst:dev": "sst dev",
+    "sst:remove": "sst remove",
+    "sst:console": "sst console",
+    "sst:logs": "sst logs",
+    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
+    "deploy:staging": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh staging",
+    "deploy:production": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh production"
   },
   "prettier": "@kit/prettier-config",
   "packageManager": "pnpm@10.14.0",
