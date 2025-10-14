@@ -29,6 +29,10 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# deployment configs (keep .env.example files)
+deployment/config/*.env
+!deployment/config/*.env.example
+
 # vercel
 .vercel
 
@@ -37,6 +41,11 @@ yarn-error.log*
 
 # turbo
 .turbo
+
+# sst
+.sst
+.open-next
+sst-env.d.ts
 
 # ide
 .idea/

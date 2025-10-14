@@ -1,60 +1,61 @@
 /**
- * OpenNext configuration for AWS Lambda deployment
- * This enables deploying Next.js to AWS using Lambda functions
+ * OpenNext Configuration
  *
- * Install: pnpm add -D open-next@latest
+ * This configuration customizes how Next.js is adapted for AWS Lambda.
+ * It's optional - if omitted, OpenNext will use sensible defaults.
  *
- * @see https://open-next.js.org/
+ * @see https://opennext.js.org/aws/config/reference
  */
 const config = {
   default: {
-    // Use streaming for better performance
-    streaming: {
-      // Convert Lambda responses to streaming responses
-      convertTo: 'stream',
-    },
-    // Override Lambda function configuration
+    // Lambda configuration for main server
     override: {
       wrapper: 'aws-lambda-streaming',
-      // Increase memory for better performance
-      queue: 'sqs',
+      // Use Node.js 20 runtime
+      runtime: 'node',
+      // Architecture (arm64 is more cost-effective)
+      architecture: 'arm64',
+      // Optimize memory for smaller bundle
+      memorySize: 1024,
     },
   },
 
-  // Separate Lambda functions for different route types
-  functions: {
-    // API routes get their own function with higher timeout
-    api: {
-      routes: ['api/*'],
-      // patterns: ['api/*'],
-      runtime: 'node',
-      override: {
-        wrapper: 'aws-lambda-streaming',
-      },
-    },
-
-    // Image optimization gets dedicated function
-    imageOptimization: {
-      // separate function for image optimization
-      runtime: 'node',
-    },
-  },
-
-  // Configure middleware
+  // Middleware configuration
+  // Set external to false to bundle with server function (avoids Lambda@Edge)
   middleware: {
-    external: true,
-    // Run middleware at edge locations
-    originResolver: {
-      // Use CloudFront edge locations
-      name: 'cloudfront',
+    external: false,
+  },
+
+  // Image optimization configuration
+  imageOptimization: {
+    // Use AWS Lambda for image optimization
+    override: {
+      wrapper: 'aws-lambda',
+      runtime: 'node',
+      // Increase memory for image processing
+      memorySize: 1536,
     },
   },
 
-  // Build options
-  buildCommand: 'pnpm build',
-  packageJsonPath: './package.json',
-  appPath: './',
-  buildOutput: '.open-next',
+  // ISR (Incremental Static Regeneration) configuration
+  revalidate: {
+    // Use SQS queue for revalidation
+    override: {
+      wrapper: 'aws-lambda',
+      runtime: 'node',
+    },
+  },
+
+  // Warmer configuration to reduce cold starts
+  warmer: {
+    invokeFunction: 'aws-lambda',
+  },
+
+  // Dangerous options (use with caution)
+  dangerous: {
+    // Enable minification for production to reduce bundle size
+    disableMinification: false,
+  },
 };
 
 export default config;

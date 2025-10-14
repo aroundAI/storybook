@@ -15,7 +15,7 @@
 export default $config({
   app(input) {
     return {
-      name: "base-saas",
+      name: process.env.SST_APP_NAME || "base-saas",
       removal: input?.stage === "production" ? "retain" : "remove",
       home: "aws",
     };

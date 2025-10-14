@@ -28,6 +28,24 @@ const config = {
   reactStrictMode: true,
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
+  // Enable standalone output for AWS Lambda deployment
+  output: process.env.DEPLOY_TARGET === 'lambda' ? 'standalone' : undefined,
+  webpack: (config, { isServer, webpack }) => {
+    if (isServer) {
+      // Disable module concatenation to prevent hanging
+      config.optimization.concatenateModules = false;
+
+      // Replace DEPLOY_TARGET at build time for tree-shaking
+      config.plugins.push(
+        new webpack.DefinePlugin({
+          'process.env.DEPLOY_TARGET': JSON.stringify(
+            process.env.DEPLOY_TARGET || '',
+          ),
+        }),
+      );
+    }
+    return config;
+  },
   images: {
     remotePatterns: getRemotePatterns(),
   },
@@ -36,10 +54,27 @@ const config = {
       fullUrl: true,
     },
   },
-  serverExternalPackages: [],
+  serverExternalPackages: [
+    '@aws-sdk/client-s3',
+    '@aws-sdk/client-sqs',
+    '@aws-sdk/client-lambda',
+    '@aws-sdk/lib-storage',
+    '@aws-sdk/s3-request-presigner',
+    'ioredis',
+    'redis',
+    'ws',
+  ],
   // needed for supporting dynamic imports for local content
   outputFileTracingIncludes: {
     '/*': ['./content/**/*'],
+  },
+  // Exclude development tools from Lambda bundle tracing
+  outputFileTracingExcludes: {
+    '*': [
+      'node_modules/@swc/core-*/**',
+      'node_modules/webpack/**',
+      'node_modules/terser/**',
+    ],
   },
   redirects: getRedirects,
   turbopack: {
@@ -56,15 +91,16 @@ const config = {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
     clientSegmentCache: true,
-    optimizePackageImports: [
-      'recharts',
-      'lucide-react',
-      '@radix-ui/react-icons',
-      '@radix-ui/react-avatar',
-      '@radix-ui/react-select',
-      'date-fns',
-      ...INTERNAL_PACKAGES,
-    ],
+    // Temporarily disabled to fix build hanging issue with Node.js 24
+    // optimizePackageImports: [
+    //   'recharts',
+    //   'lucide-react',
+    //   '@radix-ui/react-icons',
+    //   '@radix-ui/react-avatar',
+    //   '@radix-ui/react-select',
+    //   'date-fns',
+    //   ...INTERNAL_PACKAGES,
+    // ],
   },
   modularizeImports: {
     lodash: {
