@@ -24,6 +24,7 @@ vi.mock('ioredis', () => {
             mset: vi.fn().mockReturnThis(),
             exec: vi.fn().mockRejectedValue(new Error('Connection refused')),
           }),
+          flushdb: vi.fn().mockRejectedValue(new Error('Connection refused')),
           ping: vi.fn().mockRejectedValue(new Error('Connection refused')),
           quit: vi.fn().mockResolvedValue(undefined),
           on: vi.fn(),

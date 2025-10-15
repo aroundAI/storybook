@@ -27,12 +27,12 @@ afterEach(() => {
 
 describe('CacheFactory', () => {
   describe('Provider Selection', () => {
-    it('should default to memory cache when no provider is set', () => {
+    it('should default to memory cache when no provider is set', async () => {
       delete process.env.CACHE_PROVIDER;
       const cache = createCacheClient();
       expect(cache).toBeDefined();
       // Memory cache is always healthy
-      expect(cache.isHealthy()).resolves.toBe(true);
+      await expect(cache.isHealthy()).resolves.toBe(true);
     });
 
     it('should create memory cache when CACHE_PROVIDER=memory', () => {
@@ -49,14 +49,14 @@ describe('CacheFactory', () => {
       expect(cache).toBeDefined();
     });
 
-    it('should fallback to memory when redis provider is set without REDIS_URL', () => {
+    it('should fallback to memory when redis provider is set without REDIS_URL', async () => {
       process.env.CACHE_PROVIDER = 'redis' as CacheProvider;
       delete process.env.REDIS_URL;
 
       const cache = createCacheClient();
       expect(cache).toBeDefined();
       // Should fallback to memory cache, which is always healthy
-      expect(cache.isHealthy()).resolves.toBe(true);
+      await expect(cache.isHealthy()).resolves.toBe(true);
     });
 
     it('should handle invalid provider gracefully', () => {
@@ -135,7 +135,7 @@ describe('CacheFactory', () => {
       expect(cache).toBeDefined();
     });
 
-    it('should override env var with explicit config', () => {
+    it('should override env var with explicit config', async () => {
       process.env.CACHE_PROVIDER = 'redis';
       process.env.REDIS_URL = 'redis://localhost:6379';
 
@@ -146,7 +146,7 @@ describe('CacheFactory', () => {
 
       expect(cache).toBeDefined();
       // Memory cache is always healthy
-      expect(cache.isHealthy()).resolves.toBe(true);
+      await expect(cache.isHealthy()).resolves.toBe(true);
     });
 
     it('should accept Redis URL in config', () => {

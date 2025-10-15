@@ -45,6 +45,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Run Unit Tests
+        run: pnpm --filter @kit/cache test
+
   test:
     name: ⚫️ Test
     timeout-minutes: 20
