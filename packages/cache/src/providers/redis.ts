@@ -21,14 +21,22 @@ export class RedisCache implements CacheClient {
 
   constructor(redisUrl: string) {
     // Parse Redis URL and create client
+    const stage = process.env.NODE_ENV || 'development';
+
     this.client = new Redis(redisUrl, {
       // Retry strategy with exponential backoff
       retryStrategy: (times: number) => {
         const delay = Math.min(times * 50, 2000);
         return delay;
       },
+      // Limit retries per request to fail fast instead of queueing
+      maxRetriesPerRequest: 3,
       // Enable automatic pipelining for better performance
       enableAutoPipelining: true,
+      // Disable offline queue to fail fast when Redis is unavailable
+      enableOfflineQueue: false,
+      // Connection name for debugging in Redis
+      connectionName: `${stage}-cache`,
       // Reconnect on error
       reconnectOnError: (err) => {
         const targetError = 'READONLY';

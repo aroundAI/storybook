@@ -688,6 +688,63 @@ export default $config({
 
     console.log(`✓ KMS encryption key created for Lambda environment variables`);
 
+    // CloudWatch Log Retention Policies
+    // Set retention to prevent unlimited log storage costs
+    // Development: 7 days, Production: 30 days
+    const logRetentionDays = stage === 'production' ? 30 : 7;
+
+    // Email Worker Lambda logs
+    new aws.cloudwatch.LogGroup("EmailWorkerLogs", {
+      name: `/aws/lambda/${stage}-EmailQueue`,
+      retentionInDays: logRetentionDays,
+      tags: {
+        Environment: stage,
+        Purpose: "Email worker Lambda logs",
+      },
+    });
+
+    // WebSocket Connect Lambda logs
+    new aws.cloudwatch.LogGroup("WebSocketConnectLogs", {
+      name: `/aws/lambda/${stage}-RealtimeWebSocket-connect`,
+      retentionInDays: logRetentionDays,
+      tags: {
+        Environment: stage,
+        Purpose: "WebSocket connect handler logs",
+      },
+    });
+
+    // WebSocket Disconnect Lambda logs
+    new aws.cloudwatch.LogGroup("WebSocketDisconnectLogs", {
+      name: `/aws/lambda/${stage}-RealtimeWebSocket-disconnect`,
+      retentionInDays: logRetentionDays,
+      tags: {
+        Environment: stage,
+        Purpose: "WebSocket disconnect handler logs",
+      },
+    });
+
+    // WebSocket Default Lambda logs
+    new aws.cloudwatch.LogGroup("WebSocketDefaultLogs", {
+      name: `/aws/lambda/${stage}-RealtimeWebSocket-default`,
+      retentionInDays: logRetentionDays,
+      tags: {
+        Environment: stage,
+        Purpose: "WebSocket default handler logs",
+      },
+    });
+
+    // Next.js Server Lambda logs
+    new aws.cloudwatch.LogGroup("NextjsServerLogs", {
+      name: `/aws/lambda/${stage}-Web-server`,
+      retentionInDays: logRetentionDays,
+      tags: {
+        Environment: stage,
+        Purpose: "Next.js server function logs",
+      },
+    });
+
+    console.log(`✓ CloudWatch log retention set to ${logRetentionDays} days for ${stage}`);
+
     // ElastiCache Redis Cluster (optional, only if CACHE_PROVIDER=redis + USE_ELASTICACHE=true)
     // For Upstash or other managed Redis, just provide REDIS_URL in environment variables
     let redisEndpoint: string | undefined;
