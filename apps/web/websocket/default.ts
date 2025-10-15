@@ -6,15 +6,108 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DeleteCommand,
   DynamoDBDocumentClient,
+  GetCommand,
   QueryCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { createClient } from '@supabase/supabase-js';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+
+import { isSuperAdminFromToken } from './utils/auth';
 
 const ddbClient = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(ddbClient);
 
 const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
+
+// Initialize Supabase client for authorization checks
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+/**
+ * Get sender's userId from connectionId
+ * @param connectionId - The WebSocket connection ID
+ * @returns userId if found, null otherwise
+ */
+async function getSenderUserId(connectionId: string): Promise<string | null> {
+  try {
+    const { Item } = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { connectionId },
+      }),
+    );
+
+    if (!Item?.userId) {
+      console.error('[Auth] No userId found for connection:', connectionId);
+      return null;
+    }
+
+    return Item.userId as string;
+  } catch (error) {
+    console.error('[Auth] Error getting userId from connection:', error);
+    return null;
+  }
+}
+
+/**
+ * Check if sender and target users share a team account
+ * @param senderId - Sender's userId
+ * @param targetId - Target userId
+ * @returns true if they share at least one team account, false otherwise
+ */
+async function canUserMessageUser(
+  senderId: string,
+  targetId: string,
+): Promise<boolean> {
+  try {
+    // Users can always message themselves (for testing/debugging)
+    if (senderId === targetId) {
+      return true;
+    }
+
+    // Query accounts_memberships to find shared team accounts
+    const { data: senderAccounts, error: senderError } = await supabase
+      .from('accounts_memberships')
+      .select('account_id')
+      .eq('user_id', senderId);
+
+    if (senderError) {
+      console.error('[Auth] Error fetching sender accounts:', senderError);
+      return false;
+    }
+
+    const { data: targetAccounts, error: targetError } = await supabase
+      .from('accounts_memberships')
+      .select('account_id')
+      .eq('user_id', targetId);
+
+    if (targetError) {
+      console.error('[Auth] Error fetching target accounts:', targetError);
+      return false;
+    }
+
+    // Check if there's any overlap in account_ids
+    const senderAccountIds = new Set(
+      senderAccounts?.map((a) => a.account_id) || [],
+    );
+    const sharedAccount = targetAccounts?.some((a) =>
+      senderAccountIds.has(a.account_id),
+    );
+
+    console.log('[Auth] Team membership check:', {
+      senderId: senderId.substring(0, 8) + '...',
+      targetId: targetId.substring(0, 8) + '...',
+      sharedAccount,
+    });
+
+    return !!sharedAccount;
+  } catch (error) {
+    console.error('[Auth] Error checking team membership:', error);
+    return false;
+  }
+}
 
 /**
  * WebSocket $default handler
@@ -61,7 +154,51 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
           break;
         }
 
-        console.log(`Sending message to user ${targetUserId}`);
+        // SECURITY: Get sender's userId from connection
+        const senderId = await getSenderUserId(connectionId);
+
+        if (!senderId) {
+          console.error(
+            '[Security] Unauthorized: Could not identify sender for send-to-user',
+          );
+          await apiGatewayClient.send(
+            new PostToConnectionCommand({
+              ConnectionId: connectionId,
+              Data: JSON.stringify({
+                type: 'error',
+                message: 'Unauthorized: Could not verify sender identity',
+              }),
+            }),
+          );
+          break;
+        }
+
+        // SECURITY: Check if sender and target share a team account
+        const canMessage = await canUserMessageUser(senderId, targetUserId);
+
+        if (!canMessage) {
+          console.warn('[Security] Unauthorized message attempt:', {
+            senderId: senderId.substring(0, 8) + '...',
+            targetUserId: targetUserId.substring(0, 8) + '...',
+            action: 'send-to-user',
+          });
+
+          await apiGatewayClient.send(
+            new PostToConnectionCommand({
+              ConnectionId: connectionId,
+              Data: JSON.stringify({
+                type: 'error',
+                message:
+                  'Unauthorized: You can only message users in your team',
+              }),
+            }),
+          );
+          break;
+        }
+
+        console.log(
+          `[Security] Authorized: Sending message from ${senderId.substring(0, 8)}... to user ${targetUserId}`,
+        );
 
         // Query DynamoDB for all connections belonging to targetUserId
         const connections = await ddb.send(
@@ -129,10 +266,40 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
       case 'broadcast': {
         // Broadcast to ALL users (admin-only feature - use sparingly)
-        // For production, you should verify the sender has admin privileges
-        console.warn(
-          'Broadcast to ALL users requested - this should be admin-only',
-        );
+        // SECURITY: Verify the sender has super admin privileges
+        console.log('[Security] Broadcast request received, checking admin status');
+
+        // Extract auth header from event (stored during connection)
+        const authHeader =
+          event.headers?.Authorization ||
+          event.headers?.authorization ||
+          event.queryStringParameters?.token;
+
+        // Check if user is a super admin
+        const isAdmin = await isSuperAdminFromToken(authHeader);
+
+        if (!isAdmin) {
+          console.warn(
+            '[Security] Unauthorized broadcast attempt from non-admin user',
+            {
+              connectionId,
+            },
+          );
+
+          await apiGatewayClient.send(
+            new PostToConnectionCommand({
+              ConnectionId: connectionId,
+              Data: JSON.stringify({
+                type: 'error',
+                message:
+                  'Unauthorized: Broadcast requires super admin privileges',
+              }),
+            }),
+          );
+          break;
+        }
+
+        console.log('[Security] Authorized: Super admin broadcast approved');
 
         const connections = await ddb.send(
           new ScanCommand({
