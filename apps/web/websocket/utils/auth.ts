@@ -30,21 +30,16 @@ export async function verifySupabaseToken(
       throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable not set');
     }
 
-    // Get Supabase JWT secret from environment
-    const supabaseJwtSecret = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    if (!supabaseJwtSecret) {
-      throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable not set');
-    }
-
     // Create JWKS endpoint for Supabase
     // Supabase uses a JWKS endpoint at: https://<project-ref>.supabase.co/auth/v1/jwks
     const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/jwks`));
 
-    // Verify the JWT token
+    // Verify the JWT token with jose library
+    // This automatically validates signature, expiration (exp), and not-before (nbf) claims
     const { payload } = await jwtVerify(token, JWKS, {
       issuer: supabaseUrl,
       audience: 'authenticated',
+      clockTolerance: 60, // Allow 60 seconds clock skew
     });
 
     // Extract user ID from the payload
@@ -52,6 +47,43 @@ export async function verifySupabaseToken(
 
     if (!userId) {
       console.log('No user ID found in token payload');
+      return null;
+    }
+
+    // Explicit expiration check with maximum token lifetime (24 hours)
+    const now = Math.floor(Date.now() / 1000);
+    const exp = payload.exp;
+    const iat = payload.iat;
+
+    if (!exp) {
+      console.error('Token missing expiration claim (exp)');
+      return null;
+    }
+
+    if (!iat) {
+      console.error('Token missing issued-at claim (iat)');
+      return null;
+    }
+
+    // Check if token has expired
+    if (exp < now) {
+      console.error('Token has expired:', {
+        exp: new Date(exp * 1000).toISOString(),
+        now: new Date(now * 1000).toISOString(),
+      });
+      return null;
+    }
+
+    // Enforce maximum token lifetime of 24 hours
+    const MAX_TOKEN_LIFETIME = 24 * 60 * 60; // 24 hours in seconds
+    const tokenAge = now - iat;
+
+    if (tokenAge > MAX_TOKEN_LIFETIME) {
+      console.error('Token exceeds maximum lifetime:', {
+        tokenAge,
+        maxLifetime: MAX_TOKEN_LIFETIME,
+        iat: new Date(iat * 1000).toISOString(),
+      });
       return null;
     }
 
@@ -118,11 +150,27 @@ export async function extractAppMetadataFromToken(
     // Create JWKS endpoint for Supabase
     const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/jwks`));
 
-    // Verify the JWT token
+    // Verify the JWT token with jose library
+    // This automatically validates signature, expiration (exp), and not-before (nbf) claims
     const { payload } = await jwtVerify(token, JWKS, {
       issuer: supabaseUrl,
       audience: 'authenticated',
+      clockTolerance: 60, // Allow 60 seconds clock skew
     });
+
+    // Explicit expiration check
+    const now = Math.floor(Date.now() / 1000);
+    const exp = payload.exp;
+
+    if (!exp) {
+      console.error('Token missing expiration claim (exp)');
+      return null;
+    }
+
+    if (exp < now) {
+      console.error('Token has expired');
+      return null;
+    }
 
     // Extract app_metadata from the payload
     const appMetadata = payload.app_metadata as Record<string, unknown>;

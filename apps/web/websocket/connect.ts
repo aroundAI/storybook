@@ -6,7 +6,10 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 
-import { verifySupabaseToken } from './utils/auth';
+import {
+  isSuperAdminFromToken,
+  verifySupabaseToken,
+} from './utils/auth';
 
 const client = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(client);
@@ -32,10 +35,28 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
   try {
     // Extract Authorization header (check both cases)
+    // SECURITY WARNING: Query string authentication is supported as a fallback
+    // but exposes tokens in logs and browser history. Use Authorization header instead.
     const authHeader =
       event.headers?.Authorization ||
       event.headers?.authorization ||
-      event.queryStringParameters?.token; // Support token via query string as fallback
+      event.queryStringParameters?.token;
+
+    // Log security warning if query string auth is used
+    if (
+      !event.headers?.Authorization &&
+      !event.headers?.authorization &&
+      event.queryStringParameters?.token
+    ) {
+      console.warn(
+        '[Security] Query string authentication used (tokens exposed in logs). ' +
+          'Recommended: Use Authorization header instead.',
+        {
+          connectionId,
+          hasQueryToken: true,
+        },
+      );
+    }
 
     // Verify JWT token and extract userId
     const userId = await verifySupabaseToken(authHeader);
@@ -49,6 +70,13 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         }),
       };
     }
+
+    // Check if user is a super admin (store for later authorization checks)
+    const isSuperAdmin = await isSuperAdminFromToken(authHeader);
+    console.log('[Auth] Connection authorization:', {
+      userId: userId.substring(0, 8) + '...',
+      isSuperAdmin,
+    });
 
     // Check connection limit for this user
     const existingConnections = await ddb.send(
@@ -77,13 +105,14 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       };
     }
 
-    // Store connection in DynamoDB with userId
+    // Store connection in DynamoDB with userId and authorization flags
     await ddb.send(
       new PutCommand({
         TableName: TABLE_NAME,
         Item: {
           connectionId,
           userId,
+          isSuperAdmin, // Store super admin status for authorization checks
           connectedAt,
           ttl: Math.floor(Date.now() / 1000) + 3600, // 1 hour TTL
         },

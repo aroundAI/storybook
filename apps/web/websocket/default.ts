@@ -13,7 +13,8 @@ import {
 import { createClient } from '@supabase/supabase-js';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 
-import { isSuperAdminFromToken } from './utils/auth';
+import { validateWebSocketMessage } from './schemas/websocket-messages.schema';
+import { isValidUUID } from './utils/validation';
 
 const ddbClient = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(ddbClient);
@@ -52,7 +53,45 @@ async function getSenderUserId(connectionId: string): Promise<string | null> {
 }
 
 /**
+ * Check if sender is a super admin (from stored connection data)
+ * @param connectionId - The WebSocket connection ID
+ * @returns true if user is super admin, false otherwise
+ */
+async function isSenderSuperAdmin(
+  connectionId: string,
+): Promise<boolean> {
+  try {
+    const { Item } = await ddb.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { connectionId },
+      }),
+    );
+
+    if (!Item) {
+      console.error(
+        '[Auth] No connection found for super admin check:',
+        connectionId,
+      );
+      return false;
+    }
+
+    const isSuperAdmin = Item.isSuperAdmin === true;
+    console.log('[Auth] Super admin check from stored connection:', {
+      connectionId: connectionId.substring(0, 8) + '...',
+      isSuperAdmin,
+    });
+
+    return isSuperAdmin;
+  } catch (error) {
+    console.error('[Auth] Error checking super admin status:', error);
+    return false;
+  }
+}
+
+/**
  * Check if sender and target users share a team account
+ * Uses atomic query to prevent TOCTOU race conditions
  * @param senderId - Sender's userId
  * @param targetId - Target userId
  * @returns true if they share at least one team account, false otherwise
@@ -62,47 +101,87 @@ async function canUserMessageUser(
   targetId: string,
 ): Promise<boolean> {
   try {
+    // Validate UUID formats before database queries
+    if (!isValidUUID(senderId)) {
+      console.error('[Validation] Invalid UUID format for senderId:', senderId);
+      return false;
+    }
+
+    if (!isValidUUID(targetId)) {
+      console.error('[Validation] Invalid UUID format for targetId:', targetId);
+      return false;
+    }
+
     // Users can always message themselves (for testing/debugging)
     if (senderId === targetId) {
       return true;
     }
 
-    // Query accounts_memberships to find shared team accounts
-    const { data: senderAccounts, error: senderError } = await supabase
-      .from('accounts_memberships')
-      .select('account_id')
-      .eq('user_id', senderId);
+    // Atomic query: Check if sender and target share any account_id
+    // This uses a self-join to find shared team memberships in a single query,
+    // eliminating the race condition window between separate queries
+    const { data, error } = await supabase.rpc('check_shared_team_membership', {
+      sender_user_id: senderId,
+      target_user_id: targetId,
+    });
 
-    if (senderError) {
-      console.error('[Auth] Error fetching sender accounts:', senderError);
-      return false;
+    if (error) {
+      // Fallback to two-query approach if RPC function doesn't exist yet
+      // WARNING: This fallback has a small race condition window (TOCTOU)
+      // The RPC function should be created via migration for production use
+      console.warn(
+        '[Auth] RPC function not found, using fallback (has race condition risk):',
+        error,
+      );
+
+      // Get sender's account memberships
+      const { data: senderAccounts, error: senderError } = await supabase
+        .from('accounts_memberships')
+        .select('account_id')
+        .eq('user_id', senderId);
+
+      if (senderError) {
+        console.error('[Auth] Error fetching sender accounts:', senderError);
+        return false;
+      }
+
+      // Get target's account memberships
+      const { data: targetAccounts, error: targetError } = await supabase
+        .from('accounts_memberships')
+        .select('account_id')
+        .eq('user_id', targetId);
+
+      if (targetError) {
+        console.error('[Auth] Error fetching target accounts:', targetError);
+        return false;
+      }
+
+      // Check for shared accounts
+      const senderAccountIds = new Set(
+        senderAccounts?.map((a) => a.account_id) || [],
+      );
+      const hasSharedAccount = targetAccounts?.some((a) =>
+        senderAccountIds.has(a.account_id),
+      );
+
+      console.log('[Auth] Team membership check (fallback):', {
+        senderId: senderId.substring(0, 8) + '...',
+        targetId: targetId.substring(0, 8) + '...',
+        hasSharedAccount,
+      });
+
+      return !!hasSharedAccount;
     }
 
-    const { data: targetAccounts, error: targetError } = await supabase
-      .from('accounts_memberships')
-      .select('account_id')
-      .eq('user_id', targetId);
-
-    if (targetError) {
-      console.error('[Auth] Error fetching target accounts:', targetError);
-      return false;
-    }
-
-    // Check if there's any overlap in account_ids
-    const senderAccountIds = new Set(
-      senderAccounts?.map((a) => a.account_id) || [],
-    );
-    const sharedAccount = targetAccounts?.some((a) =>
-      senderAccountIds.has(a.account_id),
-    );
+    const hasSharedAccount = data === true;
 
     console.log('[Auth] Team membership check:', {
       senderId: senderId.substring(0, 8) + '...',
       targetId: targetId.substring(0, 8) + '...',
-      sharedAccount,
+      hasSharedAccount,
     });
 
-    return !!sharedAccount;
+    return hasSharedAccount;
   } catch (error) {
     console.error('[Auth] Error checking team membership:', error);
     return false;
@@ -126,9 +205,34 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
   });
 
   try {
-    // Parse incoming message
-    const body = event.body ? JSON.parse(event.body) : {};
-    const { action, channel, message, data } = body;
+    // Validate incoming message
+    const validatedMessage = event.body
+      ? validateWebSocketMessage(event.body)
+      : null;
+
+    if (!validatedMessage) {
+      console.error('Invalid message format or validation failed');
+      await apiGatewayClient.send(
+        new PostToConnectionCommand({
+          ConnectionId: connectionId,
+          Data: JSON.stringify({
+            type: 'error',
+            message:
+              'Invalid message format. Please check message schema and size limits.',
+          }),
+        }),
+      );
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ message: 'Invalid message format' }),
+      };
+    }
+
+    const { action, channel, message, data } = validatedMessage as Record<
+      string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      any
+    >;
 
     console.log('Message received:', { action, channel, connectionId });
 
@@ -269,14 +373,10 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         // SECURITY: Verify the sender has super admin privileges
         console.log('[Security] Broadcast request received, checking admin status');
 
-        // Extract auth header from event (stored during connection)
-        const authHeader =
-          event.headers?.Authorization ||
-          event.headers?.authorization ||
-          event.queryStringParameters?.token;
-
-        // Check if user is a super admin
-        const isAdmin = await isSuperAdminFromToken(authHeader);
+        // Check if sender is a super admin using stored connection data
+        // This prevents authentication state desynchronization by using
+        // connection-time auth state instead of message-time auth state
+        const isAdmin = await isSenderSuperAdmin(connectionId);
 
         if (!isAdmin) {
           console.warn(
