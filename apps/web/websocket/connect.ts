@@ -6,10 +6,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 
-import {
-  isSuperAdminFromToken,
-  verifySupabaseToken,
-} from './utils/auth';
+import { isSuperAdminFromToken, verifySupabaseToken } from './utils/auth';
 
 const client = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(client);

@@ -37,10 +37,12 @@ aws ssm put-parameter \
 // ❌ OLD (INSECURE) - Secrets in environment variables
 import { createClient } from '@supabase/supabase-js';
 
-const dbPassword = process.env.POSTGRES_PASSWORD; // Exposed in CloudTrail!
+// Exposed in CloudTrail!
 
 // ✅ NEW (SECURE) - Fetch from Parameter Store
 import { getDatabaseCredentials } from '@/lib/secrets/parameter-store';
+
+const dbPassword = process.env.POSTGRES_PASSWORD; // Exposed in CloudTrail!
 
 const dbCreds = await getDatabaseCredentials('production');
 // Returns: { host, port, database, user, password }
@@ -92,11 +94,12 @@ import { getParameterWithFallback } from '@/lib/secrets/parameter-store';
 // Tries Parameter Store first, falls back to environment variable
 const dbPassword = await getParameterWithFallback(
   '/production/db/password',
-  'POSTGRES_PASSWORD'
+  'POSTGRES_PASSWORD',
 );
 ```
 
 This allows you to:
+
 1. Deploy code with Parameter Store support
 2. Migrate secrets to Parameter Store at your own pace
 3. Remove environment variables once migration is complete
@@ -135,6 +138,7 @@ const db = await getDatabaseCredentials('production');
 ```
 
 Expects parameters:
+
 - `/production/db/host`
 - `/production/db/port`
 - `/production/db/name`
@@ -151,6 +155,7 @@ const stripe = await getStripeCredentials('production');
 ```
 
 Expects parameters:
+
 - `/production/stripe/secret-key`
 - `/production/stripe/webhook-secret`
 
@@ -164,6 +169,7 @@ const cognito = await getCognitoCredentials('production');
 ```
 
 Expects parameters:
+
 - `/production/cognito/user-pool-id`
 - `/production/cognito/client-id`
 - `/production/cognito/client-secret`
@@ -211,7 +217,8 @@ Cache secrets in Lambda global scope to reuse across invocations:
 import { getDatabaseCredentials } from '@/lib/secrets/parameter-store';
 
 // Global scope - reused across warm invocations
-let cachedDbCreds: Awaited<ReturnType<typeof getDatabaseCredentials>> | null = null;
+let cachedDbCreds: Awaited<ReturnType<typeof getDatabaseCredentials>> | null =
+  null;
 
 export const handler = async (event) => {
   // Fetch secrets once per Lambda instance
@@ -278,7 +285,7 @@ import { getParameterWithFallback } from '@/lib/secrets/parameter-store';
 // Works locally (uses .env) and in Lambda (uses Parameter Store)
 const secret = await getParameterWithFallback(
   '/production/db/password',
-  'POSTGRES_PASSWORD'
+  'POSTGRES_PASSWORD',
 );
 ```
 
@@ -302,6 +309,7 @@ Error: Failed to fetch parameter /production/db/password: ParameterNotFound
 ```
 
 **Solution**: Verify parameter exists and name matches exactly:
+
 ```bash
 aws ssm get-parameter --name /production/db/password
 ```
@@ -325,6 +333,7 @@ Error: KMS.AccessDeniedException
 ## Best Practices
 
 ✅ **DO**:
+
 - Use SecureString type for all sensitive values
 - Implement caching to reduce API calls
 - Use helper functions for common secret groups
@@ -332,6 +341,7 @@ Error: KMS.AccessDeniedException
 - Use fallback pattern for gradual migration
 
 ❌ **DON'T**:
+
 - Store secrets in GitHub Actions secrets anymore (use only for GitHub OIDC)
 - Pass secrets via environment variables
 - Hardcode parameter names (use stage-based paths)

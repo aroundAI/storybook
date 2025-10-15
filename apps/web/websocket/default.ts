@@ -1,3 +1,5 @@
+import { createClient } from '@supabase/supabase-js';
+
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
@@ -10,7 +12,6 @@ import {
   QueryCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import { createClient } from '@supabase/supabase-js';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 
 import { validateWebSocketMessage } from './schemas/websocket-messages.schema';
@@ -57,9 +58,7 @@ async function getSenderUserId(connectionId: string): Promise<string | null> {
  * @param connectionId - The WebSocket connection ID
  * @returns true if user is super admin, false otherwise
  */
-async function isSenderSuperAdmin(
-  connectionId: string,
-): Promise<boolean> {
+async function isSenderSuperAdmin(connectionId: string): Promise<boolean> {
   try {
     const { Item } = await ddb.send(
       new GetCommand({
@@ -125,52 +124,16 @@ async function canUserMessageUser(
       target_user_id: targetId,
     });
 
+    // If RPC function fails, deny authorization
+    // The check_shared_team_membership function should exist in the database
+    // If it doesn't exist, this is a deployment issue that should be fixed
     if (error) {
-      // Fallback to two-query approach if RPC function doesn't exist yet
-      // WARNING: This fallback has a small race condition window (TOCTOU)
-      // The RPC function should be created via migration for production use
-      console.warn(
-        '[Auth] RPC function not found, using fallback (has race condition risk):',
+      console.error(
+        '[Auth] Failed to check team membership - RPC function error:',
         error,
+        '\nEnsure check_shared_team_membership function exists in database',
       );
-
-      // Get sender's account memberships
-      const { data: senderAccounts, error: senderError } = await supabase
-        .from('accounts_memberships')
-        .select('account_id')
-        .eq('user_id', senderId);
-
-      if (senderError) {
-        console.error('[Auth] Error fetching sender accounts:', senderError);
-        return false;
-      }
-
-      // Get target's account memberships
-      const { data: targetAccounts, error: targetError } = await supabase
-        .from('accounts_memberships')
-        .select('account_id')
-        .eq('user_id', targetId);
-
-      if (targetError) {
-        console.error('[Auth] Error fetching target accounts:', targetError);
-        return false;
-      }
-
-      // Check for shared accounts
-      const senderAccountIds = new Set(
-        senderAccounts?.map((a) => a.account_id) || [],
-      );
-      const hasSharedAccount = targetAccounts?.some((a) =>
-        senderAccountIds.has(a.account_id),
-      );
-
-      console.log('[Auth] Team membership check (fallback):', {
-        senderId: senderId.substring(0, 8) + '...',
-        targetId: targetId.substring(0, 8) + '...',
-        hasSharedAccount,
-      });
-
-      return !!hasSharedAccount;
+      return false;
     }
 
     const hasSharedAccount = data === true;
@@ -371,7 +334,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       case 'broadcast': {
         // Broadcast to ALL users (admin-only feature - use sparingly)
         // SECURITY: Verify the sender has super admin privileges
-        console.log('[Security] Broadcast request received, checking admin status');
+        console.log(
+          '[Security] Broadcast request received, checking admin status',
+        );
 
         // Check if sender is a super admin using stored connection data
         // This prevents authentication state desynchronization by using

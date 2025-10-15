@@ -9,8 +9,8 @@ import {
   clearParameterCache,
   getDatabaseCredentials,
   getParameter,
-  getParameters,
   getParameterWithFallback,
+  getParameters,
   invalidateParameterCache,
 } from '../parameter-store';
 
@@ -31,9 +31,9 @@ describe('Parameter Store - Input Validation', () => {
 
   describe('getParameter validation', () => {
     it('should reject parameter names not starting with /', async () => {
-      await expect(
-        getParameter('invalid-name'),
-      ).rejects.toThrow('must start with "/"');
+      await expect(getParameter('invalid-name')).rejects.toThrow(
+        'must start with "/"',
+      );
     });
 
     it('should reject parameter names with path traversal (../)', async () => {
@@ -43,22 +43,22 @@ describe('Parameter Store - Input Validation', () => {
     });
 
     it('should reject parameter names with path traversal (./)', async () => {
-      await expect(
-        getParameter('/production/./password'),
-      ).rejects.toThrow('path traversal detected');
+      await expect(getParameter('/production/./password')).rejects.toThrow(
+        'path traversal detected',
+      );
     });
 
     it('should reject parameter names exceeding 2048 characters', async () => {
       const longName = '/' + 'a'.repeat(2048);
-      await expect(
-        getParameter(longName),
-      ).rejects.toThrow('exceeds maximum length');
+      await expect(getParameter(longName)).rejects.toThrow(
+        'exceeds maximum length',
+      );
     });
 
     it('should reject parameter names with invalid characters', async () => {
-      await expect(
-        getParameter('/production/db/pass{word}'),
-      ).rejects.toThrow('invalid characters');
+      await expect(getParameter('/production/db/pass{word}')).rejects.toThrow(
+        'invalid characters',
+      );
     });
 
     it('should accept valid parameter names', async () => {
@@ -283,7 +283,9 @@ describe('Parameter Store - Fallback', () => {
 
   it('should fall back to environment variable when Parameter Store fails', async () => {
     const { SSMClient } = await import('@aws-sdk/client-ssm');
-    const mockSend = vi.fn().mockRejectedValue(new Error('Parameter not found'));
+    const mockSend = vi
+      .fn()
+      .mockRejectedValue(new Error('Parameter not found'));
 
     const mockClient = new SSMClient({});
     vi.mocked(mockClient.send).mockImplementation(mockSend);
@@ -297,7 +299,9 @@ describe('Parameter Store - Fallback', () => {
 
   it('should throw error when both Parameter Store and env var are missing', async () => {
     const { SSMClient } = await import('@aws-sdk/client-ssm');
-    const mockSend = vi.fn().mockRejectedValue(new Error('Parameter not found'));
+    const mockSend = vi
+      .fn()
+      .mockRejectedValue(new Error('Parameter not found'));
 
     const mockClient = new SSMClient({});
     vi.mocked(mockClient.send).mockImplementation(mockSend);
@@ -311,7 +315,9 @@ describe('Parameter Store - Fallback', () => {
 
   it('should capture env var atomically to prevent race condition', async () => {
     const { SSMClient } = await import('@aws-sdk/client-ssm');
-    const mockSend = vi.fn().mockRejectedValue(new Error('Parameter not found'));
+    const mockSend = vi
+      .fn()
+      .mockRejectedValue(new Error('Parameter not found'));
 
     const mockClient = new SSMClient({});
     vi.mocked(mockClient.send).mockImplementation(mockSend);

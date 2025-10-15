@@ -1,7 +1,6 @@
 import type Redis from 'ioredis';
 
 import type { CacheMetrics } from '../index';
-
 import type { MetricsStore } from './storage';
 
 /**

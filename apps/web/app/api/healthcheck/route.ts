@@ -9,7 +9,6 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * Returns the health status of critical application dependencies:
  * - Database connection
  * - Cache connection
- * - Parameter Store connection (for secret management)
  *
  * Used by:
  * - CI/CD workflows for deployment verification
@@ -19,12 +18,14 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * Returns:
  * - 200 OK if all services are healthy
  * - 503 Service Unavailable if any service is unhealthy
+ *
+ * Note: Parameter Store checks removed to prevent information disclosure
+ * via unauthenticated public endpoint
  */
 export async function GET() {
   const checks = {
     database: false,
     cache: false,
-    parameterStore: false,
     timestamp: new Date().toISOString(),
   };
 
@@ -48,47 +49,8 @@ export async function GET() {
       checks.cache = false;
     }
 
-    // Check Parameter Store connection (if AWS deployment)
-    try {
-      // Only check Parameter Store if AWS_REGION is set (indicates AWS deployment)
-      if (process.env.AWS_REGION) {
-        const { SSMClient, GetParameterCommand } = await import(
-          '@aws-sdk/client-ssm'
-        );
-
-        const client = new SSMClient({
-          region: process.env.AWS_REGION,
-        });
-
-        // Try to fetch a health check parameter (non-critical, just tests connectivity)
-        // This parameter doesn't need to exist - we just check if AWS API is reachable
-        const command = new GetParameterCommand({
-          Name: '/healthcheck',
-        });
-
-        try {
-          await client.send(command);
-          checks.parameterStore = true;
-        } catch (error) {
-          // ParameterNotFound is acceptable - we're just testing connectivity
-          // @ts-expect-error - AWS SDK error types
-          if (error?.name === 'ParameterNotFound') {
-            checks.parameterStore = true;
-          } else {
-            throw error;
-          }
-        }
-      } else {
-        // Not an AWS deployment, skip Parameter Store check
-        checks.parameterStore = true;
-      }
-    } catch (error) {
-      console.error('[HealthCheck] Parameter Store check failed:', error);
-      checks.parameterStore = false;
-    }
-
     // Determine overall health status
-    const isHealthy = checks.database && checks.cache && checks.parameterStore;
+    const isHealthy = checks.database && checks.cache;
 
     if (isHealthy) {
       return NextResponse.json(

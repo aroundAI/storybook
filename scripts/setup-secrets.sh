@@ -37,6 +37,49 @@ fi
 
 STAGE="$1"
 
+# Validate STAGE parameter to prevent path traversal attacks
+validate_stage() {
+  local stage="$1"
+
+  # Whitelist of allowed stage names
+  local allowed_stages=("production" "staging" "development" "dev" "test")
+
+  # Check if stage is in whitelist
+  for allowed in "${allowed_stages[@]}"; do
+    if [ "$stage" == "$allowed" ]; then
+      return 0
+    fi
+  done
+
+  # If not in whitelist, check for path traversal attempts
+  if [[ "$stage" =~ \.\./  ]] || [[ "$stage" =~ /\./ ]] || [[ "$stage" =~ / ]]; then
+    echo -e "${RED}Error: Invalid stage name - path traversal detected${NC}" >&2
+    return 1
+  fi
+
+  # Check for valid characters (alphanumeric and hyphens only)
+  if [[ ! "$stage" =~ ^[a-zA-Z0-9\-]+$ ]]; then
+    echo -e "${RED}Error: Invalid stage name - only alphanumeric characters and hyphens allowed${NC}" >&2
+    return 1
+  fi
+
+  # Stage name is not in whitelist but passes basic validation
+  echo -e "${YELLOW}Warning: Stage '${stage}' is not a standard stage name${NC}" >&2
+  echo -e "${YELLOW}Allowed stages: production, staging, development, dev, test${NC}" >&2
+  read -p "Continue anyway? (y/N): " continue_anyway
+  if [[ ! "$continue_anyway" =~ ^[Yy]$ ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+# Validate the STAGE parameter
+if ! validate_stage "$STAGE"; then
+  echo -e "${RED}Exiting due to invalid stage parameter${NC}"
+  exit 1
+fi
+
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}AWS Parameter Store Secrets Setup${NC}"
 echo -e "${BLUE}========================================${NC}"
@@ -227,22 +270,28 @@ store_parameter() {
 
   echo -n "Storing ${name}... "
 
-  # Build AWS CLI command with optional KMS key
-  local base_cmd="aws ssm put-parameter --name \"$name\" --value \"$value\" --type \"$type\" --description \"$description\" --tier \"Standard\""
+  # Build AWS CLI arguments array (prevents command injection)
+  local aws_args=(
+    "ssm" "put-parameter"
+    "--name" "$name"
+    "--value" "$value"
+    "--type" "$type"
+    "--description" "$description"
+    "--tier" "Standard"
+  )
 
   # Add KMS key ID only for SecureString parameters and if custom key is specified
   if [ "$type" == "SecureString" ] && [ -n "$KMS_KEY_ID" ]; then
-    base_cmd="$base_cmd --key-id \"$KMS_KEY_ID\""
+    aws_args+=("--key-id" "$KMS_KEY_ID")
   fi
 
-  # Check if parameter already exists
+  # Check if parameter already exists and add overwrite flag
   if aws ssm get-parameter --name "$name" &> /dev/null; then
-    # Update existing parameter
-    eval "$base_cmd --overwrite" > /dev/null
-  else
-    # Create new parameter
-    eval "$base_cmd" > /dev/null
+    aws_args+=("--overwrite")
   fi
+
+  # Execute AWS CLI command directly (no eval - prevents command injection)
+  aws "${aws_args[@]}" > /dev/null
 
   echo -e "${GREEN}✓${NC}"
 }

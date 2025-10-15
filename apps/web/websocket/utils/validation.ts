@@ -88,5 +88,7 @@ export function isValidConnectionId(value: unknown): value is string {
   // API Gateway connection IDs are alphanumeric with = padding
   // Typical format: A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6=
   const connectionIdRegex = /^[A-Za-z0-9_-]+=*$/;
-  return connectionIdRegex.test(value) && value.length >= 10 && value.length <= 128;
+  return (
+    connectionIdRegex.test(value) && value.length >= 10 && value.length <= 128
+  );
 }

@@ -80,7 +80,11 @@ async function publishMetric(
  * Send alert webhook for critical failures
  * Configure via EMAIL_FAILURE_WEBHOOK_URL environment variable
  */
-async function sendFailureAlert(messageId: string, job: EmailJob, error: string) {
+async function sendFailureAlert(
+  messageId: string,
+  job: EmailJob,
+  error: string,
+) {
   const webhookUrl = process.env.EMAIL_FAILURE_WEBHOOK_URL;
 
   if (!webhookUrl) {

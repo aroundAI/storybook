@@ -2,7 +2,6 @@ import { promises as fs } from 'fs';
 import path from 'path';
 
 import type { CacheMetrics } from '../index';
-
 import type { MetricsStore } from './storage';
 
 /**
@@ -74,9 +73,7 @@ export class FileMetricsStore implements MetricsStore {
       await this.ensureDirectory();
 
       const files = await fs.readdir(this.storageDir);
-      const metricsFiles = files.filter((f) =>
-        f.startsWith('cache-metrics-'),
-      );
+      const metricsFiles = files.filter((f) => f.startsWith('cache-metrics-'));
 
       let totalHits = 0;
       let totalMisses = 0;
@@ -129,9 +126,7 @@ export class FileMetricsStore implements MetricsStore {
       await this.ensureDirectory();
 
       const files = await fs.readdir(this.storageDir);
-      const metricsFiles = files.filter((f) =>
-        f.startsWith('cache-metrics-'),
-      );
+      const metricsFiles = files.filter((f) => f.startsWith('cache-metrics-'));
 
       await Promise.all(
         metricsFiles.map((file) =>
@@ -198,9 +193,7 @@ export class FileMetricsStore implements MetricsStore {
       await this.ensureDirectory();
 
       const files = await fs.readdir(this.storageDir);
-      const metricsFiles = files.filter((f) =>
-        f.startsWith('cache-metrics-'),
-      );
+      const metricsFiles = files.filter((f) => f.startsWith('cache-metrics-'));
 
       const now = Date.now();
       let deletedCount = 0;

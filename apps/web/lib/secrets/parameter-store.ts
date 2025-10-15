@@ -10,11 +10,10 @@
  * - Secret rotation without code redeployment
  * - Fine-grained IAM permissions
  */
-
 import {
-  SSMClient,
   GetParameterCommand,
   GetParametersCommand,
+  SSMClient,
 } from '@aws-sdk/client-ssm';
 
 /**
@@ -92,21 +91,21 @@ function validateParameterName(name: string): void {
   // Must start with /
   if (!name.startsWith('/')) {
     throw new Error(
-      `Invalid parameter name: must start with "/" (got: ${name})`
+      `Invalid parameter name: must start with "/" (got: ${name})`,
     );
   }
 
   // Check for path traversal attempts
   if (name.includes('/../') || name.includes('/./')) {
     throw new Error(
-      `Invalid parameter name: path traversal detected (got: ${name})`
+      `Invalid parameter name: path traversal detected (got: ${name})`,
     );
   }
 
   // AWS SSM parameter name max length is 2048 characters
   if (name.length > 2048) {
     throw new Error(
-      `Invalid parameter name: exceeds maximum length of 2048 characters (got: ${name.length})`
+      `Invalid parameter name: exceeds maximum length of 2048 characters (got: ${name.length})`,
     );
   }
 
@@ -115,7 +114,7 @@ function validateParameterName(name: string): void {
   const validNameRegex = /^[a-zA-Z0-9_.\-/]+$/;
   if (!validNameRegex.test(name)) {
     throw new Error(
-      `Invalid parameter name: contains invalid characters (allowed: a-zA-Z0-9_.-/) (got: ${name})`
+      `Invalid parameter name: contains invalid characters (allowed: a-zA-Z0-9_.-/) (got: ${name})`,
     );
   }
 }
@@ -276,9 +275,7 @@ export async function getParameters(
     // Check if all requested parameters were found
     const missingParams = uncachedNames.filter((name) => !(name in results));
     if (missingParams.length > 0) {
-      throw new Error(
-        `Missing parameters: ${missingParams.join(', ')}`,
-      );
+      throw new Error(`Missing parameters: ${missingParams.join(', ')}`);
     }
 
     return results;
@@ -367,9 +364,7 @@ export function clearParameterCache(): void {
  * ]);
  * ```
  */
-export function invalidateParameterCache(
-  names: string | string[],
-): void {
+export function invalidateParameterCache(names: string | string[]): void {
   const namesToInvalidate = Array.isArray(names) ? names : [names];
 
   for (const name of namesToInvalidate) {
