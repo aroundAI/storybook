@@ -1,6 +1,20 @@
 import 'server-only';
 
+import { createCacheClient } from '@kit/cache';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+// Cache TTL for authorization checks (5 minutes)
+const AUTH_CACHE_TTL = 300;
+
+// Lazy-initialize cache client
+let cacheClient: ReturnType<typeof createCacheClient> | null = null;
+
+function getCache() {
+  if (!cacheClient) {
+    cacheClient = createCacheClient();
+  }
+  return cacheClient;
+}
 
 /**
  * Application-Level Authorization Middleware
@@ -151,7 +165,18 @@ async function hasRoleOnAccount(
   userId: string,
   accountId: string,
 ): Promise<boolean> {
+  const cacheKey = `auth:role:${userId}:${accountId}`;
+
   try {
+    const cache = getCache();
+
+    // Try cache first
+    const cached = await cache.get<boolean>(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
+    // Cache miss - query database
     const client = getSupabaseServerClient();
 
     // Query account_memberships table
@@ -162,11 +187,12 @@ async function hasRoleOnAccount(
       .eq('account_id', accountId)
       .single();
 
-    if (error || !data) {
-      return false;
-    }
+    const hasRole = !error && !!data;
 
-    return true;
+    // Cache result
+    await cache.set(cacheKey, hasRole, AUTH_CACHE_TTL);
+
+    return hasRole;
   } catch (error) {
     console.error('[Authorization] Error checking account membership:', error);
     return false;
@@ -233,7 +259,18 @@ async function checkTablePermission(
   table: string,
   operation: 'write' | 'delete',
 ): Promise<AuthorizationResult> {
+  const cacheKey = `auth:perm:${userId}:${accountId}:${table}:${operation}`;
+
   try {
+    const cache = getCache();
+
+    // Try cache first
+    const cached = await cache.get<AuthorizationResult>(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
+    // Cache miss - query database
     const client = getSupabaseServerClient();
 
     // Get user's role on the account
@@ -245,31 +282,39 @@ async function checkTablePermission(
       .single();
 
     if (membershipError || !membershipData) {
-      return { allowed: false, reason: 'User is not a member of this account' };
+      const result = { allowed: false, reason: 'User is not a member of this account' };
+      await cache.set(cacheKey, result, AUTH_CACHE_TTL);
+      return result;
     }
 
     const role = membershipData.account_role;
 
+    let result: AuthorizationResult;
+
     // Role-based permissions
     // owners and admins can do everything
     if (role === 'owner' || role === 'admin') {
-      return { allowed: true };
+      result = { allowed: true };
     }
-
     // members can write but not delete
-    if (role === 'member' && operation === 'write') {
-      return { allowed: true };
+    else if (role === 'member' && operation === 'write') {
+      result = { allowed: true };
     }
-
     // readonly members can only read (handled elsewhere)
-    if (role === 'readonly') {
-      return { allowed: false, reason: 'Read-only member cannot modify data' };
+    else if (role === 'readonly') {
+      result = { allowed: false, reason: 'Read-only member cannot modify data' };
+    }
+    else {
+      result = {
+        allowed: false,
+        reason: `Insufficient permissions for ${operation} operation`,
+      };
     }
 
-    return {
-      allowed: false,
-      reason: `Insufficient permissions for ${operation} operation`,
-    };
+    // Cache result
+    await cache.set(cacheKey, result, AUTH_CACHE_TTL);
+
+    return result;
   } catch (error) {
     console.error('[Authorization] Error checking table permission:', error);
     return { allowed: false, reason: 'Authorization check failed' };
@@ -293,18 +338,29 @@ export async function hasPermission(
   accountId: string,
   permission: string,
 ): Promise<boolean> {
-  // For now, map permissions to roles
-  // In a more advanced setup, you'd have a permissions table
+  const cacheKey = `auth:custom:${userId}:${accountId}:${permission}`;
 
-  const result = await checkIsAccountOwner(userId, accountId);
-
-  // Owners have all permissions
-  if (result.allowed) {
-    return true;
-  }
-
-  // Check if user has the required role
   try {
+    const cache = getCache();
+
+    // Try cache first
+    const cached = await cache.get<boolean>(cacheKey);
+    if (cached !== null) {
+      return cached;
+    }
+
+    // For now, map permissions to roles
+    // In a more advanced setup, you'd have a permissions table
+
+    const result = await checkIsAccountOwner(userId, accountId);
+
+    // Owners have all permissions
+    if (result.allowed) {
+      await cache.set(cacheKey, true, AUTH_CACHE_TTL);
+      return true;
+    }
+
+    // Check if user has the required role
     const client = getSupabaseServerClient();
 
     const { data, error } = await client
@@ -315,6 +371,7 @@ export async function hasPermission(
       .single();
 
     if (error || !data) {
+      await cache.set(cacheKey, false, AUTH_CACHE_TTL);
       return false;
     }
 
@@ -329,10 +386,46 @@ export async function hasPermission(
     };
 
     const allowedRoles = permissionMap[permission] || [];
+    const hasAccess = allowedRoles.includes(role);
 
-    return allowedRoles.includes(role);
+    // Cache result
+    await cache.set(cacheKey, hasAccess, AUTH_CACHE_TTL);
+
+    return hasAccess;
   } catch (error) {
     console.error('[Authorization] Error checking permission:', error);
     return false;
+  }
+}
+
+/**
+ * Invalidate authorization cache for a user
+ *
+ * Call this when user's roles or permissions change (e.g., role updated, removed from account)
+ *
+ * @example
+ * ```typescript
+ * // After updating user's role
+ * await invalidateAuthCache(userId, accountId);
+ * ```
+ */
+export async function invalidateAuthCache(
+  userId: string,
+  accountId: string,
+): Promise<void> {
+  try {
+    const cache = getCache();
+
+    // Delete all auth cache entries for this user+account combination
+    await cache.del(`auth:role:${userId}:${accountId}`);
+    await cache.del(`auth:perm:${userId}:${accountId}:*`);
+    await cache.del(`auth:custom:${userId}:${accountId}:*`);
+
+    console.log('[Authorization] Cache invalidated for user:', {
+      userId: userId.substring(0, 8) + '...',
+      accountId: accountId.substring(0, 8) + '...',
+    });
+  } catch (error) {
+    console.error('[Authorization] Error invalidating cache:', error);
   }
 }

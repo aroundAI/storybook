@@ -320,6 +320,24 @@ async function sendViaResend(job: EmailJob) {
       body: JSON.stringify(payload),
     });
 
+    // Handle rate limiting (429 Too Many Requests)
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After') || '60';
+      const retryAfterSeconds = parseInt(retryAfter, 10);
+
+      console.warn('[EMAIL_WORKER] ⚠️  Rate limited by Resend', {
+        retryAfter: `${retryAfterSeconds}s`,
+        to: job.to,
+        subject: job.subject,
+      });
+
+      // Re-throw to trigger SQS retry with exponential backoff
+      // SQS will automatically retry with delays: ~20s, ~40s, ~80s
+      throw new Error(
+        `Rate limited by Resend - retry after ${retryAfterSeconds}s`,
+      );
+    }
+
     if (!response.ok) {
       const errorBody = await response.text();
       throw new Error(
@@ -335,10 +353,17 @@ async function sendViaResend(job: EmailJob) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
+
+    // Enhanced logging for rate limits
+    const isRateLimit = errorMessage.includes('Rate limited');
+
     console.error('[EMAIL_WORKER] Resend send failed', {
       error: errorMessage,
+      isRateLimit,
+      to: job.to,
       stack: error instanceof Error ? error.stack : undefined,
     });
+
     throw new Error(`Failed to send email via Resend: ${errorMessage}`);
   }
 }

@@ -475,6 +475,15 @@ export default $config({
         AWS_SQS_QUEUE_URL: queue.url,
         AWS_WEBSOCKET_ENDPOINT: websocket.url,
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
+
+        // Cache configuration
+        CACHE_PROVIDER: process.env.CACHE_PROVIDER || "memory",
+        ...(redisEndpoint && {
+          REDIS_URL: $interpolate`redis://${redisEndpoint}:6379`,
+        }),
+        ...(process.env.REDIS_URL && !redisEndpoint && {
+          REDIS_URL: process.env.REDIS_URL,
+        }),
       },
 
       // CloudFront CDN configuration
@@ -524,25 +533,62 @@ export default $config({
       }),
     });
 
+    // SNS Topic for CloudWatch Alarm Notifications (optional)
+    // Configure email subscription via ALARM_EMAIL environment variable
+    let alarmTopic: aws.sns.Topic | undefined;
+
+    if (process.env.ALARM_EMAIL) {
+      console.log(`📧 Configuring SNS alarm notifications for ${process.env.ALARM_EMAIL}`);
+
+      alarmTopic = new aws.sns.Topic("AlarmNotifications", {
+        displayName: `${stage} CloudWatch Alarms`,
+        tags: {
+          Environment: stage,
+          Purpose: "CloudWatch alarm notifications",
+        },
+      });
+
+      // Subscribe email to topic
+      new aws.sns.TopicSubscription("AlarmEmailSubscription", {
+        topic: alarmTopic.arn,
+        protocol: "email",
+        endpoint: process.env.ALARM_EMAIL,
+      });
+
+      console.log(`✓ SNS alarm notifications configured`);
+      console.log(`  ⚠️  Check your email (${process.env.ALARM_EMAIL}) to confirm subscription`);
+    } else {
+      console.log(`ℹ️  ALARM_EMAIL not set - alarms will be created without notifications`);
+    }
+
     // CloudWatch Alarms for Cost Monitoring and Operational Health
     // These alarms help detect cost anomalies and operational issues early
 
     // 1. Monthly Cost Alarm - Alert when AWS charges exceed $250/month
-    new aws.cloudwatch.MetricAlarm("MonthlyCostAlarm", {
-      comparisonOperator: "GreaterThanThreshold",
-      evaluationPeriods: 1,
-      metricName: "EstimatedCharges",
-      namespace: "AWS/Billing",
-      period: 21600, // 6 hours
-      statistic: "Maximum",
-      threshold: 250,
-      alarmDescription: `Alert when monthly AWS charges exceed $250 for ${stage} environment`,
-      alarmName: `${stage}-monthly-cost-alarm`,
-      dimensions: {
-        Currency: "USD",
-      },
-      treatMissingData: "notBreaching",
-    });
+    // Note: Billing metrics are ONLY available in us-east-1 region
+    const awsRegion = process.env.AWS_REGION || 'us-east-1';
+
+    if (awsRegion === 'us-east-1') {
+      new aws.cloudwatch.MetricAlarm("MonthlyCostAlarm", {
+        comparisonOperator: "GreaterThanThreshold",
+        evaluationPeriods: 1,
+        metricName: "EstimatedCharges",
+        namespace: "AWS/Billing",
+        period: 21600, // 6 hours
+        statistic: "Maximum",
+        threshold: 250,
+        alarmDescription: `Alert when monthly AWS charges exceed $250 for ${stage} environment`,
+        alarmName: `${stage}-monthly-cost-alarm`,
+        dimensions: {
+          Currency: "USD",
+        },
+        treatMissingData: "notBreaching",
+        ...(alarmTopic && { alarmActions: [alarmTopic.arn] }),
+      });
+      console.log(`✓ Billing cost alarm configured (us-east-1)`);
+    } else {
+      console.warn(`⚠️  Billing cost alarm skipped (only available in us-east-1, current region: ${awsRegion})`);
+    }
 
     // 2. Lambda Invocation Spike Alarm - Detect unusual traffic patterns
     new aws.cloudwatch.MetricAlarm("LambdaInvocationSpikeAlarm", {
@@ -556,6 +602,7 @@ export default $config({
       alarmDescription: `Alert when Lambda invocations exceed 100K/hour for ${stage} (potential infinite loop or DDoS)`,
       alarmName: `${stage}-lambda-spike-alarm`,
       treatMissingData: "notBreaching",
+      ...(alarmTopic && { alarmActions: [alarmTopic.arn] }),
     });
 
     // 3. Dead Letter Queue Message Alarm - Detect failed email processing
@@ -573,6 +620,7 @@ export default $config({
         QueueName: emailDLQ.name,
       },
       treatMissingData: "notBreaching",
+      ...(alarmTopic && { alarmActions: [alarmTopic.arn] }),
     });
 
     // 4. S3 Storage Size Alarm - Monitor storage costs
@@ -591,9 +639,10 @@ export default $config({
         StorageType: "StandardStorage",
       },
       treatMissingData: "notBreaching",
+      ...(alarmTopic && { alarmActions: [alarmTopic.arn] }),
     });
 
-    console.log(`✓ CloudWatch cost alarms configured for ${stage}`);
+    console.log(`✓ CloudWatch operational alarms configured for ${stage}`);
 
     // KMS Key for Lambda Environment Variable Encryption
     // Encrypts sensitive environment variables at rest
@@ -638,6 +687,97 @@ export default $config({
     });
 
     console.log(`✓ KMS encryption key created for Lambda environment variables`);
+
+    // ElastiCache Redis Cluster (optional, only if CACHE_PROVIDER=redis + USE_ELASTICACHE=true)
+    // For Upstash or other managed Redis, just provide REDIS_URL in environment variables
+    let redisEndpoint: string | undefined;
+
+    if (process.env.CACHE_PROVIDER === 'redis' && process.env.USE_ELASTICACHE === 'true') {
+      console.log(`🔄 Provisioning ElastiCache Redis cluster for ${stage}...`);
+
+      // Validate VPC configuration
+      const vpcId = process.env.VPC_ID;
+      const subnetIds = process.env.SUBNET_IDS?.split(',').map(s => s.trim());
+
+      if (!vpcId || !subnetIds || subnetIds.length === 0) {
+        console.error('❌ ElastiCache requires VPC_ID and SUBNET_IDS environment variables');
+        throw new Error('ElastiCache configuration incomplete: VPC_ID and SUBNET_IDS required');
+      }
+
+      // Create security group for Redis
+      const redisSecurityGroup = new aws.ec2.SecurityGroup("RedisSecurityGroup", {
+        vpcId,
+        description: `Security group for ${stage} ElastiCache Redis`,
+        ingress: [
+          {
+            protocol: "tcp",
+            fromPort: 6379,
+            toPort: 6379,
+            cidrBlocks: [process.env.VPC_CIDR || "10.0.0.0/16"],
+            description: "Allow Redis traffic from VPC",
+          },
+        ],
+        egress: [
+          {
+            protocol: "-1",
+            fromPort: 0,
+            toPort: 0,
+            cidrBlocks: ["0.0.0.0/0"],
+            description: "Allow all outbound traffic",
+          },
+        ],
+        tags: {
+          Name: `${stage}-redis-sg`,
+          Environment: stage,
+        },
+      });
+
+      // Create ElastiCache subnet group
+      const redisSubnetGroup = new aws.elasticache.SubnetGroup("RedisSubnetGroup", {
+        subnetIds,
+        description: `Subnet group for ${stage} ElastiCache Redis`,
+        tags: {
+          Name: `${stage}-redis-subnet-group`,
+          Environment: stage,
+        },
+      });
+
+      // Create ElastiCache Redis replication group
+      const redis = new aws.elasticache.ReplicationGroup("AuthCache", {
+        replicationGroupDescription: `Redis cache for ${stage} authorization and session management`,
+        engine: "redis",
+        engineVersion: "7.1",
+        nodeType: stage === 'production' ? "cache.t4g.small" : "cache.t4g.micro", // Production: ~$24/month, Dev: ~$12/month
+        numCacheClusters: stage === 'production' ? 2 : 1, // Multi-AZ for production
+        automaticFailoverEnabled: stage === 'production',
+        atRestEncryptionEnabled: true, // Encrypt data at rest
+        transitEncryptionEnabled: false, // Disable TLS for Lambda (VPC security sufficient)
+        subnetGroupName: redisSubnetGroup.name,
+        securityGroupIds: [redisSecurityGroup.id],
+        snapshotRetentionLimit: stage === 'production' ? 7 : 0, // 7-day backup retention for production
+        snapshotWindow: "03:00-05:00", // Backup window (UTC)
+        maintenanceWindow: "sun:05:00-sun:07:00", // Maintenance window (UTC)
+        tags: {
+          Name: `${stage}-redis`,
+          Environment: stage,
+          Purpose: "Authorization and session caching",
+        },
+      });
+
+      // Use primary endpoint for read/write
+      redisEndpoint = redis.primaryEndpointAddress.apply(addr => addr);
+
+      console.log(`✓ ElastiCache Redis provisioned`);
+      redis.primaryEndpointAddress.apply(endpoint =>
+        console.log(`  Endpoint: ${endpoint}:6379`)
+      );
+    } else if (process.env.CACHE_PROVIDER === 'redis' && process.env.REDIS_URL) {
+      console.log(`✓ Using external Redis (Upstash or self-hosted): ${process.env.REDIS_URL.replace(/:[^:]*@/, ':****@')}`);
+    } else if (process.env.CACHE_PROVIDER === 'memory') {
+      console.log(`✓ Using in-memory cache (no Redis provisioning needed)`);
+    } else {
+      console.log(`ℹ️  Cache provider not configured (defaulting to memory cache)`);
+    }
 
     // Output the application URL and resource info
     return {
