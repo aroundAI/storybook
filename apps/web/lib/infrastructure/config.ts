@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type {
   AuthProvider,
   CacheProvider,
@@ -10,49 +11,157 @@ import type {
 } from './types';
 
 /**
+ * Zod schemas for runtime validation of infrastructure configuration
+ */
+
+// Provider enum schemas
+const DatabaseProviderSchema = z.enum(['supabase', 'postgresql', 'mysql']);
+const AuthProviderSchema = z.enum(['supabase', 'cognito', 'auth0', 'clerk']);
+const StorageProviderSchema = z.enum(['supabase', 's3']);
+const EmailProviderSchema = z.enum(['resend', 'ses', 'sendgrid', 'nodemailer']);
+const QueueProviderSchema = z.enum(['sqs', 'bullmq']);
+const RealtimeProviderSchema = z.enum(['supabase', 'websocket', 'pusher']);
+const CacheProviderSchema = z.enum(['redis', 'memory']);
+
+// Provider-specific configuration schemas
+const SupabaseConfigSchema = z.object({
+  url: z.string().url('Invalid Supabase URL'),
+  anonKey: z.string().min(1, 'Supabase anon key is required'),
+  serviceRoleKey: z.string().min(1, 'Supabase service role key is required').optional(),
+});
+
+const PostgresConfigSchema = z.object({
+  host: z.string().min(1, 'PostgreSQL host is required'),
+  port: z.string().regex(/^\d+$/, 'PostgreSQL port must be a number'),
+  database: z.string().min(1, 'PostgreSQL database name is required'),
+  user: z.string().min(1, 'PostgreSQL user is required'),
+  password: z.string().min(1, 'PostgreSQL password is required'),
+});
+
+const CognitoConfigSchema = z.object({
+  region: z.string().min(1, 'AWS region is required'),
+  userPoolId: z.string().min(1, 'Cognito user pool ID is required'),
+  clientId: z.string().min(1, 'Cognito client ID is required'),
+  clientSecret: z.string().min(1, 'Cognito client secret is required'),
+});
+
+const S3ConfigSchema = z.object({
+  region: z.string().min(1, 'AWS region is required'),
+  bucket: z.string().min(1, 'S3 bucket name is required'),
+  accessKeyId: z.string().min(1, 'AWS access key ID is required'),
+  secretAccessKey: z.string().min(1, 'AWS secret access key is required'),
+});
+
+const SESConfigSchema = z.object({
+  region: z.string().min(1, 'AWS region is required'),
+  accessKeyId: z.string().min(1, 'AWS access key ID is required'),
+  secretAccessKey: z.string().min(1, 'AWS secret access key is required'),
+});
+
+/**
+ * Validate provider configuration at runtime
+ */
+function validateProviderConfig<T>(
+  providerName: string,
+  provider: string,
+  config: Record<string, string>,
+  schema?: z.ZodSchema<T>
+): void {
+  if (!schema) {
+    return; // No validation schema provided
+  }
+
+  try {
+    schema.parse(config);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const messages = error.errors.map(err => `  - ${err.path.join('.')}: ${err.message}`);
+      throw new Error(
+        `Invalid ${providerName} configuration for provider "${provider}":\n${messages.join('\n')}`
+      );
+    }
+    throw error;
+  }
+}
+
+/**
  * Load infrastructure configuration from environment variables
+ * @throws {Error} If configuration is invalid or missing required fields
  */
 export function loadInfrastructureConfig(): InfrastructureConfig {
   // Database configuration
-  const databaseProvider = (process.env.DATABASE_PROVIDER ??
-    'supabase') as DatabaseProvider;
+  const databaseProviderRaw = process.env.DATABASE_PROVIDER ?? 'supabase';
+  const databaseProvider = DatabaseProviderSchema.parse(databaseProviderRaw);
 
   const databaseConfig = getDatabaseConfig(databaseProvider);
 
+  // Validate database configuration based on provider
+  if (databaseProvider === 'supabase') {
+    validateProviderConfig('database', databaseProvider, databaseConfig, SupabaseConfigSchema);
+  } else if (databaseProvider === 'postgresql' || databaseProvider === 'mysql') {
+    validateProviderConfig('database', databaseProvider, databaseConfig, PostgresConfigSchema);
+  }
+
   // Auth configuration
-  const authProvider = (process.env.AUTH_PROVIDER ??
-    'supabase') as AuthProvider;
+  const authProviderRaw = process.env.AUTH_PROVIDER ?? 'supabase';
+  const authProvider = AuthProviderSchema.parse(authProviderRaw);
 
   const authConfig = getAuthConfig(authProvider);
 
+  // Validate auth configuration based on provider
+  if (authProvider === 'supabase') {
+    validateProviderConfig('auth', authProvider, authConfig, SupabaseConfigSchema);
+  } else if (authProvider === 'cognito') {
+    validateProviderConfig('auth', authProvider, authConfig, CognitoConfigSchema);
+  }
+
   // Storage configuration
-  const storageProvider = (process.env.STORAGE_PROVIDER ??
-    'supabase') as StorageProvider;
+  const storageProviderRaw = process.env.STORAGE_PROVIDER ?? 'supabase';
+  const storageProvider = StorageProviderSchema.parse(storageProviderRaw);
 
   const storageConfig = getStorageConfig(storageProvider);
 
+  // Validate storage configuration based on provider
+  if (storageProvider === 'supabase') {
+    validateProviderConfig('storage', storageProvider, storageConfig, SupabaseConfigSchema);
+  } else if (storageProvider === 's3') {
+    validateProviderConfig('storage', storageProvider, storageConfig, S3ConfigSchema);
+  }
+
   // Email configuration
-  const emailProvider = (process.env.EMAIL_PROVIDER ??
-    'resend') as EmailProvider;
+  const emailProviderRaw = process.env.EMAIL_PROVIDER ?? 'resend';
+  const emailProvider = EmailProviderSchema.parse(emailProviderRaw);
 
   const emailConfig = getEmailConfig(emailProvider);
 
+  // Validate email configuration based on provider
+  if (emailProvider === 'ses') {
+    validateProviderConfig('email', emailProvider, emailConfig, SESConfigSchema);
+  }
+
   // Optional: Queue configuration
-  const queueProvider = process.env.QUEUE_PROVIDER as QueueProvider | undefined;
+  const queueProviderRaw = process.env.QUEUE_PROVIDER;
+  const queueProvider = queueProviderRaw
+    ? QueueProviderSchema.parse(queueProviderRaw)
+    : undefined;
 
   const queueConfig = queueProvider ? getQueueConfig(queueProvider) : undefined;
 
   // Optional: Realtime configuration
-  const realtimeProvider = process.env.REALTIME_PROVIDER as
-    | RealtimeProvider
-    | undefined;
+  const realtimeProviderRaw = process.env.REALTIME_PROVIDER;
+  const realtimeProvider = realtimeProviderRaw
+    ? RealtimeProviderSchema.parse(realtimeProviderRaw)
+    : undefined;
 
   const realtimeConfig = realtimeProvider
     ? getRealtimeConfig(realtimeProvider)
     : undefined;
 
   // Optional: Cache configuration
-  const cacheProvider = process.env.CACHE_PROVIDER as CacheProvider | undefined;
+  const cacheProviderRaw = process.env.CACHE_PROVIDER;
+  const cacheProvider = cacheProviderRaw
+    ? CacheProviderSchema.parse(cacheProviderRaw)
+    : undefined;
   const cacheConfig = cacheProvider ? getCacheConfig(cacheProvider) : undefined;
 
   return {

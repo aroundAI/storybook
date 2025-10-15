@@ -32,7 +32,10 @@ const config = {
   output: process.env.DEPLOY_TARGET === 'lambda' ? 'standalone' : undefined,
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {
-      // Disable module concatenation to prevent hanging
+      // TODO: Investigate and fix build hanging issue
+      // Disabling module concatenation temporarily resolves build hangs on Node.js 24
+      // This may impact bundle size optimization
+      // Related: OpenNext compatibility with Next.js 15 + Node.js 24
       config.optimization.concatenateModules = false;
 
       // Replace DEPLOY_TARGET at build time for tree-shaking
@@ -91,16 +94,6 @@ const config = {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
     clientSegmentCache: true,
-    // Temporarily disabled to fix build hanging issue with Node.js 24
-    // optimizePackageImports: [
-    //   'recharts',
-    //   'lucide-react',
-    //   '@radix-ui/react-icons',
-    //   '@radix-ui/react-avatar',
-    //   '@radix-ui/react-select',
-    //   'date-fns',
-    //   ...INTERNAL_PACKAGES,
-    // ],
   },
   modularizeImports: {
     lodash: {

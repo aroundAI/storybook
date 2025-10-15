@@ -47,6 +47,37 @@ deployment/config/*.env
 .open-next
 sst-env.d.ts
 
+# Infrastructure as Code (IaC) - Terraform, Pulumi, AWS SAM, CDK
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+*.tfvars.json
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# Pulumi
+.pulumi/
+Pulumi.*.yaml
+Pulumi.dev.yaml
+Pulumi.staging.yaml
+Pulumi.production.yaml
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# AWS CDK
+.cdk.staging/
+cdk.out/
+cdk.context.json
+
 # ide
 .idea/
 .vscode/

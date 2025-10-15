@@ -580,9 +580,235 @@ pnpm exec prisma migrate deploy
 
 ## Troubleshooting
 
-### Common Issues
+### SST/Lambda Deployment Issues
 
-#### 1. Database Connection Failed
+#### 1. "InvalidChangeBatch: CNAME already exists"
+
+**Error**: `[Tried to create resource record set [name='_xxxxx.your-domain.com.', type='CNAME'] but it already exists]`
+
+**Cause**: ACM certificate validation records exist from a previous deployment or manual certificate creation.
+
+**Solutions**:
+
+**Option A: Deploy without domain first (Recommended)**
+```bash
+# Step 1: Deploy without custom domain
+export SKIP_DOMAIN=true
+pnpm sst deploy --stage staging
+
+# Step 2: After successful deploy, add domain
+unset SKIP_DOMAIN
+export DOMAIN_NAME=your-domain.com
+pnpm sst deploy --stage staging
+```
+
+**Option B: Remove conflicting DNS records**
+```bash
+# List validation records
+aws route53 list-resource-record-sets \
+  --hosted-zone-id YOUR_ZONE_ID \
+  --query "ResourceRecordSets[?contains(Name, '_')]"
+
+# Delete the specific CNAME
+aws route53 change-resource-record-sets \
+  --hosted-zone-id YOUR_ZONE_ID \
+  --change-batch file://delete-cname.json
+```
+
+**See**: `DEPLOYMENT_FIX.md` for detailed resolution steps
+
+#### 2. Lambda Cold Starts (>10 seconds)
+
+**Error**: Slow initial response time after no traffic
+
+**Symptoms**:
+- First request takes 10-15 seconds
+- Subsequent requests are fast (< 500ms)
+- CloudWatch logs show long Lambda init time
+
+**Solutions**:
+
+1. **Check bundle size**:
+   ```bash
+   # View .next/standalone size
+   du -sh apps/web/.next/standalone
+   # Should be < 50MB
+   ```
+
+2. **Enable webpack optimization**:
+   - Check `next.config.mjs` has webpack optimization enabled
+   - Remove `webpack: false` if present
+
+3. **Increase Lambda memory**:
+   ```typescript
+   // sst.config.ts
+   transform: {
+     server: {
+       memory: "2048 MB", // More memory = faster CPU
+     },
+   },
+   ```
+
+4. **Use provisioned concurrency** (costs extra):
+   ```bash
+   aws lambda put-provisioned-concurrency-config \
+     --function-name my-saas-main \
+     --provisioned-concurrent-executions 1
+   ```
+
+#### 3. Email Sending Fails - "Email address not verified"
+
+**Error**: `MessageRejected: Email address is not verified`
+
+**Cause**: AWS SES is in sandbox mode or domain not verified
+
+**Solutions**:
+
+1. **Verify domain identity**:
+   ```bash
+   # Check verification status
+   aws sesv2 get-email-identity \
+     --email-identity your-domain.com \
+     --query 'VerifiedForSendingStatus'
+
+   # Should return true
+   ```
+
+2. **Check DNS records**:
+   - DKIM records (3 CNAME records)
+   - SPF record (TXT record)
+   - DMARC record (optional but recommended)
+
+3. **Move out of SES sandbox**:
+   ```bash
+   # Request production access
+   # Go to AWS Console → SES → Account Dashboard → Request Production Access
+   # Typical approval time: 24-48 hours
+   ```
+
+4. **Verify individual emails (sandbox workaround)**:
+   ```bash
+   aws sesv2 create-email-identity \
+     --email-identity test@example.com
+   # Check email for verification link
+   ```
+
+#### 4. Messages Stuck in Dead Letter Queue
+
+**Symptoms**:
+- Emails not sending
+- CloudWatch shows "MAX RETRIES REACHED"
+- DLQ has messages
+
+**Investigation**:
+
+1. **Check DLQ message count**:
+   ```bash
+   aws sqs get-queue-attributes \
+     --queue-url https://sqs.us-east-1.amazonaws.com/123/EmailDLQ \
+     --attribute-names ApproximateNumberOfMessages
+   ```
+
+2. **View failed messages**:
+   ```bash
+   aws sqs receive-message \
+     --queue-url https://sqs.us-east-1.amazonaws.com/123/EmailDLQ \
+     --max-number-of-messages 10
+   ```
+
+3. **Check email worker logs**:
+   ```bash
+   aws logs tail /aws/lambda/email-worker --follow
+   ```
+
+**Common Causes**:
+- Invalid email format
+- SES sandbox restrictions
+- Missing environment variables
+- Network issues
+
+**Resolution**:
+1. Fix the root cause (check logs)
+2. Manually reprocess messages:
+   ```bash
+   # Get message from DLQ
+   # Fix the issue
+   # Resend to main queue
+   aws sqs send-message \
+     --queue-url https://sqs.us-east-1.amazonaws.com/123/EmailQueue \
+     --message-body "$FIXED_MESSAGE"
+   ```
+
+#### 5. "Module not found" in Lambda
+
+**Error**: `Cannot find module '@aws-sdk/client-sesv2'`
+
+**Cause**: Missing Lambda layer or incorrect bundling
+
+**Solutions**:
+
+1. **Check SST nodejs.install**:
+   ```typescript
+   // sst.config.ts - email worker
+   nodejs: {
+     install: [
+       "@supabase/supabase-js",
+       "@aws-sdk/client-sesv2",
+     ],
+   },
+   ```
+
+2. **Verify package.json has dependencies**:
+   ```bash
+   grep "@aws-sdk/client-sesv2" apps/web/package.json
+   ```
+
+3. **Redeploy with clean build**:
+   ```bash
+   rm -rf apps/web/.next
+   rm -rf apps/web/.open-next
+   pnpm sst deploy --stage staging
+   ```
+
+### Infrastructure Configuration Issues
+
+#### 6. "Invalid Supabase URL" Error
+
+**Error**: Runtime error with Zod validation failing
+
+**Cause**: Missing or malformed environment variables
+
+**Solution**:
+
+1. **Check environment variables**:
+   ```bash
+   # Locally
+   echo $NEXT_PUBLIC_SUPABASE_URL
+
+   # In Lambda
+   aws lambda get-function-configuration \
+     --function-name my-saas-main \
+     --query 'Environment.Variables.NEXT_PUBLIC_SUPABASE_URL'
+   ```
+
+2. **Validate format**:
+   - Supabase URL: Must be `https://*.supabase.co`
+   - PostgreSQL host: Must not be empty
+   - Port: Must be a number
+
+3. **Update Lambda config**:
+   ```bash
+   aws lambda update-function-configuration \
+     --function-name my-saas-main \
+     --environment "Variables={
+       NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co,
+       ...
+     }"
+   ```
+
+### Database Issues
+
+#### 7. Database Connection Failed
 
 **Error**: `ECONNREFUSED` or `Connection timeout`
 
@@ -594,7 +820,31 @@ pnpm exec prisma migrate deploy
   psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
   ```
 
-#### 2. Lambda Timeout
+#### 8. Migration Errors
+
+**Error**: `relation "accounts" does not exist`
+
+**Cause**: Migrations not applied to production database
+
+**Solution**:
+
+1. **Verify migrations in Supabase**:
+   ```bash
+   supabase db remote list
+   ```
+
+2. **Apply pending migrations**:
+   ```bash
+   # Option 1: Supabase CLI
+   supabase db push --linked
+
+   # Option 2: Manual SQL
+   psql $DATABASE_URL < apps/web/supabase/migrations/*.sql
+   ```
+
+### Performance Issues
+
+#### 9. Lambda Timeout
 
 **Error**: `Task timed out after 30.00 seconds`
 
@@ -610,7 +860,7 @@ pnpm exec prisma migrate deploy
   - Increase memory (faster CPU)
   - Use provisioned concurrency
 
-#### 3. CORS Errors
+#### 10. CORS Errors
 
 **Error**: `Access to fetch blocked by CORS policy`
 
@@ -619,7 +869,9 @@ pnpm exec prisma migrate deploy
 - Add domain to API Gateway CORS settings
 - Check CloudFront origin configuration
 
-#### 4. Auth Issues After Migration
+### Authentication Issues
+
+#### 11. Auth Issues After Migration
 
 **Error**: Users can't log in after switching providers
 
@@ -633,7 +885,9 @@ pnpm exec prisma migrate deploy
   }
   ```
 
-#### 5. High AWS Costs
+### Cost Optimization
+
+#### 12. High AWS Costs
 
 **Monitoring**:
 ```bash
@@ -650,6 +904,116 @@ aws ce get-cost-and-usage \
 - Use S3 Intelligent-Tiering
 - Enable RDS Auto Scaling
 - Set CloudFront TTL appropriately
+
+**See**: `COSTS.md` for detailed cost breakdown and optimization strategies
+
+---
+
+## Rollback Procedures
+
+### Quick Rollback (< 5 minutes)
+
+**For bad deployments with functional issues:**
+
+1. **Revert Lambda to previous version**:
+   ```bash
+   # List versions
+   aws lambda list-versions-by-function \
+     --function-name my-saas-main
+
+   # Update alias to previous version
+   aws lambda update-alias \
+     --function-name my-saas-main \
+     --name live \
+     --function-version 42  # Previous working version
+   ```
+
+2. **Update CloudFront to use previous Lambda**:
+   ```bash
+   aws cloudfront update-distribution \
+     --id YOUR_DIST_ID \
+     --distribution-config file://previous-config.json
+   ```
+
+3. **Verify**:
+   ```bash
+   curl https://your-domain.com/api/health
+   ```
+
+### Full Rollback (15-30 minutes)
+
+**For infrastructure changes or major issues:**
+
+1. **Revert git commit**:
+   ```bash
+   # Find the commit hash of last working deploy
+   git log --oneline
+
+   # Revert to that commit
+   git revert HEAD --no-commit
+   git commit -m "Rollback: revert to working version"
+   git push origin main
+   ```
+
+2. **Trigger manual deployment**:
+   ```bash
+   # Go to GitHub Actions UI
+   # Run deploy-aws-production workflow manually
+   ```
+
+3. **Monitor deployment**:
+   ```bash
+   gh run watch
+
+   # Check health
+   curl https://your-domain.com/api/health
+   ```
+
+### Database Rollback
+
+**⚠️ CAUTION**: Database rollbacks are destructive and may cause data loss
+
+1. **For Supabase**:
+   ```bash
+   # Revert migration
+   supabase db reset
+
+   # Or manually rollback specific migration
+   psql $DATABASE_URL -c "DROP TABLE IF EXISTS new_table;"
+   ```
+
+2. **For AWS RDS**:
+   ```bash
+   # Restore from automated backup
+   aws rds restore-db-instance-to-point-in-time \
+     --source-db-instance-identifier my-saas-db \
+     --target-db-instance-identifier my-saas-db-restored \
+     --restore-time 2024-01-15T10:00:00Z
+   ```
+
+### Emergency Maintenance Mode
+
+**If rollback fails, enable maintenance mode:**
+
+1. **Add CloudFront Lambda@Edge function**:
+   ```javascript
+   // maintenance.js
+   exports.handler = async (event) => {
+     return {
+       status: '503',
+       statusDescription: 'Service Unavailable',
+       body: 'We are currently performing maintenance. Please check back soon.',
+     };
+   };
+   ```
+
+2. **Or use static S3 page**:
+   ```bash
+   # Upload maintenance page
+   aws s3 cp maintenance.html s3://my-bucket/maintenance.html
+
+   # Update CloudFront to serve from S3
+   ```
 
 ---
 

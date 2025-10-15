@@ -1,10 +1,8 @@
 name: Deploy to AWS Staging
 
 on:
-  push:
-    branches:
-      - develop
-      - staging
+  # Manual deployment only - trigger from GitHub Actions UI
+  # Can also be triggered on PR for preview deployments
   pull_request:
     branches:
       - main
@@ -69,16 +67,8 @@ jobs:
           pnpm build
           pnpm exec open-next build
         env:
-          DATABASE_PROVIDER: ${{ secrets.STAGING_DATABASE_PROVIDER }}
-          POSTGRES_HOST: ${{ secrets.STAGING_POSTGRES_HOST }}
-          POSTGRES_DB: ${{ secrets.STAGING_POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.STAGING_POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.STAGING_POSTGRES_PASSWORD }}
-
-          AUTH_PROVIDER: ${{ secrets.STAGING_AUTH_PROVIDER }}
-          STORAGE_PROVIDER: ${{ secrets.STAGING_STORAGE_PROVIDER }}
-          EMAIL_PROVIDER: ${{ secrets.STAGING_EMAIL_PROVIDER }}
-
+          # SECURITY: Only expose public variables during build
+          # Runtime secrets are injected into Lambda after deployment
           NEXT_PUBLIC_SITE_URL: ${{ secrets.STAGING_SITE_URL }}
           NEXT_PUBLIC_PRODUCT_NAME: ${{ secrets.NEXT_PUBLIC_PRODUCT_NAME }}
 
@@ -89,6 +79,27 @@ jobs:
           aws lambda update-function-code \
             --function-name ${{ secrets.AWS_LAMBDA_STAGING_FUNCTION_NAME }} \
             --zip-file fileb://function.zip
+
+      - name: Update Lambda environment variables
+        run: |
+          # SECURITY: Inject runtime secrets after code deployment
+          aws lambda update-function-configuration \
+            --function-name ${{ secrets.AWS_LAMBDA_STAGING_FUNCTION_NAME }} \
+            --environment "Variables={
+              NODE_ENV=staging,
+              DATABASE_PROVIDER=${{ secrets.STAGING_DATABASE_PROVIDER }},
+              POSTGRES_HOST=${{ secrets.STAGING_POSTGRES_HOST }},
+              POSTGRES_DB=${{ secrets.STAGING_POSTGRES_DB }},
+              POSTGRES_USER=${{ secrets.STAGING_POSTGRES_USER }},
+              POSTGRES_PASSWORD=${{ secrets.STAGING_POSTGRES_PASSWORD }},
+              AUTH_PROVIDER=${{ secrets.STAGING_AUTH_PROVIDER }},
+              STORAGE_PROVIDER=${{ secrets.STAGING_STORAGE_PROVIDER }},
+              EMAIL_PROVIDER=${{ secrets.STAGING_EMAIL_PROVIDER }},
+              NEXT_PUBLIC_SITE_URL=${{ secrets.STAGING_SITE_URL }},
+              NEXT_PUBLIC_PRODUCT_NAME=${{ secrets.NEXT_PUBLIC_PRODUCT_NAME }}
+            }"
+
+          echo "✅ Staging Lambda environment variables updated"
 
       - name: Upload assets to staging S3
         working-directory: apps/web/.open-next

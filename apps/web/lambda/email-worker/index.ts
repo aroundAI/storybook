@@ -92,9 +92,11 @@ export async function handler(event: SQSEvent) {
  */
 async function processEmailJob(record: SQSRecord) {
   const messageId = record.messageId;
+  const retryCount = parseInt(record.attributes.ApproximateReceiveCount || '1');
 
   console.log('[EMAIL_WORKER] Processing job', {
     messageId,
+    retryCount,
     receiptHandle: record.receiptHandle.substring(0, 20) + '...',
   });
 
@@ -139,20 +141,39 @@ async function processEmailJob(record: SQSRecord) {
 
     await sendEmail(job);
 
-    console.log('[EMAIL_WORKER] Email sent successfully', {
+    console.log('[EMAIL_WORKER] ✅ Email sent successfully', {
       messageId,
+      retryCount,
       to: job.to,
+      wasRetried: retryCount > 1,
     });
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : 'Unknown error';
 
-    console.error('[EMAIL_WORKER] Email sending failed', {
-      messageId,
-      to: job.to,
-      error: errorMessage,
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    // Check if this is approaching max retries
+    const maxRetries = 3; // Should match DLQ maxReceiveCount in sst.config.ts
+    const isLastRetry = retryCount >= maxRetries;
+
+    if (isLastRetry) {
+      console.error('[EMAIL_WORKER] ⚠️  MAX RETRIES REACHED - Message will move to DLQ', {
+        messageId,
+        retryCount,
+        maxRetries,
+        to: job.to,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    } else {
+      console.error('[EMAIL_WORKER] Email sending failed - will retry', {
+        messageId,
+        retryCount,
+        remainingRetries: maxRetries - retryCount,
+        to: job.to,
+        error: errorMessage,
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
 
     throw error; // Re-throw to mark SQS message for retry or DLQ
   }

@@ -1,9 +1,8 @@
 name: Deploy to AWS Production
 
 on:
-  push:
-    branches:
-      - main
+  # Manual deployment only - trigger from GitHub Actions UI
+  # This prevents accidental production deployments on every merge
   workflow_dispatch:
 
 env:
@@ -69,35 +68,10 @@ jobs:
           # Build OpenNext package
           pnpm exec open-next build
         env:
-          # Database
-          DATABASE_PROVIDER: ${{ secrets.DATABASE_PROVIDER }}
-          POSTGRES_HOST: ${{ secrets.POSTGRES_HOST }}
-          POSTGRES_DB: ${{ secrets.POSTGRES_DB }}
-          POSTGRES_USER: ${{ secrets.POSTGRES_USER }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-
-          # Auth
-          AUTH_PROVIDER: ${{ secrets.AUTH_PROVIDER }}
-          AWS_REGION: ${{ secrets.AWS_REGION }}
-          COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
-          COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
-          COGNITO_CLIENT_SECRET: ${{ secrets.COGNITO_CLIENT_SECRET }}
-
-          # Storage
-          STORAGE_PROVIDER: ${{ secrets.STORAGE_PROVIDER }}
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-
-          # Email
-          EMAIL_PROVIDER: ${{ secrets.EMAIL_PROVIDER }}
-          EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
-
-          # Billing
+          # SECURITY: Only expose public variables during build
+          # Runtime secrets are injected into Lambda after deployment
           NEXT_PUBLIC_BILLING_PROVIDER: ${{ secrets.NEXT_PUBLIC_BILLING_PROVIDER }}
-          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
-          STRIPE_WEBHOOK_SECRET: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
           NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
-
-          # Site config
           NEXT_PUBLIC_SITE_URL: ${{ secrets.NEXT_PUBLIC_SITE_URL }}
           NEXT_PUBLIC_PRODUCT_NAME: ${{ secrets.NEXT_PUBLIC_PRODUCT_NAME }}
 
@@ -120,6 +94,38 @@ jobs:
               --function-name ${{ secrets.AWS_LAMBDA_IMAGE_FUNCTION_NAME }} \
               --zip-file fileb://image-optimization.zip
           fi
+
+      - name: Update Lambda environment variables
+        run: |
+          # SECURITY: Inject runtime secrets after code deployment
+          # This prevents secrets from appearing in build logs
+          aws lambda update-function-configuration \
+            --function-name ${{ secrets.AWS_LAMBDA_FUNCTION_NAME }} \
+            --environment "Variables={
+              NODE_ENV=production,
+              DATABASE_PROVIDER=${{ secrets.DATABASE_PROVIDER }},
+              POSTGRES_HOST=${{ secrets.POSTGRES_HOST }},
+              POSTGRES_DB=${{ secrets.POSTGRES_DB }},
+              POSTGRES_USER=${{ secrets.POSTGRES_USER }},
+              POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }},
+              AUTH_PROVIDER=${{ secrets.AUTH_PROVIDER }},
+              AWS_REGION=${{ secrets.AWS_REGION }},
+              COGNITO_USER_POOL_ID=${{ secrets.COGNITO_USER_POOL_ID }},
+              COGNITO_CLIENT_ID=${{ secrets.COGNITO_CLIENT_ID }},
+              COGNITO_CLIENT_SECRET=${{ secrets.COGNITO_CLIENT_SECRET }},
+              STORAGE_PROVIDER=${{ secrets.STORAGE_PROVIDER }},
+              S3_BUCKET=${{ secrets.S3_BUCKET }},
+              EMAIL_PROVIDER=${{ secrets.EMAIL_PROVIDER }},
+              EMAIL_SENDER=${{ secrets.EMAIL_SENDER }},
+              STRIPE_SECRET_KEY=${{ secrets.STRIPE_SECRET_KEY }},
+              STRIPE_WEBHOOK_SECRET=${{ secrets.STRIPE_WEBHOOK_SECRET }},
+              NEXT_PUBLIC_BILLING_PROVIDER=${{ secrets.NEXT_PUBLIC_BILLING_PROVIDER }},
+              NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }},
+              NEXT_PUBLIC_SITE_URL=${{ secrets.NEXT_PUBLIC_SITE_URL }},
+              NEXT_PUBLIC_PRODUCT_NAME=${{ secrets.NEXT_PUBLIC_PRODUCT_NAME }}
+            }"
+
+          echo "✅ Lambda environment variables updated"
 
       - name: Upload static assets to S3
         working-directory: apps/web/.open-next
@@ -148,10 +154,22 @@ jobs:
           # Package function
           zip -r email-worker.zip .
 
-          # Deploy
+          # Deploy code
           aws lambda update-function-code \
             --function-name ${{ secrets.AWS_LAMBDA_EMAIL_WORKER_NAME }} \
             --zip-file fileb://email-worker.zip
+
+          # Update environment variables
+          aws lambda update-function-configuration \
+            --function-name ${{ secrets.AWS_LAMBDA_EMAIL_WORKER_NAME }} \
+            --environment "Variables={
+              NODE_ENV=production,
+              EMAIL_PROVIDER=${{ secrets.EMAIL_PROVIDER }},
+              EMAIL_SENDER=${{ secrets.EMAIL_SENDER }},
+              AWS_REGION=${{ secrets.AWS_REGION }}
+            }"
+
+          echo "✅ Email worker deployed and configured"
 
       - name: Run database migrations
         run: |

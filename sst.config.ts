@@ -24,6 +24,27 @@ export default $config({
     // Get the current stage (dev, staging, production)
     const stage = $app.stage;
 
+    // Get AWS deployment regions from environment (comma-separated) or default to us-east-1
+    const deployRegion = process.env.AWS_DEPLOY_REGION || 'us-east-1';
+    const deployRegions = deployRegion.split(',').map(r => r.trim());
+
+    // Validate required environment variables for AWS deployment
+    const requiredEnvVars = [
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+    ];
+
+    const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+    if (missingEnvVars.length > 0) {
+      console.error('❌ Missing required environment variables:');
+      missingEnvVars.forEach(varName => console.error(`   - ${varName}`));
+      throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+    }
+
+    console.log(`🌍 Deploying to region(s): ${deployRegions.join(', ')}`);
+    console.log(`📦 Stage: ${stage}`);
+
     /**
      * Auto-resolve Route53 hosted zone ID from domain name
      * This enables repeatable deployments without manual zone ID lookup
@@ -229,6 +250,17 @@ export default $config({
       },
     });
 
+    // Dead Letter Queue for failed email messages
+    const emailDLQ = new sst.aws.Queue("EmailDLQ", {
+      fifo: false,
+      transform: {
+        queue: {
+          // Retain messages in DLQ for 14 days for investigation
+          messageRetentionPeriodSeconds: 1209600, // 14 days
+        },
+      },
+    });
+
     // AWS SQS queue for email sending
     const queue = new sst.aws.Queue("EmailQueue", {
       fifo: false,
@@ -237,6 +269,13 @@ export default $config({
           // Visibility timeout must be >= Lambda timeout (60s)
           // AWS best practice: 6x function timeout for retries
           visibilityTimeoutSeconds: 360, // 6 minutes
+
+          // Configure Dead Letter Queue
+          // After 3 failed attempts, move message to DLQ for investigation
+          redrivePolicy: JSON.stringify({
+            deadLetterTargetArn: emailDLQ.arn,
+            maxReceiveCount: 3, // Match maxRetries in email-worker/index.ts
+          }),
         },
       },
     });
@@ -351,7 +390,8 @@ export default $config({
 
       // Deploy to single region (not Lambda@Edge)
       // SST v3 uses regional Lambda by default when regions is not set or single region
-      regions: ["us-east-1"],
+      // Configure via AWS_DEPLOY_REGION environment variable (default: us-east-1)
+      regions: deployRegions,
 
       // Link AWS resources
       link: [
@@ -431,6 +471,7 @@ export default $config({
       url: web.url,
       bucket: bucket.name,
       queue: queue.url,
+      emailDLQ: emailDLQ.url,
       websocket: websocket.url,
       connectionsTable: connectionsTable.name,
     };
