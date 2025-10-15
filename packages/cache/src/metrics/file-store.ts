@@ -56,7 +56,7 @@ export class FileMetricsStore implements MetricsStore {
         operations: parsed.operations || 0,
         hitRate: parsed.hitRate || 0,
       };
-    } catch (error) {
+    } catch {
       // File doesn't exist or can't be read - return null
       return null;
     }
@@ -112,7 +112,7 @@ export class FileMetricsStore implements MetricsStore {
     try {
       const filePath = this.getFilePath(cacheId);
       await fs.unlink(filePath);
-    } catch (error) {
+    } catch {
       // File doesn't exist - no-op
     }
   }
@@ -152,7 +152,7 @@ export class FileMetricsStore implements MetricsStore {
   private async ensureDirectory(): Promise<void> {
     try {
       await fs.mkdir(this.storageDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // Directory exists or can't be created
     }
   }
