@@ -25,6 +25,9 @@ export class RedisCache implements CacheClient {
   };
 
   constructor(redisUrl: string) {
+    // Validate Redis URL format
+    this.validateRedisUrl(redisUrl);
+
     // Parse Redis URL and create client
     const stage = process.env.NODE_ENV || 'development';
 
@@ -296,6 +299,38 @@ export class RedisCache implements CacheClient {
     } catch (error) {
       console.error('[RedisCache] Pattern delete error:', error);
       // Fail gracefully - don't throw
+    }
+  }
+
+  /**
+   * Validate Redis URL format
+   */
+  private validateRedisUrl(url: string): void {
+    if (!url) {
+      throw new Error(
+        '[RedisCache] Redis URL is required. Please set REDIS_URL environment variable.',
+      );
+    }
+
+    // Check for valid Redis URL protocol
+    const validProtocols = ['redis://', 'rediss://'];
+    const hasValidProtocol = validProtocols.some((protocol) =>
+      url.startsWith(protocol),
+    );
+
+    if (!hasValidProtocol) {
+      throw new Error(
+        `[RedisCache] Invalid Redis URL format. Must start with 'redis://' (unencrypted) or 'rediss://' (TLS). Got: ${url.substring(0, 20)}...`,
+      );
+    }
+
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch (error) {
+      throw new Error(
+        `[RedisCache] Malformed Redis URL. Please check the URL format. Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
     }
   }
 

@@ -117,6 +117,7 @@ export interface CacheConfig {
   memory?: {
     maxSize?: number; // Maximum number of items
     maxAge?: number; // Default TTL in seconds
+    cleanupInterval?: number; // Cleanup interval in milliseconds
   };
 }
 

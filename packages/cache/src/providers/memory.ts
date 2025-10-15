@@ -6,6 +6,7 @@ import type { CacheClient, CacheMetrics } from '../index';
 interface MemoryCacheConfig {
   maxSize?: number; // Maximum number of items (default: 1000)
   maxAge?: number; // Default TTL in seconds (default: 300 = 5 minutes)
+  cleanupInterval?: number; // Cleanup interval in ms (default: 60000 = 1 minute)
 }
 
 /**
@@ -33,6 +34,7 @@ export class MemoryCache implements CacheClient {
   private cache: Map<string, CacheEntry<unknown>>;
   private readonly maxSize: number;
   private readonly defaultTTL: number;
+  private readonly cleanupIntervalMs: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
   private metrics = {
     hits: 0,
@@ -42,9 +44,10 @@ export class MemoryCache implements CacheClient {
   constructor(config?: MemoryCacheConfig) {
     this.maxSize = config?.maxSize || 1000;
     this.defaultTTL = (config?.maxAge || 300) * 1000; // Convert to milliseconds
+    this.cleanupIntervalMs = config?.cleanupInterval || 60000; // Default: 1 minute
     this.cache = new Map();
 
-    // Start periodic cleanup of expired entries (every minute)
+    // Start periodic cleanup of expired entries
     this.startCleanup();
   }
 
@@ -133,10 +136,10 @@ export class MemoryCache implements CacheClient {
    * Start periodic cleanup of expired entries
    */
   private startCleanup(): void {
-    // Clean up every minute
+    // Clean up at configured interval
     this.cleanupInterval = setInterval(() => {
       this.cleanupExpired();
-    }, 60000);
+    }, this.cleanupIntervalMs);
 
     // Prevent interval from keeping Node.js process alive
     if (this.cleanupInterval.unref) {
