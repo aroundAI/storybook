@@ -165,7 +165,9 @@ aws s3api put-public-access-block \
 ```
 </details>
 
-#### 1.4 Configure SES (Email)
+#### 1.4 Configure Email Provider
+
+**Option A: AWS SES** (Best for AWS deployments)
 
 ```bash
 # Verify domain
@@ -179,6 +181,26 @@ aws ses get-identity-verification-attributes \
 # Move out of sandbox (production)
 aws ses put-account-sending-enabled --enable
 ```
+
+**Option B: Resend** (Easiest setup, great free tier)
+
+1. Sign up at [resend.com](https://resend.com)
+2. Create API key in dashboard
+3. Verify domain (add DNS records)
+4. Configure in environment:
+
+```bash
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+EMAIL_SENDER=noreply@your-domain.com
+```
+
+**Resend Benefits**:
+- ✅ Free tier: 3,000 emails/month
+- ✅ No sandbox mode restrictions
+- ✅ Simple HTTP API (no SDK needed)
+- ✅ Great deliverability rates
+- ✅ Built-in email templates (React Email)
 
 #### 1.5 Create SQS Queue (Background Jobs)
 
@@ -360,7 +382,8 @@ COGNITO_CLIENT_SECRET=xxxxx
 STORAGE_PROVIDER=s3
 S3_BUCKET=my-saas-storage
 
-EMAIL_PROVIDER=ses
+EMAIL_PROVIDER=ses  # or 'resend' for easier setup
+RESEND_API_KEY=re_xxxxx  # if using Resend
 
 QUEUE_PROVIDER=sqs
 SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/123/my-saas-email-queue
@@ -422,7 +445,25 @@ supabase db push
 pnpm supabase:web:typegen
 ```
 
-### Step 3: Configure Environment
+### Step 3: Configure Email (Optional - Resend)
+
+For easy email setup, use Resend instead of AWS SES:
+
+```bash
+# Sign up at resend.com
+# Create API key
+# Add to environment:
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=re_your_api_key
+```
+
+**Why Resend for Vercel + Supabase?**
+- No AWS account needed
+- 3,000 emails/month free
+- Works immediately (no sandbox mode)
+- Perfect for side projects and MVPs
+
+### Step 4: Configure Environment
 
 ```bash
 # Copy template
@@ -432,9 +473,13 @@ cp .env.supabase.example .env.production
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
 SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Add Resend for emails (optional)
+EMAIL_PROVIDER=resend
+RESEND_API_KEY=re_xxxxx
 ```
 
-### Step 4: Deploy to Vercel
+### Step 5: Deploy to Vercel
 
 ```bash
 # Install Vercel CLI
@@ -450,7 +495,7 @@ vercel --prod
 # Push to main → auto-deploys
 ```
 
-### Step 5: Configure Vercel Environment Variables
+### Step 6: Configure Vercel Environment Variables
 
 Go to Vercel Dashboard → Project → Settings → Environment Variables:
 
@@ -478,9 +523,10 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 STORAGE_PROVIDER=s3
 S3_BUCKET=my-saas-storage
 
-# Use Resend for email (free tier)
+# Use Resend for email (free tier - 3K/month)
 EMAIL_PROVIDER=resend
 RESEND_API_KEY=re_xxxxx
+EMAIL_SENDER=noreply@your-domain.com
 
 # Use SQS for queue (pay per use)
 QUEUE_PROVIDER=sqs

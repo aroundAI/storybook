@@ -307,6 +307,17 @@ export default $config({
       environment: {
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
       },
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
+      permissions: [
+        {
+          actions: ["kms:Decrypt"],
+          resources: [kmsKey.arn],
+        },
+      ],
       nodejs: {
         install: [
           "@aws-sdk/client-dynamodb",
@@ -322,6 +333,17 @@ export default $config({
       environment: {
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
       },
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
+      permissions: [
+        {
+          actions: ["kms:Decrypt"],
+          resources: [kmsKey.arn],
+        },
+      ],
       nodejs: {
         install: [
           "@aws-sdk/client-dynamodb",
@@ -336,6 +358,17 @@ export default $config({
       environment: {
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
       },
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
+      permissions: [
+        {
+          actions: ["kms:Decrypt"],
+          resources: [kmsKey.arn],
+        },
+      ],
       nodejs: {
         install: [
           "@aws-sdk/client-dynamodb",
@@ -358,7 +391,17 @@ export default $config({
           actions: ["ses:SendEmail", "ses:SendRawEmail"],
           resources: ["*"], // Allow sending from any verified email/domain
         },
+        {
+          actions: ["kms:Decrypt"],
+          resources: [kmsKey.arn],
+        },
       ],
+      transform: {
+        function: {
+          // Enable KMS encryption for environment variables
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
       environment: {
         // Supabase configuration
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -446,6 +489,8 @@ export default $config({
           timeout: "30 seconds",
           // Architecture (arm64 is cheaper and often faster)
           architecture: "arm64",
+          // Enable KMS encryption for environment variables
+          kmsKeyArn: kmsKey.arn,
         },
       },
 
@@ -465,6 +510,134 @@ export default $config({
         }],
       }),
     });
+
+    // Grant KMS decrypt permission to web Lambda for environment variables
+    new aws.iam.RolePolicy(`WebServerKmsPolicy`, {
+      role: web.nodes.server.role.name,
+      policy: $jsonStringify({
+        Version: "2012-10-17",
+        Statement: [{
+          Effect: "Allow",
+          Action: ["kms:Decrypt", "kms:DescribeKey"],
+          Resource: kmsKey.arn,
+        }],
+      }),
+    });
+
+    // CloudWatch Alarms for Cost Monitoring and Operational Health
+    // These alarms help detect cost anomalies and operational issues early
+
+    // 1. Monthly Cost Alarm - Alert when AWS charges exceed $250/month
+    new aws.cloudwatch.MetricAlarm("MonthlyCostAlarm", {
+      comparisonOperator: "GreaterThanThreshold",
+      evaluationPeriods: 1,
+      metricName: "EstimatedCharges",
+      namespace: "AWS/Billing",
+      period: 21600, // 6 hours
+      statistic: "Maximum",
+      threshold: 250,
+      alarmDescription: `Alert when monthly AWS charges exceed $250 for ${stage} environment`,
+      alarmName: `${stage}-monthly-cost-alarm`,
+      dimensions: {
+        Currency: "USD",
+      },
+      treatMissingData: "notBreaching",
+    });
+
+    // 2. Lambda Invocation Spike Alarm - Detect unusual traffic patterns
+    new aws.cloudwatch.MetricAlarm("LambdaInvocationSpikeAlarm", {
+      comparisonOperator: "GreaterThanThreshold",
+      evaluationPeriods: 2,
+      metricName: "Invocations",
+      namespace: "AWS/Lambda",
+      period: 3600, // 1 hour
+      statistic: "Sum",
+      threshold: 100000,
+      alarmDescription: `Alert when Lambda invocations exceed 100K/hour for ${stage} (potential infinite loop or DDoS)`,
+      alarmName: `${stage}-lambda-spike-alarm`,
+      treatMissingData: "notBreaching",
+    });
+
+    // 3. Dead Letter Queue Message Alarm - Detect failed email processing
+    new aws.cloudwatch.MetricAlarm("DLQMessageAlarm", {
+      comparisonOperator: "GreaterThanThreshold",
+      evaluationPeriods: 1,
+      metricName: "ApproximateNumberOfMessagesVisible",
+      namespace: "AWS/SQS",
+      period: 300, // 5 minutes
+      statistic: "Average",
+      threshold: 10,
+      alarmDescription: `Alert when DLQ has >10 messages for ${stage} (indicates persistent email failures)`,
+      alarmName: `${stage}-dlq-messages-alarm`,
+      dimensions: {
+        QueueName: emailDLQ.name,
+      },
+      treatMissingData: "notBreaching",
+    });
+
+    // 4. S3 Storage Size Alarm - Monitor storage costs
+    new aws.cloudwatch.MetricAlarm("S3StorageSizeAlarm", {
+      comparisonOperator: "GreaterThanThreshold",
+      evaluationPeriods: 1,
+      metricName: "BucketSizeBytes",
+      namespace: "AWS/S3",
+      period: 86400, // 24 hours
+      statistic: "Average",
+      threshold: 107374182400, // 100GB in bytes
+      alarmDescription: `Alert when S3 storage exceeds 100GB for ${stage} (review storage costs)`,
+      alarmName: `${stage}-s3-storage-alarm`,
+      dimensions: {
+        BucketName: bucket.name,
+        StorageType: "StandardStorage",
+      },
+      treatMissingData: "notBreaching",
+    });
+
+    console.log(`✓ CloudWatch cost alarms configured for ${stage}`);
+
+    // KMS Key for Lambda Environment Variable Encryption
+    // Encrypts sensitive environment variables at rest
+    const kmsKey = new aws.kms.Key("LambdaEnvEncryptionKey", {
+      description: `KMS key for encrypting Lambda environment variables in ${stage}`,
+      enableKeyRotation: true, // Enable automatic annual rotation
+      deletionWindowInDays: 30, // Recovery window if accidentally deleted
+      policy: $jsonStringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Sid: "Enable IAM User Permissions",
+            Effect: "Allow",
+            Principal: {
+              AWS: `arn:aws:iam::${$aws.accountId}:root`,
+            },
+            Action: "kms:*",
+            Resource: "*",
+          },
+          {
+            Sid: "Allow Lambda to decrypt",
+            Effect: "Allow",
+            Principal: {
+              Service: "lambda.amazonaws.com",
+            },
+            Action: ["kms:Decrypt", "kms:DescribeKey"],
+            Resource: "*",
+            Condition: {
+              StringEquals: {
+                "kms:ViaService": `lambda.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`,
+              },
+            },
+          },
+        ],
+      }),
+    });
+
+    // Create alias for easier management
+    new aws.kms.Alias("LambdaEnvEncryptionKeyAlias", {
+      name: `alias/${stage}-lambda-env-encryption`,
+      targetKeyId: kmsKey.keyId,
+    });
+
+    console.log(`✓ KMS encryption key created for Lambda environment variables`);
 
     // Output the application URL and resource info
     return {

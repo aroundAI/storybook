@@ -180,7 +180,7 @@ async function processEmailJob(record: SQSRecord) {
 }
 
 /**
- * Send email using configured provider (AWS SES by default)
+ * Send email using configured provider (AWS SES or Resend)
  */
 async function sendEmail(job: EmailJob) {
   const provider = process.env.EMAIL_PROVIDER || 'ses';
@@ -190,6 +190,9 @@ async function sendEmail(job: EmailJob) {
   switch (provider) {
     case 'ses':
       await sendViaSES(job);
+      break;
+    case 'resend':
+      await sendViaResend(job);
       break;
     default:
       throw new Error(`Unsupported email provider: ${provider}`);
@@ -263,5 +266,79 @@ async function sendViaSES(job: EmailJob) {
       stack: error instanceof Error ? error.stack : undefined,
     });
     throw new Error(`Failed to send email via AWS SES: ${errorMessage}`);
+  }
+}
+
+/**
+ * Send email using Resend API
+ */
+async function sendViaResend(job: EmailJob) {
+  console.log('[EMAIL_WORKER] Sending email via Resend API');
+
+  const apiKey = process.env.RESEND_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('RESEND_API_KEY environment variable is required for Resend provider');
+  }
+
+  const contentObject =
+    'text' in job && job.text
+      ? { text: job.text }
+      : { html: job.html || '' };
+
+  const payload: Record<string, unknown> = {
+    from: job.from,
+    to: [job.to],
+    subject: job.subject,
+    ...contentObject,
+  };
+
+  // Add optional fields
+  if (job.replyTo) {
+    payload.reply_to = job.replyTo;
+  }
+  if (job.cc && job.cc.length > 0) {
+    payload.cc = job.cc;
+  }
+  if (job.bcc && job.bcc.length > 0) {
+    payload.bcc = job.bcc;
+  }
+  if (job.metadata) {
+    payload.tags = Object.entries(job.metadata).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      throw new Error(
+        `Resend API error: ${response.status} ${response.statusText} - ${errorBody}`,
+      );
+    }
+
+    const result = await response.json();
+
+    console.log('[EMAIL_WORKER] Email sent successfully via Resend', {
+      messageId: result.id,
+    });
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error';
+    console.error('[EMAIL_WORKER] Resend send failed', {
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    throw new Error(`Failed to send email via Resend: ${errorMessage}`);
   }
 }
