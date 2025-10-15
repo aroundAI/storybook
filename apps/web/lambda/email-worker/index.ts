@@ -25,11 +25,11 @@ interface EmailJob {
   metadata?: Record<string, string>;
 }
 
-// Initialize Supabase admin client
+// Initialize Supabase admin client (reserved for future email logging/tracking)
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+const _supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

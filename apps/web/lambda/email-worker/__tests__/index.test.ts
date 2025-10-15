@@ -111,7 +111,7 @@ describe('Email Worker Lambda', () => {
             // Missing 'to' field
             from: 'noreply@test.com',
             subject: 'Test',
-          } as any),
+          } as Partial<{ to: string; from: string; subject: string }> as { to: string; from: string; subject?: string }),
         ],
       };
 
@@ -128,7 +128,7 @@ describe('Email Worker Lambda', () => {
             to: 'user@example.com',
             from: 'noreply@test.com',
             // Missing subject
-          } as any),
+          } as Partial<{ to: string; from: string; subject: string }> as { to: string; from: string; subject?: string }),
         ],
       };
 
@@ -213,7 +213,7 @@ describe('Email Worker Lambda', () => {
   describe('Partial Batch Failures', () => {
     it('should return batch item failures for failed messages', async () => {
       // Mock SES to fail for specific email
-      const { SESv2Client, SendEmailCommand } = await import('@aws-sdk/client-sesv2');
+      const { SESv2Client } = await import('@aws-sdk/client-sesv2');
       const mockSend = vi.fn()
         .mockResolvedValueOnce({ MessageId: 'msg-1' }) // First email succeeds
         .mockRejectedValueOnce(new Error('SES error')); // Second email fails
