@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
 import { createCacheClient } from '@kit/cache';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
  * Health Check Endpoint

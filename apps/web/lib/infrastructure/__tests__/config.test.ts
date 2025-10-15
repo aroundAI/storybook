@@ -4,8 +4,8 @@
  * TODO: Install vitest and implement these tests
  * Run: pnpm add -D vitest @vitest/ui
  */
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadInfrastructureConfig } from '../config';
 
 describe('Infrastructure Configuration', () => {
@@ -151,7 +151,8 @@ describe('Infrastructure Configuration', () => {
   describe('Optional Providers', () => {
     it('should handle optional queue provider', () => {
       process.env.QUEUE_PROVIDER = 'sqs';
-      process.env.SQS_QUEUE_URL = 'https://sqs.us-east-1.amazonaws.com/123/test';
+      process.env.SQS_QUEUE_URL =
+        'https://sqs.us-east-1.amazonaws.com/123/test';
       process.env.AWS_REGION = 'us-east-1';
       process.env.AWS_ACCESS_KEY_ID = 'test-key';
       process.env.AWS_SECRET_ACCESS_KEY = 'test-secret';
@@ -189,9 +190,12 @@ function setDefaultEnvVars() {
   }
 
   if (process.env.DATABASE_PROVIDER === 'supabase') {
-    process.env.NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test.supabase.co';
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key';
-    process.env.SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-key';
+    process.env.NEXT_PUBLIC_SUPABASE_URL =
+      process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://test.supabase.co';
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY =
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'test-anon-key';
+    process.env.SUPABASE_SERVICE_ROLE_KEY =
+      process.env.SUPABASE_SERVICE_ROLE_KEY || 'test-service-key';
   }
 
   if (!process.env.AUTH_PROVIDER) {

@@ -4,14 +4,13 @@
  * Tests the application-level Row Level Security (RLS) equivalent
  * for non-Supabase databases.
  */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
-  enforceRowLevelSecurity,
-  hasPermission,
   type AuthorizationContext,
   type DatabaseOperation,
+  enforceRowLevelSecurity,
+  hasPermission,
 } from './authorization';
 
 // Mock Supabase client

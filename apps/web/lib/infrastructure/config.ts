@@ -1,4 +1,5 @@
 import { z } from 'zod';
+
 import type {
   AuthProvider,
   CacheProvider,
@@ -27,7 +28,10 @@ const CacheProviderSchema = z.enum(['redis', 'memory']);
 const SupabaseConfigSchema = z.object({
   url: z.string().url('Invalid Supabase URL'),
   anonKey: z.string().min(1, 'Supabase anon key is required'),
-  serviceRoleKey: z.string().min(1, 'Supabase service role key is required').optional(),
+  serviceRoleKey: z
+    .string()
+    .min(1, 'Supabase service role key is required')
+    .optional(),
 });
 
 const PostgresConfigSchema = z.object({
@@ -65,7 +69,7 @@ function validateProviderConfig<T>(
   providerName: string,
   provider: string,
   config: Record<string, string>,
-  schema?: z.ZodSchema<T>
+  schema?: z.ZodSchema<T>,
 ): void {
   if (!schema) {
     return; // No validation schema provided
@@ -75,9 +79,11 @@ function validateProviderConfig<T>(
     schema.parse(config);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map(err => `  - ${err.path.join('.')}: ${err.message}`);
+      const messages = error.errors.map(
+        (err) => `  - ${err.path.join('.')}: ${err.message}`,
+      );
       throw new Error(
-        `Invalid ${providerName} configuration for provider "${provider}":\n${messages.join('\n')}`
+        `Invalid ${providerName} configuration for provider "${provider}":\n${messages.join('\n')}`,
       );
     }
     throw error;
@@ -97,9 +103,22 @@ export function loadInfrastructureConfig(): InfrastructureConfig {
 
   // Validate database configuration based on provider
   if (databaseProvider === 'supabase') {
-    validateProviderConfig('database', databaseProvider, databaseConfig, SupabaseConfigSchema);
-  } else if (databaseProvider === 'postgresql' || databaseProvider === 'mysql') {
-    validateProviderConfig('database', databaseProvider, databaseConfig, PostgresConfigSchema);
+    validateProviderConfig(
+      'database',
+      databaseProvider,
+      databaseConfig,
+      SupabaseConfigSchema,
+    );
+  } else if (
+    databaseProvider === 'postgresql' ||
+    databaseProvider === 'mysql'
+  ) {
+    validateProviderConfig(
+      'database',
+      databaseProvider,
+      databaseConfig,
+      PostgresConfigSchema,
+    );
   }
 
   // Auth configuration
@@ -110,9 +129,19 @@ export function loadInfrastructureConfig(): InfrastructureConfig {
 
   // Validate auth configuration based on provider
   if (authProvider === 'supabase') {
-    validateProviderConfig('auth', authProvider, authConfig, SupabaseConfigSchema);
+    validateProviderConfig(
+      'auth',
+      authProvider,
+      authConfig,
+      SupabaseConfigSchema,
+    );
   } else if (authProvider === 'cognito') {
-    validateProviderConfig('auth', authProvider, authConfig, CognitoConfigSchema);
+    validateProviderConfig(
+      'auth',
+      authProvider,
+      authConfig,
+      CognitoConfigSchema,
+    );
   }
 
   // Storage configuration
@@ -123,9 +152,19 @@ export function loadInfrastructureConfig(): InfrastructureConfig {
 
   // Validate storage configuration based on provider
   if (storageProvider === 'supabase') {
-    validateProviderConfig('storage', storageProvider, storageConfig, SupabaseConfigSchema);
+    validateProviderConfig(
+      'storage',
+      storageProvider,
+      storageConfig,
+      SupabaseConfigSchema,
+    );
   } else if (storageProvider === 's3') {
-    validateProviderConfig('storage', storageProvider, storageConfig, S3ConfigSchema);
+    validateProviderConfig(
+      'storage',
+      storageProvider,
+      storageConfig,
+      S3ConfigSchema,
+    );
   }
 
   // Email configuration
@@ -136,7 +175,12 @@ export function loadInfrastructureConfig(): InfrastructureConfig {
 
   // Validate email configuration based on provider
   if (emailProvider === 'ses') {
-    validateProviderConfig('email', emailProvider, emailConfig, SESConfigSchema);
+    validateProviderConfig(
+      'email',
+      emailProvider,
+      emailConfig,
+      SESConfigSchema,
+    );
   }
 
   // Optional: Queue configuration

@@ -3,7 +3,6 @@
  *
  * Tests connection cleanup when WebSocket disconnects
  */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { handler } from '../disconnect';
@@ -93,9 +92,7 @@ describe('WebSocket Disconnect Handler', () => {
     it('should handle DynamoDB connection failure', async () => {
       const event = createMockDisconnectEvent();
 
-      mockSend.mockRejectedValueOnce(
-        new Error('DynamoDB connection timeout'),
-      );
+      mockSend.mockRejectedValueOnce(new Error('DynamoDB connection timeout'));
 
       const result = await handler(event);
 

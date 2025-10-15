@@ -4,10 +4,10 @@
  * TODO: Install vitest and @types/aws-lambda to implement these tests
  * Run: pnpm add -D vitest @types/aws-lambda
  */
-
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handler } from '../index';
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { handler } from '../index';
 
 // Mock AWS SDK
 vi.mock('@aws-sdk/client-sesv2', () => ({
@@ -111,7 +111,11 @@ describe('Email Worker Lambda', () => {
             // Missing 'to' field
             from: 'noreply@test.com',
             subject: 'Test',
-          } as Partial<{ to: string; from: string; subject: string }> as { to: string; from: string; subject?: string }),
+          } as Partial<{ to: string; from: string; subject: string }> as {
+            to: string;
+            from: string;
+            subject?: string;
+          }),
         ],
       };
 
@@ -128,7 +132,11 @@ describe('Email Worker Lambda', () => {
             to: 'user@example.com',
             from: 'noreply@test.com',
             // Missing subject
-          } as Partial<{ to: string; from: string; subject: string }> as { to: string; from: string; subject?: string }),
+          } as Partial<{ to: string; from: string; subject: string }> as {
+            to: string;
+            from: string;
+            subject?: string;
+          }),
         ],
       };
 
@@ -149,7 +157,7 @@ describe('Email Worker Lambda', () => {
               from: 'noreply@test.com',
               subject: 'Test',
             },
-            1 // First attempt
+            1, // First attempt
           ),
         ],
       };
@@ -169,7 +177,7 @@ describe('Email Worker Lambda', () => {
               from: 'noreply@test.com',
               subject: 'Test',
             },
-            2 // Second attempt
+            2, // Second attempt
           ),
         ],
       };
@@ -190,7 +198,7 @@ describe('Email Worker Lambda', () => {
               from: 'noreply@test.com',
               subject: 'Test',
             },
-            3 // Third attempt - last retry before DLQ
+            3, // Third attempt - last retry before DLQ
           ),
         ],
       };
@@ -198,14 +206,16 @@ describe('Email Worker Lambda', () => {
       // Mock SES to fail
       const { SESv2Client } = await import('@aws-sdk/client-sesv2');
       const mockClient = new SESv2Client({});
-      vi.mocked(mockClient.send).mockRejectedValueOnce(new Error('SES send failed'));
+      vi.mocked(mockClient.send).mockRejectedValueOnce(
+        new Error('SES send failed'),
+      );
 
       await handler(event);
 
       // Should log warning about max retries
       expect(consoleSpy).toHaveBeenCalledWith(
         expect.stringContaining('MAX RETRIES REACHED'),
-        expect.any(Object)
+        expect.any(Object),
       );
     });
   });
@@ -214,7 +224,8 @@ describe('Email Worker Lambda', () => {
     it('should return batch item failures for failed messages', async () => {
       // Mock SES to fail for specific email
       const { SESv2Client } = await import('@aws-sdk/client-sesv2');
-      const mockSend = vi.fn()
+      const mockSend = vi
+        .fn()
         .mockResolvedValueOnce({ MessageId: 'msg-1' }) // First email succeeds
         .mockRejectedValueOnce(new Error('SES error')); // Second email fails
 
@@ -223,16 +234,24 @@ describe('Email Worker Lambda', () => {
 
       const event: SQSEvent = {
         Records: [
-          createSQSRecord({
-            to: 'success@example.com',
-            from: 'noreply@test.com',
-            subject: 'Should Succeed',
-          }, 1, 'msg-success'),
-          createSQSRecord({
-            to: 'fail@example.com',
-            from: 'noreply@test.com',
-            subject: 'Should Fail',
-          }, 1, 'msg-fail'),
+          createSQSRecord(
+            {
+              to: 'success@example.com',
+              from: 'noreply@test.com',
+              subject: 'Should Succeed',
+            },
+            1,
+            'msg-success',
+          ),
+          createSQSRecord(
+            {
+              to: 'fail@example.com',
+              from: 'noreply@test.com',
+              subject: 'Should Fail',
+            },
+            1,
+            'msg-fail',
+          ),
         ],
       };
 
@@ -278,7 +297,7 @@ function createSQSRecord(
     text?: string;
   },
   approxReceiveCount: number = 1,
-  messageId: string = 'test-message-id'
+  messageId: string = 'test-message-id',
 ): SQSRecord {
   return {
     messageId,

@@ -9,6 +9,7 @@ The `@kit/mcp-server` package provides a Model Context Protocol (MCP) server tha
 ## Purpose
 
 This package serves as an AI-powered development assistant, providing:
+
 - **Codebase exploration**: Tools for discovering and analyzing code structure
 - **Database operations**: Direct database access and migration management
 - **Component discovery**: UI component and pattern identification
@@ -67,17 +68,19 @@ Add to your MCP client configuration:
 ### Component Tools
 
 #### `get_components`
+
 Discover and list UI components in the codebase.
 
 ```typescript
 // Usage example
 const components = await mcpClient.callTool('get_components', {
   pattern: '**/*.tsx',
-  includeProps: true
+  includeProps: true,
 });
 ```
 
 **Parameters:**
+
 - `pattern?: string` - Glob pattern for component discovery
 - `includeProps?: boolean` - Include component prop definitions
 - `includeExamples?: boolean` - Include usage examples
@@ -85,84 +88,92 @@ const components = await mcpClient.callTool('get_components', {
 ### Database Tools
 
 #### `execute_sql`
+
 Execute SQL queries against the database.
 
 ```typescript
 // Usage example
 const result = await mcpClient.callTool('execute_sql', {
   query: 'SELECT * FROM users LIMIT 10',
-  readonly: true
+  readonly: true,
 });
 ```
 
 **Parameters:**
+
 - `query: string` - SQL query to execute
 - `readonly?: boolean` - Restrict to read-only operations
 - `params?: any[]` - Query parameters for prepared statements
 
 #### `get_schema`
+
 Retrieve database schema information.
 
 ```typescript
 const schema = await mcpClient.callTool('get_schema', {
   table: 'users',
-  includeIndexes: true
+  includeIndexes: true,
 });
 ```
 
 ### Migration Tools
 
 #### `get_migrations`
+
 List and analyze database migrations.
 
 ```typescript
 const migrations = await mcpClient.callTool('get_migrations', {
   status: 'pending',
-  includeContent: true
+  includeContent: true,
 });
 ```
 
 #### `create_migration`
+
 Generate new database migration files.
 
 ```typescript
 const migration = await mcpClient.callTool('create_migration', {
   name: 'add_user_preferences',
-  description: 'Add user preferences table'
+  description: 'Add user preferences table',
 });
 ```
 
 ### Script Tools
 
 #### `run_script`
+
 Execute development scripts.
 
 ```typescript
 const result = await mcpClient.callTool('run_script', {
   script: 'build',
   target: 'web',
-  args: ['--production']
+  args: ['--production'],
 });
 ```
 
 #### `list_scripts`
+
 Discover available scripts in the project.
 
 ```typescript
 const scripts = await mcpClient.callTool('list_scripts', {
-  category: 'build'
+  category: 'build',
 });
 ```
 
 ### Prompt Tools
 
 #### `get_prompt`
+
 Retrieve AI-specific prompts and templates.
 
 ```typescript
 const prompt = await mcpClient.callTool('get_prompt', {
   name: 'code_review',
-  context: { language: 'typescript' }
+  context: { language: 'typescript' },
 });
 ```
 
@@ -188,11 +199,11 @@ const prompt = await mcpClient.callTool('get_prompt', {
 // Discover all form components
 const formComponents = await mcpClient.callTool('get_components', {
   pattern: '**/form/**/*.tsx',
-  includeProps: true
+  includeProps: true,
 });
 
 // Analyze component usage patterns
-formComponents.forEach(component => {
+formComponents.forEach((component) => {
   console.log(`${component.name}: ${component.props.length} props`);
 });
 ```
@@ -208,12 +219,12 @@ const stats = await mcpClient.callTool('execute_sql', {
       COUNT(CASE WHEN created_at > NOW() - INTERVAL '30 days' THEN 1 END) as recent_users
     FROM users
   `,
-  readonly: true
+  readonly: true,
 });
 
 // Check migration status
 const migrations = await mcpClient.callTool('get_migrations', {
-  status: 'all'
+  status: 'all',
 });
 ```
 
@@ -223,14 +234,14 @@ const migrations = await mcpClient.callTool('get_migrations', {
 // Run tests before deployment
 const testResult = await mcpClient.callTool('run_script', {
   script: 'test',
-  target: 'web'
+  target: 'web',
 });
 
 if (testResult.success) {
   // Deploy if tests pass
   await mcpClient.callTool('run_script', {
     script: 'deploy',
-    target: 'production'
+    target: 'production',
   });
 }
 ```
@@ -274,12 +285,14 @@ packages/mcp-server/
 ## Dependencies
 
 ### Required Packages
+
 - `@modelcontextprotocol/sdk` - MCP protocol implementation
 - `zod` - Schema validation
 - `postgres` - PostgreSQL client
 - `@types/node` - Node.js type definitions
 
 ### Development Dependencies
+
 - `@kit/eslint-config` - ESLint configuration
 - `@kit/prettier-config` - Prettier configuration
 - `@kit/tsconfig` - TypeScript configuration
@@ -321,15 +334,18 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 
 const transport = new StdioClientTransport({
   command: 'node',
-  args: ['./node_modules/@kit/mcp-server/build/index.js']
+  args: ['./node_modules/@kit/mcp-server/build/index.js'],
 });
 
-const client = new Client({
-  name: 'makerkit-client',
-  version: '1.0.0'
-}, {
-  capabilities: {}
-});
+const client = new Client(
+  {
+    name: 'makerkit-client',
+    version: '1.0.0',
+  },
+  {
+    capabilities: {},
+  },
+);
 
 await client.connect(transport);
 ```
@@ -339,16 +355,19 @@ await client.connect(transport);
 ### Common Issues
 
 **Server not starting:**
+
 - Check that the build directory exists: `pnpm build`
 - Verify Node.js version compatibility (Node 18+)
 - Ensure all dependencies are installed
 
 **Database connection errors:**
+
 - Verify `DATABASE_URL` environment variable
 - Check database server accessibility
 - Confirm connection string format
 
 **Tool execution failures:**
+
 - Check input parameter validation
 - Verify file system permissions
 - Review server logs for detailed errors
@@ -383,4 +402,4 @@ When contributing to this package:
 
 ---
 
-*Last updated: September 20, 2025*
+_Last updated: September 20, 2025_

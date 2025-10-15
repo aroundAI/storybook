@@ -156,14 +156,17 @@ async function processEmailJob(record: SQSRecord) {
     const isLastRetry = retryCount >= maxRetries;
 
     if (isLastRetry) {
-      console.error('[EMAIL_WORKER] ⚠️  MAX RETRIES REACHED - Message will move to DLQ', {
-        messageId,
-        retryCount,
-        maxRetries,
-        to: job.to,
-        error: errorMessage,
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+      console.error(
+        '[EMAIL_WORKER] ⚠️  MAX RETRIES REACHED - Message will move to DLQ',
+        {
+          messageId,
+          retryCount,
+          maxRetries,
+          to: job.to,
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+      );
     } else {
       console.error('[EMAIL_WORKER] Email sending failed - will retry', {
         messageId,
@@ -278,13 +281,13 @@ async function sendViaResend(job: EmailJob) {
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    throw new Error('RESEND_API_KEY environment variable is required for Resend provider');
+    throw new Error(
+      'RESEND_API_KEY environment variable is required for Resend provider',
+    );
   }
 
   const contentObject =
-    'text' in job && job.text
-      ? { text: job.text }
-      : { html: job.html || '' };
+    'text' in job && job.text ? { text: job.text } : { html: job.html || '' };
 
   const payload: Record<string, unknown> = {
     from: job.from,

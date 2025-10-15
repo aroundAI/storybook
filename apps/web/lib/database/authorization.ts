@@ -282,7 +282,10 @@ async function checkTablePermission(
       .single();
 
     if (membershipError || !membershipData) {
-      const result = { allowed: false, reason: 'User is not a member of this account' };
+      const result = {
+        allowed: false,
+        reason: 'User is not a member of this account',
+      };
       await cache.set(cacheKey, result, AUTH_CACHE_TTL);
       return result;
     }
@@ -302,9 +305,11 @@ async function checkTablePermission(
     }
     // readonly members can only read (handled elsewhere)
     else if (role === 'readonly') {
-      result = { allowed: false, reason: 'Read-only member cannot modify data' };
-    }
-    else {
+      result = {
+        allowed: false,
+        reason: 'Read-only member cannot modify data',
+      };
+    } else {
       result = {
         allowed: false,
         reason: `Insufficient permissions for ${operation} operation`,

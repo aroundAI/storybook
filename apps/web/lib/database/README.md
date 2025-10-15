@@ -76,8 +76,9 @@ async function getUserNotes(userId: string, accountId: string) {
 ### Server Actions Example
 
 ```typescript
-import { enhanceAction } from '@kit/next/actions';
 import { enforceRowLevelSecurity } from '@/lib/database/authorization';
+
+import { enhanceAction } from '@kit/next/actions';
 
 export const deleteNoteAction = enhanceAction(
   async (data, user) => {
@@ -187,12 +188,12 @@ async function updateAccountSettings(userId: string, accountId: string) {
 
 ### Built-in Permissions
 
-| Permission         | Required Role     | Description                    |
-| ------------------ | ----------------- | ------------------------------ |
-| `settings.manage`  | owner, admin      | Manage account settings        |
-| `members.manage`   | owner, admin      | Add/remove team members        |
-| `billing.manage`   | owner             | Manage billing and subscriptions |
-| `notes.manage`     | owner, admin, member | Create/update notes         |
+| Permission        | Required Role        | Description                      |
+| ----------------- | -------------------- | -------------------------------- |
+| `settings.manage` | owner, admin         | Manage account settings          |
+| `members.manage`  | owner, admin         | Add/remove team members          |
+| `billing.manage`  | owner                | Manage billing and subscriptions |
+| `notes.manage`    | owner, admin, member | Create/update notes              |
 
 Extend `permissionMap` in `authorization.ts` to add custom permissions.
 
@@ -364,4 +365,4 @@ For issues or questions:
 
 ---
 
-*Last updated: January 2025*
+_Last updated: January 2025_

@@ -1,10 +1,9 @@
 /**
  * Test helpers for WebSocket Lambda handlers
  */
-
 import type {
-  APIGatewayProxyWebsocketEventV2,
   APIGatewayEventRequestContextV2,
+  APIGatewayProxyWebsocketEventV2,
 } from 'aws-lambda';
 
 /**

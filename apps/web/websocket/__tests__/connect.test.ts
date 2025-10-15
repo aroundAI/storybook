@@ -3,7 +3,6 @@
  *
  * Tests authentication and connection storage for WebSocket $connect route
  */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { handler } from '../connect';
@@ -172,9 +171,7 @@ describe('WebSocket Connect Handler', () => {
       const event = createMockConnectEvent();
 
       mockVerifySupabaseToken.mockResolvedValue('user-123');
-      mockSend.mockRejectedValueOnce(
-        new Error('DynamoDB connection timeout'),
-      );
+      mockSend.mockRejectedValueOnce(new Error('DynamoDB connection timeout'));
 
       const result = await handler(event);
 
@@ -212,7 +209,9 @@ describe('WebSocket Connect Handler', () => {
       const result = await handler(event);
 
       expect(result.statusCode).toBe(200);
-      expect(mockVerifySupabaseToken).toHaveBeenCalledWith('Bearer valid-token');
+      expect(mockVerifySupabaseToken).toHaveBeenCalledWith(
+        'Bearer valid-token',
+      );
     });
 
     it('should prioritize query string token over header', async () => {

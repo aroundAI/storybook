@@ -3,7 +3,6 @@
  *
  * Tests message routing, broadcasting, and stale connection cleanup
  */
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { handler } from '../default';
@@ -361,7 +360,9 @@ describe('WebSocket Default Handler', () => {
       const result = await handler(event);
 
       expect(result.statusCode).toBe(500);
-      expect(JSON.parse(result.body!).message).toBe('Failed to process message');
+      expect(JSON.parse(result.body!).message).toBe(
+        'Failed to process message',
+      );
     });
 
     it('should handle DynamoDB query errors', async () => {
@@ -470,7 +471,8 @@ describe('WebSocket Default Handler', () => {
       const event = createMockMessageEvent({ action: 'ping' });
 
       // Override request context for endpoint test
-      event.requestContext.domainName = 'custom-api.execute-api.us-west-2.amazonaws.com';
+      event.requestContext.domainName =
+        'custom-api.execute-api.us-west-2.amazonaws.com';
       event.requestContext.stage = 'production';
 
       await handler(event);
