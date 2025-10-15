@@ -16,6 +16,20 @@
  */
 
 /**
+ * Cache metrics for monitoring
+ */
+export interface CacheMetrics {
+  /** Number of successful cache hits */
+  hits: number;
+  /** Number of cache misses */
+  misses: number;
+  /** Total number of operations (hits + misses) */
+  operations: number;
+  /** Cache hit rate as percentage (hits / operations * 100) */
+  hitRate: number;
+}
+
+/**
  * Cache client interface
  */
 export interface CacheClient {
@@ -41,6 +55,26 @@ export interface CacheClient {
   del(key: string): Promise<void>;
 
   /**
+   * Get multiple values at once
+   * @param keys - Array of cache keys
+   * @returns Array of values (null for missing keys)
+   */
+  mget<T>(keys: string[]): Promise<(T | null)[]>;
+
+  /**
+   * Set multiple values at once
+   * @param entries - Array of [key, value] tuples
+   * @param ttlSeconds - Time to live in seconds (optional)
+   */
+  mset<T>(entries: [string, T][], ttlSeconds?: number): Promise<void>;
+
+  /**
+   * Delete multiple keys at once
+   * @param keys - Array of cache keys
+   */
+  mdel(keys: string[]): Promise<void>;
+
+  /**
    * Clear all cache entries
    */
   clear(): Promise<void>;
@@ -49,6 +83,22 @@ export interface CacheClient {
    * Check if cache is connected/healthy
    */
   isHealthy(): Promise<boolean>;
+
+  /**
+   * Get cache performance metrics
+   * @returns Current cache metrics
+   */
+  getMetrics(): CacheMetrics;
+
+  /**
+   * Reset cache metrics
+   */
+  resetMetrics(): void;
+
+  /**
+   * Disconnect from cache (cleanup resources)
+   */
+  disconnect(): Promise<void>;
 }
 
 /**

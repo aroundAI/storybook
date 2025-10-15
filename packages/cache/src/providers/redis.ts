@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
-import type { CacheClient } from '../index';
+
+import type { CacheClient, CacheMetrics } from '../index';
 
 /**
  * Redis cache client
@@ -18,6 +19,10 @@ import type { CacheClient } from '../index';
 export class RedisCache implements CacheClient {
   private client: Redis;
   private isConnected = false;
+  private metrics = {
+    hits: 0,
+    misses: 0,
+  };
 
   constructor(redisUrl: string) {
     // Parse Redis URL and create client
@@ -95,18 +100,23 @@ export class RedisCache implements CacheClient {
       const value = await this.client.get(key);
 
       if (value === null) {
+        this.metrics.misses++;
         return null;
       }
 
       // Parse JSON
       try {
-        return JSON.parse(value) as T;
+        const parsed = JSON.parse(value) as T;
+        this.metrics.hits++;
+        return parsed;
       } catch {
         // Return as-is if not JSON
+        this.metrics.hits++;
         return value as T;
       }
     } catch (error) {
       console.error('[RedisCache] Get error:', error);
+      this.metrics.misses++;
       return null;
     }
   }
@@ -124,7 +134,7 @@ export class RedisCache implements CacheClient {
       }
     } catch (error) {
       console.error('[RedisCache] Set error:', error);
-      throw error;
+      // Fail gracefully - don't throw
     }
   }
 
@@ -139,7 +149,7 @@ export class RedisCache implements CacheClient {
       await this.client.del(key);
     } catch (error) {
       console.error('[RedisCache] Delete error:', error);
-      throw error;
+      // Fail gracefully - don't throw
     }
   }
 
@@ -148,7 +158,7 @@ export class RedisCache implements CacheClient {
       await this.client.flushdb();
     } catch (error) {
       console.error('[RedisCache] Clear error:', error);
-      throw error;
+      // Fail gracefully - don't throw
     }
   }
 
@@ -165,6 +175,95 @@ export class RedisCache implements CacheClient {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Get multiple values at once
+   */
+  async mget<T>(keys: string[]): Promise<(T | null)[]> {
+    try {
+      const values = await this.client.mget(...keys);
+
+      return values.map((value) => {
+        if (value === null) {
+          this.metrics.misses++;
+          return null;
+        }
+
+        try {
+          const parsed = JSON.parse(value) as T;
+          this.metrics.hits++;
+          return parsed;
+        } catch {
+          this.metrics.hits++;
+          return value as T;
+        }
+      });
+    } catch (error) {
+      console.error('[RedisCache] Mget error:', error);
+      // Return empty array on error
+      return [];
+    }
+  }
+
+  /**
+   * Set multiple values at once using pipeline
+   */
+  async mset<T>(entries: [string, T][], ttlSeconds?: number): Promise<void> {
+    try {
+      const pipeline = this.client.pipeline();
+
+      for (const [key, value] of entries) {
+        const serialized = JSON.stringify(value);
+
+        if (ttlSeconds) {
+          pipeline.setex(key, ttlSeconds, serialized);
+        } else {
+          pipeline.set(key, serialized);
+        }
+      }
+
+      await pipeline.exec();
+    } catch (error) {
+      console.error('[RedisCache] Mset error:', error);
+      // Fail gracefully - don't throw
+    }
+  }
+
+  /**
+   * Delete multiple keys at once
+   */
+  async mdel(keys: string[]): Promise<void> {
+    try {
+      if (keys.length === 0) return;
+      await this.client.del(...keys);
+    } catch (error) {
+      console.error('[RedisCache] Mdel error:', error);
+      // Fail gracefully - don't throw
+    }
+  }
+
+  /**
+   * Get cache performance metrics
+   */
+  getMetrics(): CacheMetrics {
+    const operations = this.metrics.hits + this.metrics.misses;
+    const hitRate = operations > 0 ? (this.metrics.hits / operations) * 100 : 0;
+
+    return {
+      hits: this.metrics.hits,
+      misses: this.metrics.misses,
+      operations,
+      hitRate,
+    };
+  }
+
+  /**
+   * Reset cache metrics
+   */
+  resetMetrics(): void {
+    this.metrics.hits = 0;
+    this.metrics.misses = 0;
   }
 
   /**
@@ -190,11 +289,13 @@ export class RedisCache implements CacheClient {
 
       if (keysDeleted > 0) {
         await pipeline.exec();
-        console.log(`[RedisCache] Deleted ${keysDeleted} keys matching pattern: ${pattern}`);
+        console.log(
+          `[RedisCache] Deleted ${keysDeleted} keys matching pattern: ${pattern}`,
+        );
       }
     } catch (error) {
       console.error('[RedisCache] Pattern delete error:', error);
-      throw error;
+      // Fail gracefully - don't throw
     }
   }
 

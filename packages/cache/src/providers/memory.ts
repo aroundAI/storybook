@@ -1,4 +1,4 @@
-import type { CacheClient } from '../index';
+import type { CacheClient, CacheMetrics } from '../index';
 
 /**
  * Memory cache configuration
@@ -24,6 +24,7 @@ interface CacheEntry<T> {
  * - Per-key TTL support
  * - Automatic cleanup of expired entries
  * - Pattern-based deletion (e.g., 'auth:*')
+ * - Performance metrics tracking (hit/miss rates)
  *
  * This is used as a fallback when Redis is not available,
  * or for development/testing environments.
@@ -33,6 +34,10 @@ export class MemoryCache implements CacheClient {
   private readonly maxSize: number;
   private readonly defaultTTL: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private metrics = {
+    hits: 0,
+    misses: 0,
+  };
 
   constructor(config?: MemoryCacheConfig) {
     this.maxSize = config?.maxSize || 1000;
@@ -47,12 +52,14 @@ export class MemoryCache implements CacheClient {
     const entry = this.cache.get(key) as CacheEntry<T> | undefined;
 
     if (!entry) {
+      this.metrics.misses++;
       return null;
     }
 
     // Check if expired
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(key);
+      this.metrics.misses++;
       return null;
     }
 
@@ -60,6 +67,7 @@ export class MemoryCache implements CacheClient {
     this.cache.delete(key);
     this.cache.set(key, entry);
 
+    this.metrics.hits++;
     return entry.value;
   }
 
@@ -152,8 +160,72 @@ export class MemoryCache implements CacheClient {
     keysToDelete.forEach((key) => this.cache.delete(key));
 
     if (keysToDelete.length > 0) {
-      console.log(`[MemoryCache] Cleaned up ${keysToDelete.length} expired entries`);
+      console.log(
+        `[MemoryCache] Cleaned up ${keysToDelete.length} expired entries`,
+      );
     }
+  }
+
+  /**
+   * Get multiple values at once
+   */
+  async mget<T>(keys: string[]): Promise<(T | null)[]> {
+    const results: (T | null)[] = [];
+
+    for (const key of keys) {
+      const value = await this.get<T>(key);
+      results.push(value);
+    }
+
+    return results;
+  }
+
+  /**
+   * Set multiple values at once
+   */
+  async mset<T>(entries: [string, T][], ttlSeconds?: number): Promise<void> {
+    for (const [key, value] of entries) {
+      await this.set(key, value, ttlSeconds);
+    }
+  }
+
+  /**
+   * Delete multiple keys at once
+   */
+  async mdel(keys: string[]): Promise<void> {
+    for (const key of keys) {
+      await this.del(key);
+    }
+  }
+
+  /**
+   * Get cache performance metrics
+   */
+  getMetrics(): CacheMetrics {
+    const operations = this.metrics.hits + this.metrics.misses;
+    const hitRate = operations > 0 ? (this.metrics.hits / operations) * 100 : 0;
+
+    return {
+      hits: this.metrics.hits,
+      misses: this.metrics.misses,
+      operations,
+      hitRate,
+    };
+  }
+
+  /**
+   * Reset cache metrics
+   */
+  resetMetrics(): void {
+    this.metrics.hits = 0;
+    this.metrics.misses = 0;
+  }
+
+  /**
+   * Disconnect from cache (cleanup resources)
+   */
+  async disconnect(): Promise<void> {
+    this.destroy();
   }
 
   /**

@@ -42,7 +42,10 @@ export function createCacheClient(config?: CacheConfig): CacheClient {
         cacheInstance = new RedisCache(finalConfig.redis.url);
         console.log('[Cache] Redis cache initialized');
       } catch (error) {
-        console.error('[Cache] Failed to initialize Redis, using memory cache:', error);
+        console.error(
+          '[Cache] Failed to initialize Redis, using memory cache:',
+          error,
+        );
         cacheInstance = new MemoryCache(finalConfig.memory);
       }
       break;
@@ -63,17 +66,20 @@ export function createCacheClient(config?: CacheConfig): CacheClient {
  * Load cache configuration from environment variables
  */
 function loadConfigFromEnv(): CacheConfig {
-  const provider =
-    (process.env.CACHE_PROVIDER as CacheProvider) || 'memory';
+  const provider = (process.env.CACHE_PROVIDER as CacheProvider) || 'memory';
 
   const config: CacheConfig = {
     provider,
   };
 
   if (provider === 'redis') {
-    config.redis = {
-      url: process.env.REDIS_URL || 'redis://localhost:6379',
-    };
+    // Only set redis config if REDIS_URL is provided
+    // If not provided, it will fall back to memory cache
+    if (process.env.REDIS_URL) {
+      config.redis = {
+        url: process.env.REDIS_URL,
+      };
+    }
   }
 
   if (provider === 'memory') {
@@ -96,3 +102,6 @@ function loadConfigFromEnv(): CacheConfig {
 export function resetCacheInstance(): void {
   cacheInstance = null;
 }
+
+// Re-export types for testing
+export type { CacheProvider };
