@@ -1,0 +1,35 @@
+{
+  "name": "@kit/cache",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cache abstraction layer with support for Memory and Redis providers",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "prettier": "@kit/prettier-config",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "ioredis": "^5.4.2"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

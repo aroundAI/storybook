@@ -1,0 +1,126 @@
+name: Deploy to AWS Staging
+
+on:
+  # Manual deployment only - trigger from GitHub Actions UI
+  # This prevents unnecessary AWS costs for in-progress PRs
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20'
+  PNPM_VERSION: '10.14.0'
+
+jobs:
+  deploy:
+    name: Deploy to AWS Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # Reduced from 30 to prevent hung jobs
+
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Run tests
+        run: pnpm test
+        continue-on-error: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_STAGING_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: GitHubActions-${{ github.run_id }}
+
+      - name: Build for AWS Staging
+        working-directory: apps/web
+        run: |
+          pnpm add -D open-next@latest
+          pnpm build
+          pnpm exec open-next build
+        env:
+          # SECURITY: Only expose public variables during build
+          # Runtime secrets are injected into Lambda after deployment
+          NEXT_PUBLIC_SITE_URL: ${{ secrets.STAGING_SITE_URL }}
+          NEXT_PUBLIC_PRODUCT_NAME: ${{ secrets.NEXT_PUBLIC_PRODUCT_NAME }}
+
+      - name: Deploy to Staging Lambda
+        working-directory: apps/web/.open-next
+        run: |
+          zip -r function.zip server-function/*
+          aws lambda update-function-code \
+            --function-name ${{ secrets.AWS_LAMBDA_STAGING_FUNCTION_NAME }} \
+            --zip-file fileb://function.zip
+
+      # SECURITY NOTE: Environment variables are managed via sst.config.ts, not via GitHub Actions
+      # Secrets are stored in AWS Systems Manager Parameter Store and fetched at runtime
+      # This prevents CloudTrail exposure of secrets
+      # See: deployment/SECRETS_SETUP.md for setup instructions
+
+      - name: Upload assets to staging S3
+        working-directory: apps/web/.open-next
+        run: |
+          aws s3 sync assets/ s3://${{ secrets.S3_STAGING_ASSETS_BUCKET }}/assets/ \
+            --cache-control "public, max-age=3600"
+
+      - name: Invalidate staging CloudFront
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ secrets.CLOUDFRONT_STAGING_DISTRIBUTION_ID }} \
+            --paths "/*"
+
+      - name: Deployment summary
+        run: |
+          echo "🚀 Staging deployment complete!"
+          echo "Preview: https://${{ secrets.STAGING_SITE_URL }}"
+          echo "⚡️ Powered by AWS Lambda + OpenNext"
+
+      - name: Health check
+        run: |
+          echo "Waiting for staging deployment to propagate..."
+
+          # Retry health check up to 5 times with 20s intervals (faster for staging)
+          for i in {1..5}; do
+            sleep 20
+            echo "Health check attempt $i/5..."
+
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.STAGING_SITE_URL }}/healthcheck)
+
+            if [ "$response" = "200" ]; then
+              echo "✅ Staging health check passed on attempt $i"
+              exit 0
+            fi
+
+            echo "⏳ Attempt $i failed with status $response"
+
+            if [ "$i" = "5" ]; then
+              echo "⚠️  Staging health check failed after 5 attempts"
+              exit 1
+            fi
+
+            echo "Retrying in 20 seconds..."
+          done

@@ -9,6 +9,7 @@ A development utility application for testing and showcasing components, feature
 ## Purpose
 
 This development tool provides:
+
 - **Component playground**: Test and showcase UI components
 - **Feature testing**: Isolated environment for new feature development
 - **Integration testing**: Test third-party service integrations
@@ -28,9 +29,11 @@ This development tool provides:
 ## Available Scripts
 
 ### `dev`
+
 ```bash
 pnpm --filter dev-tool dev
 ```
+
 Starts the development server with hot reloading
 
 ## Utilities
@@ -49,7 +52,7 @@ pnpm --filter dev-tool dev
 
 ## Project Structure
 
-```
+````
 apps/dev-tool/
 ├── src/           # Source code
 │   └── utils/       # Utility functions
@@ -69,3 +72,4 @@ When making changes to this package:
 ---
 
 *Generated on 9/20/2025*
+````

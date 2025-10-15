@@ -66,6 +66,7 @@ export default tsEsLint.config(
       '**/node_modules',
       '**/database.types.ts',
       '**/.next',
+      '**/.open-next',
       '**/public',
       'dist',
       'pnpm-lock.yaml',

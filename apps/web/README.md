@@ -9,6 +9,7 @@ The main SaaS web application built with Next.js 15 and the App Router. This is 
 ## Purpose
 
 This application serves as the primary user interface for the SaaS platform, providing:
+
 - **Multi-tenant architecture**: Personal and team account support
 - **Authentication & authorization**: Complete auth flow with Supabase
 - **Billing integration**: Stripe and LemonSqueezy payment processing
@@ -34,27 +35,35 @@ This application serves as the primary user interface for the SaaS platform, pro
 ## Available Scripts
 
 ### `build`
+
 ```bash
 pnpm --filter web build
 ```
+
 Creates an optimized production build
 
 ### `dev`
+
 ```bash
 pnpm --filter web dev
 ```
+
 Starts the development server with hot reloading
 
 ### `lint`
+
 ```bash
 pnpm --filter web lint
 ```
+
 Checks code for style and potential errors
 
 ### `typecheck`
+
 ```bash
 pnpm --filter web typecheck
 ```
+
 Verifies TypeScript type correctness
 
 ## API Endpoints
@@ -86,6 +95,7 @@ pnpm --filter web dev
 ## Package Dependencies
 
 ### This package depends on:
+
 - [@kit/accounts](../../packages/features/accounts)
 - [@kit/admin](../../packages/features/admin)
 - [@kit/analytics](../../packages/analytics)
@@ -107,7 +117,7 @@ pnpm --filter web dev
 
 ## Project Structure
 
-```
+````
 apps/web/
 ├── src/           # Source code
 │   └── utils/       # Utility functions
@@ -127,3 +137,4 @@ When making changes to this package:
 ---
 
 *Generated on 9/20/2025*
+````
