@@ -1062,6 +1062,470 @@ aws ce get-cost-and-usage \
 
 ---
 
+## Provider Switching & Migration Guide
+
+The platform's vendor-agnostic architecture allows switching providers without code changes. This section covers migration strategies for each service type.
+
+### General Migration Principles
+
+1. **Zero-Downtime Strategy**: Run old and new providers in parallel during cutover
+2. **Gradual Rollout**: Test with percentage-based traffic routing
+3. **Fallback Ready**: Keep old provider active until new provider is verified
+4. **Data Sync**: Ensure data consistency during migration period
+5. **Monitoring**: Track metrics for both providers during transition
+
+### Cache Provider Migration
+
+#### Scenario 1: Memory Cache → Redis (Upstash)
+
+**Use Case**: Moving from development to production with shared cache
+
+**Steps**:
+
+1. **Setup Upstash**:
+   ```bash
+   # Sign up at upstash.com
+   # Create Redis database (free tier: 10K commands/day)
+   # Copy connection URL
+   ```
+
+2. **Update Environment Variables**:
+   ```bash
+   # Before (memory cache)
+   CACHE_PROVIDER=memory
+
+   # After (Upstash Redis)
+   CACHE_PROVIDER=redis
+   REDIS_URL=redis://default:password@your-redis.upstash.io:6379
+   ```
+
+3. **Deploy**:
+   ```bash
+   # No code changes needed - just redeploy
+   pnpm sst deploy --stage production
+   ```
+
+4. **Verify Cache is Working**:
+   ```bash
+   # Check logs for Redis connection
+   aws logs tail /aws/lambda/${STAGE}-Web-server --follow | grep -i redis
+
+   # Should see: "Redis cache client initialized"
+   # Monitor CloudWatch for cache hit rates
+   ```
+
+**Impact**: Immediate - cache is empty initially, will populate on first requests
+**Rollback**: Change `CACHE_PROVIDER=memory` and redeploy (< 2 minutes)
+**Cost**: Free (up to 10K commands/day)
+
+---
+
+#### Scenario 2: Upstash → ElastiCache
+
+**Use Case**: High traffic production requiring VPC-based Redis with lower latency
+
+**Prerequisites**:
+- VPC with subnets in multiple AZs
+- Lambda functions deployed in VPC
+- Security groups configured
+
+**Steps**:
+
+1. **Provision ElastiCache** (via SST):
+   ```bash
+   # Add to .env
+   CACHE_PROVIDER=redis
+   USE_ELASTICACHE=true
+   VPC_ID=vpc-xxxxx
+   SUBNET_IDS=subnet-xxxxx,subnet-yyyyy
+   VPC_CIDR=10.0.0.0/16
+   ```
+
+2. **Deploy Infrastructure**:
+   ```bash
+   pnpm sst deploy --stage production
+   # Wait 10-15 minutes for ElastiCache provisioning
+   ```
+
+3. **Parallel Testing** (keep Upstash active):
+   ```bash
+   # Test ElastiCache endpoint
+   redis-cli -h your-elasticache-endpoint.cache.amazonaws.com ping
+   # Should return: PONG
+   ```
+
+4. **Switch Traffic**:
+   ```bash
+   # Remove REDIS_URL from environment (use ElastiCache endpoint from SST)
+   # Redeploy
+   pnpm sst deploy --stage production
+   ```
+
+5. **Monitor Performance**:
+   ```bash
+   # Check ElastiCache metrics in CloudWatch
+   # - CacheHits vs CacheMisses
+   # - NetworkBytesIn/Out
+   # - CPUUtilization (should be < 60%)
+   ```
+
+6. **Decommission Upstash**:
+   ```bash
+   # After 24-48 hours of stable operation
+   # Delete Upstash database from dashboard
+   ```
+
+**Migration Time**: 1-2 hours
+**Rollback**: Set `REDIS_URL` back to Upstash and redeploy
+**Cost Change**: Free → $12/month (cache.t4g.micro)
+
+---
+
+### Email Provider Migration
+
+#### Scenario 1: Resend → AWS SES
+
+**Use Case**: Scaling beyond Resend's free tier (3K emails/month) or needing AWS integration
+
+**Steps**:
+
+1. **Setup AWS SES**:
+   ```bash
+   # Verify domain
+   aws sesv2 create-email-identity --email-identity your-domain.com
+
+   # Add DNS records for verification (see output)
+   # Wait 24-72 hours for verification
+
+   # Check status
+   aws sesv2 get-email-identity \
+     --email-identity your-domain.com \
+     --query 'VerifiedForSendingStatus'
+   ```
+
+2. **Parallel Testing** (keep Resend active):
+   ```bash
+   # Add SES config but keep EMAIL_PROVIDER=resend
+   AWS_SES_CONFIG_SET=your-config-set
+
+   # Test SES manually
+   aws sesv2 send-email \
+     --from-email-address noreply@your-domain.com \
+     --destination ToAddresses=test@example.com \
+     --content 'Simple={Subject={Data="Test"},Body={Text={Data="Test email"}}}'
+   ```
+
+3. **Gradual Cutover** (route percentage of traffic):
+   ```typescript
+   // apps/web/lambda/email-worker/index.ts
+   const useNewProvider = Math.random() < 0.1; // 10% to SES
+   const provider = useNewProvider ? 'ses' : 'resend';
+   ```
+
+4. **Full Switchover**:
+   ```bash
+   # After 24 hours of successful testing at 100%
+   EMAIL_PROVIDER=ses
+   # Remove RESEND_API_KEY
+   ```
+
+5. **Monitor Deliverability**:
+   ```bash
+   # Check SES bounce/complaint rates in CloudWatch
+   aws cloudwatch get-metric-statistics \
+     --namespace AWS/SES \
+     --metric-name Reputation.BounceRate \
+     --start-time 2024-01-01T00:00:00Z \
+     --end-time 2024-01-31T23:59:59Z \
+     --period 86400 \
+     --statistics Average
+   ```
+
+**Migration Time**: 2-3 days (includes DNS propagation)
+**Rollback**: Change `EMAIL_PROVIDER=resend` and redeploy
+**Cost Change**: Free (3K/month) → $0.10 per 1K emails
+
+---
+
+#### Scenario 2: SES → SendGrid/Mailgun
+
+**Use Case**: Needing better email analytics or different geographic coverage
+
+**Steps**:
+
+1. **Setup New Provider**:
+   ```bash
+   # Sign up for SendGrid/Mailgun
+   # Verify domain
+   # Get API key
+   ```
+
+2. **Update Environment Variables**:
+   ```bash
+   EMAIL_PROVIDER=sendgrid  # or 'mailgun'
+   SENDGRID_API_KEY=SG.xxxxxxxxxxxxx
+   EMAIL_SENDER=noreply@your-domain.com
+   ```
+
+3. **Deploy and Verify**:
+   ```bash
+   pnpm sst deploy --stage production
+
+   # Send test email via API
+   curl -X POST https://your-domain.com/api/test-email
+   ```
+
+**Migration Time**: 1-2 hours
+**Rollback**: Change `EMAIL_PROVIDER=ses` and redeploy
+
+---
+
+### Storage Provider Migration
+
+#### Scenario 1: Supabase Storage → AWS S3
+
+**Use Case**: Scaling storage beyond Supabase limits or reducing costs at scale
+
+**⚠️ Important**: This requires data migration - not just configuration change
+
+**Steps**:
+
+1. **Provision S3 Bucket**:
+   ```bash
+   # Create bucket
+   aws s3api create-bucket \
+     --bucket my-saas-storage \
+     --region us-east-1
+
+   # Enable versioning
+   aws s3api put-bucket-versioning \
+     --bucket my-saas-storage \
+     --versioning-configuration Status=Enabled
+
+   # Configure CORS (see AWS Deployment section for config)
+   ```
+
+2. **Data Migration** (run from EC2 or local with good bandwidth):
+   ```typescript
+   // migration-script.ts
+   import { createClient } from '@supabase/supabase-js';
+   import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+   const s3 = new S3Client({ region: 'us-east-1' });
+
+   async function migrateFiles() {
+     // List all files from Supabase Storage
+     const { data: files } = await supabase
+       .storage
+       .from('your-bucket')
+       .list();
+
+     for (const file of files) {
+       // Download from Supabase
+       const { data: blob } = await supabase
+         .storage
+         .from('your-bucket')
+         .download(file.name);
+
+       // Upload to S3
+       await s3.send(new PutObjectCommand({
+         Bucket: 'my-saas-storage',
+         Key: file.name,
+         Body: blob,
+       }));
+
+       console.log(`Migrated: ${file.name}`);
+     }
+   }
+   ```
+
+3. **Parallel Run** (write to both, read from S3):
+   ```bash
+   # Update environment
+   STORAGE_PROVIDER=s3
+   S3_BUCKET=my-saas-storage
+
+   # Keep Supabase config active for fallback
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+   ```
+
+4. **Verify Migration**:
+   ```bash
+   # Compare file counts
+   aws s3 ls s3://my-saas-storage --recursive | wc -l
+   # Should match Supabase file count
+   ```
+
+5. **Full Cutover**:
+   ```bash
+   # After 7 days of successful operation
+   # Stop writing to Supabase Storage
+   # Update code to remove Supabase Storage client
+   ```
+
+6. **Cleanup**:
+   ```bash
+   # Delete Supabase Storage bucket (optional)
+   # This frees up storage quota
+   ```
+
+**Migration Time**: 3-5 days (depends on data volume)
+**Rollback**: Change `STORAGE_PROVIDER=supabase` and redeploy
+**Data Safety**: Keep Supabase storage active for 30 days after cutover
+
+---
+
+### Database Provider Migration
+
+#### Scenario 1: Supabase → AWS RDS PostgreSQL
+
+**Use Case**: Moving to self-managed database for compliance or cost optimization
+
+**⚠️ CRITICAL**: This is the most complex migration - plan for maintenance window
+
+**Steps**:
+
+1. **Provision RDS**:
+   ```bash
+   # Create RDS instance (see AWS Deployment section)
+   # Use same PostgreSQL version as Supabase
+   ```
+
+2. **Schema Migration**:
+   ```bash
+   # Export schema from Supabase
+   pg_dump $SUPABASE_CONNECTION_STRING --schema-only > schema.sql
+
+   # Import to RDS
+   psql $RDS_CONNECTION_STRING < schema.sql
+   ```
+
+3. **Data Migration**:
+   ```bash
+   # Option A: pg_dump/restore (requires downtime)
+   pg_dump $SUPABASE_CONNECTION_STRING \
+     --data-only \
+     --exclude-table-data=_realtime.* \
+     --exclude-table-data=storage.* \
+     > data.sql
+
+   psql $RDS_CONNECTION_STRING < data.sql
+
+   # Option B: Logical replication (zero downtime)
+   # 1. Setup publication on Supabase
+   # 2. Setup subscription on RDS
+   # 3. Wait for sync
+   # 4. Switch application connection
+   ```
+
+4. **Update Environment Variables**:
+   ```bash
+   # Before
+   DATABASE_PROVIDER=supabase
+   NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+
+   # After
+   DATABASE_PROVIDER=postgresql
+   POSTGRES_HOST=your-db.xxxxx.us-east-1.rds.amazonaws.com
+   POSTGRES_PORT=5432
+   POSTGRES_DB=postgres
+   POSTGRES_USER=admin
+   POSTGRES_PASSWORD=xxxxx
+   ```
+
+5. **Update Auth Provider** (if using Supabase Auth):
+   ```bash
+   # Must also migrate auth provider
+   AUTH_PROVIDER=cognito  # or clerk, auth0
+   # See Auth migration section below
+   ```
+
+6. **Deploy and Test**:
+   ```bash
+   pnpm sst deploy --stage production
+
+   # Smoke test critical paths
+   curl https://your-domain.com/api/healthcheck
+   ```
+
+7. **Monitor** (keep Supabase active for 7 days):
+   - Database connection pool usage
+   - Query performance (compare to Supabase)
+   - Error rates
+   - Memory/CPU utilization
+
+**Migration Time**: 1-2 days (with logical replication) or 4-8 hours (with downtime)
+**Rollback**: Change `DATABASE_PROVIDER=supabase` and redeploy (< 5 minutes)
+**Risk**: High - involves data and auth migration
+
+---
+
+### Cache Invalidation Strategy
+
+**Important**: When switching cache providers, the cache will be empty initially. This is expected behavior.
+
+**Automatic Invalidation**:
+- Cache entries expire after 5 minutes (TTL)
+- Role/permission changes trigger immediate invalidation
+
+**Manual Invalidation** (if needed):
+```typescript
+import { invalidateAuthCache } from '~/lib/database/authorization';
+
+// Invalidate specific user's cache
+await invalidateAuthCache(userId, accountId);
+
+// Or flush entire cache (if using Redis)
+import { createCacheClient } from '@kit/cache';
+const cache = createCacheClient();
+await cache.clear(); // Flushes all keys
+```
+
+---
+
+### Migration Checklist
+
+Before switching any provider:
+
+- [ ] **Backup**: Export current data/configuration
+- [ ] **Test Environment**: Validate new provider in staging first
+- [ ] **Monitoring**: Setup alerts for new provider metrics
+- [ ] **Documentation**: Update team runbooks with new provider details
+- [ ] **Access**: Ensure team has credentials for new provider
+- [ ] **Budget**: Approve new provider costs
+- [ ] **Rollback Plan**: Document exact steps to revert
+- [ ] **Communication**: Notify team of migration window
+- [ ] **Health Checks**: Verify all endpoints return 200 after migration
+
+---
+
+### Cost Optimization Migration Paths
+
+**Development → Production**:
+```
+Memory Cache → Upstash Redis (free)
+Resend Email (free) → Keep Resend (cheap at scale)
+Supabase Storage → Supabase Storage (upgrade tier)
+```
+
+**Production → Scale**:
+```
+Upstash Redis → ElastiCache (better performance)
+Resend Email → AWS SES (cheaper at volume)
+Supabase Storage → S3 (cheaper at 100GB+)
+```
+
+**Cost Impact**:
+| Migration Path | Before | After | Savings |
+|----------------|--------|-------|---------|
+| Upstash → Memory (dev) | Free | Free | $0 |
+| ElastiCache → Upstash (staging) | $12/mo | Free | $12/mo |
+| Resend → SES (100K emails) | $160/mo | $10/mo | $150/mo |
+| Supabase Storage → S3 (500GB) | $250/mo | $11.50/mo | $238.50/mo |
+
+---
+
 ## Rollback Procedures
 
 ### Quick Rollback (< 5 minutes)

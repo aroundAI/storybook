@@ -27,6 +27,9 @@ export const removeMemberFromAccountAction = enhanceAction(
       userId,
     });
 
+    // Note: Auth cache auto-invalidates after 5 minutes (TTL)
+    // For immediate invalidation, call invalidateAuthCache(userId, accountId) from app-level code
+
     // revalidate all pages that depend on the account
     revalidatePath('/home/[account]', 'layout');
 
@@ -49,6 +52,9 @@ export const updateMemberRoleAction = enhanceAction(
 
     // update the role of the member
     await service.updateMemberRole(data, adminClient);
+
+    // Note: Auth cache auto-invalidates after 5 minutes (TTL)
+    // For immediate invalidation, call invalidateAuthCache(data.userId, data.accountId) from app-level code
 
     // revalidate all pages that depend on the account
     revalidatePath('/home/[account]', 'layout');
@@ -128,6 +134,9 @@ export const transferOwnershipAction = enhanceAction(
 
     // transfer the ownership of the account
     await service.transferOwnership(data, adminClient);
+
+    // Note: Auth cache auto-invalidates after 5 minutes (TTL)
+    // For immediate invalidation, call invalidateAuthCache() for both old and new owner from app-level code
 
     // revalidate all pages that depend on the account
     revalidatePath('/home/[account]', 'layout');

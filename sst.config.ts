@@ -644,6 +644,173 @@ export default $config({
 
     console.log(`✓ CloudWatch operational alarms configured for ${stage}`);
 
+    // CloudWatch Dashboard for Cost Monitoring and Operational Metrics
+    // Creates a comprehensive dashboard for tracking AWS resource usage and costs
+    new aws.cloudwatch.Dashboard("CostMonitoringDashboard", {
+      dashboardName: `${stage}-cost-monitoring`,
+      dashboardBody: JSON.stringify({
+        widgets: [
+          // Row 1: Billing and Cost Overview
+          {
+            type: "metric",
+            x: 0,
+            y: 0,
+            width: 12,
+            height: 6,
+            properties: {
+              metrics: [
+                ["AWS/Billing", "EstimatedCharges", { stat: "Maximum", label: "Estimated Monthly Charges" }],
+              ],
+              view: "timeSeries",
+              stacked: false,
+              region: "us-east-1", // Billing metrics only in us-east-1
+              title: "💰 Monthly AWS Cost Estimate",
+              period: 21600, // 6 hours
+              yAxis: {
+                left: {
+                  label: "USD",
+                },
+              },
+            },
+          },
+          {
+            type: "metric",
+            x: 12,
+            y: 0,
+            width: 12,
+            height: 6,
+            properties: {
+              metrics: [
+                ["AWS/Lambda", "Invocations", { stat: "Sum", label: "Total Invocations" }],
+                [".", "Errors", { stat: "Sum", label: "Errors" }],
+                [".", "Throttles", { stat: "Sum", label: "Throttles" }],
+              ],
+              view: "timeSeries",
+              stacked: false,
+              region: awsRegion,
+              title: "⚡ Lambda Invocations (Cost Driver)",
+              period: 3600, // 1 hour
+              yAxis: {
+                left: {
+                  label: "Count",
+                },
+              },
+            },
+          },
+
+          // Row 2: Storage Costs
+          {
+            type: "metric",
+            x: 0,
+            y: 6,
+            width: 12,
+            height: 6,
+            properties: {
+              metrics: [
+                ["AWS/S3", "BucketSizeBytes", { stat: "Average", label: "Storage Size (Bytes)" }],
+                [".", "NumberOfObjects", { stat: "Average", label: "Object Count" }],
+              ],
+              view: "timeSeries",
+              stacked: false,
+              region: awsRegion,
+              title: "📦 S3 Storage Usage",
+              period: 86400, // 24 hours
+              yAxis: {
+                left: {
+                  label: "Size/Count",
+                },
+              },
+            },
+          },
+          {
+            type: "metric",
+            x: 12,
+            y: 6,
+            width: 12,
+            height: 6,
+            properties: {
+              metrics: [
+                ["AWS/Lambda", "Duration", { stat: "Average", label: "Avg Duration" }],
+                [".", "ConcurrentExecutions", { stat: "Maximum", label: "Max Concurrent" }],
+              ],
+              view: "timeSeries",
+              stacked: false,
+              region: awsRegion,
+              title: "⏱️ Lambda Performance",
+              period: 3600,
+              yAxis: {
+                left: {
+                  label: "Milliseconds / Count",
+                },
+              },
+            },
+          },
+
+          // Row 3: Queue Metrics
+          {
+            type: "metric",
+            x: 0,
+            y: 12,
+            width: 12,
+            height: 6,
+            properties: {
+              metrics: [
+                ["AWS/SQS", "NumberOfMessagesSent", { stat: "Sum", label: "Messages Sent" }],
+                [".", "NumberOfMessagesReceived", { stat: "Sum", label: "Messages Received" }],
+                [".", "ApproximateNumberOfMessagesVisible", { stat: "Average", label: "Queue Depth" }],
+              ],
+              view: "timeSeries",
+              stacked: false,
+              region: awsRegion,
+              title: "📨 SQS Queue Metrics",
+              period: 300, // 5 minutes
+            },
+          },
+          {
+            type: "metric",
+            x: 12,
+            y: 12,
+            width: 12,
+            height: 6,
+            properties: {
+              metrics: [
+                ["AWS/SQS", "ApproximateNumberOfMessagesVisible", { stat: "Average", label: "DLQ Depth" }],
+                [".", "ApproximateAgeOfOldestMessage", { stat: "Maximum", label: "Oldest Message Age" }],
+              ],
+              view: "timeSeries",
+              stacked: false,
+              region: awsRegion,
+              title: "⚠️ Dead Letter Queue Health",
+              period: 300,
+            },
+          },
+
+          // Row 4: Log Insights and Cost Summary
+          {
+            type: "log",
+            x: 0,
+            y: 18,
+            width: 24,
+            height: 6,
+            properties: {
+              query: `SOURCE '/aws/lambda/${stage}-EmailQueue'
+              | SOURCE '/aws/lambda/${stage}-Web-server'
+              | fields @timestamp, @message
+              | filter @message like /error|ERROR|Error/
+              | sort @timestamp desc
+              | limit 20`,
+              region: awsRegion,
+              title: "🔍 Recent Errors Across All Lambdas",
+              stacked: false,
+            },
+          },
+        ],
+      }),
+    });
+
+    console.log(`✓ CloudWatch cost monitoring dashboard created: ${stage}-cost-monitoring`);
+    console.log(`  View at: https://console.aws.amazon.com/cloudwatch/home?region=${awsRegion}#dashboards:name=${stage}-cost-monitoring`);
+
     // KMS Key for Lambda Environment Variable Encryption
     // Encrypts sensitive environment variables at rest
     const kmsKey = new aws.kms.Key("LambdaEnvEncryptionKey", {
@@ -750,6 +917,16 @@ export default $config({
     let redisEndpoint: string | undefined;
 
     if (process.env.CACHE_PROVIDER === 'redis' && process.env.USE_ELASTICACHE === 'true') {
+      // Cost optimization: Warn about ElastiCache costs for non-production stages
+      if (stage !== 'production') {
+        console.warn(`⚠️  ElastiCache costs ~$12-24/month even for low-traffic ${stage} environments`);
+        console.warn(`   💡 Consider using Upstash free tier (10K commands/day) instead:`);
+        console.warn(`      - Set REDIS_URL to your Upstash connection string`);
+        console.warn(`      - Set USE_ELASTICACHE=false or remove it`);
+        console.warn(`      - Saves $12-24/month for ${stage} environment`);
+        console.warn(`   Proceeding with ElastiCache as explicitly requested...`);
+      }
+
       console.log(`🔄 Provisioning ElastiCache Redis cluster for ${stage}...`);
 
       // Validate VPC configuration
