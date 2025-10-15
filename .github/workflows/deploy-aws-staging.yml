@@ -2,10 +2,7 @@ name: Deploy to AWS Staging
 
 on:
   # Manual deployment only - trigger from GitHub Actions UI
-  # Can also be triggered on PR for preview deployments
-  pull_request:
-    branches:
-      - main
+  # This prevents unnecessary AWS costs for in-progress PRs
   workflow_dispatch:
 
 env:
@@ -21,7 +18,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-      pull-requests: write # For PR comments
 
     steps:
       - name: Checkout code
@@ -113,17 +109,11 @@ jobs:
             --distribution-id ${{ secrets.CLOUDFRONT_STAGING_DISTRIBUTION_ID }} \
             --paths "/*"
 
-      - name: Comment PR with staging URL
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `🚀 Staging deployment complete!\n\nPreview: https://${{ secrets.STAGING_SITE_URL }}\n\n⚡️ Powered by AWS Lambda + OpenNext`
-            })
+      - name: Deployment summary
+        run: |
+          echo "🚀 Staging deployment complete!"
+          echo "Preview: https://${{ secrets.STAGING_SITE_URL }}"
+          echo "⚡️ Powered by AWS Lambda + OpenNext"
 
       - name: Health check
         run: |
