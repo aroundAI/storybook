@@ -1,6 +1,8 @@
 import Redis from 'ioredis';
 
 import type { CacheClient, CacheMetrics } from '../index';
+import type { MetricsStore } from '../metrics/storage';
+import { NoOpMetricsStore } from '../metrics/storage';
 
 /**
  * Redis cache client
@@ -19,14 +21,27 @@ import type { CacheClient, CacheMetrics } from '../index';
 export class RedisCache implements CacheClient {
   private client: Redis;
   private isConnected = false;
+  private metricsStore: MetricsStore;
+  private cacheId: string;
+  private metricsInterval: NodeJS.Timeout | null = null;
+  private readonly scanCount: number;
   private metrics = {
     hits: 0,
     misses: 0,
   };
 
-  constructor(redisUrl: string) {
+  constructor(
+    redisUrl: string,
+    metricsStore?: MetricsStore,
+    cacheId = 'redis-default',
+    scanCount = 100,
+  ) {
     // Validate Redis URL format
     this.validateRedisUrl(redisUrl);
+
+    this.metricsStore = metricsStore || new NoOpMetricsStore();
+    this.cacheId = cacheId;
+    this.scanCount = scanCount;
 
     // Parse Redis URL and create client
     const stage = process.env.NODE_ENV || 'development';
@@ -86,6 +101,12 @@ export class RedisCache implements CacheClient {
 
     // Connect immediately
     this.connect();
+
+    // Load persisted metrics
+    this.loadMetrics();
+
+    // Start periodic metrics persistence
+    this.startMetricsPersistence();
   }
 
   private async connect(): Promise<void> {
@@ -272,12 +293,18 @@ export class RedisCache implements CacheClient {
   /**
    * Delete keys matching a pattern using SCAN
    * More efficient than KEYS for large datasets
+   *
+   * Scan count can be configured via constructor.
+   * Recommended values:
+   * - Small datasets (<1000 keys): 100-200 (default: 100)
+   * - Medium datasets (1000-10000 keys): 500-1000
+   * - Large datasets (>10000 keys): 1000-5000
    */
   private async deletePattern(pattern: string): Promise<void> {
     try {
       const stream = this.client.scanStream({
         match: pattern,
-        count: 100, // Number of keys to scan per iteration
+        count: this.scanCount,
       });
 
       const pipeline = this.client.pipeline();
@@ -339,11 +366,72 @@ export class RedisCache implements CacheClient {
    */
   async disconnect(): Promise<void> {
     try {
+      // Stop metrics persistence
+      if (this.metricsInterval) {
+        clearInterval(this.metricsInterval);
+        this.metricsInterval = null;
+      }
+
+      // Persist metrics one last time before shutdown
+      await this.persistMetrics();
+
       await this.client.quit();
       this.isConnected = false;
       console.log('[RedisCache] Disconnected from Redis');
     } catch (error) {
       console.error('[RedisCache] Disconnect error:', error);
+    }
+  }
+
+  /**
+   * Load persisted metrics on initialization
+   */
+  private async loadMetrics(): Promise<void> {
+    try {
+      const saved = await this.metricsStore.load(this.cacheId);
+
+      if (saved) {
+        this.metrics.hits = saved.hits;
+        this.metrics.misses = saved.misses;
+        console.log(
+          `[RedisCache] Loaded persisted metrics for ${this.cacheId}:`,
+          saved,
+        );
+      }
+    } catch (error) {
+      console.error('[RedisCache] Failed to load metrics:', error);
+      // Continue with zero metrics
+    }
+  }
+
+  /**
+   * Start periodic metrics persistence
+   */
+  private startMetricsPersistence(): void {
+    // Persist metrics every minute by default
+    this.metricsInterval = setInterval(
+      () => {
+        this.persistMetrics();
+      },
+      60000, // 1 minute
+    );
+
+    // Prevent interval from keeping Node.js process alive
+    if (this.metricsInterval.unref) {
+      this.metricsInterval.unref();
+    }
+  }
+
+  /**
+   * Persist current metrics to store
+   */
+  private async persistMetrics(): Promise<void> {
+    try {
+      const metrics = this.getMetrics();
+      await this.metricsStore.save(metrics, this.cacheId);
+    } catch (error) {
+      console.error('[RedisCache] Failed to persist metrics:', error);
+      // Fail gracefully - don't throw
     }
   }
 }

@@ -1,4 +1,6 @@
 import type { CacheClient, CacheMetrics } from '../index';
+import type { MetricsStore } from '../metrics/storage';
+import { NoOpMetricsStore } from '../metrics/storage';
 
 /**
  * Memory cache configuration
@@ -36,19 +38,34 @@ export class MemoryCache implements CacheClient {
   private readonly defaultTTL: number;
   private readonly cleanupIntervalMs: number;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private metricsStore: MetricsStore;
+  private cacheId: string;
+  private metricsInterval: NodeJS.Timeout | null = null;
   private metrics = {
     hits: 0,
     misses: 0,
   };
 
-  constructor(config?: MemoryCacheConfig) {
+  constructor(
+    config?: MemoryCacheConfig,
+    metricsStore?: MetricsStore,
+    cacheId = 'memory-default',
+  ) {
     this.maxSize = config?.maxSize || 1000;
     this.defaultTTL = (config?.maxAge || 300) * 1000; // Convert to milliseconds
     this.cleanupIntervalMs = config?.cleanupInterval || 60000; // Default: 1 minute
     this.cache = new Map();
+    this.metricsStore = metricsStore || new NoOpMetricsStore();
+    this.cacheId = cacheId;
+
+    // Load persisted metrics
+    this.loadMetrics();
 
     // Start periodic cleanup of expired entries
     this.startCleanup();
+
+    // Start periodic metrics persistence
+    this.startMetricsPersistence();
   }
 
   async get<T>(key: string): Promise<T | null> {
@@ -228,6 +245,8 @@ export class MemoryCache implements CacheClient {
    * Disconnect from cache (cleanup resources)
    */
   async disconnect(): Promise<void> {
+    // Persist metrics one last time before shutdown
+    await this.persistMetrics();
     this.destroy();
   }
 
@@ -239,6 +258,64 @@ export class MemoryCache implements CacheClient {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
+
+    if (this.metricsInterval) {
+      clearInterval(this.metricsInterval);
+      this.metricsInterval = null;
+    }
+
     this.cache.clear();
+  }
+
+  /**
+   * Load persisted metrics on initialization
+   */
+  private async loadMetrics(): Promise<void> {
+    try {
+      const saved = await this.metricsStore.load(this.cacheId);
+
+      if (saved) {
+        this.metrics.hits = saved.hits;
+        this.metrics.misses = saved.misses;
+        console.log(
+          `[MemoryCache] Loaded persisted metrics for ${this.cacheId}:`,
+          saved,
+        );
+      }
+    } catch (error) {
+      console.error('[MemoryCache] Failed to load metrics:', error);
+      // Continue with zero metrics
+    }
+  }
+
+  /**
+   * Start periodic metrics persistence
+   */
+  private startMetricsPersistence(): void {
+    // Persist metrics every minute by default
+    this.metricsInterval = setInterval(
+      () => {
+        this.persistMetrics();
+      },
+      60000, // 1 minute
+    );
+
+    // Prevent interval from keeping Node.js process alive
+    if (this.metricsInterval.unref) {
+      this.metricsInterval.unref();
+    }
+  }
+
+  /**
+   * Persist current metrics to store
+   */
+  private async persistMetrics(): Promise<void> {
+    try {
+      const metrics = this.getMetrics();
+      await this.metricsStore.save(metrics, this.cacheId);
+    } catch (error) {
+      console.error('[MemoryCache] Failed to persist metrics:', error);
+      // Fail gracefully - don't throw
+    }
   }
 }

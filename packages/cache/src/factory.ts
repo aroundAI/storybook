@@ -1,4 +1,10 @@
+import crypto from 'crypto';
+
 import type { CacheClient, CacheConfig, CacheProvider } from './index';
+import { FileMetricsStore } from './metrics/file-store';
+import { RedisMetricsStore } from './metrics/redis-store';
+import type { MetricsStore } from './metrics/storage';
+import { NoOpMetricsStore } from './metrics/storage';
 import { MemoryCache } from './providers/memory';
 import { RedisCache } from './providers/redis';
 
@@ -25,7 +31,11 @@ export function createCacheClient(config?: CacheConfig): CacheClient {
 
   console.log('[Cache] Initializing cache client:', {
     provider: finalConfig.provider,
+    metricsStorage: finalConfig.metrics?.storage || 'none',
   });
+
+  // Create metrics store and get cache ID
+  const { store: metricsStore, cacheId } = createMetricsStore(finalConfig);
 
   // Create appropriate provider
   switch (finalConfig.provider) {
@@ -34,26 +44,44 @@ export function createCacheClient(config?: CacheConfig): CacheClient {
         console.warn(
           '[Cache] Redis URL not provided, falling back to memory cache',
         );
-        cacheInstance = new MemoryCache(finalConfig.memory);
+        cacheInstance = new MemoryCache(
+          finalConfig.memory,
+          metricsStore,
+          cacheId,
+        );
         break;
       }
 
       try {
-        cacheInstance = new RedisCache(finalConfig.redis.url);
+        const scanCount = finalConfig.redis.scanCount || 100;
+        cacheInstance = new RedisCache(
+          finalConfig.redis.url,
+          metricsStore,
+          cacheId,
+          scanCount,
+        );
         console.log('[Cache] Redis cache initialized');
       } catch (error) {
         console.error(
           '[Cache] Failed to initialize Redis, using memory cache:',
           error,
         );
-        cacheInstance = new MemoryCache(finalConfig.memory);
+        cacheInstance = new MemoryCache(
+          finalConfig.memory,
+          metricsStore,
+          cacheId,
+        );
       }
       break;
     }
 
     case 'memory':
     default: {
-      cacheInstance = new MemoryCache(finalConfig.memory);
+      cacheInstance = new MemoryCache(
+        finalConfig.memory,
+        metricsStore,
+        cacheId,
+      );
       console.log('[Cache] Memory cache initialized');
       break;
     }
@@ -78,6 +106,9 @@ function loadConfigFromEnv(): CacheConfig {
     if (process.env.REDIS_URL) {
       config.redis = {
         url: process.env.REDIS_URL,
+        scanCount: process.env.REDIS_SCAN_COUNT
+          ? parseInt(process.env.REDIS_SCAN_COUNT, 10)
+          : 100,
       };
     }
   }
@@ -93,7 +124,68 @@ function loadConfigFromEnv(): CacheConfig {
     };
   }
 
+  // Metrics configuration
+  const metricsStorage = process.env.CACHE_METRICS_STORAGE;
+
+  if (metricsStorage && metricsStorage !== 'none') {
+    config.metrics = {
+      storage: metricsStorage as 'file' | 'redis',
+      cacheId: process.env.CACHE_METRICS_ID,
+      fileStorageDir: process.env.CACHE_METRICS_FILE_DIR,
+      persistInterval: process.env.CACHE_METRICS_PERSIST_INTERVAL
+        ? parseInt(process.env.CACHE_METRICS_PERSIST_INTERVAL, 10)
+        : 60000,
+    };
+  }
+
   return config;
+}
+
+/**
+ * Create metrics store based on configuration
+ */
+function createMetricsStore(config: CacheConfig): {
+  store: MetricsStore;
+  cacheId: string;
+} {
+  const storageType = config.metrics?.storage || 'none';
+
+  // Generate cache ID if not provided
+  const cacheId =
+    config.metrics?.cacheId || crypto.randomBytes(8).toString('hex');
+
+  switch (storageType) {
+    case 'file': {
+      const store = new FileMetricsStore(config.metrics?.fileStorageDir);
+      console.log('[Cache] File-based metrics storage enabled:', {
+        cacheId,
+      });
+      return { store, cacheId };
+    }
+
+    case 'redis': {
+      const redisClient = config.metrics?.redisClient;
+
+      if (!redisClient) {
+        console.warn(
+          '[Cache] Redis metrics storage requested but no client provided, using no-op store',
+        );
+        return { store: new NoOpMetricsStore(), cacheId };
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const store = new RedisMetricsStore(redisClient as any);
+      console.log('[Cache] Redis-based metrics storage enabled:', {
+        cacheId,
+      });
+      return { store, cacheId };
+    }
+
+    case 'none':
+    default: {
+      return { store: new NoOpMetricsStore(), cacheId };
+    }
+  }
 }
 
 /**

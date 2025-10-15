@@ -107,17 +107,30 @@ export interface CacheClient {
 export type CacheProvider = 'memory' | 'redis';
 
 /**
+ * Metrics storage types
+ */
+export type MetricsStorageType = 'none' | 'file' | 'redis';
+
+/**
  * Cache configuration
  */
 export interface CacheConfig {
   provider: CacheProvider;
   redis?: {
     url: string;
+    scanCount?: number; // Number of keys to scan per iteration in SCAN operations (default: 100)
   };
   memory?: {
     maxSize?: number; // Maximum number of items
     maxAge?: number; // Default TTL in seconds
     cleanupInterval?: number; // Cleanup interval in milliseconds
+  };
+  metrics?: {
+    storage?: MetricsStorageType; // Where to persist metrics (default: none)
+    cacheId?: string; // Unique ID for this cache instance (default: auto-generated)
+    fileStorageDir?: string; // Directory for file storage (default: ./.cache-metrics)
+    redisClient?: unknown; // Redis client for metrics storage (if storage=redis)
+    persistInterval?: number; // How often to persist metrics in ms (default: 60000)
   };
 }
 
@@ -127,3 +140,9 @@ export { createCacheClient } from './factory';
 // Re-export providers for advanced use cases
 export { MemoryCache } from './providers/memory';
 export { RedisCache } from './providers/redis';
+
+// Re-export metrics storage for advanced use cases
+export type { MetricsStore } from './metrics/storage';
+export { NoOpMetricsStore } from './metrics/storage';
+export { FileMetricsStore } from './metrics/file-store';
+export { RedisMetricsStore } from './metrics/redis-store';
