@@ -19,12 +19,19 @@ import type { MetricsStore } from './storage';
  */
 export class FileMetricsStore implements MetricsStore {
   private readonly storageDir: string;
+  private readonly maxAgeMs: number;
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   /**
    * @param storageDir - Directory to store metrics files (default: ./.cache-metrics)
+   * @param maxAgeDays - Maximum age of metrics files in days (default: 30)
    */
-  constructor(storageDir = './.cache-metrics') {
+  constructor(storageDir = './.cache-metrics', maxAgeDays = 30) {
     this.storageDir = storageDir;
+    this.maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
+
+    // Start periodic cleanup (every 24 hours)
+    this.startCleanup();
   }
 
   async save(metrics: CacheMetrics, cacheId: string): Promise<void> {
@@ -154,6 +161,83 @@ export class FileMetricsStore implements MetricsStore {
       await fs.mkdir(this.storageDir, { recursive: true });
     } catch {
       // Directory exists or can't be created
+    }
+  }
+
+  /**
+   * Start periodic cleanup of old metric files
+   */
+  private startCleanup(): void {
+    // Clean up immediately on startup
+    this.cleanupOldMetrics().catch((error) => {
+      console.error('[FileMetricsStore] Initial cleanup failed:', error);
+    });
+
+    // Clean up every 24 hours
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupOldMetrics().catch((error) => {
+          console.error('[FileMetricsStore] Periodic cleanup failed:', error);
+        });
+      },
+      24 * 60 * 60 * 1000,
+    ); // 24 hours
+
+    // Prevent interval from keeping Node.js process alive
+    if (this.cleanupInterval.unref) {
+      this.cleanupInterval.unref();
+    }
+  }
+
+  /**
+   * Remove metric files older than maxAgeMs
+   * Prevents disk usage growth over time
+   */
+  private async cleanupOldMetrics(): Promise<void> {
+    try {
+      await this.ensureDirectory();
+
+      const files = await fs.readdir(this.storageDir);
+      const metricsFiles = files.filter((f) =>
+        f.startsWith('cache-metrics-'),
+      );
+
+      const now = Date.now();
+      let deletedCount = 0;
+
+      for (const file of metricsFiles) {
+        try {
+          const filePath = path.join(this.storageDir, file);
+          const stats = await fs.stat(filePath);
+
+          if (now - stats.mtimeMs > this.maxAgeMs) {
+            await fs.unlink(filePath);
+            deletedCount++;
+          }
+        } catch {
+          // Skip files that can't be accessed
+          continue;
+        }
+      }
+
+      if (deletedCount > 0) {
+        console.log(
+          `[FileMetricsStore] Cleaned up ${deletedCount} old metric files`,
+        );
+      }
+    } catch (error) {
+      console.error('[FileMetricsStore] Cleanup error:', error);
+      // Fail gracefully - don't throw
+    }
+  }
+
+  /**
+   * Stop cleanup interval (for shutdown)
+   */
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
     }
   }
 }

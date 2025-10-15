@@ -180,17 +180,29 @@ jobs:
       - name: Health check
         run: |
           echo "Waiting for deployment to propagate..."
-          sleep 30
 
-          # Check application health
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.NEXT_PUBLIC_SITE_URL }}/healthcheck)
+          # Retry health check up to 5 times with 30s intervals
+          # This handles CloudFront propagation delays
+          for i in {1..5}; do
+            sleep 30
+            echo "Health check attempt $i/5..."
 
-          if [ "$response" = "200" ]; then
-            echo "✅ Health check passed"
-          else
-            echo "❌ Health check failed with status $response"
-            exit 1
-          fi
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.NEXT_PUBLIC_SITE_URL }}/healthcheck)
+
+            if [ "$response" = "200" ]; then
+              echo "✅ Health check passed on attempt $i"
+              exit 0
+            fi
+
+            echo "⏳ Attempt $i failed with status $response"
+
+            if [ "$i" = "5" ]; then
+              echo "❌ Health check failed after 5 attempts"
+              exit 1
+            fi
+
+            echo "Retrying in 30 seconds..."
+          done
 
       - name: Notify deployment success
         if: success()

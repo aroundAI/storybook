@@ -117,12 +117,26 @@ jobs:
 
       - name: Health check
         run: |
-          sleep 20
-          response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.STAGING_SITE_URL }}/healthcheck)
+          echo "Waiting for staging deployment to propagate..."
 
-          if [ "$response" = "200" ]; then
-            echo "✅ Staging health check passed"
-          else
-            echo "⚠️  Staging health check failed with status $response"
-            exit 1
-          fi
+          # Retry health check up to 5 times with 20s intervals (faster for staging)
+          for i in {1..5}; do
+            sleep 20
+            echo "Health check attempt $i/5..."
+
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ secrets.STAGING_SITE_URL }}/healthcheck)
+
+            if [ "$response" = "200" ]; then
+              echo "✅ Staging health check passed on attempt $i"
+              exit 0
+            fi
+
+            echo "⏳ Attempt $i failed with status $response"
+
+            if [ "$i" = "5" ]; then
+              echo "⚠️  Staging health check failed after 5 attempts"
+              exit 1
+            fi
+
+            echo "Retrying in 20 seconds..."
+          done

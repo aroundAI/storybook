@@ -73,6 +73,8 @@ export class RedisCache implements CacheClient {
       connectTimeout: 10000,
       // Lazy connect (connect on first command)
       lazyConnect: true,
+      // Production hardening: Command timeout to prevent hanging operations
+      commandTimeout: 5000,
     });
 
     // Event listeners for monitoring
@@ -110,12 +112,38 @@ export class RedisCache implements CacheClient {
   }
 
   private async connect(): Promise<void> {
-    try {
-      await this.client.connect();
-      this.isConnected = true;
-    } catch (error) {
-      console.error('[RedisCache] Failed to connect:', error);
-      this.isConnected = false;
+    const maxRetries = 3;
+    let attempt = 0;
+
+    while (attempt < maxRetries) {
+      try {
+        await this.client.connect();
+        this.isConnected = true;
+        console.log(
+          `[RedisCache] Connected successfully on attempt ${attempt + 1}`,
+        );
+        return;
+      } catch (error) {
+        attempt++;
+        console.error(
+          `[RedisCache] Connection attempt ${attempt} failed:`,
+          error,
+        );
+
+        if (attempt === maxRetries) {
+          console.error(
+            '[RedisCache] Failed to connect after all retries:',
+            error,
+          );
+          this.isConnected = false;
+          return;
+        }
+
+        // Exponential backoff: 1s, 2s, 3s
+        const delay = 1000 * attempt;
+        console.log(`[RedisCache] Retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
   }
 
