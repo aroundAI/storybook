@@ -19,7 +19,13 @@ import {
 
 /**
  * In-memory cache for fetched parameters
- * Cache TTL: 5 minutes (balances security vs performance)
+ * Cache TTL: Configurable via PARAMETER_CACHE_TTL_MS env var (default: 5 minutes)
+ *
+ * For emergency secret rotations, you can:
+ * 1. Set PARAMETER_CACHE_TTL_MS=0 to disable caching
+ * 2. Use invalidateParameterCache() to clear specific parameters
+ * 3. Use clearParameterCache() to clear all cached parameters
+ * 4. Restart Lambda instances to force cache clear
  */
 interface CachedParameter {
   value: string;
@@ -27,7 +33,12 @@ interface CachedParameter {
 }
 
 const parameterCache = new Map<string, CachedParameter>();
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+// Configurable cache TTL (default: 5 minutes)
+// Set to 0 to disable caching for emergency rotations
+const CACHE_TTL_MS = process.env.PARAMETER_CACHE_TTL_MS
+  ? parseInt(process.env.PARAMETER_CACHE_TTL_MS, 10)
+  : 5 * 60 * 1000; // 5 minutes
 
 /**
  * SSM Client singleton
@@ -74,6 +85,42 @@ function cacheParameter(name: string, value: string): void {
 }
 
 /**
+ * Validate parameter name follows AWS SSM conventions
+ * @throws Error if parameter name is invalid
+ */
+function validateParameterName(name: string): void {
+  // Must start with /
+  if (!name.startsWith('/')) {
+    throw new Error(
+      `Invalid parameter name: must start with "/" (got: ${name})`
+    );
+  }
+
+  // Check for path traversal attempts
+  if (name.includes('/../') || name.includes('/./')) {
+    throw new Error(
+      `Invalid parameter name: path traversal detected (got: ${name})`
+    );
+  }
+
+  // AWS SSM parameter name max length is 2048 characters
+  if (name.length > 2048) {
+    throw new Error(
+      `Invalid parameter name: exceeds maximum length of 2048 characters (got: ${name.length})`
+    );
+  }
+
+  // Valid characters: a-zA-Z0-9_.-/
+  // AWS allows these characters in parameter names
+  const validNameRegex = /^[a-zA-Z0-9_.\-/]+$/;
+  if (!validNameRegex.test(name)) {
+    throw new Error(
+      `Invalid parameter name: contains invalid characters (allowed: a-zA-Z0-9_.-/) (got: ${name})`
+    );
+  }
+}
+
+/**
  * Fetch a single parameter from Parameter Store
  *
  * @param name - Parameter name (e.g., '/prod/db/password')
@@ -93,6 +140,9 @@ export async function getParameter(
   } = {},
 ): Promise<string> {
   const { withDecryption = true, skipCache = false } = options;
+
+  // Validate parameter name before making AWS API call
+  validateParameterName(name);
 
   // Check cache first (unless explicitly skipped)
   if (!skipCache) {
@@ -155,6 +205,11 @@ export async function getParameters(
   } = {},
 ): Promise<Record<string, string>> {
   const { withDecryption = true, skipCache = false } = options;
+
+  // Validate all parameter names before making AWS API calls
+  for (const name of names) {
+    validateParameterName(name);
+  }
 
   // Check cache for all parameters
   const results: Record<string, string> = {};
@@ -258,14 +313,21 @@ export async function getParameterWithFallback(
   paramName: string,
   envVarName: string,
 ): Promise<string> {
+  // Capture environment variable value atomically at function start
+  // to prevent TOCTOU race condition where env var could be deleted
+  // between check and use
+  const envValue = process.env[envVarName];
+
   try {
     return await getParameter(paramName);
-  } catch {
+  } catch (error) {
     console.warn(
       `[ParameterStore] Failed to fetch ${paramName}, falling back to env var ${envVarName}`,
+      {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      },
     );
 
-    const envValue = process.env[envVarName];
     if (!envValue) {
       throw new Error(
         `Neither Parameter Store parameter ${paramName} nor environment variable ${envVarName} is set`,
@@ -279,10 +341,45 @@ export async function getParameterWithFallback(
 /**
  * Clear the parameter cache
  *
- * Useful for testing or when you need to force refresh
+ * Useful for testing or when you need to force refresh all parameters
  */
 export function clearParameterCache(): void {
   parameterCache.clear();
+}
+
+/**
+ * Invalidate cache for specific parameter(s)
+ *
+ * Use this during emergency secret rotations to force immediate refetch
+ * of specific parameters without clearing the entire cache.
+ *
+ * @param names - Parameter name(s) to invalidate
+ *
+ * @example
+ * ```typescript
+ * // Invalidate single parameter
+ * invalidateParameterCache('/production/db/password');
+ *
+ * // Invalidate multiple parameters
+ * invalidateParameterCache([
+ *   '/production/db/password',
+ *   '/production/stripe/secret-key'
+ * ]);
+ * ```
+ */
+export function invalidateParameterCache(
+  names: string | string[],
+): void {
+  const namesToInvalidate = Array.isArray(names) ? names : [names];
+
+  for (const name of namesToInvalidate) {
+    parameterCache.delete(name);
+  }
+
+  console.log('[ParameterStore] Cache invalidated for parameters:', {
+    count: namesToInvalidate.length,
+    parameters: namesToInvalidate,
+  });
 }
 
 /**

@@ -5,8 +5,10 @@
  * Features:
  * - Sends emails via AWS SES or configured provider
  * - Comprehensive CloudWatch logging for debugging
+ * - CloudWatch metrics for monitoring failed emails
  * - Error handling with detailed error messages
  * - Supports batch processing with partial failure handling
+ * - Optional webhook alerts for DLQ-bound messages
  */
 import { createClient } from '@supabase/supabase-js';
 
@@ -35,6 +37,89 @@ const _supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
 });
+
+/**
+ * Publish custom metric to CloudWatch
+ * Tracks email failures for monitoring and alerting
+ */
+async function publishMetric(
+  metricName: string,
+  value: number,
+  unit: string = 'Count',
+) {
+  try {
+    const { CloudWatchClient, PutMetricDataCommand } = await import(
+      '@aws-sdk/client-cloudwatch'
+    );
+
+    const client = new CloudWatchClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+    });
+
+    const command = new PutMetricDataCommand({
+      Namespace: 'EmailWorker',
+      MetricData: [
+        {
+          MetricName: metricName,
+          Value: value,
+          Unit: unit,
+          Timestamp: new Date(),
+        },
+      ],
+    });
+
+    await client.send(command);
+    console.log(`[EMAIL_WORKER] Published metric: ${metricName}=${value}`);
+  } catch (error) {
+    // Don't fail the Lambda if metric publishing fails
+    console.error('[EMAIL_WORKER] Failed to publish metric:', error);
+  }
+}
+
+/**
+ * Send alert webhook for critical failures
+ * Configure via EMAIL_FAILURE_WEBHOOK_URL environment variable
+ */
+async function sendFailureAlert(messageId: string, job: EmailJob, error: string) {
+  const webhookUrl = process.env.EMAIL_FAILURE_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    // Webhook not configured, skip alert
+    return;
+  }
+
+  try {
+    const payload = {
+      alert: 'Email DLQ Warning',
+      severity: 'HIGH',
+      message: 'Email permanently failed after max retries',
+      metadata: {
+        messageId,
+        to: job.to,
+        subject: job.subject,
+        error,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      console.error('[EMAIL_WORKER] Webhook alert failed:', response.status);
+    } else {
+      console.log('[EMAIL_WORKER] Alert sent to webhook');
+    }
+  } catch (error) {
+    // Don't fail the Lambda if alert fails
+    console.error('[EMAIL_WORKER] Failed to send alert webhook:', error);
+  }
+}
 
 /**
  * Main Lambda handler
@@ -167,6 +252,12 @@ async function processEmailJob(record: SQSRecord) {
           stack: error instanceof Error ? error.stack : undefined,
         },
       );
+
+      // Publish CloudWatch metric for monitoring
+      await publishMetric('EmailPermanentFailure', 1, 'Count');
+
+      // Send alert webhook if configured
+      await sendFailureAlert(messageId, job, errorMessage);
     } else {
       console.error('[EMAIL_WORKER] Email sending failed - will retry', {
         messageId,
@@ -176,6 +267,9 @@ async function processEmailJob(record: SQSRecord) {
         error: errorMessage,
         stack: error instanceof Error ? error.stack : undefined,
       });
+
+      // Publish metric for transient failures
+      await publishMetric('EmailTransientFailure', 1, 'Count');
     }
 
     throw error; // Re-throw to mark SQS message for retry or DLQ

@@ -61,6 +61,27 @@ fi
 echo -e "${GREEN}✓${NC} AWS CLI configured"
 echo ""
 
+# Ask about KMS key preference
+echo -e "${BLUE}KMS Encryption Configuration${NC}"
+echo "----------------------------"
+echo ""
+echo "SecureString parameters are encrypted at rest. Choose encryption key:"
+echo "  1) AWS-managed key (alias/aws/ssm) - FREE"
+echo "  2) Custom KMS key - \$1/month + better control"
+echo ""
+read -p "Use AWS-managed key? (Y/n): " use_default_kms
+USE_DEFAULT_KMS=${use_default_kms:-Y}
+
+if [[ "$USE_DEFAULT_KMS" =~ ^[Yy]$ ]]; then
+  KMS_KEY_ID=""  # Empty means use AWS-managed key
+  echo -e "${GREEN}✓${NC} Using AWS-managed encryption key (free)"
+else
+  read -p "Enter custom KMS Key ID (or ARN): " kms_input
+  KMS_KEY_ID="$kms_input"
+  echo -e "${GREEN}✓${NC} Using custom KMS key: ${KMS_KEY_ID}"
+fi
+echo ""
+
 # Determine .env file to use
 ENV_FILE=""
 if [ "$STAGE" == "production" ]; then
@@ -90,6 +111,35 @@ if [ -z "$ENV_FILE" ] || [ ! -f "$ENV_FILE" ]; then
   echo ""
 fi
 
+# Function to sanitize input (prevent command injection)
+sanitize_input() {
+  local input="$1"
+  # Remove potentially dangerous characters while preserving valid secret characters
+  # Keep: alphanumeric, common symbols used in secrets, dots, dashes, underscores
+  # Remove: shell metacharacters that could enable command injection
+  echo "$input" | sed 's/[;&|`$(){}[\]<>]//g'
+}
+
+# Function to validate parameter value
+validate_parameter_value() {
+  local value="$1"
+  local max_length=4096  # AWS SSM parameter max size
+
+  # Check if value is too long
+  if [ ${#value} -gt $max_length ]; then
+    echo -e "${RED}Error: Value exceeds maximum length ($max_length characters)${NC}" >&2
+    return 1
+  fi
+
+  # Check for null bytes (invalid in AWS SSM)
+  if echo "$value" | grep -q $'\x00'; then
+    echo -e "${RED}Error: Value contains null bytes${NC}" >&2
+    return 1
+  fi
+
+  return 0
+}
+
 # Function to get value from .env file or prompt user
 get_value() {
   local key="$1"
@@ -113,7 +163,48 @@ get_value() {
     fi
   fi
 
+  # Sanitize input to prevent command injection
+  value=$(sanitize_input "$value")
+
+  # Validate the sanitized value
+  if [ -n "$value" ] && ! validate_parameter_value "$value"; then
+    echo -e "${YELLOW}Warning: Invalid value for ${key}, skipping${NC}"
+    echo ""
+  fi
+
   echo "$value"
+}
+
+# Function to validate parameter name
+validate_parameter_name() {
+  local name="$1"
+  local max_length=2048  # AWS SSM parameter name max length
+
+  # Must start with /
+  if [[ ! "$name" =~ ^/ ]]; then
+    echo -e "${RED}Error: Parameter name must start with /${NC}" >&2
+    return 1
+  fi
+
+  # Check for path traversal attempts
+  if [[ "$name" =~ \.\./  ]] || [[ "$name" =~ /\./ ]]; then
+    echo -e "${RED}Error: Parameter name contains path traversal${NC}" >&2
+    return 1
+  fi
+
+  # Check length
+  if [ ${#name} -gt $max_length ]; then
+    echo -e "${RED}Error: Parameter name exceeds maximum length ($max_length)${NC}" >&2
+    return 1
+  fi
+
+  # Valid characters: a-zA-Z0-9_.-/
+  if [[ ! "$name" =~ ^[a-zA-Z0-9_.\-/]+$ ]]; then
+    echo -e "${RED}Error: Parameter name contains invalid characters${NC}" >&2
+    return 1
+  fi
+
+  return 0
 }
 
 # Function to store parameter in SSM
@@ -123,6 +214,12 @@ store_parameter() {
   local description="$3"
   local type="${4:-SecureString}"
 
+  # Validate parameter name
+  if ! validate_parameter_name "$name"; then
+    echo -e "${RED}Skipping ${name} (invalid parameter name)${NC}"
+    return 1
+  fi
+
   if [ -z "$value" ]; then
     echo -e "${YELLOW}Skipping ${name} (no value provided)${NC}"
     return
@@ -130,26 +227,21 @@ store_parameter() {
 
   echo -n "Storing ${name}... "
 
+  # Build AWS CLI command with optional KMS key
+  local base_cmd="aws ssm put-parameter --name \"$name\" --value \"$value\" --type \"$type\" --description \"$description\" --tier \"Standard\""
+
+  # Add KMS key ID only for SecureString parameters and if custom key is specified
+  if [ "$type" == "SecureString" ] && [ -n "$KMS_KEY_ID" ]; then
+    base_cmd="$base_cmd --key-id \"$KMS_KEY_ID\""
+  fi
+
   # Check if parameter already exists
   if aws ssm get-parameter --name "$name" &> /dev/null; then
     # Update existing parameter
-    aws ssm put-parameter \
-      --name "$name" \
-      --value "$value" \
-      --type "$type" \
-      --description "$description" \
-      --overwrite \
-      --tier "Standard" \
-      > /dev/null
+    eval "$base_cmd --overwrite" > /dev/null
   else
     # Create new parameter
-    aws ssm put-parameter \
-      --name "$name" \
-      --value "$value" \
-      --type "$type" \
-      --description "$description" \
-      --tier "Standard" \
-      > /dev/null
+    eval "$base_cmd" > /dev/null
   fi
 
   echo -e "${GREEN}✓${NC}"
