@@ -243,7 +243,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
           targetUserId,
           message: messageContent,
           data: messageData,
-        } = body;
+        } = validatedMessage;
 
         if (!targetUserId) {
           await apiGatewayClient.send(
@@ -501,7 +501,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             ConnectionId: connectionId,
             Data: JSON.stringify({
               type: 'echo',
-              message: body,
+              message: validatedMessage,
             }),
           }),
         );
