@@ -533,6 +533,37 @@ export default $config({
       }),
     });
 
+    // Grant SSM Parameter Store read permission to web Lambda for secure secret management
+    // This allows Lambda to fetch secrets at runtime instead of storing them in environment variables
+    // Benefits: No CloudTrail exposure, easy secret rotation, fine-grained access control
+    new aws.iam.RolePolicy(`WebServerParameterStorePolicy`, {
+      role: web.nodes.server.role.name,
+      policy: $jsonStringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Effect: "Allow",
+            Action: [
+              "ssm:GetParameter",
+              "ssm:GetParameters",
+              "ssm:GetParametersByPath",
+            ],
+            Resource: `arn:aws:ssm:${process.env.AWS_REGION || 'us-east-1'}:${$aws.accountId}:parameter/${stage}/*`,
+          },
+          {
+            Effect: "Allow",
+            Action: ["kms:Decrypt"],
+            Resource: kmsKey.arn,
+            Condition: {
+              StringEquals: {
+                "kms:ViaService": `ssm.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`,
+              },
+            },
+          },
+        ],
+      }),
+    });
+
     // SNS Topic for CloudWatch Alarm Notifications (optional)
     // Configure email subscription via ALARM_EMAIL environment variable
     let alarmTopic: aws.sns.Topic | undefined;
