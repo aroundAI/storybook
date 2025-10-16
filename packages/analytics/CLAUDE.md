@@ -2,6 +2,22 @@
 
 Analytics package providing a unified interface for tracking events, page views, and user identification across multiple analytics providers.
 
+## Deployment Considerations
+
+**Lambda/Serverless Compatible**: Analytics works in serverless environments (AWS Lambda via SST).
+
+**Provider Configuration**:
+```bash
+# Configure analytics provider via environment variables
+ANALYTICS_PROVIDER=posthog  # or 'segment', 'mixpanel', 'google-analytics'
+NEXT_PUBLIC_POSTHOG_KEY=phc_xxxxx
+NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
+```
+
+**Cold Starts**: Analytics initialization happens asynchronously to avoid blocking Lambda execution.
+
+**Server-Side Tracking**: Use `@kit/analytics/server` for reliable tracking in Lambda functions.
+
 ## Architecture
 
 - **AnalyticsManager**: Central manager orchestrating multiple analytics providers

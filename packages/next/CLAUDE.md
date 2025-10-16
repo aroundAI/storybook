@@ -2,6 +2,35 @@
 
 This file contains instructions for working with Next.js utilities including server actions and route handlers.
 
+## Lambda/Serverless Deployment
+
+These utilities are **optimized for AWS Lambda** via SST + OpenNext 3.8.0:
+
+**Server Actions** (`enhanceAction`):
+- Automatic timeout handling (Lambda 30s limit)
+- Error serialization for Lambda responses
+- Request validation and authentication
+
+**Route Handlers** (`enhanceRouteHandler`):
+- Optimized for API Gateway integration
+- Proper error responses for Lambda
+- Works with CloudFront caching
+
+**Cold Start Optimization**:
+```typescript
+// Server actions are cached after first invocation
+export const myAction = enhanceAction(
+  async (data, user) => {
+    // Executes in Lambda
+    // Memory: 1024MB (configured in sst.config.ts)
+    // Timeout: 30 seconds
+  },
+  { schema: MySchema, auth: true }
+);
+```
+
+**See**: `apps/web/CLAUDE.md` for Lambda deployment details
+
 ## Server Actions Implementation
 
 Always use `enhanceAction` from `@packages/next/src/actions/index.ts`:

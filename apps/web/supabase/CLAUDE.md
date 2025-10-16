@@ -1,6 +1,34 @@
-# Supabase Database Schema Management
+# Database Schema Management
 
-This file contains guidance for working with database schemas, migrations, and Supabase development workflows.
+This file contains guidance for working with database schemas, migrations, and database development workflows (Supabase or vendor-agnostic).
+
+## Provider-Agnostic Database Patterns
+
+This platform supports **multiple database providers** via environment variables:
+
+```bash
+# Option 1: Supabase (recommended for development)
+DATABASE_PROVIDER=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-key
+
+# Option 2: PostgreSQL (AWS RDS, self-hosted)
+DATABASE_PROVIDER=postgresql
+POSTGRES_HOST=your-rds-endpoint.amazonaws.com
+POSTGRES_PORT=5432
+POSTGRES_DB=postgres
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=secure-password
+
+# Option 3: MySQL (for specific use cases)
+DATABASE_PROVIDER=mysql
+MYSQL_HOST=your-mysql-endpoint.amazonaws.com
+# ... MySQL config
+```
+
+**Zero code changes required** - the `@kit/providers-database` package handles provider switching automatically.
+
+**Migration Strategies**: See `SUPABASE_VENDOR_LOCKIN_REPORT.md` for detailed migration guides between providers.
 
 ## Schema Organization
 
