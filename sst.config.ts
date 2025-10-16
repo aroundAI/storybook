@@ -235,19 +235,34 @@ export default $config({
       console.log(`⚠️  Skipping SES setup (requires DOMAIN_NAME and HOSTED_ZONE_ID)`);
     }
 
-    // AWS S3 bucket for file storage
-    const bucket = new sst.aws.Bucket("Storage", {
-      access: "public",
-      transform: {
-        bucket: {
-          cors: [{
-            allowedHeaders: ["*"],
-            allowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
-            allowedOrigins: ["*"],
-            maxAge: 3000,
-          }],
+    // Dynamically create S3 buckets from environment variable
+    // Set S3_BUCKETS in .env to specify which buckets to create (comma-separated)
+    // Example: S3_BUCKETS=avatars,documents,images
+    const bucketsToCreate = (process.env.S3_BUCKETS || 'storage')
+      .split(',')
+      .map(name => name.trim())
+      .filter(Boolean);
+
+    console.log(`📦 Creating ${bucketsToCreate.length} S3 bucket(s): ${bucketsToCreate.join(', ')}`);
+
+    // Create buckets dynamically
+    const buckets = new Map<string, ReturnType<typeof sst.aws.Bucket>>();
+    bucketsToCreate.forEach(bucketName => {
+      const bucket = new sst.aws.Bucket(bucketName.charAt(0).toUpperCase() + bucketName.slice(1), {
+        access: "public",
+        transform: {
+          bucket: {
+            cors: [{
+              allowedHeaders: ["*"],
+              allowedMethods: ["GET", "PUT", "POST", "DELETE", "HEAD"],
+              allowedOrigins: ["*"],
+              maxAge: 3000,
+            }],
+          },
         },
-      },
+      });
+      buckets.set(bucketName, bucket);
+      console.log(`✓ Created S3 bucket: ${bucketName}`);
     });
 
     // Dead Letter Queue for failed email messages
@@ -384,7 +399,7 @@ export default $config({
       timeout: "60 seconds", // 60 seconds for email sending
       memory: "512 MB",
       architecture: "arm64",
-      link: [bucket, queue],
+      link: [...Array.from(buckets.values()), queue],
       // Grant SES permissions using SST's permissions property
       permissions: [
         {
@@ -438,7 +453,7 @@ export default $config({
 
       // Link AWS resources
       link: [
-        bucket,
+        ...Array.from(buckets.values()),
         queue,
         connectionsTable,
         websocket,
@@ -471,7 +486,14 @@ export default $config({
         REALTIME_PROVIDER: process.env.REALTIME_PROVIDER || "websocket",
 
         // AWS resource ARNs and configuration
-        AWS_S3_BUCKET: bucket.name,
+        // Dynamically add bucket environment variables
+        // Format: AWS_S3_BUCKET_<UPPERCASE_NAME> (e.g., AWS_S3_BUCKET_AVATARS, AWS_S3_BUCKET_DOCUMENTS)
+        ...Object.fromEntries(
+          Array.from(buckets.entries()).map(([name, bucket]) => [
+            `AWS_S3_BUCKET_${name.toUpperCase().replace(/-/g, '_')}`,
+            bucket.name
+          ])
+        ),
         AWS_SQS_QUEUE_URL: queue.url,
         AWS_WEBSOCKET_ENDPOINT: websocket.url,
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
@@ -1047,7 +1069,9 @@ export default $config({
     // Output the application URL and resource info
     return {
       url: web.url,
-      bucket: bucket.name,
+      buckets: Object.fromEntries(
+        Array.from(buckets.entries()).map(([name, bucket]) => [name, bucket.name])
+      ),
       queue: queue.url,
       emailDLQ: emailDLQ.url,
       websocket: websocket.url,

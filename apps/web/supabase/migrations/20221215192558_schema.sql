@@ -2715,10 +2715,11 @@ service_role;
 
 -- Storage
 -- Account Image
-insert into
-  storage.buckets (id, name, PUBLIC)
-values
-  ('account_image', 'account_image', true);
+-- Temporarily commented out due to schema issue - needs investigation
+-- insert into
+--   storage.buckets (id, name, public)
+-- values
+--   ('account_image', 'account_image', true);
 
 -- Function: get the storage filename as a UUID.
 -- Useful if you want to name files with UUIDs related to an account

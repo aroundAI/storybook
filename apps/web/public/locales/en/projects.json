@@ -1,0 +1,31 @@
+{
+  "pageTitle": "Projects",
+  "pageDescription": "Manage and organize your projects",
+  "createProject": "Create Project",
+  "createProjectDescription": "Create a new project to organize your work",
+  "createSuccess": "Project created successfully",
+  "createError": "Failed to create project: {{error}}",
+  "updateSuccess": "Project updated successfully",
+  "updateError": "Failed to update project: {{error}}",
+  "deleteSuccess": "Project deleted successfully",
+  "deleteError": "Failed to delete project: {{error}}",
+  "nameLabel": "Project Name",
+  "descriptionLabel": "Description",
+  "descriptionHelp": "Optional description to help identify this project",
+  "slugLabel": "Project Slug",
+  "slugHelp": "URL-friendly identifier (lowercase letters, numbers, and hyphens only)",
+  "emptyState": "No projects yet",
+  "emptyStateDescription": "Create your first project to get started",
+  "noMembers": "No members in this project",
+  "role": {
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member",
+    "viewer": "Viewer"
+  },
+  "status": {
+    "active": "Active",
+    "archived": "Archived",
+    "deleted": "Deleted"
+  }
+}

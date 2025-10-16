@@ -64,7 +64,8 @@
     "dashboard": "Dashboard",
     "settings": "Settings",
     "profile": "Profile",
-    "application": "Application"
+    "application": "Application",
+    "projects": "Projects"
   },
   "roles": {
     "owner": {
