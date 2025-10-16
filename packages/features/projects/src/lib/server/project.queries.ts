@@ -50,6 +50,14 @@ export const getProject = cache(async (projectId: string) => {
     .single();
 
   if (error) {
+    // PGRST116 = "JSON object requested, multiple (or no) rows returned"
+    // This means the project doesn't exist or user doesn't have access
+    if (error.code === 'PGRST116') {
+      logger.info({ ...ctx, error }, 'Project not found or access denied');
+      return null;
+    }
+
+    // For actual database errors, still throw
     logger.error({ ...ctx, error }, 'Failed to fetch project');
     throw new Error(`Failed to fetch project: ${error.message}`);
   }
@@ -70,45 +78,36 @@ export const getProjectMembers = cache(async (projectId: string) => {
 
   const client = getSupabaseServerClient();
 
-  const { data, error } = await client
-    .from('project_members')
-    .select(
-      `
-      *,
-      user:user_id (
-        id,
-        name:accounts!inner(name),
-        email:accounts!inner(email),
-        picture_url:accounts!inner(picture_url)
-      )
-    `,
-    )
-    .eq('project_id', projectId);
+  // Use the database function to get members with user info
+  const { data, error } = await client.rpc('get_project_members', {
+    target_project_id: projectId,
+  });
 
   if (error) {
     logger.error({ ...ctx, error }, 'Failed to fetch project members');
     throw new Error(`Failed to fetch project members: ${error.message}`);
   }
 
-  logger.info({ ...ctx, count: data?.length || 0 }, 'Project members fetched');
+  if (!data) {
+    logger.warn(ctx, 'No project members found');
+    return [];
+  }
+
+  logger.info({ ...ctx, count: data.length }, 'Project members fetched');
 
   // Transform the data to match our interface
   const members = data.map((member) => ({
-    ...member,
+    id: member.id,
+    project_id: member.project_id,
+    user_id: member.user_id,
+    role: member.role,
+    created_at: member.created_at,
+    updated_at: member.updated_at,
     user: {
       id: member.user_id,
-      name:
-        (member.user as unknown as { name: Array<{ name: string }> })?.name?.[0]
-          ?.name || null,
-      email:
-        (member.user as unknown as { email: Array<{ email: string }> })
-          ?.email?.[0]?.email || null,
-      picture_url:
-        (
-          member.user as unknown as {
-            picture_url: Array<{ picture_url: string }>;
-          }
-        )?.picture_url?.[0]?.picture_url || null,
+      name: member.user_name,
+      email: member.user_email,
+      picture_url: member.user_picture_url,
     },
   }));
 
@@ -222,3 +221,71 @@ export const getUserProjectRole = cache(async (projectId: string) => {
 
   return data.role;
 });
+
+/**
+ * Get available users to add to a project (account members not already in project)
+ */
+export const getAvailableProjectMembers = cache(
+  async (projectId: string, accountSlug: string) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'projects.getAvailableMembers',
+      projectId,
+      accountSlug,
+    };
+
+    logger.info(ctx, 'Fetching available project members');
+
+    const client = getSupabaseServerClient();
+
+    // Get all account members
+    const { data: accountMembers, error: accountError } = await client.rpc(
+      'get_account_members',
+      {
+        account_slug: accountSlug,
+      },
+    );
+
+    if (accountError) {
+      logger.error(
+        { ...ctx, error: accountError },
+        'Failed to fetch account members',
+      );
+      throw new Error(
+        `Failed to fetch account members: ${accountError.message}`,
+      );
+    }
+
+    // Get existing project members
+    const { data: projectMembers, error: projectError } = await client
+      .from('project_members')
+      .select('user_id')
+      .eq('project_id', projectId);
+
+    if (projectError) {
+      logger.error(
+        { ...ctx, error: projectError },
+        'Failed to fetch project members',
+      );
+      throw new Error(
+        `Failed to fetch project members: ${projectError.message}`,
+      );
+    }
+
+    // Filter out users already in the project
+    const projectMemberIds = new Set(
+      projectMembers?.map((m) => m.user_id) || [],
+    );
+    const availableMembers =
+      accountMembers?.filter(
+        (member) => !projectMemberIds.has(member.user_id),
+      ) || [];
+
+    logger.info(
+      { ...ctx, count: availableMembers.length },
+      'Available project members fetched',
+    );
+
+    return availableMembers;
+  },
+);

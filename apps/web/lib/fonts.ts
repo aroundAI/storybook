@@ -30,9 +30,6 @@ export { sans, heading };
  * @param theme
  */
 export function getFontsClassName(theme?: string) {
-  const dark = theme === 'dark';
-  const light = !dark;
-
   const font = [sans.variable, heading.variable].reduce<string[]>(
     (acc, curr) => {
       if (acc.includes(curr)) return acc;
@@ -42,8 +39,14 @@ export function getFontsClassName(theme?: string) {
     [],
   );
 
-  return cn('bg-background min-h-screen antialiased', ...font, {
-    dark,
-    light,
-  });
+  // Only add explicit theme classes for 'light' or 'dark', not 'system'
+  // When theme is 'system', let next-themes handle it on the client to avoid hydration mismatch
+  const themeClasses =
+    theme === 'dark'
+      ? { dark: true }
+      : theme === 'light'
+        ? { light: true }
+        : {};
+
+  return cn('bg-background min-h-screen antialiased', ...font, themeClasses);
 }

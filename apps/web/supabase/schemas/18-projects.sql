@@ -89,136 +89,6 @@ before insert or update on public.project_members
 for each row execute function public.trigger_set_user_tracking();
 
 -- ==================================
--- RLS Policies
--- ==================================
-
--- Enable RLS
-alter table public.projects enable row level security;
-alter table public.project_members enable row level security;
-
--- Revoke default permissions
-revoke all on public.projects from authenticated, service_role;
-revoke all on public.project_members from authenticated, service_role;
-
--- Grant specific permissions
-grant select, insert, update, delete on table public.projects to authenticated;
-grant select, insert, update, delete on table public.project_members to authenticated;
-
--- Projects policies
-create policy "projects_read" on public.projects for select
-  to authenticated using (
-    -- User has account access
-    public.has_role_on_account(account_id)
-    or
-    -- User is project member
-    exists (
-      select 1 from public.project_members
-      where project_id = projects.id
-      and user_id = auth.uid()
-    )
-  );
-
-create policy "projects_create" on public.projects for insert
-  to authenticated with check (
-    -- Must have account permissions
-    public.has_permission(auth.uid(), account_id, 'billing.manage'::app_permissions)
-  );
-
-create policy "projects_update" on public.projects for update
-  to authenticated using (
-    exists (
-      select 1 from public.project_members
-      where project_id = projects.id
-      and user_id = auth.uid()
-      and role in ('owner', 'admin')
-    )
-  )
-  with check (
-    exists (
-      select 1 from public.project_members
-      where project_id = projects.id
-      and user_id = auth.uid()
-      and role in ('owner', 'admin')
-    )
-  );
-
-create policy "projects_delete" on public.projects for delete
-  to authenticated using (
-    exists (
-      select 1 from public.project_members
-      where project_id = projects.id
-      and user_id = auth.uid()
-      and role = 'owner'
-    )
-  );
-
--- Project members policies
-create policy "project_members_read" on public.project_members for select
-  to authenticated using (
-    -- User is a member
-    user_id = auth.uid()
-    or
-    -- User has account access
-    exists (
-      select 1 from public.projects
-      where id = project_members.project_id
-      and public.has_role_on_account(account_id)
-    )
-    or
-    -- User is another project member
-    exists (
-      select 1 from public.project_members pm
-      where pm.project_id = project_members.project_id
-      and pm.user_id = auth.uid()
-    )
-  );
-
-create policy "project_members_create" on public.project_members for insert
-  to authenticated with check (
-    -- Must be admin or owner
-    exists (
-      select 1 from public.project_members
-      where project_id = project_members.project_id
-      and user_id = auth.uid()
-      and role in ('owner', 'admin')
-    )
-  );
-
-create policy "project_members_update" on public.project_members for update
-  to authenticated using (
-    -- Must be admin or owner
-    exists (
-      select 1 from public.project_members pm
-      where pm.project_id = project_members.project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  )
-  with check (
-    -- Must be admin or owner
-    exists (
-      select 1 from public.project_members pm
-      where pm.project_id = project_members.project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  );
-
-create policy "project_members_delete" on public.project_members for delete
-  to authenticated using (
-    -- Self-removal allowed
-    user_id = auth.uid()
-    or
-    -- Admin/owner can remove others
-    exists (
-      select 1 from public.project_members pm
-      where pm.project_id = project_members.project_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin')
-    )
-  );
-
--- ==================================
 -- Helper Functions
 -- ==================================
 
@@ -240,6 +110,24 @@ set search_path = '' as $$
 $$;
 
 grant execute on function public.has_role_on_project(uuid, public.project_role) to authenticated;
+
+-- Check if user is owner of project (bypasses RLS to avoid circular dependency)
+create or replace function public.is_project_owner(
+  target_project_id uuid
+) returns boolean
+language sql
+security definer
+set search_path = '' as $$
+  select exists(
+    select 1
+    from public.project_members
+    where project_id = target_project_id
+      and user_id = auth.uid()
+      and role = 'owner'
+  );
+$$;
+
+grant execute on function public.is_project_owner(uuid) to authenticated;
 
 -- Check if user can perform action on project
 create or replace function public.can_perform_project_action(
@@ -293,6 +181,7 @@ $$;
 grant execute on function public.can_perform_project_action(uuid, public.project_action) to authenticated;
 
 -- Get projects for account with user role
+-- SECURITY DEFINER to bypass RLS, but with explicit access control
 create or replace function public.get_account_projects(
   target_account_id uuid
 ) returns table (
@@ -307,9 +196,29 @@ create or replace function public.get_account_projects(
   updated_at timestamp with time zone,
   user_role public.project_role
 )
-language sql
-security invoker
+language plpgsql
+security definer
 set search_path = '' as $$
+begin
+  -- CRITICAL: Validate user has access to this account
+  -- Check both personal accounts (primary owner) and team accounts (membership)
+  if not (
+    -- Personal account: user is the primary owner
+    exists(
+      select 1 from public.accounts
+      where accounts.id = target_account_id
+        and primary_owner_user_id = auth.uid()
+        and is_personal_account = true
+    )
+    or
+    -- Team account: user has a role
+    public.has_role_on_account(target_account_id)
+  ) then
+    raise exception 'Access denied: insufficient permissions for account';
+  end if;
+
+  -- Now safe to return projects (bypassing RLS)
+  return query
   select
     p.id,
     p.account_id,
@@ -327,11 +236,213 @@ set search_path = '' as $$
     and pm.user_id = auth.uid()
   where p.account_id = target_account_id
     and p.status = 'active'
-    and (
-      public.has_role_on_account(p.account_id)
-      or pm.user_id is not null
-    )
   order by p.created_at desc;
+end;
 $$;
 
 grant execute on function public.get_account_projects(uuid) to authenticated;
+
+-- Get project members with user information
+-- SECURITY DEFINER to bypass RLS and handle account joins
+create or replace function public.get_project_members(
+  target_project_id uuid
+) returns table (
+  id uuid,
+  project_id uuid,
+  user_id uuid,
+  role public.project_role,
+  created_at timestamp with time zone,
+  updated_at timestamp with time zone,
+  user_name varchar(255),
+  user_email varchar(320),
+  user_picture_url varchar(1000)
+)
+language plpgsql
+security definer
+set search_path = '' as $$
+begin
+  -- Return project members with user info from accounts
+  return query
+  select
+    pm.id,
+    pm.project_id,
+    pm.user_id,
+    pm.role,
+    pm.created_at,
+    pm.updated_at,
+    a.name as user_name,
+    a.email as user_email,
+    a.picture_url as user_picture_url
+  from public.project_members pm
+  join public.accounts a on a.id = pm.user_id
+  where pm.project_id = target_project_id
+  order by pm.created_at asc;
+end;
+$$;
+
+grant execute on function public.get_project_members(uuid) to authenticated;
+
+-- ==================================
+-- RLS Policies
+-- ==================================
+
+-- Enable RLS
+alter table public.projects enable row level security;
+alter table public.project_members enable row level security;
+
+-- Revoke default permissions
+revoke all on public.projects from authenticated, service_role;
+revoke all on public.project_members from authenticated, service_role;
+
+-- Grant specific permissions
+grant select, insert, update, delete on table public.projects to authenticated;
+grant select, insert, update, delete on table public.project_members to authenticated;
+
+-- Projects policies
+-- Note: Avoid circular RLS dependencies between projects and project_members
+create policy "projects_read" on public.projects for select
+  to authenticated using (
+    -- Personal account: user is the primary owner
+    exists(
+      select 1 from public.accounts
+      where accounts.id = projects.account_id
+        and primary_owner_user_id = auth.uid()
+        and is_personal_account = true
+    )
+    or
+    -- Team account: user has a role
+    public.has_role_on_account(account_id)
+  );
+
+create policy "projects_create" on public.projects for insert
+  to authenticated with check (
+    -- Personal account: user is the primary owner
+    exists(
+      select 1 from public.accounts
+      where accounts.id = projects.account_id
+        and primary_owner_user_id = auth.uid()
+        and is_personal_account = true
+    )
+    or
+    -- Team account: user has a role
+    public.has_role_on_account(account_id)
+  );
+
+create policy "projects_update" on public.projects for update
+  to authenticated using (
+    exists (
+      select 1 from public.project_members
+      where project_id = projects.id
+      and user_id = auth.uid()
+      and role in ('owner', 'admin')
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.project_members
+      where project_id = projects.id
+      and user_id = auth.uid()
+      and role in ('owner', 'admin')
+    )
+  );
+
+create policy "projects_delete" on public.projects for delete
+  to authenticated using (
+    public.is_project_owner(id)
+  );
+
+-- Project members policies
+-- FIXED: Avoid circular RLS dependencies by checking access via projects table
+create policy "project_members_read" on public.project_members for select
+  to authenticated using (
+    -- User can see themselves
+    user_id = auth.uid()
+    or
+    -- User can see other members if they have access to the project
+    exists (
+      select 1 from public.projects p
+      where p.id = project_members.project_id
+      and (
+        -- Personal account check
+        exists(
+          select 1 from public.accounts a
+          where a.id = p.account_id
+          and a.primary_owner_user_id = auth.uid()
+          and a.is_personal_account = true
+        )
+        or
+        -- Team account check
+        public.has_role_on_account(p.account_id)
+      )
+    )
+  );
+
+create policy "project_members_create" on public.project_members for insert
+  to authenticated with check (
+    -- Must be admin or owner
+    exists (
+      select 1 from public.project_members
+      where project_id = project_members.project_id
+      and user_id = auth.uid()
+      and role in ('owner', 'admin')
+    )
+  );
+
+create policy "project_members_update" on public.project_members for update
+  to authenticated using (
+    -- Must be admin or owner
+    exists (
+      select 1 from public.project_members pm
+      where pm.project_id = project_members.project_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin')
+    )
+  )
+  with check (
+    -- Must be admin or owner
+    exists (
+      select 1 from public.project_members pm
+      where pm.project_id = project_members.project_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin')
+    )
+  );
+
+create policy "project_members_delete" on public.project_members for delete
+  to authenticated using (
+    -- Self-removal allowed
+    user_id = auth.uid()
+    or
+    -- Admin/owner can remove others
+    exists (
+      select 1 from public.project_members pm
+      where pm.project_id = project_members.project_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin')
+    )
+  );
+
+-- ==================================
+-- Trigger: Auto-add Creator as Owner
+-- ==================================
+
+-- Trigger function to automatically add project creator as owner
+create or replace function public.add_project_creator_as_owner()
+returns trigger
+language plpgsql
+security definer
+set search_path = '' as $$
+begin
+  -- Add the project creator as owner
+  insert into public.project_members (project_id, user_id, role)
+  values (new.id, new.created_by, 'owner');
+
+  return new;
+end;
+$$;
+
+-- Trigger to execute after project insert
+create trigger add_project_owner
+after insert on public.projects
+for each row
+execute function public.add_project_creator_as_owner();

@@ -722,16 +722,25 @@ create
 or replace function public.is_team_member (account_id uuid, user_id uuid) returns boolean language sql security definer
 set
   search_path = '' as $$
+    -- Check if both current user and target user are members of the same account
+    -- This avoids calling has_role_on_account to prevent circular RLS dependencies
     select
         exists(
             select
                 1
             from
-                public.accounts_memberships membership
+                public.accounts_memberships current_user_membership
             where
-                public.has_role_on_account(account_id)
-                and membership.user_id = is_team_member.user_id
-                and membership.account_id = is_team_member.account_id);
+                current_user_membership.user_id = auth.uid()
+                and current_user_membership.account_id = is_team_member.account_id)
+        and exists(
+            select
+                1
+            from
+                public.accounts_memberships target_user_membership
+            where
+                target_user_membership.user_id = is_team_member.user_id
+                and target_user_membership.account_id = is_team_member.account_id);
 $$;
 
 grant

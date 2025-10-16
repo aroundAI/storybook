@@ -53,33 +53,7 @@ export const createProjectAction = enhanceAction(
       throw new Error(`Failed to create project: ${projectError.message}`);
     }
 
-    // Get current user
-    const {
-      data: { user },
-    } = await client.auth.getUser();
-
-    if (!user) {
-      logger.error(ctx, 'User not authenticated');
-      throw new Error('User not authenticated');
-    }
-
-    // Add creator as project owner
-    const { error: memberError } = await client.from('project_members').insert({
-      project_id: project.id,
-      user_id: user.id,
-      role: 'owner',
-    });
-
-    if (memberError) {
-      logger.error(
-        { ...ctx, error: memberError },
-        'Failed to add project owner',
-      );
-      // Clean up the project if we can't add the owner
-      await client.from('projects').delete().eq('id', project.id);
-      throw new Error(`Failed to add project owner: ${memberError.message}`);
-    }
-
+    // Note: Project creator is automatically added as owner via database trigger
     logger.info(
       { ...ctx, projectId: project.id },
       'Project created successfully',
@@ -207,11 +181,9 @@ export const addProjectMemberAction = enhanceAction(
       'Project member added successfully',
     );
 
-    // Revalidate the project members page
-    revalidatePath(
-      `/home/[account]/projects/${data.project_id}/members`,
-      'page',
-    );
+    // Revalidate the project detail pages
+    revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
+    revalidatePath(`/home/(user)/projects/${data.project_id}`, 'page');
 
     return { success: true, data: member };
   },
@@ -250,11 +222,9 @@ export const updateProjectMemberAction = enhanceAction(
       'Project member updated successfully',
     );
 
-    // Revalidate the project members page
-    revalidatePath(
-      `/home/[account]/projects/${data.project_id}/members`,
-      'page',
-    );
+    // Revalidate the project detail pages
+    revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
+    revalidatePath(`/home/(user)/projects/${data.project_id}`, 'page');
 
     return { success: true, data: member };
   },
@@ -291,11 +261,9 @@ export const removeProjectMemberAction = enhanceAction(
       'Project member removed successfully',
     );
 
-    // Revalidate the project members page
-    revalidatePath(
-      `/home/[account]/projects/${data.project_id}/members`,
-      'page',
-    );
+    // Revalidate the project detail pages
+    revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
+    revalidatePath(`/home/(user)/projects/${data.project_id}`, 'page');
 
     return { success: true };
   },

@@ -918,6 +918,20 @@ export type Database = {
         Args: { p_id: string };
         Returns: Json;
       };
+      get_project_members: {
+        Args: { target_project_id: string };
+        Returns: {
+          created_at: string;
+          id: string;
+          project_id: string;
+          role: Database['public']['Enums']['project_role'];
+          updated_at: string;
+          user_email: string;
+          user_id: string;
+          user_name: string;
+          user_picture_url: string;
+        }[];
+      };
       get_upper_system_role: {
         Args: Record<PropertyKey, never>;
         Returns: string;
@@ -975,6 +989,10 @@ export type Database = {
       };
       is_mfa_compliant: {
         Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
+      is_project_owner: {
+        Args: { target_project_id: string };
         Returns: boolean;
       };
       is_set: {

@@ -10,6 +10,10 @@
   },
   "exports": {
     "./components": "./src/components/index.ts",
+    "./components/projects-list": "./src/components/projects-list.tsx",
+    "./components/project-members-list": "./src/components/project-members-list.tsx",
+    "./components/update-project-form": "./src/components/update-project-form.tsx",
+    "./components/add-project-member-form": "./src/components/add-project-member-form.tsx",
     "./hooks/*": "./src/hooks/*.ts",
     "./schemas": "./src/lib/schemas/project.schema.ts",
     "./types": "./src/lib/types.ts",
