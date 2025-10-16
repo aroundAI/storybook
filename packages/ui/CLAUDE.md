@@ -2,6 +2,27 @@
 
 This file contains instructions for working with UI components, styling, and forms.
 
+## Deployment Considerations
+
+**Lambda/CloudFront Optimization**:
+- UI components are server-rendered in Lambda
+- Static assets served via CloudFront CDN
+- CSS optimized with Tailwind CSS 4
+
+**Bundle Size**:
+- UI components are tree-shakeable
+- Import only what you need: `import { Button } from '@kit/ui/button'`
+- Avoid: `import * from '@kit/ui'` (increases Lambda bundle size)
+
+**Cold Starts**:
+- UI components add minimal overhead (~5-10ms)
+- Use dynamic imports for heavy components:
+  ```typescript
+  const HeavyChart = dynamic(() => import('@kit/ui/chart'), {
+    loading: () => <Spinner />,
+  });
+  ```
+
 ## Core UI Library
 
 Import from `packages/ui/src/`:
