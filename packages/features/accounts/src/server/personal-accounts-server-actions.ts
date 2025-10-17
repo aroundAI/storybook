@@ -3,6 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
@@ -79,6 +83,14 @@ export const deletePersonalAccountAction = enhanceAction(
       throw new Error('Nonce mismatch');
     }
 
+    // Fetch account info before deletion for audit log
+    const { data: account } = await client
+      .from('accounts')
+      .select('*')
+      .eq('id', user.id)
+      .eq('is_personal_account', true)
+      .single();
+
     // create a new instance of the personal accounts service
     const service = createDeletePersonalAccountService();
 
@@ -88,6 +100,23 @@ export const deletePersonalAccountAction = enhanceAction(
       userId: user.id,
       userEmail: user.email ?? null,
     });
+
+    // Create audit log before signing out (with network context)
+    if (account) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId: account.id,
+        userId: user.id,
+        action: 'delete',
+        objectType: 'account',
+        objectId: account.id,
+        objectName: account.name,
+        before: account,
+        scopes: [{ type: 'account', id: account.id }],
+        ...networkContext,
+      });
+    }
 
     // sign out the user after deleting their account
     await client.auth.signOut();

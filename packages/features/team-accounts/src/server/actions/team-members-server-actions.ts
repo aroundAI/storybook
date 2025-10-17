@@ -2,6 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
@@ -18,14 +22,45 @@ import { createAccountMembersService } from '../services/account-members.service
  * @description Removes a member from an account.
  */
 export const removeMemberFromAccountAction = enhanceAction(
-  async ({ accountId, userId }) => {
+  async ({ accountId, userId }, user) => {
     const client = getSupabaseServerClient();
     const service = createAccountMembersService(client);
+
+    // Fetch account and member info before removal
+    const { data: account } = await client
+      .from('accounts')
+      .select('name')
+      .eq('id', accountId)
+      .single();
+
+    const { data: member } = await client
+      .from('accounts_memberships')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('user_id', userId)
+      .single();
 
     await service.removeMemberFromAccount({
       accountId,
       userId,
     });
+
+    // Create audit log with network context
+    if (account && member) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId,
+        userId: user.id,
+        action: 'delete',
+        objectType: 'team_member',
+        objectId: `${accountId}-${userId}`,
+        objectName: `Team member in ${account.name}`,
+        before: member,
+        scopes: [{ type: 'account', id: accountId }],
+        ...networkContext,
+      });
+    }
 
     // Note: Auth cache auto-invalidates after 5 minutes (TTL)
     // For immediate invalidation, call invalidateAuthCache(userId, accountId) from app-level code
@@ -37,6 +72,7 @@ export const removeMemberFromAccountAction = enhanceAction(
   },
   {
     schema: RemoveMemberSchema,
+    auth: true,
   },
 );
 
@@ -45,13 +81,53 @@ export const removeMemberFromAccountAction = enhanceAction(
  * @description Updates the role of a member in an account.
  */
 export const updateMemberRoleAction = enhanceAction(
-  async (data) => {
+  async (data, user) => {
     const client = getSupabaseServerClient();
     const service = createAccountMembersService(client);
     const adminClient = getSupabaseServerAdminClient();
 
+    // Fetch account and member info before update
+    const { data: account } = await client
+      .from('accounts')
+      .select('name')
+      .eq('id', data.accountId)
+      .single();
+
+    const { data: beforeMember } = await client
+      .from('accounts_memberships')
+      .select('*')
+      .eq('account_id', data.accountId)
+      .eq('user_id', data.userId)
+      .single();
+
     // update the role of the member
     await service.updateMemberRole(data, adminClient);
+
+    // Fetch after state
+    const { data: afterMember } = await client
+      .from('accounts_memberships')
+      .select('*')
+      .eq('account_id', data.accountId)
+      .eq('user_id', data.userId)
+      .single();
+
+    // Create audit log with network context
+    if (account && beforeMember && afterMember) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId: data.accountId,
+        userId: user.id,
+        action: 'permission_change',
+        objectType: 'team_member',
+        objectId: `${data.accountId}-${data.userId}`,
+        objectName: `Team member in ${account.name}`,
+        before: beforeMember,
+        after: afterMember,
+        scopes: [{ type: 'account', id: data.accountId }],
+        ...networkContext,
+      });
+    }
 
     // Note: Auth cache auto-invalidates after 5 minutes (TTL)
     // For immediate invalidation, call invalidateAuthCache(data.userId, data.accountId) from app-level code
@@ -63,6 +139,7 @@ export const updateMemberRoleAction = enhanceAction(
   },
   {
     schema: UpdateMemberRoleSchema,
+    auth: true,
   },
 );
 
@@ -132,8 +209,45 @@ export const transferOwnershipAction = enhanceAction(
     // so we proceed with the transfer of ownership with admin privileges
     const adminClient = getSupabaseServerAdminClient();
 
+    // Fetch account info before transfer
+    const { data: account } = await client
+      .from('accounts')
+      .select('*')
+      .eq('id', data.accountId)
+      .single();
+
     // transfer the ownership of the account
     await service.transferOwnership(data, adminClient);
+
+    // Fetch after state
+    const { data: afterAccount } = await client
+      .from('accounts')
+      .select('*')
+      .eq('id', data.accountId)
+      .single();
+
+    // Create audit log with network context
+    if (account && afterAccount) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId: data.accountId,
+        userId: user.id,
+        action: 'permission_change',
+        objectType: 'account',
+        objectId: data.accountId,
+        objectName: account.name,
+        before: account,
+        after: afterAccount,
+        scopes: [{ type: 'account', id: data.accountId }],
+        metadata: {
+          action_type: 'ownership_transfer',
+          new_owner_id: data.userId,
+          previous_owner_id: user.id,
+        },
+        ...networkContext,
+      });
+    }
 
     // Note: Auth cache auto-invalidates after 5 minutes (TTL)
     // For immediate invalidation, call invalidateAuthCache() for both old and new owner from app-level code

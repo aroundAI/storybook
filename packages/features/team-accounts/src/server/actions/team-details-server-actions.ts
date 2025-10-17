@@ -2,6 +2,10 @@
 
 import { redirect } from 'next/navigation';
 
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -9,7 +13,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { UpdateTeamNameSchema } from '../../schema/update-team-name.schema';
 
 export const updateTeamAccountName = enhanceAction(
-  async (params) => {
+  async (params, user) => {
     const client = getSupabaseServerClient();
     const logger = await getLogger();
     const { name, path, slug } = params;
@@ -21,6 +25,13 @@ export const updateTeamAccountName = enhanceAction(
 
     logger.info(ctx, `Updating team name...`);
 
+    // Fetch before state for audit log
+    const { data: beforeAccount } = await client
+      .from('accounts')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+
     const { error, data } = await client
       .from('accounts')
       .update({
@@ -30,7 +41,7 @@ export const updateTeamAccountName = enhanceAction(
       .match({
         slug,
       })
-      .select('slug')
+      .select('*')
       .single();
 
     if (error) {
@@ -43,6 +54,24 @@ export const updateTeamAccountName = enhanceAction(
 
     logger.info(ctx, `Team name updated`);
 
+    // Create audit log with network context
+    if (beforeAccount) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId: data.id,
+        userId: user.id,
+        action: 'update',
+        objectType: 'account',
+        objectId: data.id,
+        objectName: data.name,
+        before: beforeAccount,
+        after: data,
+        scopes: [{ type: 'account', id: data.id }],
+        ...networkContext,
+      });
+    }
+
     if (newSlug) {
       const nextPath = path.replace('[account]', newSlug);
 
@@ -53,5 +82,6 @@ export const updateTeamAccountName = enhanceAction(
   },
   {
     schema: UpdateTeamNameSchema,
+    auth: true,
   },
 );

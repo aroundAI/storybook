@@ -149,13 +149,29 @@ The typegen command must be run after applying migrations or resetting the datab
 
 When adding new database features, ALWAYS follow this exact order:
 
+### Method 1: Using db diff (Recommended for modifications)
+
 1. **Create/modify schema file** in `apps/web/supabase/schemas/XX-feature.sql`
-2. **Generate migration**: `pnpm --filter web supabase:db:diff -f <migration_name>`
-3. **Apply changes**: `pnpm --filter web supabase migration up` (or `pnpm supabase:web:reset` for clean rebuild)
-4. **Generate types**: `pnpm supabase:web:typegen`
+2. **Generate migration**: `pnpm --filter web supabase db diff -f <migration_name>`
+3. **Apply migration**: `pnpm --filter web supabase migration up`
+4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts /path/to/packages/supabase/src/database.types.ts`
 5. **Verify types exist** before using in code
 
-⚠️ **NEVER skip step 2** - schema files alone don't create tables! The migration step is required to apply changes to the database.
+### Method 2: Manual migration from schema (For new features)
+
+1. **Create schema file** in `apps/web/supabase/schemas/XX-feature.sql`
+2. **Create timestamped migration**:
+   ```bash
+   timestamp=$(date -u +"%Y%m%d%H%M%S")
+   cp apps/web/supabase/schemas/XX-feature.sql "apps/web/supabase/migrations/${timestamp}_feature-name.sql"
+   ```
+3. **Reset database**: `pnpm --filter web supabase db reset`
+4. **Generate types**: `supabase gen types typescript --local > lib/database.types.ts && cp lib/database.types.ts /path/to/packages/supabase/src/database.types.ts`
+5. **Verify types exist** before using in code
+
+⚠️ **IMPORTANT**: Schema files alone don't create tables! You MUST either:
+- Generate a migration with `db diff`, OR
+- Manually copy the schema to migrations folder with timestamp
 
 **Migration vs Reset**:
 - Use `migration up` for normal development (applies only new migrations)

@@ -1,5 +1,5 @@
 {
-  "name": "@kit/projects",
+  "name": "@kit/audit-logs",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -9,38 +9,27 @@
     "typecheck": "tsc --noEmit"
   },
   "exports": {
+    "./config": "./src/config/index.ts",
+    "./transformers": "./src/transformers/index.ts",
+    "./server": "./src/server/index.ts",
+    "./queries": "./src/server/queries.ts",
     "./components": "./src/components/index.ts",
-    "./components/projects-list": "./src/components/projects-list.tsx",
-    "./components/project-members-list": "./src/components/project-members-list.tsx",
-    "./components/update-project-form": "./src/components/update-project-form.tsx",
-    "./components/add-project-member-form": "./src/components/add-project-member-form.tsx",
-    "./hooks/*": "./src/hooks/*.ts",
-    "./schemas": "./src/lib/schemas/project.schema.ts",
-    "./types": "./src/lib/types.ts",
-    "./mutations": "./src/lib/server/project.mutations.ts",
-    "./queries": "./src/lib/server/project.queries.ts"
+    "./types": "./src/types.ts"
   },
   "devDependencies": {
-    "@hookform/resolvers": "^5.2.2",
-    "@kit/audit-logs": "workspace:*",
     "@kit/eslint-config": "workspace:*",
     "@kit/monitoring": "workspace:*",
-    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@kit/ui": "workspace:*",
-    "@radix-ui/react-icons": "^1.3.2",
     "@supabase/supabase-js": "2.57.4",
-    "@tanstack/react-query": "5.89.0",
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
-    "lucide-react": "^0.544.0",
     "next": "15.5.3",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "react-hook-form": "^7.62.0",
     "react-i18next": "^15.7.3",
     "zod": "^3.25.74"
   },
