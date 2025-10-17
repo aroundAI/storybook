@@ -2,7 +2,7 @@ import 'server-only';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getLogger } from '@kit/shared/logger';
-import type { AuditLogEntry, AuditAction, AuditScope } from '../types';
+import type { AuditLogEntry, AuditAction } from '../types';
 
 /**
  * Get audit logs for a specific object

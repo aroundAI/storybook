@@ -1,8 +1,4 @@
-import type {
-  AuditAction,
-  AuditObjectConfig,
-  AuditTransformer,
-} from '../types';
+import type { AuditAction, AuditObjectConfig } from '../types';
 
 /**
  * Audit configuration for different object types

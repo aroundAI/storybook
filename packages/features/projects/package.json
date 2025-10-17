@@ -22,6 +22,7 @@
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@kit/audit-logs": "workspace:*",
     "@kit/eslint-config": "workspace:*",
     "@kit/monitoring": "workspace:*",
     "@kit/next": "workspace:*",

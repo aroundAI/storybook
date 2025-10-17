@@ -18,7 +18,7 @@ export const settingsTransformer: AuditTransformer = {
    * - Automatically detects and redacts sensitive fields
    * - Uses pattern matching for keys, secrets, tokens
    */
-  async transform(data: unknown, action: AuditAction): Promise<unknown> {
+  async transform(data: unknown, _action: AuditAction): Promise<unknown> {
     if (typeof data !== 'object' || !data || data === null) {
       return data;
     }

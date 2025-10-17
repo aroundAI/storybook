@@ -2,10 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 
+import { createAuditLog } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { requireUser } from '@kit/supabase/require-user';
 
 import {
   AddProjectMemberSchema,
@@ -34,6 +36,11 @@ export const createProjectAction = enhanceAction(
     logger.info(ctx, 'Creating project');
 
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
 
     // Insert project
     const { data: project, error: projectError } = await client
@@ -59,6 +66,21 @@ export const createProjectAction = enhanceAction(
       'Project created successfully',
     );
 
+    // Create audit log
+    await createAuditLog({
+      accountId: data.account_id,
+      userId: user.id,
+      action: 'create',
+      objectType: 'project',
+      objectId: project.id,
+      objectName: project.name,
+      after: project,
+      scopes: [
+        { type: 'account', id: data.account_id },
+        { type: 'project', id: project.id },
+      ],
+    });
+
     // Revalidate the projects list
     revalidatePath(`/home/[account]/projects`, 'page');
     revalidatePath(`/home/(user)/projects`, 'page');
@@ -81,6 +103,18 @@ export const updateProjectAction = enhanceAction(
     logger.info(ctx, 'Updating project');
 
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Fetch before state for audit log
+    const { data: beforeProject } = await client
+      .from('projects')
+      .select('*')
+      .eq('id', data.id)
+      .single();
 
     const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -105,6 +139,24 @@ export const updateProjectAction = enhanceAction(
 
     logger.info(ctx, 'Project updated successfully');
 
+    // Create audit log with before/after states
+    if (beforeProject) {
+      await createAuditLog({
+        accountId: project.account_id,
+        userId: user.id,
+        action: 'update',
+        objectType: 'project',
+        objectId: project.id,
+        objectName: project.name,
+        before: beforeProject,
+        after: project,
+        scopes: [
+          { type: 'account', id: project.account_id },
+          { type: 'project', id: project.id },
+        ],
+      });
+    }
+
     // Revalidate the projects list and detail pages
     revalidatePath(`/home/[account]/projects`, 'page');
     revalidatePath(`/home/(user)/projects`, 'page');
@@ -128,6 +180,18 @@ export const deleteProjectAction = enhanceAction(
     logger.info(ctx, 'Deleting project');
 
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Fetch before state for audit log
+    const { data: project } = await client
+      .from('projects')
+      .select('*')
+      .eq('id', data.id)
+      .single();
 
     const { error } = await client.from('projects').delete().eq('id', data.id);
 
@@ -137,6 +201,22 @@ export const deleteProjectAction = enhanceAction(
     }
 
     logger.info(ctx, 'Project deleted successfully');
+
+    // Create audit log
+    if (project) {
+      await createAuditLog({
+        accountId: project.account_id,
+        userId: user.id,
+        action: 'delete',
+        objectType: 'project',
+        objectId: project.id,
+        objectName: project.name,
+        before: project,
+        scopes: [
+          { type: 'account', id: project.account_id },
+        ],
+      });
+    }
 
     // Revalidate the projects list
     revalidatePath(`/home/[account]/projects`, 'page');
@@ -160,6 +240,18 @@ export const addProjectMemberAction = enhanceAction(
     logger.info(ctx, 'Adding project member');
 
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Get project info for audit log
+    const { data: project } = await client
+      .from('projects')
+      .select('account_id, name')
+      .eq('id', data.project_id)
+      .single();
 
     const { data: member, error } = await client
       .from('project_members')
@@ -180,6 +272,23 @@ export const addProjectMemberAction = enhanceAction(
       { ...ctx, userId: data.user_id },
       'Project member added successfully',
     );
+
+    // Create audit log
+    if (project) {
+      await createAuditLog({
+        accountId: project.account_id,
+        userId: user.id,
+        action: 'create',
+        objectType: 'team_member',
+        objectId: `${data.project_id}-${data.user_id}`,
+        objectName: `Project member in ${project.name}`,
+        after: member,
+        scopes: [
+          { type: 'account', id: project.account_id },
+          { type: 'project', id: data.project_id },
+        ],
+      });
+    }
 
     // Revalidate the project detail pages
     revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
@@ -203,6 +312,25 @@ export const updateProjectMemberAction = enhanceAction(
     logger.info(ctx, 'Updating project member role');
 
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Get project info and before state
+    const { data: project } = await client
+      .from('projects')
+      .select('account_id, name')
+      .eq('id', data.project_id)
+      .single();
+
+    const { data: beforeMember } = await client
+      .from('project_members')
+      .select('*')
+      .eq('project_id', data.project_id)
+      .eq('user_id', data.user_id)
+      .single();
 
     const { data: member, error } = await client
       .from('project_members')
@@ -221,6 +349,24 @@ export const updateProjectMemberAction = enhanceAction(
       { ...ctx, userId: data.user_id },
       'Project member updated successfully',
     );
+
+    // Create audit log
+    if (project && beforeMember) {
+      await createAuditLog({
+        accountId: project.account_id,
+        userId: user.id,
+        action: 'permission_change',
+        objectType: 'team_member',
+        objectId: `${data.project_id}-${data.user_id}`,
+        objectName: `Project member in ${project.name}`,
+        before: beforeMember,
+        after: member,
+        scopes: [
+          { type: 'account', id: project.account_id },
+          { type: 'project', id: data.project_id },
+        ],
+      });
+    }
 
     // Revalidate the project detail pages
     revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
@@ -244,6 +390,25 @@ export const removeProjectMemberAction = enhanceAction(
     logger.info(ctx, 'Removing project member');
 
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Get project info and before state
+    const { data: project } = await client
+      .from('projects')
+      .select('account_id, name')
+      .eq('id', data.project_id)
+      .single();
+
+    const { data: member } = await client
+      .from('project_members')
+      .select('*')
+      .eq('project_id', data.project_id)
+      .eq('user_id', data.user_id)
+      .single();
 
     const { error } = await client
       .from('project_members')
@@ -260,6 +425,23 @@ export const removeProjectMemberAction = enhanceAction(
       { ...ctx, userId: data.user_id },
       'Project member removed successfully',
     );
+
+    // Create audit log
+    if (project && member) {
+      await createAuditLog({
+        accountId: project.account_id,
+        userId: user.id,
+        action: 'delete',
+        objectType: 'team_member',
+        objectId: `${data.project_id}-${data.user_id}`,
+        objectName: `Project member in ${project.name}`,
+        before: member,
+        scopes: [
+          { type: 'account', id: project.account_id },
+          { type: 'project', id: data.project_id },
+        ],
+      });
+    }
 
     // Revalidate the project detail pages
     revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');

@@ -1,5 +1,6 @@
 import { headers } from 'next/headers';
 
+import { initializeAuditTransformers } from '@kit/audit-logs/transformers';
 import { Toaster } from '@kit/ui/sonner';
 
 import { RootProviders } from '~/components/root-providers';
@@ -9,6 +10,9 @@ import { generateRootMetadata } from '~/lib/root-metdata';
 import { getRootTheme } from '~/lib/root-theme';
 
 import '../styles/globals.css';
+
+// Initialize audit transformers at app startup
+initializeAuditTransformers();
 
 export const generateMetadata = () => {
   return generateRootMetadata();

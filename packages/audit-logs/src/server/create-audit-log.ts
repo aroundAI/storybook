@@ -2,12 +2,8 @@ import 'server-only';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getLogger } from '@kit/shared/logger';
-import type {
-  AuditAction,
-  AuditSeverity,
-  AuditScope,
-  CreateAuditLogParams,
-} from '../types';
+import type { Json } from '@kit/supabase/database';
+import type { CreateAuditLogParams } from '../types';
 import { shouldTrackObject, getTransformer } from '../config';
 import { calculateChanges } from './calculate-changes';
 
@@ -125,14 +121,14 @@ export async function createAuditLog(
       object_id: params.objectId,
       object_name: params.objectName || null,
       description,
-      changes: changes as any,
-      before_state: transformedBefore as any,
-      after_state: transformedAfter as any,
+      changes: (changes as Json) || null,
+      before_state: (transformedBefore as Json) || null,
+      after_state: (transformedAfter as Json) || null,
       scopes: (params.scopes || [
         { type: 'account', id: params.accountId },
-      ]) as any,
+      ]) as Json,
       severity: params.severity || 'info',
-      metadata: params.metadata || null,
+      metadata: (params.metadata as Json) || null,
       ip_address: params.ipAddress || null,
       user_agent: params.userAgent || null,
     });

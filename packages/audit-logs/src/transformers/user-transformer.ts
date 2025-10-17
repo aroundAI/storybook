@@ -17,7 +17,7 @@ export const userTransformer: AuditTransformer = {
   /**
    * Transform user data - only include safe fields
    */
-  async transform(data: unknown, action: AuditAction): Promise<unknown> {
+  async transform(data: unknown, _action: AuditAction): Promise<unknown> {
     if (typeof data !== 'object' || !data || data === null) {
       return data;
     }

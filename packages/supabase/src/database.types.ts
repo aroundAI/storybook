@@ -138,6 +138,88 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state: Json | null
+          before_state: Json | null
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          object_id: string
+          object_name: string | null
+          object_type: string
+          scopes: Json
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state?: Json | null
+          before_state?: Json | null
+          changes?: Json | null
+          created_at?: string
+          description: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          object_id: string
+          object_name?: string | null
+          object_type: string
+          scopes?: Json
+          severity?: Database["public"]["Enums"]["audit_severity"]
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          account_id?: string
+          action?: Database["public"]["Enums"]["audit_action"]
+          after_state?: Json | null
+          before_state?: Json | null
+          changes?: Json | null
+          created_at?: string
+          description?: string
+          id?: string
+          ip_address?: unknown | null
+          metadata?: Json | null
+          object_id?: string
+          object_name?: string | null
+          object_type?: string
+          scopes?: Json
+          severity?: Database["public"]["Enums"]["audit_severity"]
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_logs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audit_logs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       billing_customers: {
         Row: {
           account_id: string
@@ -910,6 +992,117 @@ export type Database = {
           user_role: Database["public"]["Enums"]["project_role"]
         }[]
       }
+      get_audit_logs_by_action: {
+        Args: {
+          limit_count?: number
+          target_account_id: string
+          target_action: Database["public"]["Enums"]["audit_action"]
+        }
+        Returns: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state: Json | null
+          before_state: Json | null
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          object_id: string
+          object_name: string | null
+          object_type: string
+          scopes: Json
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
+          user_id: string | null
+        }[]
+      }
+      get_audit_logs_by_user: {
+        Args: {
+          limit_count?: number
+          target_account_id: string
+          target_user_id: string
+        }
+        Returns: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state: Json | null
+          before_state: Json | null
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          object_id: string
+          object_name: string | null
+          object_type: string
+          scopes: Json
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
+          user_id: string | null
+        }[]
+      }
+      get_audit_logs_for_object: {
+        Args: {
+          limit_count?: number
+          target_object_id: string
+          target_object_type: string
+        }
+        Returns: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state: Json | null
+          before_state: Json | null
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          object_id: string
+          object_name: string | null
+          object_type: string
+          scopes: Json
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
+          user_id: string | null
+        }[]
+      }
+      get_audit_logs_for_scope: {
+        Args: { limit_count?: number; scope_id: string; scope_type: string }
+        Returns: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state: Json | null
+          before_state: Json | null
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          object_id: string
+          object_name: string | null
+          object_type: string
+          scopes: Json
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
+          user_id: string | null
+        }[]
+      }
+      get_change_summary: {
+        Args: {
+          days_back?: number
+          target_account_id: string
+          target_object_type: string
+        }
+        Returns: {
+          change_count: number
+          field_name: string
+        }[]
+      }
       get_config: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -930,6 +1123,28 @@ export type Database = {
           user_id: string
           user_name: string
           user_picture_url: string
+        }[]
+      }
+      get_recent_audit_logs: {
+        Args: { limit_count?: number; target_account_id: string }
+        Returns: {
+          account_id: string
+          action: Database["public"]["Enums"]["audit_action"]
+          after_state: Json | null
+          before_state: Json | null
+          changes: Json | null
+          created_at: string
+          description: string
+          id: string
+          ip_address: unknown | null
+          metadata: Json | null
+          object_id: string
+          object_name: string | null
+          object_type: string
+          scopes: Json
+          severity: Database["public"]["Enums"]["audit_severity"]
+          user_agent: string | null
+          user_id: string | null
         }[]
       }
       get_upper_system_role: {
@@ -1105,6 +1320,23 @@ export type Database = {
         | "settings.manage"
         | "members.manage"
         | "invites.manage"
+      audit_action:
+        | "create"
+        | "update"
+        | "delete"
+        | "archive"
+        | "restore"
+        | "login"
+        | "logout"
+        | "invite"
+        | "accept_invite"
+        | "reject_invite"
+        | "permission_change"
+        | "settings_change"
+        | "export"
+        | "import"
+        | "custom"
+      audit_severity: "info" | "warning" | "critical"
       billing_provider: "stripe" | "lemon-squeezy" | "paddle"
       notification_channel: "in_app" | "email"
       notification_type: "info" | "warning" | "error"
@@ -1801,6 +2033,24 @@ export const Constants = {
         "members.manage",
         "invites.manage",
       ],
+      audit_action: [
+        "create",
+        "update",
+        "delete",
+        "archive",
+        "restore",
+        "login",
+        "logout",
+        "invite",
+        "accept_invite",
+        "reject_invite",
+        "permission_change",
+        "settings_change",
+        "export",
+        "import",
+        "custom",
+      ],
+      audit_severity: ["info", "warning", "critical"],
       billing_provider: ["stripe", "lemon-squeezy", "paddle"],
       notification_channel: ["in_app", "email"],
       notification_type: ["info", "warning", "error"],

@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { createAuditLog } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
@@ -50,10 +51,32 @@ export const deleteTeamAccountAction = enhanceAction(
 
     logger.info(ctx, `Deleting team account...`);
 
+    // Fetch account before deletion for audit log
+    const client = getSupabaseServerClient();
+    const { data: account } = await client
+      .from('accounts')
+      .select('*')
+      .eq('id', params.accountId)
+      .single();
+
     await deleteTeamAccount({
       accountId: params.accountId,
       userId: user.id,
     });
+
+    // Create audit log
+    if (account) {
+      await createAuditLog({
+        accountId: account.id,
+        userId: user.id,
+        action: 'delete',
+        objectType: 'account',
+        objectId: account.id,
+        objectName: account.name,
+        before: account,
+        scopes: [{ type: 'account', id: account.id }],
+      });
+    }
 
     logger.info(ctx, `Team account request successfully sent`);
 

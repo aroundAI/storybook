@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
+import { createAuditLog } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -37,6 +38,18 @@ export const createTeamAccountAction = enhanceAction(
     }
 
     logger.info(ctx, `Team account created`);
+
+    // Create audit log
+    await createAuditLog({
+      accountId: data.id,
+      userId: user.id,
+      action: 'create',
+      objectType: 'account',
+      objectId: data.id,
+      objectName: data.name,
+      after: data,
+      scopes: [{ type: 'account', id: data.id }],
+    });
 
     const accountHomePath = '/home/' + data.slug;
 
