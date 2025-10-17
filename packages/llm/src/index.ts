@@ -5,6 +5,7 @@
  * - OpenAI (GPT-4, GPT-3.5-turbo)
  * - Anthropic (Claude 3.5, Claude 3)
  * - Google Gemini (Gemini 1.5 Pro/Flash)
+ * - Local (OpenAI-compatible local API)
  *
  * @example
  * ```typescript
@@ -54,6 +55,7 @@ export {
   OPENAI_PRICING,
   ANTHROPIC_PRICING,
   GEMINI_PRICING,
+  LOCAL_PRICING,
   getModelPricing,
   calculateTokenCost,
 } from './pricing';
@@ -62,3 +64,4 @@ export {
 export { OpenAIClient } from './providers/openai';
 export { AnthropicClient } from './providers/anthropic';
 export { GeminiClient } from './providers/gemini';
+export { LocalClient } from './providers/local';

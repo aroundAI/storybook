@@ -89,13 +89,25 @@ export const GEMINI_PRICING: Record<string, ModelPricing> = {
 };
 
 /**
+ * Local provider pricing (OpenAI-compatible local API)
+ * Source: Local development - no cost
+ */
+export const LOCAL_PRICING: Record<string, ModelPricing> = {
+  // Claude 4 models via local API
+  'claude-sonnet-4-5': { prompt: 0, completion: 0 },
+  'claude-sonnet-4': { prompt: 0, completion: 0 },
+  'claude-opus-4': { prompt: 0, completion: 0 },
+  'claude-haiku-4': { prompt: 0, completion: 0 },
+};
+
+/**
  * Get pricing for a model
  * @param provider - LLM provider
  * @param model - Model name
  * @returns Pricing information or default fallback
  */
 export function getModelPricing(
-  provider: 'openai' | 'anthropic' | 'gemini',
+  provider: 'openai' | 'anthropic' | 'gemini' | 'local',
   model: string,
 ): ModelPricing {
   switch (provider) {
@@ -108,6 +120,8 @@ export function getModelPricing(
       );
     case 'gemini':
       return GEMINI_PRICING[model] ?? GEMINI_PRICING['gemini-1.5-flash']!;
+    case 'local':
+      return LOCAL_PRICING[model] ?? LOCAL_PRICING['claude-sonnet-4-5']!;
     default:
       // Fallback to cheapest option
       return { prompt: 0.15, completion: 0.6 };

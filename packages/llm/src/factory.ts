@@ -6,6 +6,7 @@
  */
 import { AnthropicClient } from './providers/anthropic';
 import { GeminiClient } from './providers/gemini';
+import { LocalClient } from './providers/local';
 import { OpenAIClient } from './providers/openai';
 import type { LLMClient, LLMConfig, LLMProvider } from './types';
 import { LLMError } from './types';
@@ -19,9 +20,9 @@ let llmInstance: LLMClient | null = null;
  * Load LLM configuration from environment variables
  *
  * Environment variables:
- * - LLM_PROVIDER: 'openai' | 'anthropic' | 'gemini'
+ * - LLM_PROVIDER: 'openai' | 'anthropic' | 'gemini' | 'local'
  * - LLM_MODEL: Model identifier (e.g., 'gpt-4o', 'claude-3-5-sonnet-20241022')
- * - LLM_API_KEY: API key for the provider
+ * - LLM_API_KEY: API key for the provider (not needed for 'local')
  * - LLM_TEMPERATURE: Optional temperature (0-1)
  * - LLM_MAX_TOKENS: Optional max tokens
  * - LLM_TOP_P: Optional top_p (0-1)
@@ -30,6 +31,7 @@ let llmInstance: LLMClient | null = null;
  * - OPENAI_API_KEY: Falls back to this if LLM_PROVIDER=openai and LLM_API_KEY not set
  * - ANTHROPIC_API_KEY: Falls back to this if LLM_PROVIDER=anthropic and LLM_API_KEY not set
  * - GOOGLE_API_KEY: Falls back to this if LLM_PROVIDER=gemini and LLM_API_KEY not set
+ * - LOCAL_API_URL: Base URL for local provider (default: http://127.0.0.1:8000/v1)
  */
 export function loadConfigFromEnv(): LLMConfig {
   const provider = (process.env.LLM_PROVIDER ?? 'openai') as LLMProvider;
@@ -48,6 +50,10 @@ export function loadConfigFromEnv(): LLMConfig {
       case 'gemini':
         apiKey = process.env.GOOGLE_API_KEY;
         break;
+      case 'local':
+        // Local provider doesn't need an API key
+        apiKey = 'not-needed';
+        break;
     }
   }
 
@@ -61,6 +67,9 @@ export function loadConfigFromEnv(): LLMConfig {
 
   // Get model with provider-specific defaults
   const model = process.env.LLM_MODEL ?? getDefaultModel(provider);
+
+  // Get base URL for local provider
+  const baseUrl = provider === 'local' ? process.env.LOCAL_API_URL : undefined;
 
   // Parse optional parameters
   const temperature = process.env.LLM_TEMPERATURE
@@ -79,6 +88,7 @@ export function loadConfigFromEnv(): LLMConfig {
     provider,
     model,
     apiKey,
+    baseUrl,
     temperature,
     maxTokens,
     topP,
@@ -96,6 +106,8 @@ function getDefaultModel(provider: LLMProvider): string {
       return 'claude-3-5-sonnet-20241022'; // Latest Sonnet
     case 'gemini':
       return 'gemini-1.5-flash'; // Fast and cost-effective
+    case 'local':
+      return 'claude-sonnet-4-5'; // Latest local Claude model
     default:
       throw new LLMError(
         `Unknown provider: ${provider}`,
@@ -165,6 +177,9 @@ export function createLLMClient(config?: LLMConfig): LLMClient {
       break;
     case 'gemini':
       client = new GeminiClient(finalConfig);
+      break;
+    case 'local':
+      client = new LocalClient(finalConfig);
       break;
     default:
       throw new LLMError(

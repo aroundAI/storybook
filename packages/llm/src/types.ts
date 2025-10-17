@@ -5,12 +5,13 @@
  * - OpenAI (GPT-4, GPT-3.5-turbo)
  * - Anthropic (Claude 3.5, Claude 3)
  * - Google Gemini (Gemini 1.5 Pro/Flash)
+ * - Local (OpenAI-compatible local API)
  */
 
 /**
  * Supported LLM providers
  */
-export type LLMProvider = 'openai' | 'anthropic' | 'gemini';
+export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'local';
 
 /**
  * Message role in chat conversation
@@ -33,6 +34,7 @@ export interface LLMConfig {
   provider: LLMProvider;
   model: string;
   apiKey: string;
+  baseUrl?: string; // Optional base URL for custom/local providers
   temperature?: number;
   maxTokens?: number;
   topP?: number;
