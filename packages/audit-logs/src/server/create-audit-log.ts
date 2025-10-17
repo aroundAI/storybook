@@ -57,10 +57,10 @@ export async function createAuditLog(
       return;
     }
 
-    // Get transformer for this object type
+    // Get transformer for this object type (always returns a transformer)
     const transformer = getTransformer(params.objectType);
 
-    // Transform before/after data if transformer exists
+    // Transform before/after data (transformer is guaranteed to exist)
     let transformedBefore = params.before;
     let transformedAfter = params.after;
     let description =
@@ -68,36 +68,34 @@ export async function createAuditLog(
         ? `${params.action} ${params.objectType} "${params.objectName}"`
         : `${params.action} ${params.objectType}`;
 
-    if (transformer) {
-      // Apply transformation
-      if (params.before) {
-        transformedBefore = await transformer.transform(
-          params.before,
-          params.action,
-        );
-      }
+    // Apply transformation
+    if (params.before) {
+      transformedBefore = await transformer.transform(
+        params.before,
+        params.action,
+      );
+    }
 
-      if (params.after) {
-        transformedAfter = await transformer.transform(
-          params.after,
-          params.action,
-        );
-      }
+    if (params.after) {
+      transformedAfter = await transformer.transform(
+        params.after,
+        params.action,
+      );
+    }
 
-      // Get custom description if provided
-      if (transformer.getDescription) {
-        description = transformer.getDescription(
-          params.after || params.before,
-          params.action,
-        );
-      }
+    // Get custom description if provided
+    if (transformer.getDescription) {
+      description = transformer.getDescription(
+        params.after || params.before,
+        params.action,
+      );
     }
 
     // Calculate changes
     let changes = null;
 
     if (transformedBefore && transformedAfter) {
-      if (transformer?.calculateChanges) {
+      if (transformer.calculateChanges) {
         // Use custom change calculation
         changes = transformer.calculateChanges(
           transformedBefore,
@@ -109,10 +107,9 @@ export async function createAuditLog(
       }
     }
 
-    // Get client
+    // Get client and insert audit log
     const client = getSupabaseServerClient();
 
-    // Insert audit log
     const { error } = await client.from('audit_logs').insert({
       account_id: params.accountId,
       user_id: params.userId,
@@ -135,7 +132,8 @@ export async function createAuditLog(
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to create audit log');
-      throw error;
+      // Don't throw - audit logging should not break the main operation
+      return;
     }
 
     logger.debug(ctx, 'Audit log created successfully');

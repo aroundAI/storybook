@@ -2,7 +2,10 @@
 
 import { redirect } from 'next/navigation';
 
-import { createAuditLog } from '@kit/audit-logs/server';
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -51,8 +54,10 @@ export const updateTeamAccountName = enhanceAction(
 
     logger.info(ctx, `Team name updated`);
 
-    // Create audit log
+    // Create audit log with network context
     if (beforeAccount) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: data.id,
         userId: user.id,
@@ -63,6 +68,7 @@ export const updateTeamAccountName = enhanceAction(
         before: beforeAccount,
         after: data,
         scopes: [{ type: 'account', id: data.id }],
+        ...networkContext,
       });
     }
 

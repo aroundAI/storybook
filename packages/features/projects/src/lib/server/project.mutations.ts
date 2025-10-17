@@ -2,7 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { createAuditLog } from '@kit/audit-logs/server';
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
@@ -66,7 +69,9 @@ export const createProjectAction = enhanceAction(
       'Project created successfully',
     );
 
-    // Create audit log
+    // Create audit log with network context
+    const networkContext = await extractNetworkContext();
+
     await createAuditLog({
       accountId: data.account_id,
       userId: user.id,
@@ -79,6 +84,7 @@ export const createProjectAction = enhanceAction(
         { type: 'account', id: data.account_id },
         { type: 'project', id: project.id },
       ],
+      ...networkContext,
     });
 
     // Revalidate the projects list
@@ -141,6 +147,8 @@ export const updateProjectAction = enhanceAction(
 
     // Create audit log with before/after states
     if (beforeProject) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: project.account_id,
         userId: user.id,
@@ -154,6 +162,7 @@ export const updateProjectAction = enhanceAction(
           { type: 'account', id: project.account_id },
           { type: 'project', id: project.id },
         ],
+        ...networkContext,
       });
     }
 
@@ -204,6 +213,8 @@ export const deleteProjectAction = enhanceAction(
 
     // Create audit log
     if (project) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: project.account_id,
         userId: user.id,
@@ -215,6 +226,7 @@ export const deleteProjectAction = enhanceAction(
         scopes: [
           { type: 'account', id: project.account_id },
         ],
+        ...networkContext,
       });
     }
 
@@ -275,6 +287,8 @@ export const addProjectMemberAction = enhanceAction(
 
     // Create audit log
     if (project) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: project.account_id,
         userId: user.id,
@@ -287,6 +301,7 @@ export const addProjectMemberAction = enhanceAction(
           { type: 'account', id: project.account_id },
           { type: 'project', id: data.project_id },
         ],
+        ...networkContext,
       });
     }
 
@@ -352,6 +367,8 @@ export const updateProjectMemberAction = enhanceAction(
 
     // Create audit log
     if (project && beforeMember) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: project.account_id,
         userId: user.id,
@@ -365,6 +382,7 @@ export const updateProjectMemberAction = enhanceAction(
           { type: 'account', id: project.account_id },
           { type: 'project', id: data.project_id },
         ],
+        ...networkContext,
       });
     }
 
@@ -428,6 +446,8 @@ export const removeProjectMemberAction = enhanceAction(
 
     // Create audit log
     if (project && member) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: project.account_id,
         userId: user.id,
@@ -440,6 +460,7 @@ export const removeProjectMemberAction = enhanceAction(
           { type: 'account', id: project.account_id },
           { type: 'project', id: data.project_id },
         ],
+        ...networkContext,
       });
     }
 

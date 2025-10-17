@@ -4,7 +4,10 @@ import { redirect } from 'next/navigation';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { createAuditLog } from '@kit/audit-logs/server';
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
@@ -64,8 +67,10 @@ export const deleteTeamAccountAction = enhanceAction(
       userId: user.id,
     });
 
-    // Create audit log
+    // Create audit log with network context
     if (account) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: account.id,
         userId: user.id,
@@ -75,6 +80,7 @@ export const deleteTeamAccountAction = enhanceAction(
         objectName: account.name,
         before: account,
         scopes: [{ type: 'account', id: account.id }],
+        ...networkContext,
       });
     }
 

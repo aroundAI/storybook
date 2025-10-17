@@ -1,6 +1,8 @@
 import type { AuditTransformer } from '../types';
 import { ConfigBasedTransformer } from '../transformers/config-based-transformer';
+import { defaultTransformer } from '../transformers/default-transformer';
 import { getObjectConfig } from './audit-config';
+import { getLogger } from '@kit/shared/logger';
 
 /**
  * Global registry for audit transformers
@@ -30,12 +32,16 @@ export function registerTransformer(
  * Priority:
  * 1. Custom transformer in config
  * 2. Registered transformer
- * 3. Config-based transformer (fallback)
+ * 3. Config-based transformer (if config exists)
+ * 4. Default transformer (fallback - logs warning)
+ *
+ * IMPORTANT: This function ALWAYS returns a transformer (never null).
+ * This ensures sensitive data is always processed before storage.
  *
  * @param objectType - The type of object
- * @returns Transformer instance or null if no config exists
+ * @returns Transformer instance (guaranteed non-null)
  */
-export function getTransformer(objectType: string): AuditTransformer | null {
+export function getTransformer(objectType: string): AuditTransformer {
   // Check if config has a custom transformer
   const config = getObjectConfig(objectType);
 
@@ -48,12 +54,23 @@ export function getTransformer(objectType: string): AuditTransformer | null {
     return transformerRegistry.get(objectType)!;
   }
 
-  // Return config-based transformer as fallback
+  // Return config-based transformer if config exists
   if (config) {
     return new ConfigBasedTransformer(config);
   }
 
-  return null;
+  // Fallback to default transformer with warning
+  void getLogger().then((logger) => {
+    logger.warn(
+      {
+        objectType,
+        name: 'audit-registry',
+      },
+      `No transformer configuration found for object type "${objectType}". Using default transformer with security-first defaults. Consider adding proper configuration to AUDIT_CONFIG.`,
+    );
+  });
+
+  return defaultTransformer;
 }
 
 /**

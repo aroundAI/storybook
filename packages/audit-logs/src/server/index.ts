@@ -8,3 +8,8 @@ export {
   getAuditLogsByAction,
   getChangeSummary,
 } from './queries';
+export {
+  extractNetworkContext,
+  formatIpAddress,
+  type NetworkContext,
+} from './extract-network-context';

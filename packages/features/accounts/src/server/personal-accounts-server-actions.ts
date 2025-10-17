@@ -3,7 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 
-import { createAuditLog } from '@kit/audit-logs/server';
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
@@ -98,8 +101,10 @@ export const deletePersonalAccountAction = enhanceAction(
       userEmail: user.email ?? null,
     });
 
-    // Create audit log before signing out
+    // Create audit log before signing out (with network context)
     if (account) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: account.id,
         userId: user.id,
@@ -109,6 +114,7 @@ export const deletePersonalAccountAction = enhanceAction(
         objectName: account.name,
         before: account,
         scopes: [{ type: 'account', id: account.id }],
+        ...networkContext,
       });
     }
 

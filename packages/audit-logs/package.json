@@ -12,6 +12,7 @@
     "./config": "./src/config/index.ts",
     "./transformers": "./src/transformers/index.ts",
     "./server": "./src/server/index.ts",
+    "./queries": "./src/server/queries.ts",
     "./components": "./src/components/index.ts",
     "./types": "./src/types.ts"
   },

@@ -2,7 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 
-import { createAuditLog } from '@kit/audit-logs/server';
+import {
+  createAuditLog,
+  extractNetworkContext,
+} from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { createOtpApi } from '@kit/otp';
 import { getLogger } from '@kit/shared/logger';
@@ -42,8 +45,10 @@ export const removeMemberFromAccountAction = enhanceAction(
       userId,
     });
 
-    // Create audit log
+    // Create audit log with network context
     if (account && member) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId,
         userId: user.id,
@@ -53,6 +58,7 @@ export const removeMemberFromAccountAction = enhanceAction(
         objectName: `Team member in ${account.name}`,
         before: member,
         scopes: [{ type: 'account', id: accountId }],
+        ...networkContext,
       });
     }
 
@@ -105,8 +111,10 @@ export const updateMemberRoleAction = enhanceAction(
       .eq('user_id', data.userId)
       .single();
 
-    // Create audit log
+    // Create audit log with network context
     if (account && beforeMember && afterMember) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: data.accountId,
         userId: user.id,
@@ -117,6 +125,7 @@ export const updateMemberRoleAction = enhanceAction(
         before: beforeMember,
         after: afterMember,
         scopes: [{ type: 'account', id: data.accountId }],
+        ...networkContext,
       });
     }
 
@@ -217,8 +226,10 @@ export const transferOwnershipAction = enhanceAction(
       .eq('id', data.accountId)
       .single();
 
-    // Create audit log
+    // Create audit log with network context
     if (account && afterAccount) {
+      const networkContext = await extractNetworkContext();
+
       await createAuditLog({
         accountId: data.accountId,
         userId: user.id,
@@ -234,6 +245,7 @@ export const transferOwnershipAction = enhanceAction(
           new_owner_id: data.userId,
           previous_owner_id: user.id,
         },
+        ...networkContext,
       });
     }
 
