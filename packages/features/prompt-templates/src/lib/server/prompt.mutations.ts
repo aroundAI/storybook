@@ -464,7 +464,6 @@ export const logExecutionAction = enhanceAction(
     const client = getSupabaseServerClient();
 
     const { data: logId, error } = await client.rpc('log_prompt_execution', {
-      p_account_id: data.account_id as never,
       p_user_id: (data.user_id ?? null) as never,
       p_template_id: data.template_id as never,
       p_variant_id: (data.variant_id ?? null) as never,

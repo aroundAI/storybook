@@ -28,15 +28,14 @@ import { composeSystemPrompts } from '../engine/composer';
 // =====================================================
 
 /**
- * Get all templates for an account
+ * Get all templates (global - no account filtering)
  */
-export const getAccountTemplates = cache(async (accountId: string) => {
+export const getAllTemplates = cache(async () => {
   const client = getSupabaseServerClient();
 
   const { data, error } = await client
     .from('prompt_templates')
     .select('*')
-    .eq('account_id', accountId)
     .eq('is_active', true)
     .order('created_at', { ascending: false });
 
@@ -71,14 +70,12 @@ export const getTemplate = cache(async (templateId: string) => {
  */
 export const resolveTemplate = cache(
   async (
-    accountId: string,
     slug: string,
     environment: EnvironmentLabel = 'production',
   ) => {
     const client = getSupabaseServerClient();
 
     const { data, error } = await client.rpc('resolve_template', {
-      p_account_id: accountId,
       p_slug: slug,
       p_environment: environment,
     });
@@ -154,9 +151,9 @@ export const getSystemPromptsForTemplate = cache(
       )
       .eq('is_active', true)
       .or(
-        `scope.eq.global,and(scope.eq.category,target_category.eq.${template.category}),and(scope.eq.template,template_system_prompt_links.template_id.eq.${templateId}),and(scope.eq.account,account_id.eq.${template.account_id})`,
+        `scope.eq.global,and(scope.eq.category,target_category.eq.${template.category}),and(scope.eq.template,template_system_prompt_links.template_id.eq.${templateId})`,
       )
-      .order('priority', { ascending: false });
+      .order('priority', { ascending: false});
 
     if (error) {
       throw error;
@@ -170,7 +167,7 @@ export const getSystemPromptsForTemplate = cache(
  * Get system prompts by scope
  */
 export const getSystemPromptsByScope = cache(
-  async (scope: 'global' | 'category' | 'template' | 'account') => {
+  async (scope: 'global' | 'category' | 'template') => {
     const client = getSupabaseServerClient();
 
     const { data, error } = await client

@@ -268,7 +268,6 @@ export type Database = {
       }
       composition_performance: {
         Row: {
-          account_id: string
           avg_cost: number | null
           avg_latency_ms: number | null
           avg_rating: number | null
@@ -286,7 +285,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          account_id: string
           avg_cost?: number | null
           avg_latency_ms?: number | null
           avg_rating?: number | null
@@ -304,7 +302,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          account_id?: string
           avg_cost?: number | null
           avg_latency_ms?: number | null
           avg_rating?: number | null
@@ -322,27 +319,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "composition_performance_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "composition_performance_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_account_workspace"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "composition_performance_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "composition_performance_template_id_fkey"
             columns: ["template_id"]
@@ -555,7 +531,6 @@ export type Database = {
       }
       optimization_experiments: {
         Row: {
-          account_id: string
           completed_at: string | null
           confidence_level: number
           created_at: string
@@ -575,7 +550,6 @@ export type Database = {
           winner_variant_id: string | null
         }
         Insert: {
-          account_id: string
           completed_at?: string | null
           confidence_level?: number
           created_at?: string
@@ -595,7 +569,6 @@ export type Database = {
           winner_variant_id?: string | null
         }
         Update: {
-          account_id?: string
           completed_at?: string | null
           confidence_level?: number
           created_at?: string
@@ -615,27 +588,6 @@ export type Database = {
           winner_variant_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "optimization_experiments_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "optimization_experiments_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_account_workspace"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "optimization_experiments_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "optimization_experiments_template_id_fkey"
             columns: ["template_id"]
@@ -858,7 +810,6 @@ export type Database = {
       }
       prompt_execution_logs: {
         Row: {
-          account_id: string
           composition_hash: string | null
           context: Json | null
           cost: number | null
@@ -880,7 +831,6 @@ export type Database = {
           variant_id: string | null
         }
         Insert: {
-          account_id: string
           composition_hash?: string | null
           context?: Json | null
           cost?: number | null
@@ -902,7 +852,6 @@ export type Database = {
           variant_id?: string | null
         }
         Update: {
-          account_id?: string
           composition_hash?: string | null
           context?: Json | null
           cost?: number | null
@@ -925,27 +874,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "prompt_execution_logs_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_execution_logs_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_account_workspace"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_execution_logs_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "prompt_execution_logs_template_id_fkey"
             columns: ["template_id"]
             isOneToOne: false
@@ -963,7 +891,6 @@ export type Database = {
       }
       prompt_system_prompts: {
         Row: {
-          account_id: string | null
           condition_rules: Json | null
           content: string
           contribution_score: number | null
@@ -987,7 +914,6 @@ export type Database = {
           version: number
         }
         Insert: {
-          account_id?: string | null
           condition_rules?: Json | null
           content: string
           contribution_score?: number | null
@@ -1013,7 +939,6 @@ export type Database = {
           version?: number
         }
         Update: {
-          account_id?: string | null
           condition_rules?: Json | null
           content?: string
           contribution_score?: number | null
@@ -1040,27 +965,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "prompt_system_prompts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_system_prompts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_account_workspace"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_system_prompts_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "prompt_system_prompts_parent_version_id_fkey"
             columns: ["parent_version_id"]
             isOneToOne: false
@@ -1078,7 +982,6 @@ export type Database = {
       }
       prompt_templates: {
         Row: {
-          account_id: string
           category: Database["public"]["Enums"]["prompt_category"]
           composition_strategy: Database["public"]["Enums"]["composition_strategy"]
           created_at: string
@@ -1100,7 +1003,6 @@ export type Database = {
           version: number
         }
         Insert: {
-          account_id: string
           category: Database["public"]["Enums"]["prompt_category"]
           composition_strategy?: Database["public"]["Enums"]["composition_strategy"]
           created_at?: string
@@ -1122,7 +1024,6 @@ export type Database = {
           version?: number
         }
         Update: {
-          account_id?: string
           category?: Database["public"]["Enums"]["prompt_category"]
           composition_strategy?: Database["public"]["Enums"]["composition_strategy"]
           created_at?: string
@@ -1144,27 +1045,6 @@ export type Database = {
           version?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "prompt_templates_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_templates_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_account_workspace"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_templates_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "prompt_templates_parent_version_id_fkey"
             columns: ["parent_version_id"]
@@ -1871,7 +1751,6 @@ export type Database = {
       }
       log_prompt_execution: {
         Args: {
-          p_account_id: string
           p_composition_hash: string
           p_context: Json
           p_cost: number
@@ -1894,7 +1773,6 @@ export type Database = {
       }
       resolve_template: {
         Args: {
-          p_account_id: string
           p_environment?: Database["public"]["Enums"]["environment_label"]
           p_slug: string
         }
@@ -2077,7 +1955,7 @@ export type Database = {
         | "standards"
         | "constraints"
         | "examples"
-      system_prompt_scope: "global" | "category" | "template" | "account"
+      system_prompt_scope: "global" | "category" | "template"
       template_variable_type:
         | "text"
         | "number"
@@ -2846,7 +2724,7 @@ export const Constants = {
         "constraints",
         "examples",
       ],
-      system_prompt_scope: ["global", "category", "template", "account"],
+      system_prompt_scope: ["global", "category", "template"],
       template_variable_type: [
         "text",
         "number",

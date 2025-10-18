@@ -2,11 +2,13 @@
 -- Prompt Management System - Database Schema
 -- =====================================================
 -- This schema provides a comprehensive prompt management system with:
--- - Template management with versioning
+-- - Global template management with versioning
 -- - Layered system prompt composition
 -- - A/B testing and optimization
 -- - Performance tracking and attribution
 -- - DSPy-style automated optimization
+--
+-- NOTE: Templates are GLOBAL (no account_id) - managed by super admins only
 -- =====================================================
 
 -- =====================================================
@@ -63,8 +65,7 @@ create type public.system_prompt_layer as enum (
 create type public.system_prompt_scope as enum (
   'global',             -- Applies to all prompts
   'category',           -- Applies to specific category
-  'template',           -- Applies to specific template
-  'account'             -- Account-specific override
+  'template'            -- Applies to specific template
 );
 
 -- Optimization experiment status
@@ -91,9 +92,9 @@ create type public.composition_strategy as enum (
 -- =====================================================
 
 -- Prompt templates (the "what to do")
+-- NOTE: Global templates - no account_id (managed by super admins only)
 create table public.prompt_templates (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid references public.accounts(id) on delete cascade not null,
 
   -- Identity
   slug text not null,                          -- Stable reference (e.g., "analyze-support-ticket")
@@ -126,11 +127,10 @@ create table public.prompt_templates (
   updated_by uuid references auth.users(id) on delete set null,
 
   -- Constraints
-  unique(account_id, slug, version),
+  unique(slug, version),
   check(version > 0)
 );
 
-create index idx_prompt_templates_account on public.prompt_templates(account_id);
 create index idx_prompt_templates_slug on public.prompt_templates(slug);
 create index idx_prompt_templates_category on public.prompt_templates(category);
 create index idx_prompt_templates_active on public.prompt_templates(is_active) where is_active = true;
@@ -139,7 +139,6 @@ create index idx_prompt_templates_environment on public.prompt_templates(environ
 -- System prompts (the "how to behave")
 create table public.prompt_system_prompts (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid references public.accounts(id) on delete cascade,
 
   -- Identity
   slug text not null,                          -- Stable reference (e.g., "compliance-gdpr")
@@ -182,14 +181,12 @@ create table public.prompt_system_prompts (
   check(priority >= 0),
   check(contribution_score is null or (contribution_score >= -100 and contribution_score <= 100)),
   check(
-    (scope = 'global' and target_category is null and target_template_id is null and account_id is null) or
-    (scope = 'category' and target_category is not null and target_template_id is null and account_id is null) or
-    (scope = 'template' and target_template_id is not null and target_category is null and account_id is null) or
-    (scope = 'account' and account_id is not null)
+    (scope = 'global' and target_category is null and target_template_id is null) or
+    (scope = 'category' and target_category is not null and target_template_id is null) or
+    (scope = 'template' and target_template_id is not null and target_category is null)
   )
 );
 
-create index idx_system_prompts_account on public.prompt_system_prompts(account_id);
 create index idx_system_prompts_slug on public.prompt_system_prompts(slug);
 create index idx_system_prompts_layer on public.prompt_system_prompts(layer_type);
 create index idx_system_prompts_scope on public.prompt_system_prompts(scope);
@@ -257,7 +254,6 @@ create index idx_template_variants_active on public.template_variants(is_active)
 -- Optimization experiments
 create table public.optimization_experiments (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid references public.accounts(id) on delete cascade not null,
   template_id uuid references public.prompt_templates(id) on delete cascade not null,
 
   -- Identity
@@ -295,7 +291,6 @@ create table public.optimization_experiments (
   check(array_length(variant_ids, 1) >= 2)
 );
 
-create index idx_optimization_experiments_account on public.optimization_experiments(account_id);
 create index idx_optimization_experiments_template on public.optimization_experiments(template_id);
 create index idx_optimization_experiments_status on public.optimization_experiments(status);
 
@@ -331,10 +326,10 @@ create index idx_system_prompt_combinations_hash on public.system_prompt_combina
 -- =====================================================
 
 -- Composition performance tracking (aggregated by composition)
+-- NOTE: Global performance tracking - no account_id
 create table public.composition_performance (
   id uuid primary key default gen_random_uuid(),
   template_id uuid references public.prompt_templates(id) on delete cascade not null,
-  account_id uuid references public.accounts(id) on delete cascade not null,
 
   -- Composition
   composition_hash text not null unique,
@@ -365,14 +360,12 @@ create table public.composition_performance (
 );
 
 create index idx_composition_performance_template on public.composition_performance(template_id);
-create index idx_composition_performance_account on public.composition_performance(account_id);
 create index idx_composition_performance_hash on public.composition_performance(composition_hash);
 create index idx_composition_performance_success_rate on public.composition_performance((success_count::numeric / nullif(execution_count, 0)));
 
 -- Execution logs (individual runs)
 create table public.prompt_execution_logs (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid references public.accounts(id) on delete cascade not null,
   user_id uuid references auth.users(id) on delete set null,
   template_id uuid references public.prompt_templates(id) on delete set null,
   variant_id uuid references public.template_variants(id) on delete set null,
@@ -409,7 +402,6 @@ create table public.prompt_execution_logs (
   check(tokens_used is null or tokens_used >= 0)
 );
 
-create index idx_prompt_execution_logs_account on public.prompt_execution_logs(account_id);
 create index idx_prompt_execution_logs_template on public.prompt_execution_logs(template_id);
 create index idx_prompt_execution_logs_composition on public.prompt_execution_logs(composition_hash);
 create index idx_prompt_execution_logs_executed_at on public.prompt_execution_logs(executed_at desc);
@@ -460,9 +452,7 @@ begin
           -- Category scope
           (sp.scope = 'category' and sp.target_category = v_template.category) or
           -- Template scope (via link)
-          (sp.scope = 'template' and link.template_id is not null) or
-          -- Account scope
-          (sp.scope = 'account' and sp.account_id = v_template.account_id)
+          (sp.scope = 'template' and link.template_id is not null)
         )
         -- Check conditions
         and (
@@ -484,7 +474,6 @@ $$;
 
 -- Function: Resolve template by slug and environment
 create or replace function public.resolve_template(
-  p_account_id uuid,
   p_slug text,
   p_environment environment_label default 'production'
 )
@@ -498,8 +487,7 @@ begin
   -- Get latest version for environment
   select id into v_template_id
   from public.prompt_templates
-  where account_id = p_account_id
-    and slug = p_slug
+  where slug = p_slug
     and environment = p_environment
     and is_active = true
   order by version desc
@@ -510,8 +498,7 @@ begin
     if p_environment != 'production' then
       select id into v_template_id
       from public.prompt_templates
-      where account_id = p_account_id
-        and slug = p_slug
+      where slug = p_slug
         and environment = 'production'
         and is_active = true
       order by version desc
@@ -529,7 +516,6 @@ $$;
 
 -- Function: Log prompt execution
 create or replace function public.log_prompt_execution(
-  p_account_id uuid,
   p_user_id uuid,
   p_template_id uuid,
   p_variant_id uuid,
@@ -557,7 +543,6 @@ declare
 begin
   -- Insert execution log
   insert into public.prompt_execution_logs (
-    account_id,
     user_id,
     template_id,
     variant_id,
@@ -576,7 +561,6 @@ begin
     latency_ms,
     tokens_used
   ) values (
-    p_account_id,
     p_user_id,
     p_template_id,
     p_variant_id,
@@ -600,7 +584,6 @@ begin
   -- Update composition performance
   insert into public.composition_performance (
     template_id,
-    account_id,
     composition_hash,
     system_prompt_ids,
     execution_count,
@@ -613,7 +596,6 @@ begin
     last_executed_at
   ) values (
     p_template_id,
-    p_account_id,
     p_composition_hash,
     p_system_prompt_ids,
     1,
@@ -717,183 +699,135 @@ alter table public.system_prompt_combinations enable row level security;
 alter table public.composition_performance enable row level security;
 alter table public.prompt_execution_logs enable row level security;
 
--- RLS for prompt_templates
-create policy "Users can view templates in their accounts"
+-- RLS for prompt_templates (super admin only)
+create policy "Super admins can view templates"
   on public.prompt_templates for select
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
-create policy "Users can create templates in their accounts"
+create policy "Super admins can create templates"
   on public.prompt_templates for insert
   with check (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
-create policy "Users can update templates in their accounts"
+create policy "Super admins can update templates"
   on public.prompt_templates for update
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
-create policy "Users can delete templates in their accounts"
+create policy "Super admins can delete templates"
   on public.prompt_templates for delete
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
--- RLS for prompt_system_prompts (global prompts readable by all, account prompts by account members)
-create policy "Users can view global and category system prompts"
+-- RLS for prompt_system_prompts
+create policy "Super admins can view all system prompts"
   on public.prompt_system_prompts for select
   using (
-    scope in ('global', 'category') or
-    (scope = 'account' and public.has_role_on_account(account_id)) or
-    (scope = 'template' and exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = target_template_id
-        and public.has_role_on_account(pt.account_id)
-    ))
+    public.is_super_admin()
   );
 
-create policy "Users can create system prompts in their accounts"
+create policy "Super admins can create system prompts"
   on public.prompt_system_prompts for insert
   with check (
-    (scope in ('global', 'category') and auth.jwt()->>'role' = 'service_role') or
-    (scope = 'account' and public.has_role_on_account(account_id)) or
-    (scope = 'template' and exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = target_template_id
-        and public.has_role_on_account(pt.account_id)
-    ))
+    public.is_super_admin()
   );
 
-create policy "Users can update system prompts in their accounts"
+create policy "Super admins can update system prompts"
   on public.prompt_system_prompts for update
   using (
-    (scope in ('global', 'category') and auth.jwt()->>'role' = 'service_role') or
-    (scope = 'account' and public.has_role_on_account(account_id)) or
-    (scope = 'template' and exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = target_template_id
-        and public.has_role_on_account(pt.account_id)
-    ))
+    public.is_super_admin()
   );
 
-create policy "Users can delete system prompts in their accounts"
+create policy "Super admins can delete system prompts"
   on public.prompt_system_prompts for delete
   using (
-    (scope in ('global', 'category') and auth.jwt()->>'role' = 'service_role') or
-    (scope = 'account' and public.has_role_on_account(account_id)) or
-    (scope = 'template' and exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = target_template_id
-        and public.has_role_on_account(pt.account_id)
-    ))
+    public.is_super_admin()
   );
 
 -- RLS for template_system_prompt_links
-create policy "Users can view links for their templates"
+create policy "Super admins can view links"
   on public.template_system_prompt_links for select
   using (
-    exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = template_id
-        and public.has_role_on_account(pt.account_id)
-    )
+    public.is_super_admin()
   );
 
-create policy "Users can manage links for their templates"
+create policy "Super admins can manage links"
   on public.template_system_prompt_links for all
   using (
-    exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = template_id
-        and public.has_role_on_account(pt.account_id)
-    )
+    public.is_super_admin()
   );
 
 -- RLS for template_variants
-create policy "Users can view variants for their templates"
+create policy "Super admins can view variants"
   on public.template_variants for select
   using (
-    exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = template_id
-        and public.has_role_on_account(pt.account_id)
-    )
+    public.is_super_admin()
   );
 
-create policy "Users can manage variants for their templates"
+create policy "Super admins can manage variants"
   on public.template_variants for all
   using (
-    exists (
-      select 1 from public.prompt_templates pt
-      where pt.id = template_id
-        and public.has_role_on_account(pt.account_id)
-    )
+    public.is_super_admin()
   );
 
 -- RLS for optimization_experiments
-create policy "Users can view experiments in their accounts"
+create policy "Super admins can view experiments"
   on public.optimization_experiments for select
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
-create policy "Users can manage experiments in their accounts"
+create policy "Super admins can manage experiments"
   on public.optimization_experiments for all
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
 -- RLS for system_prompt_combinations
-create policy "Users can view combinations for their experiments"
+create policy "Super admins can view combinations"
   on public.system_prompt_combinations for select
   using (
-    exists (
-      select 1 from public.optimization_experiments oe
-      where oe.id = experiment_id
-        and public.has_role_on_account(oe.account_id)
-    )
+    public.is_super_admin()
   );
 
 create policy "System can manage combinations"
   on public.system_prompt_combinations for all
   using (
     auth.jwt()->>'role' = 'service_role' or
-    exists (
-      select 1 from public.optimization_experiments oe
-      where oe.id = experiment_id
-        and public.has_role_on_account(oe.account_id)
-    )
+    public.is_super_admin()
   );
 
 -- RLS for composition_performance
-create policy "Users can view performance for their accounts"
+create policy "Super admins can view performance"
   on public.composition_performance for select
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
 create policy "System can manage performance data"
   on public.composition_performance for all
   using (
     auth.jwt()->>'role' = 'service_role' or
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
 -- RLS for prompt_execution_logs
-create policy "Users can view logs in their accounts"
+create policy "Super admins can view logs"
   on public.prompt_execution_logs for select
   using (
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
 create policy "System can create logs"
   on public.prompt_execution_logs for insert
   with check (
     auth.jwt()->>'role' = 'service_role' or
-    public.has_role_on_account(account_id)
+    public.is_super_admin()
   );
 
 -- =====================================================
@@ -1027,7 +961,6 @@ Always explain your analytical reasoning and any assumptions made.',
 
 -- Example prompt templates
 insert into public.prompt_templates (
-  account_id,
   slug,
   name,
   description,
@@ -1037,9 +970,8 @@ insert into public.prompt_templates (
   environment,
   composition_strategy,
   is_active
-)
-select
-  a.id,
+) values
+(
   'analyze-support-ticket',
   'Support Ticket Analysis',
   'Analyzes customer support tickets and suggests resolutions',
@@ -1069,11 +1001,33 @@ Please provide:
   'production',
   'fixed',
   true
-from public.accounts a
-where a.primary_owner_user_id is not null
-limit 1;
+),
+(
+  'customer-conversation',
+  'Customer Conversation',
+  'Natural customer support conversation handling',
+  'conversation',
+  'You are assisting a customer with their inquiry. Maintain a helpful and professional tone.
 
--- Link system prompts to template
+**Customer:** {{customer_name}}
+**Context:** {{conversation_context}}
+
+**Latest Message:**
+{{customer_message}}
+
+Please respond appropriately, addressing their concerns and offering solutions.',
+  '{
+    "customer_name": {"type": "text", "description": "Customer name", "required": true},
+    "conversation_context": {"type": "text", "description": "Previous conversation context", "required": false},
+    "customer_message": {"type": "text", "description": "Latest customer message", "required": true}
+  }',
+  'production',
+  'fixed',
+  true
+)
+on conflict (slug, version) do nothing;
+
+-- Link system prompts to templates
 insert into public.template_system_prompt_links (template_id, system_prompt_id, order_index)
 select
   pt.id,
@@ -1088,6 +1042,11 @@ select
   end as order_index
 from public.prompt_templates pt
 cross join public.prompt_system_prompts sp
-where pt.slug = 'analyze-support-ticket'
-  and sp.slug in ('compliance-safety', 'role-helpful-assistant', 'analysis-methodology', 'format-markdown', 'standards-quality')
-  and sp.is_active = true;
+where pt.slug in ('analyze-support-ticket', 'customer-conversation')
+  and sp.slug in ('compliance-safety', 'role-helpful-assistant', 'analysis-methodology', 'conversation-guidelines', 'format-markdown', 'standards-quality')
+  and sp.is_active = true
+  and (
+    sp.scope = 'global' or
+    (sp.scope = 'category' and sp.target_category = pt.category)
+  )
+on conflict (template_id, system_prompt_id) do nothing;

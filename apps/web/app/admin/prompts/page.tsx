@@ -2,8 +2,6 @@ import { AdminGuard } from '@kit/admin/components/admin-guard';
 import { PageBody, PageHeader } from '@kit/ui/page';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { isSuperAdmin } from '@kit/admin';
-import { redirect } from 'next/navigation';
 import {
   Table,
   TableBody,
@@ -18,15 +16,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 async function PromptsAdminPage() {
   const adminClient = getSupabaseServerAdminClient();
-
-  // Validate admin status
-  const {
-    data: { user },
-  } = await adminClient.auth.getUser();
-
-  if (!user || !(await isSuperAdmin(adminClient))) {
-    redirect('/');
-  }
 
   // Fetch all prompt templates
   const { data: templates } = await adminClient

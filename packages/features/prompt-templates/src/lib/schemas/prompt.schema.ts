@@ -5,7 +5,6 @@ import { z } from 'zod';
 // =====================================================
 
 export const CreatePromptTemplateSchema = z.object({
-  account_id: z.string().uuid(),
   slug: z
     .string()
     .min(3, 'Slug must be at least 3 characters')
@@ -75,7 +74,6 @@ export const PromoteToEnvironmentSchema = z.object({
 // =====================================================
 
 export const CreateSystemPromptSchema = z.object({
-  account_id: z.string().uuid().optional(),
   slug: z
     .string()
     .min(3)
@@ -93,7 +91,7 @@ export const CreateSystemPromptSchema = z.object({
     'constraints',
     'examples',
   ]),
-  scope: z.enum(['global', 'category', 'template', 'account']),
+  scope: z.enum(['global', 'category', 'template']),
   target_category: z.enum([
     'analysis',
     'classification',
@@ -177,7 +175,6 @@ export const DeleteVariantSchema = z.object({
 // =====================================================
 
 export const CreateExperimentSchema = z.object({
-  account_id: z.string().uuid(),
   template_id: z.string().uuid(),
   name: z.string().min(1).max(255),
   description: z.string().optional(),
@@ -207,7 +204,6 @@ export const RenderTemplateSchema = z.object({
 });
 
 export const LogExecutionSchema = z.object({
-  account_id: z.string().uuid(),
   user_id: z.string().uuid().optional(),
   template_id: z.string().uuid(),
   variant_id: z.string().uuid().optional(),
