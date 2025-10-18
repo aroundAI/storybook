@@ -49,27 +49,27 @@ const compositionStrategies = [
   {
     value: 'fixed',
     label: 'Fixed',
-    description: 'Always uses the same system prompts for all requests'
+    description: 'Always uses the same prompt configuration for all requests'
   },
   {
     value: 'conditional',
     label: 'Conditional',
-    description: 'System prompts included based on rules (user level, locale, context)'
+    description: 'Dynamically selects variants/prompts based on rules (user level, locale, context)'
   },
   {
     value: 'ab_test',
     label: 'A/B Test',
-    description: 'Randomly assigns users to variants for testing effectiveness'
+    description: 'Randomly assigns users to different variants for testing effectiveness'
   },
   {
     value: 'bandit',
     label: 'Multi-Armed Bandit',
-    description: 'Algorithm learns optimal variant over time based on performance'
+    description: 'Algorithm learns and selects optimal variant over time based on performance'
   },
   {
     value: 'optimized',
     label: 'Optimized',
-    description: 'Always uses best-performing variant based on metrics'
+    description: 'Always uses the best-performing variant based on metrics'
   },
 ] as const;
 
