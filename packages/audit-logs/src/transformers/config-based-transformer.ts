@@ -58,7 +58,10 @@ export class ConfigBasedTransformer implements AuditTransformer {
   private redactSensitiveFields(
     obj: Record<string, unknown>,
   ): Record<string, unknown> {
-    if (!this.config.sensitiveFields || this.config.sensitiveFields.length === 0) {
+    if (
+      !this.config.sensitiveFields ||
+      this.config.sensitiveFields.length === 0
+    ) {
       return obj;
     }
 

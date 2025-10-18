@@ -1,8 +1,9 @@
-import type { AuditTransformer } from '../types';
+import { getLogger } from '@kit/shared/logger';
+
 import { ConfigBasedTransformer } from '../transformers/config-based-transformer';
 import { defaultTransformer } from '../transformers/default-transformer';
+import type { AuditTransformer } from '../types';
 import { getObjectConfig } from './audit-config';
-import { getLogger } from '@kit/shared/logger';
 
 /**
  * Global registry for audit transformers
@@ -83,7 +84,7 @@ export function hasTransformer(objectType: string): boolean {
   const config = getObjectConfig(objectType);
 
   return (
-    (config?.transformer !== undefined) || transformerRegistry.has(objectType)
+    config?.transformer !== undefined || transformerRegistry.has(objectType)
   );
 }
 

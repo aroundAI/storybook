@@ -2,15 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 
-import {
-  createAuditLog,
-  extractNetworkContext,
-} from '@kit/audit-logs/server';
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { requireUser } from '@kit/supabase/require-user';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   AddProjectMemberSchema,
@@ -223,9 +220,7 @@ export const deleteProjectAction = enhanceAction(
         objectId: project.id,
         objectName: project.name,
         before: project,
-        scopes: [
-          { type: 'account', id: project.account_id },
-        ],
+        scopes: [{ type: 'account', id: project.account_id }],
         ...networkContext,
       });
     }

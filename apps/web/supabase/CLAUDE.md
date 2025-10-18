@@ -77,6 +77,7 @@ cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
 ```
 
 ⚠️ **CRITICAL**: Schema files are just templates! Database changes require:
+
 - Either: Run `db diff` to generate migration
 - Or: Manually copy schema to migrations folder with timestamp
 - Then: Apply with `migration up` or `db reset`
