@@ -46,11 +46,31 @@ interface EditTemplateFormProps {
 }
 
 const compositionStrategies = [
-  { value: 'fixed', label: 'Fixed' },
-  { value: 'conditional', label: 'Conditional' },
-  { value: 'ab_test', label: 'A/B Test' },
-  { value: 'bandit', label: 'Multi-Armed Bandit' },
-  { value: 'optimized', label: 'Optimized' },
+  {
+    value: 'fixed',
+    label: 'Fixed',
+    description: 'Always uses the same system prompts for all requests'
+  },
+  {
+    value: 'conditional',
+    label: 'Conditional',
+    description: 'System prompts included based on rules (user level, locale, context)'
+  },
+  {
+    value: 'ab_test',
+    label: 'A/B Test',
+    description: 'Randomly assigns users to variants for testing effectiveness'
+  },
+  {
+    value: 'bandit',
+    label: 'Multi-Armed Bandit',
+    description: 'Algorithm learns optimal variant over time based on performance'
+  },
+  {
+    value: 'optimized',
+    label: 'Optimized',
+    description: 'Always uses best-performing variant based on metrics'
+  },
 ] as const;
 
 export function EditTemplateForm({
@@ -166,13 +186,18 @@ export function EditTemplateForm({
                 <SelectContent>
                   {compositionStrategies.map((strategy) => (
                     <SelectItem key={strategy.value} value={strategy.value}>
-                      {strategy.label}
+                      <div className="flex flex-col">
+                        <span className="font-medium">{strategy.label}</span>
+                        <span className="text-muted-foreground text-xs">
+                          {strategy.description}
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FormDescription>
-                How system prompts are composed
+                How system prompts and variants are selected
               </FormDescription>
               <FormMessage />
             </FormItem>

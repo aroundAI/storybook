@@ -128,7 +128,12 @@ async function PromptsAdminPage() {
                       templates.map((template) => (
                         <TableRow key={template.id}>
                           <TableCell className="font-medium">
-                            {template.name}
+                            <Link
+                              href={`/admin/prompts/${template.id}/edit`}
+                              className="hover:underline"
+                            >
+                              {template.name}
+                            </Link>
                           </TableCell>
                           <TableCell>
                             <code className="rounded bg-muted px-1 py-0.5 text-xs">
@@ -223,7 +228,12 @@ async function PromptsAdminPage() {
                       systemPrompts.map((prompt) => (
                         <TableRow key={prompt.id}>
                           <TableCell className="font-medium">
-                            {prompt.name}
+                            <Link
+                              href={`/admin/prompts/system-prompts/${prompt.id}/edit`}
+                              className="hover:underline"
+                            >
+                              {prompt.name}
+                            </Link>
                           </TableCell>
                           <TableCell>
                             <code className="rounded bg-muted px-1 py-0.5 text-xs">

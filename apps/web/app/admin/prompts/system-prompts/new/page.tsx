@@ -10,7 +10,7 @@ async function NewSystemPromptPage() {
   // Server action wrapper for creating system prompts
   async function handleCreateSystemPrompt(data: CreateSystemPromptInput) {
     'use server';
-    await createSystemPromptAction(data);
+    await createSystemPromptAction(data as never);
   }
 
   return (

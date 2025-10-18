@@ -10,7 +10,7 @@ async function NewTemplatePage() {
   // Server action wrapper for creating templates
   async function handleCreateTemplate(data: CreatePromptTemplateInput) {
     'use server';
-    await createPromptTemplateAction(data);
+    await createPromptTemplateAction(data as never);
   }
 
   return (

@@ -30,7 +30,7 @@ async function NewVariantPage({
   // Server action wrapper for creating variants
   async function handleCreateVariant(data: CreateVariantInput) {
     'use server';
-    await createVariantAction(data);
+    await createVariantAction(data as never);
   }
 
   return (

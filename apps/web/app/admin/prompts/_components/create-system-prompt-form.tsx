@@ -277,7 +277,29 @@ export function CreateSystemPromptForm({
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  The category this system prompt applies to
+                  This system prompt will only apply to templates in this category
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
+
+        {scope === 'template' && (
+          <FormField
+            control={form.control}
+            name="target_template_id"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Target Template</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Template ID (will be replaced with selector)"
+                    {...field}
+                  />
+                </FormControl>
+                <FormDescription>
+                  This system prompt will only apply to this specific template
                 </FormDescription>
                 <FormMessage />
               </FormItem>
@@ -301,28 +323,6 @@ export function CreateSystemPromptForm({
               </FormControl>
               <FormDescription>
                 The actual system prompt text that will be prepended
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="priority"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Priority</FormLabel>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="0"
-                  {...field}
-                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                />
-              </FormControl>
-              <FormDescription>
-                Higher priority prompts are composed first (0 = lowest)
               </FormDescription>
               <FormMessage />
             </FormItem>

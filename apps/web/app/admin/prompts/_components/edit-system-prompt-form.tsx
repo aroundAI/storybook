@@ -18,7 +18,13 @@ import { Textarea } from '@kit/ui/textarea';
 import { Button } from '@kit/ui/button';
 import { Switch } from '@kit/ui/switch';
 import { toast } from '@kit/ui/sonner';
-import { Loader2Icon } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@kit/ui/tooltip';
+import { Loader2Icon, InfoIcon } from 'lucide-react';
 import { UpdateSystemPromptSchema } from '@kit/prompt-templates/schemas';
 import type { z } from 'zod';
 
@@ -140,7 +146,21 @@ export function EditSystemPromptForm({
           name="priority"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Priority</FormLabel>
+              <div className="flex items-center gap-2">
+                <FormLabel>Priority</FormLabel>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p className="text-sm">
+                        Priority determines order within same layer type when system prompts are globally scoped. Use link ordering for template-specific arrangement.
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
               <FormControl>
                 <Input
                   type="number"
