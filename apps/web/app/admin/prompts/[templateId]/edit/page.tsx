@@ -112,7 +112,7 @@ async function EditTemplatePage({
     revalidatePath(`/admin/prompts/${templateId}/edit`);
   }
 
-  function handleRefresh() {
+  async function handleRefresh() {
     'use server';
     revalidatePath(`/admin/prompts/${templateId}/edit`);
   }
