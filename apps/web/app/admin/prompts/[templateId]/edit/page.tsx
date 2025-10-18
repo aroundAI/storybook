@@ -90,8 +90,10 @@ async function EditTemplatePage({
 
   async function handleAddPrompts(tid: string, promptIds: string[]) {
     'use server';
+    const client = getSupabaseServerAdminClient();
+
     // Get current max order_index
-    const { data: links } = await adminClient
+    const { data: links } = await client
       .from('template_system_prompt_links')
       .select('order_index')
       .eq('template_id', tid)
