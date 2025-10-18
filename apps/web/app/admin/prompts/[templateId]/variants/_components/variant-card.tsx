@@ -29,6 +29,9 @@ interface VariantCardProps {
   }>;
   templateId: string;
   totalWeight: number;
+  onDelete: (id: string) => Promise<void>;
+  onAssign: (variantId: string, accountId: string) => Promise<void>;
+  onUnassign: (variantId: string, accountId: string) => Promise<void>;
 }
 
 export function VariantCard({
@@ -36,6 +39,9 @@ export function VariantCard({
   assignments,
   templateId,
   totalWeight,
+  onDelete,
+  onAssign,
+  onUnassign,
 }: VariantCardProps) {
   const percentage =
     totalWeight > 0 && variant.is_active
@@ -73,6 +79,7 @@ export function VariantCard({
             <DeleteVariantDialog
               variantId={variant.id}
               variantName={variant.variant_name}
+              onDelete={onDelete}
             />
           </div>
         </div>
@@ -106,6 +113,8 @@ export function VariantCard({
             <ManageAccountAssignmentsDialog
               variantId={variant.id}
               currentAssignments={assignments}
+              onAssign={onAssign}
+              onUnassign={onUnassign}
             />
           </div>
 

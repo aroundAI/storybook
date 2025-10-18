@@ -19,7 +19,6 @@ import { Button } from '@kit/ui/button';
 import { Switch } from '@kit/ui/switch';
 import { toast } from '@kit/ui/sonner';
 import { Loader2Icon } from 'lucide-react';
-import { updateVariantAction } from '@kit/prompt-templates/mutations';
 import { UpdateVariantSchema } from '@kit/prompt-templates/schemas';
 import type { z } from 'zod';
 
@@ -35,12 +34,14 @@ interface EditVariantFormProps {
     is_active: boolean;
   };
   templateId: string;
+  onSubmit: (data: UpdateVariantFormData) => Promise<void>;
   onSuccess?: () => void;
 }
 
 export function EditVariantForm({
   variant,
   templateId,
+  onSubmit,
   onSuccess,
 }: EditVariantFormProps) {
   const [isPending, startTransition] = useTransition();
@@ -61,7 +62,7 @@ export function EditVariantForm({
   const handleSubmit = (data: UpdateVariantFormData) => {
     startTransition(async () => {
       try {
-        await updateVariantAction(data);
+        await onSubmit(data);
         toast.success('Variant updated successfully');
         router.push(`/admin/prompts/${templateId}/variants`);
         router.refresh();

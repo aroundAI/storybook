@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { EditVariantForm } from '../../_components/edit-variant-form';
 import { redirect } from 'next/navigation';
+import { updateVariantAction } from '@kit/prompt-templates/mutations';
 
 async function EditVariantPage({
   params,
@@ -37,6 +38,12 @@ async function EditVariantPage({
     redirect(`/admin/prompts/${templateId}/variants`);
   }
 
+  // Server action wrapper for updating variants
+  async function handleUpdateVariant(data: Parameters<typeof updateVariantAction>[0]) {
+    'use server';
+    await updateVariantAction(data);
+  }
+
   return (
     <>
       <PageHeader description={<AppBreadcrumbs />}>
@@ -57,7 +64,11 @@ async function EditVariantPage({
             <CardTitle>Variant Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <EditVariantForm variant={variant} templateId={templateId} />
+            <EditVariantForm
+              variant={variant}
+              templateId={templateId}
+              onSubmit={handleUpdateVariant}
+            />
           </CardContent>
         </Card>
       </PageBody>

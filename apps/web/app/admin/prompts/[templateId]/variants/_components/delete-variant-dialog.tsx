@@ -16,16 +16,17 @@ import {
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { Loader2Icon, Trash2Icon } from 'lucide-react';
-import { deleteVariantAction } from '@kit/prompt-templates/mutations';
 
 interface DeleteVariantDialogProps {
   variantId: string;
   variantName: string;
+  onDelete: (id: string) => Promise<void>;
 }
 
 export function DeleteVariantDialog({
   variantId,
   variantName,
+  onDelete,
 }: DeleteVariantDialogProps) {
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -34,7 +35,7 @@ export function DeleteVariantDialog({
   const handleDelete = () => {
     startTransition(async () => {
       try {
-        await deleteVariantAction({ id: variantId });
+        await onDelete(variantId);
         toast.success('Variant deleted successfully');
         router.refresh();
         setOpen(false);

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { CreateVariantForm } from '../_components/create-variant-form';
 import { redirect } from 'next/navigation';
+import { createVariantAction } from '@kit/prompt-templates/mutations';
 
 async function NewVariantPage({
   params,
@@ -23,6 +24,12 @@ async function NewVariantPage({
 
   if (error || !template) {
     redirect('/admin/prompts');
+  }
+
+  // Server action wrapper for creating variants
+  async function handleCreateVariant(data: Parameters<typeof createVariantAction>[0]) {
+    'use server';
+    await createVariantAction(data);
   }
 
   return (
@@ -46,7 +53,10 @@ async function NewVariantPage({
             <CardTitle>Variant Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <CreateVariantForm templateId={templateId} />
+            <CreateVariantForm
+              templateId={templateId}
+              onSubmit={handleCreateVariant}
+            />
           </CardContent>
         </Card>
       </PageBody>

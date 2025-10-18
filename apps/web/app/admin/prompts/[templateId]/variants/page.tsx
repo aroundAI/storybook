@@ -9,6 +9,11 @@ import { PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 import { TrafficSplitVisualization } from './_components/traffic-split-visualization';
 import { VariantCard } from './_components/variant-card';
+import {
+  deleteVariantAction,
+  assignVariantToAccountAction,
+  unassignVariantFromAccountAction,
+} from '@kit/prompt-templates/mutations';
 
 async function VariantsManagementPage({
   params,
@@ -64,6 +69,30 @@ async function VariantsManagementPage({
     variants
       ?.filter((v) => v.is_active)
       .reduce((sum, v) => sum + Number(v.traffic_weight), 0) || 0;
+
+  // Server action wrapper for deleting variants
+  async function handleDeleteVariant(id: string) {
+    'use server';
+    await deleteVariantAction({ id });
+  }
+
+  // Server action wrapper for assigning variants to accounts
+  async function handleAssignVariant(variantId: string, accountId: string) {
+    'use server';
+    await assignVariantToAccountAction({
+      variant_id: variantId,
+      account_id: accountId,
+    });
+  }
+
+  // Server action wrapper for unassigning variants from accounts
+  async function handleUnassignVariant(variantId: string, accountId: string) {
+    'use server';
+    await unassignVariantFromAccountAction({
+      variant_id: variantId,
+      account_id: accountId,
+    });
+  }
 
   return (
     <>
@@ -126,6 +155,9 @@ async function VariantsManagementPage({
                   assignments={variantAssignments}
                   templateId={templateId}
                   totalWeight={totalWeight}
+                  onDelete={handleDeleteVariant}
+                  onAssign={handleAssignVariant}
+                  onUnassign={handleUnassignVariant}
                 />
               );
             })

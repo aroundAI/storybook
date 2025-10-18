@@ -18,7 +18,6 @@ import { Textarea } from '@kit/ui/textarea';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { Loader2Icon } from 'lucide-react';
-import { createVariantAction } from '@kit/prompt-templates/mutations';
 import { CreateVariantSchema } from '@kit/prompt-templates/schemas';
 import type { z } from 'zod';
 
@@ -26,11 +25,13 @@ type CreateVariantFormData = z.infer<typeof CreateVariantSchema>;
 
 interface CreateVariantFormProps {
   templateId: string;
+  onSubmit: (data: CreateVariantFormData) => Promise<void>;
   onSuccess?: () => void;
 }
 
 export function CreateVariantForm({
   templateId,
+  onSubmit,
   onSuccess,
 }: CreateVariantFormProps) {
   const [isPending, startTransition] = useTransition();
@@ -50,7 +51,7 @@ export function CreateVariantForm({
   const handleSubmit = (data: CreateVariantFormData) => {
     startTransition(async () => {
       try {
-        await createVariantAction(data);
+        await onSubmit(data);
         toast.success('Variant created successfully');
         router.push(`/admin/prompts/${templateId}/variants`);
         router.refresh();

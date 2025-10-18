@@ -15,10 +15,6 @@ import { Checkbox } from '@kit/ui/checkbox';
 import { SettingsIcon, Loader2Icon } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 import { useRouter } from 'next/navigation';
-import {
-  assignVariantToAccountAction,
-  unassignVariantFromAccountAction,
-} from '@kit/prompt-templates/mutations';
 
 interface ManageAccountAssignmentsDialogProps {
   variantId: string;
@@ -31,6 +27,8 @@ interface ManageAccountAssignmentsDialogProps {
       picture_url: string | null;
     } | null;
   }>;
+  onAssign: (variantId: string, accountId: string) => Promise<void>;
+  onUnassign: (variantId: string, accountId: string) => Promise<void>;
 }
 
 // This would normally come from a server action or API
@@ -53,6 +51,8 @@ function useAccounts() {
 export function ManageAccountAssignmentsDialog({
   variantId,
   currentAssignments,
+  onAssign,
+  onUnassign,
 }: ManageAccountAssignmentsDialogProps) {
   const [open, setOpen] = useState(false);
   const [selectedAccountIds, setSelectedAccountIds] = useState<Set<string>>(
@@ -97,18 +97,12 @@ export function ManageAccountAssignmentsDialog({
 
         // Execute assignments
         for (const accountId of toAssign) {
-          await assignVariantToAccountAction({
-            variant_id: variantId,
-            account_id: accountId,
-          });
+          await onAssign(variantId, accountId);
         }
 
         // Execute unassignments
         for (const accountId of toUnassign) {
-          await unassignVariantFromAccountAction({
-            variant_id: variantId,
-            account_id: accountId,
-          });
+          await onUnassign(variantId, accountId);
         }
 
         toast.success('Account assignments updated');
