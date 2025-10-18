@@ -40,10 +40,7 @@ export const LogoConfigSchema = z.object({
  */
 export const ColorConfigSchema = z.object({
   primary: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color'),
-  primaryDark: z
-    .string()
-    .regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color')
-    .optional(),
+  primaryDark: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color'),
   secondary: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color'),
   accent: z.string().regex(/^#[0-9A-F]{6}$/i, 'Must be a valid hex color'),
   bgLight: z
@@ -140,6 +137,15 @@ function safeParseInt(value: string | undefined, defaultValue: number): number {
  * @throws {ZodError} If configuration is invalid
  */
 export function getBrandingConfig(): BrandingConfig {
+  // Get primary color for auto-generating primaryDark
+  const primaryColor = process.env.NEXT_PUBLIC_BRAND_PRIMARY || DEFAULT_COLORS.primary;
+  const primaryDark = process.env.NEXT_PUBLIC_BRAND_PRIMARY_DARK;
+
+  // Auto-generate primaryDark if not provided and primary is valid
+  const computedPrimaryDark =
+    primaryDark ||
+    (isValidHexColor(primaryColor) ? generateDarkerVariant(primaryColor as any) : DEFAULT_COLORS.primaryDark); // eslint-disable-line @typescript-eslint/no-explicit-any
+
   // Build raw config from environment variables
   const rawConfig = {
     logo: {
@@ -161,8 +167,8 @@ export function getBrandingConfig(): BrandingConfig {
       svg: process.env.NEXT_PUBLIC_LOGO_SVG,
     },
     colors: {
-      primary: process.env.NEXT_PUBLIC_BRAND_PRIMARY || DEFAULT_COLORS.primary,
-      primaryDark: process.env.NEXT_PUBLIC_BRAND_PRIMARY_DARK,
+      primary: primaryColor,
+      primaryDark: computedPrimaryDark,
       secondary: process.env.NEXT_PUBLIC_BRAND_SECONDARY || DEFAULT_COLORS.secondary,
       accent: process.env.NEXT_PUBLIC_BRAND_ACCENT || DEFAULT_COLORS.accent,
       bgLight: process.env.NEXT_PUBLIC_BRAND_BG_LIGHT,
@@ -220,12 +226,6 @@ export function getBrandingConfig(): BrandingConfig {
 
   // Parse and validate with Zod
   const config = BrandingConfigSchema.parse(rawConfig);
-
-  // Post-processing: Generate primaryDark if not provided
-  if (!config.colors.primaryDark && isValidHexColor(config.colors.primary)) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    config.colors.primaryDark = generateDarkerVariant(config.colors.primary as any);
-  }
 
   return config;
 }
