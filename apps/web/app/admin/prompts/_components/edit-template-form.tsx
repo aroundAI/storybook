@@ -173,39 +173,45 @@ export function EditTemplateForm({
         <FormField
           control={form.control}
           name="composition_strategy"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Composition Strategy</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select strategy" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {compositionStrategies.map((strategy) => (
-                    <SelectItem key={strategy.value} value={strategy.value}>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{strategy.label}</span>
-                        <span className="text-muted-foreground text-xs">
-                          {strategy.description}
-                        </span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormDescription>Template execution strategy</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+          render={({ field }) => {
+            const selectedStrategy = compositionStrategies.find(
+              (s) => s.value === field.value,
+            );
+            return (
+              <FormItem>
+                <FormLabel>Composition Strategy</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select strategy" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {compositionStrategies.map((strategy) => (
+                      <SelectItem key={strategy.value} value={strategy.value}>
+                        {strategy.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  {selectedStrategy?.description ||
+                    'Choose how this template should be executed'}
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            );
+          }}
         />
 
         <FormField
           control={form.control}
           name="is_active"
           render={({ field }) => (
-            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
               <div className="space-y-0.5">
                 <FormLabel className="text-base">Active Status</FormLabel>
                 <FormDescription>
