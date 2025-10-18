@@ -133,30 +133,29 @@ async function EditTemplatePage({
   return (
     <>
       <PageHeader
+        title="Edit Template"
         description={
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Link href="/admin" className="hover:text-foreground">
-              Admin
-            </Link>
-            <ChevronRightIcon className="h-4 w-4" />
-            <Link href="/admin/prompts" className="hover:text-foreground">
-              Prompts
-            </Link>
-            <ChevronRightIcon className="h-4 w-4" />
-            <span className="text-foreground">{template.name}</span>
+          <div className="space-y-2">
+            <div className="text-muted-foreground flex items-center gap-2 text-sm">
+              <Link href="/admin" className="hover:text-foreground">
+                Admin
+              </Link>
+              <ChevronRightIcon className="h-4 w-4" />
+              <Link href="/admin/prompts" className="hover:text-foreground">
+                Prompts
+              </Link>
+              <ChevronRightIcon className="h-4 w-4" />
+              <span className="text-foreground">{template.name}</span>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Template: <span className="font-medium">{template.name}</span>{' '}
+              <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                {template.slug}
+              </code>
+            </p>
           </div>
         }
-      >
-        <div>
-          <h1 className="text-2xl font-bold">Edit Template</h1>
-          <p className="text-muted-foreground text-sm">
-            Template: <span className="font-medium">{template.name}</span>{' '}
-            <code className="bg-muted rounded px-1 py-0.5 text-xs">
-              {template.slug}
-            </code>
-          </p>
-        </div>
-      </PageHeader>
+      />
 
       <PageBody>
         <EditTemplatePageClient
