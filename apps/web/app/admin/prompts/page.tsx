@@ -14,7 +14,7 @@ import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
-import { GitBranchIcon } from 'lucide-react';
+import { GitBranchIcon, PencilIcon, PlusIcon } from 'lucide-react';
 import Link from 'next/link';
 
 async function PromptsAdminPage() {
@@ -99,7 +99,15 @@ async function PromptsAdminPage() {
           <TabsContent value="templates">
             <Card>
               <CardHeader>
-                <CardTitle>Prompt Templates</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Prompt Templates</CardTitle>
+                  <Link href="/admin/prompts/new">
+                    <Button>
+                      <PlusIcon className="mr-2 h-4 w-4" />
+                      Create Template
+                    </Button>
+                  </Link>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -147,14 +155,22 @@ async function PromptsAdminPage() {
                             {new Date(template.created_at).toLocaleDateString()}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Link
-                              href={`/admin/prompts/${template.id}/variants`}
-                            >
-                              <Button variant="outline" size="sm">
-                                <GitBranchIcon className="mr-2 h-4 w-4" />
-                                Variants
-                              </Button>
-                            </Link>
+                            <div className="flex justify-end gap-2">
+                              <Link href={`/admin/prompts/${template.id}/edit`}>
+                                <Button variant="outline" size="sm">
+                                  <PencilIcon className="mr-2 h-4 w-4" />
+                                  Edit
+                                </Button>
+                              </Link>
+                              <Link
+                                href={`/admin/prompts/${template.id}/variants`}
+                              >
+                                <Button variant="outline" size="sm">
+                                  <GitBranchIcon className="mr-2 h-4 w-4" />
+                                  Variants
+                                </Button>
+                              </Link>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))
@@ -178,7 +194,15 @@ async function PromptsAdminPage() {
           <TabsContent value="system-prompts">
             <Card>
               <CardHeader>
-                <CardTitle>System Prompts</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>System Prompts</CardTitle>
+                  <Link href="/admin/prompts/system-prompts/new">
+                    <Button>
+                      <PlusIcon className="mr-2 h-4 w-4" />
+                      Create System Prompt
+                    </Button>
+                  </Link>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -191,6 +215,7 @@ async function PromptsAdminPage() {
                       <TableHead>Priority</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -222,12 +247,22 @@ async function PromptsAdminPage() {
                           <TableCell className="text-muted-foreground text-xs">
                             {new Date(prompt.created_at).toLocaleDateString()}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <Link
+                              href={`/admin/prompts/system-prompts/${prompt.id}/edit`}
+                            >
+                              <Button variant="outline" size="sm">
+                                <PencilIcon className="mr-2 h-4 w-4" />
+                                Edit
+                              </Button>
+                            </Link>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className="h-24 text-center text-muted-foreground"
                         >
                           No system prompts found

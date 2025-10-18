@@ -3,12 +3,12 @@ import { PageBody, PageHeader } from '@kit/ui/page';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { CreateVariantForm } from '../_components/create-variant-form';
+import { EditTemplateForm } from '../../_components/edit-template-form';
 import { redirect } from 'next/navigation';
-import { createVariantAction } from '@kit/prompt-templates/mutations';
-import type { CreateVariantInput } from '@kit/prompt-templates/schemas';
+import { updatePromptTemplateAction } from '@kit/prompt-templates/mutations';
+import type { UpdatePromptTemplateInput } from '@kit/prompt-templates/schemas';
 
-async function NewVariantPage({
+async function EditTemplatePage({
   params,
 }: {
   params: Promise<{ templateId: string }>;
@@ -16,10 +16,10 @@ async function NewVariantPage({
   const { templateId } = await params;
   const adminClient = getSupabaseServerAdminClient();
 
-  // Fetch template to show context
+  // Fetch template
   const { data: template, error } = await adminClient
     .from('prompt_templates')
-    .select('id, slug, name, category')
+    .select('*')
     .eq('id', templateId)
     .single();
 
@@ -27,19 +27,19 @@ async function NewVariantPage({
     redirect('/admin/prompts');
   }
 
-  // Server action wrapper for creating variants
-  async function handleCreateVariant(data: CreateVariantInput) {
+  // Server action wrapper for updating templates
+  async function handleUpdateTemplate(data: UpdatePromptTemplateInput) {
     'use server';
-    await createVariantAction(data);
+    await updatePromptTemplateAction(data);
   }
 
   return (
     <>
       <PageHeader description={<AppBreadcrumbs />}>
         <div>
-          <h1 className="text-2xl font-bold">Create New Variant</h1>
+          <h1 className="text-2xl font-bold">Edit Template</h1>
           <p className="text-muted-foreground text-sm">
-            For template:{' '}
+            Template:{' '}
             <span className="font-medium">{template.name}</span>{' '}
             <code className="rounded bg-muted px-1 py-0.5 text-xs">
               {template.slug}
@@ -51,12 +51,15 @@ async function NewVariantPage({
       <PageBody>
         <Card>
           <CardHeader>
-            <CardTitle>Variant Details</CardTitle>
+            <CardTitle>Template Details</CardTitle>
           </CardHeader>
           <CardContent>
-            <CreateVariantForm
-              templateId={templateId}
-              onSubmit={handleCreateVariant}
+            <EditTemplateForm
+              template={{
+                ...template,
+                tags: template.tags || [],
+              }}
+              onSubmit={handleUpdateTemplate}
             />
           </CardContent>
         </Card>
@@ -65,4 +68,4 @@ async function NewVariantPage({
   );
 }
 
-export default AdminGuard(NewVariantPage);
+export default AdminGuard(EditTemplatePage);
