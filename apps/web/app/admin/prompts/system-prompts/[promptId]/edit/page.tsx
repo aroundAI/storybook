@@ -41,7 +41,6 @@ async function EditSystemPromptPage({
   return (
     <>
       <PageHeader
-        title="Edit System Prompt"
         description={
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Link href="/admin" className="hover:text-foreground">
@@ -55,15 +54,19 @@ async function EditSystemPromptPage({
             <span className="text-foreground">{systemPrompt.name}</span>
           </div>
         }
-      >
-        <p className="text-muted-foreground text-sm">
-          System Prompt:{' '}
-          <span className="font-medium">{systemPrompt.name}</span>{' '}
-          <code className="bg-muted rounded px-1 py-0.5 text-xs">
-            {systemPrompt.slug}
-          </code>
-        </p>
-      </PageHeader>
+        title={
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold">Edit System Prompt</h1>
+            <p className="text-muted-foreground text-sm">
+              System Prompt:{' '}
+              <span className="font-medium">{systemPrompt.name}</span>{' '}
+              <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                {systemPrompt.slug}
+              </code>
+            </p>
+          </div>
+        }
+      />
 
       <PageBody>
         <Card>

@@ -133,7 +133,6 @@ async function EditTemplatePage({
   return (
     <>
       <PageHeader
-        title="Edit Template"
         description={
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Link href="/admin" className="hover:text-foreground">
@@ -147,14 +146,18 @@ async function EditTemplatePage({
             <span className="text-foreground">{template.name}</span>
           </div>
         }
-      >
-        <p className="text-muted-foreground text-sm">
-          Template: <span className="font-medium">{template.name}</span>{' '}
-          <code className="bg-muted rounded px-1 py-0.5 text-xs">
-            {template.slug}
-          </code>
-        </p>
-      </PageHeader>
+        title={
+          <div className="space-y-1">
+            <h1 className="text-3xl font-bold">Edit Template</h1>
+            <p className="text-muted-foreground text-sm">
+              Template: <span className="font-medium">{template.name}</span>{' '}
+              <code className="bg-muted rounded px-1 py-0.5 text-xs">
+                {template.slug}
+              </code>
+            </p>
+          </div>
+        }
+      />
 
       <PageBody>
         <EditTemplatePageClient
