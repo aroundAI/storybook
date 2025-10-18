@@ -91,7 +91,7 @@ export function composeSystemPrompts(
     }
   }
 
-  const composedContent = parts.join(separator);
+  const _composedContent = parts.join(separator);
   const compositionHash = generateCompositionHash(usedPrompts);
 
   return {

@@ -194,7 +194,7 @@ export const composeSystemPromptsForTemplate = cache(
     const client = getSupabaseServerClient();
 
     // Call database function to compose
-    const { data, error } = await client.rpc('compose_system_prompts', {
+    const { data: _data, error } = await client.rpc('compose_system_prompts', {
       p_template_id: templateId,
       p_context: context as never,
     });

@@ -190,7 +190,7 @@ function validatePattern(
         code: 'INVALID_FORMAT',
       };
     }
-  } catch (error) {
+  } catch {
     return {
       variable: name,
       message: `Invalid pattern for '${name}': ${pattern}`,
