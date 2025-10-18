@@ -4,7 +4,10 @@ import { initializeAuditTransformers } from '@kit/audit-logs/transformers';
 import { Toaster } from '@kit/ui/sonner';
 
 import { RootProviders } from '~/components/root-providers';
-import { generateBrandingStyles } from '~/lib/branding-styles';
+import {
+  generateBrandingStyles,
+  generateGoogleFontsLink,
+} from '~/lib/branding-styles';
 import { getFontsClassName } from '~/lib/fonts';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { generateRootMetadata } from '~/lib/root-metdata';
@@ -30,10 +33,18 @@ export default async function RootLayout({
   const className = getFontsClassName(theme);
   const nonce = await getCspNonce();
   const brandingStyles = generateBrandingStyles();
+  const googleFontsUrl = generateGoogleFontsLink();
 
   return (
     <html lang={language} className={className}>
       <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+        <link rel="stylesheet" href={googleFontsUrl} />
         <style dangerouslySetInnerHTML={{ __html: brandingStyles }} />
       </head>
       <body>

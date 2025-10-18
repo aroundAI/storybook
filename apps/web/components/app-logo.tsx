@@ -9,9 +9,6 @@ function LogoContent({ className }: { className?: string }) {
   const { logo } = config;
 
   if (logo.type === 'text') {
-    const fontFamily = logo.font
-      ? `var(--font-${logo.font.toLowerCase().replace(/\s+/g, '-')})`
-      : undefined;
     const fontWeight = logo.fontWeight ?? 700;
 
     return (
@@ -21,9 +18,9 @@ function LogoContent({ className }: { className?: string }) {
           className,
         )}
         style={{
-          fontFamily,
+          fontFamily: 'var(--font-heading)',
           fontWeight,
-          color: `var(--logo-text-color)`,
+          color: 'var(--logo-text-color)',
         }}
       >
         {logo.icon && <span className="text-3xl">{logo.icon}</span>}

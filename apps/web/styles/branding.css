@@ -17,10 +17,6 @@
   --brand-primary-dark: var(--brand-primary-dark-light);
   --brand-secondary: var(--brand-secondary-light);
   --brand-accent: var(--brand-accent-light);
-
-  /* Typography */
-  --font-heading: var(--font-heading-family, var(--font-sans));
-  --font-body: var(--font-sans);
 }
 
 .dark {
@@ -74,9 +70,18 @@
 }
 
 /*
- * Apply heading font to headings
+ * Apply branding fonts
  */
-h1, h2, h3, h4, h5, h6,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
 .heading-font {
-  font-family: var(--font-heading), var(--font-sans), system-ui, sans-serif;
+  font-family: var(--font-heading);
+}
+
+body {
+  font-family: var(--font-body);
 }
