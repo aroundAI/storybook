@@ -4,11 +4,13 @@ import { initializeAuditTransformers } from '@kit/audit-logs/transformers';
 import { Toaster } from '@kit/ui/sonner';
 
 import { RootProviders } from '~/components/root-providers';
+import { generateBrandingStyles } from '~/lib/branding-styles';
 import { getFontsClassName } from '~/lib/fonts';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { generateRootMetadata } from '~/lib/root-metdata';
 import { getRootTheme } from '~/lib/root-theme';
 
+import '../styles/branding.css';
 import '../styles/globals.css';
 
 // Initialize audit transformers at app startup
@@ -27,9 +29,13 @@ export default async function RootLayout({
   const theme = await getRootTheme();
   const className = getFontsClassName(theme);
   const nonce = await getCspNonce();
+  const brandingStyles = generateBrandingStyles();
 
   return (
     <html lang={language} className={className}>
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: brandingStyles }} />
+      </head>
       <body>
         <RootProviders theme={theme} lang={language} nonce={nonce}>
           {children}

@@ -41,6 +41,7 @@
     "@kit/auth": "workspace:*",
     "@kit/billing": "workspace:*",
     "@kit/billing-gateway": "workspace:*",
+    "@kit/branding": "workspace:*",
     "@kit/cache": "workspace:*",
     "@kit/cms": "workspace:*",
     "@kit/database-webhooks": "workspace:*",

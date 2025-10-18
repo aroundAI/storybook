@@ -1,17 +1,92 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
+import { getBrandingConfig } from '@kit/branding';
 import { cn } from '@kit/ui/utils';
 
-function LogoImage({
-  className,
-  width = 105,
-}: {
-  className?: string;
-  width?: number;
-}) {
+function LogoContent({ className }: { className?: string }) {
+  const config = getBrandingConfig();
+  const { logo } = config;
+
+  if (logo.type === 'text') {
+    const fontFamily = logo.font
+      ? `var(--font-${logo.font.toLowerCase().replace(/\s+/g, '-')})`
+      : undefined;
+    const fontWeight = logo.fontWeight ?? 700;
+
+    return (
+      <span
+        className={cn(
+          'flex items-center gap-2 text-2xl font-bold transition-colors',
+          className,
+        )}
+        style={{
+          fontFamily,
+          fontWeight,
+          color: `var(--logo-text-color)`,
+        }}
+      >
+        {logo.icon && <span className="text-3xl">{logo.icon}</span>}
+        <span>{logo.text}</span>
+      </span>
+    );
+  }
+
+  if (logo.type === 'image' && logo.imageUrl) {
+    const width = logo.width ?? 120;
+    const height = logo.height ?? 40;
+
+    return (
+      <>
+        {logo.imageUrl && (
+          <Image
+            src={logo.imageUrl}
+            alt={logo.text ?? 'Logo'}
+            width={width}
+            height={height}
+            className={cn('dark:hidden', className)}
+            priority
+          />
+        )}
+        {logo.imageDarkUrl && (
+          <Image
+            src={logo.imageDarkUrl}
+            alt={logo.text ?? 'Logo'}
+            width={width}
+            height={height}
+            className={cn('hidden dark:block', className)}
+            priority
+          />
+        )}
+        {!logo.imageDarkUrl && logo.imageUrl && (
+          <Image
+            src={logo.imageUrl}
+            alt={logo.text ?? 'Logo'}
+            width={width}
+            height={height}
+            className={cn('hidden dark:block', className)}
+            priority
+          />
+        )}
+      </>
+    );
+  }
+
+  if (logo.type === 'svg' && logo.svg) {
+    return (
+      <div
+        className={cn('logo-svg', className)}
+        dangerouslySetInnerHTML={{ __html: logo.svg }}
+      />
+    );
+  }
+
+  return <FallbackLogo className={className} />;
+}
+
+function FallbackLogo({ className }: { className?: string }) {
   return (
     <svg
-      width={width}
       className={cn(`w-[80px] lg:w-[95px]`, className)}
       viewBox="0 0 733 140"
       fill="none"
@@ -35,13 +110,19 @@ export function AppLogo({
   className?: string;
   label?: string;
 }) {
+  const config = getBrandingConfig();
+
   if (href === null) {
-    return <LogoImage className={className} />;
+    return <LogoContent className={className} />;
   }
 
   return (
-    <Link aria-label={label ?? 'Home Page'} href={href ?? '/'} prefetch={true}>
-      <LogoImage className={className} />
+    <Link
+      aria-label={label ?? config.logo.text ?? 'Home Page'}
+      href={href ?? '/'}
+      prefetch={true}
+    >
+      <LogoContent className={className} />
     </Link>
   );
 }
