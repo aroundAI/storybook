@@ -86,59 +86,66 @@ export function EditTemplatePageClient({
   };
 
   return (
-    <div className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Template Details</CardTitle>
-        </CardHeader>
-        <CardContent className="p-6">
-          <EditTemplateForm
-            template={template}
-            onSubmit={onUpdateTemplate}
-            formId="edit-template-form"
-          />
-        </CardContent>
-      </Card>
+    <>
+      <div className="space-y-8 pb-24">
+        <Card>
+          <CardHeader>
+            <CardTitle>Template Details</CardTitle>
+          </CardHeader>
+          <CardContent className="p-6">
+            <EditTemplateForm
+              template={template}
+              onSubmit={onUpdateTemplate}
+              formId="edit-template-form"
+            />
+          </CardContent>
+        </Card>
 
-      <LinkedSystemPromptsManager
-        templateId={template.id}
-        linkedPrompts={linkedPrompts}
-        onUnlink={onUnlinkPrompt}
-        onReorder={onReorderPrompt}
-        onAddClick={() => setIsAddDialogOpen(true)}
-        onRefresh={onRefresh}
-      />
+        <LinkedSystemPromptsManager
+          templateId={template.id}
+          linkedPrompts={linkedPrompts}
+          onUnlink={onUnlinkPrompt}
+          onReorder={onReorderPrompt}
+          onAddClick={() => setIsAddDialogOpen(true)}
+          onRefresh={onRefresh}
+        />
 
-      <div className="flex justify-end gap-3 border-t pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={handleCancel}
-          disabled={isPending}
-          size="lg"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="submit"
-          form="edit-template-form"
-          disabled={isPending}
-          size="lg"
-        >
-          {isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
-          Update Template
-        </Button>
+        <AddSystemPromptsDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          templateId={template.id}
+          availablePrompts={availablePrompts}
+          linkedPromptIds={linkedPromptIds}
+          onAdd={onAddPrompts}
+          onSuccess={onRefresh}
+        />
       </div>
 
-      <AddSystemPromptsDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        templateId={template.id}
-        availablePrompts={availablePrompts}
-        linkedPromptIds={linkedPromptIds}
-        onAdd={onAddPrompts}
-        onSuccess={onRefresh}
-      />
-    </div>
+      {/* Sticky Footer with Action Buttons */}
+      <div className="bg-background fixed bottom-0 left-0 right-0 border-t">
+        <div className="container mx-auto flex justify-end gap-3 px-6 py-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={isPending}
+            size="lg"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            form="edit-template-form"
+            disabled={isPending}
+            size="lg"
+          >
+            {isPending && (
+              <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+            )}
+            Update Template
+          </Button>
+        </div>
+      </div>
+    </>
   );
 }
