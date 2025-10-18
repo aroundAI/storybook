@@ -17,12 +17,10 @@ export type PromptExecutionLog =
   Database['public']['Tables']['prompt_execution_logs']['Row'];
 
 // Enum types
-export type PromptCategory =
-  Database['public']['Enums']['prompt_category'];
+export type PromptCategory = Database['public']['Enums']['prompt_category'];
 export type TemplateVariableType =
   Database['public']['Enums']['template_variable_type'];
-export type EnvironmentLabel =
-  Database['public']['Enums']['environment_label'];
+export type EnvironmentLabel = Database['public']['Enums']['environment_label'];
 export type SystemPromptLayer =
   Database['public']['Enums']['system_prompt_layer'];
 export type SystemPromptScope =

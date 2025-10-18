@@ -1,8 +1,4 @@
-import type {
-  AuditAction,
-  AuditTransformer,
-  ChangeDetail,
-} from '../types';
+import type { AuditAction, AuditTransformer, ChangeDetail } from '../types';
 
 /**
  * Settings transformer

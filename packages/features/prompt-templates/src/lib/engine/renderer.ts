@@ -7,7 +7,6 @@
  * - Conditional blocks
  * - Escaping and formatting
  */
-
 import { parseTemplate } from './parser';
 import type { ParsedTemplate } from './parser';
 
@@ -31,17 +30,18 @@ export function renderTemplate(
   variables: Record<string, unknown>,
   options: RenderOptions = {},
 ): RenderResult {
-  const { strict = false, escapeHtml = false, preserveWhitespace = false } =
-    options;
+  const {
+    strict = false,
+    escapeHtml = false,
+    preserveWhitespace = false,
+  } = options;
 
   const parsed = parseTemplate(template);
   const missingVariables: string[] = [];
   const usedVariables = new Set<string>();
 
   if (parsed.hasErrors) {
-    throw new Error(
-      `Template has syntax errors: ${parsed.errors.join(', ')}`,
-    );
+    throw new Error(`Template has syntax errors: ${parsed.errors.join(', ')}`);
   }
 
   // Start with original template

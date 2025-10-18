@@ -2,10 +2,7 @@
 
 import { redirect } from 'next/navigation';
 
-import {
-  createAuditLog,
-  extractNetworkContext,
-} from '@kit/audit-logs/server';
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';

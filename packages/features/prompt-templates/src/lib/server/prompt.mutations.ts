@@ -7,40 +7,41 @@
  * - Managing variants and experiments
  * - Logging executions
  */
-
 import 'server-only';
+
 import { enhanceAction } from '@kit/next/actions';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getLogger } from '@kit/shared/logger';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
 import {
-  CreatePromptTemplateSchema,
-  UpdatePromptTemplateSchema,
-  DeletePromptTemplateSchema,
-  CreateSystemPromptSchema,
-  UpdateSystemPromptSchema,
-  DeleteSystemPromptSchema,
-  LinkSystemPromptSchema,
-  UnlinkSystemPromptSchema,
-  CreateVariantSchema,
-  UpdateVariantSchema,
-  DeleteVariantSchema,
   AssignVariantToAccountSchema,
-  UnassignVariantFromAccountSchema,
   CreateExperimentSchema,
-  UpdateExperimentSchema,
+  CreatePromptTemplateSchema,
+  CreateSystemPromptSchema,
+  CreateVariantSchema,
+  DeletePromptTemplateSchema,
+  DeleteSystemPromptSchema,
+  DeleteVariantSchema,
+  LinkSystemPromptSchema,
   LogExecutionSchema,
+  UnassignVariantFromAccountSchema,
+  UnlinkSystemPromptSchema,
+  UpdateExperimentSchema,
+  UpdatePromptTemplateSchema,
+  UpdateSystemPromptSchema,
+  UpdateVariantSchema,
 } from '../schemas/prompt.schema';
 import type {
-  CreatePromptTemplateInput,
-  UpdatePromptTemplateInput,
-  CreateSystemPromptInput,
-  UpdateSystemPromptInput,
-  CreateVariantInput,
-  UpdateVariantInput,
   AssignVariantToAccountInput,
-  UnassignVariantFromAccountInput,
   CreateExperimentInput,
+  CreatePromptTemplateInput,
+  CreateSystemPromptInput,
+  CreateVariantInput,
   LogExecutionInput,
+  UnassignVariantFromAccountInput,
+  UpdatePromptTemplateInput,
+  UpdateSystemPromptInput,
+  UpdateVariantInput,
 } from '../schemas/prompt.schema';
 
 const logger = await getLogger();
@@ -473,7 +474,10 @@ export const createExperimentAction = enhanceAction(
       throw error;
     }
 
-    logger.info({ experimentId: experiment.id }, 'Created optimization experiment');
+    logger.info(
+      { experimentId: experiment.id },
+      'Created optimization experiment',
+    );
 
     return experiment;
   },
@@ -517,7 +521,10 @@ export const updateExperimentAction = enhanceAction(
       throw error;
     }
 
-    logger.info({ experimentId: experiment.id }, 'Updated optimization experiment');
+    logger.info(
+      { experimentId: experiment.id },
+      'Updated optimization experiment',
+    );
 
     return experiment;
   },

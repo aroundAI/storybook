@@ -144,9 +144,7 @@ export function shouldTrackObject(
  * @param objectType - The type of object
  * @returns Configuration object or null if not found
  */
-export function getObjectConfig(
-  objectType: string,
-): AuditObjectConfig | null {
+export function getObjectConfig(objectType: string): AuditObjectConfig | null {
   return AUDIT_CONFIG[objectType] || null;
 }
 

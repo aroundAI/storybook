@@ -1,9 +1,11 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+
+import { ChevronRightIcon } from 'lucide-react';
 
 import { AdminGuard } from '@kit/admin/components/admin-guard';
 import { updateSystemPromptAction } from '@kit/prompt-templates/mutations';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
@@ -38,7 +40,21 @@ async function EditSystemPromptPage({
 
   return (
     <>
-      <PageHeader description={<AppBreadcrumbs />}>
+      <PageHeader
+        description={
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Link href="/admin" className="hover:text-foreground">
+              Admin
+            </Link>
+            <ChevronRightIcon className="h-4 w-4" />
+            <Link href="/admin/prompts" className="hover:text-foreground">
+              Prompts
+            </Link>
+            <ChevronRightIcon className="h-4 w-4" />
+            <span className="text-foreground">{systemPrompt.name}</span>
+          </div>
+        }
+      >
         <div>
           <h1 className="text-2xl font-bold">Edit System Prompt</h1>
           <p className="text-muted-foreground text-sm">

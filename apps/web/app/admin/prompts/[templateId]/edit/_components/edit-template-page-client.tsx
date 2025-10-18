@@ -86,7 +86,7 @@ export function EditTemplatePageClient({
   };
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="space-y-8">
       <Card>
         <CardHeader>
           <CardTitle>Template Details</CardTitle>

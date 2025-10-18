@@ -111,7 +111,6 @@ export function CreateSystemPromptForm({
       layer_type: 'role' as const,
       scope: 'global' as const,
       content: '',
-      priority: 0,
       tags: [],
       metadata: {},
     },

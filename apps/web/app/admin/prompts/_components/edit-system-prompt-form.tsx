@@ -5,7 +5,7 @@ import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { InfoIcon, Loader2Icon } from 'lucide-react';
+import { Loader2Icon } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 
@@ -24,12 +24,6 @@ import { Input } from '@kit/ui/input';
 import { toast } from '@kit/ui/sonner';
 import { Switch } from '@kit/ui/switch';
 import { Textarea } from '@kit/ui/textarea';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@kit/ui/tooltip';
 
 type UpdateSystemPromptFormData = z.infer<typeof UpdateSystemPromptSchema>;
 
@@ -39,7 +33,6 @@ interface EditSystemPromptFormProps {
     name: string;
     description: string | null;
     content: string;
-    priority: number;
     is_active: boolean;
     tags: string[];
   };
@@ -62,7 +55,6 @@ export function EditSystemPromptForm({
       name: systemPrompt.name,
       description: systemPrompt.description || '',
       content: systemPrompt.content,
-      priority: systemPrompt.priority,
       is_active: systemPrompt.is_active,
       tags: systemPrompt.tags,
     },
@@ -140,44 +132,6 @@ export function EditSystemPromptForm({
               </FormControl>
               <FormDescription>
                 The actual system prompt text that will be prepended
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="priority"
-          render={({ field }) => (
-            <FormItem>
-              <div className="flex items-center gap-2">
-                <FormLabel>Priority</FormLabel>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoIcon className="text-muted-foreground h-4 w-4 cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">
-                      <p className="text-sm">
-                        Priority determines order within same layer type when
-                        system prompts are globally scoped. Use link ordering
-                        for template-specific arrangement.
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-              <FormControl>
-                <Input
-                  type="number"
-                  min="0"
-                  {...field}
-                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                />
-              </FormControl>
-              <FormDescription>
-                Higher priority prompts are composed first (0 = lowest)
               </FormDescription>
               <FormMessage />
             </FormItem>

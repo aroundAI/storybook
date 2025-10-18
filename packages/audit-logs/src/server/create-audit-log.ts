@@ -1,10 +1,11 @@
 import 'server-only';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { getTransformer, shouldTrackObject } from '../config';
 import type { CreateAuditLogParams } from '../types';
-import { shouldTrackObject, getTransformer } from '../config';
 import { calculateChanges } from './calculate-changes';
 
 /**
@@ -63,10 +64,9 @@ export async function createAuditLog(
     // Transform before/after data (transformer is guaranteed to exist)
     let transformedBefore = params.before;
     let transformedAfter = params.after;
-    let description =
-      params.objectName
-        ? `${params.action} ${params.objectType} "${params.objectName}"`
-        : `${params.action} ${params.objectType}`;
+    let description = params.objectName
+      ? `${params.action} ${params.objectType} "${params.objectName}"`
+      : `${params.action} ${params.objectType}`;
 
     // Apply transformation
     if (params.before) {

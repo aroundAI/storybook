@@ -153,7 +153,6 @@ create table public.prompt_system_prompts (
 
   -- Content
   content text not null,
-  priority integer not null default 0,         -- Higher = appears first in layer
 
   -- Conditional inclusion
   condition_rules jsonb,                       -- When to include: {user_level: 'premium', locale: 'en-US'}
@@ -178,7 +177,6 @@ create table public.prompt_system_prompts (
 
   -- Constraints
   check(version > 0),
-  check(priority >= 0),
   check(contribution_score is null or (contribution_score >= -100 and contribution_score <= 100)),
   check(
     (scope = 'global' and target_category is null and target_template_id is null) or
@@ -191,7 +189,6 @@ create index idx_system_prompts_slug on public.prompt_system_prompts(slug);
 create index idx_system_prompts_layer on public.prompt_system_prompts(layer_type);
 create index idx_system_prompts_scope on public.prompt_system_prompts(scope);
 create index idx_system_prompts_active on public.prompt_system_prompts(is_active) where is_active = true;
-create index idx_system_prompts_priority on public.prompt_system_prompts(priority desc);
 
 -- Links between templates and system prompts (many-to-many)
 create table public.template_system_prompt_links (
@@ -476,7 +473,7 @@ begin
           sp.condition_rules is null or
           sp.condition_rules <@ p_context
         )
-      order by sp.priority desc, link.order_index nulls last, sp.created_at
+      order by link.order_index nulls last, sp.created_at
     loop
       if v_composition != '' then
         v_composition := v_composition || E'\n\n';
@@ -936,7 +933,7 @@ create policy "System can create logs"
 -- =====================================================
 
 -- Global system prompts (foundational layer)
-insert into public.prompt_system_prompts (slug, name, description, layer_type, scope, content, priority, is_active) values
+insert into public.prompt_system_prompts (slug, name, description, layer_type, scope, content, is_active) values
 (
   'compliance-safety',
   'Safety & Compliance',
@@ -954,7 +951,6 @@ Always:
 - Maintain user confidentiality
 - Decline inappropriate requests politely
 - Cite sources when providing factual information',
-  100,
   true
 ),
 (
@@ -969,7 +965,6 @@ Always:
 - Admit uncertainty rather than guessing
 - Provide step-by-step guidance for complex tasks
 - Adapt your communication style to the user''s needs',
-  50,
   true
 ),
 (
@@ -985,7 +980,6 @@ Always:
 - Use bullet points for non-sequential items
 - Use headings to organize longer responses
 - Use tables for structured data comparison',
-  50,
   true
 ),
 (
@@ -1000,12 +994,11 @@ Always:
 - Completeness: Address all parts of the user''s question
 - Conciseness: Be thorough but avoid unnecessary verbosity
 - Professionalism: Maintain a respectful and professional tone',
-  50,
   true
 );
 
 -- Category-specific system prompts
-insert into public.prompt_system_prompts (slug, name, description, layer_type, scope, target_category, content, priority, is_active) values
+insert into public.prompt_system_prompts (slug, name, description, layer_type, scope, target_category, content, is_active) values
 (
   'analysis-methodology',
   'Analysis Methodology',
@@ -1022,7 +1015,6 @@ insert into public.prompt_system_prompts (slug, name, description, layer_type, s
 6. Suggest actionable next steps
 
 Always explain your analytical reasoning and any assumptions made.',
-  75,
   true
 ),
 (
@@ -1039,7 +1031,6 @@ Always explain your analytical reasoning and any assumptions made.',
 - Ask follow-up questions to better understand needs
 - Provide personalized responses rather than generic answers
 - End with clear next steps or questions to continue the dialogue',
-  75,
   true
 ),
 (
@@ -1056,7 +1047,6 @@ Always explain your analytical reasoning and any assumptions made.',
 - Use structured output (JSON, tables) for complex data
 - Include confidence levels if uncertain
 - Provide source references for extracted information',
-  75,
   true
 );
 

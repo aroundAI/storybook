@@ -7,16 +7,17 @@
  * - Range/pattern validation
  * - Enum validation
  */
-
-import type {
-  TemplateVariable,
-  TemplateVariables,
-} from '../types';
+import type { TemplateVariable, TemplateVariables } from '../types';
 
 export interface ValidationError {
   variable: string;
   message: string;
-  code: 'MISSING_REQUIRED' | 'INVALID_TYPE' | 'OUT_OF_RANGE' | 'INVALID_FORMAT' | 'NOT_IN_ENUM';
+  code:
+    | 'MISSING_REQUIRED'
+    | 'INVALID_TYPE'
+    | 'OUT_OF_RANGE'
+    | 'INVALID_FORMAT'
+    | 'NOT_IN_ENUM';
 }
 
 export interface ValidationResult {
@@ -72,7 +73,11 @@ export function validateVariables(
 
       // Pattern validation
       if (def.validation.pattern && typeof value === 'string') {
-        const patternError = validatePattern(name, value, def.validation.pattern);
+        const patternError = validatePattern(
+          name,
+          value,
+          def.validation.pattern,
+        );
         if (patternError) {
           errors.push(patternError);
         }

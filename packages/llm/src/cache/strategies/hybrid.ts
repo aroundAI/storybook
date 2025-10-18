@@ -41,12 +41,12 @@
  * );
  * ```
  */
+import type { ChatCompletionRequest } from '../../types';
 import type {
-  CachedEntry,
   CacheMatchResult,
   CacheMatchStrategy,
+  CachedEntry,
 } from '../types';
-import type { ChatCompletionRequest } from '../../types';
 
 /**
  * Parameter tolerance configuration
@@ -112,7 +112,8 @@ export class HybridCacheStrategy implements CacheMatchStrategy {
     // - Semantic similarity contributes 70%
     const parameterConfidence = parametersMatch.confidence;
     const semanticConfidence = options.threshold;
-    const combinedConfidence = parameterConfidence * 0.3 + semanticConfidence * 0.7;
+    const combinedConfidence =
+      parameterConfidence * 0.3 + semanticConfidence * 0.7;
 
     return {
       isMatch: true,
@@ -205,7 +206,8 @@ export class HybridCacheStrategy implements CacheMatchStrategy {
     return {
       isMatch,
       confidence,
-      differences: Object.keys(differences).length > 0 ? differences : undefined,
+      differences:
+        Object.keys(differences).length > 0 ? differences : undefined,
     };
   }
 }

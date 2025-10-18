@@ -1,8 +1,9 @@
 import 'server-only';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getLogger } from '@kit/shared/logger';
-import type { AuditLogEntry, AuditAction } from '../types';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import type { AuditAction, AuditLogEntry } from '../types';
 
 /**
  * Get audit logs for a specific object
@@ -77,7 +78,7 @@ export async function getAuditLogsForScope(
 
     return data as AuditLogEntry[];
   } catch (error) {
-    logger.error({ ...ctx, error}, 'Error fetching audit logs for scope');
+    logger.error({ ...ctx, error }, 'Error fetching audit logs for scope');
     throw error;
   }
 }

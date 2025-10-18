@@ -33,12 +33,12 @@
  * }
  * ```
  */
+import type { ChatCompletionRequest } from '../../types';
 import type {
-  CachedEntry,
   CacheMatchResult,
   CacheMatchStrategy,
+  CachedEntry,
 } from '../types';
-import type { ChatCompletionRequest } from '../../types';
 
 /**
  * Structural pattern representation
@@ -191,9 +191,7 @@ export class StructuralMatchStrategy implements CacheMatchStrategy {
    */
   protected detectInputType(content: string): string {
     // Default: simple keyword-based detection
-    if (
-      content.match(/\b(metrics|statistics|data|numbers|kpis?)\b/i)
-    ) {
+    if (content.match(/\b(metrics|statistics|data|numbers|kpis?)\b/i)) {
       return 'metrics';
     }
 
@@ -214,11 +212,7 @@ export class StructuralMatchStrategy implements CacheMatchStrategy {
    */
   protected detectOutputType(content: string): string {
     // Default: simple keyword-based detection
-    if (
-      content.match(
-        /\b(recommend|suggestion|advice|should|strategy)\b/i,
-      )
-    ) {
+    if (content.match(/\b(recommend|suggestion|advice|should|strategy)\b/i)) {
       return 'recommendations';
     }
 

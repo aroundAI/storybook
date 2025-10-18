@@ -120,9 +120,7 @@ function isEqual(a: unknown, b: unknown): boolean {
  * // "Changed name from 'Old' to 'New', status from 'active' to 'archived'"
  * ```
  */
-export function formatChanges(
-  changes: Record<string, ChangeDetail>,
-): string {
+export function formatChanges(changes: Record<string, ChangeDetail>): string {
   const parts: string[] = [];
 
   for (const [field, change] of Object.entries(changes)) {

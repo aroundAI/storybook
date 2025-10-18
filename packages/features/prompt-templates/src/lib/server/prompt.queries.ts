@@ -8,20 +8,22 @@
  * - Experiments
  * - Performance tracking
  */
-
 import 'server-only';
+
 import { cache } from 'react';
+
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { composeSystemPrompts } from '../engine/composer';
 import type {
-  PromptTemplate,
-  PromptSystemPrompt,
-  TemplateVariant,
-  OptimizationExperiment,
   CompositionPerformance,
   EnvironmentLabel,
+  OptimizationExperiment,
+  PromptSystemPrompt,
+  PromptTemplate,
   SystemPromptComposition,
+  TemplateVariant,
 } from '../types';
-import { composeSystemPrompts } from '../engine/composer';
 
 // =====================================================
 // TEMPLATE QUERIES
@@ -69,10 +71,7 @@ export const getTemplate = cache(async (templateId: string) => {
  * Resolve template by slug and environment
  */
 export const resolveTemplate = cache(
-  async (
-    slug: string,
-    environment: EnvironmentLabel = 'production',
-  ) => {
+  async (slug: string, environment: EnvironmentLabel = 'production') => {
     const client = getSupabaseServerClient();
 
     const { data, error } = await client.rpc('resolve_template', {
@@ -125,22 +124,21 @@ export const getTemplateWithSystemPrompts = cache(
 /**
  * Get all system prompts for a template (including global, category, and template-specific)
  */
-export const getSystemPromptsForTemplate = cache(
-  async (templateId: string) => {
-    const client = getSupabaseServerClient();
+export const getSystemPromptsForTemplate = cache(async (templateId: string) => {
+  const client = getSupabaseServerClient();
 
-    // Get template details first
-    const template = await getTemplate(templateId);
+  // Get template details first
+  const template = await getTemplate(templateId);
 
-    if (!template) {
-      throw new Error(`Template not found: ${templateId}`);
-    }
+  if (!template) {
+    throw new Error(`Template not found: ${templateId}`);
+  }
 
-    // Get all applicable system prompts
-    const { data, error } = await client
-      .from('prompt_system_prompts')
-      .select(
-        `
+  // Get all applicable system prompts
+  const { data, error } = await client
+    .from('prompt_system_prompts')
+    .select(
+      `
       *,
       template_system_prompt_links!left (
         template_id,
@@ -148,20 +146,19 @@ export const getSystemPromptsForTemplate = cache(
         condition_rules
       )
     `,
-      )
-      .eq('is_active', true)
-      .or(
-        `scope.eq.global,and(scope.eq.category,target_category.eq.${template.category}),and(scope.eq.template,template_system_prompt_links.template_id.eq.${templateId})`,
-      )
-      .order('priority', { ascending: false});
+    )
+    .eq('is_active', true)
+    .or(
+      `scope.eq.global,and(scope.eq.category,target_category.eq.${template.category}),and(scope.eq.template,template_system_prompt_links.template_id.eq.${templateId})`,
+    )
+    .order('priority', { ascending: false });
 
-    if (error) {
-      throw error;
-    }
+  if (error) {
+    throw error;
+  }
 
-    return data as PromptSystemPrompt[];
-  },
-);
+  return data as PromptSystemPrompt[];
+});
 
 /**
  * Get system prompts by scope
@@ -300,7 +297,8 @@ export const getVariantAssignments = cache(async (variantId: string) => {
 
   const { data, error } = await client
     .from('variant_account_assignments')
-    .select(`
+    .select(
+      `
       *,
       account:accounts (
         id,
@@ -308,7 +306,8 @@ export const getVariantAssignments = cache(async (variantId: string) => {
         slug,
         picture_url
       )
-    `)
+    `,
+    )
     .eq('variant_id', variantId)
     .order('assigned_at', { ascending: false });
 
@@ -328,10 +327,12 @@ export const getAccountAssignedVariant = cache(
 
     const { data, error } = await client
       .from('variant_account_assignments')
-      .select(`
+      .select(
+        `
         *,
         variant:template_variants (*)
-      `)
+      `,
+      )
       .eq('account_id', accountId)
       .eq('variant.template_id', templateId)
       .single();
@@ -388,7 +389,8 @@ export const getAccountVariantAssignments = cache(async (accountId: string) => {
 
   const { data, error } = await client
     .from('variant_account_assignments')
-    .select(`
+    .select(
+      `
       *,
       variant:template_variants (
         *,
@@ -399,7 +401,8 @@ export const getAccountVariantAssignments = cache(async (accountId: string) => {
           category
         )
       )
-    `)
+    `,
+    )
     .eq('account_id', accountId)
     .order('assigned_at', { ascending: false });
 
@@ -465,24 +468,22 @@ export const getExperimentResults = cache(async (experimentId: string) => {
 /**
  * Get composition performance metrics
  */
-export const getCompositionPerformance = cache(
-  async (templateId: string) => {
-    const client = getSupabaseServerClient();
+export const getCompositionPerformance = cache(async (templateId: string) => {
+  const client = getSupabaseServerClient();
 
-    const { data, error } = await client
-      .from('composition_performance')
-      .select('*')
-      .eq('template_id', templateId)
-      .order('execution_count', { ascending: false })
-      .limit(10);
+  const { data, error } = await client
+    .from('composition_performance')
+    .select('*')
+    .eq('template_id', templateId)
+    .order('execution_count', { ascending: false })
+    .limit(10);
 
-    if (error) {
-      throw error;
-    }
+  if (error) {
+    throw error;
+  }
 
-    return data as CompositionPerformance[];
-  },
-);
+  return data as CompositionPerformance[];
+});
 
 /**
  * Get best performing composition for a template

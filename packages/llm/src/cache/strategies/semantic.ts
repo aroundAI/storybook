@@ -14,12 +14,12 @@
  * - Natural language queries
  * - Scenarios where slight variations should match
  */
+import type { ChatCompletionRequest } from '../../types';
 import type {
-  CachedEntry,
   CacheMatchResult,
   CacheMatchStrategy,
+  CachedEntry,
 } from '../types';
-import type { ChatCompletionRequest } from '../../types';
 
 export class SemanticCacheStrategy implements CacheMatchStrategy {
   async matches(

@@ -32,12 +32,12 @@
  * );
  * ```
  */
+import type { ChatCompletionRequest } from '../../types';
 import type {
-  CachedEntry,
   CacheMatchResult,
   CacheMatchStrategy,
+  CachedEntry,
 } from '../types';
-import type { ChatCompletionRequest } from '../../types';
 
 export class ExactMatchStrategy implements CacheMatchStrategy {
   matches(

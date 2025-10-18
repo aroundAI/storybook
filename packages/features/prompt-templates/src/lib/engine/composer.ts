@@ -6,13 +6,13 @@
  * - Handles conditional inclusion based on context
  * - Generates composition hash for performance tracking
  */
+import { createHash } from 'crypto';
 
 import type {
   PromptSystemPrompt,
-  SystemPromptLayer,
   SystemPromptComposition,
+  SystemPromptLayer,
 } from '../types';
-import { createHash } from 'crypto';
 
 const LAYER_ORDER: SystemPromptLayer[] = [
   'compliance',
@@ -38,11 +38,7 @@ export function composeSystemPrompts(
   systemPrompts: PromptSystemPrompt[],
   options: ComposerOptions = {},
 ): SystemPromptComposition {
-  const {
-    context = {},
-    includeHeaders = false,
-    separator = '\n\n',
-  } = options;
+  const { context = {}, includeHeaders = false, separator = '\n\n' } = options;
 
   // Filter prompts based on conditions
   const filteredPrompts = systemPrompts.filter((prompt) => {
@@ -164,9 +160,7 @@ function generateCompositionHash(
   });
 
   // Create hash from IDs and layers
-  const hashInput = sortedPrompts
-    .map((p) => `${p.layer}:${p.id}`)
-    .join('|');
+  const hashInput = sortedPrompts.map((p) => `${p.layer}:${p.id}`).join('|');
 
   return createHash('sha256').update(hashInput).digest('hex').slice(0, 16);
 }
