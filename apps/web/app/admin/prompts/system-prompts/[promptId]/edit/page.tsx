@@ -43,28 +43,27 @@ async function EditSystemPromptPage({
       <PageHeader
         title="Edit System Prompt"
         description={
-          <div className="space-y-2">
-            <div className="text-muted-foreground flex items-center gap-2 text-sm">
-              <Link href="/admin" className="hover:text-foreground">
-                Admin
-              </Link>
-              <ChevronRightIcon className="h-4 w-4" />
-              <Link href="/admin/prompts" className="hover:text-foreground">
-                Prompts
-              </Link>
-              <ChevronRightIcon className="h-4 w-4" />
-              <span className="text-foreground">{systemPrompt.name}</span>
-            </div>
-            <p className="text-muted-foreground text-sm">
-              System Prompt:{' '}
-              <span className="font-medium">{systemPrompt.name}</span>{' '}
-              <code className="bg-muted rounded px-1 py-0.5 text-xs">
-                {systemPrompt.slug}
-              </code>
-            </p>
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Link href="/admin" className="hover:text-foreground">
+              Admin
+            </Link>
+            <ChevronRightIcon className="h-4 w-4" />
+            <Link href="/admin/prompts" className="hover:text-foreground">
+              Prompts
+            </Link>
+            <ChevronRightIcon className="h-4 w-4" />
+            <span className="text-foreground">{systemPrompt.name}</span>
           </div>
         }
-      />
+      >
+        <p className="text-muted-foreground text-sm">
+          System Prompt:{' '}
+          <span className="font-medium">{systemPrompt.name}</span>{' '}
+          <code className="bg-muted rounded px-1 py-0.5 text-xs">
+            {systemPrompt.slug}
+          </code>
+        </p>
+      </PageHeader>
 
       <PageBody>
         <Card>
