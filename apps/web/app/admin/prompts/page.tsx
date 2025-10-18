@@ -11,8 +11,11 @@ import {
   TableRow,
 } from '@kit/ui/table';
 import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+import { GitBranchIcon } from 'lucide-react';
+import Link from 'next/link';
 
 async function PromptsAdminPage() {
   const adminClient = getSupabaseServerAdminClient();
@@ -109,6 +112,7 @@ async function PromptsAdminPage() {
                       <TableHead>Status</TableHead>
                       <TableHead>Version</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -142,12 +146,22 @@ async function PromptsAdminPage() {
                           <TableCell className="text-muted-foreground text-xs">
                             {new Date(template.created_at).toLocaleDateString()}
                           </TableCell>
+                          <TableCell className="text-right">
+                            <Link
+                              href={`/admin/prompts/${template.id}/variants`}
+                            >
+                              <Button variant="outline" size="sm">
+                                <GitBranchIcon className="mr-2 h-4 w-4" />
+                                Variants
+                              </Button>
+                            </Link>
+                          </TableCell>
                         </TableRow>
                       ))
                     ) : (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={8}
                           className="h-24 text-center text-muted-foreground"
                         >
                           No templates found

@@ -15,6 +15,7 @@
     "./types": "./src/lib/types.ts",
     "./mutations": "./src/lib/server/prompt.mutations.ts",
     "./queries": "./src/lib/server/prompt.queries.ts",
+    "./server": "./src/lib/server/index.ts",
     "./engine": "./src/lib/engine/index.ts",
     "./engine/parser": "./src/lib/engine/parser.ts",
     "./engine/validator": "./src/lib/engine/validator.ts",

@@ -211,6 +211,9 @@ importers:
       '@kit/projects':
         specifier: workspace:*
         version: link:../../packages/features/projects
+      '@kit/prompt-templates':
+        specifier: workspace:*
+        version: link:../../packages/features/prompt-templates
       '@kit/shared':
         specifier: workspace:*
         version: link:../../packages/shared

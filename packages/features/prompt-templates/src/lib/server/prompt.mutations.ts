@@ -58,7 +58,7 @@ export const createPromptTemplateAction = enhanceAction(
       .insert({
         ...data,
         variables: data.variables as never,
-        output_schema: data.output_schema as never,
+        output_schema: data.output_schema,
         tags: data.tags,
         metadata: data.metadata as never,
       })
@@ -75,7 +75,7 @@ export const createPromptTemplateAction = enhanceAction(
     return template;
   },
   {
-    schema: CreatePromptTemplateSchema as never,
+    schema: CreatePromptTemplateSchema,
   },
 );
 
@@ -88,7 +88,7 @@ export const updatePromptTemplateAction = enhanceAction(
       .update({
         ...data,
         variables: data.variables as never,
-        output_schema: data.output_schema as never,
+        output_schema: data.output_schema,
         tags: data.tags,
         metadata: data.metadata as never,
         updated_at: new Date().toISOString(),
@@ -107,7 +107,7 @@ export const updatePromptTemplateAction = enhanceAction(
     return template;
   },
   {
-    schema: UpdatePromptTemplateSchema as never,
+    schema: UpdatePromptTemplateSchema,
   },
 );
 
@@ -163,7 +163,7 @@ export const createSystemPromptAction = enhanceAction(
     return systemPrompt;
   },
   {
-    schema: CreateSystemPromptSchema as never,
+    schema: CreateSystemPromptSchema,
   },
 );
 
@@ -328,7 +328,7 @@ export const createVariantAction = enhanceAction(
     return variant;
   },
   {
-    schema: CreateVariantSchema as never,
+    schema: CreateVariantSchema,
   },
 );
 
@@ -478,7 +478,7 @@ export const createExperimentAction = enhanceAction(
     return experiment;
   },
   {
-    schema: CreateExperimentSchema as never,
+    schema: CreateExperimentSchema,
   },
 );
 
