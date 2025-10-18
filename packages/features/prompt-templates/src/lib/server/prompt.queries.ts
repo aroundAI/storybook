@@ -289,6 +289,128 @@ export const selectVariant = cache(
 );
 
 // =====================================================
+// VARIANT ASSIGNMENT QUERIES
+// =====================================================
+
+/**
+ * Get all accounts assigned to a variant
+ */
+export const getVariantAssignments = cache(async (variantId: string) => {
+  const client = getSupabaseServerClient();
+
+  const { data, error } = await client
+    .from('variant_account_assignments')
+    .select(`
+      *,
+      account:accounts (
+        id,
+        name,
+        slug,
+        picture_url
+      )
+    `)
+    .eq('variant_id', variantId)
+    .order('assigned_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+});
+
+/**
+ * Get assigned variant for an account and template
+ */
+export const getAccountAssignedVariant = cache(
+  async (templateId: string, accountId: string) => {
+    const client = getSupabaseServerClient();
+
+    const { data, error } = await client
+      .from('variant_account_assignments')
+      .select(`
+        *,
+        variant:template_variants (*)
+      `)
+      .eq('account_id', accountId)
+      .eq('variant.template_id', templateId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // PGRST116 = no rows returned
+      throw error;
+    }
+
+    return data?.variant || null;
+  },
+);
+
+/**
+ * Resolve which variant to use for an account (assigned or traffic-weighted)
+ */
+export const resolveVariantForAccount = cache(
+  async (templateId: string, accountId: string) => {
+    const client = getSupabaseServerClient();
+
+    const { data, error } = await client.rpc('resolve_variant_for_account', {
+      p_template_id: templateId as never,
+      p_account_id: accountId as never,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    // Fetch the full variant details
+    const { data: variant, error: variantError } = await client
+      .from('template_variants')
+      .select('*')
+      .eq('id', data)
+      .single();
+
+    if (variantError) {
+      throw variantError;
+    }
+
+    return variant;
+  },
+);
+
+/**
+ * Get all assignments for an account
+ */
+export const getAccountVariantAssignments = cache(async (accountId: string) => {
+  const client = getSupabaseServerClient();
+
+  const { data, error } = await client
+    .from('variant_account_assignments')
+    .select(`
+      *,
+      variant:template_variants (
+        *,
+        template:prompt_templates (
+          id,
+          slug,
+          name,
+          category
+        )
+      )
+    `)
+    .eq('account_id', accountId)
+    .order('assigned_at', { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+});
+
+// =====================================================
 // EXPERIMENT QUERIES
 // =====================================================
 

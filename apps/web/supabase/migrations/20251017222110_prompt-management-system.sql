@@ -251,6 +251,23 @@ create table public.template_variants (
 create index idx_template_variants_template on public.template_variants(template_id);
 create index idx_template_variants_active on public.template_variants(is_active) where is_active = true;
 
+-- Variant account assignments (admin assigns variants to specific accounts)
+create table public.variant_account_assignments (
+  id uuid primary key default gen_random_uuid(),
+  variant_id uuid references public.template_variants(id) on delete cascade not null,
+  account_id uuid references public.accounts(id) on delete cascade not null,
+
+  -- Audit
+  assigned_at timestamptz not null default now(),
+  assigned_by uuid references auth.users(id) on delete set null,
+
+  -- Constraints
+  unique(variant_id, account_id)
+);
+
+create index idx_variant_account_assignments_variant on public.variant_account_assignments(variant_id);
+create index idx_variant_account_assignments_account on public.variant_account_assignments(account_id);
+
 -- Optimization experiments
 create table public.optimization_experiments (
   id uuid primary key default gen_random_uuid(),
@@ -686,6 +703,76 @@ begin
 end;
 $$;
 
+-- Function: Resolve variant for account (checks assignment first, then traffic weight)
+create or replace function public.resolve_variant_for_account(
+  p_template_id uuid,
+  p_account_id uuid
+)
+returns uuid
+language plpgsql
+security definer
+as $$
+declare
+  v_variant_id uuid;
+  v_total_weight numeric;
+  v_random_value numeric;
+  v_cumulative_weight numeric := 0;
+  v_variant record;
+begin
+  -- First, check if account has an assigned variant for this template
+  select vaa.variant_id into v_variant_id
+  from public.variant_account_assignments vaa
+  join public.template_variants tv on tv.id = vaa.variant_id
+  where vaa.account_id = p_account_id
+    and tv.template_id = p_template_id
+    and tv.is_active = true
+  limit 1;
+
+  -- If found, return the assigned variant
+  if v_variant_id is not null then
+    return v_variant_id;
+  end if;
+
+  -- No assignment found, use traffic-weighted random selection
+  -- Calculate total weight of active variants
+  select sum(traffic_weight) into v_total_weight
+  from public.template_variants
+  where template_id = p_template_id
+    and is_active = true;
+
+  -- If no active variants or zero total weight, return null
+  if v_total_weight is null or v_total_weight = 0 then
+    return null;
+  end if;
+
+  -- Generate random value between 0 and total_weight
+  v_random_value := random() * v_total_weight;
+
+  -- Select variant based on traffic weight
+  for v_variant in
+    select id, traffic_weight
+    from public.template_variants
+    where template_id = p_template_id
+      and is_active = true
+    order by created_at
+  loop
+    v_cumulative_weight := v_cumulative_weight + v_variant.traffic_weight;
+    if v_random_value <= v_cumulative_weight then
+      return v_variant.id;
+    end if;
+  end loop;
+
+  -- Fallback (shouldn't reach here, but return first active variant)
+  select id into v_variant_id
+  from public.template_variants
+  where template_id = p_template_id
+    and is_active = true
+  limit 1;
+
+  return v_variant_id;
+end;
+$$;
+
 -- =====================================================
 -- ROW LEVEL SECURITY (RLS)
 -- =====================================================
@@ -694,6 +781,7 @@ alter table public.prompt_templates enable row level security;
 alter table public.prompt_system_prompts enable row level security;
 alter table public.template_system_prompt_links enable row level security;
 alter table public.template_variants enable row level security;
+alter table public.variant_account_assignments enable row level security;
 alter table public.optimization_experiments enable row level security;
 alter table public.system_prompt_combinations enable row level security;
 alter table public.composition_performance enable row level security;
@@ -771,6 +859,19 @@ create policy "Super admins can view variants"
 
 create policy "Super admins can manage variants"
   on public.template_variants for all
+  using (
+    public.is_super_admin()
+  );
+
+-- RLS for variant_account_assignments
+create policy "Super admins can view variant assignments"
+  on public.variant_account_assignments for select
+  using (
+    public.is_super_admin()
+  );
+
+create policy "Super admins can manage variant assignments"
+  on public.variant_account_assignments for all
   using (
     public.is_super_admin()
   );

@@ -171,6 +171,25 @@ export const DeleteVariantSchema = z.object({
 });
 
 // =====================================================
+// VARIANT ASSIGNMENT SCHEMAS
+// =====================================================
+
+export const AssignVariantToAccountSchema = z.object({
+  variant_id: z.string().uuid(),
+  account_id: z.string().uuid(),
+});
+
+export const UnassignVariantFromAccountSchema = z.object({
+  variant_id: z.string().uuid(),
+  account_id: z.string().uuid(),
+});
+
+export const ResolveVariantForAccountSchema = z.object({
+  template_id: z.string().uuid(),
+  account_id: z.string().uuid(),
+});
+
+// =====================================================
 // EXPERIMENT SCHEMAS
 // =====================================================
 
@@ -234,6 +253,9 @@ export type CreateSystemPromptInput = z.infer<typeof CreateSystemPromptSchema>;
 export type UpdateSystemPromptInput = z.infer<typeof UpdateSystemPromptSchema>;
 export type CreateVariantInput = z.infer<typeof CreateVariantSchema>;
 export type UpdateVariantInput = z.infer<typeof UpdateVariantSchema>;
+export type AssignVariantToAccountInput = z.infer<typeof AssignVariantToAccountSchema>;
+export type UnassignVariantFromAccountInput = z.infer<typeof UnassignVariantFromAccountSchema>;
+export type ResolveVariantForAccountInput = z.infer<typeof ResolveVariantForAccountSchema>;
 export type CreateExperimentInput = z.infer<typeof CreateExperimentSchema>;
 export type RenderTemplateInput = z.infer<typeof RenderTemplateSchema>;
 export type LogExecutionInput = z.infer<typeof LogExecutionSchema>;

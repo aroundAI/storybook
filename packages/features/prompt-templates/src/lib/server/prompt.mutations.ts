@@ -24,6 +24,8 @@ import {
   CreateVariantSchema,
   UpdateVariantSchema,
   DeleteVariantSchema,
+  AssignVariantToAccountSchema,
+  UnassignVariantFromAccountSchema,
   CreateExperimentSchema,
   UpdateExperimentSchema,
   LogExecutionSchema,
@@ -35,6 +37,8 @@ import type {
   UpdateSystemPromptInput,
   CreateVariantInput,
   UpdateVariantInput,
+  AssignVariantToAccountInput,
+  UnassignVariantFromAccountInput,
   CreateExperimentInput,
   LogExecutionInput,
 } from '../schemas/prompt.schema';
@@ -377,6 +381,73 @@ export const deleteVariantAction = enhanceAction(
   },
   {
     schema: DeleteVariantSchema,
+  },
+);
+
+// =====================================================
+// VARIANT ASSIGNMENT MUTATIONS
+// =====================================================
+
+export const assignVariantToAccountAction = enhanceAction(
+  async (data: AssignVariantToAccountInput) => {
+    const client = getSupabaseServerClient();
+
+    const { data: assignment, error } = await client
+      .from('variant_account_assignments')
+      .insert({
+        variant_id: data.variant_id,
+        account_id: data.account_id,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      logger.error({ error }, 'Failed to assign variant to account');
+      throw error;
+    }
+
+    logger.info(
+      {
+        variantId: data.variant_id,
+        accountId: data.account_id,
+      },
+      'Assigned variant to account',
+    );
+
+    return assignment;
+  },
+  {
+    schema: AssignVariantToAccountSchema,
+  },
+);
+
+export const unassignVariantFromAccountAction = enhanceAction(
+  async (data: UnassignVariantFromAccountInput) => {
+    const client = getSupabaseServerClient();
+
+    const { error } = await client
+      .from('variant_account_assignments')
+      .delete()
+      .eq('variant_id', data.variant_id)
+      .eq('account_id', data.account_id);
+
+    if (error) {
+      logger.error({ error }, 'Failed to unassign variant from account');
+      throw error;
+    }
+
+    logger.info(
+      {
+        variantId: data.variant_id,
+        accountId: data.account_id,
+      },
+      'Unassigned variant from account',
+    );
+
+    return { success: true };
+  },
+  {
+    schema: UnassignVariantFromAccountSchema,
   },
 );
 
