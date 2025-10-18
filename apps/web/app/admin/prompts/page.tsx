@@ -1,7 +1,14 @@
+import Link from 'next/link';
+
+import { GitBranchIcon, PencilIcon, PlusIcon } from 'lucide-react';
+
 import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { PageBody, PageHeader } from '@kit/ui/page';
 import {
   Table,
   TableBody,
@@ -10,12 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@kit/ui/table';
-import { Badge } from '@kit/ui/badge';
-import { Button } from '@kit/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
-import { GitBranchIcon, PencilIcon, PlusIcon } from 'lucide-react';
-import Link from 'next/link';
 
 async function PromptsAdminPage() {
   const adminClient = getSupabaseServerAdminClient();
@@ -70,9 +72,7 @@ async function PromptsAdminPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {systemPromptCount ?? 0}
-              </div>
+              <div className="text-2xl font-bold">{systemPromptCount ?? 0}</div>
             </CardContent>
           </Card>
 
@@ -136,7 +136,7 @@ async function PromptsAdminPage() {
                             </Link>
                           </TableCell>
                           <TableCell>
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                            <code className="bg-muted rounded px-1 py-0.5 text-xs">
                               {template.slug}
                             </code>
                           </TableCell>
@@ -183,7 +183,7 @@ async function PromptsAdminPage() {
                       <TableRow>
                         <TableCell
                           colSpan={8}
-                          className="h-24 text-center text-muted-foreground"
+                          className="text-muted-foreground h-24 text-center"
                         >
                           No templates found
                         </TableCell>
@@ -236,7 +236,7 @@ async function PromptsAdminPage() {
                             </Link>
                           </TableCell>
                           <TableCell>
-                            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                            <code className="bg-muted rounded px-1 py-0.5 text-xs">
                               {prompt.slug}
                             </code>
                           </TableCell>
@@ -273,7 +273,7 @@ async function PromptsAdminPage() {
                       <TableRow>
                         <TableCell
                           colSpan={8}
-                          className="h-24 text-center text-muted-foreground"
+                          className="text-muted-foreground h-24 text-center"
                         >
                           No system prompts found
                         </TableCell>

@@ -1,9 +1,16 @@
 'use client';
 
 import { useTransition } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
+import { InfoIcon, Loader2Icon } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+
+import { UpdateSystemPromptSchema } from '@kit/prompt-templates/schemas';
+import { Button } from '@kit/ui/button';
 import {
   Form,
   FormControl,
@@ -14,19 +21,15 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
-import { Textarea } from '@kit/ui/textarea';
-import { Button } from '@kit/ui/button';
-import { Switch } from '@kit/ui/switch';
 import { toast } from '@kit/ui/sonner';
+import { Switch } from '@kit/ui/switch';
+import { Textarea } from '@kit/ui/textarea';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@kit/ui/tooltip';
-import { Loader2Icon, InfoIcon } from 'lucide-react';
-import { UpdateSystemPromptSchema } from '@kit/prompt-templates/schemas';
-import type { z } from 'zod';
 
 type UpdateSystemPromptFormData = z.infer<typeof UpdateSystemPromptSchema>;
 
@@ -92,7 +95,9 @@ export function EditSystemPromptForm({
               <FormControl>
                 <Input placeholder="GDPR Compliance" {...field} />
               </FormControl>
-              <FormDescription>Human-readable system prompt name</FormDescription>
+              <FormDescription>
+                Human-readable system prompt name
+              </FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -151,11 +156,13 @@ export function EditSystemPromptForm({
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <InfoIcon className="h-4 w-4 text-muted-foreground cursor-help" />
+                      <InfoIcon className="text-muted-foreground h-4 w-4 cursor-help" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
                       <p className="text-sm">
-                        Priority determines order within same layer type when system prompts are globally scoped. Use link ordering for template-specific arrangement.
+                        Priority determines order within same layer type when
+                        system prompts are globally scoped. Use link ordering
+                        for template-specific arrangement.
                       </p>
                     </TooltipContent>
                   </Tooltip>

@@ -1,19 +1,22 @@
-import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { Button } from '@kit/ui/button';
-import { Badge } from '@kit/ui/badge';
-import { PlusIcon } from 'lucide-react';
 import Link from 'next/link';
-import { TrafficSplitVisualization } from './_components/traffic-split-visualization';
-import { VariantCard } from './_components/variant-card';
+
+import { PlusIcon } from 'lucide-react';
+
+import { AdminGuard } from '@kit/admin/components/admin-guard';
 import {
-  deleteVariantAction,
   assignVariantToAccountAction,
+  deleteVariantAction,
   unassignVariantFromAccountAction,
 } from '@kit/prompt-templates/mutations';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { TrafficSplitVisualization } from './_components/traffic-split-visualization';
+import { VariantCard } from './_components/variant-card';
 
 async function VariantsManagementPage({
   params,
@@ -99,11 +102,9 @@ async function VariantsManagementPage({
       <PageHeader description={<AppBreadcrumbs />}>
         <div className="flex items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold">
-              {template.name} - Variants
-            </h1>
+            <h1 className="text-2xl font-bold">{template.name} - Variants</h1>
             <p className="text-muted-foreground text-sm">
-              <code className="rounded bg-muted px-1 py-0.5">
+              <code className="bg-muted rounded px-1 py-0.5">
                 {template.slug}
               </code>
             </p>
@@ -144,9 +145,7 @@ async function VariantsManagementPage({
           {variants && variants.length > 0 ? (
             variants.map((variant) => {
               const variantAssignments =
-                assignments?.filter(
-                  (a) => a.variant_id === variant.id,
-                ) || [];
+                assignments?.filter((a) => a.variant_id === variant.id) || [];
 
               return (
                 <VariantCard

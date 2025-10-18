@@ -58,9 +58,7 @@ export function TrafficSplitVisualization({
               title={`${variant.variant_name}: ${percentage.toFixed(1)}%`}
             >
               {percentage > 10 && (
-                <span className="truncate px-2">
-                  {percentage.toFixed(0)}%
-                </span>
+                <span className="truncate px-2">{percentage.toFixed(0)}%</span>
               )}
             </div>
           );

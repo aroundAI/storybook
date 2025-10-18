@@ -1,12 +1,14 @@
-import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { CreateVariantForm } from '../_components/create-variant-form';
 import { redirect } from 'next/navigation';
+
+import { AdminGuard } from '@kit/admin/components/admin-guard';
 import { createVariantAction } from '@kit/prompt-templates/mutations';
 import type { CreateVariantInput } from '@kit/prompt-templates/schemas';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { CreateVariantForm } from '../_components/create-variant-form';
 
 async function NewVariantPage({
   params,
@@ -39,9 +41,8 @@ async function NewVariantPage({
         <div>
           <h1 className="text-2xl font-bold">Create New Variant</h1>
           <p className="text-muted-foreground text-sm">
-            For template:{' '}
-            <span className="font-medium">{template.name}</span>{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            For template: <span className="font-medium">{template.name}</span>{' '}
+            <code className="bg-muted rounded px-1 py-0.5 text-xs">
               {template.slug}
             </code>
           </p>

@@ -1,11 +1,13 @@
+import { redirect } from 'next/navigation';
+
 import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
+import { updateSystemPromptAction } from '@kit/prompt-templates/mutations';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
 import { EditSystemPromptForm } from '../../../_components/edit-system-prompt-form';
-import { redirect } from 'next/navigation';
-import { updateSystemPromptAction } from '@kit/prompt-templates/mutations';
 
 async function EditSystemPromptPage({
   params,
@@ -42,7 +44,7 @@ async function EditSystemPromptPage({
           <p className="text-muted-foreground text-sm">
             System Prompt:{' '}
             <span className="font-medium">{systemPrompt.name}</span>{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            <code className="bg-muted rounded px-1 py-0.5 text-xs">
               {systemPrompt.slug}
             </code>
           </p>

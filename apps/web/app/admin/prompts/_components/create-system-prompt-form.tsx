@@ -1,9 +1,16 @@
 'use client';
 
 import { useTransition } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
+import { InfoIcon, Loader2Icon } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+
+import { CreateSystemPromptSchema } from '@kit/prompt-templates/schemas';
+import { Button } from '@kit/ui/button';
 import {
   Form,
   FormControl,
@@ -14,8 +21,6 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
-import { Textarea } from '@kit/ui/textarea';
-import { Button } from '@kit/ui/button';
 import {
   Select,
   SelectContent,
@@ -24,9 +29,7 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { Loader2Icon, InfoIcon } from 'lucide-react';
-import { CreateSystemPromptSchema } from '@kit/prompt-templates/schemas';
-import type { z } from 'zod';
+import { Textarea } from '@kit/ui/textarea';
 
 type CreateSystemPromptFormData = z.infer<typeof CreateSystemPromptSchema>;
 
@@ -36,20 +39,48 @@ interface CreateSystemPromptFormProps {
 }
 
 const layerTypes = [
-  { value: 'compliance', label: 'Compliance', description: 'Legal/regulatory requirements' },
+  {
+    value: 'compliance',
+    label: 'Compliance',
+    description: 'Legal/regulatory requirements',
+  },
   { value: 'role', label: 'Role', description: 'Define AI persona/expertise' },
   { value: 'context', label: 'Context', description: 'Background information' },
-  { value: 'brand_voice', label: 'Brand Voice', description: 'Tone and style guidelines' },
-  { value: 'format', label: 'Format', description: 'Output structure requirements' },
-  { value: 'standards', label: 'Standards', description: 'Quality and consistency rules' },
-  { value: 'constraints', label: 'Constraints', description: 'Limitations and boundaries' },
+  {
+    value: 'brand_voice',
+    label: 'Brand Voice',
+    description: 'Tone and style guidelines',
+  },
+  {
+    value: 'format',
+    label: 'Format',
+    description: 'Output structure requirements',
+  },
+  {
+    value: 'standards',
+    label: 'Standards',
+    description: 'Quality and consistency rules',
+  },
+  {
+    value: 'constraints',
+    label: 'Constraints',
+    description: 'Limitations and boundaries',
+  },
   { value: 'examples', label: 'Examples', description: 'Reference examples' },
 ] as const;
 
 const scopes = [
   { value: 'global', label: 'Global', description: 'Applies to all templates' },
-  { value: 'category', label: 'Category', description: 'Applies to specific category' },
-  { value: 'template', label: 'Template', description: 'Applies to specific template' },
+  {
+    value: 'category',
+    label: 'Category',
+    description: 'Applies to specific category',
+  },
+  {
+    value: 'template',
+    label: 'Template',
+    description: 'Applies to specific template',
+  },
 ] as const;
 
 const categories = [
@@ -98,10 +129,16 @@ export function CreateSystemPromptForm({
         onSuccess?.();
       } catch (error) {
         // Check for duplicate slug error
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
-        if (errorMessage.includes('duplicate') || errorMessage.includes('unique constraint')) {
-          toast.error('A system prompt with this slug already exists. Please choose a different slug.');
+        if (
+          errorMessage.includes('duplicate') ||
+          errorMessage.includes('unique constraint')
+        ) {
+          toast.error(
+            'A system prompt with this slug already exists. Please choose a different slug.',
+          );
           form.setError('slug', {
             type: 'manual',
             message: 'This slug is already in use',
@@ -277,7 +314,8 @@ export function CreateSystemPromptForm({
                   </SelectContent>
                 </Select>
                 <FormDescription>
-                  This system prompt will only apply to templates in this category
+                  This system prompt will only apply to templates in this
+                  category
                 </FormDescription>
                 <FormMessage />
               </FormItem>

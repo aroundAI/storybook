@@ -1,16 +1,20 @@
-import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { EditTemplatePageClient } from './_components/edit-template-page-client';
+import { revalidatePath } from 'next/cache';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
+
+import { ChevronRightIcon } from 'lucide-react';
+
+import { AdminGuard } from '@kit/admin/components/admin-guard';
 import {
-  updatePromptTemplateAction,
   linkSystemPromptAction,
   unlinkSystemPromptAction,
+  updatePromptTemplateAction,
 } from '@kit/prompt-templates/mutations';
 import type { UpdatePromptTemplateInput } from '@kit/prompt-templates/schemas';
-import { revalidatePath } from 'next/cache';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { EditTemplatePageClient } from './_components/edit-template-page-client';
 
 async function EditTemplatePage({
   params,
@@ -34,7 +38,8 @@ async function EditTemplatePage({
   // Fetch linked system prompts
   const { data: linkedPrompts } = await adminClient
     .from('template_system_prompt_links')
-    .select(`
+    .select(
+      `
       id,
       system_prompt_id,
       order_index,
@@ -46,7 +51,8 @@ async function EditTemplatePage({
         scope,
         priority
       )
-    `)
+    `,
+    )
     .eq('template_id', templateId)
     .order('order_index');
 
@@ -73,7 +79,11 @@ async function EditTemplatePage({
     revalidatePath(`/admin/prompts/${templateId}/edit`);
   }
 
-  async function handleReorderPrompt(tid: string, promptId: string, newIndex: number) {
+  async function handleReorderPrompt(
+    tid: string,
+    promptId: string,
+    newIndex: number,
+  ) {
     'use server';
     // First unlink, then relink with new order
     await unlinkSystemPromptAction({
@@ -100,7 +110,8 @@ async function EditTemplatePage({
       .order('order_index', { ascending: false })
       .limit(1);
 
-    let nextIndex = links && links.length > 0 ? (links[0]?.order_index ?? -1) + 1 : 0;
+    let nextIndex =
+      links && links.length > 0 ? (links[0]?.order_index ?? -1) + 1 : 0;
 
     // Add each prompt with incrementing order_index
     for (const promptId of promptIds) {
@@ -121,13 +132,26 @@ async function EditTemplatePage({
 
   return (
     <>
-      <PageHeader description={<AppBreadcrumbs />}>
+      <PageHeader
+        description={
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <Link href="/admin" className="hover:text-foreground">
+              Admin
+            </Link>
+            <ChevronRightIcon className="h-4 w-4" />
+            <Link href="/admin/prompts" className="hover:text-foreground">
+              Prompts
+            </Link>
+            <ChevronRightIcon className="h-4 w-4" />
+            <span className="text-foreground">{template.name}</span>
+          </div>
+        }
+      >
         <div>
           <h1 className="text-2xl font-bold">Edit Template</h1>
           <p className="text-muted-foreground text-sm">
-            Template:{' '}
-            <span className="font-medium">{template.name}</span>{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            Template: <span className="font-medium">{template.name}</span>{' '}
+            <code className="bg-muted rounded px-1 py-0.5 text-xs">
               {template.slug}
             </code>
           </p>

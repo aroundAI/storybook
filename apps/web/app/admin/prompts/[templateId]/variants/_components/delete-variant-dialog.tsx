@@ -1,7 +1,11 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+
 import { useRouter } from 'next/navigation';
+
+import { Loader2Icon, Trash2Icon } from 'lucide-react';
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +19,6 @@ import {
 } from '@kit/ui/alert-dialog';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
-import { Loader2Icon, Trash2Icon } from 'lucide-react';
 
 interface DeleteVariantDialogProps {
   variantId: string;

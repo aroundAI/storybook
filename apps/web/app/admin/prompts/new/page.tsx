@@ -1,10 +1,11 @@
 import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { CreateTemplateForm } from '../_components/create-template-form';
 import { createPromptTemplateAction } from '@kit/prompt-templates/mutations';
 import type { CreatePromptTemplateInput } from '@kit/prompt-templates/schemas';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { CreateTemplateForm } from '../_components/create-template-form';
 
 async function NewTemplatePage() {
   // Server action wrapper for creating templates

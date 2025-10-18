@@ -1,9 +1,16 @@
 'use client';
 
 import { useTransition } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Loader2Icon } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+
+import { UpdateVariantSchema } from '@kit/prompt-templates/schemas';
+import { Button } from '@kit/ui/button';
 import {
   Form,
   FormControl,
@@ -14,13 +21,9 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
-import { Textarea } from '@kit/ui/textarea';
-import { Button } from '@kit/ui/button';
-import { Switch } from '@kit/ui/switch';
 import { toast } from '@kit/ui/sonner';
-import { Loader2Icon } from 'lucide-react';
-import { UpdateVariantSchema } from '@kit/prompt-templates/schemas';
-import type { z } from 'zod';
+import { Switch } from '@kit/ui/switch';
+import { Textarea } from '@kit/ui/textarea';
 
 type UpdateVariantFormData = z.infer<typeof UpdateVariantSchema>;
 

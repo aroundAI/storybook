@@ -1,6 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+
+import { useRouter } from 'next/navigation';
+
+import { Loader2Icon, SettingsIcon } from 'lucide-react';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
+import { Button } from '@kit/ui/button';
+import { Checkbox } from '@kit/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -9,12 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@kit/ui/dialog';
-import { Button } from '@kit/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
-import { Checkbox } from '@kit/ui/checkbox';
-import { SettingsIcon, Loader2Icon } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
-import { useRouter } from 'next/navigation';
 
 interface ManageAccountAssignmentsDialogProps {
   variantId: string;
@@ -147,7 +150,7 @@ export function ManageAccountAssignmentsDialog({
               {accounts.map((account) => (
                 <div
                   key={account.id}
-                  className="flex items-center gap-3 rounded-lg border p-3 transition-colors hover:bg-muted"
+                  className="hover:bg-muted flex items-center gap-3 rounded-lg border p-3 transition-colors"
                 >
                   <Checkbox
                     id={`account-${account.id}`}

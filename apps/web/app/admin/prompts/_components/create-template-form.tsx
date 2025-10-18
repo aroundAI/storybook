@@ -1,9 +1,16 @@
 'use client';
 
 import { useTransition } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
+import { InfoIcon, Loader2Icon } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+
+import { CreatePromptTemplateSchema } from '@kit/prompt-templates/schemas';
+import { Button } from '@kit/ui/button';
 import {
   Form,
   FormControl,
@@ -14,8 +21,6 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
-import { Textarea } from '@kit/ui/textarea';
-import { Button } from '@kit/ui/button';
 import {
   Select,
   SelectContent,
@@ -24,9 +29,7 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { Loader2Icon, InfoIcon } from 'lucide-react';
-import { CreatePromptTemplateSchema } from '@kit/prompt-templates/schemas';
-import type { z } from 'zod';
+import { Textarea } from '@kit/ui/textarea';
 
 type CreateTemplateFormData = z.infer<typeof CreatePromptTemplateSchema>;
 
@@ -47,7 +50,7 @@ const categories = [
   { value: 'orchestration', label: 'Orchestration' },
 ] as const;
 
-const environments = [
+const _environments = [
   { value: 'development', label: 'Development' },
   { value: 'staging', label: 'Staging' },
   { value: 'canary', label: 'Canary' },
@@ -58,27 +61,13 @@ const compositionStrategies = [
   {
     value: 'fixed',
     label: 'Fixed',
-    description: 'Always uses the same prompt configuration for all requests'
-  },
-  {
-    value: 'conditional',
-    label: 'Conditional',
-    description: 'Dynamically selects variants/prompts based on rules (user level, locale, context)'
+    description: 'Always uses the same prompt configuration for all requests',
   },
   {
     value: 'ab_test',
     label: 'A/B Test',
-    description: 'Randomly assigns users to different variants for testing effectiveness'
-  },
-  {
-    value: 'bandit',
-    label: 'Multi-Armed Bandit',
-    description: 'Algorithm learns and selects optimal variant over time based on performance'
-  },
-  {
-    value: 'optimized',
-    label: 'Optimized',
-    description: 'Always uses the best-performing variant based on metrics'
+    description:
+      'Randomly assigns users to different variants for testing effectiveness',
   },
 ] as const;
 
@@ -115,10 +104,16 @@ export function CreateTemplateForm({
         onSuccess?.();
       } catch (error) {
         // Check for duplicate slug error
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
-        if (errorMessage.includes('duplicate') || errorMessage.includes('unique constraint')) {
-          toast.error('A template with this slug already exists. Please choose a different slug.');
+        if (
+          errorMessage.includes('duplicate') ||
+          errorMessage.includes('unique constraint')
+        ) {
+          toast.error(
+            'A template with this slug already exists. Please choose a different slug.',
+          );
           form.setError('slug', {
             type: 'manual',
             message: 'This slug is already in use',
@@ -167,9 +162,7 @@ export function CreateTemplateForm({
                 <FormControl>
                   <Input placeholder="Support Ticket Analysis" {...field} />
                 </FormControl>
-                <FormDescription>
-                  Human-readable template name
-                </FormDescription>
+                <FormDescription>Human-readable template name</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -257,9 +250,7 @@ export function CreateTemplateForm({
                     ))}
                   </SelectContent>
                 </Select>
-                <FormDescription>
-                  How system prompts and variants are selected
-                </FormDescription>
+                <FormDescription>Template execution strategy</FormDescription>
                 <FormMessage />
               </FormItem>
             )}
@@ -282,7 +273,8 @@ export function CreateTemplateForm({
               </FormControl>
               <FormDescription>
                 The prompt template. Use {'{'}
-                {'{'}variable_name{'}'}{'}'}for variables.
+                {'{'}variable_name{'}'}
+                {'}'}for variables.
               </FormDescription>
               <FormMessage />
             </FormItem>

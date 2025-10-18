@@ -1,6 +1,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+
+import { Loader2Icon, SearchIcon } from 'lucide-react';
+
+import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
+import { Checkbox } from '@kit/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -9,11 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@kit/ui/dialog';
-import { Button } from '@kit/ui/button';
-import { Checkbox } from '@kit/ui/checkbox';
 import { Input } from '@kit/ui/input';
-import { Badge } from '@kit/ui/badge';
-import { Loader2Icon, SearchIcon } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 
 interface SystemPrompt {
@@ -94,7 +96,7 @@ export function AddSystemPromptsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[80vh] max-w-2xl overflow-hidden flex flex-col">
+      <DialogContent className="flex max-h-[80vh] max-w-2xl flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Add System Prompts</DialogTitle>
           <DialogDescription>
@@ -104,7 +106,7 @@ export function AddSystemPromptsDialog({
         </DialogHeader>
 
         <div className="relative">
-          <SearchIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <SearchIcon className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Search by name, slug, or layer..."
             value={searchQuery}
@@ -113,7 +115,7 @@ export function AddSystemPromptsDialog({
           />
         </div>
 
-        <div className="flex-1 overflow-y-auto border rounded-md">
+        <div className="flex-1 overflow-y-auto rounded-md border">
           {filteredPrompts.length === 0 ? (
             <div className="text-muted-foreground py-8 text-center text-sm">
               {searchQuery
@@ -125,7 +127,7 @@ export function AddSystemPromptsDialog({
               {filteredPrompts.map((prompt) => (
                 <label
                   key={prompt.id}
-                  className="flex items-start gap-3 p-3 hover:bg-muted/50 cursor-pointer"
+                  className="hover:bg-muted/50 flex cursor-pointer items-start gap-3 p-3"
                 >
                   <Checkbox
                     checked={selectedIds.has(prompt.id)}
@@ -135,7 +137,7 @@ export function AddSystemPromptsDialog({
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{prompt.name}</span>
-                      <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                      <code className="bg-muted rounded px-1 py-0.5 text-xs">
                         {prompt.slug}
                       </code>
                     </div>
@@ -167,8 +169,13 @@ export function AddSystemPromptsDialog({
               >
                 Cancel
               </Button>
-              <Button onClick={handleAdd} disabled={isPending || selectedIds.size === 0}>
-                {isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
+              <Button
+                onClick={handleAdd}
+                disabled={isPending || selectedIds.size === 0}
+              >
+                {isPending && (
+                  <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                )}
                 Add {selectedIds.size > 0 && `(${selectedIds.size})`}
               </Button>
             </div>

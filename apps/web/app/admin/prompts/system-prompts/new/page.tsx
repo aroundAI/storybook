@@ -1,10 +1,11 @@
 import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { CreateSystemPromptForm } from '../../_components/create-system-prompt-form';
 import { createSystemPromptAction } from '@kit/prompt-templates/mutations';
 import type { CreateSystemPromptInput } from '@kit/prompt-templates/schemas';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { CreateSystemPromptForm } from '../../_components/create-system-prompt-form';
 
 async function NewSystemPromptPage() {
   // Server action wrapper for creating system prompts

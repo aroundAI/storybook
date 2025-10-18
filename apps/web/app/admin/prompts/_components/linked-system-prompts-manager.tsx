@@ -1,8 +1,20 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Button } from '@kit/ui/button';
+import { useTransition } from 'react';
+
+import Link from 'next/link';
+
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  PlusIcon,
+  TrashIcon,
+} from 'lucide-react';
+
 import { Badge } from '@kit/ui/badge';
+import { Button } from '@kit/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { toast } from '@kit/ui/sonner';
 import {
   Table,
   TableBody,
@@ -11,14 +23,6 @@ import {
   TableHeader,
   TableRow,
 } from '@kit/ui/table';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import {
-  ChevronUpIcon,
-  ChevronDownIcon,
-  TrashIcon,
-  PlusIcon,
-} from 'lucide-react';
-import { toast } from '@kit/ui/sonner';
 
 interface LinkedSystemPrompt {
   id: string;
@@ -38,7 +42,11 @@ interface LinkedSystemPromptsManagerProps {
   templateId: string;
   linkedPrompts: LinkedSystemPrompt[];
   onUnlink: (templateId: string, systemPromptId: string) => Promise<void>;
-  onReorder: (templateId: string, systemPromptId: string, newIndex: number) => Promise<void>;
+  onReorder: (
+    templateId: string,
+    systemPromptId: string,
+    newIndex: number,
+  ) => Promise<void>;
   onAddClick: () => void;
   onRefresh: () => void;
 }
@@ -81,7 +89,11 @@ export function LinkedSystemPromptsManager({
     });
   };
 
-  const handleMoveDown = (systemPromptId: string, currentIndex: number, maxIndex: number) => {
+  const handleMoveDown = (
+    systemPromptId: string,
+    currentIndex: number,
+    maxIndex: number,
+  ) => {
     if (currentIndex === maxIndex) return;
 
     startTransition(async () => {
@@ -96,7 +108,9 @@ export function LinkedSystemPromptsManager({
     });
   };
 
-  const sortedPrompts = [...linkedPrompts].sort((a, b) => a.order_index - b.order_index);
+  const sortedPrompts = [...linkedPrompts].sort(
+    (a, b) => a.order_index - b.order_index,
+  );
   const maxIndex = sortedPrompts.length - 1;
 
   return (
@@ -113,18 +127,19 @@ export function LinkedSystemPromptsManager({
       <CardContent>
         {sortedPrompts.length === 0 ? (
           <div className="text-muted-foreground py-8 text-center text-sm">
-            No system prompts linked. Click "Add System Prompts" to get started.
+            No system prompts linked. Click &ldquo;Add System Prompts&rdquo; to
+            get started.
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-12">Order</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Slug</TableHead>
-                <TableHead>Layer</TableHead>
-                <TableHead>Scope</TableHead>
-                <TableHead className="w-32 text-right">Actions</TableHead>
+                <TableHead className="w-20">Order</TableHead>
+                <TableHead className="min-w-[200px]">Name</TableHead>
+                <TableHead className="w-48">Slug</TableHead>
+                <TableHead className="w-32">Layer</TableHead>
+                <TableHead className="w-32">Scope</TableHead>
+                <TableHead className="w-40 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -134,10 +149,15 @@ export function LinkedSystemPromptsManager({
                     #{link.order_index + 1}
                   </TableCell>
                   <TableCell className="font-medium">
-                    {link.system_prompt.name}
+                    <Link
+                      href={`/admin/prompts/system-prompts/${link.system_prompt_id}/edit`}
+                      className="hover:underline"
+                    >
+                      {link.system_prompt.name}
+                    </Link>
                   </TableCell>
                   <TableCell>
-                    <code className="rounded bg-muted px-1 py-0.5 text-xs">
+                    <code className="bg-muted rounded px-1 py-0.5 text-xs">
                       {link.system_prompt.slug}
                     </code>
                   </TableCell>
@@ -156,7 +176,9 @@ export function LinkedSystemPromptsManager({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleMoveUp(link.system_prompt_id, index)}
+                        onClick={() =>
+                          handleMoveUp(link.system_prompt_id, index)
+                        }
                         disabled={index === 0 || isPending}
                         className="h-8 w-8 p-0"
                       >
@@ -165,7 +187,9 @@ export function LinkedSystemPromptsManager({
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleMoveDown(link.system_prompt_id, index, maxIndex)}
+                        onClick={() =>
+                          handleMoveDown(link.system_prompt_id, index, maxIndex)
+                        }
                         disabled={index === maxIndex || isPending}
                         className="h-8 w-8 p-0"
                       >
@@ -176,7 +200,7 @@ export function LinkedSystemPromptsManager({
                         size="sm"
                         onClick={() => handleUnlink(link.system_prompt_id)}
                         disabled={isPending}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive h-8 w-8 p-0"
                       >
                         <TrashIcon className="h-4 w-4" />
                       </Button>

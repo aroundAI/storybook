@@ -1,9 +1,14 @@
 'use client';
 
 import { useTransition } from 'react';
+
 import { useRouter } from 'next/navigation';
-import { useForm } from 'react-hook-form';
+
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import type { z } from 'zod';
+
+import { UpdatePromptTemplateSchema } from '@kit/prompt-templates/schemas';
 import {
   Form,
   FormControl,
@@ -14,9 +19,6 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
-import { Textarea } from '@kit/ui/textarea';
-import { Button } from '@kit/ui/button';
-import { Switch } from '@kit/ui/switch';
 import {
   Select,
   SelectContent,
@@ -25,9 +27,8 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { Loader2Icon } from 'lucide-react';
-import { UpdatePromptTemplateSchema } from '@kit/prompt-templates/schemas';
-import type { z } from 'zod';
+import { Switch } from '@kit/ui/switch';
+import { Textarea } from '@kit/ui/textarea';
 
 type UpdateTemplateFormData = z.infer<typeof UpdatePromptTemplateSchema>;
 
@@ -43,33 +44,20 @@ interface EditTemplateFormProps {
   };
   onSubmit: (data: UpdateTemplateFormData) => Promise<void>;
   onSuccess?: () => void;
+  formId?: string;
 }
 
 const compositionStrategies = [
   {
     value: 'fixed',
     label: 'Fixed',
-    description: 'Always uses the same prompt configuration for all requests'
-  },
-  {
-    value: 'conditional',
-    label: 'Conditional',
-    description: 'Dynamically selects variants/prompts based on rules (user level, locale, context)'
+    description: 'Always uses the same prompt configuration for all requests',
   },
   {
     value: 'ab_test',
     label: 'A/B Test',
-    description: 'Randomly assigns users to different variants for testing effectiveness'
-  },
-  {
-    value: 'bandit',
-    label: 'Multi-Armed Bandit',
-    description: 'Algorithm learns and selects optimal variant over time based on performance'
-  },
-  {
-    value: 'optimized',
-    label: 'Optimized',
-    description: 'Always uses the best-performing variant based on metrics'
+    description:
+      'Randomly assigns users to different variants for testing effectiveness',
   },
 ] as const;
 
@@ -77,8 +65,9 @@ export function EditTemplateForm({
   template,
   onSubmit,
   onSuccess,
+  formId = 'edit-template-form',
 }: EditTemplateFormProps) {
-  const [isPending, startTransition] = useTransition();
+  const [, startTransition] = useTransition();
   const router = useRouter();
 
   const form = useForm({
@@ -88,7 +77,12 @@ export function EditTemplateForm({
       name: template.name,
       description: template.description || '',
       template_content: template.template_content,
-      composition_strategy: template.composition_strategy as any,
+      composition_strategy: template.composition_strategy as
+        | 'fixed'
+        | 'conditional'
+        | 'ab_test'
+        | 'bandit'
+        | 'optimized',
       is_active: template.is_active,
       tags: template.tags,
     },
@@ -111,7 +105,11 @@ export function EditTemplateForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+      <form
+        id={formId}
+        onSubmit={form.handleSubmit(handleSubmit)}
+        className="space-y-6"
+      >
         <FormField
           control={form.control}
           name="name"
@@ -164,7 +162,8 @@ export function EditTemplateForm({
               </FormControl>
               <FormDescription>
                 The prompt template. Use {'{'}
-                {'{'}variable_name{'}'}{'}'}for variables.
+                {'{'}variable_name{'}'}
+                {'}'}for variables.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -174,7 +173,7 @@ export function EditTemplateForm({
         <FormField
           control={form.control}
           name="composition_strategy"
-          render={({ field}) => (
+          render={({ field }) => (
             <FormItem>
               <FormLabel>Composition Strategy</FormLabel>
               <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -196,9 +195,7 @@ export function EditTemplateForm({
                   ))}
                 </SelectContent>
               </Select>
-              <FormDescription>
-                How system prompts and variants are selected
-              </FormDescription>
+              <FormDescription>Template execution strategy</FormDescription>
               <FormMessage />
             </FormItem>
           )}
@@ -224,21 +221,6 @@ export function EditTemplateForm({
             </FormItem>
           )}
         />
-
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.back()}
-            disabled={isPending}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isPending}>
-            {isPending && <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />}
-            Update Template
-          </Button>
-        </div>
       </form>
     </Form>
   );

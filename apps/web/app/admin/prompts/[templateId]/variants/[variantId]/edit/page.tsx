@@ -1,11 +1,13 @@
+import { redirect } from 'next/navigation';
+
 import { AdminGuard } from '@kit/admin/components/admin-guard';
-import { PageBody, PageHeader } from '@kit/ui/page';
+import { updateVariantAction } from '@kit/prompt-templates/mutations';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
 import { EditVariantForm } from '../../_components/edit-variant-form';
-import { redirect } from 'next/navigation';
-import { updateVariantAction } from '@kit/prompt-templates/mutations';
 
 async function EditVariantPage({
   params,
@@ -39,7 +41,9 @@ async function EditVariantPage({
   }
 
   // Server action wrapper for updating variants
-  async function handleUpdateVariant(data: Parameters<typeof updateVariantAction>[0]) {
+  async function handleUpdateVariant(
+    data: Parameters<typeof updateVariantAction>[0],
+  ) {
     'use server';
     await updateVariantAction(data);
   }
@@ -51,7 +55,7 @@ async function EditVariantPage({
           <h1 className="text-2xl font-bold">Edit Variant</h1>
           <p className="text-muted-foreground text-sm">
             Template: <span className="font-medium">{template.name}</span>{' '}
-            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+            <code className="bg-muted rounded px-1 py-0.5 text-xs">
               {template.slug}
             </code>
           </p>

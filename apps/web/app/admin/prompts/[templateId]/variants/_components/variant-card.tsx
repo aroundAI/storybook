@@ -1,13 +1,16 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import Link from 'next/link';
+
+import { PencilIcon, UsersIcon } from 'lucide-react';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
-import { PencilIcon, UsersIcon } from 'lucide-react';
-import Link from 'next/link';
-import { ManageAccountAssignmentsDialog } from './manage-account-assignments-dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+
 import { DeleteVariantDialog } from './delete-variant-dialog';
+import { ManageAccountAssignmentsDialog } from './manage-account-assignments-dialog';
 
 interface VariantCardProps {
   variant: {
@@ -124,7 +127,7 @@ export function VariantCard({
                 assignment.account ? (
                   <div
                     key={assignment.id}
-                    className="flex items-center gap-2 rounded-md border bg-muted px-2 py-1"
+                    className="bg-muted flex items-center gap-2 rounded-md border px-2 py-1"
                   >
                     <Avatar className="h-5 w-5">
                       <AvatarImage src={assignment.account.picture_url || ''} />
