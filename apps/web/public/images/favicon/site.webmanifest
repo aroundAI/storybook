@@ -1,7 +1,7 @@
 {
-  "name": "Makerkit",
-  "short_name": "makerkit",
-  "theme_color": "#fff",
+  "name": "AroundAIKit",
+  "short_name": "AroundAI",
+  "theme_color": "#6366f1",
   "background_color": "#fff",
   "display": "fullscreen",
   "orientation": "portrait",

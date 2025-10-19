@@ -564,6 +564,273 @@ If developer requests unsupported font, suggest closest alternative from list.
 
 ---
 
+## Enhanced Logo Styling
+
+### Gradient Text Effects
+
+**When to use gradients**:
+- Modern SaaS products wanting cutting-edge visual identity
+- Creative/design tools emphasizing innovation
+- Premium products needing luxury feel
+- Tech brands wanting to stand out
+
+**Gradient presets available**:
+- `sunset` - Warm red to yellow (energetic, creative)
+- `ocean` - Cool blue gradient (trustworthy, calm)
+- `neon` - Cyan to magenta (vibrant, modern)
+- `forest` - Green gradient (natural, growth)
+- `fire` - Red to orange (passionate, energetic)
+- `purple-blue` - Professional gradient (like MakerKit)
+
+**Simple gradient configuration** (2+ colors):
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_TYPE=linear
+NEXT_PUBLIC_LOGO_GRADIENT_COLORS=#667eea,#764ba2
+NEXT_PUBLIC_LOGO_GRADIENT_DIRECTION=to right
+```
+
+**Preset gradient configuration** (recommended):
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_PRESET=purple-blue
+```
+
+**Advanced gradient configuration** (color stops):
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_TYPE=linear
+NEXT_PUBLIC_LOGO_GRADIENT_STOPS=[{"color":"#FF0000","position":0},{"color":"#FFFF00","position":50},{"color":"#FF0000","position":100}]
+NEXT_PUBLIC_LOGO_GRADIENT_DIRECTION=to right
+```
+
+### Glow/Neon Effects
+
+**When to use glow effects**:
+- Gaming/entertainment platforms
+- Creative/artistic apps
+- Night mode/dark theme emphasis
+- Attention-grabbing call-to-action logos
+- Cyberpunk/futuristic aesthetics
+
+**Glow intensity levels**:
+- `subtle` - Light shadow (professional with hint of glow)
+- `medium` - Moderate glow (balanced effect)
+- `strong` - Pronounced glow (dramatic)
+- `neon` - Intense multi-layered glow (cyberpunk)
+
+**Configuration**:
+```bash
+NEXT_PUBLIC_LOGO_GLOW_ENABLED=true
+NEXT_PUBLIC_LOGO_GLOW_COLOR=#8b5cf6
+NEXT_PUBLIC_LOGO_GLOW_INTENSITY=medium
+NEXT_PUBLIC_LOGO_GLOW_ANIMATE=false
+```
+
+**Best practices**:
+- Use glow color that matches or complements primary brand color
+- Start with `medium` intensity and adjust
+- For professional apps, use `subtle` intensity
+- For gaming/creative apps, `strong` or `neon` is appropriate
+- Ensure contrast remains accessible
+
+### Text Stroke/Outline
+
+**When to use text stroke**:
+- Sports/fitness brands (bold, athletic)
+- Streetwear/lifestyle brands (urban aesthetic)
+- High contrast needed (logo on photos)
+- Retro/vintage aesthetics
+- Bold, impactful branding
+
+**Configuration**:
+```bash
+NEXT_PUBLIC_LOGO_STROKE_ENABLED=true
+NEXT_PUBLIC_LOGO_STROKE_WIDTH=2
+NEXT_PUBLIC_LOGO_STROKE_COLOR=#000000
+```
+
+**Best practices**:
+- Width 1-2px for subtle outline
+- Width 2-3px for bold, sporty feel
+- Dark stroke (#000000) on light fill creates max contrast
+- Can combine with gradient fill for unique effect
+- Works best with heavy font weights (700-900)
+
+### Custom Fonts
+
+**When to use custom fonts**:
+- Brand has specific typography requirements
+- Need fonts not in Google Fonts
+- Self-hosted fonts for privacy/GDPR
+- Licensed premium fonts
+
+**Configuration**:
+```bash
+NEXT_PUBLIC_LOGO_CUSTOM_FONT_URL=https://fonts.googleapis.com/css2?family=YourFont
+NEXT_PUBLIC_LOGO_CUSTOM_FONT_FAMILY=Your Font Name
+```
+
+**Note**: Custom font family must match the name from the font file exactly.
+
+### Animations
+
+**Gradient animation** (shifting gradient):
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE=true
+```
+- Creates smooth left-to-right gradient shift
+- 3-second loop, infinite
+- Subtle, professional effect
+- Works with any gradient (preset or custom)
+
+**Glow animation** (pulsing glow):
+```bash
+NEXT_PUBLIC_LOGO_GLOW_ANIMATE=true
+```
+- Creates gentle pulsing shimmer
+- 2-second loop, infinite
+- Adds life to static logo
+- Best with `medium` or `strong` intensity
+
+**Combining animations**:
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE=true
+NEXT_PUBLIC_LOGO_GLOW_ANIMATE=true
+```
+- Both animations run simultaneously
+- Creates premium, luxurious effect
+- Use sparingly - high visual impact
+- Perfect for landing pages, splash screens
+
+### Animation Best Practices
+
+**When to use animations**:
+✅ Landing pages (first impression)
+✅ Premium/luxury products (elevated feel)
+✅ Creative/design tools (demonstrate innovation)
+✅ Special events/launches (temporary excitement)
+
+**When NOT to use animations**:
+❌ Productivity tools (distraction)
+❌ Enterprise/corporate (too playful)
+❌ Accessibility concerns (motion sensitivity)
+❌ Performance-critical apps (mobile)
+
+**Accessibility note**: Animated effects respect `prefers-reduced-motion` media query automatically via CSS.
+
+### Combining Effects - Advanced Examples
+
+**Professional gradient** (like MakerKit):
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_PRESET=purple-blue
+NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE=true
+```
+
+**Neon cyberpunk**:
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_PRESET=neon
+NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE=true
+NEXT_PUBLIC_LOGO_GLOW_ENABLED=true
+NEXT_PUBLIC_LOGO_GLOW_COLOR=#FF00FF
+NEXT_PUBLIC_LOGO_GLOW_INTENSITY=neon
+NEXT_PUBLIC_LOGO_GLOW_ANIMATE=true
+```
+
+**Bold outlined**:
+```bash
+NEXT_PUBLIC_LOGO_STROKE_ENABLED=true
+NEXT_PUBLIC_LOGO_STROKE_WIDTH=2
+NEXT_PUBLIC_LOGO_STROKE_COLOR=#000000
+```
+
+**Luxury animated**:
+```bash
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_COLORS=#C9A050,#FFD700,#C9A050
+NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE=true
+NEXT_PUBLIC_LOGO_GLOW_ENABLED=true
+NEXT_PUBLIC_LOGO_GLOW_COLOR=#FFD700
+NEXT_PUBLIC_LOGO_GLOW_INTENSITY=medium
+NEXT_PUBLIC_LOGO_GLOW_ANIMATE=true
+```
+
+---
+
+## Enhanced Response Template
+
+When suggesting branding with enhanced styling, use this format:
+
+```bash
+# Suggested Branding for [App Name]
+# Category: [detected category]
+# Personality: [suggested personality]
+# Enhanced Features: [gradient/glow/stroke/animation]
+
+# Logo Configuration
+NEXT_PUBLIC_LOGO_TYPE=text
+NEXT_PUBLIC_LOGO_TEXT="[App Name]"
+NEXT_PUBLIC_LOGO_FONT="[Font Name]"
+NEXT_PUBLIC_LOGO_FONT_WEIGHT=[weight]
+
+# Logo Colors (fallback)
+NEXT_PUBLIC_LOGO_TEXT_COLOR_LIGHT=#[hex]
+NEXT_PUBLIC_LOGO_TEXT_COLOR_DARK=#[hex]
+
+# Enhanced Styling (choose based on brand personality)
+
+# Gradient (if modern/premium/creative)
+NEXT_PUBLIC_LOGO_GRADIENT_ENABLED=true
+NEXT_PUBLIC_LOGO_GRADIENT_PRESET=[preset name]
+NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE=[true/false]
+
+# Glow (if bold/gaming/creative)
+NEXT_PUBLIC_LOGO_GLOW_ENABLED=true
+NEXT_PUBLIC_LOGO_GLOW_COLOR=#[hex]
+NEXT_PUBLIC_LOGO_GLOW_INTENSITY=[subtle/medium/strong/neon]
+NEXT_PUBLIC_LOGO_GLOW_ANIMATE=[true/false]
+
+# Stroke (if bold/sports/lifestyle)
+NEXT_PUBLIC_LOGO_STROKE_ENABLED=true
+NEXT_PUBLIC_LOGO_STROKE_WIDTH=[1-3]
+NEXT_PUBLIC_LOGO_STROKE_COLOR=#[hex]
+
+# [Rest of standard branding config...]
+```
+
+**Reasoning**: [Explain why enhanced styling fits the brand, when to use which effects]
+
+---
+
+## Quick Decision Guide - Enhanced Styling
+
+| App Category | Gradient | Glow | Stroke | Animation |
+|--------------|----------|------|--------|-----------|
+| Fintech | ❌ No | ❌ No | ❌ No | ❌ No |
+| SaaS (B2B) | ✅ Subtle | ❌ No | ❌ No | ⚠️ Optional |
+| SaaS (Creative) | ✅ Yes | ⚠️ Optional | ❌ No | ✅ Yes |
+| E-commerce | ⚠️ Optional | ❌ No | ⚠️ Optional | ❌ No |
+| Healthcare | ❌ No | ❌ No | ❌ No | ❌ No |
+| Education | ⚠️ Optional | ❌ No | ❌ No | ⚠️ Optional |
+| Social | ✅ Yes | ⚠️ Optional | ❌ No | ✅ Yes |
+| Gaming | ✅ Yes | ✅ Yes | ⚠️ Optional | ✅ Yes |
+| Luxury/Premium | ✅ Yes | ✅ Subtle | ❌ No | ✅ Yes |
+| Sports/Fitness | ⚠️ Optional | ❌ No | ✅ Yes | ⚠️ Optional |
+
+Legend:
+- ✅ **Recommended**: Fits category well
+- ⚠️ **Optional**: Use based on specific brand personality
+- ❌ **Not recommended**: Conflicts with category expectations
+
+---
+
 ## Need Help?
 
-See `packages/branding/examples/` for complete working examples of each category.
+See `packages/branding/examples/` for complete working examples:
+- `fintech.env`, `saas.env`, `ecommerce.env`, `healthcare.env`, `education.env`, `social.env` - Standard category examples
+- `gradient-modern.env` - MakerKit-style gradient with animation
+- `neon-glow.env` - Cyberpunk neon effect with dual animations
+- `outlined-bold.env` - Sports/fitness bold outline style
+- `animated-premium.env` - Luxury gradient + glow + animations combined

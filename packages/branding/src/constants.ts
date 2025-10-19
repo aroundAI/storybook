@@ -193,3 +193,73 @@ export const FONT_WEIGHT_MAP = {
   extrabold: 800,
   black: 900,
 } as const;
+
+/**
+ * Gradient Presets
+ *
+ * Pre-defined gradient configurations for quick logo styling.
+ * Each preset defines colors, type, and direction for consistent branding.
+ */
+export const GRADIENT_PRESETS = {
+  sunset: {
+    colors: ['#FF6B6B', '#FFE66D', '#FF6B6B'] as HexColor[],
+    type: 'linear' as const,
+    direction: 'to right',
+    description: 'Warm sunset gradient - red to yellow',
+  },
+  ocean: {
+    colors: ['#00B4DB', '#0083B0'] as HexColor[],
+    type: 'linear' as const,
+    direction: 'to right',
+    description: 'Cool ocean blue gradient',
+  },
+  neon: {
+    colors: ['#00F5FF', '#FF00FF', '#00F5FF'] as HexColor[],
+    type: 'linear' as const,
+    direction: 'to right',
+    description: 'Vibrant neon cyan to magenta',
+  },
+  forest: {
+    colors: ['#134E5E', '#71B280'] as HexColor[],
+    type: 'linear' as const,
+    direction: 'to right',
+    description: 'Natural forest green gradient',
+  },
+  fire: {
+    colors: ['#FF512F', '#F09819'] as HexColor[],
+    type: 'linear' as const,
+    direction: 'to right',
+    description: 'Fiery red to orange gradient',
+  },
+  'purple-blue': {
+    colors: ['#667eea', '#764ba2'] as HexColor[],
+    type: 'linear' as const,
+    direction: 'to right',
+    description: 'Professional purple to blue gradient (like MakerKit)',
+  },
+} as const;
+
+/**
+ * Glow Intensity Presets
+ *
+ * Pre-defined text shadow configurations for glow effects.
+ * Values represent the blur radius and spread for different intensity levels.
+ */
+export const GLOW_INTENSITY_PRESETS = {
+  subtle: {
+    shadows: ['0 0 10px'],
+    description: 'Subtle glow - single soft shadow',
+  },
+  medium: {
+    shadows: ['0 0 20px', '0 0 30px'],
+    description: 'Medium glow - dual layered shadows',
+  },
+  strong: {
+    shadows: ['0 0 30px', '0 0 40px', '0 0 50px'],
+    description: 'Strong glow - triple layered shadows',
+  },
+  neon: {
+    shadows: ['0 0 10px', '0 0 20px', '0 0 30px', '0 0 40px', '0 0 70px'],
+    description: 'Intense neon glow - multi-layered effect',
+  },
+} as const;

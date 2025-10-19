@@ -85,3 +85,29 @@ h6,
 body {
   font-family: var(--font-body);
 }
+
+/*
+ * Logo Animation Keyframes
+ */
+
+/* Gradient shifting animation for animated gradient text */
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* Glow pulsing animation for neon/glowing effects */
+@keyframes glow-pulse {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 transparent);
+  }
+  50% {
+    filter: brightness(1.2) drop-shadow(0 0 8px currentColor);
+  }
+}

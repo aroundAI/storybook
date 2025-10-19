@@ -42,6 +42,8 @@ export {
   DEFAULT_LOGO,
   DEFAULT_TYPOGRAPHY,
   FONT_WEIGHT_MAP,
+  GLOW_INTENSITY_PRESETS,
+  GRADIENT_PRESETS,
   PERSONALITY_FONT_PAIRS,
   SUPPORTED_FONTS,
 } from './constants';
@@ -66,3 +68,12 @@ export {
   parseSubsets,
   parseWeights,
 } from './utils/font';
+export {
+  applyGradientPreset,
+  buildGlowShadow,
+  buildGradientString,
+  getAvailableGradientPresets,
+  getGradientPresetDescription,
+  isValidGradientConfig,
+} from './utils/gradient';
+export type { GlowConfig, GradientConfig } from './utils/gradient';

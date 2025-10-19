@@ -4,12 +4,14 @@ import Link from 'next/link';
 import { getBrandingConfig } from '@kit/branding';
 import { cn } from '@kit/ui/utils';
 
+import { generateLogoStyle } from '~/lib/branding-styles';
+
 function LogoContent({ className }: { className?: string }) {
   const config = getBrandingConfig();
   const { logo } = config;
 
   if (logo.type === 'text') {
-    const fontWeight = logo.fontWeight ?? 700;
+    const logoStyles = generateLogoStyle(config);
 
     return (
       <span
@@ -17,11 +19,7 @@ function LogoContent({ className }: { className?: string }) {
           'flex items-center gap-2 text-2xl font-bold transition-colors',
           className,
         )}
-        style={{
-          fontFamily: 'var(--font-heading)',
-          fontWeight,
-          color: 'var(--logo-text-color)',
-        }}
+        style={logoStyles}
       >
         {logo.icon && <span className="text-3xl">{logo.icon}</span>}
         <span>{logo.text}</span>

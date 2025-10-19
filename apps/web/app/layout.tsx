@@ -35,6 +35,11 @@ export default async function RootLayout({
   const brandingStyles = generateBrandingStyles();
   const googleFontsUrl = generateGoogleFontsLink();
 
+  // Get branding config for custom font URL
+  const { getBrandingConfig } = await import('@kit/branding');
+  const brandingConfig = getBrandingConfig();
+  const customFontUrl = brandingConfig.logo.customFont?.url;
+
   return (
     <html lang={language} className={className}>
       <head>
@@ -45,6 +50,7 @@ export default async function RootLayout({
           crossOrigin="anonymous"
         />
         <link rel="stylesheet" href={googleFontsUrl} />
+        {customFontUrl && <link rel="stylesheet" href={customFontUrl} />}
         <style dangerouslySetInnerHTML={{ __html: brandingStyles }} />
       </head>
       <body>

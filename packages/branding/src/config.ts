@@ -12,6 +12,61 @@ import { generateDarkerVariant, isValidHexColor } from './utils/color';
 import { parseSubsets, parseWeights } from './utils/font';
 
 /**
+ * Logo Gradient Configuration Schema
+ */
+const LogoGradientSchema = z.object({
+  enabled: z.boolean().default(false),
+  type: z.enum(['linear', 'radial']).default('linear'),
+  // Simple mode: array of 2+ colors
+  colors: z.array(z.string().regex(/^#[0-9A-F]{6}$/i)).min(2).optional(),
+  // Advanced mode: color stops with positions (0-100%)
+  stops: z
+    .array(
+      z.object({
+        color: z.string().regex(/^#[0-9A-F]{6}$/i),
+        position: z.number().min(0).max(100),
+      }),
+    )
+    .optional(),
+  // Preset mode: use pre-defined gradient
+  preset: z
+    .enum(['sunset', 'ocean', 'neon', 'forest', 'fire', 'purple-blue'])
+    .optional(),
+  // Direction for linear gradients (e.g., 'to right', '45deg', 'to bottom right')
+  direction: z.string().default('to right'),
+  // Animation: gradient shifting
+  animate: z.boolean().default(false),
+});
+
+/**
+ * Logo Glow/Shadow Configuration Schema
+ */
+const LogoGlowSchema = z.object({
+  enabled: z.boolean().default(false),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
+  intensity: z.enum(['subtle', 'medium', 'strong', 'neon']).default('medium'),
+  // Animation: pulsing glow
+  animate: z.boolean().default(false),
+});
+
+/**
+ * Logo Stroke/Outline Configuration Schema
+ */
+const LogoStrokeSchema = z.object({
+  enabled: z.boolean().default(false),
+  width: z.number().min(0.5).max(5).default(1),
+  color: z.string().regex(/^#[0-9A-F]{6}$/i).optional(),
+});
+
+/**
+ * Custom Font Configuration Schema
+ */
+const CustomFontSchema = z.object({
+  url: z.string().url().optional(),
+  family: z.string().optional(),
+});
+
+/**
  * Logo Configuration Schema
  */
 export const LogoConfigSchema = z.object({
@@ -33,6 +88,11 @@ export const LogoConfigSchema = z.object({
   width: z.number().positive().optional(),
   height: z.number().positive().optional(),
   svg: z.string().optional(),
+  // Enhanced styling options
+  gradient: LogoGradientSchema.optional(),
+  glow: LogoGlowSchema.optional(),
+  stroke: LogoStrokeSchema.optional(),
+  customFont: CustomFontSchema.optional(),
 });
 
 /**
@@ -128,6 +188,56 @@ function safeParseInt(value: string | undefined, defaultValue: number): number {
 }
 
 /**
+ * Safely parses a float from a string
+ */
+function safeParseFloat(value: string | undefined, defaultValue: number): number {
+  if (!value) return defaultValue;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
+/**
+ * Safely parses a boolean from a string
+ */
+function safeParseBoolean(value: string | undefined, defaultValue: boolean): boolean {
+  if (!value) return defaultValue;
+  const lower = value.toLowerCase();
+  if (lower === 'true' || lower === '1' || lower === 'yes') return true;
+  if (lower === 'false' || lower === '0' || lower === 'no') return false;
+  return defaultValue;
+}
+
+/**
+ * Parses a comma-separated list of hex colors
+ */
+function parseColorArray(value: string | undefined): string[] | undefined {
+  if (!value) return undefined;
+  return value.split(',').map((c) => c.trim()).filter((c) => c.length > 0);
+}
+
+/**
+ * Parses color stops from JSON string
+ * Expected format: [{"color":"#FF0000","position":0},{"color":"#0000FF","position":100}]
+ */
+function parseColorStops(value: string | undefined): Array<{ color: string; position: number }> | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.filter(
+        (stop) =>
+          typeof stop === 'object' &&
+          typeof stop.color === 'string' &&
+          typeof stop.position === 'number'
+      );
+    }
+  } catch {
+    return undefined;
+  }
+  return undefined;
+}
+
+/**
  * Gets environment variable branding configuration
  *
  * This function reads all NEXT_PUBLIC_* environment variables
@@ -165,6 +275,31 @@ export function getBrandingConfig(): BrandingConfig {
       width: safeParseInt(process.env.NEXT_PUBLIC_LOGO_WIDTH, DEFAULT_LOGO.width),
       height: safeParseInt(process.env.NEXT_PUBLIC_LOGO_HEIGHT, DEFAULT_LOGO.height),
       svg: process.env.NEXT_PUBLIC_LOGO_SVG,
+      // Enhanced styling options
+      gradient: process.env.NEXT_PUBLIC_LOGO_GRADIENT_ENABLED ? {
+        enabled: safeParseBoolean(process.env.NEXT_PUBLIC_LOGO_GRADIENT_ENABLED, false),
+        type: (process.env.NEXT_PUBLIC_LOGO_GRADIENT_TYPE as 'linear' | 'radial') || 'linear',
+        colors: parseColorArray(process.env.NEXT_PUBLIC_LOGO_GRADIENT_COLORS),
+        stops: parseColorStops(process.env.NEXT_PUBLIC_LOGO_GRADIENT_STOPS),
+        preset: process.env.NEXT_PUBLIC_LOGO_GRADIENT_PRESET as 'sunset' | 'ocean' | 'neon' | 'forest' | 'fire' | 'purple-blue',
+        direction: process.env.NEXT_PUBLIC_LOGO_GRADIENT_DIRECTION || 'to right',
+        animate: safeParseBoolean(process.env.NEXT_PUBLIC_LOGO_GRADIENT_ANIMATE, false),
+      } : undefined,
+      glow: process.env.NEXT_PUBLIC_LOGO_GLOW_ENABLED ? {
+        enabled: safeParseBoolean(process.env.NEXT_PUBLIC_LOGO_GLOW_ENABLED, false),
+        color: process.env.NEXT_PUBLIC_LOGO_GLOW_COLOR,
+        intensity: (process.env.NEXT_PUBLIC_LOGO_GLOW_INTENSITY as 'subtle' | 'medium' | 'strong' | 'neon') || 'medium',
+        animate: safeParseBoolean(process.env.NEXT_PUBLIC_LOGO_GLOW_ANIMATE, false),
+      } : undefined,
+      stroke: process.env.NEXT_PUBLIC_LOGO_STROKE_ENABLED ? {
+        enabled: safeParseBoolean(process.env.NEXT_PUBLIC_LOGO_STROKE_ENABLED, false),
+        width: safeParseFloat(process.env.NEXT_PUBLIC_LOGO_STROKE_WIDTH, 1),
+        color: process.env.NEXT_PUBLIC_LOGO_STROKE_COLOR,
+      } : undefined,
+      customFont: (process.env.NEXT_PUBLIC_LOGO_CUSTOM_FONT_URL || process.env.NEXT_PUBLIC_LOGO_CUSTOM_FONT_FAMILY) ? {
+        url: process.env.NEXT_PUBLIC_LOGO_CUSTOM_FONT_URL,
+        family: process.env.NEXT_PUBLIC_LOGO_CUSTOM_FONT_FAMILY,
+      } : undefined,
     },
     colors: {
       primary: primaryColor,
