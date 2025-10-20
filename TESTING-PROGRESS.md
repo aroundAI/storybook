@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (29/82 files, 35.4%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (31/82 files, 37.8%)
 
 ---
 
@@ -49,6 +49,7 @@
    - `packages/audit-logs/vitest.config.ts`
    - `packages/shared/vitest.config.ts`
    - `packages/otp/vitest.config.ts`
+   - `packages/supabase/vitest.config.ts`
 
 ---
 
@@ -284,10 +285,22 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Edge cases (empty metadata, arrays, short/long expiry times)
 - [ ] `packages/otp/__tests__/otp-email.test.ts`
 
-#### @kit/supabase Tests
+#### @kit/supabase Tests ✅ COMPLETE (2/3 files)
+- [x] `packages/supabase/__tests__/check-requires-mfa.test.ts` - MFA verification check ✅ (16 tests passing)
+  - MFA required detection (nextLevel=aal2, currentLevel!=aal2)
+  - MFA not required scenarios (both aal1, both aal2, nextLevel!=aal2)
+  - suppressGetSessionWarning flag management
+  - Error handling for API failures
+  - MFA transition states (enrollment, verification, no-MFA)
+- [x] `packages/supabase/__tests__/require-user.test.ts` - User authentication requirement ✅ (21 tests passing)
+  - Successful authentication with JWT claims extraction
+  - Authentication errors (no claims, API errors)
+  - MFA verification integration
+  - Redirect URL generation with next parameter
+  - Anonymous users and aal2 users
+  - verifyMfa option handling
+  - Type safety verification
 - [ ] `packages/supabase/__tests__/auth-callback.test.ts`
-- [ ] `packages/supabase/__tests__/check-requires-mfa.test.ts`
-- [ ] `packages/supabase/__tests__/require-user.test.ts`
 
 #### @kit/shared Tests ✅ COMPLETE (1/2 files)
 - [x] `packages/shared/__tests__/utils.test.ts` - Utility functions ✅ (34 tests passing)
