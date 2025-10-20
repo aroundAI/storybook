@@ -6,7 +6,9 @@
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "exports": {
     "./sign-in": "./src/sign-in.ts",
@@ -37,6 +39,7 @@
     "react-hook-form": "^7.62.0",
     "react-i18next": "^15.7.3",
     "sonner": "^2.0.7",
+    "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },
   "prettier": "@kit/prettier-config",

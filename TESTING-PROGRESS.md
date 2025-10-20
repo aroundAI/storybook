@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (32/82 files, 39.0%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (33/82 files, 40.2%)
 
 ---
 
@@ -51,6 +51,7 @@
    - `packages/otp/vitest.config.ts`
    - `packages/supabase/vitest.config.ts`
    - `packages/features/accounts/vitest.config.ts`
+   - `packages/features/auth/vitest.config.ts`
 
 ---
 
@@ -328,8 +329,19 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Custom error message translation
 - [ ] `packages/features/accounts/__tests__/delete-personal-account.test.ts`
 
-#### @kit/auth Tests
-- [ ] `packages/features/auth/__tests__/password-validation.test.ts`
+#### @kit/auth Tests ✅ COMPLETE (1/5 files)
+- [x] `packages/features/auth/__tests__/schemas.test.ts` - Password schema validation ✅ (43 tests passing)
+  - PasswordSchema (basic length validation 8-99 chars)
+  - RefinedPasswordSchema with environment-based requirements:
+    - Special characters requirement (configurable)
+    - Numbers requirement (configurable)
+    - Uppercase requirement (configurable)
+    - All requirements combined
+  - PasswordSignInSchema (email + password)
+  - PasswordSignUpSchema (email + matching passwords)
+  - PasswordResetSchema (matching passwords)
+  - Dynamic module reloading for environment tests
+  - Multiple validation error collection
 - [ ] `packages/features/auth/__tests__/sign-in-flow.test.ts`
 - [ ] `packages/features/auth/__tests__/sign-up-flow.test.ts`
 - [ ] `packages/features/auth/__tests__/captcha-verification.test.ts`
