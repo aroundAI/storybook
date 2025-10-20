@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (36/82 files, 43.9%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (37/82 files, 45.1%)
 
 ---
 
@@ -55,6 +55,7 @@
    - `packages/monitoring/core/vitest.config.ts`
    - `packages/i18n/vitest.config.ts`
    - `packages/mailers/shared/vitest.config.ts`
+   - `packages/mailers/core/vitest.config.ts`
 
 ---
 
@@ -371,7 +372,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Integration scenarios (multi-language apps)
 - [ ] `packages/i18n/__tests__/i18n.server.test.ts`
 
-#### @kit/mailers Tests ✅ COMPLETE (1/2 files)
+#### @kit/mailers Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/mailers/shared/__tests__/schemas.test.ts` - Email schemas ✅ (36 tests passing)
   - MailerSchema (email structure validation)
     - Text and HTML content variants
@@ -387,7 +388,27 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Provider-specific configs (Gmail, Office365, custom)
     - Custom error messages for missing env vars
     - Type validation (number port, boolean secure)
-- [ ] `packages/mailers/core/__tests__/mailer-factory.test.ts`
+- [x] `packages/mailers/core/__tests__/mailer-factory.test.ts` - Mailer factory ✅ (24 tests passing)
+  - getMailer() factory function
+    - Nodemailer provider (nodejs runtime)
+    - Resend provider (edge compatible)
+    - Provider switching (nodemailer ↔ resend)
+    - Runtime validation (edge vs nodejs)
+    - Environment variable parsing (MAILER_PROVIDER, NEXT_RUNTIME)
+  - Email sending functionality
+    - Text, HTML, and combined content
+    - From field formats (email, name+email)
+    - Subject handling (empty, special chars)
+    - Complex HTML with inline CSS
+    - Multiline text content
+  - Edge cases
+    - Invalid provider values
+    - NEXT_RUNTIME validation
+    - Concurrent mailer initialization
+  - Integration scenarios
+    - Rapid sequential sends
+    - Serverless/Lambda environment
+    - Consistent instance across calls
 
 #### @kit/notifications Tests
 - [ ] `packages/features/notifications/__tests__/notifications-service.test.ts`
