@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (35/82 files, 42.7%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (36/82 files, 43.9%)
 
 ---
 
@@ -54,6 +54,7 @@
    - `packages/features/auth/vitest.config.ts`
    - `packages/monitoring/core/vitest.config.ts`
    - `packages/i18n/vitest.config.ts`
+   - `packages/mailers/shared/vitest.config.ts`
 
 ---
 
@@ -369,6 +370,24 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Return type validation (InitOptions)
   - Integration scenarios (multi-language apps)
 - [ ] `packages/i18n/__tests__/i18n.server.test.ts`
+
+#### @kit/mailers Tests ✅ COMPLETE (1/2 files)
+- [x] `packages/mailers/shared/__tests__/schemas.test.ts` - Email schemas ✅ (36 tests passing)
+  - MailerSchema (email structure validation)
+    - Text and HTML content variants
+    - Email format validation (to field)
+    - From field flexibility (email, name+email, name only)
+    - Subject validation (empty, special chars, long)
+    - Content requirement (text OR html)
+    - Missing field handling
+  - SmtpConfigSchema (SMTP server configuration)
+    - Complete configuration validation
+    - Port variants (25, 465, 587, 2525)
+    - Secure/non-secure connections
+    - Provider-specific configs (Gmail, Office365, custom)
+    - Custom error messages for missing env vars
+    - Type validation (number port, boolean secure)
+- [ ] `packages/mailers/core/__tests__/mailer-factory.test.ts`
 
 #### @kit/notifications Tests
 - [ ] `packages/features/notifications/__tests__/notifications-service.test.ts`
