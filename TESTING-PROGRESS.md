@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (26/82 files, 31.7%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (27/82 files, 32.9%)
 
 ---
 
@@ -262,7 +262,14 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Nested object comparison
   - Edge cases (non-objects, empty objects, type changes)
   - Change formatting for human-readable output
-- [ ] `packages/audit-logs/__tests__/network-context.test.ts`
+- [x] `packages/audit-logs/__tests__/extract-network-context.test.ts` - Network context extraction ✅ (41 tests passing)
+  - IP address extraction from headers (x-forwarded-for, x-real-ip, x-client-ip)
+  - Header priority and fallback logic
+  - Comma-separated IP list handling
+  - User agent extraction
+  - IPv4 validation and port removal
+  - Error handling for unavailable headers
+  - Edge cases (private IPs, localhost, long user agents)
 - [ ] `packages/audit-logs/__tests__/transformers.test.ts`
 
 #### @kit/otp Tests
