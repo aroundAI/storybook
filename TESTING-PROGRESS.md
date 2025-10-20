@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (23/82 files, 28.0%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (24/82 files, 29.3%)
 
 ---
 
@@ -220,8 +220,12 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 #### @kit/team-accounts Tests (In Progress)
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-invitations.test.ts` - Invitations service ✅ (27 tests passing)
+- [x] `packages/features/team-accounts/__tests__/account-members.test.ts` - Members service ✅ (22 tests passing)
+  - Remove member with automatic seat reduction
+  - Update member roles with permission validation
+  - Transfer ownership via RPC
+  - Integration scenarios (member lifecycle)
 - [ ] `packages/features/team-accounts/__tests__/team-mutations.test.ts`
-- [ ] `packages/features/team-accounts/__tests__/member-mutations.test.ts`
 - [ ] `packages/features/team-accounts/__tests__/webhooks.test.ts`
 
 #### @kit/admin Tests ✅ COMPLETE
