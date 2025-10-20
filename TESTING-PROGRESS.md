@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (39/82 files, 47.6%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (40/82 files, 48.8%)
 
 ---
 
@@ -415,7 +415,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [ ] `packages/features/auth/__tests__/captcha-verification.test.ts`
 - [ ] `packages/features/auth/__tests__/mfa.test.ts`
 
-#### @kit/i18n Tests ✅ COMPLETE (1/2 files)
+#### @kit/i18n Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/i18n/__tests__/create-i18n-settings.test.ts` - i18n settings factory ✅ (24 tests passing)
   - Basic configuration (single/multiple languages)
   - Current language selection
@@ -426,7 +426,29 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Edge cases (region codes, RTL languages, single language)
   - Return type validation (InitOptions)
   - Integration scenarios (multi-language apps)
-- [ ] `packages/i18n/__tests__/i18n.server.test.ts`
+- [x] `packages/i18n/__tests__/i18n.server.test.ts` - Server-side i18n ✅ (46 tests passing)
+  - **parseAcceptLanguageHeader** (HTTP header parsing)
+    - Basic parsing (single/multiple languages)
+    - Quality value handling (q parameter)
+    - Quality sorting (descending order)
+    - Default quality (1.0 when omitted)
+    - Invalid quality values (default to 0, still included)
+    - Locale extraction (en-US → en, zh-Hans-CN → zh)
+    - Wildcard handling (*) - ignored by default
+    - Filtering by accepted languages (case-sensitive)
+    - Whitespace trimming and normalization
+    - Edge cases (empty segments, q=0, trailing commas)
+    - Real-world browser headers (Chrome, Firefox, Safari, Mobile)
+  - **initializeServerI18n** (server initialization)
+    - Single and multiple namespace loading
+    - Language configuration (lng, fallbackLng)
+    - Resolver error handling (graceful fallback)
+    - Partial resolver failures
+    - Namespace loading timeout (100ms)
+    - Slow namespace handling
+    - React i18next integration
+    - Integration scenarios (web app, multi-language, SSR)
+    - Edge cases (empty namespaces, large translations)
 
 #### @kit/mailers Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/mailers/shared/__tests__/schemas.test.ts` - Email schemas ✅ (36 tests passing)
@@ -497,16 +519,27 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 17 (20.7%)
-**Total Tests Written**: 572
+**Completed**: 40 (48.8%)
+**Total Tests Written**: 748
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
 - 17 @kit/stripe (webhook verification & event handling)
 - 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
-- 1 test/setup (6 infrastructure validation)
+- 54 @kit/projects (32 queries + 22 mutations)
+- 95 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management)
+- 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
+- 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
+- 26 @kit/otp (otp service)
+- 37 @kit/supabase (16 check-requires-mfa + 21 require-user)
+- 64 @kit/shared (34 utils + 30 logger)
+- 27 @kit/monitoring (console monitoring service)
+- 85 @kit/accounts (42 schemas + 43 auth-schemas)
+- 70 @kit/i18n (24 create-settings + 46 i18n-server)
+- 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
+- 6 test/setup (infrastructure validation)
 
-**Total Tests Passing**: 547 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
+**Total Tests Passing**: 723 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
 
 **Infrastructure Setup**: 100% ✅
 **Critical Tests**: 28.6% (8/28) - includes openai-provider partial
