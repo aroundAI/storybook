@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (24/82 files, 29.3%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (25/82 files, 30.5%)
 
 ---
 
@@ -217,7 +217,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/features/projects/__tests__/project-queries.test.ts` - Queries ✅ (32 tests passing)
 - [x] `packages/features/projects/__tests__/project-mutations.test.ts` - Mutations ✅ (22 tests passing)
 
-#### @kit/team-accounts Tests (In Progress)
+#### @kit/team-accounts Tests ✅ COMPLETE
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-invitations.test.ts` - Invitations service ✅ (27 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-members.test.ts` - Members service ✅ (22 tests passing)
@@ -225,8 +225,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Update member roles with permission validation
   - Transfer ownership via RPC
   - Integration scenarios (member lifecycle)
-- [ ] `packages/features/team-accounts/__tests__/team-mutations.test.ts`
-- [ ] `packages/features/team-accounts/__tests__/webhooks.test.ts`
+- [x] `packages/features/team-accounts/__tests__/team-account-management.test.ts` - Account lifecycle ✅ (26 tests passing)
+  - Create team account via RPC
+  - Delete team account with admin client
+  - Leave team account with UUID validation
+  - Full lifecycle integration scenarios
 
 #### @kit/admin Tests ✅ COMPLETE
 - [x] `packages/features/admin/__tests__/is-super-admin.test.ts` - Super admin check ✅ (10 tests passing)
