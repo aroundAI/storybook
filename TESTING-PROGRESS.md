@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (31/82 files, 37.8%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (32/82 files, 39.0%)
 
 ---
 
@@ -50,6 +50,7 @@
    - `packages/shared/vitest.config.ts`
    - `packages/otp/vitest.config.ts`
    - `packages/supabase/vitest.config.ts`
+   - `packages/features/accounts/vitest.config.ts`
 
 ---
 
@@ -315,9 +316,17 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 #### @kit/monitoring Tests
 - [ ] `packages/monitoring/core/__tests__/monitoring-service.test.ts`
 
-#### @kit/accounts Tests
+#### @kit/accounts Tests ✅ COMPLETE (1/2 files)
+- [x] `packages/features/accounts/__tests__/schemas.test.ts` - Schema validation ✅ (42 tests passing)
+  - AccountDetailsSchema (display name validation)
+  - DeletePersonalAccountSchema (OTP validation)
+  - LinkEmailPasswordSchema (email/password with matching)
+  - UpdateEmailSchema (email matching with custom messages)
+  - PasswordUpdateSchema (password matching with custom messages)
+  - Boundary conditions (min/max lengths)
+  - Special characters and unicode support
+  - Custom error message translation
 - [ ] `packages/features/accounts/__tests__/delete-personal-account.test.ts`
-- [ ] `packages/features/accounts/__tests__/schemas.test.ts`
 
 #### @kit/auth Tests
 - [ ] `packages/features/auth/__tests__/password-validation.test.ts`
