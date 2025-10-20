@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (21/82 files, 25.6%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (23/82 files, 28.0%)
 
 ---
 
@@ -43,6 +43,9 @@
    - `packages/branding/vitest.config.ts`
    - `packages/next/vitest.config.ts`
    - `packages/llm/vitest.config.ts`
+   - `packages/features/projects/vitest.config.ts`
+   - `packages/features/team-accounts/vitest.config.ts`
+   - `packages/features/admin/vitest.config.ts`
 
 ---
 
@@ -221,11 +224,14 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [ ] `packages/features/team-accounts/__tests__/member-mutations.test.ts`
 - [ ] `packages/features/team-accounts/__tests__/webhooks.test.ts`
 
-#### @kit/admin Tests
-- [ ] `packages/features/admin/__tests__/is-super-admin.test.ts`
-- [ ] `packages/features/admin/__tests__/ban-user.test.ts`
-- [ ] `packages/features/admin/__tests__/admin-action-wrapper.test.ts`
-- [ ] `packages/features/admin/__tests__/impersonate-user.test.ts`
+#### @kit/admin Tests ✅ COMPLETE
+- [x] `packages/features/admin/__tests__/is-super-admin.test.ts` - Super admin check ✅ (10 tests passing)
+- [x] `packages/features/admin/__tests__/admin-auth-user.test.ts` - Admin user management ✅ (28 tests passing)
+  - User deletion with protection
+  - Ban/reactivate operations
+  - User impersonation via magic links
+  - Password reset management
+  - Super admin security enforcement
 
 ---
 
