@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (28/82 files, 34.1%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (29/82 files, 35.4%)
 
 ---
 
@@ -48,6 +48,7 @@
    - `packages/features/admin/vitest.config.ts`
    - `packages/audit-logs/vitest.config.ts`
    - `packages/shared/vitest.config.ts`
+   - `packages/otp/vitest.config.ts`
 
 ---
 
@@ -273,8 +274,14 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Edge cases (private IPs, localhost, long user agents)
 - [ ] `packages/audit-logs/__tests__/transformers.test.ts`
 
-#### @kit/otp Tests
-- [ ] `packages/otp/__tests__/otp-service.test.ts`
+#### @kit/otp Tests ✅ COMPLETE (1/2 files)
+- [x] `packages/otp/__tests__/otp.service.test.ts` - OTP service ✅ (26 tests passing)
+  - createNonce() with default and custom options
+  - verifyNonce() with valid/invalid tokens, scopes, max attempts
+  - revokeNonce() with and without reason
+  - getNonceStatus() for existing, used, revoked, and non-existent nonces
+  - Error handling for RPC failures and exceptions
+  - Edge cases (empty metadata, arrays, short/long expiry times)
 - [ ] `packages/otp/__tests__/otp-email.test.ts`
 
 #### @kit/supabase Tests
