@@ -10,6 +10,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    env: {
+      EMAIL_SENDER: 'test@example.com',
+      NEXT_PUBLIC_PRODUCT_NAME: 'Test Product',
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

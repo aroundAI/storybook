@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (41/82 files, 50.0%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (42/82 files, 51.2%)
 
 ---
 
@@ -329,7 +329,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Idempotent initialization
     - No-throw guarantee
 
-#### @kit/otp Tests ✅ COMPLETE (1/2 files)
+#### @kit/otp Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/otp/__tests__/otp.service.test.ts` - OTP service ✅ (26 tests passing)
   - createNonce() with default and custom options
   - verifyNonce() with valid/invalid tokens, scopes, max attempts
@@ -337,7 +337,37 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - getNonceStatus() for existing, used, revoked, and non-existent nonces
   - Error handling for RPC failures and exceptions
   - Edge cases (empty metadata, arrays, short/long expiry times)
-- [ ] `packages/otp/__tests__/otp-email.test.ts`
+- [x] `packages/otp/__tests__/otp-email.test.ts` - OTP email service ✅ (26 tests passing)
+  - **sendOtpEmail()** - Email sending functionality
+    - Successful email sending with valid parameters
+    - renderOtpEmail integration with product name
+    - Info logging before and after sending
+    - Environment variable usage (EMAIL_SENDER, NEXT_PUBLIC_PRODUCT_NAME)
+  - **Email sending errors**
+    - Error logging and rethrowing
+    - OTP context in error logs
+    - No success log on failure
+  - **Email address formats**
+    - Standard email format
+    - Plus addressing (user+tag@example.com)
+    - Subdomain emails (admin@mail.example.com)
+  - **OTP formats**
+    - 4-digit, 6-digit, 8-digit numeric OTPs
+    - Alphanumeric OTPs
+    - Leading zeros preservation
+  - **Service integration**
+    - Correct service call order (logger → mailer → render → send)
+    - Multiple independent instances
+    - Concurrent email sends
+  - **Edge cases**
+    - Empty OTP string
+    - Very long OTP (100 chars)
+    - Special characters in email
+  - **Environment validation**
+    - Missing EMAIL_SENDER throws error
+    - Empty EMAIL_SENDER throws error
+    - Missing NEXT_PUBLIC_PRODUCT_NAME throws error
+    - Empty NEXT_PUBLIC_PRODUCT_NAME throws error
 
 #### @kit/supabase Tests ✅ COMPLETE (2/3 files)
 - [x] `packages/supabase/__tests__/check-requires-mfa.test.ts` - MFA verification check ✅ (16 tests passing)
@@ -541,8 +571,8 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 41 (50.0%)
-**Total Tests Written**: 782
+**Completed**: 42 (51.2%)
+**Total Tests Written**: 808
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -552,7 +582,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 95 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management)
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
-- 26 @kit/otp (otp service)
+- 52 @kit/otp (26 otp-service + 26 otp-email)
 - 37 @kit/supabase (16 check-requires-mfa + 21 require-user)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (console monitoring service)
@@ -561,7 +591,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
 - 6 test/setup (infrastructure validation)
 
-**Total Tests Passing**: 757 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
+**Total Tests Passing**: 783 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
 
 **Infrastructure Setup**: 100% ✅
 **Critical Tests**: 28.6% (8/28) - includes openai-provider partial
