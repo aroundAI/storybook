@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (40/82 files, 48.8%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (41/82 files, 50.0%)
 
 ---
 
@@ -206,9 +206,31 @@
 
 This is a known Vitest+TypeScript limitation. The error handling code works in production - the tests just can't verify instanceof checks. Can be resolved later by refactoring LLMError class structure.
 
-#### @kit/billing Tests
+#### @kit/billing Tests (2/4 files)
 - [x] `packages/billing/stripe/__tests__/webhook-handler.test.ts` - Webhook verification & event handling ✅ (17 tests passing)
-- [ ] `packages/billing/stripe/__tests__/subscription-payload-builder.test.ts`
+- [x] `packages/billing/stripe/__tests__/subscription-payload-builder.test.ts` - Subscription payload builder ✅ (34 tests passing)
+  - **build()** - Main payload builder (26 tests)
+    - Basic subscription with single/multiple line items
+    - Quantity defaulting (1 when not provided)
+    - Subscription status handling (active, trialing, canceled, incomplete, past_due, unpaid)
+    - Line item types (flat, per_seat, metered)
+    - Recurring intervals (month, year, custom interval counts)
+    - Trial period handling (with/without trials)
+    - cancel_at_period_end flag
+    - Currency support (USD, EUR, GBP)
+    - Date formatting (Unix → ISO strings)
+    - Epoch time (0) handling as undefined
+    - Integration scenarios (complete SaaS, trial transitions, cancellations)
+  - **getPeriodStartsAt()** - Retro-compatibility (2 tests)
+    - Stripe 17 and below (current_period_start from subscription)
+    - Stripe 18+ (current_period_start from first item)
+  - **getPeriodEndsAt()** - Retro-compatibility (2 tests)
+    - Stripe 17 and below (current_period_end from subscription)
+    - Stripe 18+ (current_period_end from first item)
+  - **Edge cases** (4 tests)
+    - Empty line items array
+    - Null price amounts
+    - Very large quantities (999999 units)
 - [ ] `packages/billing/lemon-squeezy/__tests__/hmac-verification.test.ts`
 - [ ] `packages/billing/gateway/__tests__/billing-gateway.test.ts`
 
@@ -519,12 +541,12 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 40 (48.8%)
-**Total Tests Written**: 748
+**Completed**: 41 (50.0%)
+**Total Tests Written**: 782
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
-- 17 @kit/stripe (webhook verification & event handling)
+- 51 @kit/billing (17 webhook-handler + 34 subscription-payload-builder)
 - 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
 - 54 @kit/projects (32 queries + 22 mutations)
 - 95 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management)
@@ -539,7 +561,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
 - 6 test/setup (infrastructure validation)
 
-**Total Tests Passing**: 723 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
+**Total Tests Passing**: 757 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
 
 **Infrastructure Setup**: 100% ✅
 **Critical Tests**: 28.6% (8/28) - includes openai-provider partial
