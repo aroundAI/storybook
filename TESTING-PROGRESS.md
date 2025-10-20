@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (20/82 files, 24.4%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (21/82 files, 25.6%)
 
 ---
 
@@ -149,9 +149,9 @@
 
 ## 📊 Current Test Statistics
 
-**Files Completed**: 20/82 (24.4%)
-**Total Tests Written**: 646
-**Tests Passing**: 621 (96.1%)
+**Files Completed**: 21/82 (25.6%)
+**Total Tests Written**: 673
+**Tests Passing**: 648 (96.3%)
 **Tests with Known Issues**: 25 (logger assertions + instanceof checks)
 
 **Packages Complete**:
@@ -161,7 +161,7 @@
 - ✅ @kit/billing (1 file, 17 tests)
 - ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
 - ✅ @kit/projects (2 files, 54 tests)
-- ✅ @kit/team-accounts (1 file, 20 tests)
+- ✅ @kit/team-accounts (2 files, 47 tests)
 
 **Run All Tests**: `pnpm --filter @kit/branding test && pnpm --filter @kit/next test && pnpm --filter @kit/llm test && pnpm --filter @kit/projects test`
 
@@ -216,10 +216,9 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 #### @kit/team-accounts Tests (In Progress)
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
-- [ ] `packages/features/team-accounts/__tests__/invitation-validation.test.ts`
+- [x] `packages/features/team-accounts/__tests__/account-invitations.test.ts` - Invitations service ✅ (27 tests passing)
 - [ ] `packages/features/team-accounts/__tests__/team-mutations.test.ts`
 - [ ] `packages/features/team-accounts/__tests__/member-mutations.test.ts`
-- [ ] `packages/features/team-accounts/__tests__/invitation-mutations.test.ts`
 - [ ] `packages/features/team-accounts/__tests__/webhooks.test.ts`
 
 #### @kit/admin Tests
