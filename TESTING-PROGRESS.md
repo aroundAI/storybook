@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (42/82 files, 51.2%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (43/82 files, 52.4%)
 
 ---
 
@@ -162,25 +162,28 @@
 
 ## 📊 Current Test Statistics
 
-**Files Completed**: 21/82 (25.6%)
-**Total Tests Written**: 673
-**Tests Passing**: 648 (96.3%)
+**Files Completed**: 43/82 (52.4%)
+**Total Tests Written**: 729
+**Tests Passing**: 704 (96.6%)
 **Tests with Known Issues**: 25 (logger assertions + instanceof checks)
 
 **Packages Complete**:
 - ✅ @kit/branding (4 files, 91 tests)
 - ✅ @kit/next (2 files, 44 tests)
 - ✅ @kit/llm (5 files, 171 tests, 11 instanceof issues)
-- ✅ @kit/billing (1 file, 17 tests)
+- ✅ @kit/billing (2 files, 51 tests)
 - ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
 - ✅ @kit/projects (2 files, 54 tests)
 - ✅ @kit/team-accounts (2 files, 47 tests)
+- ✅ @kit/i18n (2 files, 46 tests)
+- ✅ @kit/otp (2 files, 26 tests)
+- ✅ @kit/supabase (3 files, 67 tests)
 
 **Run All Tests**: `pnpm --filter @kit/branding test && pnpm --filter @kit/next test && pnpm --filter @kit/llm test && pnpm --filter @kit/projects test`
 
 ---
 
-## 📋 Remaining Test Files (63 files)
+## 📋 Remaining Test Files (39 files)
 
 ### Critical Priority (Implement Next)
 
@@ -369,7 +372,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Missing NEXT_PUBLIC_PRODUCT_NAME throws error
     - Empty NEXT_PUBLIC_PRODUCT_NAME throws error
 
-#### @kit/supabase Tests ✅ COMPLETE (2/3 files)
+#### @kit/supabase Tests ✅ COMPLETE (3/3 files)
 - [x] `packages/supabase/__tests__/check-requires-mfa.test.ts` - MFA verification check ✅ (16 tests passing)
   - MFA required detection (nextLevel=aal2, currentLevel!=aal2)
   - MFA not required scenarios (both aal1, both aal2, nextLevel!=aal2)
@@ -384,7 +387,25 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Anonymous users and aal2 users
   - verifyMfa option handling
   - Type safety verification
-- [ ] `packages/supabase/__tests__/auth-callback.test.ts`
+- [x] `packages/supabase/__tests__/auth-callback.test.ts` - Auth callback service ✅ (30 tests passing)
+  - **verifyTokenHash()** - OTP token verification (15 tests)
+    - Successful verification with redirect URL
+    - next parameter and callback parameter handling
+    - Team invite handling (invite_token + email params)
+    - Error handling (missing token/type, OTP expired, invalid OTP)
+    - Localhost development URL adjustment
+    - Different OTP types (email, signup, recovery)
+  - **exchangeCodeForSession()** - OAuth code exchange (14 tests)
+    - Successful code exchange with session creation
+    - next parameter redirect
+    - Team invite handling with query params
+    - Error handling (exchange failure, error parameter, exceptions)
+    - Code verifier mismatch error (URL-encoded)
+    - OTP expired error in code exchange (URL-encoded)
+    - Empty search params and multiple error scenarios
+    - Error logging with proper context
+  - **Service creation** (1 test)
+    - Factory function verification
 
 #### @kit/shared Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/shared/__tests__/utils.test.ts` - Utility functions ✅ (34 tests passing)
