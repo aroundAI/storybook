@@ -79,6 +79,8 @@ describe('Project Queries', () => {
           metadata: {},
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          created_by: USER_ID,
+          updated_by: USER_ID,
           user_role: 'owner',
         },
         {
@@ -91,6 +93,8 @@ describe('Project Queries', () => {
           metadata: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          created_by: USER_ID,
+          updated_by: USER_ID,
           user_role: 'admin',
         },
       ];
