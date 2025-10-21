@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **PHASE 2 COMPLETE** - 84 test files created, 721 tests passing
-**Remaining Work**: 50+ high-value files identified (see Remaining Work Summary below)
+**Status**: **PHASE 2 COMPLETE** - 89 test files created, 810 tests passing
+**Remaining Work**: 45+ high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -174,9 +174,9 @@
 
 ## 📊 Current Test Statistics
 
-**Files Completed**: 45/82 (54.9%)
-**Total Tests Written**: 784
-**Tests Passing**: 759 (96.8%)
+**Files Completed**: 50/82 (61.0%)
+**Total Tests Written**: 873
+**Tests Passing**: 848 (97.1%)
 **Tests with Known Issues**: 25 (logger assertions + instanceof checks)
 
 **Packages Complete**:
@@ -186,11 +186,12 @@
 - ✅ @kit/billing (3 files, 77 tests)
 - ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
 - ✅ @kit/projects (2 files, 54 tests)
-- ✅ @kit/team-accounts (2 files, 47 tests)
+- ✅ @kit/team-accounts (12 files, 224 tests) ⭐ EXPANDED
 - ✅ @kit/i18n (2 files, 46 tests)
 - ✅ @kit/otp (2 files, 26 tests)
 - ✅ @kit/supabase (3 files, 67 tests)
 - ✅ @kit/notifications (1 file, 29 tests)
+- ✅ @kit/admin (3 files, 87 tests)
 
 **Run All Tests**: `pnpm --filter @kit/branding test && pnpm --filter @kit/next test && pnpm --filter @kit/llm test && pnpm --filter @kit/projects test`
 
@@ -440,7 +441,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/features/projects/__tests__/project-queries.test.ts` - Queries ✅ (32 tests passing)
 - [x] `packages/features/projects/__tests__/project-mutations.test.ts` - Mutations ✅ (22 tests passing)
 
-#### @kit/team-accounts Tests ✅ EXPANDED (10/11 files)
+#### @kit/team-accounts Tests ✅ EXPANDED (12/12 files)
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-per-seat-billing.service.test.ts` - Per-seat billing service ✅ (15 tests passing)
 - [x] `packages/features/team-accounts/__tests__/leave-team-account.service.test.ts` - Leave team account service ✅ (15 tests passing)
@@ -471,8 +472,25 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Increase seats with multi-item handling
   - Decrease seats with provider selection
   - Partial failure resilience with Promise.all()
+- [x] `packages/features/team-accounts/__tests__/account-webhooks.service.test.ts` - Account webhooks service ✅ (14 tests passing)
+  - Service initialization
+  - Personal account deletion webhook handling with email notifications
+  - Team account deletion webhook handling without emails
+  - Email sending behavior and environment variable usage
+  - Environment validation (EMAIL_SENDER, NEXT_PUBLIC_PRODUCT_NAME required)
+  - Integration scenarios (sequential webhooks, mixed personal/team accounts)
+  - Display name fallback logic (name → email)
+- [x] `packages/features/team-accounts/__tests__/account-invitations-webhook.service.test.ts` - Invitation webhooks service ✅ (16 tests passing)
+  - Service initialization with admin client
+  - Successful invitation flow (fetch inviter → fetch team → send email)
+  - Error handling (inviter not found, team not found, email failures, template errors)
+  - Logging verification (processing start, before send, successful send)
+  - Inviter name fallback logic (name → email → empty string)
+  - Invitation link generation with URL-encoded email
+  - Environment validation at module load time (NEXT_PUBLIC_SITE_URL, EMAIL_SENDER, etc.)
+  - Return value structure ({ success: true } or { success: false, error })
 - [x] `packages/features/team-accounts/__tests__/account-invitations.test.ts` - Invitations service ✅ (27 tests passing)
-- [x] `packages/features/team-accounts/__tests__/account-invitations.service.test.ts` - Invitations service implementation ✅ (18 tests passing)
+- [x] `packages/features/team-accounts/__tests__/account-invitations.service.test.ts` - Invitations service implementation ✅ (16 tests passing)
   - Delete and update invitations
   - Validate invitation (duplicate member detection)
   - Send invitations with validation and RPC integration
