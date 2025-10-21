@@ -78,6 +78,10 @@ export default defineConfig({
         __dirname,
         '../../packages/monitoring/api/src/server.ts',
       ),
+      '@kit/supabase/auth': path.resolve(
+        __dirname,
+        '../../packages/supabase/src/auth-callback.service.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/config': path.resolve(__dirname, './config'),
       '~': path.resolve(__dirname, './app'),
