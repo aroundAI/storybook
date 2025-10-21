@@ -13,6 +13,16 @@ import {
   hasPermission,
 } from './authorization';
 
+// Mock cache client
+vi.mock('@kit/cache', () => ({
+  createCacheClient: vi.fn(() => ({
+    get: vi.fn(() => Promise.resolve(null)), // Always cache miss for testing
+    set: vi.fn(() => Promise.resolve()),
+    del: vi.fn(() => Promise.resolve()),
+    isHealthy: vi.fn(() => Promise.resolve(true)),
+  })),
+}));
+
 // Mock Supabase client
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(() => ({

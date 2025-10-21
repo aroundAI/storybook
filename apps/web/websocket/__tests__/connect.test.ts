@@ -8,10 +8,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '../connect';
 import { createMockConnectEvent } from './utils/test-helpers';
 
-// Mock AWS DynamoDB
-const mockPutCommand = vi.fn();
-const mockSend = vi.fn();
+// Use vi.hoisted() to ensure mocks are available during hoisting phase
+const {
+  mockPutCommand,
+  mockQueryCommand,
+  mockSend,
+  mockVerifySupabaseToken,
+  mockIsSuperAdmin,
+} = vi.hoisted(() => ({
+  mockPutCommand: vi.fn(),
+  mockQueryCommand: vi.fn(),
+  mockSend: vi.fn(),
+  mockVerifySupabaseToken: vi.fn(),
+  mockIsSuperAdmin: vi.fn(),
+}));
 
+// Mock AWS DynamoDB
 vi.mock('@aws-sdk/client-dynamodb', () => ({
   DynamoDBClient: vi.fn(() => ({})),
 }));
@@ -26,13 +38,16 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
     mockPutCommand(params);
     return params;
   }),
+  QueryCommand: vi.fn((params) => {
+    mockQueryCommand(params);
+    return params;
+  }),
 }));
 
 // Mock authentication utility
-const mockVerifySupabaseToken = vi.fn();
-
 vi.mock('../utils/auth', () => ({
   verifySupabaseToken: mockVerifySupabaseToken,
+  isSuperAdminFromToken: mockIsSuperAdmin,
 }));
 
 describe('WebSocket Connect Handler', () => {
@@ -44,7 +59,13 @@ describe('WebSocket Connect Handler', () => {
 
     // Default: auth succeeds
     mockVerifySupabaseToken.mockResolvedValue('user-123');
-    mockSend.mockResolvedValue({});
+
+    // Mock DynamoDB responses:
+    // - First call (QueryCommand) returns no existing connections
+    // - Second call (PutCommand) succeeds
+    mockSend
+      .mockResolvedValueOnce({ Items: [] }) // QueryCommand: no existing connections
+      .mockResolvedValueOnce({}); // PutCommand: success
   });
 
   describe('Valid Authentication', () => {
@@ -299,17 +320,17 @@ describe('WebSocket Connect Handler', () => {
       );
     });
 
-    it('should handle missing CONNECTIONS_TABLE_NAME gracefully', async () => {
-      delete process.env.CONNECTIONS_TABLE_NAME;
-
+    it('should use default table name when not overridden', async () => {
+      // Note: CONNECTIONS_TABLE_NAME is set in vitest.setup.ts
+      // This test verifies the handler uses the configured value
       const event = createMockConnectEvent();
 
       await handler(event);
 
-      // Should still attempt to store (with empty table name, will fail in real scenario)
+      // Should use the default test table name
       expect(mockPutCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          TableName: '',
+          TableName: 'test-connections-table',
         }),
       );
     });

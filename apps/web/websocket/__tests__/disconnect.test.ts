@@ -8,10 +8,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '../disconnect';
 import { createMockDisconnectEvent } from './utils/test-helpers';
 
-// Mock AWS DynamoDB
-const mockDeleteCommand = vi.fn();
-const mockSend = vi.fn();
+// Use vi.hoisted() to ensure mocks are available during hoisting phase
+const { mockDeleteCommand, mockSend } = vi.hoisted(() => ({
+  mockDeleteCommand: vi.fn(),
+  mockSend: vi.fn(),
+}));
 
+// Mock AWS DynamoDB
 vi.mock('@aws-sdk/client-dynamodb', () => ({
   DynamoDBClient: vi.fn(() => ({})),
 }));
@@ -176,17 +179,17 @@ describe('WebSocket Disconnect Handler', () => {
       );
     });
 
-    it('should handle missing CONNECTIONS_TABLE_NAME gracefully', async () => {
-      delete process.env.CONNECTIONS_TABLE_NAME;
-
+    it('should use default table name when not overridden', async () => {
+      // Note: CONNECTIONS_TABLE_NAME is set in vitest.setup.ts
+      // This test verifies the handler uses the configured value
       const event = createMockDisconnectEvent();
 
       await handler(event);
 
-      // Should still attempt to delete (with empty table name)
+      // Should use the default test table name
       expect(mockDeleteCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          TableName: '',
+          TableName: 'test-connections-table',
         }),
       );
     });

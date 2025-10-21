@@ -42,6 +42,14 @@ process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-anon-key';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-role-key';
 process.env.NODE_ENV = 'test';
 
+// WebSocket Lambda environment variables
+process.env.CONNECTIONS_TABLE_NAME = 'test-connections-table';
+process.env.WEBSOCKET_API_ENDPOINT = 'https://test.execute-api.us-east-1.amazonaws.com/test';
+process.env.AWS_REGION = 'us-east-1';
+
+// Email worker Lambda environment variables
+process.env.EMAIL_PROVIDER = 'ses';
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -114,4 +122,11 @@ vi.mock('@aws-sdk/client-sesv2', () => ({
     send: vi.fn(),
   })),
   SendEmailCommand: vi.fn((params) => params),
+}));
+
+vi.mock('@aws-sdk/client-cloudwatch', () => ({
+  CloudWatchClient: vi.fn(() => ({
+    send: vi.fn(),
+  })),
+  PutMetricDataCommand: vi.fn((params) => params),
 }));

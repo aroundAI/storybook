@@ -8,14 +8,24 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '../default';
 import { createMockMessageEvent } from './utils/test-helpers';
 
-// Mock AWS SDK
-const mockPostToConnectionCommand = vi.fn();
-const mockQueryCommand = vi.fn();
-const mockScanCommand = vi.fn();
-const mockDeleteCommand = vi.fn();
-const mockApiGatewayClientSend = vi.fn();
-const mockDdbClientSend = vi.fn();
+// Use vi.hoisted() to ensure mocks are available during hoisting phase
+const {
+  mockPostToConnectionCommand,
+  mockQueryCommand,
+  mockScanCommand,
+  mockDeleteCommand,
+  mockApiGatewayClientSend,
+  mockDdbClientSend,
+} = vi.hoisted(() => ({
+  mockPostToConnectionCommand: vi.fn(),
+  mockQueryCommand: vi.fn(),
+  mockScanCommand: vi.fn(),
+  mockDeleteCommand: vi.fn(),
+  mockApiGatewayClientSend: vi.fn(),
+  mockDdbClientSend: vi.fn(),
+}));
 
+// Mock AWS SDK
 vi.mock('@aws-sdk/client-apigatewaymanagementapi', () => ({
   ApiGatewayManagementApiClient: vi.fn(() => ({
     send: mockApiGatewayClientSend,

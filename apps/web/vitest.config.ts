@@ -8,6 +8,19 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
+    server: {
+      deps: {
+        // Inline AWS SDK packages to avoid import resolution issues
+        inline: [
+          '@aws-sdk/client-sesv2',
+          '@aws-sdk/client-cloudwatch',
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-apigatewaymanagementapi',
+          '@aws-sdk/client-ssm',
+        ],
+      },
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
