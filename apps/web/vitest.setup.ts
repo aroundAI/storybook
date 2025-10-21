@@ -51,6 +51,10 @@ process.env.AWS_REGION = 'us-east-1';
 // Email worker Lambda environment variables
 process.env.EMAIL_PROVIDER = 'ses';
 
+// Contact form environment variables
+process.env.CONTACT_EMAIL = 'contact@example.com';
+process.env.EMAIL_SENDER = 'noreply@example.com';
+
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

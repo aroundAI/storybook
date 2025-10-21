@@ -102,6 +102,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/team-accounts/src/server/api.ts',
       ),
+      '@kit/mailers': path.resolve(
+        __dirname,
+        '../../packages/mailers/core/src/index.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
