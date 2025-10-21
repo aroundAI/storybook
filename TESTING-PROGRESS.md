@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **EXPANDED** - 70/82 test files complete + Critical Gap Analysis (687 total tests passing)
+**Status**: **EXPANDED** - 72/82 test files complete + Critical Gap Analysis (721 total tests passing)
 
 ---
 
@@ -369,6 +369,49 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Special characters in signature
     - Unicode characters (你好世界🌍)
     - Type coercion (numeric, boolean, object, array)
+- [x] `packages/database-webhooks/__tests__/database-webhook-router.service.test.ts` - Database webhook router ✅ (17 tests passing)
+  - **Invitations table routing** (3 tests)
+    - Route INSERT, UPDATE, DELETE events to invitations service
+  - **Subscriptions table routing** (4 tests)
+    - Route DELETE events to billing service
+    - Ignore INSERT and UPDATE events
+    - Check for old_record presence
+  - **Accounts table routing** (4 tests)
+    - Route DELETE events to account service
+    - Ignore INSERT and UPDATE events
+    - Check for old_record presence
+  - **Unknown tables** (2 tests)
+    - Handle unknown tables gracefully
+    - Return undefined for unhandled tables
+  - **Service initialization** (2 tests)
+    - Create with admin client
+    - Pass admin client to webhook services
+  - **Error handling** (2 tests)
+    - Propagate errors from invitation service
+    - Propagate errors from billing service
+- [x] `packages/database-webhooks/__tests__/database-webhook-handler.service.test.ts` - Database webhook handler ✅ (17 tests passing)
+  - **Signature verification** (3 tests)
+    - Verify before processing
+    - Throw on verification failure
+    - Stop processing when verification throws
+  - **Logging** (3 tests)
+    - Log webhook received message
+    - Log successful processing
+    - Log errors on failure
+  - **Router integration** (2 tests)
+    - Pass webhook body to router
+    - Handle different table types
+  - **Custom event handler** (5 tests)
+    - Call custom handler when provided
+    - Call after router processing
+    - Don't fail when not provided
+    - Propagate custom handler errors
+  - **Error handling** (2 tests)
+    - Throw on router processing failure
+    - Log and throw on processing failure
+  - **Integration scenarios** (2 tests)
+    - Complete invitation webhook flow
+    - Subscription deletion with custom handler
 
 ---
 
