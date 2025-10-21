@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (47/82 files, 57.3%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (48/82 files, 58.5%)
 
 ---
 
@@ -504,7 +504,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Console spy verification for log/error outputs
   - JSON.stringify behavior for Error objects
 
-#### @kit/accounts Tests ✅ COMPLETE (1/2 files)
+#### @kit/accounts Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/features/accounts/__tests__/schemas.test.ts` - Schema validation ✅ (42 tests passing)
   - AccountDetailsSchema (display name validation)
   - DeletePersonalAccountSchema (OTP validation)
@@ -514,7 +514,33 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Boundary conditions (min/max lengths)
   - Special characters and unicode support
   - Custom error message translation
-- [ ] `packages/features/accounts/__tests__/delete-personal-account.test.ts`
+- [x] `packages/features/accounts/__tests__/delete-personal-account.test.ts` - Delete personal account service ✅ (20 tests passing)
+  - **Factory function** (2 tests)
+    - Create delete personal account service
+    - Create independent service instances
+  - **deletePersonalAccount()** (4 tests)
+    - Successfully delete user account via Supabase admin API
+    - Delete user with null email
+    - Log deletion request with userId and namespace
+    - Log successful deletion
+  - **Error handling** (6 tests)
+    - Throw error when deleteUser returns error
+    - Throw error when deleteUser throws exception
+    - Log error context when deletion fails
+    - Handle authorization errors (insufficient permissions)
+    - Handle database errors
+  - **Integration scenarios** (2 tests)
+    - Handle rapid deletion requests (concurrent)
+    - Handle mixed success and failure scenarios
+  - **Edge cases** (4 tests)
+    - Very long user IDs (1000+ chars)
+    - Very long email addresses (200+ chars)
+    - UUID format user IDs
+    - Special characters in email
+  - **Logging behavior** (3 tests)
+    - Use correct namespace ('accounts.delete')
+    - Log both info messages in successful flow
+    - Log error but not success message on failure
 
 #### @kit/auth Tests ✅ COMPLETE (2/5 files)
 - [x] `packages/features/auth/__tests__/schemas.test.ts` - Password schema validation ✅ (43 tests passing)
