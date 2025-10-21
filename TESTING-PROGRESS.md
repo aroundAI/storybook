@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (46/82 files, 56.1%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (47/82 files, 57.3%)
 
 ---
 
@@ -210,7 +210,7 @@
 
 This is a known Vitest+TypeScript limitation. The error handling code works in production - the tests just can't verify instanceof checks. Can be resolved later by refactoring LLMError class structure.
 
-#### @kit/billing Tests (3/4 files)
+#### @kit/billing Tests ✅ COMPLETE (4/4 files)
 - [x] `packages/billing/stripe/__tests__/webhook-handler.test.ts` - Webhook verification & event handling ✅ (17 tests passing)
 - [x] `packages/billing/stripe/__tests__/subscription-payload-builder.test.ts` - Subscription payload builder ✅ (34 tests passing)
   - **build()** - Main payload builder (26 tests)
@@ -261,7 +261,27 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Signature format verification
     - Server-client signature comparison
     - Tampered data rejection
-- [ ] `packages/billing/gateway/__tests__/billing-gateway.test.ts`
+- [x] `packages/billing/gateway/__tests__/billing-gateway.test.ts` - Billing gateway facade/strategy pattern ✅ (13 tests passing)
+  - **Factory function** (1 test)
+    - Create billing gateway service with provider
+    - Verify all service methods exist
+  - **Provider factory** (3 tests)
+    - Retrieve provider from database and create service
+    - Throw error when billing provider not found
+    - Throw error on database error
+  - **Strategy delegation** (2 tests)
+    - Delegate getPlanById to strategy
+    - Delegate getSubscription to strategy
+  - **Provider selection** (3 tests)
+    - Use stripe provider strategy
+    - Use lemon-squeezy provider strategy
+    - Use paddle provider strategy
+  - **Error handling** (2 tests)
+    - Propagate strategy errors
+    - Handle registry errors
+  - **Registry configuration** (2 tests)
+    - Throw error for paddle provider (not implemented)
+    - Throw error for unknown provider
 
 ---
 
@@ -682,12 +702,12 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 46 (56.1%)
-**Total Tests Written**: 862
+**Completed**: 47 (57.3%)
+**Total Tests Written**: 875
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
-- 77 @kit/billing (17 webhook-handler + 34 subscription-payload-builder + 26 lemon-squeezy-hmac)
+- 90 @kit/billing (17 webhook-handler + 34 subscription-payload-builder + 26 lemon-squeezy-hmac + 13 billing-gateway)
 - 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
 - 54 @kit/projects (32 queries + 22 mutations)
 - 95 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management)
@@ -704,7 +724,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 29 @kit/notifications (29 notifications-service)
 - 6 test/setup (infrastructure validation)
 
-**Total Tests Passing**: 837 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
+**Total Tests Passing**: 850 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
 
 **Infrastructure Setup**: 100% ✅
 **Critical Tests**: 28.6% (8/28) - includes openai-provider partial
