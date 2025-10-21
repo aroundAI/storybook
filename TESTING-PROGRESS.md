@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (43/82 files, 52.4%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (44/82 files, 53.7%)
 
 ---
 
@@ -162,16 +162,16 @@
 
 ## 📊 Current Test Statistics
 
-**Files Completed**: 43/82 (52.4%)
-**Total Tests Written**: 729
-**Tests Passing**: 704 (96.6%)
+**Files Completed**: 44/82 (53.7%)
+**Total Tests Written**: 755
+**Tests Passing**: 730 (96.7%)
 **Tests with Known Issues**: 25 (logger assertions + instanceof checks)
 
 **Packages Complete**:
 - ✅ @kit/branding (4 files, 91 tests)
 - ✅ @kit/next (2 files, 44 tests)
 - ✅ @kit/llm (5 files, 171 tests, 11 instanceof issues)
-- ✅ @kit/billing (2 files, 51 tests)
+- ✅ @kit/billing (3 files, 77 tests)
 - ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
 - ✅ @kit/projects (2 files, 54 tests)
 - ✅ @kit/team-accounts (2 files, 47 tests)
@@ -183,7 +183,7 @@
 
 ---
 
-## 📋 Remaining Test Files (39 files)
+## 📋 Remaining Test Files (38 files)
 
 ### Critical Priority (Implement Next)
 
@@ -209,7 +209,7 @@
 
 This is a known Vitest+TypeScript limitation. The error handling code works in production - the tests just can't verify instanceof checks. Can be resolved later by refactoring LLMError class structure.
 
-#### @kit/billing Tests (2/4 files)
+#### @kit/billing Tests (3/4 files)
 - [x] `packages/billing/stripe/__tests__/webhook-handler.test.ts` - Webhook verification & event handling ✅ (17 tests passing)
 - [x] `packages/billing/stripe/__tests__/subscription-payload-builder.test.ts` - Subscription payload builder ✅ (34 tests passing)
   - **build()** - Main payload builder (26 tests)
@@ -234,7 +234,32 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Empty line items array
     - Null price amounts
     - Very large quantities (999999 units)
-- [ ] `packages/billing/lemon-squeezy/__tests__/hmac-verification.test.ts`
+- [x] `packages/billing/lemon-squeezy/__tests__/verify-hmac.test.ts` - HMAC verification ✅ (26 tests passing)
+  - **Successful HMAC generation** (8 tests)
+    - Generate HMAC signature from key and data
+    - Consistent signatures for same inputs
+    - Different signatures for different keys/data
+    - Hex string validation (even length, valid hex chars)
+    - Empty data string handling
+    - Empty key throws error (Web Crypto API requirement)
+  - **Webhook payload scenarios** (5 tests)
+    - Real webhook signature verification
+    - JSON webhook payloads
+    - Tampering detection
+    - Large payloads (1000+ items)
+  - **Special characters and encoding** (5 tests)
+    - Special characters in data/key
+    - Unicode characters (你好世界 🌍)
+    - Newlines and whitespace
+  - **Edge cases** (5 tests)
+    - Very long keys (10000 chars)
+    - Very long data (100000 chars)
+    - SHA-256 produces 64-char hex
+    - Case sensitivity in data/key
+  - **LemonSqueezy webhook verification use case** (3 tests)
+    - Signature format verification
+    - Server-client signature comparison
+    - Tampered data rejection
 - [ ] `packages/billing/gateway/__tests__/billing-gateway.test.ts`
 
 ---
