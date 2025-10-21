@@ -440,9 +440,24 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/features/projects/__tests__/project-queries.test.ts` - Queries ✅ (32 tests passing)
 - [x] `packages/features/projects/__tests__/project-mutations.test.ts` - Mutations ✅ (22 tests passing)
 
-#### @kit/team-accounts Tests ✅ COMPLETE
+#### @kit/team-accounts Tests ✅ EXPANDED (9/11 files)
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-per-seat-billing.service.test.ts` - Per-seat billing service ✅ (15 tests passing)
+- [x] `packages/features/team-accounts/__tests__/leave-team-account.service.test.ts` - Leave team account service ✅ (15 tests passing)
+  - Service initialization and factory function
+  - Successful leave operations with membership deletion
+  - Schema validation (UUID format for accountId, userId)
+  - Error handling (database errors, missing records)
+  - Edge cases (null/undefined/empty parameters)
+  - Integration scenarios (admin client usage, multiple concurrent leaves)
+- [x] `packages/features/team-accounts/__tests__/create-team-account.service.test.ts` - Create team account service ✅ (21 tests passing)
+  - Service initialization
+  - Successful account creation via RPC
+  - Team name validation (length 2-50, allowed characters, unicode/emoji support)
+  - RPC integration (create_team_account with correct params)
+  - Error handling (RPC failures, constraint violations)
+  - Edge cases (unicode, emoji, long userIds)
+  - Integration scenarios (sequential creation, return value validation)
   - Get per-seat subscription items with filtering
   - Increase seats with multi-item handling
   - Decrease seats with provider selection
@@ -1069,18 +1084,18 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 84
+**Total Test Files Created**: 86
 **Total Testable Files Identified**: 122+
-**Completed**: 72/82 originally planned (87.8%)
-**Total Tests Written**: 721
-**Total Tests Passing**: 721 ✅
+**Completed**: 74/82 originally planned (90.2%)
+**Total Tests Written**: 757
+**Total Tests Passing**: 757 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
 - 90 @kit/billing (17 webhook-handler + 34 subscription-payload-builder + 26 lemon-squeezy-hmac + 13 billing-gateway)
 - 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
 - 54 @kit/projects (32 queries + 22 mutations)
-- 95 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management)
+- 131 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management + 15 leave-service + 21 create-service)
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
@@ -1125,19 +1140,25 @@ This section provides a comprehensive breakdown of all remaining test work.
 
 **Location**: `packages/features/team-accounts/src/server/services/`
 
+Files completed:
+1. ✅ **`leave-team-account.service.ts`** (15 tests passing)
+   - Service initialization and factory function
+   - Successful leave operations with membership deletion
+   - Schema validation (UUID format)
+   - Error handling (database errors, missing records)
+   - Edge cases (null/undefined/empty parameters)
+   - Integration scenarios (admin client usage, concurrent leaves)
+
+2. ✅ **`create-team-account.service.ts`** (21 tests passing)
+   - Service initialization
+   - Successful account creation via RPC
+   - Team name validation (length, special chars, reserved names)
+   - RPC integration with create_team_account
+   - Error handling (RPC failures, constraints)
+   - Edge cases (unicode, emoji, long userIds)
+   - Integration scenarios (sequential creation)
+
 Files needing tests:
-1. **`leave-team-account.service.ts`** (~12 tests)
-   - Leave team with validation
-   - Billing seat adjustment
-   - Permission checks (not owner)
-   - Edge cases (last member, invalid account)
-
-2. **`create-team-account.service.ts`** (~15 tests)
-   - Account creation with owner assignment
-   - Slug generation and validation
-   - Initial billing setup
-   - Error handling (duplicate slug, DB errors)
-
 3. **`delete-team-account.service.ts`** (~15 tests)
    - Permission validation (owner only)
    - Cascade deletion (members, invitations, data)
@@ -1514,7 +1535,7 @@ File needing tests:
 
 | Tier | Category | Files | Est. Tests | Effort (Hours) |
 |------|----------|-------|-----------|----------------|
-| **1** | Team Accounts Services | 5 | 70 | 8-10 |
+| **1** | Team Accounts Services | 3 (was 5) | 34 (was 70) | 4-5 (was 8-10) |
 | **1** | Team Accounts Actions | 6 | 105 | 12-15 |
 | **1** | Admin Services | 2 | 40 | 5-6 |
 | **1** | Analytics Package | 5 | 55 | 7-9 |
@@ -1528,13 +1549,13 @@ File needing tests:
 | **3** | I18n Utilities | 3 | 32 | 4-5 |
 | **3** | Email Templates | 1 | 10 | 1-2 |
 | **5** | OTP Actions | 1 | 18 | 2-3 |
-| **TOTAL** | **All Remaining** | **50** | **619** | **74-93** |
+| **TOTAL** | **All Remaining** | **48** | **583** | **70-89** |
 
 ### By Package
 
 | Package | Files | Est. Tests | Priority |
 |---------|-------|-----------|----------|
-| @kit/team-accounts | 11 | 175 | CRITICAL |
+| @kit/team-accounts | 9 (was 11) | 139 (was 175) | CRITICAL |
 | @kit/analytics | 5 | 55 | CRITICAL |
 | @kit/admin | 3 | 58 | CRITICAL |
 | @kit/audit-logs | 12 | 135 | HIGH |
@@ -1550,11 +1571,22 @@ File needing tests:
 
 ## 🎯 RECOMMENDED IMPLEMENTATION ORDER
 
-### Phase 3A: Team Account Completion (Weeks 1-2)
-**Files**: 11 | **Tests**: ~175 | **Effort**: 20-25 hours
+### Phase 3A: Team Account Completion (Weeks 1-2) - IN PROGRESS ✅
 
-1. Team account services (5 files)
-2. Team account server actions (6 files)
+**Original**: 11 files | ~175 tests | 20-25 hours
+**Completed**: 2 files | 36 tests | ~2.5 hours
+**Remaining**: 9 files | ~139 tests | 16-20 hours
+
+Progress:
+1. ✅ Team account services (2/5 files complete)
+   - ✅ leave-team-account.service.ts (15 tests)
+   - ✅ create-team-account.service.ts (21 tests)
+   - 🔲 delete-team-account.service.ts (pending)
+   - 🔲 webhooks/account-webhooks.service.ts (pending)
+   - 🔲 webhooks/account-invitations-webhook.service.ts (pending)
+
+2. 🔲 Team account server actions (0/6 files complete)
+   - All 6 server action files pending
 
 **Why**: Completes multi-tenant architecture testing, highest business value.
 
@@ -1682,14 +1714,15 @@ File needing tests:
 ## ✅ COMPLETION CRITERIA
 
 **Phase 3 Complete When**:
-- ✅ All 50 remaining files have test coverage
-- ✅ ~619 additional tests written and passing
+- 🔄 All 48 remaining files have test coverage (was 50, now 48)
+- 🔄 ~583 additional tests written and passing (was 619, now 583)
 - ✅ Overall coverage reaches 85%+
 - ✅ CI/CD pipeline consistently green
 - ✅ All critical business flows tested end-to-end
 - ✅ Documentation updated with final statistics
 
-**Estimated Completion**: 6 weeks (74-93 hours total)
+**Progress**: 2/50 files complete (4%), 36 tests added
+**Estimated Completion**: 6 weeks (70-89 hours total, was 74-93)
 
 ---
 
