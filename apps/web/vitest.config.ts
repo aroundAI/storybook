@@ -98,6 +98,10 @@ export default defineConfig({
         __dirname,
         '../../packages/features/accounts/src/server/api.ts',
       ),
+      '@kit/team-accounts/api': path.resolve(
+        __dirname,
+        '../../packages/features/team-accounts/src/server/api.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
