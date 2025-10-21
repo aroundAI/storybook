@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (52/82 files, 63.4%)
+**Status**: Foundation Complete + Web Application Tests Implemented (59/82 files, 72.0%)
 
 ---
 
@@ -731,9 +731,9 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ### Web Application Tests
 
 #### API Routes
-- [ ] `apps/web/app/api/__tests__/billing-webhook.test.ts`
-- [ ] `apps/web/app/api/__tests__/db-webhook.test.ts`
-- [ ] `apps/web/app/api/__tests__/auth-callback.test.ts`
+- [x] `apps/web/app/api/billing/webhook/__tests__/route.test.ts` - Billing webhook API route ✅ (21 tests passing)
+- [x] `apps/web/app/api/db/webhook/__tests__/route.test.ts` - Database webhook API route ✅ (25 tests passing)
+- [x] `apps/web/app/auth/callback/__tests__/route.test.ts` - Auth callback API route ✅ (25 tests passing)
 - [x] `apps/web/app/api/__tests__/healthcheck.test.ts` - Health check endpoint ✅ (27 tests passing)
   - **Successful health checks** (5 tests)
     - Return 200 when all services healthy
@@ -774,7 +774,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 #### Server Actions
 - [x] `apps/web/app/home/(user)/billing/__tests__/server-actions.test.ts` - User billing server actions ✅ (23 tests passing)
 - [x] `apps/web/app/home/[account]/billing/__tests__/server-actions.test.ts` - Team billing server actions ✅ (24 tests passing)
-- [ ] `apps/web/app/(marketing)/contact/__tests__/server-actions.test.ts`
+- [x] `apps/web/app/(marketing)/contact/__tests__/server-actions.test.ts` - Contact form server actions ✅ (30 tests passing)
 
 #### Loaders
 - [x] `apps/web/app/home/(user)/__tests__/load-user-workspace.test.ts` - User workspace loader ✅ (20 tests passing)
