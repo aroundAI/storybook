@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **EXPANDED** - 68/82 test files complete + Critical Gap Analysis (643 total tests passing)
+**Status**: **EXPANDED** - 69/82 test files complete + Critical Gap Analysis (667 total tests passing)
 
 ---
 
@@ -271,6 +271,40 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Stripe provider
     - Lemon Squeezy provider
     - Paddle provider
+- [x] `packages/billing/gateway/__tests__/billing-event-handler.service.test.ts` - Event handler service ✅ (24 tests passing)
+  - **Webhook signature verification** (3 tests)
+    - Verify signature before processing
+    - Throw on invalid signature
+    - Throw on verification error
+  - **Subscription deletion** (3 tests)
+    - Delete from database
+    - Call custom handler when provided
+    - Throw on database deletion failure
+  - **Subscription updates** (3 tests)
+    - Update via RPC
+    - Call custom handler when provided
+    - Throw on RPC failure
+  - **Checkout completion - subscription** (3 tests)
+    - Create subscription via RPC
+    - Call custom handler with payload
+    - Throw on creation failure
+  - **Checkout completion - order** (3 tests)
+    - Create order via RPC
+    - Call custom handler with payload
+    - Throw on creation failure
+  - **Payment succeeded** (3 tests)
+    - Update order status to succeeded
+    - Call custom handler when provided
+    - Throw on update failure
+  - **Payment failed** (3 tests)
+    - Update order status to failed
+    - Call custom handler when provided
+    - Throw on update failure
+  - **Invoice paid** (2 tests)
+    - Call custom handler when provided
+    - No throw when handler not provided
+  - **Event passthrough** (1 test)
+    - Pass onEvent handler to strategy
 - [x] `packages/billing/lemon-squeezy/__tests__/verify-hmac.test.ts` - HMAC verification ✅ (26 tests passing)
   - **Successful HMAC generation** (8 tests)
     - Generate HMAC signature from key and data
