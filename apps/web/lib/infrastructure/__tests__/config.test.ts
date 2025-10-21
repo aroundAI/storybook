@@ -51,7 +51,7 @@ describe('Infrastructure Configuration', () => {
       process.env.DATABASE_PROVIDER = 'invalid-provider';
       setDefaultEnvVars();
 
-      expect(() => loadInfrastructureConfig()).toThrow(/database/i);
+      expect(() => loadInfrastructureConfig()).toThrow(/invalid_enum_value/i);
     });
 
     it('should throw on missing required Supabase fields', () => {
@@ -60,6 +60,9 @@ describe('Infrastructure Configuration', () => {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'test-key';
 
       setDefaultEnvVars();
+
+      // Clear the URL that setDefaultEnvVars() sets to test missing URL validation
+      delete process.env.NEXT_PUBLIC_SUPABASE_URL;
 
       expect(() => loadInfrastructureConfig()).toThrow(/Invalid Supabase URL/i);
     });
@@ -205,6 +208,13 @@ function setDefaultEnvVars() {
   if (!process.env.STORAGE_PROVIDER) {
     process.env.STORAGE_PROVIDER = 'supabase';
   }
+
+  // Set AWS credentials as defaults (required for SES, S3, Cognito, etc.)
+  process.env.AWS_REGION = process.env.AWS_REGION || 'us-east-1';
+  process.env.AWS_ACCESS_KEY_ID =
+    process.env.AWS_ACCESS_KEY_ID || 'test-access-key';
+  process.env.AWS_SECRET_ACCESS_KEY =
+    process.env.AWS_SECRET_ACCESS_KEY || 'test-secret-key';
 
   if (!process.env.EMAIL_PROVIDER) {
     process.env.EMAIL_PROVIDER = 'resend';
