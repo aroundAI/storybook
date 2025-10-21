@@ -385,8 +385,11 @@ describe('Prompt Template Mutations', () => {
 
     describe('unlinkSystemPromptAction', () => {
       it('should unlink system prompt from template', async () => {
-        mockEq.mockReturnValue({ eq: mockEq });
-        mockEq.mockResolvedValue({ error: null });
+        // Chain for .delete().eq().eq()
+        const chainableEq = {
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        };
+        mockEq.mockReturnValue(chainableEq);
 
         const result = await unlinkSystemPromptAction({
           template_id: TEMPLATE_ID,
@@ -501,8 +504,11 @@ describe('Prompt Template Mutations', () => {
 
     describe('unassignVariantFromAccountAction', () => {
       it('should unassign variant from account', async () => {
-        mockEq.mockReturnValue({ eq: mockEq });
-        mockEq.mockResolvedValue({ error: null });
+        // Chain for .delete().eq().eq()
+        const chainableEq = {
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        };
+        mockEq.mockReturnValue(chainableEq);
 
         const result = await unassignVariantFromAccountAction({
           variant_id: VARIANT_ID,
