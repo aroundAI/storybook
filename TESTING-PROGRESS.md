@@ -440,7 +440,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/features/projects/__tests__/project-queries.test.ts` - Queries ✅ (32 tests passing)
 - [x] `packages/features/projects/__tests__/project-mutations.test.ts` - Mutations ✅ (22 tests passing)
 
-#### @kit/team-accounts Tests ✅ EXPANDED (9/11 files)
+#### @kit/team-accounts Tests ✅ EXPANDED (10/11 files)
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-per-seat-billing.service.test.ts` - Per-seat billing service ✅ (15 tests passing)
 - [x] `packages/features/team-accounts/__tests__/leave-team-account.service.test.ts` - Leave team account service ✅ (15 tests passing)
@@ -458,6 +458,15 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Error handling (RPC failures, constraint violations)
   - Edge cases (unicode, emoji, long userIds)
   - Integration scenarios (sequential creation, return value validation)
+- [x] `packages/features/team-accounts/__tests__/delete-team-account.service.test.ts` - Delete team account service ✅ (20 tests passing)
+  - Service initialization without dependencies
+  - Successful deletion via admin client
+  - Cascade deletion relying on database CASCADE constraints
+  - Error handling (database errors, foreign key constraints, account not found)
+  - Admin client requirement and RLS bypass
+  - Edge cases (long accountIds, special characters, logging context)
+  - Integration scenarios (sequential deletions, concurrent operations)
+  - Logging namespace verification
   - Get per-seat subscription items with filtering
   - Increase seats with multi-item handling
   - Decrease seats with provider selection
@@ -1084,18 +1093,18 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 86
+**Total Test Files Created**: 87
 **Total Testable Files Identified**: 122+
-**Completed**: 74/82 originally planned (90.2%)
-**Total Tests Written**: 757
-**Total Tests Passing**: 757 ✅
+**Completed**: 75/82 originally planned (91.5%)
+**Total Tests Written**: 777
+**Total Tests Passing**: 777 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
 - 90 @kit/billing (17 webhook-handler + 34 subscription-payload-builder + 26 lemon-squeezy-hmac + 13 billing-gateway)
 - 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
 - 54 @kit/projects (32 queries + 22 mutations)
-- 131 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management + 15 leave-service + 21 create-service)
+- 151 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management + 15 leave-service + 21 create-service + 20 delete-service)
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
@@ -1158,8 +1167,17 @@ Files completed:
    - Edge cases (unicode, emoji, long userIds)
    - Integration scenarios (sequential creation)
 
+3. ✅ **`delete-team-account.service.ts`** (20 tests passing)
+   - Service initialization without dependencies
+   - Successful deletion via admin client
+   - Cascade deletion with database constraints
+   - Error handling (database errors, FK constraints, not found)
+   - Admin client requirement for RLS bypass
+   - Edge cases (long IDs, special chars, logging)
+   - Integration scenarios (sequential/concurrent deletions)
+
 Files needing tests:
-3. **`delete-team-account.service.ts`** (~15 tests)
+4. **`webhooks/account-webhooks.service.ts`** (~12 tests)
    - Permission validation (owner only)
    - Cascade deletion (members, invitations, data)
    - Billing cancellation
@@ -1535,7 +1553,7 @@ File needing tests:
 
 | Tier | Category | Files | Est. Tests | Effort (Hours) |
 |------|----------|-------|-----------|----------------|
-| **1** | Team Accounts Services | 3 (was 5) | 34 (was 70) | 4-5 (was 8-10) |
+| **1** | Team Accounts Services | 2 (was 5) | 24 (was 70) | 3-4 (was 8-10) |
 | **1** | Team Accounts Actions | 6 | 105 | 12-15 |
 | **1** | Admin Services | 2 | 40 | 5-6 |
 | **1** | Analytics Package | 5 | 55 | 7-9 |
@@ -1549,13 +1567,13 @@ File needing tests:
 | **3** | I18n Utilities | 3 | 32 | 4-5 |
 | **3** | Email Templates | 1 | 10 | 1-2 |
 | **5** | OTP Actions | 1 | 18 | 2-3 |
-| **TOTAL** | **All Remaining** | **48** | **583** | **70-89** |
+| **TOTAL** | **All Remaining** | **47** | **563** | **68-86** |
 
 ### By Package
 
 | Package | Files | Est. Tests | Priority |
 |---------|-------|-----------|----------|
-| @kit/team-accounts | 9 (was 11) | 139 (was 175) | CRITICAL |
+| @kit/team-accounts | 8 (was 11) | 129 (was 175) | CRITICAL |
 | @kit/analytics | 5 | 55 | CRITICAL |
 | @kit/admin | 3 | 58 | CRITICAL |
 | @kit/audit-logs | 12 | 135 | HIGH |
@@ -1574,14 +1592,14 @@ File needing tests:
 ### Phase 3A: Team Account Completion (Weeks 1-2) - IN PROGRESS ✅
 
 **Original**: 11 files | ~175 tests | 20-25 hours
-**Completed**: 2 files | 36 tests | ~2.5 hours
-**Remaining**: 9 files | ~139 tests | 16-20 hours
+**Completed**: 3 files | 56 tests | ~4 hours
+**Remaining**: 8 files | ~129 tests | 15-18 hours
 
 Progress:
-1. ✅ Team account services (2/5 files complete)
+1. ✅ Team account services (3/5 files complete - 60%)
    - ✅ leave-team-account.service.ts (15 tests)
    - ✅ create-team-account.service.ts (21 tests)
-   - 🔲 delete-team-account.service.ts (pending)
+   - ✅ delete-team-account.service.ts (20 tests)
    - 🔲 webhooks/account-webhooks.service.ts (pending)
    - 🔲 webhooks/account-invitations-webhook.service.ts (pending)
 
@@ -1714,15 +1732,15 @@ Progress:
 ## ✅ COMPLETION CRITERIA
 
 **Phase 3 Complete When**:
-- 🔄 All 48 remaining files have test coverage (was 50, now 48)
-- 🔄 ~583 additional tests written and passing (was 619, now 583)
+- 🔄 All 47 remaining files have test coverage (was 50)
+- 🔄 ~563 additional tests written and passing (was 619)
 - ✅ Overall coverage reaches 85%+
 - ✅ CI/CD pipeline consistently green
 - ✅ All critical business flows tested end-to-end
 - ✅ Documentation updated with final statistics
 
-**Progress**: 2/50 files complete (4%), 36 tests added
-**Estimated Completion**: 6 weeks (70-89 hours total, was 74-93)
+**Progress**: 3/50 files complete (6%), 56 tests added
+**Estimated Completion**: 6 weeks (68-86 hours total, was 74-93)
 
 ---
 
