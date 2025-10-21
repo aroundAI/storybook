@@ -70,6 +70,14 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/clients/server-admin-client.ts',
       ),
+      '@kit/database-webhooks': path.resolve(
+        __dirname,
+        '../../packages/database-webhooks/src/index.ts',
+      ),
+      '@kit/monitoring/server': path.resolve(
+        __dirname,
+        '../../packages/monitoring/api/src/server.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/config': path.resolve(__dirname, './config'),
       '~': path.resolve(__dirname, './app'),
