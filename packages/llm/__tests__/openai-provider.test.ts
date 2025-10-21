@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import OpenAI, { APIError as OpenAIAPIError } from 'openai';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { OpenAIClient } from '../src/providers/openai';
 import type { ChatCompletionRequest, LLMConfig } from '../src/types';
@@ -13,11 +13,7 @@ vi.mock('openai', () => {
   class MockAPIError extends Error {
     code: string | null;
     status: number | undefined;
-    constructor(
-      message: string,
-      status?: number,
-      code?: string | null,
-    ) {
+    constructor(message: string, status?: number, code?: string | null) {
       super(message);
       this.name = 'APIError';
       this.code = code ?? null;
@@ -244,18 +240,14 @@ describe('OpenAIClient', () => {
       });
 
       const request: ChatCompletionRequest = {
-        messages: [
-          { role: 'user', content: 'Hello', name: 'format-guard' },
-        ],
+        messages: [{ role: 'user', content: 'Hello', name: 'format-guard' }],
       };
 
       await client.createChatCompletion(request);
 
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
-          messages: [
-            { role: 'user', content: 'Hello', name: 'format-guard' },
-          ],
+          messages: [{ role: 'user', content: 'Hello', name: 'format-guard' }],
         }),
       );
     });
@@ -315,7 +307,9 @@ describe('OpenAIClient', () => {
         messages: [{ role: 'user', content: 'Test' }],
       };
 
-      await expect(client.createChatCompletion(request)).rejects.toThrow('No completion choices returned');
+      await expect(client.createChatCompletion(request)).rejects.toThrow(
+        'No completion choices returned',
+      );
     });
 
     it('should throw error when no usage information returned', async () => {
@@ -337,7 +331,9 @@ describe('OpenAIClient', () => {
         messages: [{ role: 'user', content: 'Test' }],
       };
 
-      await expect(client.createChatCompletion(request)).rejects.toThrow('No usage information returned');
+      await expect(client.createChatCompletion(request)).rejects.toThrow(
+        'No usage information returned',
+      );
     });
 
     it('should handle different finish reasons', async () => {
@@ -548,9 +544,7 @@ describe('OpenAIClient', () => {
       const mockStream = {
         async *[Symbol.asyncIterator]() {
           yield {
-            choices: [
-              { delta: { content: 'Test' }, finish_reason: 'stop' },
-            ],
+            choices: [{ delta: { content: 'Test' }, finish_reason: 'stop' }],
           };
         },
       };
@@ -636,7 +630,9 @@ describe('OpenAIClient', () => {
         messages: [{ role: 'user', content: 'Test' }],
       };
 
-      await expect(client.createChatCompletion(request)).rejects.toThrow('Invalid API key');
+      await expect(client.createChatCompletion(request)).rejects.toThrow(
+        'Invalid API key',
+      );
     });
 
     it('should handle generic Error', async () => {
@@ -648,7 +644,9 @@ describe('OpenAIClient', () => {
         messages: [{ role: 'user', content: 'Test' }],
       };
 
-      await expect(client.createChatCompletion(request)).rejects.toThrow('Network error');
+      await expect(client.createChatCompletion(request)).rejects.toThrow(
+        'Network error',
+      );
     });
 
     it('should handle unknown error type', async () => {
@@ -660,7 +658,9 @@ describe('OpenAIClient', () => {
         messages: [{ role: 'user', content: 'Test' }],
       };
 
-      await expect(client.createChatCompletion(request)).rejects.toThrow('Unknown error occurred');
+      await expect(client.createChatCompletion(request)).rejects.toThrow(
+        'Unknown error occurred',
+      );
     });
 
     it('should handle streaming errors', async () => {

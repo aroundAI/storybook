@@ -382,7 +382,10 @@ describe('Logger Factory', () => {
 
         logger.info(complexObj, 'Complex object');
 
-        expect(consoleInfoSpy).toHaveBeenCalledWith(complexObj, 'Complex object');
+        expect(consoleInfoSpy).toHaveBeenCalledWith(
+          complexObj,
+          'Complex object',
+        );
         consoleInfoSpy.mockRestore();
       });
 

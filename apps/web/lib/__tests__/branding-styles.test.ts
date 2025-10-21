@@ -5,8 +5,8 @@ import type { BrandingConfig } from '@kit/branding';
 import {
   generateBrandingStyles,
   generateGoogleFontsLink,
-  getBrandingStyleObject,
   generateLogoStyle,
+  getBrandingStyleObject,
 } from '../branding-styles';
 
 // Mock @kit/branding
@@ -351,8 +351,9 @@ describe('Branding Styles', () => {
         animate: true,
       };
 
-      const { buildGradientString, buildGlowShadow } =
-        await import('@kit/branding');
+      const { buildGradientString, buildGlowShadow } = await import(
+        '@kit/branding'
+      );
       vi.mocked(buildGradientString).mockReturnValue(
         'linear-gradient(to right, #3B82F6, #8B5CF6)',
       );

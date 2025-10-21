@@ -174,7 +174,8 @@ describe('Template Renderer', () => {
     });
 
     it('should evaluate objects correctly', () => {
-      const template = '{{empty}}{{data}}{{#if empty}}Empty{{/if}} {{#if data}}Data{{/if}}';
+      const template =
+        '{{empty}}{{data}}{{#if empty}}Empty{{/if}} {{#if data}}Data{{/if}}';
       const result = renderTemplate(template, {
         empty: {},
         data: { key: 'value' },
@@ -195,7 +196,8 @@ describe('Template Renderer', () => {
     });
 
     it('should render variables inside conditionals', () => {
-      const template = '{{showDetails}}{{#if showDetails}}Name: {{name}}, Age: {{age}}{{/if}}';
+      const template =
+        '{{showDetails}}{{#if showDetails}}Name: {{name}}, Age: {{age}}{{/if}}';
       const result = renderTemplate(template, {
         showDetails: true,
         name: 'Alice',
@@ -395,7 +397,9 @@ Please provide a {{tone:professional}} response.`;
       expect(result.rendered).toContain('User Query: Hello!');
       expect(result.rendered).not.toContain('Context:');
       expect(result.rendered).not.toContain('Examples:');
-      expect(result.rendered).toContain('Please provide a professional response');
+      expect(result.rendered).toContain(
+        'Please provide a professional response',
+      );
     });
 
     it('should track all used and missing variables', () => {

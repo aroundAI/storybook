@@ -16,10 +16,7 @@ describe('i18n Server', () => {
       });
 
       it('should parse multiple languages', () => {
-        const result = parseAcceptLanguageHeader(
-          'en,es,fr',
-          acceptedLanguages,
-        );
+        const result = parseAcceptLanguageHeader('en,es,fr', acceptedLanguages);
         expect(result).toEqual(['en', 'es', 'fr']);
       });
 
@@ -124,10 +121,7 @@ describe('i18n Server', () => {
       });
 
       it('should ignore wildcard in middle of list', () => {
-        const result = parseAcceptLanguageHeader(
-          'en,*,es',
-          acceptedLanguages,
-        );
+        const result = parseAcceptLanguageHeader('en,*,es', acceptedLanguages);
         expect(result).toEqual(['en', 'es']);
       });
     });
@@ -151,10 +145,7 @@ describe('i18n Server', () => {
       });
 
       it('should return empty array when no languages match', () => {
-        const result = parseAcceptLanguageHeader(
-          'ru,pt,ar',
-          acceptedLanguages,
-        );
+        const result = parseAcceptLanguageHeader('ru,pt,ar', acceptedLanguages);
         expect(result).toEqual([]);
       });
     });
@@ -206,16 +197,17 @@ describe('i18n Server', () => {
       });
 
       it('should handle very long language list', () => {
-        const longList = acceptedLanguages.map((l, i) => `${l};q=0.${9 - i}`).join(',');
+        const longList = acceptedLanguages
+          .map((l, i) => `${l};q=0.${9 - i}`)
+          .join(',');
         const result = parseAcceptLanguageHeader(longList, acceptedLanguages);
         expect(result.length).toBe(acceptedLanguages.length);
       });
 
       it('should handle special characters in locale', () => {
-        const result = parseAcceptLanguageHeader(
-          'zh-Hans-CN,zh-Hant-TW',
-          ['zh'],
-        );
+        const result = parseAcceptLanguageHeader('zh-Hans-CN,zh-Hant-TW', [
+          'zh',
+        ]);
         expect(result).toEqual(['zh', 'zh']);
       });
 
@@ -248,10 +240,7 @@ describe('i18n Server', () => {
       });
 
       it('should parse Safari Accept-Language header', () => {
-        const result = parseAcceptLanguageHeader(
-          'en-us',
-          acceptedLanguages,
-        );
+        const result = parseAcceptLanguageHeader('en-us', acceptedLanguages);
         expect(result).toEqual(['en']);
       });
 
@@ -366,7 +355,8 @@ describe('i18n Server', () => {
           defaultNS: 'common',
         };
 
-        const resolver = vi.fn()
+        const resolver = vi
+          .fn()
           .mockResolvedValueOnce({ hello: 'Hello' })
           .mockRejectedValueOnce(new Error('Auth file not found'));
 
@@ -400,12 +390,11 @@ describe('i18n Server', () => {
           defaultNS: 'common',
         };
 
-        const resolver = vi.fn()
-          .mockImplementation(async (lang, ns) => {
-            // Simulate async loading
-            await new Promise(resolve => setTimeout(resolve, 10));
-            return { [`${ns}_key`]: `${ns}_value` };
-          });
+        const resolver = vi.fn().mockImplementation(async (lang, ns) => {
+          // Simulate async loading
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          return { [`${ns}_key`]: `${ns}_value` };
+        });
 
         const i18n = await initializeServerI18n(settings, resolver);
 
@@ -421,14 +410,13 @@ describe('i18n Server', () => {
           defaultNS: 'common',
         };
 
-        const resolver = vi.fn()
-          .mockImplementation(async (lang, ns) => {
-            if (ns === 'slow') {
-              // Simulate very slow loading (longer than wait time)
-              await new Promise(resolve => setTimeout(resolve, 200));
-            }
-            return { key: 'value' };
-          });
+        const resolver = vi.fn().mockImplementation(async (lang, ns) => {
+          if (ns === 'slow') {
+            // Simulate very slow loading (longer than wait time)
+            await new Promise((resolve) => setTimeout(resolve, 200));
+          }
+          return { key: 'value' };
+        });
 
         const i18n = await initializeServerI18n(settings, resolver);
 
@@ -559,7 +547,7 @@ describe('i18n Server', () => {
 
         // Create a large translation object
         const largeTranslations = Object.fromEntries(
-          Array.from({ length: 1000 }, (_, i) => [`key${i}`, `value${i}`])
+          Array.from({ length: 1000 }, (_, i) => [`key${i}`, `value${i}`]),
         );
 
         const resolver = vi.fn().mockResolvedValue(largeTranslations);

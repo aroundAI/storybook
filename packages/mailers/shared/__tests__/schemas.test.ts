@@ -434,7 +434,9 @@ describe('Mailer Schemas', () => {
           const userError = result.error.issues.find((i) =>
             i.path.includes('user'),
           );
-          expect(userError?.message).toContain('Please provide the variable EMAIL_USER');
+          expect(userError?.message).toContain(
+            'Please provide the variable EMAIL_USER',
+          );
         }
       });
 
@@ -451,7 +453,9 @@ describe('Mailer Schemas', () => {
           const passError = result.error.issues.find((i) =>
             i.path.includes('pass'),
           );
-          expect(passError?.message).toContain('Please provide the variable EMAIL_PASSWORD');
+          expect(passError?.message).toContain(
+            'Please provide the variable EMAIL_PASSWORD',
+          );
         }
       });
 
@@ -468,7 +472,9 @@ describe('Mailer Schemas', () => {
           const hostError = result.error.issues.find((i) =>
             i.path.includes('host'),
           );
-          expect(hostError?.message).toContain('Please provide the variable EMAIL_HOST');
+          expect(hostError?.message).toContain(
+            'Please provide the variable EMAIL_HOST',
+          );
         }
       });
 
@@ -485,7 +491,9 @@ describe('Mailer Schemas', () => {
           const portError = result.error.issues.find((i) =>
             i.path.includes('port'),
           );
-          expect(portError?.message).toContain('Please provide the variable EMAIL_PORT');
+          expect(portError?.message).toContain(
+            'Please provide the variable EMAIL_PORT',
+          );
         }
       });
 
@@ -502,7 +510,9 @@ describe('Mailer Schemas', () => {
           const secureError = result.error.issues.find((i) =>
             i.path.includes('secure'),
           );
-          expect(secureError?.message).toContain('Please provide the variable EMAIL_TLS');
+          expect(secureError?.message).toContain(
+            'Please provide the variable EMAIL_TLS',
+          );
         }
       });
     });

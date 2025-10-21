@@ -44,7 +44,8 @@ process.env.NODE_ENV = 'test';
 
 // WebSocket Lambda environment variables
 process.env.CONNECTIONS_TABLE_NAME = 'test-connections-table';
-process.env.WEBSOCKET_API_ENDPOINT = 'https://test.execute-api.us-east-1.amazonaws.com/test';
+process.env.WEBSOCKET_API_ENDPOINT =
+  'https://test.execute-api.us-east-1.amazonaws.com/test';
 process.env.AWS_REGION = 'us-east-1';
 
 // Email worker Lambda environment variables

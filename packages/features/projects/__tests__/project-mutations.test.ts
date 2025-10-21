@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   addProjectMemberAction,
@@ -358,7 +358,10 @@ describe('Project Mutations', () => {
           select: vi.fn().mockReturnValue({
             single: vi
               .fn()
-              .mockResolvedValue({ data: null, error: { message: 'Not found' } }),
+              .mockResolvedValue({
+                data: null,
+                error: { message: 'Not found' },
+              }),
           }),
         }),
       });
@@ -413,9 +416,7 @@ describe('Project Mutations', () => {
       mockSingle.mockResolvedValue({ data: {}, error: null });
 
       mockDelete.mockReturnValue({
-        eq: vi
-          .fn()
-          .mockResolvedValue({ error: { message: 'Cannot delete' } }),
+        eq: vi.fn().mockResolvedValue({ error: { message: 'Cannot delete' } }),
       });
 
       await expect(deleteProjectAction({ id: PROJECT_ID })).rejects.toThrow(

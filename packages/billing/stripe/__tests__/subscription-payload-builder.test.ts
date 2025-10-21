@@ -1,12 +1,10 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import type Stripe from 'stripe';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { createStripeSubscriptionPayloadBuilderService } from '../src/services/stripe-subscription-payload-builder.service';
 
 describe('StripeSubscriptionPayloadBuilderService', () => {
-  let service: ReturnType<
-    typeof createStripeSubscriptionPayloadBuilderService
-  >;
+  let service: ReturnType<typeof createStripeSubscriptionPayloadBuilderService>;
 
   beforeEach(() => {
     service = createStripeSubscriptionPayloadBuilderService();

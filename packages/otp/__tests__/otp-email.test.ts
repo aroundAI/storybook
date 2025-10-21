@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { renderOtpEmail } from '@kit/email-templates';
+import { getMailer } from '@kit/mailers';
+import { getLogger } from '@kit/shared/logger';
+
+import { createOtpEmailService } from '../src/server/otp-email.service';
+
 // Set required environment variables BEFORE any imports
 process.env.EMAIL_SENDER = 'noreply@example.com';
 process.env.NEXT_PUBLIC_PRODUCT_NAME = 'Test SaaS';
@@ -16,12 +22,6 @@ vi.mock('@kit/mailers', () => ({
 vi.mock('@kit/shared/logger', () => ({
   getLogger: vi.fn(),
 }));
-
-import { renderOtpEmail } from '@kit/email-templates';
-import { getMailer } from '@kit/mailers';
-import { getLogger } from '@kit/shared/logger';
-
-import { createOtpEmailService } from '../src/server/otp-email.service';
 
 describe('OtpEmailService', () => {
   // Store original env
@@ -214,9 +214,7 @@ describe('OtpEmailService', () => {
       });
 
       it('should not call success log when sendEmail fails', async () => {
-        mockMailer.sendEmail.mockRejectedValueOnce(
-          new Error('Failed to send'),
-        );
+        mockMailer.sendEmail.mockRejectedValueOnce(new Error('Failed to send'));
 
         const service = createOtpEmailService();
 

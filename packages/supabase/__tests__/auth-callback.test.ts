@@ -150,13 +150,13 @@ describe('AuthCallbackService', () => {
         const result = await service.verifyTokenHash(request, params);
 
         expect(result.pathname).toBe('/error');
-        expect(result.searchParams.get('error')).toBe('auth:errors.otp_expired');
+        expect(result.searchParams.get('error')).toBe(
+          'auth:errors.otp_expired',
+        );
       });
 
       it('should redirect to error page when token_hash is missing', async () => {
-        const request = new Request(
-          'https://example.com/callback?type=email',
-        );
+        const request = new Request('https://example.com/callback?type=email');
 
         const result = await service.verifyTokenHash(request, params);
 
@@ -181,9 +181,7 @@ describe('AuthCallbackService', () => {
           redirectPath: '/dashboard',
         };
 
-        const request = new Request(
-          'https://example.com/callback?type=email',
-        );
+        const request = new Request('https://example.com/callback?type=email');
 
         const result = await service.verifyTokenHash(
           request,
@@ -400,8 +398,7 @@ describe('AuthCallbackService', () => {
         mockSupabaseClient.auth.exchangeCodeForSession.mockResolvedValueOnce({
           data: null,
           error: {
-            message:
-              'both auth code and code verifier should be non-empty',
+            message: 'both auth code and code verifier should be non-empty',
             code: 'auth_code_verifier_error',
           },
         });

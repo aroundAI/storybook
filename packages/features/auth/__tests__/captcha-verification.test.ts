@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { verifyCaptchaToken } from '../src/captcha/server/verify-captcha';
+
 // Mock global fetch
 global.fetch = vi.fn();
 
 // Set environment before importing
 process.env.CAPTCHA_SECRET_TOKEN = 'test-secret-token';
-
-import { verifyCaptchaToken } from '../src/captcha/server/verify-captcha';
 
 describe('verifyCaptchaToken', () => {
   const mockToken = 'mock-captcha-token';
@@ -105,9 +105,7 @@ describe('verifyCaptchaToken', () => {
     });
 
     it('should handle network errors', async () => {
-      (global.fetch as any).mockRejectedValueOnce(
-        new Error('Network error'),
-      );
+      (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(verifyCaptchaToken(mockToken)).rejects.toThrow(
         'Network error',
@@ -237,9 +235,7 @@ describe('verifyCaptchaToken', () => {
         json: async () => ({ success: true }),
       });
 
-      await expect(
-        verifyCaptchaToken(unicodeToken),
-      ).resolves.toBeUndefined();
+      await expect(verifyCaptchaToken(unicodeToken)).resolves.toBeUndefined();
     });
   });
 

@@ -253,7 +253,8 @@ describe('LemonSqueezy HMAC Verification', () => {
 
     describe('LemonSqueezy webhook verification use case', () => {
       it('should verify signature matches expected format', async () => {
-        const webhookSecret = process.env.LEMON_SQUEEZY_WEBHOOK_SECRET || 'test-secret';
+        const webhookSecret =
+          process.env.LEMON_SQUEEZY_WEBHOOK_SECRET || 'test-secret';
         const webhookBody = JSON.stringify({
           meta: {
             event_name: 'subscription_created',
@@ -284,7 +285,10 @@ describe('LemonSqueezy HMAC Verification', () => {
         const payload = '{"event":"test"}';
 
         // Server generates signature
-        const serverSignature = await createHmac({ key: secret, data: payload });
+        const serverSignature = await createHmac({
+          key: secret,
+          data: payload,
+        });
 
         // Webhook sends payload + signature
         // Receiver verifies by generating signature from payload

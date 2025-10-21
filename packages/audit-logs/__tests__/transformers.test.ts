@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultTransformer } from '../src/transformers/default-transformer';
-import { accountTransformer } from '../src/transformers/account-transformer';
-import { userTransformer } from '../src/transformers/user-transformer';
 import { initializeAuditTransformers } from '../src/transformers';
+import { accountTransformer } from '../src/transformers/account-transformer';
+import { defaultTransformer } from '../src/transformers/default-transformer';
+import { userTransformer } from '../src/transformers/user-transformer';
 
 describe('Audit Transformers', () => {
   describe('defaultTransformer', () => {
@@ -279,7 +279,9 @@ describe('Audit Transformers', () => {
         expect(result.updated_at).toBe('2024-01-02T00:00:00.000Z');
 
         // Should exclude billing and public_data
-        expect((result as Record<string, unknown>).billing_data).toBeUndefined();
+        expect(
+          (result as Record<string, unknown>).billing_data,
+        ).toBeUndefined();
         expect((result as Record<string, unknown>).public_data).toBeUndefined();
       });
 
@@ -365,9 +367,7 @@ describe('Audit Transformers', () => {
           account,
           'archive',
         );
-        expect(description).toBe(
-          'Personal account "Test" action: archive',
-        );
+        expect(description).toBe('Personal account "Test" action: archive');
       });
 
       it('should handle unnamed accounts', () => {
@@ -492,8 +492,12 @@ describe('Audit Transformers', () => {
         expect(result.is_active).toBe(true);
 
         // Should exclude password and tokens
-        expect((result as Record<string, unknown>).password_hash).toBeUndefined();
-        expect((result as Record<string, unknown>).access_token).toBeUndefined();
+        expect(
+          (result as Record<string, unknown>).password_hash,
+        ).toBeUndefined();
+        expect(
+          (result as Record<string, unknown>).access_token,
+        ).toBeUndefined();
       });
 
       it('should handle full_name fallback', async () => {

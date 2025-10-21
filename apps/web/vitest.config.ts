@@ -54,7 +54,24 @@ export default defineConfig({
         __dirname,
         '../../packages/cache/src/index.ts',
       ),
+      '@kit/billing': path.resolve(
+        __dirname,
+        '../../packages/billing/core/src/index.ts',
+      ),
+      '@kit/billing-gateway': path.resolve(
+        __dirname,
+        '../../packages/billing/gateway/src/index.ts',
+      ),
+      '@kit/next/routes': path.resolve(
+        __dirname,
+        '../../packages/next/src/routes/index.ts',
+      ),
+      '@kit/supabase/server-admin-client': path.resolve(
+        __dirname,
+        '../../packages/supabase/src/clients/server-admin-client.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
+      '~/config': path.resolve(__dirname, './config'),
       '~': path.resolve(__dirname, './app'),
       'server-only': path.resolve(__dirname, './__mocks__/server-only.ts'),
     },

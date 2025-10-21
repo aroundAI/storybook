@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  type LastAuthMethod,
   clearLastAuthMethod,
   getLastAuthMethod,
   saveLastAuthMethod,
-  type LastAuthMethod,
 } from '../src/utils/last-auth-method';
 
 // Mock isBrowser from @kit/shared/utils
@@ -178,9 +178,7 @@ describe('LastAuthMethod Utils', () => {
       const result = getLastAuthMethod();
 
       expect(result).toBeNull();
-      expect(localStorageMock.getItem).toHaveBeenCalledWith(
-        'auth_last_method',
-      );
+      expect(localStorageMock.getItem).toHaveBeenCalledWith('auth_last_method');
     });
 
     it('should return stored auth method if recent', () => {
@@ -432,7 +430,7 @@ describe('LastAuthMethod Utils', () => {
     it('should handle special characters in email', () => {
       const authMethod: LastAuthMethod = {
         method: 'password',
-        email: "user+test@example.com'\"<>",
+        email: 'user+test@example.com\'"<>',
         timestamp: Date.now(),
       };
 

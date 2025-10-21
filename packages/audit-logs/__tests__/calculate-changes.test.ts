@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateChanges, formatChanges } from '../src/server/calculate-changes';
+import {
+  calculateChanges,
+  formatChanges,
+} from '../src/server/calculate-changes';
 
 describe('calculateChanges', () => {
   describe('Basic change detection', () => {

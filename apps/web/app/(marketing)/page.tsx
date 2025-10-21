@@ -44,7 +44,9 @@ function Home() {
           }
           subtitle={
             <span>
-              The complete AI SaaS starter kit for Around AI projects. Built-in LLM integration, prompt management, and everything you need to ship production-ready AI applications faster.
+              The complete AI SaaS starter kit for Around AI projects. Built-in
+              LLM integration, prompt management, and everything you need to
+              ship production-ready AI applications faster.
             </span>
           }
           cta={<MainCallToActionButton />}
@@ -75,7 +77,9 @@ function Home() {
                 </b>
                 .{' '}
                 <span className="text-muted-foreground font-normal tracking-tighter">
-                  Ship production-ready AI applications with built-in LLM integration, prompt management, and all the essential SaaS features.
+                  Ship production-ready AI applications with built-in LLM
+                  integration, prompt management, and all the essential SaaS
+                  features.
                 </span>
               </>
             }

@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAccountMembersService } from '../src/server/services/account-members.service';
 
@@ -19,14 +19,11 @@ vi.mock('@kit/shared/logger', () => ({
 // Mock per-seat billing service
 const mockDecreaseSeats = vi.fn();
 
-vi.mock(
-  '../src/server/services/account-per-seat-billing.service',
-  () => ({
-    createAccountPerSeatBillingService: vi.fn(() => ({
-      decreaseSeats: mockDecreaseSeats,
-    })),
-  }),
-);
+vi.mock('../src/server/services/account-per-seat-billing.service', () => ({
+  createAccountPerSeatBillingService: vi.fn(() => ({
+    decreaseSeats: mockDecreaseSeats,
+  })),
+}));
 
 // Valid UUIDs for testing
 const ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';

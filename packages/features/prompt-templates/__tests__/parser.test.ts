@@ -122,8 +122,7 @@ describe('Template Parser', () => {
       });
 
       it('should parse conditional with nested content', () => {
-        const template =
-          'Status: {{#if isPremium}}Premium Member{{/if}}';
+        const template = 'Status: {{#if isPremium}}Premium Member{{/if}}';
         const parsed = parseTemplate(template);
 
         expect(parsed.conditionals[0]?.content).toBe('Premium Member');

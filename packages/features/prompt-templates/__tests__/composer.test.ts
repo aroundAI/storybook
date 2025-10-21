@@ -10,7 +10,6 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import type { PromptSystemPrompt, SystemPromptLayer } from '../src/lib/types';
 import {
   compareCompositions,
   composeSystemPrompts,
@@ -18,6 +17,7 @@ import {
   getUsedLayers,
   mergePrompts,
 } from '../src/lib/engine/composer';
+import type { PromptSystemPrompt, SystemPromptLayer } from '../src/lib/types';
 
 // Helper to create mock system prompts
 function createMockPrompt(
@@ -147,22 +147,12 @@ describe('System Prompt Composer', () => {
 
       it('should filter based on context conditions', () => {
         const prompts = [
-          createMockPrompt(
-            '1',
-            'prod',
-            'role',
-            'Production',
-            0,
-            { environment: 'production' },
-          ),
-          createMockPrompt(
-            '2',
-            'dev',
-            'role',
-            'Development',
-            0,
-            { environment: 'development' },
-          ),
+          createMockPrompt('1', 'prod', 'role', 'Production', 0, {
+            environment: 'production',
+          }),
+          createMockPrompt('2', 'dev', 'role', 'Development', 0, {
+            environment: 'development',
+          }),
         ];
 
         const result = composeSystemPrompts(prompts, {
@@ -175,14 +165,9 @@ describe('System Prompt Composer', () => {
 
       it('should support array of acceptable values', () => {
         const prompts = [
-          createMockPrompt(
-            '1',
-            'multi',
-            'role',
-            'Multi-env',
-            0,
-            { environment: ['production', 'staging'] },
-          ),
+          createMockPrompt('1', 'multi', 'role', 'Multi-env', 0, {
+            environment: ['production', 'staging'],
+          }),
         ];
 
         // Should match when context value is in array
@@ -205,14 +190,10 @@ describe('System Prompt Composer', () => {
 
       it('should handle multiple condition rules (AND logic)', () => {
         const prompts = [
-          createMockPrompt(
-            '1',
-            'specific',
-            'role',
-            'Specific context',
-            0,
-            { environment: 'production', region: 'us-east-1' },
-          ),
+          createMockPrompt('1', 'specific', 'role', 'Specific context', 0, {
+            environment: 'production',
+            region: 'us-east-1',
+          }),
         ];
 
         // Both conditions must match
@@ -230,7 +211,14 @@ describe('System Prompt Composer', () => {
 
       it('should handle null/undefined condition rules', () => {
         const prompts = [
-          createMockPrompt('1', 'null', 'role', 'Null conditions', 0, null as any),
+          createMockPrompt(
+            '1',
+            'null',
+            'role',
+            'Null conditions',
+            0,
+            null as any,
+          ),
         ];
 
         const result = composeSystemPrompts(prompts);
@@ -257,9 +245,7 @@ describe('System Prompt Composer', () => {
       });
 
       it('should generate composition hash', () => {
-        const prompts = [
-          createMockPrompt('1', 'test', 'role', 'Content', 0),
-        ];
+        const prompts = [createMockPrompt('1', 'test', 'role', 'Content', 0)];
 
         const result = composeSystemPrompts(prompts);
 
@@ -280,12 +266,8 @@ describe('System Prompt Composer', () => {
       });
 
       it('should generate different hash for different composition', () => {
-        const prompts1 = [
-          createMockPrompt('1', 'a', 'role', 'Content A', 0),
-        ];
-        const prompts2 = [
-          createMockPrompt('2', 'b', 'role', 'Content B', 0),
-        ];
+        const prompts1 = [createMockPrompt('1', 'a', 'role', 'Content A', 0)];
+        const prompts2 = [createMockPrompt('2', 'b', 'role', 'Content B', 0)];
 
         const result1 = composeSystemPrompts(prompts1);
         const result2 = composeSystemPrompts(prompts2);
@@ -296,9 +278,7 @@ describe('System Prompt Composer', () => {
 
     describe('options', () => {
       it('should use default options when not provided', () => {
-        const prompts = [
-          createMockPrompt('1', 'test', 'role', 'Test', 0),
-        ];
+        const prompts = [createMockPrompt('1', 'test', 'role', 'Test', 0)];
 
         const result = composeSystemPrompts(prompts);
 
@@ -328,7 +308,9 @@ describe('System Prompt Composer', () => {
 
       it('should handle all prompts filtered by conditions', () => {
         const prompts = [
-          createMockPrompt('1', 'filtered', 'role', 'Filtered', 0, { env: 'prod' }),
+          createMockPrompt('1', 'filtered', 'role', 'Filtered', 0, {
+            env: 'prod',
+          }),
         ];
 
         const result = composeSystemPrompts(prompts, {
@@ -348,7 +330,9 @@ describe('System Prompt Composer', () => {
         const result = composeSystemPrompts(prompts);
 
         expect(result.system_prompts).toHaveLength(3);
-        expect(result.system_prompts.every((p) => p.layer === 'role')).toBe(true);
+        expect(result.system_prompts.every((p) => p.layer === 'role')).toBe(
+          true,
+        );
       });
     });
   });
@@ -394,7 +378,13 @@ User line 2`;
       const composition = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'role', layer: 'role' as SystemPromptLayer, content: 'You are helpful', priority: 10 },
+          {
+            id: '1',
+            slug: 'role',
+            layer: 'role' as SystemPromptLayer,
+            content: 'You are helpful',
+            priority: 10,
+          },
         ],
         composition_hash: 'abc123def456',
       };
@@ -412,8 +402,20 @@ User line 2`;
       const composition = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'comp', layer: 'compliance' as SystemPromptLayer, content: 'GDPR', priority: 0 },
-          { id: '2', slug: 'role', layer: 'role' as SystemPromptLayer, content: 'Assistant', priority: 0 },
+          {
+            id: '1',
+            slug: 'comp',
+            layer: 'compliance' as SystemPromptLayer,
+            content: 'GDPR',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'role',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Assistant',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash',
       };
@@ -428,8 +430,20 @@ User line 2`;
       const composition = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'a', layer: 'compliance' as SystemPromptLayer, content: 'A', priority: 0 },
-          { id: '2', slug: 'b', layer: 'role' as SystemPromptLayer, content: 'B', priority: 0 },
+          {
+            id: '1',
+            slug: 'a',
+            layer: 'compliance' as SystemPromptLayer,
+            content: 'A',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'b',
+            layer: 'role' as SystemPromptLayer,
+            content: 'B',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash',
       };
@@ -438,9 +452,11 @@ User line 2`;
       const lines = result.split('\n');
 
       // Should have empty line between layer sections
-      expect(lines.some((line, i) =>
-        line.includes('## COMPLIANCE') && lines[i + 1] === ''
-      )).toBe(false); // First layer doesn't have preceding empty line
+      expect(
+        lines.some(
+          (line, i) => line.includes('## COMPLIANCE') && lines[i + 1] === '',
+        ),
+      ).toBe(false); // First layer doesn't have preceding empty line
       expect(result).toContain('\n\n## ROLE');
     });
   });
@@ -450,9 +466,27 @@ User line 2`;
       const composition = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'a', layer: 'role' as SystemPromptLayer, content: 'A', priority: 0 },
-          { id: '2', slug: 'b', layer: 'role' as SystemPromptLayer, content: 'B', priority: 0 },
-          { id: '3', slug: 'c', layer: 'context' as SystemPromptLayer, content: 'C', priority: 0 },
+          {
+            id: '1',
+            slug: 'a',
+            layer: 'role' as SystemPromptLayer,
+            content: 'A',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'b',
+            layer: 'role' as SystemPromptLayer,
+            content: 'B',
+            priority: 0,
+          },
+          {
+            id: '3',
+            slug: 'c',
+            layer: 'context' as SystemPromptLayer,
+            content: 'C',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash',
       };
@@ -468,9 +502,27 @@ User line 2`;
       const composition = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'a', layer: 'examples' as SystemPromptLayer, content: 'A', priority: 0 },
-          { id: '2', slug: 'b', layer: 'compliance' as SystemPromptLayer, content: 'B', priority: 0 },
-          { id: '3', slug: 'c', layer: 'role' as SystemPromptLayer, content: 'C', priority: 0 },
+          {
+            id: '1',
+            slug: 'a',
+            layer: 'examples' as SystemPromptLayer,
+            content: 'A',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'b',
+            layer: 'compliance' as SystemPromptLayer,
+            content: 'B',
+            priority: 0,
+          },
+          {
+            id: '3',
+            slug: 'c',
+            layer: 'role' as SystemPromptLayer,
+            content: 'C',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash',
       };
@@ -498,14 +550,26 @@ User line 2`;
       const compA = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'test', layer: 'role' as SystemPromptLayer, content: 'Test', priority: 0 },
+          {
+            id: '1',
+            slug: 'test',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Test',
+            priority: 0,
+          },
         ],
         composition_hash: 'same-hash',
       };
       const compB = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'test', layer: 'role' as SystemPromptLayer, content: 'Test', priority: 0 },
+          {
+            id: '1',
+            slug: 'test',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Test',
+            priority: 0,
+          },
         ],
         composition_hash: 'same-hash',
       };
@@ -522,15 +586,33 @@ User line 2`;
       const compA = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'existing', layer: 'role' as SystemPromptLayer, content: 'Existing', priority: 0 },
+          {
+            id: '1',
+            slug: 'existing',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Existing',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-a',
       };
       const compB = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'existing', layer: 'role' as SystemPromptLayer, content: 'Existing', priority: 0 },
-          { id: '2', slug: 'new', layer: 'context' as SystemPromptLayer, content: 'New', priority: 0 },
+          {
+            id: '1',
+            slug: 'existing',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Existing',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'new',
+            layer: 'context' as SystemPromptLayer,
+            content: 'New',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-b',
       };
@@ -546,15 +628,33 @@ User line 2`;
       const compA = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'kept', layer: 'role' as SystemPromptLayer, content: 'Kept', priority: 0 },
-          { id: '2', slug: 'removed', layer: 'context' as SystemPromptLayer, content: 'Removed', priority: 0 },
+          {
+            id: '1',
+            slug: 'kept',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Kept',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'removed',
+            layer: 'context' as SystemPromptLayer,
+            content: 'Removed',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-a',
       };
       const compB = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'kept', layer: 'role' as SystemPromptLayer, content: 'Kept', priority: 0 },
+          {
+            id: '1',
+            slug: 'kept',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Kept',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-b',
       };
@@ -570,14 +670,26 @@ User line 2`;
       const compA = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'modified', layer: 'role' as SystemPromptLayer, content: 'Original', priority: 0 },
+          {
+            id: '1',
+            slug: 'modified',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Original',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-a',
       };
       const compB = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'modified', layer: 'role' as SystemPromptLayer, content: 'Updated', priority: 0 },
+          {
+            id: '1',
+            slug: 'modified',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Updated',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-b',
       };
@@ -592,18 +704,54 @@ User line 2`;
       const compA = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'kept', layer: 'role' as SystemPromptLayer, content: 'Kept', priority: 0 },
-          { id: '2', slug: 'removed', layer: 'context' as SystemPromptLayer, content: 'Removed', priority: 0 },
-          { id: '3', slug: 'changed', layer: 'format' as SystemPromptLayer, content: 'Old', priority: 0 },
+          {
+            id: '1',
+            slug: 'kept',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Kept',
+            priority: 0,
+          },
+          {
+            id: '2',
+            slug: 'removed',
+            layer: 'context' as SystemPromptLayer,
+            content: 'Removed',
+            priority: 0,
+          },
+          {
+            id: '3',
+            slug: 'changed',
+            layer: 'format' as SystemPromptLayer,
+            content: 'Old',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-a',
       };
       const compB = {
         template_id: 'template-1',
         system_prompts: [
-          { id: '1', slug: 'kept', layer: 'role' as SystemPromptLayer, content: 'Kept', priority: 0 },
-          { id: '3', slug: 'changed', layer: 'format' as SystemPromptLayer, content: 'New', priority: 0 },
-          { id: '4', slug: 'added', layer: 'examples' as SystemPromptLayer, content: 'Added', priority: 0 },
+          {
+            id: '1',
+            slug: 'kept',
+            layer: 'role' as SystemPromptLayer,
+            content: 'Kept',
+            priority: 0,
+          },
+          {
+            id: '3',
+            slug: 'changed',
+            layer: 'format' as SystemPromptLayer,
+            content: 'New',
+            priority: 0,
+          },
+          {
+            id: '4',
+            slug: 'added',
+            layer: 'examples' as SystemPromptLayer,
+            content: 'Added',
+            priority: 0,
+          },
         ],
         composition_hash: 'hash-b',
       };

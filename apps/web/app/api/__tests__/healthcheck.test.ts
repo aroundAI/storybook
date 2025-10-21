@@ -12,7 +12,9 @@ vi.mock('@kit/cache', () => ({
 }));
 
 // Mock console methods
-const mockConsoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+const mockConsoleError = vi
+  .spyOn(console, 'error')
+  .mockImplementation(() => {});
 
 describe('Health Check API', () => {
   let mockSupabaseClient: any;
@@ -34,7 +36,9 @@ describe('Health Check API', () => {
       isHealthy: vi.fn(() => Promise.resolve(true)),
     };
 
-    const { getSupabaseServerClient } = await import('@kit/supabase/server-client');
+    const { getSupabaseServerClient } = await import(
+      '@kit/supabase/server-client'
+    );
     const { createCacheClient } = await import('@kit/cache');
 
     vi.mocked(getSupabaseServerClient).mockReturnValue(mockSupabaseClient);
@@ -97,7 +101,12 @@ describe('Health Check API', () => {
     it('should return 503 when database check fails', async () => {
       mockSupabaseClient.from = vi.fn(() => ({
         select: vi.fn(() => ({
-          limit: vi.fn(() => Promise.resolve({ error: new Error('Database connection failed'), data: null })),
+          limit: vi.fn(() =>
+            Promise.resolve({
+              error: new Error('Database connection failed'),
+              data: null,
+            }),
+          ),
         })),
       }));
 
@@ -113,7 +122,9 @@ describe('Health Check API', () => {
     it('should handle database query throwing exception', async () => {
       mockSupabaseClient.from = vi.fn(() => ({
         select: vi.fn(() => ({
-          limit: vi.fn(() => { throw new Error('Database connection error'); }),
+          limit: vi.fn(() => {
+            throw new Error('Database connection error');
+          }),
         })),
       }));
 
@@ -130,7 +141,9 @@ describe('Health Check API', () => {
     });
 
     it('should handle Supabase client creation throwing', async () => {
-      const { getSupabaseServerClient } = await import('@kit/supabase/server-client');
+      const { getSupabaseServerClient } = await import(
+        '@kit/supabase/server-client'
+      );
       vi.mocked(getSupabaseServerClient).mockImplementation(() => {
         throw new Error('Client creation failed');
       });
@@ -158,7 +171,9 @@ describe('Health Check API', () => {
     });
 
     it('should handle cache throwing exception', async () => {
-      mockCacheClient.isHealthy = vi.fn(() => Promise.reject(new Error('Cache connection failed')));
+      mockCacheClient.isHealthy = vi.fn(() =>
+        Promise.reject(new Error('Cache connection failed')),
+      );
 
       const response = await GET();
       const data = await response.json();
@@ -191,7 +206,9 @@ describe('Health Check API', () => {
     it('should return 503 when both database and cache fail', async () => {
       mockSupabaseClient.from = vi.fn(() => ({
         select: vi.fn(() => ({
-          limit: vi.fn(() => Promise.resolve({ error: new Error('DB failed'), data: null })),
+          limit: vi.fn(() =>
+            Promise.resolve({ error: new Error('DB failed'), data: null }),
+          ),
         })),
       }));
       mockCacheClient.isHealthy = vi.fn(() => Promise.resolve(false));
@@ -211,7 +228,9 @@ describe('Health Check API', () => {
           throw new Error('Database error');
         }),
       }));
-      mockCacheClient.isHealthy = vi.fn(() => Promise.reject(new Error('Cache error')));
+      mockCacheClient.isHealthy = vi.fn(() =>
+        Promise.reject(new Error('Cache error')),
+      );
 
       await GET();
 
@@ -228,7 +247,9 @@ describe('Health Check API', () => {
 
   describe('Error Handling', () => {
     it('should handle unexpected errors in top-level try-catch', async () => {
-      const { getSupabaseServerClient } = await import('@kit/supabase/server-client');
+      const { getSupabaseServerClient } = await import(
+        '@kit/supabase/server-client'
+      );
       vi.mocked(getSupabaseServerClient).mockImplementation(() => {
         throw new Error('Unexpected error');
       });
@@ -243,7 +264,9 @@ describe('Health Check API', () => {
 
     it('should include error message for Error instances', async () => {
       const errorMessage = 'Critical system failure';
-      const { getSupabaseServerClient } = await import('@kit/supabase/server-client');
+      const { getSupabaseServerClient } = await import(
+        '@kit/supabase/server-client'
+      );
       vi.mocked(getSupabaseServerClient).mockImplementation(() => {
         throw new Error(errorMessage);
       });
@@ -314,7 +337,9 @@ describe('Health Check API', () => {
     it('should handle cache healthy but database unhealthy', async () => {
       mockSupabaseClient.from = vi.fn(() => ({
         select: vi.fn(() => ({
-          limit: vi.fn(() => Promise.resolve({ error: new Error('DB error'), data: null })),
+          limit: vi.fn(() =>
+            Promise.resolve({ error: new Error('DB error'), data: null }),
+          ),
         })),
       }));
 

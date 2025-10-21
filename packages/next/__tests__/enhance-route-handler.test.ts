@@ -1,6 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest, NextResponse } from 'next/server';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+
 import { enhanceRouteHandler } from '../src/routes';
 
 // Mock dependencies
@@ -28,12 +30,14 @@ vi.mock('@kit/supabase/server-client', () => ({
 }));
 
 describe('enhanceRouteHandler', () => {
-  const createMockRequest = (options: {
-    url?: string;
-    method?: string;
-    headers?: Record<string, string>;
-    body?: unknown;
-  } = {}) => {
+  const createMockRequest = (
+    options: {
+      url?: string;
+      method?: string;
+      headers?: Record<string, string>;
+      body?: unknown;
+    } = {},
+  ) => {
     const url = options.url || 'http://localhost:3000/api/test';
     const method = options.method || 'GET';
     const headers = new Headers(options.headers || {});
@@ -306,9 +310,7 @@ describe('enhanceRouteHandler', () => {
 
       await routeHandler(request, routeParams);
 
-      const { verifyCaptchaToken } = await import(
-        '@kit/auth/captcha/server'
-      );
+      const { verifyCaptchaToken } = await import('@kit/auth/captcha/server');
       expect(verifyCaptchaToken).not.toHaveBeenCalled();
     });
 
@@ -329,9 +331,7 @@ describe('enhanceRouteHandler', () => {
 
       await routeHandler(request, routeParams);
 
-      const { verifyCaptchaToken } = await import(
-        '@kit/auth/captcha/server'
-      );
+      const { verifyCaptchaToken } = await import('@kit/auth/captcha/server');
       expect(verifyCaptchaToken).toHaveBeenCalledWith('test-captcha-token');
       expect(handler).toHaveBeenCalled();
     });
@@ -357,9 +357,7 @@ describe('enhanceRouteHandler', () => {
     });
 
     it('should reject invalid captcha token', async () => {
-      const { verifyCaptchaToken } = await import(
-        '@kit/auth/captcha/server'
-      );
+      const { verifyCaptchaToken } = await import('@kit/auth/captcha/server');
       (verifyCaptchaToken as any).mockRejectedValueOnce(
         new Error('Invalid captcha'),
       );
@@ -449,9 +447,7 @@ describe('enhanceRouteHandler', () => {
 
       await routeHandler(request, routeParams);
 
-      const { verifyCaptchaToken } = await import(
-        '@kit/auth/captcha/server'
-      );
+      const { verifyCaptchaToken } = await import('@kit/auth/captcha/server');
       const { requireUser } = await import('@kit/supabase/require-user');
 
       expect(verifyCaptchaToken).toHaveBeenCalledWith('valid-token');
@@ -490,9 +486,7 @@ describe('enhanceRouteHandler', () => {
 
       await routeHandler(request, routeParams);
 
-      const { verifyCaptchaToken } = await import(
-        '@kit/auth/captcha/server'
-      );
+      const { verifyCaptchaToken } = await import('@kit/auth/captcha/server');
       const { requireUser } = await import('@kit/supabase/require-user');
 
       expect(verifyCaptchaToken).toHaveBeenCalledWith('test-token');
@@ -541,7 +535,7 @@ describe('enhanceRouteHandler', () => {
 
     it('should handle async handler', async () => {
       const handler = vi.fn(async ({ body }) => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise((resolve) => setTimeout(resolve, 10));
         return NextResponse.json({ processed: body });
       });
 

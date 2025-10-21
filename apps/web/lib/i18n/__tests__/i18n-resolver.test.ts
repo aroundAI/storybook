@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { i18nResolver } from '../i18n.resolver';
 
 // Mock console methods
-const mockConsoleGroup = vi.spyOn(console, 'group').mockImplementation(() => {});
+const mockConsoleGroup = vi
+  .spyOn(console, 'group')
+  .mockImplementation(() => {});
 const mockConsoleGroupEnd = vi
   .spyOn(console, 'groupEnd')
   .mockImplementation(() => {});
@@ -225,8 +227,7 @@ describe('i18nResolver', () => {
       expect(mockConsoleGroupEnd).toHaveBeenCalled();
 
       // Group should be called before groupEnd
-      const groupCallOrder =
-        mockConsoleGroup.mock.invocationCallOrder[0] || 0;
+      const groupCallOrder = mockConsoleGroup.mock.invocationCallOrder[0] || 0;
       const groupEndCallOrder =
         mockConsoleGroupEnd.mock.invocationCallOrder[0] || 0;
 

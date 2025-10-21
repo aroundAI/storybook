@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAdminAuthUserService } from '../src/lib/server/services/admin-auth-user.service';
 
@@ -204,9 +204,7 @@ describe('AdminAuthUserService', () => {
         error: null,
       });
 
-      await expect(
-        service.reactivateUser(SUPER_ADMIN_USER_ID),
-      ).rejects.toThrow(
+      await expect(service.reactivateUser(SUPER_ADMIN_USER_ID)).rejects.toThrow(
         'You cannot perform a destructive action on a Super Admin account',
       );
     });
@@ -377,9 +375,7 @@ describe('AdminAuthUserService', () => {
         error: null,
       });
 
-      await expect(
-        service.resetPassword(SUPER_ADMIN_USER_ID),
-      ).rejects.toThrow(
+      await expect(service.resetPassword(SUPER_ADMIN_USER_ID)).rejects.toThrow(
         'You cannot perform a destructive action on a Super Admin account',
       );
     });

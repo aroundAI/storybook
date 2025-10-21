@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type Stripe from 'stripe';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { StripeWebhookHandlerService } from '../src/services/stripe-webhook-handler.service';
 
@@ -31,16 +31,13 @@ const mockPayloadBuilderBuild = vi.fn();
 const mockGetPeriodStartsAt = vi.fn();
 const mockGetPeriodEndsAt = vi.fn();
 
-vi.mock(
-  '../src/services/stripe-subscription-payload-builder.service',
-  () => ({
-    createStripeSubscriptionPayloadBuilderService: vi.fn(() => ({
-      build: mockPayloadBuilderBuild,
-      getPeriodStartsAt: mockGetPeriodStartsAt,
-      getPeriodEndsAt: mockGetPeriodEndsAt,
-    })),
-  }),
-);
+vi.mock('../src/services/stripe-subscription-payload-builder.service', () => ({
+  createStripeSubscriptionPayloadBuilderService: vi.fn(() => ({
+    build: mockPayloadBuilderBuild,
+    getPeriodStartsAt: mockGetPeriodStartsAt,
+    getPeriodEndsAt: mockGetPeriodEndsAt,
+  })),
+}));
 
 // Mock environment schema
 vi.mock('../src/schema/stripe-server-env.schema', () => ({
@@ -128,13 +125,11 @@ describe('StripeWebhookHandlerService', () => {
     });
 
     it('should throw error when constructEventAsync fails', async () => {
-      mockConstructEventAsync.mockRejectedValue(
-        new Error('Invalid signature'),
-      );
+      mockConstructEventAsync.mockRejectedValue(new Error('Invalid signature'));
 
-      await expect(
-        service.verifyWebhookSignature(mockRequest),
-      ).rejects.toThrow('Invalid signature');
+      await expect(service.verifyWebhookSignature(mockRequest)).rejects.toThrow(
+        'Invalid signature',
+      );
     });
 
     it('should read stripe-signature header', async () => {
@@ -223,7 +218,9 @@ describe('StripeWebhookHandlerService', () => {
 
       mockSubscriptionsRetrieve.mockResolvedValue(mockSubscription);
       mockGetPeriodStartsAt.mockReturnValue(Date.now());
-      mockGetPeriodEndsAt.mockReturnValue(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      mockGetPeriodEndsAt.mockReturnValue(
+        Date.now() + 30 * 24 * 60 * 60 * 1000,
+      );
       mockPayloadBuilderBuild.mockReturnValue({
         target_account_id: 'acc_123',
         target_customer_id: 'cus_123',
@@ -293,9 +290,7 @@ describe('StripeWebhookHandlerService', () => {
         },
       };
 
-      mockCheckoutSessionsRetrieve.mockResolvedValue(
-        mockSessionWithLineItems,
-      );
+      mockCheckoutSessionsRetrieve.mockResolvedValue(mockSessionWithLineItems);
 
       const onCheckoutCompleted = vi.fn().mockResolvedValue(undefined);
 
@@ -417,7 +412,9 @@ describe('StripeWebhookHandlerService', () => {
       };
 
       mockGetPeriodStartsAt.mockReturnValue(Date.now());
-      mockGetPeriodEndsAt.mockReturnValue(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      mockGetPeriodEndsAt.mockReturnValue(
+        Date.now() + 30 * 24 * 60 * 60 * 1000,
+      );
       mockPayloadBuilderBuild.mockReturnValue({
         target_account_id: 'acc_123',
         target_subscription_id: 'sub_123',
@@ -596,7 +593,9 @@ describe('StripeWebhookHandlerService', () => {
 
       mockSubscriptionsRetrieve.mockResolvedValue(mockSubscription);
       mockGetPeriodStartsAt.mockReturnValue(Date.now());
-      mockGetPeriodEndsAt.mockReturnValue(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      mockGetPeriodEndsAt.mockReturnValue(
+        Date.now() + 30 * 24 * 60 * 60 * 1000,
+      );
       mockPayloadBuilderBuild.mockReturnValue({
         target_account_id: 'acc_123',
         target_subscription_id: 'sub_123',
@@ -770,7 +769,9 @@ describe('StripeWebhookHandlerService', () => {
       };
 
       mockGetPeriodStartsAt.mockReturnValue(Date.now());
-      mockGetPeriodEndsAt.mockReturnValue(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      mockGetPeriodEndsAt.mockReturnValue(
+        Date.now() + 30 * 24 * 60 * 60 * 1000,
+      );
 
       const onSubscriptionUpdated = vi.fn().mockResolvedValue(undefined);
 
@@ -796,7 +797,9 @@ describe('StripeWebhookHandlerService', () => {
     });
 
     it('should default to flat type for unknown price IDs', async () => {
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
 
       const mockSubscription: Partial<Stripe.Subscription> = {
         id: 'sub_123',
@@ -843,7 +846,9 @@ describe('StripeWebhookHandlerService', () => {
       };
 
       mockGetPeriodStartsAt.mockReturnValue(Date.now());
-      mockGetPeriodEndsAt.mockReturnValue(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      mockGetPeriodEndsAt.mockReturnValue(
+        Date.now() + 30 * 24 * 60 * 60 * 1000,
+      );
 
       const onSubscriptionUpdated = vi.fn().mockResolvedValue(undefined);
 

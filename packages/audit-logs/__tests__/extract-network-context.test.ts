@@ -1,16 +1,16 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
-// Mock next/headers - must be before imports
-vi.mock('next/headers', () => ({
-  headers: vi.fn(),
-}));
-
 import { headers } from 'next/headers';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   extractNetworkContext,
   formatIpAddress,
 } from '../src/server/extract-network-context';
+
+// Mock next/headers - must be before imports
+vi.mock('next/headers', () => ({
+  headers: vi.fn(),
+}));
 
 const mockHeaders = vi.mocked(headers);
 
@@ -215,9 +215,7 @@ describe('extractNetworkContext', () => {
 
       const context = await extractNetworkContext();
 
-      expect(context.ipAddress).toBe(
-        '2001:0db8:85a3:0000:0000:8a2e:0370:7334',
-      );
+      expect(context.ipAddress).toBe('2001:0db8:85a3:0000:0000:8a2e:0370:7334');
     });
 
     it('should handle localhost IP addresses', async () => {
@@ -300,8 +298,12 @@ describe('formatIpAddress', () => {
       // The current implementation has a simple IPv6 regex that requires
       // exactly 8 groups of exactly 4 hex digits each, which is very strict
       // and doesn't match most real-world IPv6 addresses
-      expect(formatIpAddress('2001:0db8:85a3:0000:0000:8a2e:0370:7334')).toBeUndefined();
-      expect(formatIpAddress('0000:0000:0000:0000:0000:0000:0000:0001')).toBeUndefined();
+      expect(
+        formatIpAddress('2001:0db8:85a3:0000:0000:8a2e:0370:7334'),
+      ).toBeUndefined();
+      expect(
+        formatIpAddress('0000:0000:0000:0000:0000:0000:0000:0001'),
+      ).toBeUndefined();
       expect(formatIpAddress('2001:db8::1')).toBeUndefined();
       expect(formatIpAddress('::1')).toBeUndefined();
       expect(formatIpAddress('::')).toBeUndefined();
@@ -333,7 +335,9 @@ describe('formatIpAddress', () => {
 
     it('should return undefined for invalid IPv6', () => {
       expect(formatIpAddress('2001:0db8:85a3')).toBeUndefined();
-      expect(formatIpAddress('gggg:hhhh:iiii:jjjj:kkkk:llll:mmmm:nnnn')).toBeUndefined();
+      expect(
+        formatIpAddress('gggg:hhhh:iiii:jjjj:kkkk:llll:mmmm:nnnn'),
+      ).toBeUndefined();
     });
 
     it('should return undefined for non-IP strings', () => {

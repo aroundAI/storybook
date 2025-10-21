@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+
 import {
   ANTHROPIC_PRICING,
-  calculateTokenCost,
   GEMINI_PRICING,
-  getModelPricing,
   LOCAL_PRICING,
   type ModelPricing,
   OPENAI_PRICING,
+  calculateTokenCost,
+  getModelPricing,
 } from '../src/pricing';
 
 describe('LLM Pricing', () => {

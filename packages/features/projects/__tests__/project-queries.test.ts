@@ -1,12 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type {
-  ProjectMemberWithUser,
-  ProjectRole,
-  ProjectWithRole,
-} from '../src/lib/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
   canPerformProjectAction,
   getAccountProjects,
@@ -16,6 +11,11 @@ import {
   getUserProjectRole,
   hasProjectRole,
 } from '../src/lib/server/project.queries';
+import type {
+  ProjectMemberWithUser,
+  ProjectRole,
+  ProjectWithRole,
+} from '../src/lib/types';
 
 // Mock dependencies
 vi.mock('@kit/shared/logger', () => ({
@@ -148,7 +148,9 @@ describe('Project Queries', () => {
       mockFrom.mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: mockProject, error: null }),
+            single: vi
+              .fn()
+              .mockResolvedValue({ data: mockProject, error: null }),
           }),
         }),
       });
@@ -489,10 +491,7 @@ describe('Project Queries', () => {
         error: null,
       });
 
-      const result = await getAvailableProjectMembers(
-        PROJECT_ID,
-        ACCOUNT_SLUG,
-      );
+      const result = await getAvailableProjectMembers(PROJECT_ID, ACCOUNT_SLUG);
 
       expect(mockRpc).toHaveBeenCalledWith('get_account_members', {
         account_slug: ACCOUNT_SLUG,
@@ -523,10 +522,7 @@ describe('Project Queries', () => {
         error: null,
       });
 
-      const result = await getAvailableProjectMembers(
-        PROJECT_ID,
-        ACCOUNT_SLUG,
-      );
+      const result = await getAvailableProjectMembers(PROJECT_ID, ACCOUNT_SLUG);
 
       expect(result).toEqual(mockAccountMembers);
     });
@@ -553,10 +549,7 @@ describe('Project Queries', () => {
         error: null,
       });
 
-      const result = await getAvailableProjectMembers(
-        PROJECT_ID,
-        ACCOUNT_SLUG,
-      );
+      const result = await getAvailableProjectMembers(PROJECT_ID, ACCOUNT_SLUG);
 
       expect(result).toEqual([]);
     });
@@ -608,10 +601,7 @@ describe('Project Queries', () => {
         error: null,
       });
 
-      const result = await getAvailableProjectMembers(
-        PROJECT_ID,
-        ACCOUNT_SLUG,
-      );
+      const result = await getAvailableProjectMembers(PROJECT_ID, ACCOUNT_SLUG);
 
       expect(result).toEqual(mockAccountMembers);
     });

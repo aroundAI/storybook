@@ -9,9 +9,32 @@
  * - Experiment queries
  * - Performance queries
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+// Import queries after mocks are set up
+import {
+  calculateAttributionScores,
+  composeSystemPromptsForTemplate,
+  getAccountAssignedVariant,
+  getAccountVariantAssignments,
+  getActiveExperiments,
+  getAllTemplates,
+  getBestComposition,
+  getCompositionPerformance,
+  getExecutionLogs,
+  getExperimentResults,
+  getSystemPromptsByScope,
+  getSystemPromptsForTemplate,
+  getTemplate,
+  getTemplateVariants,
+  getTemplateWithSystemPrompts,
+  getVariantAssignments,
+  resolveTemplate,
+  resolveVariantForAccount,
+  selectVariant,
+} from '../src/lib/server/prompt.queries';
 
 // Mock server-only module
 vi.mock('server-only', () => ({}));
@@ -49,29 +72,6 @@ vi.mock('../src/lib/engine/composer', () => ({
     total_prompts: prompts.length,
   })),
 }));
-
-// Import queries after mocks are set up
-import {
-  calculateAttributionScores,
-  composeSystemPromptsForTemplate,
-  getAllTemplates,
-  getAccountAssignedVariant,
-  getAccountVariantAssignments,
-  getActiveExperiments,
-  getBestComposition,
-  getCompositionPerformance,
-  getExecutionLogs,
-  getExperimentResults,
-  getSystemPromptsByScope,
-  getSystemPromptsForTemplate,
-  getTemplate,
-  getTemplateVariants,
-  getTemplateWithSystemPrompts,
-  getVariantAssignments,
-  resolveTemplate,
-  resolveVariantForAccount,
-  selectVariant,
-} from '../src/lib/server/prompt.queries';
 
 // Valid UUIDs for testing
 const TEMPLATE_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -272,9 +272,9 @@ describe('Prompt Template Queries', () => {
         const mockError = new Error('Not found');
         mockSingle.mockResolvedValue({ data: null, error: mockError });
 
-        await expect(
-          getSystemPromptsForTemplate(TEMPLATE_ID),
-        ).rejects.toThrow('Not found');
+        await expect(getSystemPromptsForTemplate(TEMPLATE_ID)).rejects.toThrow(
+          'Not found',
+        );
       });
     });
 
@@ -521,10 +521,7 @@ describe('Prompt Template Queries', () => {
 
         mockSingle.mockResolvedValue({ data: mockData, error: null });
 
-        const result = await getAccountAssignedVariant(
-          TEMPLATE_ID,
-          ACCOUNT_ID,
-        );
+        const result = await getAccountAssignedVariant(TEMPLATE_ID, ACCOUNT_ID);
 
         expect(result).toEqual(mockData.variant);
         expect(mockEq).toHaveBeenCalledWith('account_id', ACCOUNT_ID);
@@ -536,10 +533,7 @@ describe('Prompt Template Queries', () => {
           error: { code: 'PGRST116' },
         });
 
-        const result = await getAccountAssignedVariant(
-          TEMPLATE_ID,
-          ACCOUNT_ID,
-        );
+        const result = await getAccountAssignedVariant(TEMPLATE_ID, ACCOUNT_ID);
 
         expect(result).toBeNull();
       });
@@ -556,10 +550,7 @@ describe('Prompt Template Queries', () => {
         mockRpc.mockResolvedValue({ data: VARIANT_ID, error: null });
         mockSingle.mockResolvedValue({ data: mockVariant, error: null });
 
-        const result = await resolveVariantForAccount(
-          TEMPLATE_ID,
-          ACCOUNT_ID,
-        );
+        const result = await resolveVariantForAccount(TEMPLATE_ID, ACCOUNT_ID);
 
         expect(result).toEqual(mockVariant);
         expect(mockRpc).toHaveBeenCalledWith('resolve_variant_for_account', {
@@ -571,10 +562,7 @@ describe('Prompt Template Queries', () => {
       it('should return null when no variant resolved', async () => {
         mockRpc.mockResolvedValue({ data: null, error: null });
 
-        const result = await resolveVariantForAccount(
-          TEMPLATE_ID,
-          ACCOUNT_ID,
-        );
+        const result = await resolveVariantForAccount(TEMPLATE_ID, ACCOUNT_ID);
 
         expect(result).toBeNull();
       });

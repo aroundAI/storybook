@@ -214,9 +214,7 @@ describe('WebSocket Connect Handler', () => {
       mockSend.mockReset();
       mockSend
         .mockResolvedValueOnce({ Items: [] }) // QueryCommand succeeds
-        .mockRejectedValueOnce(
-          new Error('ConditionalCheckFailedException'),
-        ); // PutCommand fails
+        .mockRejectedValueOnce(new Error('ConditionalCheckFailedException')); // PutCommand fails
 
       const result = await handler(event);
 

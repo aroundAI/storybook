@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createBillingGatewayService } from '../src/server/services/billing-gateway/billing-gateway.service';
-import { billingStrategyRegistry } from '../src/server/services/billing-gateway/billing-gateway-registry';
 import { getBillingGatewayProvider } from '../src/server/services/billing-gateway/billing-gateway-provider-factory';
+import { billingStrategyRegistry } from '../src/server/services/billing-gateway/billing-gateway-registry';
+import { createBillingGatewayService } from '../src/server/services/billing-gateway/billing-gateway.service';
 
 // Mock the billing strategy
 const mockStrategy = {

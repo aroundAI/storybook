@@ -7,15 +7,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
-      exclude: ['node_modules/', '**/*.test.ts', '**/*.config.ts', '**/types.ts'],
+      exclude: [
+        'node_modules/',
+        '**/*.test.ts',
+        '**/*.config.ts',
+        '**/types.ts',
+      ],
     },
   },
   resolve: {
     alias: {
-      'server-only': new URL(
-        './src/__mocks__/server-only.ts',
-        import.meta.url,
-      ).pathname,
+      'server-only': new URL('./src/__mocks__/server-only.ts', import.meta.url)
+        .pathname,
     },
   },
 });

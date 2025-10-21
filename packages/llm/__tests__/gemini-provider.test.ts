@@ -201,9 +201,7 @@ describe('GeminiClient', () => {
       });
 
       // Last message is sent separately
-      expect(mockSendMessage).toHaveBeenCalledWith(
-        'Do you remember our chat?',
-      );
+      expect(mockSendMessage).toHaveBeenCalledWith('Do you remember our chat?');
     });
 
     it('should use custom parameters when provided', async () => {

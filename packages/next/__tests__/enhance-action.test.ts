@@ -1,5 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+// Import mocked functions
+import { redirect } from 'next/navigation';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+
+import { verifyCaptchaToken } from '@kit/auth/captcha/server';
+import { requireUser } from '@kit/supabase/require-user';
 
 import { enhanceAction } from '../src/actions';
 
@@ -24,11 +30,6 @@ vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(() => ({})),
 }));
 
-// Import mocked functions
-import { redirect } from 'next/navigation';
-import { verifyCaptchaToken } from '@kit/auth/captcha/server';
-import { requireUser } from '@kit/supabase/require-user';
-
 describe('enhanceAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,10 +51,7 @@ describe('enhanceAction', () => {
 
       const result = await action({ name: 'John', age: 30 });
 
-      expect(mockFn).toHaveBeenCalledWith(
-        { name: 'John', age: 30 },
-        undefined,
-      );
+      expect(mockFn).toHaveBeenCalledWith({ name: 'John', age: 30 }, undefined);
       expect(result).toEqual({
         success: true,
         data: { name: 'John', age: 30 },

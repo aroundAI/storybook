@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { checkRequiresMultiFactorAuthentication } from '../src/check-requires-mfa';
+import { MultiFactorAuthError, requireUser } from '../src/require-user';
+
 // Mock the check-requires-mfa module
 vi.mock('../src/check-requires-mfa', () => ({
   checkRequiresMultiFactorAuthentication: vi.fn(),
 }));
-
-import { checkRequiresMultiFactorAuthentication } from '../src/check-requires-mfa';
-import { MultiFactorAuthError, requireUser } from '../src/require-user';
 
 const mockCheckMFA = vi.mocked(checkRequiresMultiFactorAuthentication);
 

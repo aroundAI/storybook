@@ -10,9 +10,31 @@
  * - Experiment management
  * - Execution logging
  */
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+// Import mutations after mocks are set up
+import { getLogger } from '@kit/shared/logger';
+
+import {
+  assignVariantToAccountAction,
+  createExperimentAction,
+  createPromptTemplateAction,
+  createSystemPromptAction,
+  createVariantAction,
+  deletePromptTemplateAction,
+  deleteSystemPromptAction,
+  deleteVariantAction,
+  linkSystemPromptAction,
+  logExecutionAction,
+  unassignVariantFromAccountAction,
+  unlinkSystemPromptAction,
+  updateExperimentAction,
+  updatePromptTemplateAction,
+  updateSystemPromptAction,
+  updateVariantAction,
+} from '../src/lib/server/prompt.mutations';
 
 // Mock server-only module
 vi.mock('server-only', () => ({}));
@@ -53,27 +75,6 @@ const mockSupabaseClient = {
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(() => mockSupabaseClient),
 }));
-
-// Import mutations after mocks are set up
-import { getLogger } from '@kit/shared/logger';
-import {
-  assignVariantToAccountAction,
-  createExperimentAction,
-  createPromptTemplateAction,
-  createSystemPromptAction,
-  createVariantAction,
-  deletePromptTemplateAction,
-  deleteSystemPromptAction,
-  deleteVariantAction,
-  linkSystemPromptAction,
-  logExecutionAction,
-  unassignVariantFromAccountAction,
-  unlinkSystemPromptAction,
-  updateExperimentAction,
-  updatePromptTemplateAction,
-  updateSystemPromptAction,
-  updateVariantAction,
-} from '../src/lib/server/prompt.mutations';
 
 // Valid UUIDs for testing
 const TEMPLATE_ID = '550e8400-e29b-41d4-a716-446655440000';
@@ -180,7 +181,6 @@ describe('Prompt Template Mutations', () => {
             variables: {},
           }),
         ).rejects.toThrow('Database error');
-
       });
     });
 
@@ -710,7 +710,6 @@ describe('Prompt Template Mutations', () => {
             success: true,
           }),
         ).rejects.toThrow('Database error');
-
       });
     });
   });

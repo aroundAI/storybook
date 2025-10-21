@@ -237,7 +237,9 @@ describe('Account Schemas', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.path).toContain('repeatPassword');
-        expect(result.error.issues[0]?.message).toContain('passwordNotMatching');
+        expect(result.error.issues[0]?.message).toContain(
+          'passwordNotMatching',
+        );
       }
     });
 
@@ -374,7 +376,9 @@ describe('Account Schemas', () => {
 
   describe('PasswordUpdateSchema', () => {
     it('should validate matching passwords', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'newpassword123',
@@ -388,7 +392,9 @@ describe('Account Schemas', () => {
     });
 
     it('should validate minimum password length of 8 characters', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'pass1234',
@@ -399,7 +405,9 @@ describe('Account Schemas', () => {
     });
 
     it('should validate maximum password length of 99 characters', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
       const longPassword = 'a'.repeat(99);
 
       const result = schema.safeParse({
@@ -411,7 +419,9 @@ describe('Account Schemas', () => {
     });
 
     it('should reject password shorter than 8 characters', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'pass123',
@@ -427,7 +437,9 @@ describe('Account Schemas', () => {
     });
 
     it('should reject password longer than 99 characters', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
       const longPassword = 'a'.repeat(100);
 
       const result = schema.safeParse({
@@ -444,7 +456,9 @@ describe('Account Schemas', () => {
     });
 
     it('should reject non-matching passwords', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'password123',
@@ -474,7 +488,9 @@ describe('Account Schemas', () => {
     });
 
     it('should accept password with special characters', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'P@ssw0rd!123',
@@ -485,7 +501,9 @@ describe('Account Schemas', () => {
     });
 
     it('should accept password with spaces', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'pass word 123',
@@ -496,7 +514,9 @@ describe('Account Schemas', () => {
     });
 
     it('should reject missing fields', () => {
-      const schema = PasswordUpdateSchema.withTranslation('Passwords must match');
+      const schema = PasswordUpdateSchema.withTranslation(
+        'Passwords must match',
+      );
 
       const result = schema.safeParse({
         newPassword: 'password123',

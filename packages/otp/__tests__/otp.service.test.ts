@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createOtpService } from '../src/server/otp.service';
+
 // Mock logger before imports
 vi.mock('@kit/shared/logger', () => ({
   getLogger: vi.fn(() =>
@@ -11,8 +13,6 @@ vi.mock('@kit/shared/logger', () => ({
     }),
   ),
 }));
-
-import { createOtpService } from '../src/server/otp.service';
 
 // Constants for testing
 const USER_ID = '550e8400-e29b-41d4-a716-446655440000';

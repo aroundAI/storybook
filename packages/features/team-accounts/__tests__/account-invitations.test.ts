@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
+
 import { addDays, formatISO } from 'date-fns';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAccountInvitationsService } from '../src/server/services/account-invitations.service';
 

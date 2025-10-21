@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createCreateTeamAccountService } from '../src/server/services/create-team-account.service';
 import { createDeleteTeamAccountService } from '../src/server/services/delete-team-account.service';

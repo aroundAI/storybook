@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createAccountPerSeatBillingService } from '../src/server/services/account-per-seat-billing.service';
 
@@ -439,9 +439,7 @@ describe('AccountPerSeatBillingService', () => {
       );
 
       // Should not throw
-      await expect(
-        service.decreaseSeats(ACCOUNT_ID),
-      ).resolves.toBeUndefined();
+      await expect(service.decreaseSeats(ACCOUNT_ID)).resolves.toBeUndefined();
     });
 
     it('should handle edge case of quantity becoming zero', async () => {
