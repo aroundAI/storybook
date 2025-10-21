@@ -772,13 +772,13 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Cache returning exactly false
 
 #### Server Actions
-- [ ] `apps/web/app/home/(user)/billing/__tests__/server-actions.test.ts`
-- [ ] `apps/web/app/home/[account]/billing/__tests__/server-actions.test.ts`
+- [x] `apps/web/app/home/(user)/billing/__tests__/server-actions.test.ts` - User billing server actions ✅ (23 tests passing)
+- [x] `apps/web/app/home/[account]/billing/__tests__/server-actions.test.ts` - Team billing server actions ✅ (24 tests passing)
 - [ ] `apps/web/app/(marketing)/contact/__tests__/server-actions.test.ts`
 
 #### Loaders
-- [ ] `apps/web/app/home/(user)/__tests__/load-user-workspace.test.ts`
-- [ ] `apps/web/app/home/[account]/__tests__/team-account-workspace-loader.test.ts`
+- [x] `apps/web/app/home/(user)/__tests__/load-user-workspace.test.ts` - User workspace loader ✅ (20 tests passing)
+- [x] `apps/web/app/home/[account]/__tests__/team-account-workspace-loader.test.ts` - Team workspace loader ✅ (25 tests passing)
 
 #### Utilities
 - [x] `apps/web/lib/__tests__/branding-styles.test.ts` - Branding styles generation ✅ (29 tests passing)
@@ -841,8 +841,8 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 52 (63.4%)
-**Total Tests Written**: 924
+**Completed**: 56 (68.3%)
+**Total Tests Written**: 1016
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -853,7 +853,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 78 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api)
+- 170 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace)
 - 67 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
@@ -864,7 +864,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 29 @kit/notifications (29 notifications-service)
 - 6 test/setup (infrastructure validation)
 
-**Total Tests Passing**: 850 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
+**Total Tests Passing**: 942 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
 
 **Infrastructure Setup**: 100% ✅
 **Critical Tests**: 28.6% (8/28) - includes openai-provider partial
