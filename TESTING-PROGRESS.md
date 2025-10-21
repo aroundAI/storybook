@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 101 test files created, 1199 tests passing
-**Remaining Work**: 32+ high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 103 test files created, 1307 tests passing
+**Remaining Work**: 30+ high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -621,7 +621,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/branding/__tests__/font-utils.test.ts` - Font utilities ✅
 - [x] `packages/branding/__tests__/gradient-utils.test.ts` - Gradient utilities ✅
 
-#### @kit/audit-logs Tests ✅ COMPLETE (3/3 files)
+#### @kit/audit-logs Tests ✅ COMPLETE (5 files, 242 tests)
 - [x] `packages/audit-logs/__tests__/calculate-changes.test.ts` - Change detection utility ✅ (41 tests passing)
   - Basic change detection (strings, numbers, booleans)
   - Multiple field changes
@@ -667,6 +667,79 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Function availability
     - Idempotent initialization
     - No-throw guarantee
+- [x] `packages/audit-logs/__tests__/audit-config.test.ts` - Audit configuration ✅ (67 tests passing)
+  - **AUDIT_CONFIG** validation
+    - Configuration for all expected object types (13 types)
+    - Enabled flag for all configurations
+    - Project: CRUD + archive/restore actions, no sensitive fields
+    - User: PII redaction (email, phone), password exclusion
+    - Account settings: API keys, secrets, tokens marked sensitive
+    - Disabled types: session, notification, analytics_event, cache_entry
+    - Team member: includeFields strategy
+    - Subscription: payment details redaction
+    - Auth events: token exclusion
+    - File: metadata-only tracking
+  - **shouldTrackObject()** - Action filtering
+    - Enabled objects with matching actions
+    - Disabled object rejection
+    - Unknown object type handling
+    - Special actions (permission_change, accept_invite, settings_change)
+    - All actions tracking when actions array empty
+  - **getObjectConfig()** - Config retrieval
+    - Existing object types
+    - Unknown type returns null
+    - Empty string handling
+  - **getEnabledObjectTypes()** - Enabled type listing
+    - All enabled types included
+    - Disabled types excluded
+    - No duplicates, array validation
+  - **isSensitiveField()** - Sensitive field detection
+    - User PII (email, phone)
+    - Account settings secrets (api_key, tokens)
+    - Subscription payment fields
+    - Invitation tokens
+    - Case-sensitive field matching
+    - Objects with no sensitive fields
+  - Integration scenarios
+    - Trackable and sensitive combinations
+    - Full audit flow examples
+- [x] `packages/audit-logs/__tests__/audit-registry.test.ts` - Transformer registry ✅ (41 tests passing)
+  - **registerTransformer()** - Registration
+    - Single transformer registration
+    - Multiple different object types
+    - Overwriting existing transformers
+    - Special characters in object types
+    - Empty string handling
+  - **getTransformer()** - Priority system
+    - Priority 1: Custom transformer in config
+    - Priority 2: Registered transformer
+    - Priority 3: Config-based transformer (user, project, account)
+    - Priority 4: Default transformer fallback with warning
+    - Return value guarantees (never null, always has transform/getDescription)
+  - **hasTransformer()** - Transformer existence check
+    - Registered transformers return true
+    - Unregistered without config return false
+    - Registration state tracking
+    - Config with custom transformer detection
+  - **clearTransformerRegistry()** - Registry cleanup
+    - All registered transformers removed
+    - Re-registration after clear
+    - Config-based transformers unaffected
+    - Multiple clear operations
+  - **getRegisteredObjectTypes()** - Type listing
+    - Empty array when no registrations
+    - All registered types returned
+    - Config-only types excluded
+    - Updates after registration/clear
+  - Edge cases
+    - Numeric-like string types
+    - Very long type names (1000+ chars)
+    - Unicode in type names
+    - Case-sensitive type matching
+  - Integration scenarios
+    - Full registration and retrieval flow
+    - Mixed registered and config-based transformers
+    - Separate transformers for different types
 
 #### @kit/otp Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/otp/__tests__/otp.service.test.ts` - OTP service ✅ (26 tests passing)
@@ -1216,11 +1289,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 101
+**Total Test Files Created**: 103
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 19 bonus files
-**Total Tests Written**: 1199
-**Total Tests Passing**: 1199 ✅
+**Completed**: 82/82 originally planned (100%) + 21 bonus files
+**Total Tests Written**: 1307
+**Total Tests Passing**: 1307 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1230,7 +1303,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 277 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management + 15 leave-service + 21 create-service + 20 delete-service + 42 invitations-actions + 29 create-team + 26 team-details + 37 team-members)
 - 107 @kit/admin (10 super-admin check + 28 admin-auth-user + 49 admin-server-actions + 5 dashboard-loader + 15 dashboard-service)
 - 51 @kit/analytics (29 null-service + 22 analytics-manager)
-- 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
+- 242 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers + 67 audit-config + 41 audit-registry)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
 - 170 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace)
 - 198 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key + 65 get-client-keys)
