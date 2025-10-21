@@ -165,9 +165,6 @@ describe('Prompt Template Mutations', () => {
             category: 'conversation',
           }),
         );
-          { templateId: TEMPLATE_ID },
-          'Created prompt template',
-        );
       });
 
       it('should throw error when creation fails', async () => {
@@ -184,9 +181,6 @@ describe('Prompt Template Mutations', () => {
           }),
         ).rejects.toThrow('Database error');
 
-          { error: mockError },
-          'Failed to create prompt template',
-        );
       });
     });
 
@@ -244,9 +238,6 @@ describe('Prompt Template Mutations', () => {
         expect(mockFrom).toHaveBeenCalledWith('prompt_templates');
         expect(mockDelete).toHaveBeenCalled();
         expect(mockEq).toHaveBeenCalledWith('id', TEMPLATE_ID);
-          { templateId: TEMPLATE_ID },
-          'Deleted prompt template',
-        );
       });
 
       it('should throw error when deletion fails', async () => {
@@ -285,9 +276,6 @@ describe('Prompt Template Mutations', () => {
 
         expect(result).toEqual(mockSystemPrompt);
         expect(mockFrom).toHaveBeenCalledWith('prompt_system_prompts');
-          { systemPromptId: SYSTEM_PROMPT_ID },
-          'Created system prompt',
-        );
       });
 
       it('should handle system prompt with condition rules', async () => {
@@ -347,9 +335,6 @@ describe('Prompt Template Mutations', () => {
         });
 
         expect(result).toEqual({ success: true });
-          { systemPromptId: SYSTEM_PROMPT_ID },
-          'Deleted system prompt',
-        );
       });
     });
   });
@@ -374,12 +359,6 @@ describe('Prompt Template Mutations', () => {
 
         expect(result).toEqual(mockLink);
         expect(mockFrom).toHaveBeenCalledWith('template_system_prompt_links');
-          {
-            templateId: TEMPLATE_ID,
-            systemPromptId: SYSTEM_PROMPT_ID,
-          },
-          'Linked system prompt to template',
-        );
       });
 
       it('should link with condition rules', async () => {
@@ -416,12 +395,6 @@ describe('Prompt Template Mutations', () => {
 
         expect(result).toEqual({ success: true });
         expect(mockDelete).toHaveBeenCalled();
-          {
-            templateId: TEMPLATE_ID,
-            systemPromptId: SYSTEM_PROMPT_ID,
-          },
-          'Unlinked system prompt from template',
-        );
       });
     });
   });
@@ -447,9 +420,6 @@ describe('Prompt Template Mutations', () => {
 
         expect(result).toEqual(mockVariant);
         expect(mockFrom).toHaveBeenCalledWith('template_variants');
-          { variantId: VARIANT_ID },
-          'Created template variant',
-        );
       });
 
       it('should create variant with system prompt overrides', async () => {
@@ -503,9 +473,6 @@ describe('Prompt Template Mutations', () => {
         const result = await deleteVariantAction({ id: VARIANT_ID });
 
         expect(result).toEqual({ success: true });
-          { variantId: VARIANT_ID },
-          'Deleted template variant',
-        );
       });
     });
   });
@@ -529,12 +496,6 @@ describe('Prompt Template Mutations', () => {
 
         expect(result).toEqual(mockAssignment);
         expect(mockFrom).toHaveBeenCalledWith('variant_account_assignments');
-          {
-            variantId: VARIANT_ID,
-            accountId: ACCOUNT_ID,
-          },
-          'Assigned variant to account',
-        );
       });
     });
 
@@ -549,12 +510,6 @@ describe('Prompt Template Mutations', () => {
         });
 
         expect(result).toEqual({ success: true });
-          {
-            variantId: VARIANT_ID,
-            accountId: ACCOUNT_ID,
-          },
-          'Unassigned variant from account',
-        );
       });
     });
   });
@@ -585,9 +540,6 @@ describe('Prompt Template Mutations', () => {
 
         expect(result).toEqual(mockExperiment);
         expect(mockFrom).toHaveBeenCalledWith('optimization_experiments');
-          { experimentId: EXPERIMENT_ID },
-          'Created optimization experiment',
-        );
       });
     });
 
@@ -682,9 +634,6 @@ describe('Prompt Template Mutations', () => {
             p_latency_ms: 250,
           }),
         );
-          { logId: 'log-id-123', templateId: TEMPLATE_ID },
-          'Logged prompt execution',
-        );
       });
 
       it('should log failed execution with error', async () => {
@@ -756,9 +705,6 @@ describe('Prompt Template Mutations', () => {
           }),
         ).rejects.toThrow('Database error');
 
-          { error: mockError },
-          'Failed to log prompt execution',
-        );
       });
     });
   });
