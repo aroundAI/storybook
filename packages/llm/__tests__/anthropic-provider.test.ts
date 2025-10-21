@@ -1,27 +1,42 @@
+/**
+ * Anthropic Provider Tests
+ *
+ * Comprehensive test suite for AnthropicClient covering:
+ * - Constructor validation and provider enforcement
+ * - Chat completion creation with message mapping
+ * - System message handling (Anthropic-specific)
+ * - Streaming chat completion
+ * - Cost calculation
+ * - Error handling
+ * - Integration scenarios
+ */
+import Anthropic from '@anthropic-ai/sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { LLMConfig } from '../src/types';
-import { AnthropicClient } from '../src/providers/anthropic';
 
-// Create mock function at module level
-const mockCreate = vi.fn();
+import { AnthropicClient } from '../src/providers/anthropic';
+import { LLMError } from '../src/types';
 
 // Mock Anthropic SDK
+const mockCreate = vi.fn();
+
 vi.mock('@anthropic-ai/sdk', () => {
+  class MockAPIError extends Error {
+    status: number | undefined;
+
+    constructor(message: string, status?: number) {
+      super(message);
+      this.name = 'APIError';
+      this.status = status;
+    }
+  }
+
   return {
     default: vi.fn().mockImplementation(() => ({
       messages: {
         create: mockCreate,
       },
     })),
-    APIError: class APIError extends Error {
-      constructor(
-        message: string,
-        public status: number,
-      ) {
-        super(message);
-        this.name = 'APIError';
-      }
-    },
+    APIError: MockAPIError,
   };
 });
 
@@ -30,408 +45,285 @@ describe('AnthropicClient', () => {
     vi.clearAllMocks();
   });
 
-  const createConfig = (overrides?: Partial<LLMConfig>): LLMConfig => ({
-    provider: 'anthropic',
-    model: 'claude-3-5-sonnet-20241022',
-    apiKey: 'sk-ant-test-key',
-    ...overrides,
-  });
-
-  describe('Constructor', () => {
-    it('should create client with valid config', () => {
-      const config = createConfig();
-      const client = new AnthropicClient(config);
+  describe('constructor', () => {
+    it('should create instance with valid config', () => {
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
 
       expect(client).toBeInstanceOf(AnthropicClient);
       expect(client.getProvider()).toBe('anthropic');
       expect(client.getModel()).toBe('claude-3-5-sonnet-20241022');
     });
 
-    it('should throw error for non-anthropic provider', () => {
-      const config = createConfig({ provider: 'openai' as any });
-
-      expect(() => new AnthropicClient(config)).toThrow();
-      expect(() => new AnthropicClient(config)).toThrow('Invalid provider');
-    });
-
-    it('should store config correctly', () => {
-      const config = createConfig({ apiKey: 'sk-ant-custom' });
-      const client = new AnthropicClient(config);
-
-      expect(client).toBeInstanceOf(AnthropicClient);
-      expect(client.getModel()).toBe('claude-3-5-sonnet-20241022');
-    });
-  });
-
-  describe('getProvider', () => {
-    it('should return anthropic as provider', () => {
-      const client = new AnthropicClient(createConfig());
-      expect(client.getProvider()).toBe('anthropic');
-    });
-  });
-
-  describe('getModel', () => {
-    it('should return configured model', () => {
-      const client = new AnthropicClient(
-        createConfig({ model: 'claude-3-opus-20240229' }),
-      );
-      expect(client.getModel()).toBe('claude-3-opus-20240229');
-    });
-
-    it('should return haiku model', () => {
-      const client = new AnthropicClient(
-        createConfig({ model: 'claude-3-haiku-20240307' }),
-      );
-      expect(client.getModel()).toBe('claude-3-haiku-20240307');
+    it('should throw error for invalid provider', () => {
+      expect(() => {
+        new AnthropicClient({
+          provider: 'openai' as 'anthropic',
+          model: 'claude-3-5-sonnet-20241022',
+          apiKey: 'sk-ant-test-key',
+        });
+      }).toThrow('Invalid provider for Anthropic client');
     });
   });
 
   describe('createChatCompletion', () => {
-    it('should create completion successfully', async () => {
-      const mockResponse = {
+    it('should create chat completion with correct parameters', async () => {
+      const mockResponse: Anthropic.Message = {
         id: 'msg_123',
-        content: [
-          {
-            type: 'text',
-            text: 'Hello! How can I help you?',
-          },
-        ],
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Hello! How can I help?' }],
+        model: 'claude-3-5-sonnet-20241022',
+        stop_reason: 'end_turn',
         usage: {
           input_tokens: 10,
-          output_tokens: 20,
+          output_tokens: 5,
         },
-        stop_reason: 'end_turn',
-      };
+      } as Anthropic.Message;
 
-      mockCreate.mockResolvedValueOnce(mockResponse);
+      mockCreate.mockResolvedValue(mockResponse);
 
-      const client = new AnthropicClient(createConfig());
-      const response = await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-      });
-
-      expect(response).toMatchObject({
-        id: 'msg_123',
+      const client = new AnthropicClient({
         provider: 'anthropic',
         model: 'claude-3-5-sonnet-20241022',
-        message: {
-          role: 'assistant',
-          content: 'Hello! How can I help you?',
-        },
-        usage: {
-          promptTokens: 10,
-          completionTokens: 20,
-          totalTokens: 30,
-        },
-        finishReason: 'stop',
+        apiKey: 'sk-ant-test-key',
       });
 
-      expect(response.cost).toBeDefined();
-      expect(response.cost.total).toBeGreaterThan(0);
+      const response = await client.createChatCompletion({
+        messages: [{ role: 'user', content: 'Hello!' }],
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [{ role: 'user', content: 'Hello!' }],
+        system: undefined,
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: undefined,
+      });
+
+      expect(response.id).toBe('msg_123');
+      expect(response.provider).toBe('anthropic');
+      expect(response.model).toBe('claude-3-5-sonnet-20241022');
+      expect(response.message.content).toBe('Hello! How can I help?');
+      expect(response.usage.promptTokens).toBe(10);
+      expect(response.usage.completionTokens).toBe(5);
+      expect(response.usage.totalTokens).toBe(15);
     });
 
-    it('should extract and pass system message separately', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
+    it('should handle system message separately (Anthropic-specific)', async () => {
+      const mockResponse: Anthropic.Message = {
+        id: 'msg_456',
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'I am helpful.' }],
+        model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
+        usage: { input_tokens: 20, output_tokens: 5 },
+      } as Anthropic.Message;
+
+      mockCreate.mockResolvedValue(mockResponse);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
       });
 
-      const client = new AnthropicClient(createConfig());
       await client.createChatCompletion({
         messages: [
-          { role: 'system', content: 'You are helpful' },
-          { role: 'user', content: 'Hello' },
+          { role: 'system', content: 'You are a helpful assistant.' },
+          { role: 'user', content: 'Tell me about yourself' },
         ],
       });
 
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: 'You are helpful',
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      );
+      // System message should be extracted and sent separately
+      expect(mockCreate).toHaveBeenCalledWith({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [{ role: 'user', content: 'Tell me about yourself' }],
+        system: 'You are a helpful assistant.',
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: undefined,
+      });
     });
 
-    it('should handle messages without system message', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
+    it('should use custom parameters when provided', async () => {
+      const mockResponse: Anthropic.Message = {
+        id: 'msg_789',
+        type: 'message',
+        role: 'assistant',
         content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
+        model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
+        usage: { input_tokens: 10, output_tokens: 3 },
+      } as Anthropic.Message;
+
+      mockCreate.mockResolvedValue(mockResponse);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+        temperature: 0.5,
+        maxTokens: 500,
       });
 
-      const client = new AnthropicClient(createConfig());
       await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-      });
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: undefined,
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      );
-    });
-
-    it('should map assistant role correctly', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(createConfig());
-      await client.createChatCompletion({
-        messages: [
-          { role: 'user', content: 'Hi' },
-          { role: 'assistant', content: 'Hello' },
-          { role: 'user', content: 'How are you?' },
-        ],
-      });
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          messages: [
-            { role: 'user', content: 'Hi' },
-            { role: 'assistant', content: 'Hello' },
-            { role: 'user', content: 'How are you?' },
-          ],
-        }),
-      );
-    });
-
-    it('should use request temperature over config', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(
-        createConfig({ temperature: 0.5 }),
-      );
-      await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-        temperature: 0.9,
-      });
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          temperature: 0.9,
-        }),
-      );
-    });
-
-    it('should default to 0.7 temperature', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(createConfig());
-      await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-      });
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          temperature: 0.7,
-        }),
-      );
-    });
-
-    it('should default to 1024 max_tokens', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(createConfig());
-      await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-      });
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          max_tokens: 1024,
-        }),
-      );
-    });
-
-    it('should use provided maxTokens', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(createConfig());
-      await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-        maxTokens: 2000,
-      });
-
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          max_tokens: 2000,
-        }),
-      );
-    });
-
-    it('should pass topP parameter', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'text', text: 'Response' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(createConfig());
-      await client.createChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
+        messages: [{ role: 'user', content: 'Test' }],
+        temperature: 0.2,
+        maxTokens: 200,
         topP: 0.9,
       });
 
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          top_p: 0.9,
-        }),
-      );
+      expect(mockCreate).toHaveBeenCalledWith({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [{ role: 'user', content: 'Test' }],
+        system: undefined,
+        temperature: 0.2,
+        max_tokens: 200,
+        top_p: 0.9,
+      });
     });
 
-    it('should handle different finish reasons', async () => {
-      const finishReasons = [
-        { anthropic: 'end_turn', expected: 'stop' },
-        { anthropic: 'max_tokens', expected: 'length' },
-        { anthropic: 'stop_sequence', expected: 'stop' },
-        { anthropic: null, expected: 'stop' },
-        { anthropic: 'unknown', expected: 'stop' },
+    it('should calculate cost correctly', async () => {
+      const mockResponse: Anthropic.Message = {
+        id: 'msg_cost',
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Test' }],
+        model: 'claude-3-5-sonnet-20241022',
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 1000, output_tokens: 500 },
+      } as Anthropic.Message;
+
+      mockCreate.mockResolvedValue(mockResponse);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      const response = await client.createChatCompletion({
+        messages: [{ role: 'user', content: 'Test' }],
+      });
+
+      // Claude 3.5 Sonnet pricing: $3/1M prompt, $15/1M completion
+      expect(response.cost).toBeDefined();
+      expect(response.cost?.prompt).toBe(0.003); // 1000 tokens * $3/1M
+      expect(response.cost?.completion).toBe(0.0075); // 500 tokens * $15/1M
+      expect(response.cost?.total).toBeCloseTo(0.0105, 4);
+    });
+
+    it('should map finish reason correctly', async () => {
+      const testCases: Array<{
+        stopReason: string | null;
+        expectedFinishReason:
+          | 'stop'
+          | 'length'
+          | 'function_call'
+          | 'content_filter';
+      }> = [
+        { stopReason: 'end_turn', expectedFinishReason: 'stop' },
+        { stopReason: 'max_tokens', expectedFinishReason: 'length' },
+        { stopReason: 'stop_sequence', expectedFinishReason: 'stop' },
+        { stopReason: null, expectedFinishReason: 'stop' },
       ];
 
-      for (const { anthropic, expected } of finishReasons) {
-        mockCreate.mockResolvedValueOnce({
-          id: 'test',
-          content: [{ type: 'text', text: 'Response' }],
-          usage: { input_tokens: 10, output_tokens: 10 },
-          stop_reason: anthropic,
-        });
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
 
-        const client = new AnthropicClient(createConfig());
+      for (const { stopReason, expectedFinishReason } of testCases) {
+        const mockResponse: Anthropic.Message = {
+          id: 'msg_test',
+          type: 'message',
+          role: 'assistant',
+          content: [{ type: 'text', text: 'Test' }],
+          model: 'claude-3-5-sonnet-20241022',
+          stop_reason: stopReason,
+          usage: { input_tokens: 10, output_tokens: 5 },
+        } as Anthropic.Message;
+
+        mockCreate.mockResolvedValue(mockResponse);
+
         const response = await client.createChatCompletion({
           messages: [{ role: 'user', content: 'Test' }],
         });
 
-        expect(response.finishReason).toBe(expected);
+        expect(response.finishReason).toBe(expectedFinishReason);
       }
     });
 
-    it('should throw error when no text content', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [],
-        usage: { input_tokens: 10, output_tokens: 10 },
+    it('should throw error when no text content in response', async () => {
+      const mockResponse: Anthropic.Message = {
+        id: 'msg_nocontent',
+        type: 'message',
+        role: 'assistant',
+        content: [], // Empty content
+        model: 'claude-3-5-sonnet-20241022',
         stop_reason: 'end_turn',
+        usage: { input_tokens: 10, output_tokens: 0 },
+      } as Anthropic.Message;
+
+      mockCreate.mockResolvedValue(mockResponse);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
       });
 
-      const client = new AnthropicClient(createConfig());
-
-      await expect(
-        client.createChatCompletion({
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      ).rejects.toThrow();
-    });
-
-    it('should throw error when content is not text type', async () => {
-      mockCreate.mockResolvedValueOnce({
-        id: 'test',
-        content: [{ type: 'image', source: 'data:...' }],
-        usage: { input_tokens: 10, output_tokens: 10 },
-        stop_reason: 'end_turn',
-      });
-
-      const client = new AnthropicClient(createConfig());
-
-      await expect(
-        client.createChatCompletion({
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      ).rejects.toThrow();
-    });
-
-    it('should handle API errors', async () => {
-      mockCreate.mockRejectedValueOnce(new Error('API error'));
-
-      const client = new AnthropicClient(createConfig());
-
-      await expect(
-        client.createChatCompletion({
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      ).rejects.toThrow();
+      try {
+        await client.createChatCompletion({
+          messages: [{ role: 'user', content: 'Test' }],
+        });
+        expect.fail('Should have thrown error');
+      } catch (error) {
+        expect(error).toBeDefined();
+        expect((error as Error).message).toBe('No text content in response');
+      }
     });
   });
 
   describe('createStreamingChatCompletion', () => {
-    it('should stream completion chunks', async () => {
+    it('should stream chat completion chunks', async () => {
       const mockStream = (async function* () {
         yield {
           type: 'content_block_delta',
           delta: { type: 'text_delta', text: 'Hello' },
-        };
+        } as Anthropic.MessageStreamEvent;
         yield {
           type: 'content_block_delta',
-          delta: { type: 'text_delta', text: ' world' },
-        };
-        yield {
-          type: 'message_stop',
-        };
+          delta: { type: 'text_delta', text: ' World' },
+        } as Anthropic.MessageStreamEvent;
+        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
       })();
 
-      mockCreate.mockResolvedValueOnce(mockStream);
+      mockCreate.mockResolvedValue(mockStream);
 
-      const client = new AnthropicClient(createConfig());
-      const stream = client.createStreamingChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
       });
 
       const chunks: string[] = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk.delta);
-      }
-
-      expect(chunks).toEqual(['Hello', ' world', '']);
-    });
-
-    it('should pass stream: true parameter', async () => {
-      const mockStream = (async function* () {
-        yield {
-          type: 'content_block_delta',
-          delta: { type: 'text_delta', text: 'Hi' },
-        };
-      })();
-
-      mockCreate.mockResolvedValueOnce(mockStream);
-
-      const client = new AnthropicClient(createConfig());
-      const stream = client.createStreamingChatCompletion({
+      for await (const chunk of client.createStreamingChatCompletion({
         messages: [{ role: 'user', content: 'Hello' }],
-      });
-
-      // Consume stream
-      for await (const _ of stream) {
-        // Just consume
+      })) {
+        if (!chunk.done) {
+          chunks.push(chunk.delta);
+        }
       }
 
+      expect(chunks).toEqual(['Hello', ' World']);
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           stream: true,
@@ -439,136 +331,329 @@ describe('AnthropicClient', () => {
       );
     });
 
-    it('should extract system message for streaming', async () => {
+    it('should emit done signal at stream end', async () => {
       const mockStream = (async function* () {
         yield {
           type: 'content_block_delta',
-          delta: { type: 'text_delta', text: 'Hi' },
-        };
+          delta: { type: 'text_delta', text: 'Test' },
+        } as Anthropic.MessageStreamEvent;
+        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
       })();
 
-      mockCreate.mockResolvedValueOnce(mockStream);
+      mockCreate.mockResolvedValue(mockStream);
 
-      const client = new AnthropicClient(createConfig());
-      const stream = client.createStreamingChatCompletion({
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      let doneReceived = false;
+      for await (const chunk of client.createStreamingChatCompletion({
+        messages: [{ role: 'user', content: 'Test' }],
+      })) {
+        if (chunk.done) {
+          doneReceived = true;
+        }
+      }
+
+      expect(doneReceived).toBe(true);
+    });
+
+    it('should handle system message in streaming', async () => {
+      const mockStream = (async function* () {
+        yield {
+          type: 'content_block_delta',
+          delta: { type: 'text_delta', text: 'Response' },
+        } as Anthropic.MessageStreamEvent;
+        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
+      })();
+
+      mockCreate.mockResolvedValue(mockStream);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      const generator = client.createStreamingChatCompletion({
         messages: [
           { role: 'system', content: 'Be helpful' },
-          { role: 'user', content: 'Hello' },
+          { role: 'user', content: 'Hi' },
         ],
       });
 
-      // Consume stream
-      for await (const _ of stream) {
+      // Consume the generator
+      for await (const _ of generator) {
         // Just consume
       }
 
-      expect(mockCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          system: 'Be helpful',
-          messages: [{ role: 'user', content: 'Hello' }],
-        }),
-      );
-    });
-
-    it('should handle streaming errors', async () => {
-      mockCreate.mockRejectedValueOnce(new Error('Stream error'));
-
-      const client = new AnthropicClient(createConfig());
-      const stream = client.createStreamingChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
+      expect(mockCreate).toHaveBeenCalledWith({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [{ role: 'user', content: 'Hi' }],
+        system: 'Be helpful',
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: undefined,
+        stream: true,
       });
-
-      await expect(async () => {
-        for await (const _ of stream) {
-          // Should throw before getting here
-        }
-      }).rejects.toThrow();
-    });
-
-    it('should mark last chunk as done', async () => {
-      const mockStream = (async function* () {
-        yield {
-          type: 'message_stop',
-        };
-      })();
-
-      mockCreate.mockResolvedValueOnce(mockStream);
-
-      const client = new AnthropicClient(createConfig());
-      const stream = client.createStreamingChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
-      });
-
-      const chunks: Array<{ delta: string; done: boolean }> = [];
-      for await (const chunk of stream) {
-        chunks.push(chunk);
-      }
-
-      expect(chunks[chunks.length - 1].done).toBe(true);
     });
 
     it('should ignore non-text deltas', async () => {
       const mockStream = (async function* () {
         yield {
           type: 'content_block_delta',
-          delta: { type: 'other_type', data: 'ignored' },
-        };
+          delta: { type: 'input_json_delta' as 'text_delta', text: undefined },
+        } as Anthropic.MessageStreamEvent;
         yield {
           type: 'content_block_delta',
-          delta: { type: 'text_delta', text: 'Visible' },
-        };
+          delta: { type: 'text_delta', text: 'Valid text' },
+        } as Anthropic.MessageStreamEvent;
+        yield { type: 'message_stop' } as Anthropic.MessageStreamEvent;
       })();
 
-      mockCreate.mockResolvedValueOnce(mockStream);
+      mockCreate.mockResolvedValue(mockStream);
 
-      const client = new AnthropicClient(createConfig());
-      const stream = client.createStreamingChatCompletion({
-        messages: [{ role: 'user', content: 'Hello' }],
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
       });
 
       const chunks: string[] = [];
-      for await (const chunk of stream) {
-        if (chunk.delta) chunks.push(chunk.delta);
+      for await (const chunk of client.createStreamingChatCompletion({
+        messages: [{ role: 'user', content: 'Test' }],
+      })) {
+        if (!chunk.done) {
+          chunks.push(chunk.delta);
+        }
       }
 
-      expect(chunks).toEqual(['Visible']);
+      // Should only include the valid text delta
+      expect(chunks).toEqual(['Valid text']);
     });
   });
 
   describe('calculateCost', () => {
-    it('should calculate cost using pricing data', () => {
-      const client = new AnthropicClient(
-        createConfig({ model: 'claude-3-5-sonnet-20241022' }),
-      );
+    it('should calculate cost for Claude 3.5 Sonnet', () => {
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
       const cost = client.calculateCost(1000, 500);
 
-      expect(cost).toHaveProperty('prompt');
-      expect(cost).toHaveProperty('completion');
-      expect(cost).toHaveProperty('total');
-      expect(cost.total).toBeGreaterThan(0);
+      // Claude 3.5 Sonnet: $3/1M prompt, $15/1M completion
+      expect(cost.prompt).toBe(0.003);
+      expect(cost.completion).toBe(0.0075);
+      expect(cost.total).toBeCloseTo(0.0105, 4);
     });
 
-    it('should calculate different costs for different models', () => {
-      const client1 = new AnthropicClient(
-        createConfig({ model: 'claude-3-opus-20240229' }),
-      );
-      const client2 = new AnthropicClient(
-        createConfig({ model: 'claude-3-haiku-20240307' }),
-      );
+    it('should calculate cost for Claude 3 Opus', () => {
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-opus-20240229',
+        apiKey: 'sk-ant-test-key',
+      });
 
-      const cost1 = client1.calculateCost(1000, 1000);
-      const cost2 = client2.calculateCost(1000, 1000);
+      const cost = client.calculateCost(1000, 500);
 
-      expect(cost1.total).toBeGreaterThan(cost2.total);
+      // Claude 3 Opus: $15/1M prompt, $75/1M completion
+      expect(cost.prompt).toBe(0.015);
+      expect(cost.completion).toBe(0.0375);
+      expect(cost.total).toBe(0.0525);
     });
 
-    it('should return zero cost for zero tokens', () => {
-      const client = new AnthropicClient(createConfig());
-      const cost = client.calculateCost(0, 0);
+    it('should calculate cost for Claude 3 Haiku', () => {
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-haiku-20240307',
+        apiKey: 'sk-ant-test-key',
+      });
 
-      expect(cost.prompt).toBe(0);
-      expect(cost.completion).toBe(0);
-      expect(cost.total).toBe(0);
+      const cost = client.calculateCost(1000, 500);
+
+      // Claude 3 Haiku: $0.25/1M prompt, $1.25/1M completion
+      expect(cost.prompt).toBe(0.00025);
+      expect(cost.completion).toBe(0.000625);
+      expect(cost.total).toBe(0.000875);
+    });
+  });
+
+  describe('error handling', () => {
+    it('should handle Anthropic API errors', async () => {
+      // Create mock error object that mimics Anthropic.APIError
+      const apiError = Object.assign(new Error('Invalid API key'), {
+        name: 'APIError',
+        status: 401,
+      });
+      mockCreate.mockRejectedValue(apiError);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'invalid-key',
+      });
+
+      try {
+        await client.createChatCompletion({
+          messages: [{ role: 'user', content: 'Test' }],
+        });
+        expect.fail('Should have thrown error');
+      } catch (error) {
+        expect(error).toBeDefined();
+        expect((error as Error).message).toBe('Invalid API key');
+      }
+    });
+
+    it('should handle generic errors', async () => {
+      const error = new Error('Network error');
+      mockCreate.mockRejectedValue(error);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      try {
+        await client.createChatCompletion({
+          messages: [{ role: 'user', content: 'Test' }],
+        });
+        expect.fail('Should have thrown error');
+      } catch (error) {
+        expect(error).toBeDefined();
+        expect((error as Error).message).toBe('Network error');
+      }
+    });
+
+    it('should handle unknown error types', async () => {
+      mockCreate.mockRejectedValue('string error');
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      try {
+        await client.createChatCompletion({
+          messages: [{ role: 'user', content: 'Test' }],
+        });
+        expect.fail('Should have thrown error');
+      } catch (error) {
+        expect(error).toBeDefined();
+        expect((error as Error).message).toBe('Unknown error occurred');
+      }
+    });
+
+    it('should handle streaming errors', async () => {
+      // Create mock error object that mimics Anthropic.APIError
+      const error = Object.assign(new Error('Rate limit exceeded'), {
+        name: 'APIError',
+        status: 429,
+      });
+      mockCreate.mockRejectedValue(error);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      const generator = client.createStreamingChatCompletion({
+        messages: [{ role: 'user', content: 'Test' }],
+      });
+
+      try {
+        for await (const _ of generator) {
+          // Should throw before yielding anything
+        }
+        expect.fail('Should have thrown error');
+      } catch (err) {
+        expect(err).toBeDefined();
+        expect((err as Error).message).toBe('Rate limit exceeded');
+      }
+    });
+  });
+
+  describe('integration scenarios', () => {
+    it('should handle multi-turn conversation', async () => {
+      const mockResponse: Anthropic.Message = {
+        id: 'msg_multi',
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'I remember our previous chat.' }],
+        model: 'claude-3-5-sonnet-20241022',
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 50, output_tokens: 10 },
+      } as Anthropic.Message;
+
+      mockCreate.mockResolvedValue(mockResponse);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      await client.createChatCompletion({
+        messages: [
+          { role: 'system', content: 'You have a good memory.' },
+          { role: 'user', content: 'Hello!' },
+          { role: 'assistant', content: 'Hi there!' },
+          { role: 'user', content: 'Do you remember our chat?' },
+        ],
+      });
+
+      // System message extracted, conversation preserved
+      expect(mockCreate).toHaveBeenCalledWith({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          { role: 'user', content: 'Hello!' },
+          { role: 'assistant', content: 'Hi there!' },
+          { role: 'user', content: 'Do you remember our chat?' },
+        ],
+        system: 'You have a good memory.',
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: undefined,
+      });
+    });
+
+    it('should work without system message', async () => {
+      const mockResponse: Anthropic.Message = {
+        id: 'msg_nosys',
+        type: 'message',
+        role: 'assistant',
+        content: [{ type: 'text', text: 'Hello!' }],
+        model: 'claude-3-5-sonnet-20241022',
+        stop_reason: 'end_turn',
+        usage: { input_tokens: 5, output_tokens: 3 },
+      } as Anthropic.Message;
+
+      mockCreate.mockResolvedValue(mockResponse);
+
+      const client = new AnthropicClient({
+        provider: 'anthropic',
+        model: 'claude-3-5-sonnet-20241022',
+        apiKey: 'sk-ant-test-key',
+      });
+
+      await client.createChatCompletion({
+        messages: [{ role: 'user', content: 'Hi!' }],
+      });
+
+      expect(mockCreate).toHaveBeenCalledWith({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [{ role: 'user', content: 'Hi!' }],
+        system: undefined,
+        temperature: 0.7,
+        max_tokens: 1024,
+        top_p: undefined,
+      });
     });
   });
 });

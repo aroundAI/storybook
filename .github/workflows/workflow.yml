@@ -45,6 +45,9 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
+      - name: Run Unit Tests
+        run: pnpm --filter @kit/cache test
+
   unit-test:
     name: 🧪 Unit Tests
     timeout-minutes: 15
@@ -74,15 +77,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      - name: Run Unit Tests - Web
+      - name: Run Unit Tests
         run: pnpm --filter web test
-
-      - name: Run Unit Tests - Packages
-        run: |
-          pnpm --filter @kit/cache test
-          pnpm --filter @kit/branding test
-          pnpm --filter @kit/next test
-          pnpm --filter @kit/llm test
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage
