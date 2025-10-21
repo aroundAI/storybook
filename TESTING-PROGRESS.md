@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 113 test files created, 1616 tests passing
-**Remaining Work**: 26 high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 115 test files created, 1659 tests passing
+**Remaining Work**: 24 high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -1179,11 +1179,13 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ### Web Application Tests
 
-#### API Routes
+#### API Routes ✅ COMPLETE (6/6 files, 141 tests)
 - [x] `apps/web/app/api/billing/webhook/__tests__/route.test.ts` - Billing webhook API route ✅ (21 tests passing)
 - [x] `apps/web/app/api/db/webhook/__tests__/route.test.ts` - Database webhook API route ✅ (25 tests passing)
 - [x] `apps/web/app/auth/callback/__tests__/route.test.ts` - Auth callback API route ✅ (25 tests passing)
 - [x] `apps/web/app/api/__tests__/healthcheck.test.ts` - Health check endpoint ✅ (27 tests passing)
+- [x] `apps/web/app/version/__tests__/route.test.ts` - Version API route ✅ (20 tests passing)
+- [x] `apps/web/app/sitemap.xml/__tests__/route.test.ts` - Sitemap XML generation ✅ (23 tests passing)
   - **Successful health checks** (5 tests)
     - Return 200 when all services healthy
     - Include timestamp in ISO format
@@ -1219,6 +1221,64 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Database returning undefined error property
     - Cache returning exactly true
     - Cache returning exactly false
+
+- [x] `apps/web/app/version/__tests__/route.test.ts` - Version API route ✅ (20 tests passing)
+  - **Environment variable detection** (5 tests)
+    - Return CF_PAGES_COMMIT_SHA when available
+    - Return VERCEL_GIT_COMMIT_SHA when available
+    - Return GIT_HASH when available
+    - Prioritize CF_PAGES_COMMIT_SHA over others
+    - Prioritize VERCEL_GIT_COMMIT_SHA over GIT_HASH
+  - **Git command fallback** (5 tests)
+    - Use git command when in nodejs runtime and no env vars
+    - Trim whitespace from git command output
+    - Not call git command when not in nodejs runtime
+    - Return empty string when git command fails
+    - Handle git command returning empty output
+  - **Response format** (3 tests)
+    - Return response with text/plain content type
+    - Return Response object
+    - Return 200 status code
+  - **Edge cases** (4 tests)
+    - Handle empty environment variable values
+    - Handle very long git hashes
+    - Handle special characters in hash
+    - Return empty string when all sources fail
+  - **Runtime detection** (3 tests)
+    - Respect NEXT_RUNTIME environment variable
+    - Not execute git command in edge runtime
+    - Execute git command in development mode
+
+- [x] `apps/web/app/sitemap.xml/__tests__/route.test.ts` - Sitemap XML generation ✅ (23 tests passing)
+  - **Static paths generation** (3 tests)
+    - Include homepage in sitemap
+    - Include all static paths (/, /faq, /blog, /docs, /pricing, etc.)
+    - Include lastmod timestamp for static paths
+  - **Blog posts integration** (4 tests)
+    - Fetch blog posts from CMS
+    - Include blog posts in sitemap
+    - Use publishedAt for blog post lastmod
+    - Use current date when publishedAt is missing
+  - **Documentation integration** (3 tests)
+    - Fetch documentation from CMS
+    - Include documentation pages in sitemap
+    - Use publishedAt for documentation lastmod
+  - **Cache headers** (4 tests)
+    - Set Cache-Control header with max-age
+    - Set Cache-Control header with s-maxage
+    - Set Cache-Control header as public
+    - Have complete Cache-Control header
+  - **Integration scenarios** (5 tests)
+    - Combine static paths, blog posts, and docs
+    - Handle many content items
+    - Handle CMS client errors gracefully
+    - Call getServerSideSitemap with flattened array
+  - **URL generation** (2 tests)
+    - Generate proper URLs with base URL
+    - Handle slugs with special characters
+  - **Edge cases** (2 tests)
+    - Handle empty CMS results
+    - Handle concurrent CMS requests
 
 #### Server Actions
 - [x] `apps/web/app/home/(user)/billing/__tests__/server-actions.test.ts` - User billing server actions ✅ (23 tests passing)
@@ -1289,11 +1349,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 113
+**Total Test Files Created**: 115
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 31 bonus files
-**Total Tests Written**: 1616
-**Total Tests Passing**: 1616 ✅
+**Completed**: 82/82 originally planned (100%) + 33 bonus files
+**Total Tests Written**: 1659
+**Total Tests Passing**: 1659 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1305,7 +1365,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 51 @kit/analytics (29 null-service + 22 analytics-manager)
 - 318 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers + 67 audit-config + 41 audit-registry + 34 create-audit-log + 42 queries)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 314 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules + 25 fonts + 24 require-user)
+- 357 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 20 version + 23 sitemap + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules + 25 fonts + 24 require-user)
 - 198 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key + 65 get-client-keys)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
@@ -1704,37 +1764,24 @@ File needing tests:
 
 ---
 
-### Tier 3: NICE TO HAVE (API Routes & Edge Utilities)
+### Tier 3: NICE TO HAVE (Edge Utilities)
 
 **Priority**: Implement when time permits - less frequently used
 
-#### API Routes (4 files) - ~35-45 tests estimated
+#### API Routes ✅ COMPLETE (6/6 files, 141 tests)
 
 **Location**: `apps/web/app/`
 
-Files needing tests:
-1. **`version/route.ts`** (~8 tests)
-   - Return version information
-   - Format validation
-   - Response headers
+All API route tests completed:
+1. ✅ **`version/route.ts`** (20 tests) - Git hash detection and runtime handling
+2. ✅ **`sitemap.xml/route.ts`** (23 tests) - Sitemap generation with CMS integration
+3. ✅ **`api/healthcheck/route.ts`** (27 tests) - Service health monitoring
+4. ✅ **`api/billing/webhook/route.ts`** (21 tests) - Billing webhook verification
+5. ✅ **`api/db/webhook/route.ts`** (25 tests) - Database webhook handling
+6. ✅ **`auth/callback/route.ts`** (25 tests) - Auth callback processing
 
-2. **`auth/confirm/route.ts`** (~12 tests)
-   - Email confirmation handling
-   - Token validation
-   - Redirect logic
-   - Error scenarios
-
-3. **`healthcheck/route.ts`** (~10 tests)
-   - Already tested at `api/healthcheck/route.ts`
-   - May be duplicate endpoint
-
-4. **`sitemap.xml/route.ts`** (~10 tests)
-   - Generate sitemap XML
-   - Include all public pages
-   - Frequency and priority settings
-   - Response headers (content-type)
-
-**Test Pattern**: Reference `apps/web/app/api/__tests__/healthcheck.test.ts` (27 tests) for API route testing with mocked services.
+Remaining (if needed):
+- **`auth/confirm/route.ts`** (~12 tests) - Email confirmation handling (low priority)
 
 ---
 

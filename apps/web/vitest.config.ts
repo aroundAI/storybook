@@ -110,6 +110,10 @@ export default defineConfig({
         __dirname,
         '../../packages/ui/src/lib/utils/index.ts',
       ),
+      '@kit/cms': path.resolve(
+        __dirname,
+        '../../packages/cms/core/src/index.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
