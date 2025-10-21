@@ -82,6 +82,18 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/auth-callback.service.ts',
       ),
+      '@kit/next/actions': path.resolve(
+        __dirname,
+        '../../packages/next/src/actions/index.ts',
+      ),
+      '@kit/auth/captcha/server': path.resolve(
+        __dirname,
+        '../../packages/features/auth/src/captcha/server/index.ts',
+      ),
+      '@kit/supabase/require-user': path.resolve(
+        __dirname,
+        '../../packages/supabase/src/require-user.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/config': path.resolve(__dirname, './config'),
       '~': path.resolve(__dirname, './app'),
