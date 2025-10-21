@@ -10,7 +10,7 @@
  * - Error handling
  * - Integration scenarios
  */
-import Anthropic from '@anthropic-ai/sdk';
+import Anthropic, { APIError as AnthropicAPIError } from '@anthropic-ai/sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AnthropicClient } from '../src/providers/anthropic';
@@ -30,12 +30,17 @@ vi.mock('@anthropic-ai/sdk', () => {
     }
   }
 
+  const MockAnthropic = vi.fn().mockImplementation(() => ({
+    messages: {
+      create: mockCreate,
+    },
+  }));
+
+  // Add APIError as a static property
+  MockAnthropic.APIError = MockAPIError;
+
   return {
-    default: vi.fn().mockImplementation(() => ({
-      messages: {
-        create: mockCreate,
-      },
-    })),
+    default: MockAnthropic,
     APIError: MockAPIError,
   };
 });
@@ -484,11 +489,8 @@ describe('AnthropicClient', () => {
 
   describe('error handling', () => {
     it('should handle Anthropic API errors', async () => {
-      // Create mock error object that mimics Anthropic.APIError
-      const apiError = Object.assign(new Error('Invalid API key'), {
-        name: 'APIError',
-        status: 401,
-      });
+      // Create instance of mocked APIError
+      const apiError = new AnthropicAPIError('Invalid API key', 401);
       mockCreate.mockRejectedValue(apiError);
 
       const client = new AnthropicClient({
@@ -550,11 +552,8 @@ describe('AnthropicClient', () => {
     });
 
     it('should handle streaming errors', async () => {
-      // Create mock error object that mimics Anthropic.APIError
-      const error = Object.assign(new Error('Rate limit exceeded'), {
-        name: 'APIError',
-        status: 429,
-      });
+      // Create instance of mocked APIError
+      const error = new AnthropicAPIError('Rate limit exceeded', 429);
       mockCreate.mockRejectedValue(error);
 
       const client = new AnthropicClient({

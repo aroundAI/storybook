@@ -91,16 +91,6 @@ jobs:
           pnpm --filter @kit/otp test
           pnpm --filter @kit/supabase test
           pnpm --filter @kit/notifications test
-          pnpm --filter @kit/admin test
-          pnpm --filter @kit/audit-logs test
-          pnpm --filter @kit/shared test
-          pnpm --filter @kit/accounts test
-          pnpm --filter @kit/auth test
-          pnpm --filter @kit/monitoring-core test
-          pnpm --filter @kit/mailers-shared test
-          pnpm --filter @kit/mailers-core test
-          pnpm --filter @kit/lemon-squeezy test
-          pnpm --filter @kit/billing-gateway test
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage

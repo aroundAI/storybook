@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import OpenAI, { APIError as OpenAIAPIError } from 'openai';
 
 import { OpenAIClient } from '../src/providers/openai';
 import type { ChatCompletionRequest, LLMConfig } from '../src/types';
@@ -24,14 +25,19 @@ vi.mock('openai', () => {
     }
   }
 
-  return {
-    default: vi.fn().mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: mockCreate,
-        },
+  const MockOpenAI = vi.fn().mockImplementation(() => ({
+    chat: {
+      completions: {
+        create: mockCreate,
       },
-    })),
+    },
+  }));
+
+  // Add APIError as a static property
+  MockOpenAI.APIError = MockAPIError;
+
+  return {
+    default: MockOpenAI,
     APIError: MockAPIError,
   };
 });
@@ -618,8 +624,7 @@ describe('OpenAIClient', () => {
     it('should handle OpenAI APIError', async () => {
       const client = new OpenAIClient(mockConfig);
 
-      const OpenAI = await import('openai');
-      const apiError = new OpenAI.APIError(
+      const apiError = new OpenAIAPIError(
         'Invalid API key',
         401,
         'invalid_api_key',
@@ -661,8 +666,7 @@ describe('OpenAIClient', () => {
     it('should handle streaming errors', async () => {
       const client = new OpenAIClient(mockConfig);
 
-      const OpenAI = await import('openai');
-      const apiError = new OpenAI.APIError('Rate limit', 429, 'rate_limit');
+      const apiError = new OpenAIAPIError('Rate limit', 429, 'rate_limit');
 
       mockCreate.mockRejectedValue(apiError);
 
