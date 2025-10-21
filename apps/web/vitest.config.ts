@@ -43,6 +43,7 @@ export default defineConfig({
       ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~': path.resolve(__dirname, './app'),
+      'server-only': path.resolve(__dirname, './__mocks__/server-only.ts'),
     },
   },
 });

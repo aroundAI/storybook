@@ -82,3 +82,36 @@ vi.mock('@kit/shared/logger', () => ({
     }),
   ),
 }));
+
+// Mock AWS SDK packages (not available in test environment)
+vi.mock('@aws-sdk/client-dynamodb', () => ({
+  DynamoDBClient: vi.fn(() => ({
+    send: vi.fn(),
+  })),
+}));
+
+vi.mock('@aws-sdk/lib-dynamodb', () => ({
+  DynamoDBDocumentClient: {
+    from: vi.fn(() => ({
+      send: vi.fn(),
+    })),
+  },
+  PutCommand: vi.fn((params) => params),
+  GetCommand: vi.fn((params) => params),
+  DeleteCommand: vi.fn((params) => params),
+  QueryCommand: vi.fn((params) => params),
+}));
+
+vi.mock('@aws-sdk/client-apigatewaymanagementapi', () => ({
+  ApiGatewayManagementApiClient: vi.fn(() => ({
+    send: vi.fn(),
+  })),
+  PostToConnectionCommand: vi.fn((params) => params),
+}));
+
+vi.mock('@aws-sdk/client-sesv2', () => ({
+  SESv2Client: vi.fn(() => ({
+    send: vi.fn(),
+  })),
+  SendEmailCommand: vi.fn((params) => params),
+}));
