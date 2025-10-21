@@ -106,6 +106,10 @@ export default defineConfig({
         __dirname,
         '../../packages/mailers/core/src/index.ts',
       ),
+      '@kit/ui/utils': path.resolve(
+        __dirname,
+        '../../packages/ui/src/lib/utils/index.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,

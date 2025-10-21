@@ -1,15 +1,15 @@
 # Unit Testing Implementation Progress
 
-**Last Updated**: 2025-10-21
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 109 test files created, 1478 tests passing
-**Remaining Work**: 30+ high-value files identified (see Remaining Work Summary below)
+**Last Updated**: 2025-10-22
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 111 test files created, 1527 tests passing
+**Remaining Work**: 28 high-value files identified (see Remaining Work Summary below)
 
 ---
 
 ## 📋 Quick Navigation
 
 - [✅ Phase 1: Test Infrastructure](#-phase-1-test-infrastructure-complete) - COMPLETE
-- [✅ Phase 2: Critical Tests](#-phase-2-critical-tests---in-progress) - COMPLETE (72/82 files)
+- [✅ Phase 2: Critical Tests](#-phase-2-critical-tests---in-progress) - COMPLETE (74/82 files)
 - [🔍 Remaining Work Summary](#-remaining-work-summary) - **START HERE** for what's left
 - [📊 Progress Statistics](#-progress-statistics) - Current test counts
 - [🎯 Recommended Implementation Order](#-recommended-implementation-order) - Phased approach
@@ -1289,11 +1289,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 109
+**Total Test Files Created**: 111
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 27 bonus files
-**Total Tests Written**: 1478
-**Total Tests Passing**: 1478 ✅
+**Completed**: 82/82 originally planned (100%) + 29 bonus files
+**Total Tests Written**: 1527
+**Total Tests Passing**: 1527 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1305,7 +1305,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 51 @kit/analytics (29 null-service + 22 analytics-manager)
 - 318 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers + 67 audit-config + 41 audit-registry + 34 create-audit-log + 42 queries)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 265 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules)
+- 314 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules + 25 fonts + 24 require-user)
 - 198 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key + 65 get-client-keys)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
@@ -1328,10 +1328,10 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ### Overview
 
-**Current Status**: 72/82 originally planned test files complete (87.8%)
+**Current Status**: 74/82 originally planned test files complete (90.2%)
 **Deep Analysis**: 122+ testable files identified in codebase
-**Files WITH Tests**: 84 test files created
-**Files WITHOUT Tests**: 50+ high-value files remaining
+**Files WITH Tests**: 111 test files created
+**Files WITHOUT Tests**: 48+ high-value files remaining
 
 This section provides a comprehensive breakdown of all remaining test work.
 
@@ -1599,7 +1599,7 @@ Files needing tests:
 
 ---
 
-#### Web App Infrastructure ✅ MOSTLY COMPLETE (4/6 files, 95 tests)
+#### Web App Infrastructure ✅ COMPLETE (6/6 files, 173 tests)
 
 **Location**: `apps/web/lib/`
 
@@ -1647,15 +1647,36 @@ Files needing tests:
    - Edge cases (whitespace, uppercase, async)
    - Always returns valid theme value
 
-**Remaining Files** (2 files):
-5. ⬜ **`fonts.ts`** (~5 tests)
-   - Font loading configuration
-   - Google Fonts integration
+5. ✅ **`__tests__/fonts.test.ts`** (25 tests)
+   - Theme class inclusion (dark, light)
+   - No theme class for system/undefined/invalid
+   - Base classes (bg-background, min-h-screen, antialiased)
+   - Font variable inclusion (--font-sans)
+   - Font variable deduplication
+   - Return value format (string, non-empty)
+   - Edge cases (null, object, number, whitespace, uppercase)
+   - Integration scenarios (all classes combined)
 
-6. ⬜ **`server/require-user-in-server-component.ts`** (~10 tests)
-   - User authentication enforcement
-   - Redirect to sign-in
-   - MFA verification
+6. ✅ **`server/__tests__/require-user-in-server-component.test.ts`** (24 tests)
+   - Successful authentication (user data return)
+   - Supabase client creation and usage
+   - requireUser delegation with client
+   - Complete user object with metadata
+   - No redirect when authenticated
+   - Redirect on authentication failure
+   - Custom redirect paths with query params
+   - React cache wrapper behavior
+   - Error handling (requireUser throws, client creation fails)
+   - Missing/empty redirectTo handling
+   - Return value validation (id, email, role, aud)
+   - Sequential calls and user switching
+   - Server-only enforcement
+
+7. ✅ **`__tests__/branding-styles.test.ts`** (29 tests) - Previously created
+   - CSS custom property generation
+   - Theme variant handling
+   - Color to RGB conversion
+   - Environment variable parsing
 
 **Test Insights**:
 - **Mock Hoisting**: Must define vi.mock() factories inline to avoid hoisting errors
