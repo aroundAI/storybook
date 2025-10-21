@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (50/82 files, 61.0%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (51/82 files, 62.2%)
 
 ---
 
@@ -773,15 +773,41 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Apply text stroke with WebkitTextStroke
     - Handle disabled features (gradient/glow/stroke)
     - Handle null returns from buildGradientString/buildGlowShadow
-- [ ] `apps/web/lib/i18n/__tests__/i18n-resolver.test.ts`
+- [x] `apps/web/lib/i18n/__tests__/i18n-resolver.test.ts` - i18n translation resolver ✅ (22 tests passing)
+  - **Successful resolution** (5 tests)
+    - Load existing translation files
+    - Return translation data as object
+    - Load different namespaces (common, auth)
+    - Load different languages (en, it)
+    - No console logging on success
+  - **Error handling** (4 tests)
+    - Return empty object for non-existent language
+    - Return empty object for non-existent namespace
+    - Log console.group error message with language/namespace
+    - Handle both language and namespace in error message
+  - **Edge cases** (6 tests)
+    - Empty language/namespace strings
+    - Special characters (en-US, common-special)
+    - Very long language codes (100 chars)
+    - Very long namespace names (100 chars)
+  - **Multiple calls** (4 tests)
+    - Sequential calls work correctly
+    - Same translation requested twice (caching behavior)
+    - Concurrent calls via Promise.all
+    - Mix of successful and failed calls
+  - **Return type validation** (2 tests)
+    - Return Record<string, string> type
+    - Return empty object (not null/undefined) on error
+  - **Error logging** (1 test)
+    - console.group/groupEnd called in correct order
 
 ---
 
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 47 (57.3%)
-**Total Tests Written**: 875
+**Completed**: 51 (62.2%)
+**Total Tests Written**: 897
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -792,11 +818,12 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
+- 51 apps/web (29 branding-styles + 22 i18n-resolver)
 - 67 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback)
 - 64 @kit/shared (34 utils + 30 logger)
-- 27 @kit/monitoring (console monitoring service)
-- 85 @kit/accounts (42 schemas + 43 auth-schemas)
-- 70 @kit/auth (43 schemas + 27 last-auth-method)
+- 27 @kit/monitoring (27 console monitoring service)
+- 105 @kit/accounts (42 schemas + 20 delete-personal-account + 43 auth-schemas)
+- 90 @kit/auth (43 schemas + 27 last-auth-method + 20 captcha-verification)
 - 70 @kit/i18n (24 create-settings + 46 i18n-server)
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
 - 29 @kit/notifications (29 notifications-service)

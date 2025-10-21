@@ -70,3 +70,15 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
   unobserve: vi.fn(),
   disconnect: vi.fn(),
 })) as never;
+
+// Mock logger
+vi.mock('@kit/shared/logger', () => ({
+  getLogger: vi.fn(() =>
+    Promise.resolve({
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    }),
+  ),
+}));
