@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **EXPANDED** - 65/82 test files complete + Critical Gap Analysis (598 total tests passing)
+**Status**: **EXPANDED** - 68/82 test files complete + Critical Gap Analysis (643 total tests passing)
 
 ---
 
@@ -336,12 +336,24 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 #### @kit/team-accounts Tests ✅ COMPLETE
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
+- [x] `packages/features/team-accounts/__tests__/account-per-seat-billing.service.test.ts` - Per-seat billing service ✅ (15 tests passing)
+  - Get per-seat subscription items with filtering
+  - Increase seats with multi-item handling
+  - Decrease seats with provider selection
+  - Partial failure resilience with Promise.all()
 - [x] `packages/features/team-accounts/__tests__/account-invitations.test.ts` - Invitations service ✅ (27 tests passing)
+- [x] `packages/features/team-accounts/__tests__/account-invitations.service.test.ts` - Invitations service implementation ✅ (18 tests passing)
+  - Delete and update invitations
+  - Validate invitation (duplicate member detection)
+  - Send invitations with validation and RPC integration
+  - Accept invitation to team
+  - Renew invitation (7-day expiration extension)
 - [x] `packages/features/team-accounts/__tests__/account-members.test.ts` - Members service ✅ (22 tests passing)
-  - Remove member with automatic seat reduction
-  - Update member roles with permission validation
+- [x] `packages/features/team-accounts/__tests__/account-members.service.test.ts` - Members service implementation ✅ (12 tests passing)
+  - Remove member with billing integration (decreaseSeats)
+  - Update member role with permission checks
   - Transfer ownership via RPC
-  - Integration scenarios (member lifecycle)
+  - Admin client usage for privileged operations
 - [x] `packages/features/team-accounts/__tests__/team-account-management.test.ts` - Account lifecycle ✅ (26 tests passing)
   - Create team account via RPC
   - Delete team account with admin client
