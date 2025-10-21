@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 105 test files created, 1383 tests passing
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 109 test files created, 1478 tests passing
 **Remaining Work**: 30+ high-value files identified (see Remaining Work Summary below)
 
 ---
@@ -1289,11 +1289,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 105
+**Total Test Files Created**: 109
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 23 bonus files
-**Total Tests Written**: 1383
-**Total Tests Passing**: 1383 ✅
+**Completed**: 82/82 originally planned (100%) + 27 bonus files
+**Total Tests Written**: 1478
+**Total Tests Passing**: 1478 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1305,7 +1305,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 51 @kit/analytics (29 null-service + 22 analytics-manager)
 - 318 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers + 67 audit-config + 41 audit-registry + 34 create-audit-log + 42 queries)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 170 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace)
+- 265 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules)
 - 198 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key + 65 get-client-keys)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
@@ -1599,38 +1599,70 @@ Files needing tests:
 
 ---
 
-#### Web App Infrastructure (6 files) - ~50-60 tests estimated
+#### Web App Infrastructure ✅ MOSTLY COMPLETE (4/6 files, 95 tests)
 
 **Location**: `apps/web/lib/`
 
-Files needing tests:
-1. **`root-metadata.ts`** (~10 tests)
-   - Generate metadata for pages
-   - SEO optimization
-   - Brand integration
+**Files Created**:
+1. ✅ **`__tests__/root-metadata.test.ts`** (15 tests)
+   - Metadata generation with all required fields
+   - CSRF token extraction from headers
+   - App config values (title, description, name, URL)
+   - OpenGraph and Twitter card metadata
+   - Favicon configuration
+   - Empty/null/undefined handling
+   - Async headers() call support
+   - Special characters and long tokens
 
-2. **`create-csp-response.ts`** (~12 tests)
-   - Content Security Policy headers
-   - Nonce generation
-   - Strict CSP mode
+2. ✅ **`__tests__/create-csp-response.test.ts`** (24 tests)
+   - Nosecone middleware integration
+   - Supabase URL injection into connectSrc and imgSrc
+   - WebSocket URL transformation (https → ws)
+   - upgradeInsecureRequests based on NODE_ENV
+   - Nonce extraction from CSP header
+   - x-nonce header setting for client scripts
+   - Vercel Toolbar integration (preview environment)
+   - HTTP/HTTPS URL handling
+   - Default directive preservation
+   - Complex nonce pattern matching
 
-3. **`dev-mock-modules.ts`** (~8 tests)
-   - Development mode detection
-   - Module mocking behavior
+3. ✅ **`__tests__/dev-mock-modules.test.ts`** (37 tests)
+   - Turnstile mocks (undefined component, empty props)
+   - Baselime RUM mocks (noop function, undefined component)
+   - Sentry mocks (captureException, captureEvent, init, setUser)
+   - Stripe mocks (loadStripe)
+   - Nodemailer mocks (createTransport)
+   - Debug logging on invocation
+   - Multiple invocations handling
+   - Arguments acceptance without errors
+   - All exported constants validation
 
-4. **`root-theme.ts`** (~10 tests)
-   - Theme configuration
-   - Dark mode handling
-   - CSS variable generation
+4. ✅ **`__tests__/root-theme.test.ts`** (19 tests)
+   - Cookie theme priority (highest priority)
+   - Theme validation (light, dark, system)
+   - Invalid value fallthrough
+   - Environment variable theme (module load time limitation)
+   - Fallback theme (light default)
+   - Priority order: cookie > env > fallback
+   - Edge cases (whitespace, uppercase, async)
+   - Always returns valid theme value
 
-5. **`fonts.ts`** (~5 tests)
+**Remaining Files** (2 files):
+5. ⬜ **`fonts.ts`** (~5 tests)
    - Font loading configuration
    - Google Fonts integration
 
-6. **`server/require-user-in-server-component.ts`** (~10 tests)
+6. ⬜ **`server/require-user-in-server-component.ts`** (~10 tests)
    - User authentication enforcement
    - Redirect to sign-in
    - MFA verification
+
+**Test Insights**:
+- **Mock Hoisting**: Must define vi.mock() factories inline to avoid hoisting errors
+- **Module Load Time**: Environment variables evaluated at module load (NEXT_PUBLIC_DEFAULT_THEME_MODE)
+- **CSP Nonce**: Extracted via regex from Content-Security-Policy header
+- **Async Next.js**: headers() and cookies() are async in Next.js 15
+- **Development Mocks**: Prevent loading heavy modules (Sentry, Stripe, Baselime) in development
 
 ---
 
