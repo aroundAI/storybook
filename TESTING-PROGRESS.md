@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
-**Last Updated**: 2025-10-20
-**Status**: Foundation Complete + Critical Test Suites Implemented (45/82 files, 54.9%)
+**Last Updated**: 2025-10-21
+**Status**: Foundation Complete + Critical Test Suites Implemented (46/82 files, 56.1%)
 
 ---
 
@@ -496,7 +496,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Custom error message translation
 - [ ] `packages/features/accounts/__tests__/delete-personal-account.test.ts`
 
-#### @kit/auth Tests ✅ COMPLETE (1/5 files)
+#### @kit/auth Tests ✅ COMPLETE (2/5 files)
 - [x] `packages/features/auth/__tests__/schemas.test.ts` - Password schema validation ✅ (43 tests passing)
   - PasswordSchema (basic length validation 8-99 chars)
   - RefinedPasswordSchema with environment-based requirements:
@@ -509,6 +509,36 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - PasswordResetSchema (matching passwords)
   - Dynamic module reloading for environment tests
   - Multiple validation error collection
+- [x] `packages/features/auth/__tests__/last-auth-method.test.ts` - localStorage auth method tracking ✅ (27 tests passing)
+  - **saveLastAuthMethod()** (7 tests)
+    - Save password/OTP/magic_link auth methods
+    - Save OAuth with different providers (google, github, facebook, twitter)
+    - Optional email field
+    - localStorage error handling (QuotaExceededError)
+  - **getLastAuthMethod()** (11 tests)
+    - Return null when not in browser (SSR compatibility)
+    - Return null when no data stored
+    - Return stored auth method if recent
+    - 30-day expiration logic (remove if older than 30 days)
+    - Exactly 29 days old (still valid)
+    - Exactly 30 days old (still valid - uses < not <=)
+    - Invalid JSON handling
+    - localStorage error handling
+    - OAuth method with provider
+    - Method without email field
+  - **clearLastAuthMethod()** (3 tests)
+    - Remove auth method from localStorage
+    - Error handling (SecurityError)
+    - Multiple calls (idempotent)
+  - **Integration scenarios** (3 tests)
+    - Save and retrieve password method
+    - Save and clear method
+    - Overwrite previous auth method
+  - **Edge cases** (5 tests)
+    - Very long email (1000+ chars)
+    - Future timestamp handling
+    - Special characters in email
+    - Unicode characters in email
 - [ ] `packages/features/auth/__tests__/sign-in-flow.test.ts`
 - [ ] `packages/features/auth/__tests__/sign-up-flow.test.ts`
 - [ ] `packages/features/auth/__tests__/captcha-verification.test.ts`
@@ -652,27 +682,29 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 42 (51.2%)
-**Total Tests Written**: 808
+**Completed**: 46 (56.1%)
+**Total Tests Written**: 862
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
-- 51 @kit/billing (17 webhook-handler + 34 subscription-payload-builder)
+- 77 @kit/billing (17 webhook-handler + 34 subscription-payload-builder + 26 lemon-squeezy-hmac)
 - 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
 - 54 @kit/projects (32 queries + 22 mutations)
 - 95 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management)
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 37 @kit/supabase (16 check-requires-mfa + 21 require-user)
+- 67 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (console monitoring service)
 - 85 @kit/accounts (42 schemas + 43 auth-schemas)
+- 70 @kit/auth (43 schemas + 27 last-auth-method)
 - 70 @kit/i18n (24 create-settings + 46 i18n-server)
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
+- 29 @kit/notifications (29 notifications-service)
 - 6 test/setup (infrastructure validation)
 
-**Total Tests Passing**: 783 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
+**Total Tests Passing**: 837 ✅ (25 tests with known issues: 11 instanceof + 14 logger assertions)
 
 **Infrastructure Setup**: 100% ✅
 **Critical Tests**: 28.6% (8/28) - includes openai-provider partial
