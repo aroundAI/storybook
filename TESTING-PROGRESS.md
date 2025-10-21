@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **EXPANDED** - 63/82 test files complete + Critical Gap Analysis (561 total tests passing)
+**Status**: **EXPANDED** - 65/82 test files complete + Critical Gap Analysis (598 total tests passing)
 
 ---
 
@@ -210,9 +210,11 @@
 
 This is a known Vitest+TypeScript limitation. The error handling code works in production - the tests just can't verify instanceof checks. Can be resolved later by refactoring LLMError class structure.
 
-#### @kit/billing Tests ✅ COMPLETE (4/4 files)
+#### @kit/billing Tests ✅ COMPLETE (6/6 files)
 - [x] `packages/billing/stripe/__tests__/webhook-handler.test.ts` - Webhook verification & event handling ✅ (17 tests passing)
 - [x] `packages/billing/stripe/__tests__/subscription-payload-builder.test.ts` - Subscription payload builder ✅ (34 tests passing)
+- [x] `packages/billing/gateway/__tests__/billing-gateway.test.ts` - Billing gateway provider management ✅ (13 tests passing)
+- [x] `packages/billing/gateway/__tests__/billing-gateway.service.test.ts` - Billing gateway service operations ✅ (37 tests passing)
   - **build()** - Main payload builder (26 tests)
     - Basic subscription with single/multiple line items
     - Quantity defaulting (1 when not provided)
@@ -235,6 +237,40 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Empty line items array
     - Null price amounts
     - Very large quantities (999999 units)
+  - **createCheckoutSession()** (3 tests) - Checkout session creation
+    - Valid params with complete plan and line items
+    - Schema validation (recurring plans need interval)
+    - Provider delegation to Stripe/Lemon Squeezy
+  - **retrieveCheckoutSession()** (2 tests) - Session retrieval
+    - Successful retrieval by session ID
+    - Invalid parameter validation
+  - **createBillingPortalSession()** (2 tests) - Customer portal
+    - Portal session creation with customer ID
+    - Customer ID and return URL validation
+  - **cancelSubscription()** (3 tests) - Subscription cancellation
+    - Successful cancellation
+    - Invalid subscription ID validation
+    - Provider error handling
+  - **reportUsage()** (2 tests) - Metered billing
+    - Usage reporting with event name and quantity
+    - Parameter validation (id, usage object)
+  - **queryUsage()** (2 tests) - Usage query
+    - Query usage with time/page filters
+    - Parameter validation (id, customerId, filter)
+  - **getPlanById()** (2 tests) - Plan retrieval
+    - Successful plan retrieval
+    - Missing plan error handling
+  - **updateSubscriptionItem()** (3 tests) - Subscription updates
+    - Quantity update
+    - Parameter validation
+    - Provider error handling
+  - **getSubscription()** (2 tests) - Subscription retrieval
+    - Successful retrieval
+    - Not found error handling
+  - **Provider selection** (3 tests) - Provider support
+    - Stripe provider
+    - Lemon Squeezy provider
+    - Paddle provider
 - [x] `packages/billing/lemon-squeezy/__tests__/verify-hmac.test.ts` - HMAC verification ✅ (26 tests passing)
   - **Successful HMAC generation** (8 tests)
     - Generate HMAC signature from key and data
