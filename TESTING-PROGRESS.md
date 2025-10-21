@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **PHASE 3B COMPLETE** 🎉 - 99 test files created, 1068 tests passing
-**Remaining Work**: 34+ high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 101 test files created, 1199 tests passing
+**Remaining Work**: 32+ high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -708,7 +708,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Missing NEXT_PUBLIC_PRODUCT_NAME throws error
     - Empty NEXT_PUBLIC_PRODUCT_NAME throws error
 
-#### @kit/supabase Tests ✅ COMPLETE (3/3 files)
+#### @kit/supabase Tests ✅ COMPLETE (5 files, 198 tests)
 - [x] `packages/supabase/__tests__/check-requires-mfa.test.ts` - MFA verification check ✅ (16 tests passing)
   - MFA required detection (nextLevel=aal2, currentLevel!=aal2)
   - MFA not required scenarios (both aal1, both aal2, nextLevel!=aal2)
@@ -742,6 +742,29 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Error logging with proper context
   - **Service creation** (1 test)
     - Factory function verification
+- [x] `packages/supabase/__tests__/get-secret-key.test.ts` - Supabase secret key utilities ✅ (66 tests passing)
+  - **getSupabaseSecretKey()** (47 tests)
+    - Key retrieval from SUPABASE_SECRET_KEY and SUPABASE_SERVICE_ROLE_KEY
+    - Fallback behavior (prefers SECRET_KEY, falls back to SERVICE_ROLE_KEY)
+    - Empty string handling (treated as falsy, triggers fallback)
+    - Error messages for missing keys
+    - Special characters, whitespace, long keys
+    - Edge cases: numeric strings, UUIDs, JWT format keys
+  - **warnServiceRoleKeyUsage()** (19 tests)
+    - Development environment warnings
+    - Production environment silence
+    - Warning message content (security implications, RLS bypass notice)
+    - Multiple invocation behavior
+    - Case-sensitive NODE_ENV check
+- [x] `packages/supabase/__tests__/get-supabase-client-keys.test.ts` - Client key validation ✅ (65 tests passing)
+  - Key retrieval for URL and publicKey
+  - NEXT_PUBLIC_SUPABASE_ANON_KEY fallback when PUBLIC_KEY missing
+  - Error handling for missing environment variables
+  - Empty string behavior (Zod allows empty strings for string type)
+  - URL format variations (http/https, localhost, ports, query params, paths)
+  - Special characters in keys (JWT format, UUIDs)
+  - Return value structure validation
+  - Environment variable combination testing
 
 #### @kit/shared Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/shared/__tests__/utils.test.ts` - Utility functions ✅ (34 tests passing)
@@ -1193,11 +1216,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 99
+**Total Test Files Created**: 101
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 17 bonus files
-**Total Tests Written**: 1068
-**Total Tests Passing**: 1068 ✅
+**Completed**: 82/82 originally planned (100%) + 19 bonus files
+**Total Tests Written**: 1199
+**Total Tests Passing**: 1199 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1210,7 +1233,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
 - 170 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace)
-- 67 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback)
+- 198 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key + 65 get-client-keys)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
 - 105 @kit/accounts (42 schemas + 20 delete-personal-account + 43 auth-schemas)
