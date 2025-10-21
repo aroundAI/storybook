@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (51/82 files, 62.2%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (52/82 files, 63.4%)
 
 ---
 
@@ -734,7 +734,42 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [ ] `apps/web/app/api/__tests__/billing-webhook.test.ts`
 - [ ] `apps/web/app/api/__tests__/db-webhook.test.ts`
 - [ ] `apps/web/app/api/__tests__/auth-callback.test.ts`
-- [ ] `apps/web/app/api/__tests__/healthcheck.test.ts`
+- [x] `apps/web/app/api/__tests__/healthcheck.test.ts` - Health check endpoint ✅ (27 tests passing)
+  - **Successful health checks** (5 tests)
+    - Return 200 when all services healthy
+    - Include timestamp in ISO format
+    - Check database by querying accounts table
+    - Check cache health via isHealthy()
+    - No console errors when healthy
+  - **Database failures** (3 tests)
+    - Return 503 when database check fails
+    - Handle database query throwing exception
+    - Handle Supabase client creation throwing
+  - **Cache failures** (3 tests)
+    - Return 503 when cache check fails
+    - Handle cache throwing exception
+    - Handle cache client creation throwing
+  - **Multiple service failures** (2 tests)
+    - Return 503 when both services fail
+    - Log both database and cache errors
+  - **Error handling** (3 tests)
+    - Handle unexpected errors in top-level try-catch
+    - Include error message for Error instances
+    - Handle non-Error objects thrown
+  - **Response format** (3 tests)
+    - Return JSON with status and checks
+    - Boolean check values (database, cache)
+    - String status value (healthy/unhealthy/error)
+  - **Integration scenarios** (4 tests)
+    - Database healthy, cache unhealthy
+    - Cache healthy, database unhealthy
+    - Slow database response (100ms)
+    - Slow cache response (100ms)
+  - **Edge cases** (4 tests)
+    - Database returning null error property
+    - Database returning undefined error property
+    - Cache returning exactly true
+    - Cache returning exactly false
 
 #### Server Actions
 - [ ] `apps/web/app/home/(user)/billing/__tests__/server-actions.test.ts`
@@ -806,8 +841,8 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 ## 📊 Progress Statistics
 
 **Total Test Files Planned**: 82
-**Completed**: 51 (62.2%)
-**Total Tests Written**: 897
+**Completed**: 52 (63.4%)
+**Total Tests Written**: 924
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -818,7 +853,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 38 @kit/admin (10 super-admin check + 28 admin-auth-user)
 - 134 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 51 apps/web (29 branding-styles + 22 i18n-resolver)
+- 78 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api)
 - 67 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)

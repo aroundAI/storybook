@@ -33,6 +33,14 @@ export default defineConfig({
         __dirname,
         '../../packages/shared/src/logger/index.ts',
       ),
+      '@kit/supabase/server-client': path.resolve(
+        __dirname,
+        '../../packages/supabase/src/clients/server-client.ts',
+      ),
+      '@kit/cache': path.resolve(
+        __dirname,
+        '../../packages/cache/src/index.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~': path.resolve(__dirname, './app'),
     },
