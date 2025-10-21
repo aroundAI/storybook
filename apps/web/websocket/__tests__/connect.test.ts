@@ -192,7 +192,11 @@ describe('WebSocket Connect Handler', () => {
       const event = createMockConnectEvent();
 
       mockVerifySupabaseToken.mockResolvedValue('user-123');
-      mockSend.mockRejectedValueOnce(new Error('DynamoDB connection timeout'));
+      // Reset mock and configure for this test
+      mockSend.mockReset();
+      mockSend
+        .mockResolvedValueOnce({ Items: [] }) // QueryCommand succeeds
+        .mockRejectedValueOnce(new Error('DynamoDB connection timeout')); // PutCommand fails
 
       const result = await handler(event);
 
@@ -206,9 +210,13 @@ describe('WebSocket Connect Handler', () => {
       const event = createMockConnectEvent();
 
       mockVerifySupabaseToken.mockResolvedValue('user-123');
-      mockSend.mockRejectedValueOnce(
-        new Error('ConditionalCheckFailedException'),
-      );
+      // Reset mock and configure for this test
+      mockSend.mockReset();
+      mockSend
+        .mockResolvedValueOnce({ Items: [] }) // QueryCommand succeeds
+        .mockRejectedValueOnce(
+          new Error('ConditionalCheckFailedException'),
+        ); // PutCommand fails
 
       const result = await handler(event);
 
@@ -277,6 +285,11 @@ describe('WebSocket Connect Handler', () => {
       });
 
       mockVerifySupabaseToken.mockResolvedValue('user-unique');
+      // Reset and configure mocks for this test
+      mockSend.mockReset();
+      mockSend
+        .mockResolvedValueOnce({ Items: [] }) // QueryCommand
+        .mockResolvedValueOnce({}); // PutCommand
 
       await handler(event);
 
@@ -293,6 +306,12 @@ describe('WebSocket Connect Handler', () => {
     it('should store connectedAt timestamp', async () => {
       const event = createMockConnectEvent();
 
+      // Reset and configure mocks for this test
+      mockSend.mockReset();
+      mockSend
+        .mockResolvedValueOnce({ Items: [] }) // QueryCommand
+        .mockResolvedValueOnce({}); // PutCommand
+
       await handler(event);
 
       expect(mockPutCommand).toHaveBeenCalledWith(
@@ -307,15 +326,21 @@ describe('WebSocket Connect Handler', () => {
 
   describe('Environment Configuration', () => {
     it('should use CONNECTIONS_TABLE_NAME from environment', async () => {
-      process.env.CONNECTIONS_TABLE_NAME = 'custom-table-name';
-
+      // Note: Environment variable is read at module load time
+      // This test verifies the handler uses the configured value from vitest.setup.ts
       const event = createMockConnectEvent();
+
+      // Reset and configure mocks for this test
+      mockSend.mockReset();
+      mockSend
+        .mockResolvedValueOnce({ Items: [] }) // QueryCommand
+        .mockResolvedValueOnce({}); // PutCommand
 
       await handler(event);
 
       expect(mockPutCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          TableName: 'custom-table-name',
+          TableName: 'test-connections-table', // From vitest.setup.ts
         }),
       );
     });

@@ -166,15 +166,15 @@ describe('WebSocket Disconnect Handler', () => {
 
   describe('Environment Configuration', () => {
     it('should use CONNECTIONS_TABLE_NAME from environment', async () => {
-      process.env.CONNECTIONS_TABLE_NAME = 'custom-disconnect-table';
-
+      // Note: Environment variable is read at module load time
+      // This test verifies the handler uses the configured value from vitest.setup.ts
       const event = createMockDisconnectEvent();
 
       await handler(event);
 
       expect(mockDeleteCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          TableName: 'custom-disconnect-table',
+          TableName: 'test-connections-table', // From vitest.setup.ts
         }),
       );
     });
