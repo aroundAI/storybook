@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (48/82 files, 58.5%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (49/82 files, 59.8%)
 
 ---
 
@@ -542,7 +542,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Log both info messages in successful flow
     - Log error but not success message on failure
 
-#### @kit/auth Tests ✅ COMPLETE (2/5 files)
+#### @kit/auth Tests ✅ COMPLETE (3/6 files)
 - [x] `packages/features/auth/__tests__/schemas.test.ts` - Password schema validation ✅ (43 tests passing)
   - PasswordSchema (basic length validation 8-99 chars)
   - RefinedPasswordSchema with environment-based requirements:
@@ -585,9 +585,35 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Future timestamp handling
     - Special characters in email
     - Unicode characters in email
+- [x] `packages/features/auth/__tests__/captcha-verification.test.ts` - Cloudflare Turnstile CAPTCHA verification ✅ (20 tests passing)
+  - **Environment Configuration** (1 test)
+    - Use CAPTCHA_SECRET_TOKEN from environment variables
+  - **Successful Verification** (3 tests)
+    - Verify valid CAPTCHA token via Cloudflare API
+    - Call correct Turnstile endpoint with POST method
+    - Send FormData with secret and response token
+  - **Error Handling** (7 tests)
+    - Throw error when API returns non-ok status (4xx, 5xx)
+    - Throw error when response indicates failure (success: false)
+    - Handle network errors gracefully
+    - Handle invalid JSON response
+    - Differentiate between API errors and validation errors
+  - **Integration Scenarios** (2 tests)
+    - Handle multiple concurrent verification requests
+    - Handle mixed success and failure scenarios
+  - **Edge Cases** (4 tests)
+    - Handle empty token (Cloudflare error: missing-input-response)
+    - Handle very long tokens (10000+ chars)
+    - Handle special characters in token
+    - Handle Unicode characters in token
+  - **Cloudflare-specific Responses** (3 tests)
+    - Handle timeout-or-duplicate error
+    - Handle invalid-input-secret error
+    - Parse successful response with metadata (challenge_ts, hostname, action)
+  - **Performance** (1 test)
+    - Complete verification quickly (< 100ms mocked)
 - [ ] `packages/features/auth/__tests__/sign-in-flow.test.ts`
 - [ ] `packages/features/auth/__tests__/sign-up-flow.test.ts`
-- [ ] `packages/features/auth/__tests__/captcha-verification.test.ts`
 - [ ] `packages/features/auth/__tests__/mfa.test.ts`
 
 #### @kit/i18n Tests ✅ COMPLETE (2/2 files)
