@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: **PHASE 3A IN PROGRESS** - 91 test files created, 863 tests passing
-**Remaining Work**: 43+ high-value files identified (see Remaining Work Summary below)
+**Status**: **PHASE 3A IN PROGRESS** - 93 test files created, 934 tests passing
+**Remaining Work**: 41+ high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -186,7 +186,7 @@
 - ✅ @kit/billing (3 files, 77 tests)
 - ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
 - ✅ @kit/projects (2 files, 54 tests)
-- ✅ @kit/team-accounts (14 files, 277 tests) ⭐ EXPANDED
+- ✅ @kit/team-accounts (16 files, 348 tests) ⭐ EXPANDED
 - ✅ @kit/i18n (2 files, 46 tests)
 - ✅ @kit/otp (2 files, 26 tests)
 - ✅ @kit/supabase (3 files, 67 tests)
@@ -441,7 +441,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/features/projects/__tests__/project-queries.test.ts` - Queries ✅ (32 tests passing)
 - [x] `packages/features/projects/__tests__/project-mutations.test.ts` - Mutations ✅ (22 tests passing)
 
-#### @kit/team-accounts Tests ✅ EXPANDED (14/14 files)
+#### @kit/team-accounts Tests ✅ EXPANDED (16/16 files)
 - [x] `packages/features/team-accounts/__tests__/per-seat-billing.test.ts` - Per-seat billing ✅ (20 tests passing)
 - [x] `packages/features/team-accounts/__tests__/account-per-seat-billing.service.test.ts` - Per-seat billing service ✅ (15 tests passing)
 - [x] `packages/features/team-accounts/__tests__/leave-team-account.service.test.ts` - Leave team account service ✅ (15 tests passing)
@@ -524,6 +524,26 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Audit log creation with network context
   - Error handling (invalid OTP, permission denied, feature disabled)
   - Integration flow (OTP → permissions → fetch → delete → audit → redirect)
+- [x] `packages/features/team-accounts/__tests__/team-invitations-server-actions.test.ts` - Invitation server actions ✅ (42 tests passing)
+  - **createInvitationsAction** (13 tests) - Batch invitation creation with validation
+  - **deleteInvitationAction** (6 tests) - Invitation deletion and revalidation
+  - **updateInvitationAction** (7 tests) - Role updates with validation
+  - **acceptInvitationAction** (12 tests) - Accept with admin client, billing integration
+  - **renewInvitationAction** (7 tests) - Extend invitation expiration
+  - Schema validation (email format, role requirements, UUID tokens, array limits)
+  - Duplicate email detection
+  - Integration with per-seat billing (increaseSeats on accept)
+  - Full lifecycle testing (create → update → renew → accept)
+- [x] `packages/features/team-accounts/__tests__/create-team-account-server-actions.test.ts` - Create account server action ✅ (29 tests passing)
+  - Successful account creation with redirect to /home/[slug]
+  - Team name validation (2-50 chars, no special characters, reserved names)
+  - Reserved name blocking ('settings', 'billing', case-insensitive)
+  - Unicode and emoji support in team names
+  - Audit log creation with network context
+  - Error handling (service failures, no audit/redirect on error)
+  - Logging verification (start, completion, errors)
+  - Edge cases (null user, empty/whitespace names)
+  - Integration flow (service → audit → redirect)
 
 #### @kit/admin Tests ✅ COMPLETE
 - [x] `packages/features/admin/__tests__/is-super-admin.test.ts` - Super admin check ✅ (10 tests passing)
@@ -1627,8 +1647,8 @@ File needing tests:
 ### Phase 3A: Team Account Completion (Weeks 1-2) - IN PROGRESS ✅
 
 **Original**: 11 files | ~175 tests | 20-25 hours
-**Completed**: 5 files | 109 tests | ~8 hours
-**Remaining**: 6 files | ~96 tests | 12-15 hours
+**Completed**: 7 files | 180 tests | ~12 hours
+**Remaining**: 4 files | ~65 tests | 8-10 hours
 
 Progress:
 1. ✅ Team account services (3/5 files complete - 60%)
@@ -1638,22 +1658,23 @@ Progress:
    - 🔲 webhooks/account-webhooks.service.ts (pending)
    - 🔲 webhooks/account-invitations-webhook.service.ts (pending)
 
-2. ✅ Team account server actions (2/6 files complete - 33%)
+2. ✅ Team account server actions (4/6 files complete - 67%)
    - ✅ leave-team-account-server-actions.ts (23 tests, ~20 passing)
    - ✅ delete-team-account-server-actions.ts (30 tests, 27 passing)
-   - 🔲 team-invitations-server-actions.ts (pending)
-   - 🔲 create-team-account-server-actions.ts (pending)
+   - ✅ team-invitations-server-actions.ts (42 tests, all passing) 🎉
+   - ✅ create-team-account-server-actions.ts (29 tests, all passing) 🎉
    - 🔲 team-details-server-actions.ts (pending)
    - 🔲 team-members-server-actions.ts (pending)
 
 **Testing Patterns Established**:
 - Vitest mock hoisting workaround (inline definitions + vi.mocked())
-- enhanceAction bypass for testing without auth wrapper
+- enhanceAction with schema validation preservation (validate but bypass auth)
 - OTP service mocking for sensitive operations
 - Audit log and network context mocking
 - Feature flag testing via environment variables
 - UUID validation requirements for all IDs
 - Next.js redirect/revalidate testing patterns
+- Multi-action test files (5 actions in single file)
 
 **Infrastructure Updates**:
 - vitest.setup.ts: Added Next.js headers/cookies mock
