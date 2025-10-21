@@ -45,9 +45,6 @@ jobs:
       - name: Lint
         run: pnpm run lint
 
-      - name: Run Unit Tests
-        run: pnpm --filter @kit/cache test
-
   unit-test:
     name: 🧪 Unit Tests
     timeout-minutes: 15
@@ -77,8 +74,33 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-turbo-
 
-      - name: Run Unit Tests
+      - name: Run Unit Tests - Web
         run: pnpm --filter web test
+
+      - name: Run Unit Tests - Packages
+        run: |
+          pnpm --filter @kit/cache test
+          pnpm --filter @kit/branding test
+          pnpm --filter @kit/next test
+          pnpm --filter @kit/llm test
+          pnpm --filter @kit/stripe test
+          pnpm --filter @kit/prompt-templates test
+          pnpm --filter @kit/projects test
+          pnpm --filter @kit/team-accounts test
+          pnpm --filter @kit/i18n test
+          pnpm --filter @kit/otp test
+          pnpm --filter @kit/supabase test
+          pnpm --filter @kit/notifications test
+          pnpm --filter @kit/admin test
+          pnpm --filter @kit/audit-logs test
+          pnpm --filter @kit/shared test
+          pnpm --filter @kit/accounts test
+          pnpm --filter @kit/auth test
+          pnpm --filter @kit/monitoring-core test
+          pnpm --filter @kit/mailers-shared test
+          pnpm --filter @kit/mailers-core test
+          pnpm --filter @kit/lemon-squeezy test
+          pnpm --filter @kit/billing-gateway test
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage
