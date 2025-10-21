@@ -83,7 +83,7 @@ jobs:
           pnpm --filter @kit/branding test
           pnpm --filter @kit/next test
           pnpm --filter @kit/llm test
-          pnpm --filter @kit/stripe test
+          pnpm --filter @kit/billing test
           pnpm --filter @kit/prompt-templates test
           pnpm --filter @kit/projects test
           pnpm --filter @kit/team-accounts test
