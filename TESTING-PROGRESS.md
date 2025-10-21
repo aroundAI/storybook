@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 111 test files created, 1527 tests passing
-**Remaining Work**: 28 high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 113 test files created, 1616 tests passing
+**Remaining Work**: 26 high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -1289,11 +1289,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 111
+**Total Test Files Created**: 113
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 29 bonus files
-**Total Tests Written**: 1527
-**Total Tests Passing**: 1527 ✅
+**Completed**: 82/82 originally planned (100%) + 31 bonus files
+**Total Tests Written**: 1616
+**Total Tests Passing**: 1616 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1314,6 +1314,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 70 @kit/i18n (24 create-settings + 46 i18n-server)
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
 - 29 @kit/notifications (29 notifications-service)
+- 89 @kit/ui (52 is-route-active + 37 cn)
 - 6 test/setup (infrastructure validation)
 
 **Infrastructure Setup**: 100% ✅
@@ -1328,10 +1329,10 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ### Overview
 
-**Current Status**: 74/82 originally planned test files complete (90.2%)
+**Current Status**: 76/82 originally planned test files complete (92.7%)
 **Deep Analysis**: 122+ testable files identified in codebase
-**Files WITH Tests**: 111 test files created
-**Files WITHOUT Tests**: 48+ high-value files remaining
+**Files WITH Tests**: 113 test files created
+**Files WITHOUT Tests**: 46+ high-value files remaining
 
 This section provides a comprehensive breakdown of all remaining test work.
 
@@ -1737,21 +1738,48 @@ Files needing tests:
 
 ---
 
-#### UI Utilities (2 files) - ~15-20 tests estimated
+#### UI Utilities ✅ COMPLETE (2 files, 89 tests)
 
 **Location**: `packages/ui/src/lib/utils/`
 
-Files needing tests:
-1. **`is-route-active.ts`** (~10 tests)
-   - Exact match detection
-   - Prefix matching
-   - Query parameter handling
-   - Edge cases
+**Files Created**:
+1. ✅ **`__tests__/is-route-active.test.ts`** (52 tests)
+   - isRouteActive function (27 tests):
+     - Exact path matching (root paths, nested paths)
+     - Function-based end parameter (custom matching logic)
+     - Boolean end parameter (depth 1 vs depth 3)
+     - Segment matching at different depths
+     - Edge cases (trailing slashes, special characters, numbers)
+   - checkIfRouteIsActive function (25 tests):
+     - Exact matching validation
+     - Query parameter stripping from current route
+     - Root path handling (prevent false matches)
+     - Depth-based matching (1, 2, 3 levels)
+     - Path inclusion checks
+     - Segment counting logic
+     - Edge cases (double slashes, hash fragments, case sensitivity)
 
-2. **`cn.ts`** (~8 tests)
-   - Class name merging (clsx)
-   - Tailwind merge conflicts
-   - Conditional classes
+2. ✅ **`__tests__/cn.test.ts`** (37 tests)
+   - Basic class merging (empty, single, multiple, falsy values)
+   - Conditional class application (boolean conditions, multiple conditions)
+   - Tailwind merge conflicts (padding, text size, colors, margins, directional spacing)
+   - Object syntax (boolean values, combined with strings)
+   - Array syntax (nested arrays, falsy filtering)
+   - Complex scenarios:
+     - Mix of all input types
+     - Conflict resolution in complex inputs
+     - Dynamic component props pattern
+     - Responsive classes and hover states
+     - Dark mode classes
+     - Arbitrary values and important modifier
+   - Edge cases (long strings, special characters, empty objects/arrays, whitespace)
+
+**Test Insights**:
+- **Route Matching Depth**: depth=1 requires exact match, depth=3 allows nested matching
+- **Tailwind Merge**: Later conflicting classes override earlier ones (e.g., `p-4 p-8` → `p-8`)
+- **Object Syntax**: `{ 'class': true/false }` conditionally applies classes
+- **Array Syntax**: Supports nested arrays, filters falsy values
+- **Important Modifier**: `!p-4` takes precedence over conflicting classes
 
 ---
 
