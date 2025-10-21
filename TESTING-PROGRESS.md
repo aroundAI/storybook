@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-21
-**Status**: Foundation Complete + Critical Test Suites Implemented (49/82 files, 59.8%)
+**Status**: Foundation Complete + Critical Test Suites Implemented (50/82 files, 61.0%)
 
 ---
 
@@ -746,7 +746,33 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [ ] `apps/web/app/home/[account]/__tests__/team-account-workspace-loader.test.ts`
 
 #### Utilities
-- [ ] `apps/web/lib/__tests__/branding-styles.test.ts`
+- [x] `apps/web/lib/__tests__/branding-styles.test.ts` - Branding styles generation ✅ (29 tests passing)
+  - **generateBrandingStyles()** (5 tests)
+    - Generate CSS custom properties for colors and fonts
+    - Format CSS with proper indentation
+    - Handle fonts with spaces and special characters
+    - Generate font-family variables with fallbacks
+  - **generateGoogleFontsLink()** (6 tests)
+    - Generate Google Fonts URL for single/multiple fonts
+    - Merge weights for duplicate fonts (heading + body use same font)
+    - Sort weights numerically
+    - Remove duplicate weights
+    - Handle fonts with spaces (URL encode with +)
+  - **getBrandingStyleObject()** (3 tests)
+    - Return React inline style object with CSS variables
+    - Handle hex color values correctly
+    - Type-safe string values for React
+  - **generateLogoStyle()** (15 tests)
+    - Apply basic logo styles (font family, weight, color)
+    - Apply custom font family with fallback
+    - Apply gradient text effect with background-clip
+    - Apply animated gradient with background-size and animation
+    - Apply glow/shadow effect with textShadow
+    - Apply animated glow with pulsing animation
+    - Combine gradient and glow animations
+    - Apply text stroke with WebkitTextStroke
+    - Handle disabled features (gradient/glow/stroke)
+    - Handle null returns from buildGradientString/buildGlowShadow
 - [ ] `apps/web/lib/i18n/__tests__/i18n-resolver.test.ts`
 
 ---
