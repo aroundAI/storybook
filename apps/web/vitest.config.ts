@@ -94,7 +94,15 @@ export default defineConfig({
         __dirname,
         '../../packages/supabase/src/require-user.ts',
       ),
+      '@kit/accounts/api': path.resolve(
+        __dirname,
+        '../../packages/features/accounts/src/server/api.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
+      '~/lib/server/require-user-in-server-component': path.resolve(
+        __dirname,
+        './lib/server/require-user-in-server-component.ts',
+      ),
       '~/config': path.resolve(__dirname, './config'),
       '~': path.resolve(__dirname, './app'),
       'server-only': path.resolve(__dirname, './__mocks__/server-only.ts'),
