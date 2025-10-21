@@ -87,7 +87,15 @@ jobs:
           pnpm --filter @kit/prompt-templates test
           pnpm --filter @kit/projects test
           pnpm --filter @kit/team-accounts test
+          pnpm --filter @kit/admin test
+          pnpm --filter @kit/audit-logs test
+          pnpm --filter @kit/shared test
+          pnpm --filter @kit/monitoring-core test
+          pnpm --filter @kit/accounts test
+          pnpm --filter @kit/auth test
           pnpm --filter @kit/i18n test
+          pnpm --filter @kit/mailers-shared test
+          pnpm --filter @kit/mailers-core test
           pnpm --filter @kit/otp test
           pnpm --filter @kit/supabase test
           pnpm --filter @kit/notifications test
