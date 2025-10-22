@@ -1,0 +1,24 @@
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: [
+        'node_modules/',
+        '**/*.test.ts',
+        '**/*.config.ts',
+        '**/types.ts',
+      ],
+    },
+  },
+  resolve: {
+    alias: {
+      'server-only': new URL('./src/__mocks__/server-only.ts', import.meta.url)
+        .pathname,
+    },
+  },
+});

@@ -172,7 +172,7 @@ export function EditSystemPromptForm({
       </div>
 
       {/* Sticky Footer with Action Buttons */}
-      <div className="bg-background fixed bottom-0 left-0 right-0 border-t">
+      <div className="bg-background fixed right-0 bottom-0 left-0 border-t">
         <div className="container mx-auto flex justify-end gap-3 px-6 py-4">
           <Button
             type="button"

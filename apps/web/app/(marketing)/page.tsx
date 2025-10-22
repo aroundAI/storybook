@@ -28,7 +28,7 @@ function Home() {
         <Hero
           pill={
             <Pill label={'New'}>
-              <span>The SaaS Starter Kit for ambitious developers</span>
+              <span>AI SaaS Starter Kit for Lightning-Fast Shipping</span>
               <PillActionButton asChild>
                 <Link href={'/auth/sign-up'}>
                   <ArrowRightIcon className={'h-4 w-4'} />
@@ -38,14 +38,15 @@ function Home() {
           }
           title={
             <>
-              <span>The ultimate SaaS Starter</span>
-              <span>for your next project</span>
+              <span>Ship AI Products</span>
+              <span>in Days, Not Months</span>
             </>
           }
           subtitle={
             <span>
-              Build and Ship a SaaS faster than ever before with the next-gen
-              SaaS Starter Kit. Ship your SaaS in days, not months.
+              The complete AI SaaS starter kit for Around AI projects. Built-in
+              LLM integration, prompt management, and everything you need to
+              ship production-ready AI applications faster.
             </span>
           }
           cta={<MainCallToActionButton />}
@@ -72,51 +73,52 @@ function Home() {
             heading={
               <>
                 <b className="font-medium tracking-tighter dark:text-white">
-                  The ultimate SaaS Starter Kit
+                  Everything you need for AI SaaS
                 </b>
                 .{' '}
                 <span className="text-muted-foreground font-normal tracking-tighter">
-                  Unleash your creativity and build your SaaS faster than ever
-                  with Makerkit.
+                  Ship production-ready AI applications with built-in LLM
+                  integration, prompt management, and all the essential SaaS
+                  features.
                 </span>
               </>
             }
             icon={
               <FeatureShowcaseIconContainer>
                 <LayoutDashboard className="h-5" />
-                <span>All-in-one solution</span>
+                <span>Complete AI Platform</span>
               </FeatureShowcaseIconContainer>
             }
           >
             <FeatureGrid>
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden'}
-                label={'Beautiful Dashboard'}
-                description={`Makerkit provides a beautiful dashboard to manage your SaaS business.`}
+                label={'LLM Integration'}
+                description={`Unified API for OpenAI, Anthropic, and more. Switch providers with zero code changes.`}
               ></FeatureCard>
 
               <FeatureCard
                 className={'relative col-span-1 w-full overflow-hidden'}
-                label={'Authentication'}
-                description={`Makerkit provides a variety of providers to allow your users to sign in.`}
+                label={'Prompt Management'}
+                description={`Version control for prompts, A/B testing, and analytics to optimize your AI workflows.`}
               ></FeatureCard>
 
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden'}
-                label={'Multi Tenancy'}
-                description={`Multi tenant memberships for your SaaS business.`}
+                label={'Multi-Tenant Ready'}
+                description={`Built-in team workspaces, permissions, and billing for B2B AI products.`}
               />
 
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden md:col-span-2'}
-                label={'Billing'}
-                description={`Makerkit supports multiple payment gateways to charge your customers.`}
+                label={'Production Infrastructure'}
+                description={`Authentication, billing, monitoring, and deployment - everything configured and ready to ship.`}
               />
 
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden'}
-                label={'Plugins'}
-                description={`Extend your SaaS with plugins that you can install using the CLI.`}
+                label={'AI-First Stack'}
+                description={`Next.js 15, React 19, TypeScript, Supabase, and Tailwind - optimized for AI applications.`}
               />
             </FeatureGrid>
           </FeatureShowcase>

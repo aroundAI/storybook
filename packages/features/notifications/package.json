@@ -6,7 +6,9 @@
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "exports": {
     "./api": "./src/server/api.ts",
@@ -25,7 +27,8 @@
     "lucide-react": "^0.544.0",
     "react": "19.1.1",
     "react-dom": "19.1.1",
-    "react-i18next": "^15.7.3"
+    "react-i18next": "^15.7.3",
+    "vitest": "^3.2.4"
   },
   "prettier": "@kit/prettier-config",
   "typesVersions": {

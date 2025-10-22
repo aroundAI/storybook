@@ -4,7 +4,7 @@ import { cn } from '@kit/ui/utils';
 
 /**
  * @sans
- * @description Define here the sans font.
+ * @description Default sans font
  * By default, it uses the Inter font from Google Fonts.
  */
 const sans = SansFont({
@@ -17,11 +17,10 @@ const sans = SansFont({
 
 /**
  * @heading
- * @description Define here the heading font.
+ * @description Default heading font
  */
 const heading = sans;
 
-// we export these fonts into the root layout
 export { sans, heading };
 
 /**
@@ -39,8 +38,6 @@ export function getFontsClassName(theme?: string) {
     [],
   );
 
-  // Only add explicit theme classes for 'light' or 'dark', not 'system'
-  // When theme is 'system', let next-themes handle it on the client to avoid hydration mismatch
   const themeClasses =
     theme === 'dark'
       ? { dark: true }

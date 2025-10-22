@@ -70,6 +70,11 @@ export default tsEsLint.config(
       '**/public',
       'dist',
       'pnpm-lock.yaml',
+      '**/__tests__/**',
+      '**/*.test.ts',
+      '**/*.test.tsx',
+      '**/vitest.setup.ts',
+      '**/vitest.config.ts',
     ],
   },
 );

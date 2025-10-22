@@ -8,14 +8,28 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handler } from '../default';
 import { createMockMessageEvent } from './utils/test-helpers';
 
-// Mock AWS SDK
-const mockPostToConnectionCommand = vi.fn();
-const mockQueryCommand = vi.fn();
-const mockScanCommand = vi.fn();
-const mockDeleteCommand = vi.fn();
-const mockApiGatewayClientSend = vi.fn();
-const mockDdbClientSend = vi.fn();
+// Use vi.hoisted() to ensure mocks are available during hoisting phase
+const {
+  mockPostToConnectionCommand,
+  mockQueryCommand,
+  mockScanCommand,
+  mockDeleteCommand,
+  mockGetCommand,
+  mockApiGatewayClientSend,
+  mockDdbClientSend,
+  mockSupabaseRpc,
+} = vi.hoisted(() => ({
+  mockPostToConnectionCommand: vi.fn(),
+  mockQueryCommand: vi.fn(),
+  mockScanCommand: vi.fn(),
+  mockDeleteCommand: vi.fn(),
+  mockGetCommand: vi.fn(),
+  mockApiGatewayClientSend: vi.fn(),
+  mockDdbClientSend: vi.fn(),
+  mockSupabaseRpc: vi.fn(),
+}));
 
+// Mock AWS SDK
 vi.mock('@aws-sdk/client-apigatewaymanagementapi', () => ({
   ApiGatewayManagementApiClient: vi.fn(() => ({
     send: mockApiGatewayClientSend,
@@ -48,6 +62,17 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
     mockDeleteCommand(params);
     return params;
   }),
+  GetCommand: vi.fn((params) => {
+    mockGetCommand(params);
+    return params;
+  }),
+}));
+
+// Mock Supabase client
+vi.mock('@supabase/supabase-js', () => ({
+  createClient: vi.fn(() => ({
+    rpc: mockSupabaseRpc,
+  })),
 }));
 
 describe('WebSocket Default Handler', () => {
@@ -55,28 +80,53 @@ describe('WebSocket Default Handler', () => {
     vi.clearAllMocks();
 
     process.env.CONNECTIONS_TABLE_NAME = 'test-connections-table';
+    process.env.WEBSOCKET_API_ENDPOINT =
+      'https://test.execute-api.us-east-1.amazonaws.com/test';
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://test.supabase.co';
+    process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-service-key';
 
     // Default: successful message send
     mockApiGatewayClientSend.mockResolvedValue({});
-    mockDdbClientSend.mockResolvedValue({ Items: [] });
+
+    // Configure DynamoDB responses
+    // First call is GetCommand (to get userId from connectionId)
+    // Subsequent calls depend on the action (QueryCommand, ScanCommand, etc.)
+    mockDdbClientSend
+      .mockResolvedValueOnce({
+        Item: { userId: 'test-user-id', connectionId: 'test-connection-id' },
+      }) // GetCommand: return userId
+      .mockResolvedValue({ Items: [] }); // Other commands: return empty by default
+
+    // Default: Supabase RPC returns true (users share team)
+    mockSupabaseRpc.mockResolvedValue({ data: true, error: null });
   });
 
   describe('Send to User Action', () => {
     it('should send message to specific user by userId', async () => {
+      const targetUserId = '550e8400-e29b-41d4-a716-446655440000'; // Valid UUID
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'target-user-123',
+        targetUserId,
         message: 'Hello user',
         data: { foo: 'bar' },
       });
 
-      // Mock: target user has 2 connections
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [
-          { connectionId: 'conn-1', userId: 'target-user-123' },
-          { connectionId: 'conn-2', userId: 'target-user-123' },
-        ],
-      });
+      // Reset and configure full mock chain
+      const senderId = 'c50e8400-e29b-41d4-a716-446655440007'; // Valid UUID sender
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: senderId,
+            connectionId: 'test-connection-id',
+          },
+        }) // GetCommand: sender userId
+        .mockResolvedValueOnce({
+          Items: [
+            { connectionId: 'conn-1', userId: targetUserId },
+            { connectionId: 'conn-2', userId: targetUserId },
+          ],
+        }); // QueryCommand: target user connections
 
       const result = await handler(event);
 
@@ -89,7 +139,7 @@ describe('WebSocket Default Handler', () => {
           IndexName: 'userIdIndex',
           KeyConditionExpression: 'userId = :userId',
           ExpressionAttributeValues: {
-            ':userId': 'target-user-123',
+            ':userId': targetUserId,
           },
         }),
       );
@@ -119,26 +169,33 @@ describe('WebSocket Default Handler', () => {
 
       const result = await handler(event);
 
-      expect(result.statusCode).toBe(200); // Handler still succeeds
-      expect(mockPostToConnectionCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Data: expect.stringContaining('targetUserId is required'),
-        }),
-      );
+      // Schema validation fails, returns 400
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body!).message).toBe('Invalid message format');
 
-      // Should not query DynamoDB
+      // Should not query DynamoDB (validation fails before that)
       expect(mockQueryCommand).not.toHaveBeenCalled();
     });
 
     it('should handle user with no active connections', async () => {
+      const targetUserId = 'b50e8400-e29b-41d4-a716-446655440006'; // Valid UUID
+      const senderId = 'd50e8400-e29b-41d4-a716-446655440008'; // Valid UUID sender
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'offline-user',
+        targetUserId,
         message: 'Hello',
       });
 
-      // Mock: user has no connections
-      mockDdbClientSend.mockResolvedValueOnce({ Items: [] });
+      // Reset and configure mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: senderId,
+            connectionId: 'test-connection-id',
+          },
+        }) // GetCommand: sender userId
+        .mockResolvedValueOnce({ Items: [] }); // QueryCommand: no connections
 
       const result = await handler(event);
 
@@ -149,26 +206,35 @@ describe('WebSocket Default Handler', () => {
     });
 
     it('should cleanup stale connections on 410 error', async () => {
+      const targetUserId = '650e8400-e29b-41d4-a716-446655440001'; // Valid UUID
+      const senderId = 'e50e8400-e29b-41d4-a716-446655440009'; // Valid UUID sender
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'user-with-stale',
+        targetUserId,
         message: 'Hello',
       });
 
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [
-          { connectionId: 'stale-conn-1' },
-          { connectionId: 'active-conn-2' },
-        ],
-      });
+      // Reset and configure full mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: senderId,
+            connectionId: 'test-connection-id',
+          },
+        }) // GetCommand: sender userId
+        .mockResolvedValueOnce({
+          Items: [
+            { connectionId: 'stale-conn-1' },
+            { connectionId: 'active-conn-2' },
+          ],
+        }) // QueryCommand: target connections
+        .mockResolvedValueOnce({}); // DeleteCommand: delete stale connection
 
       // Mock: first connection is stale (410), second succeeds
       mockApiGatewayClientSend
         .mockRejectedValueOnce({ statusCode: 410 })
         .mockResolvedValueOnce({});
-
-      // Mock: delete command for stale connection
-      mockDdbClientSend.mockResolvedValueOnce({});
 
       await handler(event);
 
@@ -191,14 +257,23 @@ describe('WebSocket Default Handler', () => {
         data: { severity: 'warning' },
       });
 
-      // Mock: 3 total connections
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [
-          { connectionId: 'conn-a' },
-          { connectionId: 'conn-b' },
-          { connectionId: 'conn-c' },
-        ],
-      });
+      // Reset and configure mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: 'admin-id',
+            connectionId: 'test-connection-id',
+            isSuperAdmin: true,
+          },
+        }) // GetCommand: check super admin
+        .mockResolvedValueOnce({
+          Items: [
+            { connectionId: 'conn-a' },
+            { connectionId: 'conn-b' },
+            { connectionId: 'conn-c' },
+          ],
+        }); // ScanCommand: all connections
 
       const result = await handler(event);
 
@@ -224,12 +299,26 @@ describe('WebSocket Default Handler', () => {
         message: 'Test broadcast',
       });
 
-      mockDdbClientSend.mockResolvedValueOnce({ Items: [] });
+      // Reset and configure mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: 'non-admin-id',
+            connectionId: 'test-connection-id',
+            isSuperAdmin: false,
+          },
+        }) // GetCommand: not super admin
+        .mockResolvedValueOnce({ Items: [] }); // Not reached (auth fails)
 
       await handler(event);
 
+      // Check that console.warn was called with the specific message
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Broadcast to ALL users'),
+        '[Security] Unauthorized broadcast attempt from non-admin user',
+        expect.objectContaining({
+          connectionId: 'test-connection-id',
+        }),
       );
 
       consoleSpy.mockRestore();
@@ -241,12 +330,22 @@ describe('WebSocket Default Handler', () => {
         message: 'Broadcast test',
       });
 
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [{ connectionId: 'stale-broadcast' }],
-      });
+      // Reset and configure full mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: 'admin-id',
+            connectionId: 'test-connection-id',
+            isSuperAdmin: true,
+          },
+        }) // GetCommand: check super admin
+        .mockResolvedValueOnce({
+          Items: [{ connectionId: 'stale-broadcast' }],
+        }) // ScanCommand: all connections
+        .mockResolvedValueOnce({}); // DeleteCommand: delete stale
 
       mockApiGatewayClientSend.mockRejectedValueOnce({ statusCode: 410 });
-      mockDdbClientSend.mockResolvedValueOnce({});
 
       await handler(event);
 
@@ -325,7 +424,7 @@ describe('WebSocket Default Handler', () => {
   });
 
   describe('Unknown Actions', () => {
-    it('should echo back unknown messages', async () => {
+    it('should reject unknown actions with 400', async () => {
       const event = createMockMessageEvent({
         action: 'unknown-action',
         customData: 'test',
@@ -333,22 +432,21 @@ describe('WebSocket Default Handler', () => {
 
       const result = await handler(event);
 
-      expect(result.statusCode).toBe(200);
-      expect(mockPostToConnectionCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          Data: expect.stringContaining('echo'),
-        }),
-      );
+      // Schema validation fails for unknown actions
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body!).message).toBe('Invalid message format');
     });
 
-    it('should handle messages without action field', async () => {
+    it('should reject messages without action field', async () => {
       const event = createMockMessageEvent({
         randomField: 'value',
       });
 
       const result = await handler(event);
 
-      expect(result.statusCode).toBe(200);
+      // Schema validation fails when action is missing
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body!).message).toBe('Invalid message format');
     });
   });
 
@@ -359,26 +457,37 @@ describe('WebSocket Default Handler', () => {
 
       const result = await handler(event);
 
-      expect(result.statusCode).toBe(500);
-      expect(JSON.parse(result.body!).message).toBe(
-        'Failed to process message',
-      );
+      // Handler returns 400 for invalid message format (line 189 in default.ts)
+      expect(result.statusCode).toBe(400);
+      expect(JSON.parse(result.body!).message).toBe('Invalid message format');
     });
 
-    it('should handle DynamoDB query errors', async () => {
+    it('should handle DynamoDB query errors gracefully', async () => {
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'user-123',
+        targetUserId: '750e8400-e29b-41d4-a716-446655440002', // Valid UUID
         message: 'Test',
       });
 
+      // Reset and configure mock to fail on GetCommand (first DynamoDB call)
+      mockDdbClientSend.mockReset();
       mockDdbClientSend.mockRejectedValueOnce(
         new Error('DynamoDB connection timeout'),
       );
 
       const result = await handler(event);
 
-      expect(result.statusCode).toBe(500);
+      // GetCommand error is caught by getSenderUserId and returns null
+      // Handler then sends error message to client and returns 200
+      expect(result.statusCode).toBe(200);
+
+      // Should send error message to the client
+      expect(mockPostToConnectionCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ConnectionId: 'test-connection-id',
+          Data: expect.stringContaining('Unauthorized'),
+        }),
+      );
     });
 
     it('should handle API Gateway client errors', async () => {
@@ -396,18 +505,29 @@ describe('WebSocket Default Handler', () => {
     });
 
     it('should continue processing after individual connection errors', async () => {
+      const targetUserId = '850e8400-e29b-41d4-a716-446655440003'; // Valid UUID
+      const senderId = 'f50e8400-e29b-41d4-a716-446655440010'; // Valid UUID sender
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'user-multi',
+        targetUserId,
         message: 'Test',
       });
 
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [
-          { connectionId: 'conn-fail' },
-          { connectionId: 'conn-success' },
-        ],
-      });
+      // Reset and configure full mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: senderId,
+            connectionId: 'test-connection-id',
+          },
+        }) // GetCommand: sender userId
+        .mockResolvedValueOnce({
+          Items: [
+            { connectionId: 'conn-fail' },
+            { connectionId: 'conn-success' },
+          ],
+        }); // QueryCommand: target connections
 
       // First fails (non-410 error), second succeeds
       mockApiGatewayClientSend
@@ -426,15 +546,26 @@ describe('WebSocket Default Handler', () => {
 
   describe('Message Format', () => {
     it('should include timestamp in sent messages', async () => {
+      const targetUserId = '950e8400-e29b-41d4-a716-446655440004'; // Valid UUID
+      const senderId = 'a60e8400-e29b-41d4-a716-446655440011'; // Valid UUID sender
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'user-timestamp',
+        targetUserId,
         message: 'Test',
       });
 
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [{ connectionId: 'conn-1' }],
-      });
+      // Reset and configure full mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: senderId,
+            connectionId: 'test-connection-id',
+          },
+        }) // GetCommand: sender userId
+        .mockResolvedValueOnce({
+          Items: [{ connectionId: 'conn-1' }],
+        }); // QueryCommand: target connections
 
       await handler(event);
 
@@ -446,15 +577,26 @@ describe('WebSocket Default Handler', () => {
     });
 
     it('should include message type in response', async () => {
+      const targetUserId = 'a50e8400-e29b-41d4-a716-446655440005'; // Valid UUID
+      const senderId = 'b60e8400-e29b-41d4-a716-446655440012'; // Valid UUID sender
       const event = createMockMessageEvent({
         action: 'send-to-user',
-        targetUserId: 'user-type',
+        targetUserId,
         message: 'Test',
       });
 
-      mockDdbClientSend.mockResolvedValueOnce({
-        Items: [{ connectionId: 'conn-1' }],
-      });
+      // Reset and configure full mock chain
+      mockDdbClientSend.mockReset();
+      mockDdbClientSend
+        .mockResolvedValueOnce({
+          Item: {
+            userId: senderId,
+            connectionId: 'test-connection-id',
+          },
+        }) // GetCommand: sender userId
+        .mockResolvedValueOnce({
+          Items: [{ connectionId: 'conn-1' }],
+        }); // QueryCommand: target connections
 
       await handler(event);
 

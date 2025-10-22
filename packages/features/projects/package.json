@@ -6,7 +6,9 @@
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
   },
   "exports": {
     "./components": "./src/components/index.ts",
@@ -42,6 +44,7 @@
     "react-dom": "19.1.1",
     "react-hook-form": "^7.62.0",
     "react-i18next": "^15.7.3",
+    "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },
   "prettier": "@kit/prettier-config",
