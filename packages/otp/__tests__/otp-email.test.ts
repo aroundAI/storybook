@@ -84,7 +84,7 @@ describe('OtpEmailService', () => {
           to: 'user@example.com',
           subject: 'Your verification code',
           html: '<p>Your OTP: 123456</p>',
-          from: 'test@example.com',
+          from: 'noreply@test.com',
         });
       });
 

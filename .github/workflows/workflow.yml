@@ -101,6 +101,10 @@ jobs:
           pnpm --filter @kit/otp test
           pnpm --filter @kit/supabase test
           pnpm --filter @kit/notifications test
+          pnpm --filter @kit/ui test
+          pnpm --filter @kit/database-webhooks test
+          pnpm --filter @kit/email-templates test
+          pnpm --filter @kit/analytics test
 
       - name: Generate Coverage Report
         run: pnpm --filter web test:coverage
