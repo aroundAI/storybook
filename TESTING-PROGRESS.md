@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 120 test files created, 1889 tests passing
-**Remaining Work**: 19 high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 121 test files created, 1912 tests passing
+**Remaining Work**: 18 high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -188,6 +188,7 @@
 - ✅ @kit/projects (2 files, 54 tests)
 - ✅ @kit/team-accounts (18 files, 411 tests) ⭐ PHASE 3A COMPLETE
 - ✅ @kit/i18n (5 files, 166 tests) ⭐ COMPLETE
+- ✅ @kit/email-templates (1 file, 23 tests) ⭐ COMPLETE
 - ✅ @kit/otp (2 files, 26 tests)
 - ✅ @kit/supabase (3 files, 67 tests)
 - ✅ @kit/notifications (1 file, 29 tests)
@@ -1461,6 +1462,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 105 @kit/accounts (42 schemas + 20 delete-personal-account + 43 auth-schemas)
 - 90 @kit/auth (43 schemas + 27 last-auth-method + 20 captcha-verification)
 - 92 @kit/i18n (24 create-settings + 46 i18n-server + 22 i18n-client)
+- 23 @kit/email-templates (23 i18n)
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
 - 29 @kit/notifications (29 notifications-service)
 - 89 @kit/ui (52 is-route-active + 37 cn)
@@ -2059,15 +2061,50 @@ Remaining (if needed):
 
 ---
 
-#### Email Templates (1 file) - ~8-10 tests estimated
+#### Email Templates ✅ COMPLETE (1 file, 23 tests)
 
 **Location**: `packages/email-templates/src/lib/`
 
-File needing tests:
-1. **`i18n.ts`** (~10 tests)
-   - Translation loading for emails
-   - Language selection
-   - Fallback handling
+**File Created**:
+1. ✅ **`__tests__/i18n.test.ts`** (23 tests passing)
+   - **Language handling** (5 tests)
+     - Use provided language
+     - Default to 'en' when language is undefined
+     - Use language for both lng and supportedLngs
+     - Handle null language by defaulting to en
+     - Handle empty string language
+   - **Namespace handling** (2 tests)
+     - Use provided namespace
+     - Handle different namespace values (welcome, password-reset, invitation, notification)
+   - **Resolver function** (4 tests)
+     - Provide resolver function to initializeServerI18n
+     - Resolver attempts to load translation file
+     - Return empty object on import error
+     - Log error when translation file not found
+   - **Return value** (2 tests)
+     - Return result from initializeServerI18n
+     - Return i18n instance with t function
+   - **Integration scenarios** (4 tests)
+     - Typical email welcome scenario
+     - Password reset email
+     - Invitation email in different languages
+     - Handle user with no language preference
+   - **Edge cases** (4 tests)
+     - Handle language with region code (en-US)
+     - Handle long namespace names
+     - Handle special characters in namespace
+     - Handle initialization errors gracefully
+   - **Configuration structure** (2 tests)
+     - Pass correct configuration structure
+     - Create single-language configuration
+
+**Test Insights**:
+- **Language Priority**: Uses provided language or defaults to 'en'
+- **Single Language**: Email templates are sent in one language per email
+- **Namespace Requirement**: Each email template uses its own namespace
+- **Error Handling**: Returns empty object {} when translation file not found
+- **Resolver Pattern**: Dynamic import from `../locales/${language}/${namespace}.json`
+- **Configuration**: Simple wrapper around initializeServerI18n with email-specific defaults
 
 ---
 
@@ -2133,8 +2170,8 @@ File needing tests:
 | apps/web/lib | 6 | 55 | HIGH |
 | apps/web/app (routes) | 4 | 40 | MEDIUM |
 | @kit/ui | 2 | 18 | MEDIUM |
-| @kit/i18n | 3 | 32 | MEDIUM |
-| @kit/email-templates | 1 | 10 | MEDIUM |
+| @kit/i18n | 0 | 0 | ✅ COMPLETE |
+| @kit/email-templates | 0 | 0 | ✅ COMPLETE |
 | @kit/otp | 1 | 18 | MEDIUM |
 
 ---
