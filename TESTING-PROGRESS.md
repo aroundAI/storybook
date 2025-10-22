@@ -1749,23 +1749,39 @@ Files needing tests:
 
 **Priority**: Implement next - foundational code used everywhere
 
-#### Audit Logs - Transformers (8 files) - ~80-100 tests estimated
+#### Audit Logs - Transformers ✅ COMPLETE (5 new files, 256 tests)
 
 **Location**: `packages/audit-logs/src/transformers/`
 
-**NOTE**: The transformer testing infrastructure exists (`transformers.test.ts` - 52 tests), but individual transformer files need dedicated tests.
+**Files Created**:
+1. ✅ **`__tests__/account-transformer.test.ts`** (57 tests)
+   - Transform: data validation, safe field selection, date formatting, account types
+   - GetDescription: personal/team account descriptions, edge cases
+   - CalculateChanges: tracked fields (name, slug, email, picture_url), null/undefined transitions
 
-Files needing tests:
-1. **`account-transformer.ts`** (~12 tests)
-2. **`config-based-transformer.ts`** (~15 tests)
-3. **`default-transformer.ts`** (~10 tests) - Already covered in transformers.test.ts
-4. **`project-transformer.ts`** (~12 tests)
-5. **`settings-transformer.ts`** (~10 tests)
-6. **`team-member-transformer.ts`** (~12 tests)
-7. **`user-transformer.ts`** (~10 tests) - Already covered in transformers.test.ts
-8. **`index.ts`** (~5 tests) - Registry initialization
+2. ✅ **`__tests__/config-based-transformer.test.ts`** (42 tests)
+   - Transform: field exclusion, field inclusion, sensitive field redaction, combined configs
+   - CalculateChanges: field filtering, redaction in changes
+   - Configuration order: exclude → include → redact
 
-**Test Pattern**: Reference `transformers.test.ts` (52 tests) which tests defaultTransformer, accountTransformer, and userTransformer comprehensively.
+3. ✅ **`__tests__/project-transformer.test.ts`** (51 tests)
+   - Transform: field selection (excludes metadata), date formatting, project statuses
+   - GetDescription: standard actions + project-specific (archive, restore)
+   - CalculateChanges: tracked fields (name, slug, description, status)
+
+4. ✅ **`__tests__/settings-transformer.test.ts`** (53 tests)
+   - Transform: pattern-based sensitive detection, case-insensitive matching, string-only redaction
+   - GetDescription: action descriptions
+   - CalculateChanges: redacts sensitive changes, shows non-sensitive changes
+
+5. ✅ **`__tests__/team-member-transformer.test.ts`** (55 tests)
+   - Transform: membership fields, project_id for project members, role/permission handling
+   - GetDescription: team vs project member descriptions, permission_change action
+   - CalculateChanges: permissions array comparison (JSON stringify), role tracking
+
+**Already Covered**:
+- `transformers.test.ts` (52 tests) - defaultTransformer, userTransformer, initializeAuditTransformers
+- All transformers fully tested
 
 ---
 
