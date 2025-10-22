@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 121 test files created, 1912 tests passing
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 125 test files created, 2116 tests passing
 **Remaining Work**: 18 high-value files identified (see Remaining Work Summary below)
 
 ---
@@ -622,7 +622,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/branding/__tests__/font-utils.test.ts` - Font utilities ✅
 - [x] `packages/branding/__tests__/gradient-utils.test.ts` - Gradient utilities ✅
 
-#### @kit/audit-logs Tests ✅ COMPLETE (5 files, 242 tests)
+#### @kit/audit-logs Tests ✅ COMPLETE (11 files, 521 tests)
 - [x] `packages/audit-logs/__tests__/calculate-changes.test.ts` - Change detection utility ✅ (41 tests passing)
   - Basic change detection (strings, numbers, booleans)
   - Multiple field changes
@@ -741,6 +741,72 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Full registration and retrieval flow
     - Mixed registered and config-based transformers
     - Separate transformers for different types
+- [x] `packages/audit-logs/__tests__/account-transformer.test.ts` - Account audit log transformer ✅ (57 tests passing)
+  - **transform()** - Data transformation
+    - Data validation (primitives, null, undefined returned unchanged)
+    - Safe field selection (excludes billing data, large public_data field)
+    - Date formatting (created_at, updated_at to ISO strings)
+    - Account types (personal vs team accounts)
+    - Array handling (arrays treated as objects)
+  - **getDescription()** - Action descriptions
+    - Personal account descriptions (create/update/delete)
+    - Team account descriptions
+    - Edge cases (unnamed account, null name, special characters)
+  - **calculateChanges()** - Change detection
+    - Invalid inputs (non-objects, null, undefined)
+    - Tracked fields (name, slug, email, picture_url, is_personal_account, primary_owner_user_id)
+    - Untracked fields (id, created_at, updated_at, billing data)
+    - Null/undefined transitions
+    - No changes scenarios
+- [x] `packages/audit-logs/__tests__/config-based-transformer.test.ts` - Config-based transformer ✅ (42 tests passing)
+  - **transform()** - Configuration-based transformation
+    - Field exclusion (excludeFields removes specified fields)
+    - Field inclusion (includeFields filters to only specified fields)
+    - Sensitive field redaction (sensitiveFields → '***REDACTED***')
+    - Combined configurations (exclude → include → redact order)
+    - Empty configuration arrays (no filtering/redaction)
+    - String-only redaction (only string values redacted)
+  - **calculateChanges()** - Change detection with config
+    - Field filtering in changes (respects excludeFields/includeFields)
+    - Redaction in changes (sensitive fields redacted in before/after)
+    - Combined configurations
+    - Edge cases (null, undefined, empty objects)
+- [x] `packages/audit-logs/__tests__/project-transformer.test.ts` - Project audit log transformer ✅ (51 tests passing)
+  - **transform()** - Data transformation
+    - Data validation (primitives, null, undefined)
+    - Field selection (excludes large metadata field)
+    - Date formatting (ISO strings)
+    - Project statuses (active, archived)
+  - **getDescription()** - Action descriptions
+    - Standard actions (create/update/delete)
+    - Project-specific actions (archive, restore)
+    - Edge cases (unnamed project, null name, special characters)
+  - **calculateChanges()** - Change detection
+    - Invalid inputs
+    - Tracked fields (name, slug, description, status)
+    - Untracked fields (id, account_id, created_at, updated_at, metadata)
+    - Null/undefined transitions
+    - No changes scenarios
+- [x] `packages/audit-logs/__tests__/settings-transformer.test.ts` - Settings audit log transformer ✅ (53 tests passing)
+  - **transform()** - Sensitive field detection and redaction
+    - Pattern-based detection (api_key, secret, token, password, webhook, private_key, access_key, auth_token, bearer, credential)
+    - Case-insensitive matching (API_KEY, Secret, TOKEN, PASSWORD)
+    - Naming variations (snake_case, camelCase, kebab-case)
+    - String-only redaction (non-strings preserved)
+    - Non-sensitive field preservation
+    - Mixed sensitive/non-sensitive objects
+  - **getDescription()** - Action descriptions
+    - Update, create, delete actions
+    - Custom actions
+    - Null/undefined data handling
+  - **calculateChanges()** - Change detection with redaction
+    - Invalid inputs
+    - Non-sensitive field changes (shows actual values)
+    - Sensitive field changes (redacts before/after values)
+    - Mixed changes
+    - Field additions/removals (with redaction for sensitive)
+    - No changes scenarios
+    - Edge cases (null, undefined transitions)
 
 #### @kit/otp Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/otp/__tests__/otp.service.test.ts` - OTP service ✅ (26 tests passing)
