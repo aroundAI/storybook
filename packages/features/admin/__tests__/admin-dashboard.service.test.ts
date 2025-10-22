@@ -222,10 +222,14 @@ describe('admin-dashboard.service', () => {
       it('should throw when active subscriptions query fails', async () => {
         const service = createAdminDashboardService(mockClient);
 
-        mockEq.mockResolvedValueOnce({
-          count: null,
-          error: { message: 'Database error' },
-        });
+        mockEq
+          .mockResolvedValueOnce({
+            count: null,
+            error: { message: 'Database error' },
+          })
+          .mockResolvedValueOnce({ count: 25, error: null })
+          .mockResolvedValueOnce({ count: 500, error: null })
+          .mockResolvedValueOnce({ count: 150, error: null });
 
         await expect(service.getDashboardData()).rejects.toThrow();
       });
@@ -238,7 +242,9 @@ describe('admin-dashboard.service', () => {
           .mockResolvedValueOnce({
             count: null,
             error: { message: 'Database error' },
-          }); // Trials fails
+          }) // Trials fails
+          .mockResolvedValueOnce({ count: 500, error: null })
+          .mockResolvedValueOnce({ count: 150, error: null });
 
         await expect(service.getDashboardData()).rejects.toThrow();
       });
@@ -252,7 +258,8 @@ describe('admin-dashboard.service', () => {
           .mockResolvedValueOnce({
             count: null,
             error: { message: 'Database error' },
-          }); // Personal accounts fails
+          }) // Personal accounts fails
+          .mockResolvedValueOnce({ count: 150, error: null }); // Team accounts
 
         await expect(service.getDashboardData()).rejects.toThrow();
       });
