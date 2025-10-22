@@ -1,16 +1,5 @@
-/**
- * @ts-nocheck
- *
- * TypeScript type checking is disabled for this test file due to complex i18next mock types.
- * The mocks work correctly at runtime and all tests pass (92/92), but TypeScript has difficulty
- * inferring the correct types for:
- * - resourcesToBackend mock return values (expects BackendModule but tests use simplified mocks)
- * - i18next.init callback signatures (Callback vs (err?: Error) => void)
- *
- * The production i18n code is fully type-safe. This only affects test type checking.
- */
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import type { InitOptions } from 'i18next';
+import type { InitOptions, BackendModule, CallbackError } from 'i18next';
 
 // Mock i18next
 vi.mock('i18next', () => ({
@@ -59,9 +48,9 @@ describe('i18n.client', () => {
 
     // Reset mock chain
     mockI18next.use.mockReturnThis();
-    mockI18next.init.mockImplementation((options: any, callback?: (err?: Error) => void) => {
-      if (callback) callback();
-      return Promise.resolve();
+    mockI18next.init.mockImplementation((options: any, callback?: any) => {
+      if (callback) callback(null);
+      return Promise.resolve(mockI18next as any);
     });
   });
 
@@ -83,14 +72,14 @@ describe('i18n.client', () => {
 
     describe('successful initialization', () => {
       it('should initialize i18next with settings', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           // Simulate loading
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -101,13 +90,13 @@ describe('i18n.client', () => {
       });
 
       it('should merge settings with detection config', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -131,14 +120,14 @@ describe('i18n.client', () => {
 
       it('should use resourcesToBackend with resolver', async () => {
         let backendLoader: any;
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           backendLoader = loader;
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -148,14 +137,14 @@ describe('i18n.client', () => {
 
       it('should setup backend loader callback structure', async () => {
         let backendLoader: any;
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           backendLoader = loader;
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -164,13 +153,13 @@ describe('i18n.client', () => {
       });
 
       it('should return i18next instance', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         const result = await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -181,18 +170,18 @@ describe('i18n.client', () => {
     describe('error handling', () => {
       it('should log error when init fails', async () => {
         const testError = new Error('Init failed');
-        mockI18next.init.mockImplementation(((options: any, callback?: any) => {
+        mockI18next.init.mockImplementation((options: any, callback?: any) => {
           if (callback) callback(testError);
-          return Promise.resolve();
-        }) as any);
+          return Promise.resolve(mockI18next as any);
+        });
 
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -203,8 +192,8 @@ describe('i18n.client', () => {
       });
 
       it('should throw error when no languages loaded', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation((() => mockBackend) as any);
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation(() => mockBackend);
 
         await expect(
           initializeI18nClient(defaultSettings, mockResolver),
@@ -212,11 +201,11 @@ describe('i18n.client', () => {
       });
 
       it('should throw error when no namespaces loaded', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation((() => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation(() => {
           // Don't call the loader - no resources loaded
           return mockBackend;
-        }) as any);
+        });
 
         await expect(
           initializeI18nClient(defaultSettings, mockResolver),
@@ -224,8 +213,8 @@ describe('i18n.client', () => {
       });
 
       it('should log debug message when no resources loaded', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation((() => mockBackend) as any);
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation(() => mockBackend);
 
         await expect(
           initializeI18nClient(defaultSettings, mockResolver),
@@ -239,13 +228,13 @@ describe('i18n.client', () => {
 
     describe('detection configuration', () => {
       it('should configure language detection order', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -256,13 +245,13 @@ describe('i18n.client', () => {
       });
 
       it('should configure cookie caching', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -274,13 +263,13 @@ describe('i18n.client', () => {
       });
 
       it('should disable interpolation escaping', async () => {
-        const mockBackend = {} as any;
-        mockResourcesToBackend.mockImplementation(((loader: any) => {
+        const mockBackend = {} as BackendModule;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           if (typeof loader === 'function') {
             loader('en', 'common', vi.fn());
           }
           return mockBackend;
-        }) as any);
+        });
 
         await initializeI18nClient(defaultSettings, mockResolver);
 
@@ -294,15 +283,17 @@ describe('i18n.client', () => {
     describe('resource loading', () => {
       it('should track loaded languages', async () => {
         const languages: string[] = [];
-        mockResourcesToBackend.mockImplementation((loader) => {
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           // Simulate loading multiple languages
-          loader('en', 'common', (err: any, data: any) => {
-            if (!languages.includes('en')) languages.push('en');
-          });
-          loader('fr', 'common', (err: any, data: any) => {
-            if (!languages.includes('fr')) languages.push('fr');
-          });
-          return {} as any;
+          if (typeof loader === 'function') {
+            loader('en', 'common', (err: any, data: any) => {
+              if (!languages.includes('en')) languages.push('en');
+            });
+            loader('fr', 'common', (err: any, data: any) => {
+              if (!languages.includes('fr')) languages.push('fr');
+            });
+          }
+          return {} as BackendModule;
         });
 
         await initializeI18nClient(defaultSettings, mockResolver);
@@ -313,15 +304,17 @@ describe('i18n.client', () => {
 
       it('should track loaded namespaces', async () => {
         const namespaces: string[] = [];
-        mockResourcesToBackend.mockImplementation((loader) => {
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           // Simulate loading multiple namespaces
-          loader('en', 'common', (err: any, data: any) => {
-            if (!namespaces.includes('common')) namespaces.push('common');
-          });
-          loader('en', 'auth', (err: any, data: any) => {
-            if (!namespaces.includes('auth')) namespaces.push('auth');
-          });
-          return {} as any;
+          if (typeof loader === 'function') {
+            loader('en', 'common', (err: any, data: any) => {
+              if (!namespaces.includes('common')) namespaces.push('common');
+            });
+            loader('en', 'auth', (err: any, data: any) => {
+              if (!namespaces.includes('auth')) namespaces.push('auth');
+            });
+          }
+          return {} as BackendModule;
         });
 
         await initializeI18nClient(defaultSettings, mockResolver);
@@ -332,15 +325,17 @@ describe('i18n.client', () => {
 
       it('should not duplicate languages', async () => {
         const languages: string[] = [];
-        mockResourcesToBackend.mockImplementation((loader) => {
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           // Load same language multiple times
-          loader('en', 'common', (err: any, data: any) => {
-            if (!languages.includes('en')) languages.push('en');
-          });
-          loader('en', 'auth', (err: any, data: any) => {
-            if (!languages.includes('en')) languages.push('en');
-          });
-          return {} as any;
+          if (typeof loader === 'function') {
+            loader('en', 'common', (err: any, data: any) => {
+              if (!languages.includes('en')) languages.push('en');
+            });
+            loader('en', 'auth', (err: any, data: any) => {
+              if (!languages.includes('en')) languages.push('en');
+            });
+          }
+          return {} as BackendModule;
         });
 
         await initializeI18nClient(defaultSettings, mockResolver);
@@ -351,15 +346,17 @@ describe('i18n.client', () => {
 
       it('should not duplicate namespaces', async () => {
         const namespaces: string[] = [];
-        mockResourcesToBackend.mockImplementation((loader) => {
+        mockResourcesToBackend.mockImplementation((loader: any) => {
           // Load same namespace multiple times
-          loader('en', 'common', (err: any, data: any) => {
-            if (!namespaces.includes('common')) namespaces.push('common');
-          });
-          loader('fr', 'common', (err: any, data: any) => {
-            if (!namespaces.includes('common')) namespaces.push('common');
-          });
-          return {} as any;
+          if (typeof loader === 'function') {
+            loader('en', 'common', (err: any, data: any) => {
+              if (!namespaces.includes('common')) namespaces.push('common');
+            });
+            loader('fr', 'common', (err: any, data: any) => {
+              if (!namespaces.includes('common')) namespaces.push('common');
+            });
+          }
+          return {} as BackendModule;
         });
 
         await initializeI18nClient(defaultSettings, mockResolver);
@@ -372,7 +369,7 @@ describe('i18n.client', () => {
     describe('plugin chain', () => {
       it('should use plugins in correct order', async () => {
         const callOrder: string[] = [];
-        const mockBackend = { type: 'backend' } as any;
+        const mockBackend = { type: 'backend' } as BackendModule;
 
         mockI18next.use.mockImplementation((plugin) => {
           if (plugin === mockBackend) callOrder.push('backend');
@@ -381,8 +378,10 @@ describe('i18n.client', () => {
           return mockI18next;
         });
 
-        mockResourcesToBackend.mockImplementation((loader) => {
-          loader('en', 'common', vi.fn());
+        mockResourcesToBackend.mockImplementation((loader: any) => {
+          if (typeof loader === 'function') {
+            loader('en', 'common', vi.fn());
+          }
           return mockBackend;
         });
 
@@ -394,9 +393,11 @@ describe('i18n.client', () => {
 
     describe('custom settings', () => {
       it('should accept custom language', async () => {
-        mockResourcesToBackend.mockImplementation((loader) => {
-          loader('fr', 'common', vi.fn());
-          return {} as any;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
+          if (typeof loader === 'function') {
+            loader('fr', 'common', vi.fn());
+          }
+          return {} as BackendModule;
         });
 
         const customSettings: InitOptions = {
@@ -410,14 +411,16 @@ describe('i18n.client', () => {
         const initCall = mockI18next.init.mock.calls[0];
         const options = initCall?.[0];
 
-        expect(options.lng).toBe('fr');
+        expect(options?.lng).toBe('fr');
       });
 
       it('should accept multiple namespaces', async () => {
-        mockResourcesToBackend.mockImplementation((loader) => {
-          loader('en', 'common', vi.fn());
-          loader('en', 'auth', vi.fn());
-          return {} as any;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
+          if (typeof loader === 'function') {
+            loader('en', 'common', vi.fn());
+            loader('en', 'auth', vi.fn());
+          }
+          return {} as BackendModule;
         });
 
         const customSettings: InitOptions = {
@@ -431,13 +434,15 @@ describe('i18n.client', () => {
         const initCall = mockI18next.init.mock.calls[0];
         const options = initCall?.[0];
 
-        expect(options.ns).toEqual(['common', 'auth']);
+        expect(options?.ns).toEqual(['common', 'auth']);
       });
 
       it('should accept custom fallback language', async () => {
-        mockResourcesToBackend.mockImplementation((loader) => {
-          loader('en', 'common', vi.fn());
-          return {} as any;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
+          if (typeof loader === 'function') {
+            loader('en', 'common', vi.fn());
+          }
+          return {} as BackendModule;
         });
 
         const customSettings: InitOptions = {
@@ -451,15 +456,17 @@ describe('i18n.client', () => {
         const initCall = mockI18next.init.mock.calls[0];
         const options = initCall?.[0];
 
-        expect(options.fallbackLng).toBe('fr');
+        expect(options?.fallbackLng).toBe('fr');
       });
     });
 
     describe('integration scenarios', () => {
       it('should work with typical client setup', async () => {
-        mockResourcesToBackend.mockImplementation((loader) => {
-          loader('en', 'common', vi.fn());
-          return {} as any;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
+          if (typeof loader === 'function') {
+            loader('en', 'common', vi.fn());
+          }
+          return {} as BackendModule;
         });
 
         const settings: InitOptions = {
@@ -476,9 +483,11 @@ describe('i18n.client', () => {
 
       it('should work with proper resource loading', async () => {
         // Use the standard mock setup that works
-        mockResourcesToBackend.mockImplementation((loader) => {
-          loader('en', 'common', vi.fn());
-          return {} as any;
+        mockResourcesToBackend.mockImplementation((loader: any) => {
+          if (typeof loader === 'function') {
+            loader('en', 'common', vi.fn());
+          }
+          return {} as BackendModule;
         });
 
         const result = await initializeI18nClient(defaultSettings, mockResolver);

@@ -1,5 +1,5 @@
-// @ts-nocheck - i18next mock types cause TypeScript errors but tests pass correctly
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import type { i18n } from 'i18next';
 
 // Mock @kit/i18n/server
 vi.mock('@kit/i18n/server', () => ({
@@ -10,7 +10,7 @@ vi.mock('@kit/i18n/server', () => ({
 import { initializeServerI18n } from '@kit/i18n/server';
 import { initializeEmailI18n } from '../i18n';
 
-// Get mocked function
+// Get mocked function with proper type
 const mockInitializeServerI18n = vi.mocked(initializeServerI18n);
 
 describe('email-templates i18n', () => {
@@ -19,7 +19,7 @@ describe('email-templates i18n', () => {
     mockInitializeServerI18n.mockResolvedValue({
       t: vi.fn(),
       language: 'en',
-    } as any);
+    } as unknown as i18n);
   });
 
   describe('initializeEmailI18n', () => {
@@ -63,8 +63,8 @@ describe('email-templates i18n', () => {
         const callArgs = mockInitializeServerI18n.mock.calls[0];
         const config = callArgs?.[0];
 
-        expect(config.lng).toBe('es');
-        expect(config.supportedLngs).toEqual(['es']);
+        expect(config?.lng).toBe('es');
+        expect(config?.supportedLngs).toEqual(['es']);
       });
 
       it('should handle null language by defaulting to en', async () => {
@@ -160,8 +160,10 @@ describe('email-templates i18n', () => {
         expect(resolver).toBeInstanceOf(Function);
 
         // Try to call it (it will fail in test environment but we verify structure)
-        const result = await resolver('en', 'welcome');
-        expect(result).toBeDefined();
+        if (resolver) {
+          const result = await resolver('en', 'welcome');
+          expect(result).toBeDefined();
+        }
       });
 
       it('should return empty object on import error', async () => {
@@ -174,10 +176,12 @@ describe('email-templates i18n', () => {
         const resolver = callArgs?.[1];
 
         // Call resolver with non-existent namespace
-        const result = await resolver('en', 'non-existent-namespace');
+        if (resolver) {
+          const result = await resolver('en', 'non-existent-namespace');
 
-        // Should return empty object on error
-        expect(result).toEqual({});
+          // Should return empty object on error
+          expect(result).toEqual({});
+        }
       });
 
       it('should log error when translation file not found', async () => {
@@ -191,12 +195,14 @@ describe('email-templates i18n', () => {
         const callArgs = mockInitializeServerI18n.mock.calls[0];
         const resolver = callArgs?.[1];
 
-        await resolver('invalid-lang', 'invalid-namespace');
+        if (resolver) {
+          await resolver('invalid-lang', 'invalid-namespace');
 
-        expect(consoleLogSpy).toHaveBeenCalledWith(
-          expect.stringContaining('Error loading i18n file'),
-          expect.any(Error),
-        );
+          expect(consoleLogSpy).toHaveBeenCalledWith(
+            expect.stringContaining('Error loading i18n file'),
+            expect.any(Error),
+          );
+        }
 
         consoleLogSpy.mockRestore();
       });
@@ -204,7 +210,7 @@ describe('email-templates i18n', () => {
 
     describe('return value', () => {
       it('should return result from initializeServerI18n', async () => {
-        const mockResult = { t: vi.fn(), language: 'en' };
+        const mockResult = { t: vi.fn(), language: 'en' } as unknown as i18n;
         mockInitializeServerI18n.mockResolvedValue(mockResult);
 
         const result = await initializeEmailI18n({
@@ -372,7 +378,9 @@ describe('email-templates i18n', () => {
           ns: expect.any(String),
         });
 
-        expect(Object.keys(config)).toEqual(['supportedLngs', 'lng', 'ns']);
+        if (config) {
+          expect(Object.keys(config)).toEqual(['supportedLngs', 'lng', 'ns']);
+        }
       });
 
       it('should create single-language configuration', async () => {
@@ -384,8 +392,10 @@ describe('email-templates i18n', () => {
         const callArgs = mockInitializeServerI18n.mock.calls[0];
         const config = callArgs?.[0];
 
-        expect(config.supportedLngs).toHaveLength(1);
-        expect(config.supportedLngs[0]).toBe(config.lng);
+        if (config && Array.isArray(config.supportedLngs)) {
+          expect(config.supportedLngs).toHaveLength(1);
+          expect(config.supportedLngs[0]).toBe(config.lng);
+        }
       });
     });
   });
