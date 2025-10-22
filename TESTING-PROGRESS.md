@@ -1,7 +1,7 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 125 test files created, 2116 tests passing
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 126 test files created, 2171 tests passing
 **Remaining Work**: 18 high-value files identified (see Remaining Work Summary below)
 
 ---
@@ -622,7 +622,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - [x] `packages/branding/__tests__/font-utils.test.ts` - Font utilities ✅
 - [x] `packages/branding/__tests__/gradient-utils.test.ts` - Gradient utilities ✅
 
-#### @kit/audit-logs Tests ✅ COMPLETE (11 files, 521 tests)
+#### @kit/audit-logs Tests ✅ COMPLETE (12 files, 576 tests)
 - [x] `packages/audit-logs/__tests__/calculate-changes.test.ts` - Change detection utility ✅ (41 tests passing)
   - Basic change detection (strings, numbers, booleans)
   - Multiple field changes
@@ -805,6 +805,29 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - Sensitive field changes (redacts before/after values)
     - Mixed changes
     - Field additions/removals (with redaction for sensitive)
+    - No changes scenarios
+    - Edge cases (null, undefined transitions)
+- [x] `packages/audit-logs/__tests__/team-member-transformer.test.ts` - Team member audit log transformer ✅ (55 tests passing)
+  - **transform()** - Data transformation
+    - Data validation (primitives, null, undefined)
+    - Field selection (membership fields, project_id for project members)
+    - Date formatting (ISO strings)
+    - Role and permission handling (arrays, empty arrays, missing)
+    - Excludes invitation tokens and metadata
+  - **getDescription()** - Action descriptions
+    - Team member descriptions (create/update/delete)
+    - Project member descriptions (different wording)
+    - Permission change action (role changed to X)
+    - Custom actions
+    - Default role "member" when missing
+    - Edge cases (throws on null/undefined)
+  - **calculateChanges()** - Change detection
+    - Invalid inputs (returns empty object)
+    - Tracked fields (role, permissions, user_id)
+    - Permissions array comparison (JSON stringify for deep comparison)
+    - Permissions order detection
+    - Untracked fields (id, account_id, project_id, timestamps)
+    - Multiple field changes
     - No changes scenarios
     - Edge cases (null, undefined transitions)
 
