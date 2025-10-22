@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 117 test files created, 1723 tests passing
-**Remaining Work**: 22 high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 120 test files created, 1889 tests passing
+**Remaining Work**: 19 high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -187,7 +187,7 @@
 - ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
 - ✅ @kit/projects (2 files, 54 tests)
 - ✅ @kit/team-accounts (18 files, 411 tests) ⭐ PHASE 3A COMPLETE
-- ✅ @kit/i18n (2 files, 46 tests)
+- ✅ @kit/i18n (5 files, 166 tests) ⭐ COMPLETE
 - ✅ @kit/otp (2 files, 26 tests)
 - ✅ @kit/supabase (3 files, 67 tests)
 - ✅ @kit/notifications (1 file, 29 tests)
@@ -1065,7 +1065,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - **Recovery and Backup** (2 tests)
     - Enrollment of backup factor, verification with any enrolled factor
 
-#### @kit/i18n Tests ✅ COMPLETE (2/2 files)
+#### @kit/i18n Tests ✅ COMPLETE (5/5 files)
 - [x] `packages/i18n/__tests__/create-i18n-settings.test.ts` - i18n settings factory ✅ (24 tests passing)
   - Basic configuration (single/multiple languages)
   - Current language selection
@@ -1076,7 +1076,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
   - Edge cases (region codes, RTL languages, single language)
   - Return type validation (InitOptions)
   - Integration scenarios (multi-language apps)
-- [x] `packages/i18n/__tests__/i18n.server.test.ts` - Server-side i18n ✅ (46 tests passing)
+- [x] `packages/i18n/__tests__/i18n.server.test.ts` - Server-side i18n package ✅ (46 tests passing)
   - **parseAcceptLanguageHeader** (HTTP header parsing)
     - Basic parsing (single/multiple languages)
     - Quality value handling (q parameter)
@@ -1099,6 +1099,95 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
     - React i18next integration
     - Integration scenarios (web app, multi-language, SSR)
     - Edge cases (empty namespaces, large translations)
+- [x] `packages/i18n/__tests__/i18n.client.test.ts` - Client-side i18n package ✅ (22 tests passing)
+  - **initializeI18nClient** (browser initialization)
+    - i18next initialization with settings
+    - Settings merge with detection config
+    - resourcesToBackend with resolver
+    - Resolver callback for language/namespace
+    - Return i18next instance
+  - **Error handling**
+    - Log error when init fails
+    - Throw error when no languages loaded
+    - Throw error when no namespaces loaded
+    - Log debug message when no resources loaded
+  - **Detection configuration**
+    - Language detection order (htmlTag, cookie, navigator)
+    - Cookie caching
+    - Interpolation escaping disabled
+  - **Resource loading**
+    - Track loaded languages (no duplicates)
+    - Track loaded namespaces (no duplicates)
+  - **Plugin chain**
+    - Use plugins in correct order (backend → detector → react)
+  - **Custom settings**
+    - Accept custom language
+    - Accept multiple namespaces
+    - Accept custom fallback language
+  - **Integration scenarios**
+    - Typical client setup
+    - Resolver error handling
+- [x] `apps/web/lib/i18n/__tests__/i18n.server.test.ts` - Web app server i18n ✅ (22 tests passing)
+  - **Language detection from cookie**
+    - Use language from cookie when available
+    - Validate cookie language against supported languages
+    - Fallback to default for unsupported cookie language
+    - Handle missing cookie gracefully
+    - Handle empty cookie value
+  - **Language detection from accept-language header**
+    - Use accept-language when priority is user and no cookie
+    - Prioritize cookie over accept-language header
+    - Handle missing accept-language header
+  - **Initialization**
+    - Call initializeServerI18n with settings and resolver
+    - Return initialized i18n instance
+    - Use React cache wrapper
+  - **Language priority modes**
+    - Respect app priority setting
+  - **Edge cases**
+    - Handle cookie with special characters
+    - Handle very long accept-language header
+    - Handle null cookie value
+    - Handle async cookie/header operations
+  - **Integration scenarios**
+    - Work with all supported languages
+    - Handle rapid successive calls
+    - Maintain language consistency across calls
+  - **Error handling**
+    - Handle cookies() throwing error
+    - Handle headers() throwing error
+    - Handle initializeServerI18n throwing error
+- [x] `apps/web/lib/i18n/__tests__/i18n.settings.test.ts` - Web app i18n settings ✅ (30 tests passing)
+  - **Configuration constants**
+    - Export default language as en
+    - Export I18N_COOKIE_NAME as lang
+    - Export defaultI18nNamespaces array
+    - Include common namespaces (common, auth, account, teams, billing, marketing, projects)
+    - Use environment variable for default language
+    - Fallback to en when no environment variable
+  - **getI18nSettings function - Language selection**
+    - Use provided language when supported
+    - Fallback to default language when language is undefined
+    - Fallback to default language when unsupported language
+    - Warn when using unsupported language
+    - Include language name in warning
+  - **getI18nSettings function - Namespace handling**
+    - Use default namespaces when not provided
+    - Use provided namespace string
+    - Use provided namespace array
+    - Handle empty namespace array
+  - **Return value**
+    - Return result from createI18nSettings
+    - Pass languages array to createI18nSettings
+  - **Edge cases**
+    - Handle empty string language
+    - Handle language with special characters
+    - Handle very long language code
+    - Handle null language by treating as undefined
+  - **Integration scenarios**
+    - Work with custom environment language
+    - Support multiple namespaces
+    - Maintain consistent behavior on multiple calls
 
 #### @kit/mailers Tests ✅ COMPLETE (2/2 files)
 - [x] `packages/mailers/shared/__tests__/schemas.test.ts` - Email schemas ✅ (36 tests passing)
@@ -1365,13 +1454,13 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 51 @kit/analytics (29 null-service + 22 analytics-manager)
 - 318 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers + 67 audit-config + 41 audit-registry + 34 create-audit-log + 42 queries)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
-- 357 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 20 version + 23 sitemap + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules + 25 fonts + 24 require-user)
+- 409 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 20 version + 23 sitemap + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules + 25 fonts + 24 require-user + 52 i18n-all)
 - 262 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key-old + 65 get-client-keys-old + 29 get-secret-key + 35 get-supabase-client-keys)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
 - 105 @kit/accounts (42 schemas + 20 delete-personal-account + 43 auth-schemas)
 - 90 @kit/auth (43 schemas + 27 last-auth-method + 20 captcha-verification)
-- 70 @kit/i18n (24 create-settings + 46 i18n-server)
+- 92 @kit/i18n (24 create-settings + 46 i18n-server + 22 i18n-client)
 - 60 @kit/mailers (36 shared-schemas + 24 mailer-factory)
 - 29 @kit/notifications (29 notifications-service)
 - 89 @kit/ui (52 is-route-active + 37 cn)
@@ -1898,25 +1987,75 @@ Remaining (if needed):
 
 ---
 
-#### I18n Utilities (3 files) - ~30-35 tests estimated
+#### I18n Utilities ✅ COMPLETE (6 files, 166 tests)
 
 **Location**: Various
 
-Files needing tests:
-1. **`apps/web/lib/i18n/i18n.server.ts`** (~12 tests)
-   - Server-side i18n initialization
-   - Namespace loading
-   - Language detection
+**Files Created**:
+1. ✅ **`apps/web/lib/i18n/__tests__/i18n.server.test.ts`** (22 tests)
+   - Language detection from cookie (priority)
+   - Language detection from accept-language header (when languagePriority='user')
+   - React cache wrapper for server-side instance
+   - Language priority modes (app vs user)
+   - Edge cases (special characters, long headers, null values)
+   - Error handling (cookies/headers throwing, initializeServerI18n errors)
+   - Integration scenarios (cookie priority, rapid calls, consistency)
 
-2. **`apps/web/lib/i18n/i18n.settings.ts`** (~10 tests)
-   - Settings configuration
-   - Language list
-   - Default language
+2. ✅ **`apps/web/lib/i18n/__tests__/i18n.settings.test.ts`** (30 tests)
+   - Configuration constants (languages, I18N_COOKIE_NAME, defaultI18nNamespaces)
+   - getI18nSettings function:
+     - Language selection (supported, undefined, unsupported)
+     - Warning on unsupported languages
+     - Namespace handling (default, string, array, empty)
+     - Return value from createI18nSettings
+   - Edge cases (empty string, special characters, long codes, null)
+   - Integration scenarios (custom environment language, multiple namespaces)
 
-3. **`packages/i18n/src/i18n.client.ts`** (~10 tests)
-   - Client-side i18n initialization
-   - Language switching
-   - Namespace loading
+3. ✅ **`packages/i18n/src/__tests__/i18n.client.test.ts`** (22 tests)
+   - Client-side i18n initialization with i18next
+   - resourcesToBackend integration
+   - LanguageDetector configuration (htmlTag, cookie, navigator order)
+   - initReactI18next plugin chain
+   - Detection configuration (cookie caching, lookup)
+   - Interpolation escaping (disabled)
+   - Resource loading (tracking languages/namespaces, no duplicates)
+   - Plugin chain order (backend → detector → react)
+   - Custom settings (language, namespaces, fallback)
+   - Error handling (init failures, missing resources)
+   - Integration scenarios (typical setup, resolver errors)
+
+4. ✅ **`packages/i18n/src/__tests__/i18n.server.test.ts`** (46 tests)
+   - initializeServerI18n function testing
+   - resourcesToBackend with server-side resolver
+   - Namespace loading with loadedNamespaces Set
+   - Iteration limit (maxIterations = 100)
+   - Error handling and logging
+   - parseAcceptLanguageHeader function:
+     - Quality value parsing (q=1, q=0.9, etc.)
+     - Locale segment extraction (en-US → en)
+     - Accepted languages filtering
+     - Wildcard handling (ignoreWildcard = true)
+     - Edge cases (empty, null, malformed headers)
+
+5. ✅ **`packages/i18n/src/__tests__/create-i18n-settings.test.ts`** (24 tests) - Pre-existing
+   - Settings creation
+   - Namespace configuration
+   - Language configuration
+   - Edge cases
+
+6. ✅ **`packages/supabase/src/__tests__/get-supabase-client-keys.test.ts`** (22 tests) - Related i18n infrastructure
+   - Environment variable loading for Supabase
+   - Public key priority handling
+   - URL formats and validation
+
+**Test Insights**:
+- **Language Priority**: Cookie > accept-language header > default (when languagePriority='user')
+- **App Priority Mode**: Ignores accept-language header, uses cookie or default only
+- **React Cache**: Server-side i18n instance is cached for performance
+- **Client Detection Order**: htmlTag > cookie > navigator
+- **Namespace Loading**: Tracks loaded namespaces to prevent incomplete initialization
+- **Iteration Limits**: Prevents infinite loops (20 for client, 100 for server)
+- **Error Logging**: Development mode only for warnings, production is silent
 
 ---
 

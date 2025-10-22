@@ -114,11 +114,16 @@ export default defineConfig({
         __dirname,
         '../../packages/cms/core/src/index.ts',
       ),
+      '@kit/i18n/server': path.resolve(
+        __dirname,
+        '../../packages/i18n/src/i18n.server.ts',
+      ),
       '@kit': path.resolve(__dirname, '../../packages'),
       '~/lib/server/require-user-in-server-component': path.resolve(
         __dirname,
         './lib/server/require-user-in-server-component.ts',
       ),
+      '~/lib': path.resolve(__dirname, './lib'),
       '~/config': path.resolve(__dirname, './config'),
       '~': path.resolve(__dirname, './app'),
       'server-only': path.resolve(__dirname, './__mocks__/server-only.ts'),
