@@ -1613,24 +1613,23 @@ Files completed:
    - Edge cases (long IDs, special chars, logging)
    - Integration scenarios (sequential/concurrent deletions)
 
-Files needing tests:
-4. **`webhooks/account-webhooks.service.ts`** (~12 tests)
-   - Permission validation (owner only)
-   - Cascade deletion (members, invitations, data)
-   - Billing cancellation
-   - Error handling
+4. ✅ **`webhooks/account-webhooks.service.ts`** (14 tests passing)
+   - Personal account deletion email sending
+   - Team account handling (no email)
+   - Environment variable validation
+   - Email integration and error handling
+   - Edge cases (special characters, unicode, long names)
+   - Logging with context
 
-4. **`webhooks/account-webhooks.service.ts`** (~12 tests)
-   - Account deletion webhook handling
-   - Database cleanup integration
-   - Error propagation
-
-5. **`webhooks/account-invitations-webhook.service.ts`** (~12 tests)
-   - Invitation webhook routing
+5. ✅ **`webhooks/account-invitations-webhook.service.ts`** (16 tests passing)
+   - Invitation webhook handling
    - Email sending integration
-   - Status tracking
+   - Inviter name/email handling
+   - Error handling and logging
 
 **Test Pattern**: Similar to existing `account-members.service.test.ts` (12 tests) and `account-invitations.service.test.ts` (18 tests)
+
+**Total Team Account Services**: ✅ COMPLETE - 5 files, 86 service tests passing
 
 ---
 
