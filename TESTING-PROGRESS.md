@@ -1,8 +1,8 @@
 # Unit Testing Implementation Progress
 
 **Last Updated**: 2025-10-22
-**Status**: **TIER 2 IN PROGRESS** 🚀 - 115 test files created, 1659 tests passing
-**Remaining Work**: 24 high-value files identified (see Remaining Work Summary below)
+**Status**: **TIER 2 IN PROGRESS** 🚀 - 117 test files created, 1723 tests passing
+**Remaining Work**: 22 high-value files identified (see Remaining Work Summary below)
 
 ---
 
@@ -1349,11 +1349,11 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ## 📊 Progress Statistics
 
-**Total Test Files Created**: 115
+**Total Test Files Created**: 117
 **Total Testable Files Identified**: 122+
-**Completed**: 82/82 originally planned (100%) + 33 bonus files
-**Total Tests Written**: 1659
-**Total Tests Passing**: 1659 ✅
+**Completed**: 82/82 originally planned (100%) + 35 bonus files
+**Total Tests Written**: 1723
+**Total Tests Passing**: 1723 ✅
 - 152 @kit/branding (41 color + 20 config + 47 font + 44 gradient)
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
@@ -1366,7 +1366,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 318 @kit/audit-logs (41 calculate-changes + 41 extract-network + 52 transformers + 67 audit-config + 41 audit-registry + 34 create-audit-log + 42 queries)
 - 52 @kit/otp (26 otp-service + 26 otp-email)
 - 357 apps/web (29 branding-styles + 22 i18n-resolver + 27 healthcheck-api + 20 version + 23 sitemap + 23 user-billing + 24 team-billing + 20 user-workspace + 25 team-workspace + 15 root-metadata + 19 root-theme + 24 create-csp-response + 37 dev-mock-modules + 25 fonts + 24 require-user)
-- 198 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key + 65 get-client-keys)
+- 262 @kit/supabase (16 check-requires-mfa + 21 require-user + 30 auth-callback + 66 get-secret-key-old + 65 get-client-keys-old + 29 get-secret-key + 35 get-supabase-client-keys)
 - 64 @kit/shared (34 utils + 30 logger)
 - 27 @kit/monitoring (27 console monitoring service)
 - 105 @kit/accounts (42 schemas + 20 delete-personal-account + 43 auth-schemas)
@@ -1638,25 +1638,93 @@ Files needing tests:
 
 ---
 
-#### Supabase Utilities (2 files) - ~20-25 tests estimated
+#### Supabase Utilities ✅ COMPLETE (2 files, 64 tests)
 
 **Location**: `packages/supabase/src/`
 
-Files needing tests:
-1. **`get-secret-key.ts`** (~10 tests)
-   - Load from environment
-   - Load from parameter store (AWS)
-   - Fallback logic
-   - Error handling
-   - Caching behavior
+**Files Created**:
+1. ✅ **`__tests__/get-secret-key.test.ts`** (29 tests)
+   - **Successful key retrieval** (5 tests)
+     - Return SUPABASE_SECRET_KEY when available
+     - Return SUPABASE_SERVICE_ROLE_KEY as fallback
+     - Prioritize SUPABASE_SECRET_KEY over SERVICE_ROLE_KEY
+     - Handle very long secret keys
+     - Handle keys with special characters
+   - **Error handling** (5 tests)
+     - Throw error when both keys are missing
+     - Throw descriptive error message
+     - Throw error for empty string keys
+     - Validate both keys empty
+   - **Validation** (3 tests)
+     - Validate key is a string
+     - Validate key is non-empty
+     - Parse using Zod schema
+   - **Edge cases** (3 tests)
+     - Handle whitespace in keys
+     - Handle keys with newlines
+     - Handle undefined environment variables
+   - **Warning service** (10 tests)
+     - Log warning in development mode
+     - Mention RLS bypass in warning
+     - Mention server-side usage
+     - Silent in production mode
+     - Handle multiple calls correctly
+   - **Integration scenarios** (3 tests)
+     - Typical Supabase JWT setup
+     - Legacy service role key
+     - Migration from service role to secret key
 
-2. **`get-supabase-client-keys.ts`** (~12 tests)
-   - URL and anon key loading
-   - Environment variable parsing
-   - Validation (required fields)
-   - Error messaging
+2. ✅ **`__tests__/get-supabase-client-keys.test.ts`** (35 tests)
+   - **Successful key retrieval** (5 tests)
+     - Return URL and public key when both set
+     - Use ANON_KEY as fallback for publicKey
+     - Prioritize PUBLIC_KEY over ANON_KEY
+     - Return object with correct property names
+     - Handle URLs with trailing slashes
+   - **Error handling** (7 tests)
+     - Throw error when URL is missing
+     - Throw error when public key is missing
+     - Descriptive error messages
+     - Handle both keys missing
+     - Accept empty URL string (Zod allows)
+     - Handle empty public key string
+   - **Validation** (4 tests)
+     - Validate URL is a string
+     - Validate publicKey is a string
+     - Parse using Zod schema
+     - Validate object structure
+   - **URL formats** (5 tests)
+     - Standard Supabase URL format
+     - Custom domain URLs
+     - Localhost URLs
+     - URLs with ports
+     - URLs with subdomains
+   - **Key formats** (3 tests)
+     - JWT-like public keys
+     - Very long keys
+     - Keys with special characters
+   - **Edge cases** (4 tests)
+     - Whitespace in URL and keys
+     - Undefined environment variables
+     - Keys with newlines
+   - **Integration scenarios** (4 tests)
+     - Production setup
+     - Local development setup
+     - Staging environment
+     - Migration from ANON_KEY to PUBLIC_KEY
+   - **Return value immutability** (2 tests)
+     - Return new object on each call
+     - No modification of returned values
 
-**Business Impact**: These utilities are used in every Supabase client initialization.
+**Test Insights**:
+- **Environment Variable Priority**: SUPABASE_SECRET_KEY > SUPABASE_SERVICE_ROLE_KEY
+- **Public Key Priority**: NEXT_PUBLIC_SUPABASE_PUBLIC_KEY > NEXT_PUBLIC_SUPABASE_ANON_KEY
+- **Zod Validation**: Requires non-null values, but allows empty strings (no .min() constraint)
+- **Production Safety**: Warning only appears in non-production environments
+- **RLS Bypass Warning**: Critical reminder that secret key bypasses Row Level Security
+- **Fallback Strategy**: Supports legacy environment variable names for backward compatibility
+
+**Business Impact**: These utilities are used in every Supabase client initialization - foundational for all database operations.
 
 ---
 
@@ -1904,7 +1972,7 @@ File needing tests:
 | **1** | Analytics Package | 5 | 55 | 7-9 |
 | **2** | Audit Logs Transformers | 8 | 90 | 10-12 |
 | **2** | Audit Logs Core | 4 | 45 | 6-7 |
-| **2** | Supabase Utilities | 2 | 23 | 3-4 |
+| **2** | Supabase Utilities | 0 | 0 | 0 |
 | **2** | Web App Infrastructure | 6 | 55 | 7-8 |
 | **2** | Loaders | 1 | 18 | 2-3 |
 | **3** | API Routes | 4 | 40 | 5-6 |
@@ -1912,7 +1980,7 @@ File needing tests:
 | **3** | I18n Utilities | 3 | 32 | 4-5 |
 | **3** | Email Templates | 1 | 10 | 1-2 |
 | **5** | OTP Actions | 1 | 18 | 2-3 |
-| **TOTAL** | **All Remaining** | **47** | **563** | **68-86** |
+| **TOTAL** | **All Remaining** | **45** | **540** | **65-82** |
 
 ### By Package
 
@@ -1922,7 +1990,7 @@ File needing tests:
 | @kit/analytics | 5 | 55 | CRITICAL |
 | @kit/admin | 3 | 58 | CRITICAL |
 | @kit/audit-logs | 12 | 135 | HIGH |
-| @kit/supabase | 2 | 23 | HIGH |
+| @kit/supabase | 0 | 0 | ✅ COMPLETE |
 | apps/web/lib | 6 | 55 | HIGH |
 | apps/web/app (routes) | 4 | 40 | MEDIUM |
 | @kit/ui | 2 | 18 | MEDIUM |
