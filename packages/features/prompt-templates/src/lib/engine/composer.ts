@@ -69,8 +69,8 @@ export function composeSystemPrompts(
       continue;
     }
 
-    // Sort by priority (highest first)
-    layerPrompts.sort((a, b) => b.priority - a.priority);
+    // Sort by contribution_score (highest first, null values treated as 0)
+    layerPrompts.sort((a, b) => (b.contribution_score ?? 0) - (a.contribution_score ?? 0));
 
     // Add layer header if requested
     if (includeHeaders) {
@@ -86,7 +86,7 @@ export function composeSystemPrompts(
         slug: prompt.slug,
         layer: prompt.layer_type,
         content: prompt.content,
-        priority: prompt.priority,
+        priority: prompt.contribution_score ?? 0,
       });
     }
   }

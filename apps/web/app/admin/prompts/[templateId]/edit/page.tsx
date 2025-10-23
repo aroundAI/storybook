@@ -49,7 +49,7 @@ async function EditTemplatePage({
         slug,
         layer_type,
         scope,
-        priority
+        contribution_score
       )
     `,
     )
