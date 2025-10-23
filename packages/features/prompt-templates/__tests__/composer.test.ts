@@ -25,7 +25,7 @@ function createMockPrompt(
   slug: string,
   layer: SystemPromptLayer,
   content: string,
-  priority: number = 0,
+  contribution_score: number = 0,
   conditionRules?: Record<string, unknown>,
 ): PromptSystemPrompt {
   return {
@@ -34,7 +34,7 @@ function createMockPrompt(
     layer_type: layer,
     scope: 'global',
     content,
-    priority,
+    contribution_score,
     condition_rules: conditionRules || null,
     is_active: true,
     created_at: new Date().toISOString(),
