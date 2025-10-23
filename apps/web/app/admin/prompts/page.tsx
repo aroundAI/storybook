@@ -246,7 +246,7 @@ async function PromptsAdminPage() {
                           <TableCell>
                             <Badge variant="secondary">{prompt.scope}</Badge>
                           </TableCell>
-                          <TableCell>{prompt.priority}</TableCell>
+                          <TableCell>{prompt.contribution_score ?? 0}</TableCell>
                           <TableCell>
                             {prompt.is_active ? (
                               <Badge className="bg-green-500">Active</Badge>

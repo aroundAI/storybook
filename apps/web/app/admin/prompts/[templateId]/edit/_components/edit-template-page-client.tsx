@@ -34,7 +34,7 @@ interface LinkedPrompt {
     slug: string;
     layer_type: string;
     scope: string;
-    priority: number;
+    contribution_score: number | null;
   };
 }
 
