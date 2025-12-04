@@ -90,6 +90,7 @@ base-saas/
 │   │   ├── auth/             # Authentication flows
 │   │   ├── notifications/    # Notification system
 │   │   ├── projects/         # Project management
+│   │   ├── prompt-engine/    # JSON file-based LLM prompt management
 │   │   └── team-accounts/    # Team workspace management
 │   ├── billing/              # Payment & subscription handling
 │   ├── analytics/            # Analytics integration
@@ -98,6 +99,7 @@ base-saas/
 │   ├── database-webhooks/    # Database event handlers
 │   ├── email-templates/      # React Email templates
 │   ├── i18n/                 # Internationalization
+│   ├── llm/                  # LLM abstraction layer (OpenAI, Anthropic, Gemini)
 │   ├── mailers/              # Email provider clients
 │   ├── monitoring/           # Observability (Baselime)
 │   ├── next/                 # Next.js utilities (actions, routes)
@@ -562,7 +564,7 @@ See **TESTING-PROGRESS.md** for detailed list of remaining tests.
 **Priority order**:
 1. @kit/llm (factory, pricing, providers) - 5 files
 2. @kit/billing (webhook verification) - 4 files
-3. @kit/prompt-templates (parser, renderer, composer) - 5 files
+3. @kit/prompt-engine (validation, loader, executor) - 3 files
 4. @kit/projects (permissions, mutations) - 4 files
 5. @kit/team-accounts (invitations, billing) - 6 files
 6. Remaining packages - 56 files

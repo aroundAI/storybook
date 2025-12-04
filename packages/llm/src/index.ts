@@ -65,3 +65,7 @@ export { OpenAIClient } from './providers/openai';
 export { AnthropicClient } from './providers/anthropic';
 export { GeminiClient } from './providers/gemini';
 export { LocalClient } from './providers/local';
+
+// Analytics (for usage tracking)
+export type { LLMUsageEvent } from './analytics';
+export { logLLMUsage } from './analytics';

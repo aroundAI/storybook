@@ -55,7 +55,7 @@
     "@kit/next": "workspace:*",
     "@kit/notifications": "workspace:*",
     "@kit/projects": "workspace:*",
-    "@kit/prompt-templates": "workspace:*",
+    "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/team-accounts": "workspace:*",

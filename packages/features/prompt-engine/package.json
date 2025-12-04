@@ -1,8 +1,9 @@
 {
-  "name": "@kit/llm",
+  "name": "@kit/prompt-engine",
   "private": true,
   "version": "0.1.0",
-  "description": "Unified LLM abstraction layer supporting OpenAI, Anthropic, and Gemini",
+  "description": "JSON file-based prompt engine for LLM template management",
+  "type": "module",
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
@@ -13,21 +14,22 @@
   },
   "prettier": "@kit/prettier-config",
   "exports": {
-    ".": "./src/index.ts",
-    "./types": "./src/types.ts",
-    "./factory": "./src/factory.ts"
+    "./server": "./src/lib/server/index.ts",
+    "./types": "./src/lib/types.ts",
+    "./validation": "./src/lib/validation/index.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.38.0",
-    "@google/generative-ai": "^0.24.1",
-    "@supabase/supabase-js": "2.57.4",
-    "openai": "^4.80.0"
+    "@kit/llm": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "zod": "^3.25.74"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@types/node": "^24.5.0",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
   "typesVersions": {

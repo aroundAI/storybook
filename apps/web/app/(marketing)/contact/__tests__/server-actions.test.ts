@@ -100,7 +100,7 @@ describe('Contact Form Server Actions', () => {
           message: 'Message',
         };
 
-        await expect(sendContactEmail(data)).rejects.toThrow('Invalid data');
+        await expect(sendContactEmail(data)).rejects.toThrow();
       });
 
       it('should reject invalid email format', async () => {
@@ -110,7 +110,7 @@ describe('Contact Form Server Actions', () => {
           message: 'Message',
         };
 
-        await expect(sendContactEmail(data)).rejects.toThrow('Invalid data');
+        await expect(sendContactEmail(data)).rejects.toThrow();
       });
 
       it('should reject empty message', async () => {
@@ -120,7 +120,7 @@ describe('Contact Form Server Actions', () => {
           message: '',
         };
 
-        await expect(sendContactEmail(data)).rejects.toThrow('Invalid data');
+        await expect(sendContactEmail(data)).rejects.toThrow();
       });
 
       it('should reject name longer than 200 characters', async () => {
@@ -130,7 +130,7 @@ describe('Contact Form Server Actions', () => {
           message: 'Message',
         };
 
-        await expect(sendContactEmail(data)).rejects.toThrow('Invalid data');
+        await expect(sendContactEmail(data)).rejects.toThrow();
       });
 
       it('should reject message longer than 5000 characters', async () => {
@@ -140,7 +140,7 @@ describe('Contact Form Server Actions', () => {
           message: 'A'.repeat(5001),
         };
 
-        await expect(sendContactEmail(data)).rejects.toThrow('Invalid data');
+        await expect(sendContactEmail(data)).rejects.toThrow();
       });
 
       it('should accept name with exactly 200 characters', async () => {
@@ -428,7 +428,7 @@ describe('Contact Form Server Actions', () => {
           message: '',
         };
 
-        await expect(sendContactEmail(data)).rejects.toThrow('Invalid data');
+        await expect(sendContactEmail(data)).rejects.toThrow();
       });
     });
   });

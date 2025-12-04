@@ -236,7 +236,7 @@ vi.mock('@kit/supabase/server-client', () => ({ ... }));
 ### What's NOT Done (80 test files remaining)
 - @kit/llm provider tests (5 files)
 - @kit/billing tests (4 files)
-- @kit/prompt-templates tests (5 files)
+- @kit/prompt-engine tests (now 1 file - package was refactored to JSON file-based)
 - @kit/projects tests (4 files)
 - @kit/team-accounts tests (6 files)
 - @kit/admin tests (4 files)

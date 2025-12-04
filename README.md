@@ -347,7 +347,7 @@ NEXT_PUBLIC_SITE_TITLE="Your Tagline"
               ▼
 ┌─────────────────────────────────────────┐
 │          AI Abstraction Layer           │
-│   (@kit/llm, @kit/prompt-templates)     │
+│     (@kit/llm, @kit/prompt-engine)      │
 └─────────────┬───────────────────────────┘
               │
               ▼
@@ -383,7 +383,7 @@ NEXT_PUBLIC_SITE_TITLE="Your Tagline"
 
 ### **AI & ML**
 - **@kit/llm** - Unified LLM client (OpenAI, Anthropic, Gemini, Local)
-- **@kit/prompt-templates** - Prompt versioning and management
+- **@kit/prompt-engine** - JSON file-based prompt management with Zod validation
 - **Streaming** - Server-Sent Events (SSE) for real-time AI
 
 ### **Database & Auth**
@@ -426,7 +426,7 @@ aroundaikit/
 │   ├── cache/                       # ⚡ Caching layer
 │   │
 │   ├── features/                    # Feature packages
-│   │   ├── prompt-templates/        # Prompt management
+│   │   ├── prompt-engine/           # JSON file-based prompt management
 │   │   ├── projects/                # Projects feature
 │   │   ├── team-accounts/           # Multi-tenancy
 │   │   ├── auth/                    # Authentication
@@ -587,7 +587,7 @@ See `.env.example` for complete list of options.
 
 ### **Feature Guides**
 - [LLM Integration](./packages/llm/CLAUDE.md) - Complete guide to using the LLM abstraction
-- [Prompt Management](./packages/features/prompt-templates/README.md) - Prompt versioning and testing
+- [Prompt Engine](./packages/features/prompt-engine/CLAUDE.md) - JSON file-based prompt management
 - [Branding System](./packages/branding/README.md) - Customization guide
 - [Multi-Tenancy](./packages/features/team-accounts/README.md) - Teams and permissions
 - [Authentication](./packages/features/auth/README.md) - Auth configuration

@@ -2466,7 +2466,9 @@ example();
 
 ## 5. Prompt Templating & Library
 
-### Overview
+> ⚠️ **DEPRECATED**: This section describes the old database-based `@kit/prompt-templates` system which has been replaced with the simpler JSON file-based `@kit/prompt-engine`. See `packages/features/prompt-engine/CLAUDE.md` and `packages/features/prompt-engine/PRD.md` for the current implementation.
+
+### Overview (Legacy)
 
 A comprehensive prompt management system that transforms the base SaaS into a **prompt engineering platform**. Following industry best practices from PromptLayer, LangChain, and leading AI companies, this system provides:
 

@@ -30,7 +30,7 @@ The codebase now has **world-class test coverage** with comprehensive testing ac
 | **@kit/team-accounts** | 18 | 394 | Services, server actions, billing, invitations, members |
 | **@kit/supabase** | 7 | 195 | Client initialization, keys, admin client, RLS, environment validation |
 | **@kit/auth** | 6 | 191 | Schemas, providers, MFA, session management |
-| **@kit/prompt-templates** | 5 | 187 | Parser, renderer, composer, mutations, queries |
+| **@kit/prompt-engine** | 1 | 9 | Schema validation (replaced database-based prompt-templates) |
 | **@kit/llm** | 5 | 171 | Factory, pricing, OpenAI, Anthropic, Gemini providers |
 | **@kit/branding** | 4 | 152 | Color utils, config, fonts, gradients |
 | **@kit/billing** | 6 | 138 | Stripe, Lemon Squeezy, gateway, webhooks, subscriptions |
