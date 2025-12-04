@@ -172,34 +172,27 @@ packages/billing/gateway/__tests__/billing-gateway.test.ts
 
 ---
 
-#### 3. @kit/prompt-templates (5 files)
+#### 3. @kit/prompt-engine (1 file) ✅ COMPLETE
 
-**Why**: Complex parsing engine, core to AI features
+**Note**: The database-based `@kit/prompt-templates` package was refactored to the simpler JSON file-based `@kit/prompt-engine`. This significantly reduced complexity.
 
-**Files to create**:
+**Files created**:
 ```
-packages/features/prompt-templates/__tests__/parser.test.ts
-packages/features/prompt-templates/__tests__/renderer.test.ts
-packages/features/prompt-templates/__tests__/composer.test.ts
-packages/features/prompt-templates/__tests__/mutations.test.ts
-packages/features/prompt-templates/__tests__/queries.test.ts
+packages/features/prompt-engine/__tests__/validation.test.ts (9 tests)
 ```
 
-**What to test**:
-- Template parsing (`{{variable}}`, `{{variable:default}}`, `{{#if condition}}`)
-- Variable extraction and validation
-- Template rendering with substitution
-- System prompt composition (8-layer architecture)
-- Conditional block evaluation
-- CRUD operations
+**What's tested**:
+- JSON schema validation with Zod
+- Variable placeholder validation
+- Zod schema compilation
+- Example output validation
 
 **Reference files**:
-- `packages/features/prompt-templates/lib/engine/parser.ts` (168 lines)
-- `packages/features/prompt-templates/lib/engine/renderer.ts`
-- `packages/features/prompt-templates/lib/engine/composer.ts` (276 lines - complex!)
+- `packages/features/prompt-engine/src/lib/validation/prompt-template.schema.ts`
+- `packages/features/prompt-engine/CLAUDE.md`
+- `packages/features/prompt-engine/PRD.md`
 
-**Estimated time**: 3-4 hours
-**Estimated tests**: 50-60 tests
+**Status**: ✅ Complete (9 tests passing)
 
 ---
 
@@ -313,7 +306,7 @@ packages/features/admin/__tests__/impersonate-user.test.ts
 - ✅ Implement @kit/billing webhook verification (1-2 files)
 
 ### Session 2 (2-3 hours) - Feature Tests
-- ✅ Implement @kit/prompt-templates parser/renderer (2-3 files)
+- ✅ Implement @kit/prompt-engine validation tests (1 file - refactored from prompt-templates)
 - ✅ Implement @kit/projects permission tests (1-2 files)
 
 ### Session 3 (3-4 hours) - Multi-Tenancy

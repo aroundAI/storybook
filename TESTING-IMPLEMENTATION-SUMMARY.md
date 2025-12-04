@@ -90,12 +90,10 @@
 - ✅ `enhance-action.test.ts` - Server action wrapper (21 tests)
 - ✅ `enhance-route-handler.test.ts` - Route handler wrapper (23 tests)
 
-**@kit/prompt-templates** (187 tests across 5 files):
-- ✅ `parser.test.ts` - Template parsing, variable extraction (55 tests)
-- ✅ `renderer.test.ts` - Variable substitution, conditionals (47 tests)
-- ✅ `composer.test.ts` - 8-layer system prompt composition (42 tests)
-- ✅ `mutations.test.ts` - Template CRUD operations (24 tests)
-- ✅ `queries.test.ts` - Template data fetching (19 tests)
+**@kit/prompt-engine** (9 tests across 1 file):
+- ✅ `validation.test.ts` - Schema validation (9 tests)
+
+> **Note**: Package was refactored from database-based `@kit/prompt-templates` to simpler JSON file-based `@kit/prompt-engine`.
 
 **@kit/otp** (52 tests across 2 files):
 - ✅ `generator.test.ts` - OTP generation, expiration (28 tests)
@@ -416,7 +414,7 @@ A **solid, production-ready testing foundation** with:
 **Package Test Files** (40 files):
 - @kit/branding: 4 test files (152 tests)
 - @kit/auth: 6 test files (191 tests) ✅ **100% complete**
-- @kit/prompt-templates: 5 test files (187 tests)
+- @kit/prompt-engine: 1 test file (9 tests) - replaced prompt-templates
 - @kit/llm: 5 test files (171 tests)
 - @kit/audit-logs: 3 test files (134 tests)
 - @kit/team-accounts: 4 test files (95 tests)

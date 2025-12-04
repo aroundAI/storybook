@@ -17,7 +17,7 @@
 | @kit/team-accounts | 18 | 394 | ✅ |
 | @kit/supabase | 7 | 195 | ✅ |
 | @kit/auth | 6 | 191 | ✅ |
-| @kit/prompt-templates | 5 | 187 | ✅ |
+| @kit/prompt-engine | 1 | 9 | ✅ (replaced prompt-templates) |
 | @kit/llm | 5 | 171 | ✅ |
 | @kit/branding | 4 | 152 | ✅ |
 | @kit/billing (all) | 6 | 138 | ✅ |
@@ -70,7 +70,7 @@
 
 **Packages in CI/CD** (27 total):
 - Web app (`web`)
-- 26 @kit packages: cache, branding, next, llm, stripe, billing-gateway, lemon-squeezy, prompt-templates, projects, team-accounts, admin, audit-logs, shared, monitoring-core, accounts, auth, i18n, mailers-shared, mailers-core, otp, supabase, notifications, ui, database-webhooks, email-templates, analytics
+- 26 @kit packages: cache, branding, next, llm, stripe, billing-gateway, lemon-squeezy, prompt-engine, projects, team-accounts, admin, audit-logs, shared, monitoring-core, accounts, auth, i18n, mailers-shared, mailers-core, otp, supabase, notifications, ui, database-webhooks, email-templates, analytics
 
 ---
 
@@ -252,7 +252,7 @@
 - ✅ @kit/next (2 files, 44 tests)
 - ✅ @kit/llm (5 files, 171 tests, 11 instanceof issues)
 - ✅ @kit/billing (3 files, 77 tests)
-- ✅ @kit/prompt-templates (5 files, 187 tests, 14 logger issues)
+- ✅ @kit/prompt-engine (1 file, 9 tests - replaced database-based prompt-templates)
 - ✅ @kit/projects (2 files, 54 tests)
 - ✅ @kit/team-accounts (18 files, 411 tests) ⭐ PHASE 3A COMPLETE
 - ✅ @kit/i18n (5 files, 166 tests) ⭐ COMPLETE
@@ -499,12 +499,10 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 
 ### High Priority
 
-#### @kit/prompt-templates Tests (Complex Engine) ✅ COMPLETE
-- [x] `packages/features/prompt-templates/__tests__/parser.test.ts` - Template parser ✅ (44 tests passing)
-- [x] `packages/features/prompt-templates/__tests__/renderer.test.ts` - Template renderer ✅ (53 tests passing)
-- [x] `packages/features/prompt-templates/__tests__/composer.test.ts` - System prompt composer ✅ (34 tests passing)
-- [x] `packages/features/prompt-templates/__tests__/mutations.test.ts` - Mutations (26 tests, 12/26 passing - logger assertions need refinement)
-- [x] `packages/features/prompt-templates/__tests__/queries.test.ts` - Queries ✅ (30 tests passing)
+#### @kit/prompt-engine Tests (JSON File-Based) ✅ COMPLETE
+- [x] `packages/features/prompt-engine/__tests__/validation.test.ts` - Schema validation ✅ (9 tests passing)
+
+> **Note**: The complex database-based `@kit/prompt-templates` package was replaced with the simpler JSON file-based `@kit/prompt-engine`. See `packages/features/prompt-engine/PRD.md` for details.
 
 #### @kit/projects Tests ✅ COMPLETE
 - [x] `packages/features/projects/__tests__/project-queries.test.ts` - Queries ✅ (32 tests passing)
@@ -1605,7 +1603,7 @@ This is a known Vitest+TypeScript limitation. The error handling code works in p
 - 44 @kit/next (21 enhance-action + 23 enhance-route-handler)
 - 171 @kit/llm (41 factory + 57 pricing + 26 openai + 21 anthropic + 26 gemini)
 - 90 @kit/billing (17 webhook-handler + 34 subscription-payload-builder + 26 lemon-squeezy-hmac + 13 billing-gateway)
-- 187 @kit/prompt-templates (44 parser + 53 renderer + 34 composer + 26 mutations + 30 queries)
+- 9 @kit/prompt-engine (validation tests - replaced complex database-based prompt-templates)
 - 54 @kit/projects (32 queries + 22 mutations)
 - 277 @kit/team-accounts (20 per-seat + 27 invitations + 22 members + 26 management + 15 leave-service + 21 create-service + 20 delete-service + 42 invitations-actions + 29 create-team + 26 team-details + 37 team-members)
 - 107 @kit/admin (10 super-admin check + 28 admin-auth-user + 49 admin-server-actions + 5 dashboard-loader + 15 dashboard-service)
@@ -2565,7 +2563,7 @@ Progress:
 10. **@kit/billing webhook verification** - Payment processing security
 
 ### Week 2
-5. **@kit/prompt-templates engine** (parser, renderer, composer)
+5. **@kit/prompt-engine** (validation, loader, executor - JSON file-based)
 6. **@kit/projects permissions** - Role-based access control
 7. **@kit/team-accounts invitations** - Multi-tenant logic
 
