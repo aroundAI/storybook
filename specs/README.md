@@ -6,6 +6,7 @@ This directory contains all specification documents for the AI Cinematic Film St
 
 ## Quick Links
 
+- **[INDEX.md](./INDEX.md)** - Master spec index with dependency graph
 - [Constitution](./constitution.md) - Non-negotiable project conventions
 - [PRD](/PRD.md) - Product Requirements Document
 - [Engineering Design](/ENGINEERING_DESIGN.md) - Technical architecture
@@ -16,6 +17,7 @@ This directory contains all specification documents for the AI Cinematic Film St
 
 ```
 specs/
+├── INDEX.md                  # Master spec index with dependency graph
 ├── constitution.md           # Project conventions (READ FIRST)
 ├── README.md                 # This file
 │
@@ -28,6 +30,9 @@ specs/
 ├── phase-7-publishing/       # Multi-platform publishing
 ├── phase-8-analytics/        # Cross-platform analytics
 ├── phase-9-integration/      # Navigation, settings, polish
+│
+├── cross-cutting/            # Shared patterns (upload, webhooks, OAuth)
+├── design-system/            # UI patterns, tokens, accessibility
 └── spikes/                   # Research & investigation
 ```
 
@@ -56,6 +61,16 @@ specs/
 | 8 | Analytics | 8 | P2 |
 | 9 | Integration | 6 | P2 |
 | **Total Post-MVP** | | **29** | |
+
+---
+
+## Cross-Cutting & Design System
+
+| Category | Description | Spec Count | Priority |
+|----------|-------------|------------|----------|
+| Cross-Cutting | Shared patterns (upload, webhooks, OAuth) | 3 | P0 |
+| Design System | UI patterns, tokens, accessibility | 5 | P0 |
+| **Total** | | **8** | |
 
 ---
 
@@ -250,6 +265,117 @@ specs/
 | SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.md) | DRAFT | S |
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.md) | DRAFT | M |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.md) | DRAFT | M |
+
+---
+
+## Cross-Cutting Concerns
+
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-CC-01 | [file-upload-validation](./cross-cutting/FILM-CC-01-file-upload-validation.md) | DRAFT | M |
+| FILM-CC-02 | [webhook-security](./cross-cutting/FILM-CC-02-webhook-security.md) | DRAFT | M |
+| FILM-CC-03 | [oauth-token-refresh](./cross-cutting/FILM-CC-03-oauth-token-refresh.md) | DRAFT | M |
+
+---
+
+## Design System
+
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-DS-01 | [component-inventory](./design-system/FILM-DS-01-component-inventory.md) | DRAFT | M |
+| FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | DRAFT | S |
+| FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | DRAFT | M |
+| FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | DRAFT | M |
+| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DRAFT | S |
+
+---
+
+## Phase 6: Edit Suite
+
+### Components
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.md) | DRAFT | XL |
+| FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.md) | DRAFT | L |
+| FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.md) | DRAFT | L |
+
+### Library
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | DRAFT | L |
+
+---
+
+## Phase 7: Publishing
+
+### Providers
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-701 | [youtube-provider](./phase-7-publishing/providers/FILM-701-youtube-provider.md) | DRAFT | L |
+| FILM-702 | [tiktok-provider](./phase-7-publishing/providers/FILM-702-tiktok-provider.md) | DRAFT | L |
+| FILM-703 | [instagram-provider](./phase-7-publishing/providers/FILM-703-instagram-provider.md) | DRAFT | M |
+| FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.md) | DRAFT | M |
+
+### OAuth
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.md) | DRAFT | M |
+| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | DRAFT | M |
+| FILM-707 | [meta-oauth](./phase-7-publishing/oauth/FILM-707-meta-oauth.md) | DRAFT | M |
+
+### Components
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-708 | [publish-hub](./phase-7-publishing/components/FILM-708-publish-hub.md) | DRAFT | L |
+| FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.md) | DRAFT | M |
+| FILM-710 | [metadata-editor](./phase-7-publishing/components/FILM-710-metadata-editor.md) | DRAFT | M |
+| FILM-711 | [shorts-clipper](./phase-7-publishing/components/FILM-711-shorts-clipper.md) | DRAFT | L |
+
+---
+
+## Phase 8: Analytics
+
+### Providers
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-801 | [youtube-analytics](./phase-8-analytics/providers/FILM-801-youtube-analytics.md) | DRAFT | M |
+| FILM-802 | [tiktok-analytics](./phase-8-analytics/providers/FILM-802-tiktok-analytics.md) | DRAFT | M |
+| FILM-803 | [instagram-insights](./phase-8-analytics/providers/FILM-803-instagram-insights.md) | DRAFT | M |
+
+### Server
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-804 | [analytics-sync-cron](./phase-8-analytics/server/FILM-804-analytics-sync-cron.md) | DRAFT | M |
+
+### Components
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | DRAFT | L |
+| FILM-806 | [metric-cards](./phase-8-analytics/components/FILM-806-metric-cards.md) | DRAFT | S |
+| FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | DRAFT | M |
+| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | DRAFT | M |
+
+---
+
+## Phase 9: Integration
+
+### Navigation
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.md) | DRAFT | M |
+
+### Components
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DRAFT | M |
+| FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M |
+
+### Settings
+| Task ID | Spec | Status | Effort |
+|---------|------|--------|--------|
+| FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.md) | DRAFT | M |
+| FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | DRAFT | M |
+| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | DRAFT | M |
 
 ---
 
