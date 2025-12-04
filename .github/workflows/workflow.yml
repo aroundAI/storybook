@@ -86,7 +86,7 @@ jobs:
           pnpm --filter @kit/stripe test
           pnpm --filter @kit/billing-gateway test
           pnpm --filter @kit/lemon-squeezy test
-          pnpm --filter @kit/prompt-templates test
+          pnpm --filter @kit/prompt-engine test
           pnpm --filter @kit/projects test
           pnpm --filter @kit/team-accounts test
           pnpm --filter @kit/admin test
