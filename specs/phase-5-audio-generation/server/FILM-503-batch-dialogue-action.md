@@ -1,0 +1,1188 @@
+# FILM-503: Batch Dialogue Generation Action
+
+**Phase**: 5
+**Priority**: P0
+**Effort**: M (3-5 days)
+**Dependencies**: FILM-502 (voice-generation-action)
+**Blocks**: FILM-505, FILM-506
+
+---
+
+## Context
+
+The batch dialogue generation action orchestrates the generation of voice audio for all dialogue lines in an episode. It handles character voice assignment, parallel processing with concurrency limits, progress tracking, error recovery, and cost estimation. This action is essential for efficiently producing complete episodes with consistent voice quality.
+
+Unlike single dialogue generation, batch processing must handle multiple voices, manage provider rate limits, track progress for long-running operations, and provide resumability for failed batches. The action should intelligently queue dialogue lines, group by character for voice consistency, and provide real-time progress updates.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Batch Processing**
+   - Accept episode ID as input
+   - Fetch all pending dialogue lines for episode
+   - Group dialogue lines by character for efficient processing
+   - Process lines in parallel (respecting concurrency limits)
+   - Track progress (completed / total lines)
+   - Return batch job ID for status polling
+
+2. **Character Voice Assignment**
+   - Automatically assign voices to characters
+   - Use existing voice profiles if available
+   - Allow manual voice override per character
+   - Validate all characters have voice assignments
+   - Support multi-character episodes
+
+3. **Concurrency Management**
+   - Limit concurrent API requests (max 5 per account)
+   - Respect ElevenLabs rate limits (10 req/min for free tier)
+   - Queue remaining requests when limit reached
+   - Resume processing after rate limit cooldown
+
+4. **Progress Tracking**
+   - Create batch_generation_jobs record
+   - Update progress in real-time
+   - Store completed/failed dialogue line IDs
+   - Calculate estimated completion time
+   - Support cancellation of in-progress batches
+
+5. **Error Handling**
+   - Continue processing on individual line failures
+   - Collect all errors for reporting
+   - Support retry of failed lines only
+   - Rollback option for complete batch failure
+   - Detailed error reporting per dialogue line
+
+6. **Cost Management**
+   - Estimate total cost before starting
+   - Check budget availability upfront
+   - Track actual cost as processing progresses
+   - Pause if budget exceeded mid-batch
+   - Report cost breakdown by character
+
+### Non-Functional Requirements
+
+- Support episodes with up to 500 dialogue lines
+- Complete batch within 10 minutes (assuming 100 lines)
+- Atomic progress updates (no lost progress)
+- Resumable after server restart
+- Comprehensive logging for debugging
+- Real-time progress updates via polling
+
+---
+
+## Interface
+
+### TypeScript Types
+
+```typescript
+// Zod Schemas
+import { z } from 'zod';
+
+export const BatchGenerateDialogueSchema = z.object({
+  episodeId: z.string().uuid(),
+  voiceAssignments: z.record(
+    z.string().uuid(), // character asset ID
+    z.object({
+      voiceId: z.string(),
+      settings: z.object({
+        stability: z.number().min(0).max(1).optional(),
+        similarityBoost: z.number().min(0).max(1).optional(),
+        style: z.number().min(0).max(1).optional(),
+        speed: z.number().min(0.5).max(2.0).optional(),
+      }).optional(),
+    })
+  ).optional(),
+  overwriteExisting: z.boolean().default(false),
+  concurrency: z.number().int().min(1).max(10).default(5),
+});
+
+export const GetBatchStatusSchema = z.object({
+  batchJobId: z.string().uuid(),
+});
+
+export const RetryFailedDialogueSchema = z.object({
+  batchJobId: z.string().uuid(),
+});
+
+export const CancelBatchSchema = z.object({
+  batchJobId: z.string().uuid(),
+});
+
+// Return Types
+export interface BatchGenerateDialogueResult {
+  batchJobId: string;
+  episodeId: string;
+  totalLines: number;
+  estimatedCost: number;
+  estimatedDuration: number;
+  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+}
+
+export interface BatchJobStatus {
+  batchJobId: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  progress: {
+    total: number;
+    completed: number;
+    failed: number;
+    pending: number;
+    percentage: number;
+  };
+  cost: {
+    estimated: number;
+    actual: number;
+  };
+  errors: {
+    dialogueLineId: string;
+    error: string;
+  }[];
+  startedAt: string | null;
+  completedAt: string | null;
+  estimatedCompletionAt: string | null;
+}
+
+export interface RetryFailedDialogueResult {
+  batchJobId: string;
+  retriedCount: number;
+  status: 'processing';
+}
+
+// Database Types
+export interface BatchGenerationJob {
+  id: string;
+  episodeId: string;
+  accountId: string;
+  status: 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  totalLines: number;
+  completedLines: number;
+  failedLines: number;
+  estimatedCost: number;
+  actualCost: number;
+  voiceAssignments: Record<string, VoiceAssignment>;
+  errors: BatchError[];
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VoiceAssignment {
+  voiceId: string;
+  settings?: {
+    stability?: number;
+    similarityBoost?: number;
+    style?: number;
+    speed?: number;
+  };
+}
+
+export interface BatchError {
+  dialogueLineId: string;
+  error: string;
+  timestamp: string;
+}
+```
+
+### Server Actions
+
+```typescript
+'use server';
+
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { generateVoiceAction } from './voice-actions';
+import {
+  BatchGenerateDialogueSchema,
+  GetBatchStatusSchema,
+  RetryFailedDialogueSchema,
+  CancelBatchSchema,
+} from '../schemas/batch.schema';
+import type {
+  BatchGenerateDialogueResult,
+  BatchJobStatus,
+  RetryFailedDialogueResult,
+  BatchGenerationJob,
+  VoiceAssignment,
+  BatchError,
+} from '../types/batch.types';
+
+/**
+ * Generate voice audio for all dialogue lines in an episode
+ * @throws {Error} If episode not found or budget insufficient
+ */
+export const batchGenerateDialogueAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // 1. Fetch episode and dialogue lines
+    const { data: episode, error: episodeError } = await client
+      .from('episodes')
+      .select('id, account_id, project_id')
+      .eq('id', data.episodeId)
+      .single();
+
+    if (episodeError || !episode) {
+      throw new Error('Episode not found');
+    }
+
+    const { data: dialogueLines, error: linesError } = await client
+      .from('dialogue_lines')
+      .select('id, character_asset_id, text, status, audio_url')
+      .eq('episode_id', data.episodeId)
+      .order('sequence_number', { ascending: true });
+
+    if (linesError) {
+      throw linesError;
+    }
+
+    // 2. Filter lines to process
+    const linesToProcess = dialogueLines.filter(line => {
+      if (data.overwriteExisting) return true;
+      return !line.audio_url || line.status === 'failed';
+    });
+
+    if (linesToProcess.length === 0) {
+      throw new Error('No dialogue lines to process. All lines already have audio.');
+    }
+
+    // 3. Build voice assignments
+    const voiceAssignments = await buildVoiceAssignments(
+      client,
+      linesToProcess,
+      data.voiceAssignments
+    );
+
+    // Validate all characters have voices
+    const missingVoices = linesToProcess
+      .filter(line => line.character_asset_id)
+      .filter(line => !voiceAssignments[line.character_asset_id!]);
+
+    if (missingVoices.length > 0) {
+      const characterIds = [...new Set(missingVoices.map(l => l.character_asset_id))];
+      throw new Error(
+        `Missing voice assignments for ${characterIds.length} character(s). ` +
+        `Please assign voices or create voice profiles.`
+      );
+    }
+
+    // 4. Estimate cost
+    const estimatedCost = linesToProcess.reduce((total, line) => {
+      return total + Math.ceil((line.text.length / 1000) * 30);
+    }, 0);
+
+    // 5. Check budget
+    const { data: account } = await client
+      .from('accounts')
+      .select('monthly_budget_cents, current_usage_cents')
+      .eq('id', episode.account_id)
+      .single();
+
+    if (!account) {
+      throw new Error('Account not found');
+    }
+
+    const remainingBudget = account.monthly_budget_cents - account.current_usage_cents;
+    if (remainingBudget < estimatedCost) {
+      throw new Error(
+        `Insufficient budget for batch generation. ` +
+        `Required: $${(estimatedCost / 100).toFixed(2)}, ` +
+        `Available: $${(remainingBudget / 100).toFixed(2)}`
+      );
+    }
+
+    // 6. Create batch job
+    const { data: batchJob, error: jobError } = await client
+      .from('batch_generation_jobs')
+      .insert({
+        episode_id: data.episodeId,
+        account_id: episode.account_id,
+        status: 'queued',
+        total_lines: linesToProcess.length,
+        completed_lines: 0,
+        failed_lines: 0,
+        estimated_cost: estimatedCost,
+        actual_cost: 0,
+        voice_assignments: voiceAssignments,
+        errors: [],
+      })
+      .select()
+      .single();
+
+    if (jobError || !batchJob) {
+      throw new Error('Failed to create batch job');
+    }
+
+    // 7. Process batch in background
+    processBatchInBackground(batchJob.id, linesToProcess, voiceAssignments, data.concurrency);
+
+    // 8. Return batch job info
+    return {
+      batchJobId: batchJob.id,
+      episodeId: data.episodeId,
+      totalLines: linesToProcess.length,
+      estimatedCost,
+      estimatedDuration: Math.ceil(linesToProcess.length / data.concurrency) * 10, // ~10s per line
+      status: 'queued' as const,
+    };
+  },
+  { schema: BatchGenerateDialogueSchema, auth: true }
+);
+
+/**
+ * Get status of batch generation job
+ * @throws {Error} If job not found
+ */
+export const getBatchStatusAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    const { data: job, error } = await client
+      .from('batch_generation_jobs')
+      .select('*')
+      .eq('id', data.batchJobId)
+      .single();
+
+    if (error || !job) {
+      throw new Error('Batch job not found');
+    }
+
+    const pending = job.total_lines - job.completed_lines - job.failed_lines;
+    const percentage = Math.round((job.completed_lines / job.total_lines) * 100);
+
+    let estimatedCompletionAt: string | null = null;
+    if (job.status === 'processing' && job.started_at) {
+      const elapsed = Date.now() - new Date(job.started_at).getTime();
+      const avgTimePerLine = elapsed / job.completed_lines;
+      const remainingTime = avgTimePerLine * pending;
+      estimatedCompletionAt = new Date(Date.now() + remainingTime).toISOString();
+    }
+
+    return {
+      batchJobId: job.id,
+      status: job.status,
+      progress: {
+        total: job.total_lines,
+        completed: job.completed_lines,
+        failed: job.failed_lines,
+        pending,
+        percentage,
+      },
+      cost: {
+        estimated: job.estimated_cost,
+        actual: job.actual_cost,
+      },
+      errors: job.errors || [],
+      startedAt: job.started_at,
+      completedAt: job.completed_at,
+      estimatedCompletionAt,
+    };
+  },
+  { schema: GetBatchStatusSchema, auth: true }
+);
+
+/**
+ * Retry failed dialogue lines in a batch
+ * @throws {Error} If job not found or no failed lines
+ */
+export const retryFailedDialogueAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // 1. Get batch job
+    const { data: job, error } = await client
+      .from('batch_generation_jobs')
+      .select('*, episodes!inner(id)')
+      .eq('id', data.batchJobId)
+      .single();
+
+    if (error || !job) {
+      throw new Error('Batch job not found');
+    }
+
+    if (job.failed_lines === 0) {
+      throw new Error('No failed lines to retry');
+    }
+
+    // 2. Get failed dialogue lines
+    const { data: failedLines } = await client
+      .from('dialogue_lines')
+      .select('id, character_asset_id, text')
+      .eq('episode_id', job.episode_id)
+      .eq('status', 'failed');
+
+    if (!failedLines || failedLines.length === 0) {
+      throw new Error('No failed lines found');
+    }
+
+    // 3. Reset job status
+    await client
+      .from('batch_generation_jobs')
+      .update({
+        status: 'processing',
+        failed_lines: 0,
+        errors: [],
+      })
+      .eq('id', data.batchJobId);
+
+    // 4. Process failed lines
+    processBatchInBackground(
+      job.id,
+      failedLines,
+      job.voice_assignments,
+      5 // default concurrency
+    );
+
+    return {
+      batchJobId: job.id,
+      retriedCount: failedLines.length,
+      status: 'processing' as const,
+    };
+  },
+  { schema: RetryFailedDialogueSchema, auth: true }
+);
+
+/**
+ * Cancel batch generation job
+ * @throws {Error} If job not found or already completed
+ */
+export const cancelBatchAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    const { data: job, error } = await client
+      .from('batch_generation_jobs')
+      .select('status')
+      .eq('id', data.batchJobId)
+      .single();
+
+    if (error || !job) {
+      throw new Error('Batch job not found');
+    }
+
+    if (job.status === 'completed' || job.status === 'cancelled') {
+      throw new Error('Cannot cancel completed or already cancelled job');
+    }
+
+    await client
+      .from('batch_generation_jobs')
+      .update({
+        status: 'cancelled',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', data.batchJobId);
+
+    return {
+      success: true,
+      batchJobId: data.batchJobId,
+    };
+  },
+  { schema: CancelBatchSchema, auth: true }
+);
+
+/**
+ * Helper: Build voice assignments for all characters
+ */
+async function buildVoiceAssignments(
+  client: any,
+  dialogueLines: any[],
+  userAssignments?: Record<string, VoiceAssignment>
+): Promise<Record<string, VoiceAssignment>> {
+  const assignments: Record<string, VoiceAssignment> = { ...userAssignments };
+
+  // Get unique character IDs
+  const characterIds = [...new Set(
+    dialogueLines
+      .map(line => line.character_asset_id)
+      .filter(Boolean)
+  )];
+
+  // Fetch voice profiles for characters without user assignments
+  const missingCharacters = characterIds.filter(id => !assignments[id]);
+
+  if (missingCharacters.length > 0) {
+    const { data: voiceProfiles } = await client
+      .from('voice_profiles')
+      .select('character_asset_id, provider_voice_id, settings')
+      .in('character_asset_id', missingCharacters)
+      .eq('provider', 'elevenlabs');
+
+    voiceProfiles?.forEach((profile: any) => {
+      assignments[profile.character_asset_id] = {
+        voiceId: profile.provider_voice_id,
+        settings: profile.settings,
+      };
+    });
+  }
+
+  return assignments;
+}
+
+/**
+ * Process batch in background (non-blocking)
+ */
+async function processBatchInBackground(
+  batchJobId: string,
+  dialogueLines: any[],
+  voiceAssignments: Record<string, VoiceAssignment>,
+  concurrency: number
+): Promise<void> {
+  // This function runs in the background and doesn't block the response
+  // In production, this should be moved to a queue system (BullMQ, Inngest, etc.)
+
+  const client = getSupabaseServerClient();
+
+  // Update status to processing
+  await client
+    .from('batch_generation_jobs')
+    .update({
+      status: 'processing',
+      started_at: new Date().toISOString(),
+    })
+    .eq('id', batchJobId);
+
+  let completed = 0;
+  let failed = 0;
+  let actualCost = 0;
+  const errors: BatchError[] = [];
+
+  // Process in batches with concurrency limit
+  for (let i = 0; i < dialogueLines.length; i += concurrency) {
+    const batch = dialogueLines.slice(i, i + concurrency);
+
+    const results = await Promise.allSettled(
+      batch.map(async (line) => {
+        const assignment = voiceAssignments[line.character_asset_id];
+        if (!assignment) {
+          throw new Error('No voice assignment for character');
+        }
+
+        return generateVoiceAction({
+          dialogueLineId: line.id,
+          voiceId: assignment.voiceId,
+          settings: assignment.settings,
+          overwriteExisting: true,
+        });
+      })
+    );
+
+    // Process results
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        completed++;
+        actualCost += result.value.cost;
+      } else {
+        failed++;
+        errors.push({
+          dialogueLineId: batch[index].id,
+          error: result.reason?.message || 'Unknown error',
+          timestamp: new Date().toISOString(),
+        });
+      }
+    });
+
+    // Update progress
+    await client
+      .from('batch_generation_jobs')
+      .update({
+        completed_lines: completed,
+        failed_lines: failed,
+        actual_cost: actualCost,
+        errors,
+      })
+      .eq('id', batchJobId);
+
+    // Check if cancelled
+    const { data: job } = await client
+      .from('batch_generation_jobs')
+      .select('status')
+      .eq('id', batchJobId)
+      .single();
+
+    if (job?.status === 'cancelled') {
+      break;
+    }
+  }
+
+  // Mark as completed
+  const finalStatus = failed === dialogueLines.length ? 'failed' : 'completed';
+  await client
+    .from('batch_generation_jobs')
+    .update({
+      status: finalStatus,
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', batchJobId);
+}
+```
+
+---
+
+## Implementation Details
+
+### File Structure
+
+```
+packages/features/audio-generation/src/
+├── lib/
+│   ├── schemas/
+│   │   └── batch.schema.ts              # Zod schemas (CREATE THIS)
+│   ├── server/
+│   │   ├── mutations/
+│   │   │   ├── batch-actions.ts         # Main actions (CREATE THIS)
+│   │   │   └── batch-processor.ts       # Background processor (CREATE THIS)
+│   │   └── queries/
+│   │       └── batch-queries.ts         # Helper queries (CREATE THIS)
+│   └── helpers/
+│       ├── voice-assignment.ts          # Voice assignment logic (CREATE THIS)
+│       └── progress-tracker.ts          # Progress tracking (CREATE THIS)
+└── types/
+    └── batch.types.ts                    # TypeScript types (CREATE THIS)
+```
+
+### Database Schema
+
+The action requires a new table: `batch_generation_jobs`
+
+```sql
+CREATE TABLE batch_generation_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  episode_id UUID NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  account_id UUID NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+  status VARCHAR(50) DEFAULT 'queued' NOT NULL,
+  total_lines INTEGER NOT NULL,
+  completed_lines INTEGER DEFAULT 0 NOT NULL,
+  failed_lines INTEGER DEFAULT 0 NOT NULL,
+  estimated_cost INTEGER NOT NULL,
+  actual_cost INTEGER DEFAULT 0 NOT NULL,
+  voice_assignments JSONB NOT NULL,
+  errors JSONB DEFAULT '[]'::jsonb,
+  started_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  CHECK (status IN ('queued', 'processing', 'completed', 'failed', 'cancelled'))
+);
+
+CREATE INDEX idx_batch_jobs_episode ON batch_generation_jobs(episode_id);
+CREATE INDEX idx_batch_jobs_account_status ON batch_generation_jobs(account_id, status);
+CREATE INDEX idx_batch_jobs_status ON batch_generation_jobs(status) WHERE status IN ('queued', 'processing');
+```
+
+### Processing Workflow
+
+```
+1. Validate episode exists
+2. Fetch all dialogue lines
+3. Filter lines to process (pending or failed)
+4. Build voice assignments (user + profiles)
+5. Estimate total cost
+6. Check budget availability
+7. Create batch_generation_jobs record
+8. Start background processing
+   ├─ Group lines by character
+   ├─ Process in parallel (max 5 concurrent)
+   ├─ Update progress after each batch
+   ├─ Collect errors for failed lines
+   └─ Mark job as completed/failed
+9. Return batch job ID
+```
+
+### Concurrency Strategy
+
+```typescript
+// Process dialogue lines in groups
+const concurrency = 5;
+const groups = [];
+
+for (let i = 0; i < dialogueLines.length; i += concurrency) {
+  groups.push(dialogueLines.slice(i, i + concurrency));
+}
+
+// Process each group sequentially
+for (const group of groups) {
+  // Process lines in group in parallel
+  const results = await Promise.allSettled(
+    group.map(line => generateVoiceAction({ dialogueLineId: line.id }))
+  );
+
+  // Handle results
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      // Success
+    } else {
+      // Error
+    }
+  });
+
+  // Update progress
+  await updateBatchProgress(batchJobId, completed, failed);
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **apps/web/supabase/schemas/35-batch-generation-jobs.sql**
+   - Create batch_generation_jobs table
+   - Create indexes
+   - Create RLS policies
+
+2. **packages/features/audio-generation/src/lib/schemas/batch.schema.ts**
+   - Export all Zod schemas for batch operations
+   - Include validation rules
+
+3. **packages/features/audio-generation/src/lib/server/mutations/batch-actions.ts**
+   - Implement batchGenerateDialogueAction
+   - Implement getBatchStatusAction
+   - Implement retryFailedDialogueAction
+   - Implement cancelBatchAction
+
+4. **packages/features/audio-generation/src/lib/server/mutations/batch-processor.ts**
+   - Background processing logic
+   - Concurrency management
+   - Progress tracking
+   - Error handling
+
+5. **packages/features/audio-generation/src/lib/server/queries/batch-queries.ts**
+   - Helper queries for batch jobs
+   - Progress calculation utilities
+   - Voice assignment queries
+
+6. **packages/features/audio-generation/src/lib/helpers/voice-assignment.ts**
+   - Voice assignment logic
+   - Character voice mapping
+   - Default voice selection
+
+7. **packages/features/audio-generation/src/lib/helpers/progress-tracker.ts**
+   - Progress calculation
+   - ETA estimation
+   - Status reporting
+
+8. **packages/features/audio-generation/src/types/batch.types.ts**
+   - Export all TypeScript interfaces
+   - Batch job types
+   - Progress types
+
+### Modified Files
+
+None (new feature)
+
+---
+
+## Acceptance Criteria
+
+### Functional
+
+- [ ] `batchGenerateDialogueAction` creates batch job for valid episode
+- [ ] `batchGenerateDialogueAction` processes all dialogue lines
+- [ ] `batchGenerateDialogueAction` respects concurrency limit
+- [ ] `batchGenerateDialogueAction` estimates cost accurately
+- [ ] `batchGenerateDialogueAction` checks budget before starting
+- [ ] `batchGenerateDialogueAction` assigns voices to all characters
+- [ ] `batchGenerateDialogueAction` uses voice profiles when available
+- [ ] `batchGenerateDialogueAction` supports manual voice assignments
+- [ ] `batchGenerateDialogueAction` returns batch job ID immediately
+- [ ] `getBatchStatusAction` returns accurate progress
+- [ ] `getBatchStatusAction` calculates percentage correctly
+- [ ] `getBatchStatusAction` estimates completion time
+- [ ] `getBatchStatusAction` includes all errors
+- [ ] `retryFailedDialogueAction` retries only failed lines
+- [ ] `retryFailedDialogueAction` resets error state
+- [ ] `cancelBatchAction` stops processing
+- [ ] `cancelBatchAction` marks job as cancelled
+- [ ] Batch processing continues on individual failures
+- [ ] Batch processing respects overwriteExisting flag
+- [ ] All actions enforce authentication
+
+### Non-Functional
+
+- [ ] Batch processing completes within reasonable time (10 min for 100 lines)
+- [ ] Progress updates are atomic
+- [ ] Batch job is resumable after server restart
+- [ ] All errors logged with context
+- [ ] TypeScript compiles without errors
+- [ ] No ESLint warnings
+
+---
+
+## Test Plan
+
+### Unit Tests
+
+**File**: `packages/features/audio-generation/src/lib/server/mutations/__tests__/batch-actions.test.ts`
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  batchGenerateDialogueAction,
+  getBatchStatusAction,
+  retryFailedDialogueAction,
+  cancelBatchAction,
+} from '../batch-actions';
+
+// Mock dependencies
+vi.mock('@kit/supabase/server-client');
+vi.mock('./voice-actions');
+
+describe('Batch Dialogue Actions', () => {
+  describe('batchGenerateDialogueAction', () => {
+    it('should create batch job for valid episode', async () => {
+      // Mock episode fetch
+      // Mock dialogue lines fetch
+      // Mock voice profiles
+      // Assert batch job created
+      // Assert status = 'queued'
+    });
+
+    it('should estimate cost correctly', async () => {
+      // Mock 10 lines with 100 chars each
+      // Assert estimated cost = 30 cents (10 * 100 / 1000 * 30)
+    });
+
+    it('should throw error if no lines to process', async () => {
+      // Mock all lines with audio_url
+      await expect(
+        batchGenerateDialogueAction({
+          episodeId: 'valid-id',
+        })
+      ).rejects.toThrow('No dialogue lines to process');
+    });
+
+    it('should throw error if budget insufficient', async () => {
+      // Mock large batch (expensive)
+      // Mock account with low budget
+      await expect(
+        batchGenerateDialogueAction({
+          episodeId: 'valid-id',
+        })
+      ).rejects.toThrow('Insufficient budget');
+    });
+
+    it('should throw error if missing voice assignments', async () => {
+      // Mock dialogue lines with characters
+      // Mock no voice profiles
+      await expect(
+        batchGenerateDialogueAction({
+          episodeId: 'valid-id',
+        })
+      ).rejects.toThrow('Missing voice assignments');
+    });
+
+    it('should use manual voice assignments', async () => {
+      // Provide voice assignments in request
+      // Assert assignments used instead of profiles
+    });
+
+    it('should respect overwriteExisting flag', async () => {
+      // Mock lines with existing audio
+      // With overwriteExisting=false, should skip
+      // With overwriteExisting=true, should process
+    });
+  });
+
+  describe('getBatchStatusAction', () => {
+    it('should return accurate progress', async () => {
+      // Mock batch job with 10 completed, 2 failed, 8 pending
+      const status = await getBatchStatusAction({
+        batchJobId: 'valid-id',
+      });
+
+      expect(status.progress.completed).toBe(10);
+      expect(status.progress.failed).toBe(2);
+      expect(status.progress.pending).toBe(8);
+      expect(status.progress.percentage).toBe(50); // 10/20 = 50%
+    });
+
+    it('should estimate completion time', async () => {
+      // Mock job in progress
+      // Assert estimatedCompletionAt is in future
+    });
+
+    it('should include all errors', async () => {
+      // Mock job with 3 errors
+      const status = await getBatchStatusAction({
+        batchJobId: 'valid-id',
+      });
+
+      expect(status.errors).toHaveLength(3);
+    });
+  });
+
+  describe('retryFailedDialogueAction', () => {
+    it('should retry only failed lines', async () => {
+      // Mock batch with 5 failed lines
+      const result = await retryFailedDialogueAction({
+        batchJobId: 'valid-id',
+      });
+
+      expect(result.retriedCount).toBe(5);
+      expect(result.status).toBe('processing');
+    });
+
+    it('should throw error if no failed lines', async () => {
+      // Mock batch with no failures
+      await expect(
+        retryFailedDialogueAction({
+          batchJobId: 'valid-id',
+        })
+      ).rejects.toThrow('No failed lines to retry');
+    });
+  });
+
+  describe('cancelBatchAction', () => {
+    it('should cancel processing batch', async () => {
+      // Mock batch in processing state
+      const result = await cancelBatchAction({
+        batchJobId: 'valid-id',
+      });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('should throw error if already completed', async () => {
+      // Mock completed batch
+      await expect(
+        cancelBatchAction({
+          batchJobId: 'valid-id',
+        })
+      ).rejects.toThrow('Cannot cancel completed');
+    });
+  });
+});
+```
+
+### Integration Tests
+
+**File**: `apps/web/__tests__/integration/batch-dialogue.test.ts`
+
+```typescript
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
+import { batchGenerateDialogueAction, getBatchStatusAction } from '@kit/audio-generation/server';
+
+describe('Batch Dialogue Integration', () => {
+  let testEpisodeId: string;
+
+  beforeAll(async () => {
+    // Setup test episode with 10 dialogue lines
+  });
+
+  afterAll(async () => {
+    // Cleanup test data
+  });
+
+  it('should complete full batch generation workflow', async () => {
+    // 1. Start batch generation
+    const batch = await batchGenerateDialogueAction({
+      episodeId: testEpisodeId,
+    });
+
+    expect(batch.batchJobId).toBeTruthy();
+    expect(batch.totalLines).toBe(10);
+    expect(batch.status).toBe('queued');
+
+    // 2. Poll for completion
+    let status;
+    let attempts = 0;
+    do {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      status = await getBatchStatusAction({
+        batchJobId: batch.batchJobId,
+      });
+      attempts++;
+    } while (status.status === 'processing' && attempts < 60);
+
+    expect(status.status).toBe('completed');
+    expect(status.progress.completed).toBe(10);
+    expect(status.progress.failed).toBe(0);
+
+    // 3. Verify all dialogue lines have audio
+    const client = createClient(/* ... */);
+    const { data: lines } = await client
+      .from('dialogue_lines')
+      .select('audio_url, status')
+      .eq('episode_id', testEpisodeId);
+
+    expect(lines?.every(l => l.audio_url && l.status === 'completed')).toBe(true);
+  });
+});
+```
+
+### Manual Testing
+
+1. **Small Batch (5 lines)**
+   - Create episode with 5 dialogue lines
+   - Start batch generation
+   - Poll status every 2 seconds
+   - Verify all complete within 1 minute
+   - Check all audio files playable
+
+2. **Large Batch (50 lines)**
+   - Create episode with 50 dialogue lines
+   - Start batch generation
+   - Monitor progress percentage
+   - Verify completion within 10 minutes
+   - Check cost accuracy
+
+3. **Mixed Characters**
+   - Create episode with 3 different characters
+   - Assign different voices to each
+   - Start batch generation
+   - Verify voices consistent per character
+
+4. **Error Recovery**
+   - Start batch with invalid voice ID for one character
+   - Verify other characters still process
+   - Check failed line in errors array
+   - Retry failed line with correct voice
+   - Verify retry succeeds
+
+5. **Cancellation**
+   - Start large batch (100 lines)
+   - Cancel after 10 seconds
+   - Verify status changes to 'cancelled'
+   - Verify processing stops
+   - Check completed lines remain completed
+
+---
+
+## Security Considerations
+
+### Authentication & Authorization
+
+- All actions require authenticated user
+- RLS policies enforce episode access control
+- Cannot process other accounts' episodes
+- Budget checks per account
+
+### Concurrency Limits
+
+- Per-account concurrency limit (max 5)
+- Global rate limit for provider API
+- Queue excess requests
+- Fair scheduling across accounts
+
+### Budget Protection
+
+- Check budget before starting batch
+- Track actual cost in real-time
+- Pause if budget exceeded mid-batch
+- Alert before starting expensive batches
+
+---
+
+## Error Handling
+
+### Client-Side Error Display
+
+```typescript
+'use client';
+
+import { toast } from '@kit/ui/sonner';
+import { batchGenerateDialogueAction, getBatchStatusAction } from '@kit/audio-generation/server';
+
+async function handleBatchGeneration(episodeId: string) {
+  try {
+    // Start batch
+    const batch = await batchGenerateDialogueAction({ episodeId });
+    toast.success(`Batch generation started. Processing ${batch.totalLines} lines.`);
+
+    // Poll for status
+    const interval = setInterval(async () => {
+      const status = await getBatchStatusAction({ batchJobId: batch.batchJobId });
+
+      if (status.status === 'completed') {
+        clearInterval(interval);
+        toast.success('All dialogue generated successfully!');
+      } else if (status.status === 'failed') {
+        clearInterval(interval);
+        toast.error('Batch generation failed. Check errors for details.');
+      } else {
+        toast.info(`Progress: ${status.progress.percentage}%`);
+      }
+    }, 5000);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes('budget')) {
+        toast.error('Insufficient budget for batch generation.');
+      } else if (error.message.includes('voice assignments')) {
+        toast.error('Missing voice assignments. Please assign voices to all characters.');
+      } else {
+        toast.error('Failed to start batch generation.');
+      }
+    }
+  }
+}
+```
+
+---
+
+## Performance Considerations
+
+### Optimization Strategies
+
+1. **Concurrency Tuning**
+   - Adjust based on provider limits
+   - Monitor success rate vs concurrency
+   - Reduce on high failure rate
+
+2. **Batch Grouping**
+   - Group lines by character
+   - Process same character together for cache benefits
+   - Optimize voice profile fetches
+
+3. **Progress Updates**
+   - Batch progress updates (every N lines)
+   - Reduce database writes
+   - Use debouncing
+
+4. **Background Processing**
+   - Move to dedicated queue system (future)
+   - Separate worker processes
+   - Better resource management
+
+---
+
+## Future Enhancements
+
+1. **Queue System Integration**
+   - Use BullMQ or Inngest for background jobs
+   - Better retry strategies
+   - Priority queues
+
+2. **Smart Voice Selection**
+   - Auto-suggest voices based on character description
+   - Voice preview before batch start
+   - Voice consistency scoring
+
+3. **Advanced Progress Tracking**
+   - Real-time WebSocket updates
+   - Visual waveform preview as each line completes
+   - Cost tracking per character
+
+4. **Batch Optimization**
+   - Cache identical text+voice combinations
+   - Parallel upload to storage
+   - Compressed batch results
+
+5. **Analytics**
+   - Track average generation time per line
+   - Monitor failure patterns
+   - Cost optimization recommendations
+
+---
+
+## References
+
+- **FILM-502**: Voice Generation Action
+- **FILM-501**: ElevenLabs Provider
+- **FILM-108**: Audio Generation Package
+- **Constitution**: Section 2.2 (Server Actions Pattern)
+- **Constitution**: Section 5.2 (Generation Job Errors)
+- **Constitution**: Section 6 (Cost Tracking)

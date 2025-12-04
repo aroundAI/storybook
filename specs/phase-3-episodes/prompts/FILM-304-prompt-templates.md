@@ -1,0 +1,826 @@
+# FILM-304: Story Generation Prompt Templates
+
+**Phase**: 3
+**Priority**: P0
+**Effort**: S (1-2 days)
+**Dependencies**: None
+**Blocks**: FILM-305, FILM-306, FILM-307
+
+---
+
+## Context
+
+The Story Generation Pipeline uses structured prompt templates to guide LLM-based content generation. These templates are stored as JSON files using the @kit/prompt-engine format, enabling version control, A/B testing, and easy customization without code changes.
+
+The system provides four core prompt templates:
+1. **Story Ideation** - Generate story ideas from a premise
+2. **Story Generation** - Expand idea into full narrative
+3. **Screenplay Conversion** - Convert story into screenplay format
+4. **Shot List Generation** - Break screenplay into individual shots
+
+Templates use variable interpolation for dynamic content (project genre, characters, duration constraints) and include output format specifications to ensure structured, parseable LLM responses.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Story Ideation Template**
+   - Accept premise (1-2 sentences)
+   - Accept project context (genre, target audience, style)
+   - Generate 3-5 story ideas with titles, loglines, and themes
+   - Output structured JSON format
+
+2. **Story Generation Template**
+   - Accept selected story idea
+   - Accept project characters and world details
+   - Accept target duration (1-10 minutes)
+   - Generate complete narrative (500-1000 words)
+   - Include character arcs, conflict, and resolution
+   - Output structured JSON format
+
+3. **Screenplay Conversion Template**
+   - Accept full story text
+   - Accept scene count guidance (e.g., 5-10 scenes)
+   - Convert to screenplay format with scenes and dialogue
+   - Include scene headings (INT/EXT, location, time)
+   - Generate natural dialogue with character voices
+   - Output structured JSON format
+
+4. **Shot List Generation Template**
+   - Accept screenplay with scenes and dialogue
+   - Accept video generation constraints (5-10s per shot)
+   - Break scenes into individual shots
+   - Generate Kling-optimized prompts for each shot
+   - Include camera directions and shot descriptions
+   - Output structured JSON format
+
+### Non-Functional Requirements
+
+- Templates must be provider-agnostic (work with Claude, GPT-4, Gemini)
+- Templates must produce deterministic output format
+- Templates must handle edge cases (very short/long stories)
+- Templates must be human-readable and editable
+- Templates must follow @kit/prompt-engine JSON schema
+
+---
+
+## Interface
+
+### Prompt Template Structure
+
+Using @kit/prompt-engine format:
+
+```typescript
+interface PromptTemplate {
+  version: string;          // Template version (semver)
+  name: string;             // Human-readable name
+  description: string;      // Template purpose
+  model: {
+    provider: string;       // Preferred provider (e.g., "anthropic")
+    name: string;           // Model name (e.g., "claude-3-5-sonnet-20241022")
+    temperature: number;    // 0.0-1.0
+    maxTokens: number;      // Max output tokens
+  };
+  variables: {
+    [key: string]: {
+      type: string;         // "string" | "number" | "array" | "object"
+      description: string;  // Variable purpose
+      required: boolean;    // Is variable required?
+      default?: unknown;    // Default value if not provided
+    };
+  };
+  systemPrompt: string;     // System instructions
+  userPrompt: string;       // User prompt with {{variables}}
+  outputSchema: object;     // Zod schema for output validation
+}
+```
+
+---
+
+## Implementation Details
+
+### File Structure
+
+```
+packages/features/prompt-engine/src/
+├── templates/
+│   ├── story-ideation.json           # CREATE THIS
+│   ├── story-generation.json         # CREATE THIS
+│   ├── screenplay-conversion.json    # CREATE THIS
+│   └── shot-list-generation.json     # CREATE THIS
+└── schemas/
+    └── prompt-output-schemas.ts      # Zod schemas for outputs (CREATE THIS)
+```
+
+### Template 1: Story Ideation
+
+**File**: `packages/features/prompt-engine/src/templates/story-ideation.json`
+
+```json
+{
+  "version": "1.0.0",
+  "name": "Story Ideation",
+  "description": "Generate multiple story ideas from a premise",
+  "model": {
+    "provider": "anthropic",
+    "name": "claude-3-5-sonnet-20241022",
+    "temperature": 0.8,
+    "maxTokens": 2000
+  },
+  "variables": {
+    "premise": {
+      "type": "string",
+      "description": "One-sentence story premise or hook",
+      "required": true
+    },
+    "genre": {
+      "type": "string",
+      "description": "Story genre (e.g., sci-fi, fantasy, drama)",
+      "required": false,
+      "default": "general"
+    },
+    "targetAudience": {
+      "type": "string",
+      "description": "Target audience (e.g., children, young adult, adult)",
+      "required": false,
+      "default": "general"
+    },
+    "style": {
+      "type": "string",
+      "description": "Storytelling style (e.g., comedic, dramatic, thriller)",
+      "required": false,
+      "default": "balanced"
+    },
+    "numberOfIdeas": {
+      "type": "number",
+      "description": "Number of story ideas to generate",
+      "required": false,
+      "default": 3
+    }
+  },
+  "systemPrompt": "You are an expert story consultant and creative writer. Your role is to help filmmakers develop compelling story ideas from initial premises. Generate diverse, creative story concepts that are visually interesting and suitable for short-form video content (1-10 minutes).\n\nIMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+  "userPrompt": "Generate {{numberOfIdeas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{targetAudience}}\n- Style: {{style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5. **Visual Potential**: Why this story works well for video\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\"\n    }\n  ]\n}\n```",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ideas": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "title": { "type": "string" },
+            "logline": { "type": "string" },
+            "themes": { "type": "array", "items": { "type": "string" } },
+            "hook": { "type": "string" },
+            "visualPotential": { "type": "string" }
+          },
+          "required": ["title", "logline", "themes", "hook", "visualPotential"]
+        }
+      }
+    },
+    "required": ["ideas"]
+  }
+}
+```
+
+### Template 2: Story Generation
+
+**File**: `packages/features/prompt-engine/src/templates/story-generation.json`
+
+```json
+{
+  "version": "1.0.0",
+  "name": "Story Generation",
+  "description": "Generate complete story from selected idea",
+  "model": {
+    "provider": "anthropic",
+    "name": "claude-3-5-sonnet-20241022",
+    "temperature": 0.7,
+    "maxTokens": 4000
+  },
+  "variables": {
+    "title": {
+      "type": "string",
+      "description": "Story title",
+      "required": true
+    },
+    "logline": {
+      "type": "string",
+      "description": "Story logline",
+      "required": true
+    },
+    "targetDuration": {
+      "type": "number",
+      "description": "Target video duration in seconds (60-600)",
+      "required": true
+    },
+    "characters": {
+      "type": "array",
+      "description": "Array of character objects with name and description",
+      "required": false,
+      "default": []
+    },
+    "worldDetails": {
+      "type": "string",
+      "description": "World setting and context",
+      "required": false,
+      "default": ""
+    },
+    "style": {
+      "type": "string",
+      "description": "Storytelling style",
+      "required": false,
+      "default": "balanced"
+    }
+  },
+  "systemPrompt": "You are an expert screenwriter and story developer. Your role is to craft compelling, complete narratives suitable for short-form video content. Your stories should have clear three-act structure, strong character arcs, and visual storytelling elements.\n\nIMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+  "userPrompt": "Write a complete story based on this concept:\n\n**Title**: {{title}}\n**Logline**: {{logline}}\n**Target Duration**: {{targetDuration}} seconds ({{targetDurationMinutes}} minutes)\n**Style**: {{style}}\n\n{{#if characters}}\n**Characters**:\n{{#each characters}}\n- **{{name}}**: {{description}}\n{{/each}}\n{{/if}}\n\n{{#if worldDetails}}\n**World Details**: {{worldDetails}}\n{{/if}}\n\n**Requirements**:\n\n1. **Story Length**: Write 500-1000 words, appropriate for {{targetDurationMinutes}}-minute video\n2. **Structure**: Clear three-act structure (setup, confrontation, resolution)\n3. **Character Arc**: Protagonist should undergo meaningful change\n4. **Visual Storytelling**: Focus on showing, not telling - include vivid imagery\n5. **Pacing**: Maintain engagement throughout with clear story beats\n6. **Conflict**: Include central conflict and stakes\n7. **Resolution**: Satisfying conclusion that ties up main threads\n\n**Story Guidelines**:\n- Write in present tense for immediacy\n- Use vivid, sensory descriptions\n- Include emotional moments\n- Create visual variety (different locations, actions)\n- Keep dialogue natural and purposeful\n- Consider what can be shown visually vs. narrated\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"story\": {\n    \"title\": \"string\",\n    \"fullText\": \"string (500-1000 words)\",\n    \"actBreakdown\": {\n      \"act1\": \"string (setup summary)\",\n      \"act2\": \"string (confrontation summary)\",\n      \"act3\": \"string (resolution summary)\"\n    },\n    \"characters\": [\n      {\n        \"name\": \"string\",\n        \"role\": \"string (protagonist/antagonist/supporting)\",\n        \"arc\": \"string (character journey)\"\n      }\n    ],\n    \"themes\": [\"string\"],\n    \"tone\": \"string\",\n    \"estimatedSceneCount\": \"number\"\n  }\n}\n```",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "story": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "fullText": { "type": "string" },
+          "actBreakdown": {
+            "type": "object",
+            "properties": {
+              "act1": { "type": "string" },
+              "act2": { "type": "string" },
+              "act3": { "type": "string" }
+            },
+            "required": ["act1", "act2", "act3"]
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "role": { "type": "string" },
+                "arc": { "type": "string" }
+              },
+              "required": ["name", "role", "arc"]
+            }
+          },
+          "themes": { "type": "array", "items": { "type": "string" } },
+          "tone": { "type": "string" },
+          "estimatedSceneCount": { "type": "number" }
+        },
+        "required": ["title", "fullText", "actBreakdown", "characters", "themes", "tone", "estimatedSceneCount"]
+      }
+    },
+    "required": ["story"]
+  }
+}
+```
+
+### Template 3: Screenplay Conversion
+
+**File**: `packages/features/prompt-engine/src/templates/screenplay-conversion.json`
+
+```json
+{
+  "version": "1.0.0",
+  "name": "Screenplay Conversion",
+  "description": "Convert story into screenplay format with scenes and dialogue",
+  "model": {
+    "provider": "anthropic",
+    "name": "claude-3-5-sonnet-20241022",
+    "temperature": 0.6,
+    "maxTokens": 4000
+  },
+  "variables": {
+    "story": {
+      "type": "string",
+      "description": "Full story text to convert",
+      "required": true
+    },
+    "targetSceneCount": {
+      "type": "number",
+      "description": "Target number of scenes (5-15)",
+      "required": false,
+      "default": 8
+    },
+    "style": {
+      "type": "string",
+      "description": "Dialogue style (natural, stylized, minimal)",
+      "required": false,
+      "default": "natural"
+    }
+  },
+  "systemPrompt": "You are an expert screenwriter specializing in short-form video content. Your role is to convert prose stories into professional screenplay format with clear scene headings, action lines, and dialogue. Focus on visual storytelling and create screenplays that are immediately producible.\n\nIMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+  "userPrompt": "Convert this story into a screenplay:\n\n**Story**:\n{{story}}\n\n**Guidelines**:\n\n1. **Scene Structure**:\n   - Target {{targetSceneCount}} scenes\n   - Each scene should be 30-60 seconds of screen time\n   - Use standard scene headings: INT/EXT. LOCATION - TIME OF DAY\n   - Include clear action lines describing what we see\n\n2. **Dialogue**:\n   - Style: {{style}}\n   - Keep dialogue natural and purposeful\n   - Use dialogue to advance story and reveal character\n   - Include parentheticals for emotion/action only when necessary\n   - Avoid on-the-nose dialogue\n\n3. **Action Lines**:\n   - Write in present tense\n   - Be concise and visual\n   - Focus on what camera can capture\n   - Break up long paragraphs for readability\n\n4. **Scene Types**:\n   - Vary scene locations for visual interest\n   - Balance dialogue-heavy and action-heavy scenes\n   - Include establishing shots where needed\n\n5. **Character Names**:\n   - CAPITALIZE character names in action lines (first appearance)\n   - Character names in dialogue are always capitalized\n\n**Screenplay Format Example**:\n\nINT. COFFEE SHOP - DAY\n\nJAKE (30s, disheveled) stares at his laptop screen, fingers frozen over the keyboard.\n\n                    SARAH (O.S.)\n            Jake?\n\nJake looks up. SARAH (20s, confident) stands at his table with two coffees.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"day|night|dawn|dusk\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"estimatedDuration\": \"number (seconds)\"\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": \"number\",\n      \"estimatedDuration\": \"number (seconds)\",\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "screenplay": {
+        "type": "object",
+        "properties": {
+          "scenes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "number": { "type": "number" },
+                "heading": { "type": "string" },
+                "location": { "type": "string" },
+                "timeOfDay": { "type": "string", "enum": ["day", "night", "dawn", "dusk"] },
+                "description": { "type": "string" },
+                "dialogue": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "character": { "type": "string" },
+                      "text": { "type": "string" },
+                      "parenthetical": { "type": "string" }
+                    },
+                    "required": ["character", "text"]
+                  }
+                },
+                "estimatedDuration": { "type": "number" }
+              },
+              "required": ["number", "heading", "location", "timeOfDay", "description", "dialogue", "estimatedDuration"]
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "totalScenes": { "type": "number" },
+              "estimatedDuration": { "type": "number" },
+              "locations": { "type": "array", "items": { "type": "string" } },
+              "characters": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["totalScenes", "estimatedDuration", "locations", "characters"]
+          }
+        },
+        "required": ["scenes", "metadata"]
+      }
+    },
+    "required": ["screenplay"]
+  }
+}
+```
+
+### Template 4: Shot List Generation
+
+**File**: `packages/features/prompt-engine/src/templates/shot-list-generation.json`
+
+```json
+{
+  "version": "1.0.0",
+  "name": "Shot List Generation",
+  "description": "Generate shot-by-shot breakdown from screenplay",
+  "model": {
+    "provider": "anthropic",
+    "name": "claude-3-5-sonnet-20241022",
+    "temperature": 0.5,
+    "maxTokens": 4000
+  },
+  "variables": {
+    "screenplay": {
+      "type": "object",
+      "description": "Screenplay object with scenes and dialogue",
+      "required": true
+    },
+    "shotDurationMin": {
+      "type": "number",
+      "description": "Minimum shot duration in seconds",
+      "required": false,
+      "default": 3
+    },
+    "shotDurationMax": {
+      "type": "number",
+      "description": "Maximum shot duration in seconds (Kling max: 10)",
+      "required": false,
+      "default": 8
+    },
+    "videoProvider": {
+      "type": "string",
+      "description": "Target video provider (kling, runway, luma)",
+      "required": false,
+      "default": "kling"
+    }
+  },
+  "systemPrompt": "You are an expert cinematographer and shot planner. Your role is to break down screenplays into individual shots optimized for AI video generation. Each shot must be a standalone visual moment that can be generated as a single video clip.\n\nIMPORTANT:\n1. Always respond with valid JSON matching the specified output schema\n2. Each shot must be {{shotDurationMin}}-{{shotDurationMax}} seconds (AI video provider constraint)\n3. Prompts must be highly visual and descriptive\n4. Avoid shots requiring complex camera movements or VFX\n5. Do not include any text outside the JSON object",
+  "userPrompt": "Create a detailed shot list from this screenplay:\n\n**Screenplay**:\n{{screenplayText}}\n\n**Constraints**:\n- Video Provider: {{videoProvider}}\n- Shot Duration: {{shotDurationMin}}-{{shotDurationMax}} seconds per shot\n- Provider Limitations: Static or simple camera movements only\n\n**Shot List Requirements**:\n\n1. **Shot Breakdown**:\n   - Each scene should be 3-8 shots\n   - Balance wide, medium, and close-up shots\n   - Include establishing shots for new locations\n   - Use variety in shot types and angles\n\n2. **Shot Descriptions**:\n   - Describe exactly what camera captures\n   - Include subject, action, environment\n   - Specify lighting and mood\n   - Note foreground/background elements\n\n3. **Camera Directions** (choose from):\n   - static: No camera movement\n   - pan_left / pan_right: Horizontal rotation\n   - tilt_up / tilt_down: Vertical rotation\n   - zoom_in / zoom_out: Change focal length\n   - dolly_in / dolly_out: Move toward/away from subject\n\n4. **AI Video Prompts**:\n   - Write prompts optimized for {{videoProvider}}\n   - Focus on visual elements, not dialogue\n   - Include style, lighting, mood\n   - Avoid complex actions or impossible physics\n   - Be specific about subject appearance and environment\n\n5. **Example Prompt Format**:\n   \"A young woman with curly brown hair sits at a wooden table in a cozy coffee shop, warm afternoon light streaming through large windows, she looks up with a surprised expression, indie film aesthetic, 35mm film look\"\n\n**Shot List Structure**:\n\nFor each shot, provide:\n- Scene number (from screenplay)\n- Shot number within scene\n- Shot type (wide/medium/close-up/extreme-close-up)\n- Camera direction\n- Shot description (what we see)\n- Action description (what happens)\n- AI video prompt (optimized for generation)\n- Characters in frame\n- Duration in seconds\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"shotList\": {\n    \"shots\": [\n      {\n        \"sequenceNumber\": \"number (overall shot number)\",\n        \"sceneNumber\": \"number\",\n        \"shotNumber\": \"number (shot within scene)\",\n        \"shotType\": \"wide|medium|close-up|extreme-close-up|over-shoulder|pov\",\n        \"cameraDirection\": \"static|pan_left|pan_right|tilt_up|tilt_down|zoom_in|zoom_out|dolly_in|dolly_out\",\n        \"description\": \"string (what camera captures)\",\n        \"action\": \"string (what happens)\",\n        \"prompt\": \"string (AI-optimized prompt)\",\n        \"characters\": [\"string\"],\n        \"duration\": \"number (seconds, {{shotDurationMin}}-{{shotDurationMax}})\",\n        \"metadata\": {\n          \"location\": \"string\",\n          \"timeOfDay\": \"day|night|dawn|dusk\",\n          \"mood\": \"string\",\n          \"lighting\": \"string\"\n        }\n      }\n    ],\n    \"metadata\": {\n      \"totalShots\": \"number\",\n      \"totalDuration\": \"number (seconds)\",\n      \"shotTypes\": {\n        \"wide\": \"number\",\n        \"medium\": \"number\",\n        \"closeUp\": \"number\"\n      },\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "shotList": {
+        "type": "object",
+        "properties": {
+          "shots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sequenceNumber": { "type": "number" },
+                "sceneNumber": { "type": "number" },
+                "shotNumber": { "type": "number" },
+                "shotType": { "type": "string", "enum": ["wide", "medium", "close-up", "extreme-close-up", "over-shoulder", "pov"] },
+                "cameraDirection": { "type": "string", "enum": ["static", "pan_left", "pan_right", "tilt_up", "tilt_down", "zoom_in", "zoom_out", "dolly_in", "dolly_out"] },
+                "description": { "type": "string" },
+                "action": { "type": "string" },
+                "prompt": { "type": "string" },
+                "characters": { "type": "array", "items": { "type": "string" } },
+                "duration": { "type": "number" },
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "location": { "type": "string" },
+                    "timeOfDay": { "type": "string", "enum": ["day", "night", "dawn", "dusk"] },
+                    "mood": { "type": "string" },
+                    "lighting": { "type": "string" }
+                  },
+                  "required": ["location", "timeOfDay"]
+                }
+              },
+              "required": ["sequenceNumber", "sceneNumber", "shotNumber", "shotType", "cameraDirection", "description", "action", "prompt", "characters", "duration", "metadata"]
+            }
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "totalShots": { "type": "number" },
+              "totalDuration": { "type": "number" },
+              "shotTypes": {
+                "type": "object",
+                "properties": {
+                  "wide": { "type": "number" },
+                  "medium": { "type": "number" },
+                  "closeUp": { "type": "number" }
+                },
+                "required": ["wide", "medium", "closeUp"]
+              },
+              "locations": { "type": "array", "items": { "type": "string" } },
+              "characters": { "type": "array", "items": { "type": "string" } }
+            },
+            "required": ["totalShots", "totalDuration", "shotTypes", "locations", "characters"]
+          }
+        },
+        "required": ["shots", "metadata"]
+      }
+    },
+    "required": ["shotList"]
+  }
+}
+```
+
+### Zod Output Schemas
+
+**File**: `packages/features/prompt-engine/src/schemas/prompt-output-schemas.ts`
+
+```typescript
+import { z } from 'zod';
+
+// Story Ideation Output
+export const StoryIdeaSchema = z.object({
+  title: z.string(),
+  logline: z.string(),
+  themes: z.array(z.string()),
+  hook: z.string(),
+  visualPotential: z.string(),
+});
+
+export const StoryIdeationOutputSchema = z.object({
+  ideas: z.array(StoryIdeaSchema),
+});
+
+// Story Generation Output
+export const CharacterArcSchema = z.object({
+  name: z.string(),
+  role: z.enum(['protagonist', 'antagonist', 'supporting']),
+  arc: z.string(),
+});
+
+export const ActBreakdownSchema = z.object({
+  act1: z.string(),
+  act2: z.string(),
+  act3: z.string(),
+});
+
+export const StoryGenerationOutputSchema = z.object({
+  story: z.object({
+    title: z.string(),
+    fullText: z.string(),
+    actBreakdown: ActBreakdownSchema,
+    characters: z.array(CharacterArcSchema),
+    themes: z.array(z.string()),
+    tone: z.string(),
+    estimatedSceneCount: z.number(),
+  }),
+});
+
+// Screenplay Conversion Output
+export const DialogueLineSchema = z.object({
+  character: z.string(),
+  text: z.string(),
+  parenthetical: z.string().optional(),
+});
+
+export const SceneSchema = z.object({
+  number: z.number(),
+  heading: z.string(),
+  location: z.string(),
+  timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']),
+  description: z.string(),
+  dialogue: z.array(DialogueLineSchema),
+  estimatedDuration: z.number(),
+});
+
+export const ScreenplayMetadataSchema = z.object({
+  totalScenes: z.number(),
+  estimatedDuration: z.number(),
+  locations: z.array(z.string()),
+  characters: z.array(z.string()),
+});
+
+export const ScreenplayConversionOutputSchema = z.object({
+  screenplay: z.object({
+    scenes: z.array(SceneSchema),
+    metadata: ScreenplayMetadataSchema,
+  }),
+});
+
+// Shot List Generation Output
+export const ShotMetadataSchema = z.object({
+  location: z.string(),
+  timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']),
+  mood: z.string().optional(),
+  lighting: z.string().optional(),
+});
+
+export const ShotSchema = z.object({
+  sequenceNumber: z.number(),
+  sceneNumber: z.number(),
+  shotNumber: z.number(),
+  shotType: z.enum(['wide', 'medium', 'close-up', 'extreme-close-up', 'over-shoulder', 'pov']),
+  cameraDirection: z.enum(['static', 'pan_left', 'pan_right', 'tilt_up', 'tilt_down', 'zoom_in', 'zoom_out', 'dolly_in', 'dolly_out']),
+  description: z.string(),
+  action: z.string(),
+  prompt: z.string(),
+  characters: z.array(z.string()),
+  duration: z.number().min(3).max(10),
+  metadata: ShotMetadataSchema,
+});
+
+export const ShotListMetadataSchema = z.object({
+  totalShots: z.number(),
+  totalDuration: z.number(),
+  shotTypes: z.object({
+    wide: z.number(),
+    medium: z.number(),
+    closeUp: z.number(),
+  }),
+  locations: z.array(z.string()),
+  characters: z.array(z.string()),
+});
+
+export const ShotListGenerationOutputSchema = z.object({
+  shotList: z.object({
+    shots: z.array(ShotSchema),
+    metadata: ShotListMetadataSchema,
+  }),
+});
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **packages/features/prompt-engine/src/templates/story-ideation.json**
+   - Story ideation prompt template
+   - JSON format with variable definitions
+   - Output schema specification
+
+2. **packages/features/prompt-engine/src/templates/story-generation.json**
+   - Full story generation prompt template
+   - Character and world-building variables
+   - Structured story output
+
+3. **packages/features/prompt-engine/src/templates/screenplay-conversion.json**
+   - Screenplay formatting prompt template
+   - Scene breakdown variables
+   - Standard screenplay format output
+
+4. **packages/features/prompt-engine/src/templates/shot-list-generation.json**
+   - Shot list creation prompt template
+   - Video provider constraints
+   - AI-optimized prompt generation
+
+5. **packages/features/prompt-engine/src/schemas/prompt-output-schemas.ts**
+   - Zod schemas for all prompt outputs
+   - Type-safe validation
+   - Export types for TypeScript
+
+### Modified Files
+
+None (new feature)
+
+---
+
+## Acceptance Criteria
+
+### Functional
+
+- [ ] All four JSON template files are valid JSON
+- [ ] Templates follow @kit/prompt-engine schema
+- [ ] All required variables defined with types
+- [ ] System prompts provide clear instructions
+- [ ] User prompts include variable interpolation
+- [ ] Output schemas match Zod validation schemas
+- [ ] Templates work with Claude, GPT-4, and Gemini
+- [ ] Generated outputs are parseable JSON
+- [ ] Prompts produce deterministic structured output
+
+### Non-Functional
+
+- [ ] Templates are human-readable and editable
+- [ ] Variable names are clear and descriptive
+- [ ] Prompts produce consistent output format
+- [ ] JSON files are properly formatted
+- [ ] No hardcoded provider-specific syntax
+
+---
+
+## Test Plan
+
+### Unit Tests
+
+**File**: `packages/features/prompt-engine/src/__tests__/template-validation.test.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { z } from 'zod';
+import storyIdeation from '../templates/story-ideation.json';
+import storyGeneration from '../templates/story-generation.json';
+import screenplayConversion from '../templates/screenplay-conversion.json';
+import shotListGeneration from '../templates/shot-list-generation.json';
+
+describe('Prompt Template Validation', () => {
+  it('should validate story-ideation template', () => {
+    expect(storyIdeation.version).toBe('1.0.0');
+    expect(storyIdeation.variables.premise.required).toBe(true);
+    expect(storyIdeation.outputSchema).toBeDefined();
+  });
+
+  it('should validate story-generation template', () => {
+    expect(storyGeneration.version).toBe('1.0.0');
+    expect(storyGeneration.variables.story).toBeUndefined();
+    expect(storyGeneration.variables.title.required).toBe(true);
+  });
+
+  it('should validate screenplay-conversion template', () => {
+    expect(screenplayConversion.version).toBe('1.0.0');
+    expect(screenplayConversion.variables.story.required).toBe(true);
+  });
+
+  it('should validate shot-list-generation template', () => {
+    expect(shotListGeneration.version).toBe('1.0.0');
+    expect(shotListGeneration.variables.screenplay.required).toBe(true);
+  });
+});
+```
+
+### Integration Tests
+
+**File**: `packages/features/prompt-engine/src/__tests__/prompt-execution.test.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { executePrompt } from '@kit/prompt-engine';
+import {
+  StoryIdeationOutputSchema,
+  StoryGenerationOutputSchema,
+  ScreenplayConversionOutputSchema,
+  ShotListGenerationOutputSchema,
+} from '../schemas/prompt-output-schemas';
+
+describe('Prompt Execution', () => {
+  it('should execute story ideation prompt', async () => {
+    const result = await executePrompt('story-ideation', {
+      premise: 'A robot learns to feel emotions',
+      genre: 'sci-fi',
+      numberOfIdeas: 3,
+    });
+
+    expect(() => StoryIdeationOutputSchema.parse(result)).not.toThrow();
+    expect(result.ideas).toHaveLength(3);
+  });
+
+  it('should execute story generation prompt', async () => {
+    const result = await executePrompt('story-generation', {
+      title: 'The Awakening',
+      logline: 'A robot discovers emotions',
+      targetDuration: 300,
+    });
+
+    expect(() => StoryGenerationOutputSchema.parse(result)).not.toThrow();
+    expect(result.story.fullText.length).toBeGreaterThan(500);
+  });
+});
+```
+
+### Manual Testing
+
+1. **Story Ideation**
+   - Provide premise: "A lonely astronaut discovers a message from Earth"
+   - Verify 3-5 story ideas generated
+   - Check all required fields present
+   - Verify ideas are diverse
+
+2. **Story Generation**
+   - Use selected idea from ideation
+   - Set target duration: 180 seconds
+   - Verify 500-1000 word story
+   - Check three-act structure
+
+3. **Screenplay Conversion**
+   - Use generated story
+   - Request 8 scenes
+   - Verify proper screenplay format
+   - Check scene headings and dialogue
+
+4. **Shot List Generation**
+   - Use generated screenplay
+   - Set shot duration: 5-8 seconds
+   - Verify AI-optimized prompts
+   - Check camera directions valid
+
+---
+
+## Security Considerations
+
+### Input Validation
+
+- Validate all template variables before interpolation
+- Sanitize user input to prevent prompt injection
+- Limit prompt length to prevent abuse
+
+### Output Validation
+
+- Parse and validate LLM output with Zod schemas
+- Reject malformed or incomplete responses
+- Log validation failures for debugging
+
+### Cost Control
+
+- Set reasonable maxTokens limits
+- Monitor prompt execution costs
+- Implement rate limiting per user
+
+---
+
+## Performance Considerations
+
+### Template Loading
+
+- Load templates once at startup
+- Cache parsed templates in memory
+- Lazy load templates as needed
+
+### Variable Interpolation
+
+- Use efficient string replacement
+- Validate variables before interpolation
+- Handle missing optional variables gracefully
+
+---
+
+## Future Enhancements
+
+1. **Template Versioning**
+   - Support multiple template versions
+   - A/B test different prompt variations
+   - Track template performance metrics
+
+2. **Custom Templates**
+   - Allow users to create custom prompts
+   - Template marketplace
+   - Community-contributed templates
+
+3. **Multi-Language Support**
+   - Generate stories in different languages
+   - Localize prompts and outputs
+
+4. **Advanced Constraints**
+   - Character limits for specific formats
+   - Genre-specific templates
+   - Style transfer templates
+
+---
+
+## References
+
+- **@kit/prompt-engine**: JSON-based prompt management
+- **Anthropic Claude**: https://docs.anthropic.com/claude/docs
+- **OpenAI GPT-4**: https://platform.openai.com/docs
+- **Kling AI**: Video generation constraints (10s max)
+- **Constitution**: Section 9 (Performance Guidelines)
