@@ -1,4 +1,10 @@
+import { redirect } from 'next/navigation';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+
+import { createTeamAccountAction } from '../src/server/actions/create-team-account-server-actions';
 
 // Mock Next.js functions - must be defined before import
 vi.mock('next/navigation', () => ({
@@ -21,9 +27,6 @@ vi.mock('@kit/next/actions', () => ({
     };
   },
 }));
-
-import { redirect } from 'next/navigation';
-import { createTeamAccountAction } from '../src/server/actions/create-team-account-server-actions';
 
 const mockRedirect = vi.mocked(redirect);
 
@@ -65,14 +68,11 @@ const mockCreateNewOrganizationAccount = vi.fn(() =>
   }),
 );
 
-vi.mock(
-  '../src/server/services/create-team-account.service',
-  () => ({
-    createCreateTeamAccountService: vi.fn(() => ({
-      createNewOrganizationAccount: mockCreateNewOrganizationAccount,
-    })),
-  }),
-);
+vi.mock('../src/server/services/create-team-account.service', () => ({
+  createCreateTeamAccountService: vi.fn(() => ({
+    createNewOrganizationAccount: mockCreateNewOrganizationAccount,
+  })),
+}));
 
 // Mock audit logs - define inline to avoid hoisting issues
 vi.mock('@kit/audit-logs/server', () => ({
@@ -84,8 +84,6 @@ vi.mock('@kit/audit-logs/server', () => ({
     }),
   ),
 }));
-
-import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 
 const mockCreateAuditLog = vi.mocked(createAuditLog);
 const mockExtractNetworkContext = vi.mocked(extractNetworkContext);
@@ -477,9 +475,7 @@ describe('createTeamAccountAction', () => {
     it('should handle missing name field', async () => {
       const user = { id: '387fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-      await expect(
-        createTeamAccountAction({} as any, user),
-      ).rejects.toThrow();
+      await expect(createTeamAccountAction({} as any, user)).rejects.toThrow();
     });
 
     it('should handle empty string name', async () => {

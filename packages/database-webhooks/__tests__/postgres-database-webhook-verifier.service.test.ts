@@ -156,9 +156,9 @@ describe('PostgresDatabaseWebhookVerifierService', () => {
     });
 
     it('should handle array signature', () => {
-      expect(() => service.verifySignatureOrThrow([validSecret] as any)).toThrow(
-        'Invalid signature',
-      );
+      expect(() =>
+        service.verifySignatureOrThrow([validSecret] as any),
+      ).toThrow('Invalid signature');
     });
   });
 });

@@ -356,12 +356,10 @@ describe('Project Mutations', () => {
       mockUpdate.mockReturnValue({
         eq: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
-            single: vi
-              .fn()
-              .mockResolvedValue({
-                data: null,
-                error: { message: 'Not found' },
-              }),
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: { message: 'Not found' },
+            }),
           }),
         }),
       });

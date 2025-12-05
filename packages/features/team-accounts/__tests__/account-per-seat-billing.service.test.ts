@@ -1,4 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createAccountPerSeatBillingService } from '../src/server/services/account-per-seat-billing.service';
 
 // Mock logger
@@ -411,7 +412,9 @@ describe('AccountPerSeatBillingService', () => {
             data: {
               provider: 'lemon-squeezy',
               id: 'sub-123',
-              subscription_items: [{ id: 'si-456', quantity: 5, type: 'per_seat' }],
+              subscription_items: [
+                { id: 'si-456', quantity: 5, type: 'per_seat' },
+              ],
             },
             error: null,
           }),

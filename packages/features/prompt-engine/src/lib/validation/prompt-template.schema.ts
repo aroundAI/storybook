@@ -60,9 +60,12 @@ export const OutputSchemaDefinition = z.object({
       definition: z
         .string()
         .min(1, 'Schema definition cannot be empty')
-        .refine((def) => def.includes('z.object(') || def.includes('z.array('), {
-          message: 'Schema definition must be a valid Zod schema string',
-        }),
+        .refine(
+          (def) => def.includes('z.object(') || def.includes('z.array('),
+          {
+            message: 'Schema definition must be a valid Zod schema string',
+          },
+        ),
     })
     .optional(),
   schema_for_llm: z.string().optional(),
