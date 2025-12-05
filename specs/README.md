@@ -127,7 +127,7 @@ specs/
 | FILM-105 | [assets-package](./phase-1-foundation/packages/FILM-105-assets-package.md) | DRAFT | S |
 | FILM-106 | [episodes-package](./phase-1-foundation/packages/FILM-106-episodes-package.md) | DRAFT | S |
 | FILM-107 | [video-generation-package](./phase-1-foundation/packages/FILM-107-video-generation-package.md) | DRAFT | S |
-| FILM-108 | [audio-generation-package](./phase-1-foundation/packages/FILM-108-audio-generation-package.md) | DRAFT | S |
+| FILM-108 | [audio-generation-package](./phase-1-foundation/packages/FILM-108-audio-generation-package.md) | DONE | S |
 | FILM-109 | [zod-schemas](./phase-1-foundation/packages/FILM-109-zod-schemas.md) | DRAFT | M |
 | FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.md) | DRAFT | M |
 
