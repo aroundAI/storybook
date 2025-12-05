@@ -81,6 +81,8 @@ graph TD
     subgraph "Phase 4: Video Generation"
         FILM-107 --> FILM-401[Kling Provider]
         FILM-401 --> FILM-402[Provider Factory]
+        FILM-402 --> FILM-401b[Runway Provider]
+        FILM-402 --> FILM-401c[Hailuo Provider]
         FILM-403[Rate Limiter]
         FILM-403 --> FILM-404[Job Queue]
         FILM-401 --> FILM-405[Generate Video Action]
@@ -96,6 +98,11 @@ graph TD
 
     subgraph "Phase 5: Audio Generation"
         FILM-108 --> FILM-501[ElevenLabs Provider]
+        FILM-501 --> FILM-502b[Audio Provider Factory]
+        FILM-502b --> FILM-501b[PlayHT Provider]
+        FILM-108 --> FILM-509[Suno Provider]
+        FILM-509 --> FILM-502b
+        FILM-502b --> FILM-509b[Udio Provider]
         FILM-501 --> FILM-502[Voice Generation]
         FILM-502 --> FILM-503[Batch Dialogue]
         FILM-504[Music Generation]
@@ -103,7 +110,6 @@ graph TD
         FILM-503 --> FILM-506[DialogueList]
         FILM-206 --> FILM-507[VoiceAssignment]
         FILM-508[AudioPlayer]
-        FILM-108 --> FILM-509[Suno Provider]
         FILM-501 --> FILM-510[Voice Cloning]
         FILM-502 --> FILM-511[Lip Sync]
         FILM-502 --> FILM-512[Multi-Language Dubbing]
@@ -354,11 +360,13 @@ graph TD
 | FILM-313 | [continuity-checker](./phase-3-episodes/lib/FILM-313-continuity-checker.md) | DRAFT | M | FILM-305, FILM-202 |
 | FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | DRAFT | M | FILM-301 |
 
-### Phase 4: Video Generation (12 specs)
+### Phase 4: Video Generation (15 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | DRAFT | L | FILM-107 |
+| FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | DRAFT | M | FILM-107, FILM-402 |
+| FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | DRAFT | M | FILM-107, FILM-402 |
 | FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S | FILM-401 |
 | FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | DRAFT | M | - |
 | FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | DRAFT | L | FILM-403 |
@@ -371,12 +379,14 @@ graph TD
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M | FILM-408 |
 | FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | DRAFT | M | FILM-405 |
 
-### Phase 5: Audio Generation (12 specs)
+### Phase 5: Audio Generation (16 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-501 | [elevenlabs-provider](./phase-5-audio-generation/providers/FILM-501-elevenlabs-provider.md) | DRAFT | M | FILM-108 |
+| FILM-501b | [playht-provider](./phase-5-audio-generation/providers/FILM-501b-playht-provider.md) | DRAFT | M | FILM-108, FILM-502b |
 | FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.md) | DRAFT | M | FILM-501 |
+| FILM-502b | [audio-provider-factory](./phase-5-audio-generation/providers/FILM-502b-audio-provider-factory.md) | DRAFT | M | FILM-501, FILM-509 |
 | FILM-503 | [batch-dialogue-action](./phase-5-audio-generation/server/FILM-503-batch-dialogue-action.md) | DRAFT | M | FILM-502 |
 | FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.md) | DRAFT | M | - |
 | FILM-505 | [audio-studio](./phase-5-audio-generation/components/FILM-505-audio-studio.md) | DRAFT | L | FILM-502 |
@@ -384,6 +394,7 @@ graph TD
 | FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.md) | DRAFT | M | FILM-206, FILM-506 |
 | FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | DRAFT | M | - |
 | FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | DRAFT | M | FILM-108 |
+| FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | DRAFT | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/server/FILM-510-voice-cloning.md) | DRAFT | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/lib/FILM-511-lip-sync.md) | DRAFT | L | FILM-502 |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/server/FILM-512-multi-language-dubbing.md) | DRAFT | L | FILM-502, FILM-510 |
@@ -483,8 +494,8 @@ FILM-201, FILM-202, FILM-203, FILM-301-307, FILM-405, FILM-406, FILM-408, FILM-5
 ### UI Components (31 specs)
 FILM-204-208, FILM-308-312, FILM-409-411, FILM-505-508, FILM-601-603, FILM-708-711, FILM-805-808, FILM-902-903
 
-### Providers (8 specs)
-FILM-401, FILM-501, FILM-701-704, FILM-801-803
+### Providers (14 specs)
+FILM-401, FILM-401b, FILM-401c, FILM-501, FILM-501b, FILM-502b, FILM-509, FILM-509b, FILM-701-704, FILM-801-803
 
 ### OAuth (3 specs)
 FILM-705, FILM-706, FILM-707
@@ -509,20 +520,20 @@ SPIKE-01 through SPIKE-05
 | Design System | 5 | 5 | 0 | 0 | 0 | 0 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
 | 3. Episodes | 14 | 14 | 0 | 0 | 0 | 0 |
-| 4. Video Gen | 12 | 12 | 0 | 0 | 0 | 0 |
-| 5. Audio Gen | 12 | 12 | 0 | 0 | 0 | 0 |
+| 4. Video Gen | 15 | 15 | 0 | 0 | 0 | 0 |
+| 5. Audio Gen | 16 | 16 | 0 | 0 | 0 | 0 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 15 | 0 | 0 | 0 | 0 |
 | 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 5 | 0 | 0 | 0 | 0 |
-| **TOTAL** | **123** | **123** | **0** | **0** | **0** | **0** |
+| **TOTAL** | **130** | **130** | **0** | **0** | **0** | **0** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 86 | 0 | 0% |
+| MVP Specs | 93 | 0 | 0% |
 | Post-MVP | 37 | 0 | 0% |
 
 ---
@@ -585,11 +596,11 @@ SPIKE-01 through SPIKE-05
 |------|-------|-------------|
 | XS | 8 | < 2 hours - Simple config, single file |
 | S | 21 | 2-4 hours - Single component or function |
-| M | 52 | 4-8 hours - Multiple files, integration |
+| M | 57 | 4-8 hours - Multiple files, integration |
 | L | 23 | 1-3 days - Feature slice, complex component |
 | XL | 4 | 3-5 days - Major feature, multiple subsystems |
 
-**Total Estimated Effort:** ~320-400 hours
+**Total Estimated Effort:** ~350-430 hours
 
 ---
 
