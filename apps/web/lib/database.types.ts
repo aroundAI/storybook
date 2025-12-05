@@ -138,6 +138,53 @@ export type Database = {
           },
         ]
       }
+      assets: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          metadata: Json
+          name: string
+          project_id: string
+          thumbnail_url: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json
+          name: string
+          project_id: string
+          thumbnail_url?: string | null
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json
+          name?: string
+          project_id?: string
+          thumbnail_url?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           account_id: string
@@ -148,7 +195,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -167,7 +214,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           object_id: string
           object_name?: string | null
@@ -186,7 +233,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           object_id?: string
           object_name?: string | null
@@ -266,68 +313,6 @@ export type Database = {
           },
         ]
       }
-      composition_performance: {
-        Row: {
-          avg_cost: number | null
-          avg_latency_ms: number | null
-          avg_rating: number | null
-          avg_tokens: number | null
-          composition_hash: string
-          created_at: string
-          execution_count: number
-          failure_count: number
-          first_executed_at: string
-          id: string
-          last_executed_at: string | null
-          success_count: number
-          system_prompt_ids: Json
-          template_id: string
-          updated_at: string
-        }
-        Insert: {
-          avg_cost?: number | null
-          avg_latency_ms?: number | null
-          avg_rating?: number | null
-          avg_tokens?: number | null
-          composition_hash: string
-          created_at?: string
-          execution_count?: number
-          failure_count?: number
-          first_executed_at?: string
-          id?: string
-          last_executed_at?: string | null
-          success_count?: number
-          system_prompt_ids: Json
-          template_id: string
-          updated_at?: string
-        }
-        Update: {
-          avg_cost?: number | null
-          avg_latency_ms?: number | null
-          avg_rating?: number | null
-          avg_tokens?: number | null
-          composition_hash?: string
-          created_at?: string
-          execution_count?: number
-          failure_count?: number
-          first_executed_at?: string
-          id?: string
-          last_executed_at?: string | null
-          success_count?: number
-          system_prompt_ids?: Json
-          template_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "composition_performance_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       config: {
         Row: {
           billing_provider: Database["public"]["Enums"]["billing_provider"]
@@ -348,6 +333,246 @@ export type Database = {
           enable_team_accounts?: boolean
         }
         Relationships: []
+      }
+      episodes: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          description: string | null
+          duration_seconds: number | null
+          final_video_url: string | null
+          id: string
+          metadata: Json
+          number: number
+          project_id: string
+          screenplay_data: Json | null
+          season_id: string | null
+          shot_list: Json | null
+          status: string
+          story_data: Json | null
+          thumbnail_url: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          final_video_url?: string | null
+          id?: string
+          metadata?: Json
+          number: number
+          project_id: string
+          screenplay_data?: Json | null
+          season_id?: string | null
+          shot_list?: Json | null
+          status?: string
+          story_data?: Json | null
+          thumbnail_url?: string | null
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          description?: string | null
+          duration_seconds?: number | null
+          final_video_url?: string | null
+          id?: string
+          metadata?: Json
+          number?: number
+          project_id?: string
+          screenplay_data?: Json | null
+          season_id?: string | null
+          shot_list?: Json | null
+          status?: string
+          story_data?: Json | null
+          thumbnail_url?: string | null
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episodes_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "episodes_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_api_keys: {
+        Row: {
+          account_id: string
+          created_at: string
+          encrypted_key: string
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          provider: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          encrypted_key: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          provider: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          encrypted_key?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          provider?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_api_keys_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_api_keys_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_api_keys_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      generation_jobs: {
+        Row: {
+          account_id: string
+          completed_at: string | null
+          cost_cents: number | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          estimated_cost_cents: number | null
+          id: string
+          idempotency_key: string
+          input_data: Json
+          job_type: string
+          max_retries: number
+          next_retry_at: string | null
+          output_data: Json | null
+          priority: number
+          project_id: string
+          provider: string | null
+          provider_job_id: string | null
+          reference_id: string | null
+          reference_type: string | null
+          retry_count: number
+          started_at: string | null
+          status: string
+          timeout_seconds: number
+        }
+        Insert: {
+          account_id: string
+          completed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          estimated_cost_cents?: number | null
+          id?: string
+          idempotency_key: string
+          input_data: Json
+          job_type: string
+          max_retries?: number
+          next_retry_at?: string | null
+          output_data?: Json | null
+          priority?: number
+          project_id: string
+          provider?: string | null
+          provider_job_id?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          timeout_seconds?: number
+        }
+        Update: {
+          account_id?: string
+          completed_at?: string | null
+          cost_cents?: number | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          estimated_cost_cents?: number | null
+          id?: string
+          idempotency_key?: string
+          input_data?: Json
+          job_type?: string
+          max_retries?: number
+          next_retry_at?: string | null
+          output_data?: Json | null
+          priority?: number
+          project_id?: string
+          provider?: string | null
+          provider_job_id?: string | null
+          reference_id?: string | null
+          reference_type?: string | null
+          retry_count?: number
+          started_at?: string | null
+          status?: string
+          timeout_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "generation_jobs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_jobs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_jobs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "generation_jobs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invitations: {
         Row: {
@@ -421,7 +646,7 @@ export type Database = {
           expires_at: string
           id: string
           last_verification_at: string | null
-          last_verification_ip: unknown | null
+          last_verification_ip: unknown
           last_verification_user_agent: string | null
           metadata: Json | null
           nonce: string
@@ -439,7 +664,7 @@ export type Database = {
           expires_at: string
           id?: string
           last_verification_at?: string | null
-          last_verification_ip?: unknown | null
+          last_verification_ip?: unknown
           last_verification_user_agent?: string | null
           metadata?: Json | null
           nonce: string
@@ -457,7 +682,7 @@ export type Database = {
           expires_at?: string
           id?: string
           last_verification_at?: string | null
-          last_verification_ip?: unknown | null
+          last_verification_ip?: unknown
           last_verification_user_agent?: string | null
           metadata?: Json | null
           nonce?: string
@@ -525,74 +750,6 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      optimization_experiments: {
-        Row: {
-          completed_at: string | null
-          confidence_level: number
-          created_at: string
-          created_by: string | null
-          description: string | null
-          hypothesis: string | null
-          id: string
-          minimum_sample_size: number
-          name: string
-          optimization_target: string
-          results_summary: Json | null
-          started_at: string | null
-          status: Database["public"]["Enums"]["optimization_status"]
-          template_id: string
-          updated_at: string
-          variant_ids: string[]
-          winner_variant_id: string | null
-        }
-        Insert: {
-          completed_at?: string | null
-          confidence_level?: number
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          hypothesis?: string | null
-          id?: string
-          minimum_sample_size?: number
-          name: string
-          optimization_target: string
-          results_summary?: Json | null
-          started_at?: string | null
-          status?: Database["public"]["Enums"]["optimization_status"]
-          template_id: string
-          updated_at?: string
-          variant_ids: string[]
-          winner_variant_id?: string | null
-        }
-        Update: {
-          completed_at?: string | null
-          confidence_level?: number
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          hypothesis?: string | null
-          id?: string
-          minimum_sample_size?: number
-          name?: string
-          optimization_target?: string
-          results_summary?: Json | null
-          started_at?: string | null
-          status?: Database["public"]["Enums"]["optimization_status"]
-          template_id?: string
-          updated_at?: string
-          variant_ids?: string[]
-          winner_variant_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "optimization_experiments_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -703,6 +860,73 @@ export type Database = {
           },
         ]
       }
+      platform_connections: {
+        Row: {
+          access_token_encrypted: string | null
+          account_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          platform: string
+          platform_account_id: string | null
+          platform_account_name: string | null
+          refresh_token_encrypted: string | null
+          scopes: string[] | null
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token_encrypted?: string | null
+          account_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          platform: string
+          platform_account_id?: string | null
+          platform_account_name?: string | null
+          refresh_token_encrypted?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token_encrypted?: string | null
+          account_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          platform?: string
+          platform_account_id?: string | null
+          platform_account_name?: string | null
+          refresh_token_encrypted?: string | null
+          scopes?: string[] | null
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "platform_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "platform_connections_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_members: {
         Row: {
           created_at: string | null
@@ -808,249 +1032,6 @@ export type Database = {
           },
         ]
       }
-      prompt_execution_logs: {
-        Row: {
-          composition_hash: string | null
-          context: Json | null
-          cost: number | null
-          error_message: string | null
-          executed_at: string
-          id: string
-          latency_ms: number | null
-          rating: number | null
-          rendered_system_prompt: string | null
-          rendered_user_prompt: string | null
-          response_metadata: Json | null
-          response_text: string | null
-          success: boolean
-          system_prompt_ids: Json | null
-          template_id: string | null
-          tokens_used: number | null
-          user_id: string | null
-          variables: Json
-          variant_id: string | null
-        }
-        Insert: {
-          composition_hash?: string | null
-          context?: Json | null
-          cost?: number | null
-          error_message?: string | null
-          executed_at?: string
-          id?: string
-          latency_ms?: number | null
-          rating?: number | null
-          rendered_system_prompt?: string | null
-          rendered_user_prompt?: string | null
-          response_metadata?: Json | null
-          response_text?: string | null
-          success?: boolean
-          system_prompt_ids?: Json | null
-          template_id?: string | null
-          tokens_used?: number | null
-          user_id?: string | null
-          variables: Json
-          variant_id?: string | null
-        }
-        Update: {
-          composition_hash?: string | null
-          context?: Json | null
-          cost?: number | null
-          error_message?: string | null
-          executed_at?: string
-          id?: string
-          latency_ms?: number | null
-          rating?: number | null
-          rendered_system_prompt?: string | null
-          rendered_user_prompt?: string | null
-          response_metadata?: Json | null
-          response_text?: string | null
-          success?: boolean
-          system_prompt_ids?: Json | null
-          template_id?: string | null
-          tokens_used?: number | null
-          user_id?: string | null
-          variables?: Json
-          variant_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prompt_execution_logs_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_execution_logs_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "template_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      prompt_system_prompts: {
-        Row: {
-          condition_rules: Json | null
-          content: string
-          contribution_score: number | null
-          created_at: string
-          created_by: string | null
-          description: string | null
-          id: string
-          is_active: boolean
-          layer_type: Database["public"]["Enums"]["system_prompt_layer"]
-          metadata: Json | null
-          name: string
-          parent_version_id: string | null
-          scope: Database["public"]["Enums"]["system_prompt_scope"]
-          slug: string
-          tags: string[] | null
-          target_category: Database["public"]["Enums"]["prompt_category"] | null
-          target_template_id: string | null
-          updated_at: string
-          updated_by: string | null
-          version: number
-        }
-        Insert: {
-          condition_rules?: Json | null
-          content: string
-          contribution_score?: number | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          layer_type: Database["public"]["Enums"]["system_prompt_layer"]
-          metadata?: Json | null
-          name: string
-          parent_version_id?: string | null
-          scope: Database["public"]["Enums"]["system_prompt_scope"]
-          slug: string
-          tags?: string[] | null
-          target_category?:
-            | Database["public"]["Enums"]["prompt_category"]
-            | null
-          target_template_id?: string | null
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-        }
-        Update: {
-          condition_rules?: Json | null
-          content?: string
-          contribution_score?: number | null
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          layer_type?: Database["public"]["Enums"]["system_prompt_layer"]
-          metadata?: Json | null
-          name?: string
-          parent_version_id?: string | null
-          scope?: Database["public"]["Enums"]["system_prompt_scope"]
-          slug?: string
-          tags?: string[] | null
-          target_category?:
-            | Database["public"]["Enums"]["prompt_category"]
-            | null
-          target_template_id?: string | null
-          updated_at?: string
-          updated_by?: string | null
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prompt_system_prompts_parent_version_id_fkey"
-            columns: ["parent_version_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_system_prompts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "prompt_system_prompts_target_template_id_fkey"
-            columns: ["target_template_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      prompt_templates: {
-        Row: {
-          category: Database["public"]["Enums"]["prompt_category"]
-          composition_strategy: Database["public"]["Enums"]["composition_strategy"]
-          created_at: string
-          created_by: string | null
-          description: string | null
-          environment: Database["public"]["Enums"]["environment_label"]
-          id: string
-          is_active: boolean
-          metadata: Json | null
-          name: string
-          output_schema: Json | null
-          parent_version_id: string | null
-          slug: string
-          tags: string[] | null
-          template_content: string
-          updated_at: string
-          updated_by: string | null
-          variables: Json
-          version: number
-        }
-        Insert: {
-          category: Database["public"]["Enums"]["prompt_category"]
-          composition_strategy?: Database["public"]["Enums"]["composition_strategy"]
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          environment?: Database["public"]["Enums"]["environment_label"]
-          id?: string
-          is_active?: boolean
-          metadata?: Json | null
-          name: string
-          output_schema?: Json | null
-          parent_version_id?: string | null
-          slug: string
-          tags?: string[] | null
-          template_content: string
-          updated_at?: string
-          updated_by?: string | null
-          variables?: Json
-          version?: number
-        }
-        Update: {
-          category?: Database["public"]["Enums"]["prompt_category"]
-          composition_strategy?: Database["public"]["Enums"]["composition_strategy"]
-          created_at?: string
-          created_by?: string | null
-          description?: string | null
-          environment?: Database["public"]["Enums"]["environment_label"]
-          id?: string
-          is_active?: boolean
-          metadata?: Json | null
-          name?: string
-          output_schema?: Json | null
-          parent_version_id?: string | null
-          slug?: string
-          tags?: string[] | null
-          template_content?: string
-          updated_at?: string
-          updated_by?: string | null
-          variables?: Json
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "prompt_templates_parent_version_id_fkey"
-            columns: ["parent_version_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       role_permissions: {
         Row: {
           id: number
@@ -1091,6 +1072,102 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      seasons: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string | null
+          number: number
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string | null
+          number: number
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string | null
+          number?: number
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasons_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shared_resources: {
+        Row: {
+          account_id: string
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          is_system: boolean
+          name: string
+          tags: string[] | null
+          type: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_system?: boolean
+          name: string
+          tags?: string[] | null
+          type: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_system?: boolean
+          name?: string
+          tags?: string[] | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shared_resources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_resources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shared_resources_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subscription_items: {
         Row: {
@@ -1222,198 +1299,6 @@ export type Database = {
           },
         ]
       }
-      system_prompt_combinations: {
-        Row: {
-          avg_cost: number | null
-          avg_latency_ms: number | null
-          avg_rating: number | null
-          composition_hash: string
-          created_at: string
-          execution_count: number
-          experiment_id: string
-          id: string
-          success_count: number
-          system_prompt_ids: Json
-          updated_at: string
-        }
-        Insert: {
-          avg_cost?: number | null
-          avg_latency_ms?: number | null
-          avg_rating?: number | null
-          composition_hash: string
-          created_at?: string
-          execution_count?: number
-          experiment_id: string
-          id?: string
-          success_count?: number
-          system_prompt_ids: Json
-          updated_at?: string
-        }
-        Update: {
-          avg_cost?: number | null
-          avg_latency_ms?: number | null
-          avg_rating?: number | null
-          composition_hash?: string
-          created_at?: string
-          execution_count?: number
-          experiment_id?: string
-          id?: string
-          success_count?: number
-          system_prompt_ids?: Json
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "system_prompt_combinations_experiment_id_fkey"
-            columns: ["experiment_id"]
-            isOneToOne: false
-            referencedRelation: "optimization_experiments"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      template_system_prompt_links: {
-        Row: {
-          condition_rules: Json | null
-          created_at: string
-          id: string
-          order_index: number
-          system_prompt_id: string
-          template_id: string
-        }
-        Insert: {
-          condition_rules?: Json | null
-          created_at?: string
-          id?: string
-          order_index: number
-          system_prompt_id: string
-          template_id: string
-        }
-        Update: {
-          condition_rules?: Json | null
-          created_at?: string
-          id?: string
-          order_index?: number
-          system_prompt_id?: string
-          template_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "template_system_prompt_links_system_prompt_id_fkey"
-            columns: ["system_prompt_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_system_prompts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "template_system_prompt_links_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      template_variants: {
-        Row: {
-          created_at: string
-          description: string | null
-          id: string
-          is_active: boolean
-          system_prompt_overrides: Json | null
-          template_content: string | null
-          template_id: string
-          traffic_weight: number
-          updated_at: string
-          variant_name: string
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          system_prompt_overrides?: Json | null
-          template_content?: string | null
-          template_id: string
-          traffic_weight?: number
-          updated_at?: string
-          variant_name: string
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          id?: string
-          is_active?: boolean
-          system_prompt_overrides?: Json | null
-          template_content?: string | null
-          template_id?: string
-          traffic_weight?: number
-          updated_at?: string
-          variant_name?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "template_variants_template_id_fkey"
-            columns: ["template_id"]
-            isOneToOne: false
-            referencedRelation: "prompt_templates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      variant_account_assignments: {
-        Row: {
-          account_id: string
-          assigned_at: string
-          assigned_by: string | null
-          id: string
-          variant_id: string
-        }
-        Insert: {
-          account_id: string
-          assigned_at?: string
-          assigned_by?: string | null
-          id?: string
-          variant_id: string
-        }
-        Update: {
-          account_id?: string
-          assigned_at?: string
-          assigned_by?: string | null
-          id?: string
-          variant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "variant_account_assignments_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variant_account_assignments_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_account_workspace"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variant_account_assignments_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "user_accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "variant_account_assignments_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "template_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       user_account_workspace: {
@@ -1458,14 +1343,6 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["invitations"]["Row"][]
       }
-      calculate_attribution_scores: {
-        Args: { p_template_id: string }
-        Returns: {
-          contribution_score: number
-          layer_type: Database["public"]["Enums"]["system_prompt_layer"]
-          system_prompt_id: string
-        }[]
-      }
       can_action_account_member: {
         Args: { target_team_account_id: string; target_user_id: string }
         Returns: boolean
@@ -1476,10 +1353,6 @@ export type Database = {
           target_project_id: string
         }
         Returns: boolean
-      }
-      compose_system_prompts: {
-        Args: { p_context?: Json; p_template_id: string }
-        Returns: string
       }
       create_invitation: {
         Args: { account_id: string; email: string; role: string }
@@ -1493,6 +1366,12 @@ export type Database = {
           invited_by: string
           role: string
           updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invitations"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       create_nonce: {
@@ -1521,6 +1400,12 @@ export type Database = {
           slug: string | null
           updated_at: string | null
           updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "accounts"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       get_account_invitations: {
@@ -1584,7 +1469,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -1594,6 +1479,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_by_user: {
         Args: {
@@ -1610,7 +1501,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -1620,6 +1511,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_for_object: {
         Args: {
@@ -1636,7 +1533,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -1646,6 +1543,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_for_scope: {
         Args: { limit_count?: number; scope_id: string; scope_type: string }
@@ -1658,7 +1561,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -1668,6 +1571,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_change_summary: {
         Args: {
@@ -1680,14 +1589,8 @@ export type Database = {
           field_name: string
         }[]
       }
-      get_config: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_nonce_status: {
-        Args: { p_id: string }
-        Returns: Json
-      }
+      get_config: { Args: never; Returns: Json }
+      get_nonce_status: { Args: { p_id: string }; Returns: Json }
       get_project_members: {
         Args: { target_project_id: string }
         Returns: {
@@ -1713,7 +1616,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -1723,11 +1626,14 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      get_upper_system_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_upper_system_role: { Args: never; Returns: string }
       has_active_subscription: {
         Args: { target_account_id: string }
         Returns: boolean
@@ -1767,70 +1673,22 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_aal2: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_account_owner: {
-        Args: { account_id: string }
-        Returns: boolean
-      }
+      is_aal2: { Args: never; Returns: boolean }
+      is_account_owner: { Args: { account_id: string }; Returns: boolean }
       is_account_team_member: {
         Args: { target_account_id: string }
         Returns: boolean
       }
-      is_mfa_compliant: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_mfa_compliant: { Args: never; Returns: boolean }
       is_project_owner: {
         Args: { target_project_id: string }
         Returns: boolean
       }
-      is_set: {
-        Args: { field_name: string }
-        Returns: boolean
-      }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_set: { Args: { field_name: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       is_team_member: {
         Args: { account_id: string; user_id: string }
         Returns: boolean
-      }
-      log_prompt_execution: {
-        Args: {
-          p_composition_hash: string
-          p_context: Json
-          p_cost: number
-          p_error_message: string
-          p_latency_ms: number
-          p_rating: number
-          p_rendered_system_prompt: string
-          p_rendered_user_prompt: string
-          p_response_metadata: Json
-          p_response_text: string
-          p_success: boolean
-          p_system_prompt_ids: Json
-          p_template_id: string
-          p_tokens_used: number
-          p_user_id: string
-          p_variables: Json
-          p_variant_id: string
-        }
-        Returns: string
-      }
-      resolve_template: {
-        Args: {
-          p_environment?: Database["public"]["Enums"]["environment_label"]
-          p_slug: string
-        }
-        Returns: string
-      }
-      resolve_variant_for_account: {
-        Args: { p_account_id: string; p_template_id: string }
-        Returns: string
       }
       revoke_nonce: {
         Args: { p_id: string; p_reason?: string }
@@ -1876,6 +1734,12 @@ export type Database = {
           total_amount: number
           updated_at: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       upsert_subscription: {
         Args: {
@@ -1908,6 +1772,12 @@ export type Database = {
           trial_ends_at: string | null
           trial_starts_at: string | null
           updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       verify_nonce: {
@@ -1948,27 +1818,8 @@ export type Database = {
         | "custom"
       audit_severity: "info" | "warning" | "critical"
       billing_provider: "stripe" | "lemon-squeezy" | "paddle"
-      composition_strategy:
-        | "fixed"
-        | "conditional"
-        | "ab_test"
-        | "bandit"
-        | "optimized"
-      environment_label:
-        | "development"
-        | "staging"
-        | "canary"
-        | "production"
-        | "archived"
       notification_channel: "in_app" | "email"
       notification_type: "info" | "warning" | "error"
-      optimization_status:
-        | "draft"
-        | "running"
-        | "analyzing"
-        | "completed"
-        | "applied"
-        | "cancelled"
       payment_status: "pending" | "succeeded" | "failed"
       project_action:
         | "project.view"
@@ -1980,16 +1831,6 @@ export type Database = {
         | "project.settings.view"
         | "project.settings.edit"
       project_role: "owner" | "admin" | "member" | "viewer"
-      prompt_category:
-        | "analysis"
-        | "classification"
-        | "conversation"
-        | "extraction"
-        | "generation"
-        | "summarization"
-        | "transformation"
-        | "validation"
-        | "orchestration"
       subscription_item_type: "flat" | "per_seat" | "metered"
       subscription_status:
         | "active"
@@ -2000,25 +1841,6 @@ export type Database = {
         | "incomplete"
         | "incomplete_expired"
         | "paused"
-      system_prompt_layer:
-        | "compliance"
-        | "role"
-        | "context"
-        | "brand_voice"
-        | "format"
-        | "standards"
-        | "constraints"
-        | "examples"
-      system_prompt_scope: "global" | "category" | "template"
-      template_variable_type:
-        | "text"
-        | "number"
-        | "boolean"
-        | "array"
-        | "object"
-        | "markdown"
-        | "json"
-        | "context"
     }
     CompositeTypes: {
       invitation: {
@@ -2074,21 +1896,48 @@ export type Database = {
       buckets_analytics: {
         Row: {
           created_at: string
+          deleted_at: string | null
           format: string
+          id: string
+          name: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      buckets_vectors: {
+        Row: {
+          created_at: string
           id: string
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string
         }
         Insert: {
           created_at?: string
-          format?: string
           id: string
           type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string
         }
         Update: {
           created_at?: string
-          format?: string
           id?: string
           type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string
@@ -2097,30 +1946,36 @@ export type Database = {
       }
       iceberg_namespaces: {
         Row: {
-          bucket_id: string
+          bucket_name: string
+          catalog_id: string
           created_at: string
           id: string
+          metadata: Json
           name: string
           updated_at: string
         }
         Insert: {
-          bucket_id: string
+          bucket_name: string
+          catalog_id: string
           created_at?: string
           id?: string
+          metadata?: Json
           name: string
           updated_at?: string
         }
         Update: {
-          bucket_id?: string
+          bucket_name?: string
+          catalog_id?: string
           created_at?: string
           id?: string
+          metadata?: Json
           name?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "iceberg_namespaces_bucket_id_fkey"
-            columns: ["bucket_id"]
+            foreignKeyName: "iceberg_namespaces_catalog_id_fkey"
+            columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "buckets_analytics"
             referencedColumns: ["id"]
@@ -2129,36 +1984,48 @@ export type Database = {
       }
       iceberg_tables: {
         Row: {
-          bucket_id: string
+          bucket_name: string
+          catalog_id: string
           created_at: string
           id: string
           location: string
           name: string
           namespace_id: string
+          remote_table_id: string | null
+          shard_id: string | null
+          shard_key: string | null
           updated_at: string
         }
         Insert: {
-          bucket_id: string
+          bucket_name: string
+          catalog_id: string
           created_at?: string
           id?: string
           location: string
           name: string
           namespace_id: string
+          remote_table_id?: string | null
+          shard_id?: string | null
+          shard_key?: string | null
           updated_at?: string
         }
         Update: {
-          bucket_id?: string
+          bucket_name?: string
+          catalog_id?: string
           created_at?: string
           id?: string
           location?: string
           name?: string
           namespace_id?: string
+          remote_table_id?: string | null
+          shard_id?: string | null
+          shard_key?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "iceberg_tables_bucket_id_fkey"
-            columns: ["bucket_id"]
+            foreignKeyName: "iceberg_tables_catalog_id_fkey"
+            columns: ["catalog_id"]
             isOneToOne: false
             referencedRelation: "buckets_analytics"
             referencedColumns: ["id"]
@@ -2379,6 +2246,50 @@ export type Database = {
           },
         ]
       }
+      vector_indexes: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id: string
+          metadata_configuration: Json | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id?: string
+          metadata_configuration?: Json | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          data_type?: string
+          dimension?: number
+          distance_metric?: string
+          id?: string
+          metadata_configuration?: Json | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vector_indexes_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_vectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2400,32 +2311,14 @@ export type Database = {
         Args: { _bucket_id: string; _name: string }
         Returns: boolean
       }
-      extension: {
-        Args: { name: string }
-        Returns: string
-      }
-      filename: {
-        Args: { name: string }
-        Returns: string
-      }
-      foldername: {
-        Args: { name: string }
-        Returns: string[]
-      }
-      get_level: {
-        Args: { name: string }
-        Returns: number
-      }
-      get_prefix: {
-        Args: { name: string }
-        Returns: string
-      }
-      get_prefixes: {
-        Args: { name: string }
-        Returns: string[]
-      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
+      get_level: { Args: { name: string }; Returns: number }
+      get_prefix: { Args: { name: string }; Returns: string }
+      get_prefixes: { Args: { name: string }; Returns: string[] }
       get_size_by_bucket: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           bucket_id: string
           size: number
@@ -2466,10 +2359,7 @@ export type Database = {
         Args: { bucket_ids: string[]; names: string[] }
         Returns: undefined
       }
-      operation: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      operation: { Args: never; Returns: string }
       search: {
         Args: {
           bucketname: string
@@ -2553,7 +2443,7 @@ export type Database = {
       }
     }
     Enums: {
-      buckettype: "STANDARD" | "ANALYTICS"
+      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2710,30 +2600,8 @@ export const Constants = {
       ],
       audit_severity: ["info", "warning", "critical"],
       billing_provider: ["stripe", "lemon-squeezy", "paddle"],
-      composition_strategy: [
-        "fixed",
-        "conditional",
-        "ab_test",
-        "bandit",
-        "optimized",
-      ],
-      environment_label: [
-        "development",
-        "staging",
-        "canary",
-        "production",
-        "archived",
-      ],
       notification_channel: ["in_app", "email"],
       notification_type: ["info", "warning", "error"],
-      optimization_status: [
-        "draft",
-        "running",
-        "analyzing",
-        "completed",
-        "applied",
-        "cancelled",
-      ],
       payment_status: ["pending", "succeeded", "failed"],
       project_action: [
         "project.view",
@@ -2746,17 +2614,6 @@ export const Constants = {
         "project.settings.edit",
       ],
       project_role: ["owner", "admin", "member", "viewer"],
-      prompt_category: [
-        "analysis",
-        "classification",
-        "conversation",
-        "extraction",
-        "generation",
-        "summarization",
-        "transformation",
-        "validation",
-        "orchestration",
-      ],
       subscription_item_type: ["flat", "per_seat", "metered"],
       subscription_status: [
         "active",
@@ -2768,32 +2625,11 @@ export const Constants = {
         "incomplete_expired",
         "paused",
       ],
-      system_prompt_layer: [
-        "compliance",
-        "role",
-        "context",
-        "brand_voice",
-        "format",
-        "standards",
-        "constraints",
-        "examples",
-      ],
-      system_prompt_scope: ["global", "category", "template"],
-      template_variable_type: [
-        "text",
-        "number",
-        "boolean",
-        "array",
-        "object",
-        "markdown",
-        "json",
-        "context",
-      ],
     },
   },
   storage: {
     Enums: {
-      buckettype: ["STANDARD", "ANALYTICS"],
+      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
     },
   },
 } as const
