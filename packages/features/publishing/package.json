@@ -1,0 +1,38 @@
+{
+  "name": "@kit/publishing",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    "./token-refresh": "./src/lib/token-refresh.ts",
+    "./jobs": "./src/jobs/index.ts",
+    "./crypto": "./src/lib/crypto.ts"
+  },
+  "dependencies": {
+    "@kit/supabase": "workspace:*"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
+    "@types/node": "^24.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

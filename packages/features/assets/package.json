@@ -1,0 +1,32 @@
+{
+  "name": "@kit/assets",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    "./upload-validation": "./src/lib/upload-validation.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "zod": "^3.25.74"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}

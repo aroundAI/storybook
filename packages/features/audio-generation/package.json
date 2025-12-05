@@ -1,0 +1,34 @@
+{
+  "name": "@kit/audio-generation",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    "./webhooks/types": "./src/webhooks/types.ts",
+    "./webhooks/verifiers/elevenlabs": "./src/webhooks/verifiers/elevenlabs.ts",
+    "./webhooks": "./src/webhooks/index.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
