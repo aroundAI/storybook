@@ -4,6 +4,9 @@
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** S
+- **Status:** ✅ COMPLETE
+- **Completed:** 2025-12-05
+- **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (seasons-table)
 - **Blocks:** FILM-101 (shots-table), FILM-301 (episode-crud-actions), FILM-305 (story-generation)
 
