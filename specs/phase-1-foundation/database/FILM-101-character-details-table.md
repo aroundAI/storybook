@@ -4,6 +4,9 @@
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** XS
+- **Status:** ✅ COMPLETE
+- **Completed:** 2025-12-05
+- **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (assets-table)
 - **Blocks:** FILM-202 (character-actions), FILM-205 (character-editor)
 
