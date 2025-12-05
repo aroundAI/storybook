@@ -319,22 +319,22 @@ export function getAssetTypeBadge(type: AssetType) {
 
 ## Acceptance Criteria
 
-- [ ] All status states have distinct, accessible colors
-- [ ] Dark mode variants are defined for all tokens
-- [ ] Token names match database enum values
-- [ ] Helper functions provide type-safe access
-- [ ] Colors meet WCAG AA contrast requirements
-- [ ] Icons are specified using Lucide icon names
+- [x] All status states have distinct, accessible colors
+- [x] Dark mode variants are defined for all tokens
+- [x] Token names match database enum values
+- [x] Helper functions provide type-safe access
+- [x] Colors meet WCAG AA contrast requirements
+- [x] Icons are specified using Lucide icon names
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test getStatusToken returns correct values
-- [ ] Test getStatusClasses composes correctly
-- [ ] Test all token types are exported
-- [ ] Test TypeScript types match token keys
+- [x] Test getStatusToken returns correct values
+- [x] Test getStatusClasses composes correctly
+- [x] Test all token types are exported
+- [x] Test TypeScript types match token keys
 
 ---
 
