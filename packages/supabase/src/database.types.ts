@@ -185,6 +185,53 @@ export type Database = {
           },
         ]
       }
+      audio_tracks: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          episode_id: string
+          file_url: string | null
+          id: string
+          metadata: Json | null
+          name: string | null
+          timeline_start_seconds: number
+          type: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          episode_id: string
+          file_url?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          timeline_start_seconds?: number
+          type: string
+          volume?: number
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          episode_id?: string
+          file_url?: string | null
+          id?: string
+          metadata?: Json | null
+          name?: string | null
+          timeline_start_seconds?: number
+          type?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_tracks_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           account_id: string
@@ -313,6 +360,48 @@ export type Database = {
           },
         ]
       }
+      character_details: {
+        Row: {
+          asset_id: string
+          element_prompt: string | null
+          personality: string | null
+          physical_attributes: Json | null
+          reference_images: string[] | null
+          voice_asset_id: string | null
+        }
+        Insert: {
+          asset_id: string
+          element_prompt?: string | null
+          personality?: string | null
+          physical_attributes?: Json | null
+          reference_images?: string[] | null
+          voice_asset_id?: string | null
+        }
+        Update: {
+          asset_id?: string
+          element_prompt?: string | null
+          personality?: string | null
+          physical_attributes?: Json | null
+          reference_images?: string[] | null
+          voice_asset_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "character_details_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: true
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "character_details_voice_asset_id_fkey"
+            columns: ["voice_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config: {
         Row: {
           billing_provider: Database["public"]["Enums"]["billing_provider"]
@@ -333,6 +422,123 @@ export type Database = {
           enable_team_accounts?: boolean
         }
         Relationships: []
+      }
+      content_analytics: {
+        Row: {
+          comments: number
+          created_at: string
+          id: string
+          likes: number
+          publish_id: string
+          raw_data: Json | null
+          retention_data: Json | null
+          revenue_cents: number
+          shares: number
+          snapshot_date: string
+          subscribers_gained: number
+          views: number
+          watch_time_seconds: number
+        }
+        Insert: {
+          comments?: number
+          created_at?: string
+          id?: string
+          likes?: number
+          publish_id: string
+          raw_data?: Json | null
+          retention_data?: Json | null
+          revenue_cents?: number
+          shares?: number
+          snapshot_date: string
+          subscribers_gained?: number
+          views?: number
+          watch_time_seconds?: number
+        }
+        Update: {
+          comments?: number
+          created_at?: string
+          id?: string
+          likes?: number
+          publish_id?: string
+          raw_data?: Json | null
+          retention_data?: Json | null
+          revenue_cents?: number
+          shares?: number
+          snapshot_date?: string
+          subscribers_gained?: number
+          views?: number
+          watch_time_seconds?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_analytics_publish_id_fkey"
+            columns: ["publish_id"]
+            isOneToOne: false
+            referencedRelation: "publishes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dialogue_lines: {
+        Row: {
+          audio_url: string | null
+          character_asset_id: string | null
+          created_at: string
+          episode_id: string
+          generation_metadata: Json | null
+          id: string
+          sequence_number: number
+          shot_id: string | null
+          status: string
+          text: string
+        }
+        Insert: {
+          audio_url?: string | null
+          character_asset_id?: string | null
+          created_at?: string
+          episode_id: string
+          generation_metadata?: Json | null
+          id?: string
+          sequence_number: number
+          shot_id?: string | null
+          status?: string
+          text: string
+        }
+        Update: {
+          audio_url?: string | null
+          character_asset_id?: string | null
+          created_at?: string
+          episode_id?: string
+          generation_metadata?: Json | null
+          id?: string
+          sequence_number?: number
+          shot_id?: string | null
+          status?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialogue_lines_character_asset_id_fkey"
+            columns: ["character_asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialogue_lines_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialogue_lines_shot_id_fkey"
+            columns: ["shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       episodes: {
         Row: {
@@ -1032,6 +1238,78 @@ export type Database = {
           },
         ]
       }
+      publishes: {
+        Row: {
+          content_type: string
+          created_at: string
+          description: string | null
+          episode_id: string
+          id: string
+          metadata: Json | null
+          platform: string
+          platform_connection_id: string
+          platform_content_id: string | null
+          platform_url: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          status: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string | null
+        }
+        Insert: {
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          episode_id: string
+          id?: string
+          metadata?: Json | null
+          platform: string
+          platform_connection_id: string
+          platform_content_id?: string | null
+          platform_url?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string | null
+        }
+        Update: {
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          episode_id?: string
+          id?: string
+          metadata?: Json | null
+          platform?: string
+          platform_connection_id?: string
+          platform_content_id?: string | null
+          platform_url?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          status?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publishes_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publishes_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       role_permissions: {
         Row: {
           id: number
@@ -1169,6 +1447,68 @@ export type Database = {
           },
         ]
       }
+      shots: {
+        Row: {
+          action_description: string | null
+          camera_direction: string | null
+          created_at: string
+          duration_seconds: number
+          episode_id: string
+          generation_job_id: string | null
+          generation_metadata: Json | null
+          id: string
+          prompt: string
+          scene_description: string | null
+          sequence_number: number
+          status: string
+          thumbnail_url: string | null
+          updated_at: string
+          video_url: string | null
+        }
+        Insert: {
+          action_description?: string | null
+          camera_direction?: string | null
+          created_at?: string
+          duration_seconds?: number
+          episode_id: string
+          generation_job_id?: string | null
+          generation_metadata?: Json | null
+          id?: string
+          prompt: string
+          scene_description?: string | null
+          sequence_number: number
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Update: {
+          action_description?: string | null
+          camera_direction?: string | null
+          created_at?: string
+          duration_seconds?: number
+          episode_id?: string
+          generation_job_id?: string | null
+          generation_metadata?: Json | null
+          id?: string
+          prompt?: string
+          scene_description?: string | null
+          sequence_number?: number
+          status?: string
+          thumbnail_url?: string | null
+          updated_at?: string
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shots_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_items: {
         Row: {
           created_at: string
@@ -1295,6 +1635,35 @@ export type Database = {
             columns: ["billing_customer_id"]
             isOneToOne: false
             referencedRelation: "billing_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_profiles: {
+        Row: {
+          asset_id: string
+          provider: string
+          provider_voice_id: string | null
+          settings: Json
+        }
+        Insert: {
+          asset_id: string
+          provider: string
+          provider_voice_id?: string | null
+          settings?: Json
+        }
+        Update: {
+          asset_id?: string
+          provider?: string
+          provider_voice_id?: string | null
+          settings?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_profiles_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: true
+            referencedRelation: "assets"
             referencedColumns: ["id"]
           },
         ]
