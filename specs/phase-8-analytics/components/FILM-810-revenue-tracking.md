@@ -1,0 +1,856 @@
+# FILM-810: Revenue Tracking
+
+## Metadata
+- **Phase:** 8 - Analytics
+- **Priority:** P2 (Future Enhancement)
+- **Effort:** L (1-3 days)
+- **Dependencies:** FILM-805 (Analytics Dashboard), FILM-801-803 (Platform Analytics Providers), Platform Connections
+- **Blocks:** None
+
+---
+
+## Context
+
+Revenue tracking enables creators to monitor their earnings across multiple platforms (YouTube AdSense, TikTok Creator Fund, Instagram Bonuses). This is a P2 feature that provides business insights for content monetization, helping creators understand which content generates the most revenue and optimize their publishing strategy.
+
+Revenue data comes from platform APIs where available, and can be manually entered for platforms without API access. The feature includes projections, trend analysis, and comparison across content types and platforms.
+
+---
+
+## Specification
+
+### Requirements
+
+1. **Revenue Data Collection**
+   - Fetch YouTube AdSense revenue via YouTube Analytics API
+   - Fetch TikTok Creator Fund earnings where available
+   - Support manual revenue entry for platforms without API access
+   - Store historical revenue data with daily granularity
+
+2. **Revenue Dashboard**
+   - Display total earnings across all platforms
+   - Show earnings breakdown by platform
+   - Show earnings breakdown by content/episode
+   - Display revenue trends over time (daily, weekly, monthly)
+
+3. **Revenue Projections**
+   - Calculate estimated monthly revenue based on trends
+   - Show revenue per 1000 views (RPM) by platform
+   - Compare performance across content types
+
+4. **Revenue Reports**
+   - Generate monthly/quarterly revenue reports
+   - Export revenue data to CSV/PDF
+   - Support tax-ready earnings summaries
+
+5. **Revenue Alerts**
+   - Alert on significant revenue changes (>20% increase/decrease)
+   - Notify when monetization thresholds are reached
+   - Alert on monetization policy changes affecting content
+
+---
+
+## Interface
+
+### TypeScript Types
+
+```typescript
+// packages/features/content-analytics/src/lib/types/revenue.ts
+
+export interface RevenueRecord {
+  id: string;
+  publishId: string;
+  platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+  date: string; // ISO date (YYYY-MM-DD)
+  revenueCents: number;
+  currency: string; // ISO 4217 code
+  source: 'api' | 'manual';
+  breakdown?: RevenueBreakdown;
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RevenueBreakdown {
+  adRevenueCents?: number;
+  membershipRevenueCents?: number;
+  superChatRevenueCents?: number;
+  creatorFundCents?: number;
+  bonusesCents?: number;
+  tipsOtherCents?: number;
+}
+
+export interface RevenueSummary {
+  totalRevenueCents: number;
+  currency: string;
+  period: {
+    start: string;
+    end: string;
+  };
+  byPlatform: Record<string, number>;
+  byContent: Record<string, number>;
+  byType: Record<string, number>;
+  rpm: number; // Revenue per mille (1000 views)
+  averageDailyRevenueCents: number;
+  trend: 'up' | 'down' | 'stable';
+  trendPercent: number;
+}
+
+export interface RevenueProjection {
+  estimatedMonthlyRevenueCents: number;
+  estimatedYearlyRevenueCents: number;
+  confidenceLevel: 'high' | 'medium' | 'low';
+  basedOnDays: number;
+  factors: {
+    factor: string;
+    impact: number; // -100 to 100
+    description: string;
+  }[];
+}
+
+export interface RevenueReport {
+  id: string;
+  accountId: string;
+  period: 'monthly' | 'quarterly' | 'yearly' | 'custom';
+  startDate: string;
+  endDate: string;
+  summary: RevenueSummary;
+  topPerformers: {
+    contentId: string;
+    title: string;
+    revenueCents: number;
+    views: number;
+    rpm: number;
+  }[];
+  platformBreakdown: {
+    platform: string;
+    revenueCents: number;
+    percentOfTotal: number;
+    contentCount: number;
+  }[];
+  generatedAt: Date;
+  format?: 'pdf' | 'csv' | 'json';
+}
+
+export interface ManualRevenueEntry {
+  publishId: string;
+  date: string;
+  revenueCents: number;
+  currency?: string;
+  notes?: string;
+}
+```
+
+### Database Schema
+
+```sql
+-- Add to apps/web/supabase/schemas/38-revenue-tracking.sql
+
+-- Revenue records table
+CREATE TABLE revenue_records (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  publish_id UUID NOT NULL REFERENCES publishes(id) ON DELETE CASCADE,
+  platform VARCHAR(50) NOT NULL,
+  record_date DATE NOT NULL,
+  revenue_cents INTEGER NOT NULL DEFAULT 0,
+  currency VARCHAR(3) DEFAULT 'USD',
+  source VARCHAR(20) NOT NULL DEFAULT 'api', -- 'api' or 'manual'
+  breakdown JSONB DEFAULT '{}',
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(publish_id, record_date)
+);
+
+-- Indexes for revenue queries
+CREATE INDEX idx_revenue_publish_date ON revenue_records(publish_id, record_date);
+CREATE INDEX idx_revenue_platform_date ON revenue_records(platform, record_date);
+CREATE INDEX idx_revenue_source ON revenue_records(source);
+
+-- Revenue reports table
+CREATE TABLE revenue_reports (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL,
+  period_type VARCHAR(20) NOT NULL, -- 'monthly', 'quarterly', 'yearly', 'custom'
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  summary_data JSONB NOT NULL,
+  top_performers JSONB DEFAULT '[]',
+  platform_breakdown JSONB DEFAULT '[]',
+  file_url TEXT,
+  file_format VARCHAR(10),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_reports_account_period ON revenue_reports(account_id, period_type, start_date);
+
+-- Revenue alerts table
+CREATE TABLE revenue_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  account_id UUID NOT NULL,
+  alert_type VARCHAR(50) NOT NULL, -- 'threshold_reached', 'significant_change', 'policy_change'
+  title VARCHAR(255) NOT NULL,
+  message TEXT,
+  severity VARCHAR(20) DEFAULT 'info', -- 'info', 'warning', 'critical'
+  related_data JSONB,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_alerts_account_unread ON revenue_alerts(account_id, is_read) WHERE is_read = FALSE;
+
+-- Enable RLS
+ALTER TABLE revenue_records ENABLE ROW LEVEL SECURITY;
+ALTER TABLE revenue_reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE revenue_alerts ENABLE ROW LEVEL SECURITY;
+
+-- RLS policies
+CREATE POLICY "Users can access their revenue records"
+ON revenue_records FOR ALL TO authenticated
+USING (EXISTS (
+  SELECT 1 FROM publishes p
+  JOIN episodes e ON e.id = p.episode_id
+  JOIN projects proj ON proj.id = e.project_id
+  JOIN accounts_memberships am ON am.account_id = proj.account_id
+  WHERE p.id = revenue_records.publish_id AND am.user_id = auth.uid()
+));
+
+CREATE POLICY "Users can access their revenue reports"
+ON revenue_reports FOR ALL TO authenticated
+USING (account_id IN (
+  SELECT account_id FROM accounts_memberships WHERE user_id = auth.uid()
+));
+
+CREATE POLICY "Users can access their revenue alerts"
+ON revenue_alerts FOR ALL TO authenticated
+USING (account_id IN (
+  SELECT account_id FROM accounts_memberships WHERE user_id = auth.uid()
+));
+```
+
+### Server Actions
+
+```typescript
+// packages/features/content-analytics/src/server/revenue-actions.ts
+
+'use server';
+
+import { z } from 'zod';
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+// Fetch revenue summary for account
+export const getRevenueSummaryAction = enhanceAction(
+  async ({ accountId, startDate, endDate }) => {
+    const client = getSupabaseServerClient();
+
+    // Get all revenue records in date range
+    const { data: records, error } = await client
+      .from('revenue_records')
+      .select(`
+        *,
+        publishes!inner (
+          id,
+          episode_id,
+          platform,
+          episodes!inner (
+            id,
+            title,
+            project_id,
+            projects!inner (
+              account_id
+            )
+          )
+        )
+      `)
+      .gte('record_date', startDate)
+      .lte('record_date', endDate)
+      .eq('publishes.episodes.projects.account_id', accountId);
+
+    if (error) throw error;
+
+    // Calculate summary
+    const totalRevenueCents = records.reduce((sum, r) => sum + r.revenue_cents, 0);
+
+    // Group by platform
+    const byPlatform: Record<string, number> = {};
+    records.forEach(r => {
+      byPlatform[r.platform] = (byPlatform[r.platform] || 0) + r.revenue_cents;
+    });
+
+    // Group by content
+    const byContent: Record<string, number> = {};
+    records.forEach(r => {
+      const episodeId = r.publishes.episode_id;
+      byContent[episodeId] = (byContent[episodeId] || 0) + r.revenue_cents;
+    });
+
+    // Calculate RPM (need view data)
+    const { data: analyticsData } = await client
+      .from('content_analytics')
+      .select('views')
+      .in('publish_id', records.map(r => r.publish_id))
+      .gte('snapshot_date', startDate)
+      .lte('snapshot_date', endDate);
+
+    const totalViews = analyticsData?.reduce((sum, a) => sum + (a.views || 0), 0) || 0;
+    const rpm = totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
+
+    // Calculate trend
+    const dayCount = Math.ceil(
+      (new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const averageDailyRevenueCents = dayCount > 0 ? totalRevenueCents / dayCount : 0;
+
+    // Compare to previous period for trend
+    const previousStartDate = new Date(startDate);
+    previousStartDate.setDate(previousStartDate.getDate() - dayCount);
+
+    const { data: previousRecords } = await client
+      .from('revenue_records')
+      .select('revenue_cents')
+      .gte('record_date', previousStartDate.toISOString().split('T')[0])
+      .lt('record_date', startDate);
+
+    const previousTotal = previousRecords?.reduce((sum, r) => sum + r.revenue_cents, 0) || 0;
+    const trendPercent = previousTotal > 0
+      ? ((totalRevenueCents - previousTotal) / previousTotal) * 100
+      : 0;
+
+    return {
+      totalRevenueCents,
+      currency: 'USD',
+      period: { start: startDate, end: endDate },
+      byPlatform,
+      byContent,
+      byType: {}, // TODO: Implement content type grouping
+      rpm,
+      averageDailyRevenueCents,
+      trend: trendPercent > 5 ? 'up' : trendPercent < -5 ? 'down' : 'stable',
+      trendPercent,
+    };
+  },
+  {
+    schema: z.object({
+      accountId: z.string().uuid(),
+      startDate: z.string(),
+      endDate: z.string(),
+    }),
+    auth: true,
+  }
+);
+
+// Add manual revenue entry
+export const addManualRevenueAction = enhanceAction(
+  async ({ publishId, date, revenueCents, currency, notes }) => {
+    const client = getSupabaseServerClient();
+
+    const { data, error } = await client
+      .from('revenue_records')
+      .upsert({
+        publish_id: publishId,
+        platform: 'manual',
+        record_date: date,
+        revenue_cents: revenueCents,
+        currency: currency || 'USD',
+        source: 'manual',
+        metadata: notes ? { notes } : {},
+        updated_at: new Date().toISOString(),
+      }, {
+        onConflict: 'publish_id,record_date',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+  {
+    schema: z.object({
+      publishId: z.string().uuid(),
+      date: z.string(),
+      revenueCents: z.number().int().min(0),
+      currency: z.string().length(3).optional(),
+      notes: z.string().optional(),
+    }),
+    auth: true,
+  }
+);
+
+// Generate revenue report
+export const generateRevenueReportAction = enhanceAction(
+  async ({ accountId, periodType, startDate, endDate, format }) => {
+    const client = getSupabaseServerClient();
+
+    // Get summary data
+    const summary = await getRevenueSummaryAction({ accountId, startDate, endDate });
+
+    // Get top performers
+    const { data: topPerformers } = await client
+      .from('revenue_records')
+      .select(`
+        revenue_cents,
+        publishes!inner (
+          id,
+          episodes!inner (
+            id,
+            title,
+            project_id,
+            projects!inner (account_id)
+          )
+        ),
+        content_analytics!inner (views)
+      `)
+      .eq('publishes.episodes.projects.account_id', accountId)
+      .gte('record_date', startDate)
+      .lte('record_date', endDate)
+      .order('revenue_cents', { ascending: false })
+      .limit(10);
+
+    // Format top performers
+    const formattedTopPerformers = (topPerformers || []).map(tp => ({
+      contentId: tp.publishes.episodes.id,
+      title: tp.publishes.episodes.title,
+      revenueCents: tp.revenue_cents,
+      views: tp.content_analytics?.views || 0,
+      rpm: tp.content_analytics?.views
+        ? (tp.revenue_cents / tp.content_analytics.views) * 1000
+        : 0,
+    }));
+
+    // Calculate platform breakdown
+    const platformBreakdown = Object.entries(summary.byPlatform).map(([platform, cents]) => ({
+      platform,
+      revenueCents: cents as number,
+      percentOfTotal: summary.totalRevenueCents > 0
+        ? ((cents as number) / summary.totalRevenueCents) * 100
+        : 0,
+      contentCount: 0, // TODO: Calculate content count per platform
+    }));
+
+    // Create report record
+    const { data: report, error } = await client
+      .from('revenue_reports')
+      .insert({
+        account_id: accountId,
+        period_type: periodType,
+        start_date: startDate,
+        end_date: endDate,
+        summary_data: summary,
+        top_performers: formattedTopPerformers,
+        platform_breakdown: platformBreakdown,
+        file_format: format,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // Generate file if requested
+    if (format === 'csv' || format === 'pdf') {
+      // TODO: Generate file and upload to storage
+      // Update report with file_url
+    }
+
+    return report;
+  },
+  {
+    schema: z.object({
+      accountId: z.string().uuid(),
+      periodType: z.enum(['monthly', 'quarterly', 'yearly', 'custom']),
+      startDate: z.string(),
+      endDate: z.string(),
+      format: z.enum(['pdf', 'csv', 'json']).optional(),
+    }),
+    auth: true,
+  }
+);
+
+// Get revenue projections
+export const getRevenueProjectionAction = enhanceAction(
+  async ({ accountId }) => {
+    const client = getSupabaseServerClient();
+
+    // Get last 30 days of revenue
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const { data: recentRecords } = await client
+      .from('revenue_records')
+      .select('revenue_cents, record_date')
+      .gte('record_date', thirtyDaysAgo.toISOString().split('T')[0]);
+
+    const totalRecent = recentRecords?.reduce((sum, r) => sum + r.revenue_cents, 0) || 0;
+    const daysWithData = new Set(recentRecords?.map(r => r.record_date)).size;
+
+    // Calculate daily average
+    const dailyAverage = daysWithData > 0 ? totalRecent / daysWithData : 0;
+
+    // Project monthly and yearly
+    const estimatedMonthlyRevenueCents = Math.round(dailyAverage * 30);
+    const estimatedYearlyRevenueCents = Math.round(dailyAverage * 365);
+
+    // Determine confidence level
+    let confidenceLevel: 'high' | 'medium' | 'low' = 'low';
+    if (daysWithData >= 25) confidenceLevel = 'high';
+    else if (daysWithData >= 14) confidenceLevel = 'medium';
+
+    return {
+      estimatedMonthlyRevenueCents,
+      estimatedYearlyRevenueCents,
+      confidenceLevel,
+      basedOnDays: daysWithData,
+      factors: [
+        {
+          factor: 'Historical Data',
+          impact: daysWithData >= 14 ? 20 : -20,
+          description: daysWithData >= 14
+            ? 'Sufficient data for accurate projection'
+            : 'Limited data may affect accuracy',
+        },
+        {
+          factor: 'Trend Direction',
+          impact: 0, // TODO: Calculate from trend
+          description: 'Based on recent revenue trend',
+        },
+      ],
+    };
+  },
+  {
+    schema: z.object({
+      accountId: z.string().uuid(),
+    }),
+    auth: true,
+  }
+);
+```
+
+### Components
+
+```typescript
+// packages/features/content-analytics/src/components/revenue-dashboard.tsx
+
+'use client';
+
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+import { Button } from '@kit/ui/button';
+import { DateRangePicker } from '@kit/ui/date-range-picker';
+import { DollarSign, TrendingUp, TrendingDown, PieChart, FileText } from 'lucide-react';
+
+import { getRevenueSummaryAction, getRevenueProjectionAction } from '../server/revenue-actions';
+import { RevenueChart } from './revenue-chart';
+import { RevenuePlatformBreakdown } from './revenue-platform-breakdown';
+import { RevenueTopContent } from './revenue-top-content';
+import { ManualRevenueForm } from './manual-revenue-form';
+
+interface RevenueDashboardProps {
+  accountId: string;
+}
+
+export function RevenueDashboard({ accountId }: RevenueDashboardProps) {
+  const [dateRange, setDateRange] = useState<{ start: Date; end: Date }>({
+    start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+    end: new Date(),
+  });
+
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ['revenue-summary', accountId, dateRange],
+    queryFn: () => getRevenueSummaryAction({
+      accountId,
+      startDate: dateRange.start.toISOString().split('T')[0],
+      endDate: dateRange.end.toISOString().split('T')[0],
+    }),
+  });
+
+  const { data: projection, isLoading: projectionLoading } = useQuery({
+    queryKey: ['revenue-projection', accountId],
+    queryFn: () => getRevenueProjectionAction({ accountId }),
+  });
+
+  const formatCurrency = (cents: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(cents / 100);
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Revenue</h2>
+          <p className="text-muted-foreground">
+            Track your earnings across all platforms
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <DateRangePicker
+            value={dateRange}
+            onChange={setDateRange}
+          />
+          <Button variant="outline">
+            <FileText className="mr-2 h-4 w-4" />
+            Generate Report
+          </Button>
+        </div>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {summaryLoading ? '...' : formatCurrency(summary?.totalRevenueCents || 0)}
+            </div>
+            {summary && (
+              <div className={`flex items-center text-xs ${
+                summary.trend === 'up' ? 'text-green-500' :
+                summary.trend === 'down' ? 'text-red-500' :
+                'text-muted-foreground'
+              }`}>
+                {summary.trend === 'up' ? (
+                  <TrendingUp className="mr-1 h-3 w-3" />
+                ) : summary.trend === 'down' ? (
+                  <TrendingDown className="mr-1 h-3 w-3" />
+                ) : null}
+                {summary.trendPercent > 0 ? '+' : ''}{summary.trendPercent.toFixed(1)}% from previous period
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Daily Average</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {summaryLoading ? '...' : formatCurrency(summary?.averageDailyRevenueCents || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">per day</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">RPM</CardTitle>
+            <PieChart className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {summaryLoading ? '...' : formatCurrency(summary?.rpm || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">per 1,000 views</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Monthly Projection</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {projectionLoading ? '...' : formatCurrency(projection?.estimatedMonthlyRevenueCents || 0)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {projection?.confidenceLevel} confidence
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="platforms">By Platform</TabsTrigger>
+          <TabsTrigger value="content">By Content</TabsTrigger>
+          <TabsTrigger value="manual">Manual Entry</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Revenue Over Time</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <RevenueChart accountId={accountId} dateRange={dateRange} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="platforms">
+          <RevenuePlatformBreakdown
+            breakdown={summary?.byPlatform || {}}
+            total={summary?.totalRevenueCents || 0}
+          />
+        </TabsContent>
+
+        <TabsContent value="content">
+          <RevenueTopContent accountId={accountId} dateRange={dateRange} />
+        </TabsContent>
+
+        <TabsContent value="manual">
+          <Card>
+            <CardHeader>
+              <CardTitle>Manual Revenue Entry</CardTitle>
+              <CardDescription>
+                Add revenue data for platforms without API integration
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ManualRevenueForm accountId={accountId} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+| Action | Path |
+|--------|------|
+| CREATE | `apps/web/supabase/schemas/38-revenue-tracking.sql` |
+| CREATE | `packages/features/content-analytics/src/lib/types/revenue.ts` |
+| CREATE | `packages/features/content-analytics/src/server/revenue-actions.ts` |
+| CREATE | `packages/features/content-analytics/src/components/revenue-dashboard.tsx` |
+| CREATE | `packages/features/content-analytics/src/components/revenue-chart.tsx` |
+| CREATE | `packages/features/content-analytics/src/components/revenue-platform-breakdown.tsx` |
+| CREATE | `packages/features/content-analytics/src/components/revenue-top-content.tsx` |
+| CREATE | `packages/features/content-analytics/src/components/manual-revenue-form.tsx` |
+
+### Modified Files
+
+| Action | Path |
+|--------|------|
+| MODIFY | `packages/features/content-analytics/src/index.ts` |
+| MODIFY | `packages/features/content-analytics/src/components/index.ts` |
+| MODIFY | `apps/web/app/home/[account]/studio/analytics/page.tsx` |
+
+---
+
+## Acceptance Criteria
+
+### Functional
+
+- [ ] Revenue records can be fetched from YouTube Analytics API
+- [ ] Manual revenue entries can be created and edited
+- [ ] Revenue summary displays total, daily average, and RPM
+- [ ] Revenue breakdown shows data by platform and content
+- [ ] Revenue trends are calculated correctly
+- [ ] Monthly/yearly projections are calculated with confidence levels
+- [ ] Revenue reports can be generated and exported
+- [ ] Revenue alerts are created for significant changes
+
+### Non-Functional
+
+- [ ] Revenue data is fetched with pagination for large datasets
+- [ ] Dashboard loads within 2 seconds
+- [ ] Currency formatting respects user locale
+- [ ] All revenue data is properly secured via RLS
+- [ ] TypeScript compiles without errors
+
+---
+
+## Test Plan
+
+### Unit Tests
+
+- [ ] Test revenue summary calculation
+- [ ] Test RPM calculation
+- [ ] Test trend detection logic
+- [ ] Test projection confidence levels
+- [ ] Test currency formatting
+
+### Integration Tests
+
+- [ ] Test YouTube Analytics API revenue fetch
+- [ ] Test manual revenue entry flow
+- [ ] Test report generation
+- [ ] Test RLS policies
+
+### Manual Testing
+
+1. **Revenue Summary**
+   - Connect YouTube account with AdSense
+   - Verify revenue data appears in dashboard
+   - Check calculations match platform data
+
+2. **Manual Entry**
+   - Add manual revenue for a publish
+   - Verify it appears in summary
+   - Edit and delete entries
+
+3. **Reports**
+   - Generate monthly report
+   - Export to CSV and verify data
+   - Generate PDF and verify formatting
+
+---
+
+## Security Considerations
+
+- Revenue data is sensitive financial information
+- RLS policies ensure users only see their own data
+- API keys for platforms are stored encrypted
+- Manual entries are audit-logged
+
+---
+
+## Error Handling
+
+| Error | User Message | Recovery |
+|-------|--------------|----------|
+| API unavailable | "Unable to fetch revenue data. Please try again." | Retry with backoff |
+| Invalid date range | "Please select a valid date range." | Highlight date picker |
+| Export failed | "Failed to generate report. Please try again." | Retry |
+| No data | "No revenue data for this period." | Show empty state |
+
+---
+
+## Future Enhancements
+
+1. **Real-time Revenue Updates**
+   - WebSocket updates for live revenue tracking
+   - Push notifications for milestone achievements
+
+2. **Revenue Goals**
+   - Set monthly/yearly revenue targets
+   - Track progress toward goals
+
+3. **Tax Integration**
+   - Generate tax-ready summaries
+   - Track deductible expenses
+   - Support multiple currencies with conversion
+
+4. **Revenue Forecasting**
+   - ML-based revenue predictions
+   - Seasonal adjustment factors
+   - Content type correlation analysis
+
+---
+
+## References
+
+- **FILM-805**: Analytics Dashboard
+- **FILM-809**: Export Reports
+- **FILM-801-803**: Platform Analytics Providers
+- **YouTube Analytics API**: https://developers.google.com/youtube/analytics
+- **Constitution**: Section 6 (Cost Tracking)

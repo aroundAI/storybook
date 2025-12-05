@@ -29,6 +29,7 @@ graph TD
         FILM-108[audio-gen pkg]
         FILM-109[Zod Schemas]
         FILM-110[Project Extension]
+        FILM-110 --> FILM-111[Project Templates]
     end
 
     subgraph "Cross-Cutting"
@@ -72,6 +73,9 @@ graph TD
         FILM-306 --> FILM-310[ScreenplayViewer]
         FILM-307 --> FILM-311[ShotListEditor]
         FILM-308 --> FILM-312[Episode Workspace]
+        FILM-305 --> FILM-313[Continuity Checker]
+        FILM-202 --> FILM-313
+        FILM-301 --> FILM-314[Batch Episode Creation]
     end
 
     subgraph "Phase 4: Video Generation"
@@ -99,6 +103,11 @@ graph TD
         FILM-503 --> FILM-506[DialogueList]
         FILM-206 --> FILM-507[VoiceAssignment]
         FILM-508[AudioPlayer]
+        FILM-108 --> FILM-509[Suno Provider]
+        FILM-501 --> FILM-510[Voice Cloning]
+        FILM-502 --> FILM-511[Lip Sync]
+        FILM-502 --> FILM-512[Multi-Language Dubbing]
+        FILM-510 --> FILM-512
     end
 
     subgraph "Phase 6: Edit Suite"
@@ -106,6 +115,8 @@ graph TD
         FILM-601 --> FILM-602[TrackLayer]
         FILM-601 --> FILM-603[ClipEditor]
         FILM-601 --> FILM-604[Auto-Stitch]
+        FILM-601 --> FILM-605[Auto-Captions]
+        FILM-601 --> FILM-606[Transitions Library]
     end
 
     subgraph "Phase 7: Publishing"
@@ -120,6 +131,13 @@ graph TD
         FILM-708 --> FILM-709[PlatformSelector]
         FILM-708 --> FILM-710[MetadataEditor]
         FILM-708 --> FILM-711[ShortsClipper]
+        FILM-708 --> FILM-712[Thumbnail Generator]
+        FILM-701 --> FILM-713[Upload-Only Mode]
+        FILM-702 --> FILM-713
+        FILM-703 --> FILM-713
+        FILM-704 --> FILM-713
+        CC-03 --> FILM-714[Twitter Provider]
+        CC-03 --> FILM-715[LinkedIn Provider]
     end
 
     subgraph "Phase 8: Analytics"
@@ -131,6 +149,9 @@ graph TD
         DS-02 --> FILM-806[MetricCards]
         FILM-805 --> FILM-807[PerformanceChart]
         FILM-805 --> FILM-808[AI Insights]
+        FILM-805 --> FILM-809[Export Reports]
+        FILM-804 --> FILM-810[Revenue Tracking]
+        FILM-805 --> FILM-810
     end
 
     subgraph "Phase 9: Integration"
@@ -251,7 +272,7 @@ graph TD
 
 ## By Phase
 
-### Phase 1: Foundation (25 specs)
+### Phase 1: Foundation (26 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -280,6 +301,7 @@ graph TD
 | FILM-108 | [audio-generation-package](./phase-1-foundation/packages/FILM-108-audio-generation-package.md) | DRAFT | S | - |
 | FILM-109 | [zod-schemas](./phase-1-foundation/packages/FILM-109-zod-schemas.md) | DRAFT | M | FILM-105, FILM-106 |
 | FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.md) | DRAFT | M | FILM-104 |
+| FILM-111 | [project-templates](./phase-1-foundation/packages/FILM-111-project-templates.md) | DRAFT | M | FILM-110 |
 
 ### Cross-Cutting Concerns (3 specs)
 
@@ -313,7 +335,7 @@ graph TD
 | FILM-208 | [asset-library-page](./phase-2-assets/pages/FILM-208-asset-library-page.md) | DRAFT | M | FILM-204 |
 | FILM-209 | [element-prompt-generation](./phase-2-assets/lib/FILM-209-element-prompt-generation.md) | DRAFT | M | FILM-202 |
 
-### Phase 3: Episodes & Story (12 specs)
+### Phase 3: Episodes & Story (14 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -329,6 +351,8 @@ graph TD
 | FILM-310 | [screenplay-viewer](./phase-3-episodes/components/FILM-310-screenplay-viewer.md) | DRAFT | M | FILM-306 |
 | FILM-311 | [shot-list-editor](./phase-3-episodes/components/FILM-311-shot-list-editor.md) | DRAFT | L | FILM-307 |
 | FILM-312 | [episode-workspace](./phase-3-episodes/pages/FILM-312-episode-workspace.md) | DRAFT | L | FILM-308-311 |
+| FILM-313 | [continuity-checker](./phase-3-episodes/lib/FILM-313-continuity-checker.md) | DRAFT | M | FILM-305, FILM-202 |
+| FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | DRAFT | M | FILM-301 |
 
 ### Phase 4: Video Generation (12 specs)
 
@@ -347,7 +371,7 @@ graph TD
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M | FILM-408 |
 | FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | DRAFT | M | FILM-405 |
 
-### Phase 5: Audio Generation (8 specs)
+### Phase 5: Audio Generation (12 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -359,8 +383,12 @@ graph TD
 | FILM-506 | [dialogue-list](./phase-5-audio-generation/components/FILM-506-dialogue-list.md) | DRAFT | M | FILM-503 |
 | FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.md) | DRAFT | M | FILM-206, FILM-506 |
 | FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | DRAFT | M | - |
+| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | DRAFT | M | FILM-108 |
+| FILM-510 | [voice-cloning](./phase-5-audio-generation/server/FILM-510-voice-cloning.md) | DRAFT | L | FILM-501 |
+| FILM-511 | [lip-sync](./phase-5-audio-generation/lib/FILM-511-lip-sync.md) | DRAFT | L | FILM-502 |
+| FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/server/FILM-512-multi-language-dubbing.md) | DRAFT | L | FILM-502, FILM-510 |
 
-### Phase 6: Edit Suite (4 specs)
+### Phase 6: Edit Suite (6 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -368,8 +396,10 @@ graph TD
 | FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.md) | DRAFT | L | FILM-601 |
 | FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.md) | DRAFT | L | FILM-601 |
 | FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | DRAFT | L | FILM-601 |
+| FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.md) | DRAFT | L | FILM-601 |
+| FILM-606 | [transitions-library](./phase-6-edit-suite/lib/FILM-606-transitions-library.md) | DRAFT | M | FILM-601 |
 
-### Phase 7: Publishing (11 specs)
+### Phase 7: Publishing (15 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -384,8 +414,12 @@ graph TD
 | FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.md) | DRAFT | M | FILM-708 |
 | FILM-710 | [metadata-editor](./phase-7-publishing/components/FILM-710-metadata-editor.md) | DRAFT | M | FILM-708 |
 | FILM-711 | [shorts-clipper](./phase-7-publishing/components/FILM-711-shorts-clipper.md) | DRAFT | L | FILM-708 |
+| FILM-712 | [thumbnail-generator](./phase-7-publishing/components/FILM-712-thumbnail-generator.md) | DRAFT | M | FILM-708 |
+| FILM-713 | [upload-only-mode](./phase-7-publishing/lib/FILM-713-upload-only-mode.md) | DRAFT | M | FILM-701-704 |
+| FILM-714 | [twitter-provider](./phase-7-publishing/providers/FILM-714-twitter-provider.md) | DRAFT | M | FILM-CC-03 |
+| FILM-715 | [linkedin-provider](./phase-7-publishing/providers/FILM-715-linkedin-provider.md) | DRAFT | M | FILM-CC-03 |
 
-### Phase 8: Analytics (8 specs)
+### Phase 8: Analytics (10 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
@@ -397,6 +431,8 @@ graph TD
 | FILM-806 | [metric-cards](./phase-8-analytics/components/FILM-806-metric-cards.md) | DRAFT | S | FILM-DS-02 |
 | FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | DRAFT | M | FILM-805 |
 | FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | DRAFT | M | FILM-805 |
+| FILM-809 | [export-reports](./phase-8-analytics/lib/FILM-809-export-reports.md) | DRAFT | M | FILM-805 |
+| FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.md) | DRAFT | L | FILM-804, FILM-805 |
 
 ### Phase 9: Integration (6 specs)
 
@@ -468,26 +504,26 @@ SPIKE-01 through SPIKE-05
 
 | Phase | Total | Draft | Review | Approved | In Progress | Done |
 |-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 25 | 25 | 0 | 0 | 0 | 0 |
+| 1. Foundation | 26 | 26 | 0 | 0 | 0 | 0 |
 | Cross-Cutting | 3 | 3 | 0 | 0 | 0 | 0 |
 | Design System | 5 | 5 | 0 | 0 | 0 | 0 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
-| 3. Episodes | 12 | 12 | 0 | 0 | 0 | 0 |
+| 3. Episodes | 14 | 14 | 0 | 0 | 0 | 0 |
 | 4. Video Gen | 12 | 12 | 0 | 0 | 0 | 0 |
-| 5. Audio Gen | 8 | 8 | 0 | 0 | 0 | 0 |
-| 6. Edit Suite | 4 | 4 | 0 | 0 | 0 | 0 |
-| 7. Publishing | 11 | 11 | 0 | 0 | 0 | 0 |
-| 8. Analytics | 8 | 8 | 0 | 0 | 0 | 0 |
+| 5. Audio Gen | 12 | 12 | 0 | 0 | 0 | 0 |
+| 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
+| 7. Publishing | 15 | 15 | 0 | 0 | 0 | 0 |
+| 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 5 | 0 | 0 | 0 | 0 |
-| **TOTAL** | **108** | **108** | **0** | **0** | **0** | **0** |
+| **TOTAL** | **123** | **123** | **0** | **0** | **0** | **0** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 79 | 0 | 0% |
-| Post-MVP | 29 | 0 | 0% |
+| MVP Specs | 86 | 0 | 0% |
+| Post-MVP | 37 | 0 | 0% |
 
 ---
 
