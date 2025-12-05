@@ -8,8 +8,8 @@ This directory contains all specification documents for the AI Cinematic Film St
 
 - **[INDEX.md](./INDEX.md)** - Master spec index with dependency graph
 - [Constitution](./constitution.md) - Non-negotiable project conventions
-- [PRD](/PRD.md) - Product Requirements Document
-- [Engineering Design](/ENGINEERING_DESIGN.md) - Technical architecture
+- [PRD](./PRD.md) - Product Requirements Document
+- [Engineering Design](./ENGINEERING_DESIGN.md) - Technical architecture
 
 ---
 
@@ -18,6 +18,8 @@ This directory contains all specification documents for the AI Cinematic Film St
 ```
 specs/
 ├── INDEX.md                  # Master spec index with dependency graph
+├── PRD.md                    # Product Requirements Document
+├── ENGINEERING_DESIGN.md     # Technical architecture
 ├── constitution.md           # Project conventions (READ FIRST)
 ├── README.md                 # This file
 │
