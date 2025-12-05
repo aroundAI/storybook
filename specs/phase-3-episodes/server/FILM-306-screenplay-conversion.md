@@ -1,0 +1,356 @@
+# FILM-306: Screenplay Conversion Server Actions
+
+**Phase**: 3
+**Priority**: P0
+**Effort**: L (5-7 days)
+**Dependencies**: FILM-305 (story-generation)
+**Blocks**: FILM-307, FILM-310
+
+---
+
+## Context
+
+The Screenplay Conversion system transforms generated stories into professional screenplay format with scenes, dialogue, and action lines. This system uses LLM-powered conversion with the screenplay-conversion prompt template to create production-ready scripts suitable for video generation.
+
+The screenplay includes scene headings (INT/EXT, location, time), action descriptions, dialogue with character names, and estimated durations. Dialogue lines are extracted and stored in the dialogue_lines table for voice generation (Phase 5). The conversion updates episode.screenplay_data and transitions the episode to 'storyboard' status.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Convert to Screenplay**
+   - Accept episode ID with story_data populated
+   - Call LLM with screenplay-conversion prompt template
+   - Generate 5-15 scenes with dialogue and action lines
+   - Extract dialogue lines and create dialogue_lines records
+   - Validate output against Zod schema
+   - Update episode.screenplay_data with result
+   - Update episode status from 'story' to 'storyboard'
+   - Track generation cost and store metadata
+   - Return complete screenplay object
+
+### Non-Functional Requirements
+
+- Conversion must complete within 30 seconds
+- Must support Claude, GPT-4, and Gemini
+- Must validate all LLM outputs with Zod schemas
+- Must track costs accurately for billing
+- Must handle LLM rate limits gracefully
+- Must provide detailed error messages
+- Must log all conversion attempts
+
+---
+
+## Interface
+
+### TypeScript Types
+
+```typescript
+import { z } from 'zod';
+
+export const ConvertToScreenplaySchema = z.object({
+  episodeId: z.string().uuid(),
+  targetSceneCount: z.number().int().min(3).max(15).optional(),
+  dialogueStyle: z.enum(['natural', 'stylized', 'minimal']).optional(),
+  provider: z.enum(['anthropic', 'openai', 'google']).optional(),
+  model: z.string().optional(),
+});
+
+export interface Scene {
+  number: number;
+  heading: string;
+  location: string;
+  timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+  description: string;
+  dialogue: DialogueLine[];
+  estimatedDuration: number;
+}
+
+export interface DialogueLine {
+  character: string;
+  text: string;
+  parenthetical?: string;
+}
+
+export interface ScreenplayMetadata {
+  totalScenes: number;
+  estimatedDuration: number;
+  locations: string[];
+  characters: string[];
+}
+
+export interface Screenplay {
+  scenes: Scene[];
+  metadata: ScreenplayMetadata;
+}
+
+export interface ConvertToScreenplayResponse {
+  screenplay: Screenplay;
+  dialogueLinesCreated: number;
+  episode: {
+    id: string;
+    status: string;
+    version: number;
+  };
+  metadata: {
+    provider: string;
+    model: string;
+    costCents: number;
+    tokensUsed: number;
+    generatedAt: string;
+  };
+}
+```
+
+### Server Actions
+
+```typescript
+'use server';
+
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { executePrompt, calculateLLMCost } from '@kit/llm';
+import { ScreenplayConversionOutputSchema } from '@kit/prompt-engine/schemas';
+import { ConvertToScreenplaySchema } from '../schemas/screenplay.schema';
+
+export const convertToScreenplayAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+    const startTime = Date.now();
+
+    // Fetch episode with story_data
+    const { data: episode, error: episodeError } = await client
+      .from('episodes')
+      .select('id, project_id, story_data, status, version')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (episodeError || !episode) {
+      throw new Error('Episode not found');
+    }
+
+    if (!episode.story_data) {
+      throw new Error('Episode must have story generated first');
+    }
+
+    if (episode.status !== 'story') {
+      throw new Error(`Invalid episode status: ${episode.status}. Expected 'story'`);
+    }
+
+    // Prepare variables
+    const variables = {
+      story: episode.story_data.fullStory,
+      targetSceneCount: data.targetSceneCount ?? 8,
+      style: data.dialogueStyle ?? 'natural',
+    };
+
+    // Execute LLM prompt
+    const result = await executePrompt('screenplay-conversion', variables, {
+      provider: data.provider ?? 'anthropic',
+      model: data.model,
+      timeout: 30000,
+    });
+
+    // Validate output
+    const validated = ScreenplayConversionOutputSchema.parse(result);
+
+    // Calculate cost
+    const costCents = calculateLLMCost({
+      provider: result.metadata.provider,
+      model: result.metadata.model,
+      inputTokens: result.metadata.inputTokens,
+      outputTokens: result.metadata.outputTokens,
+    });
+
+    // Prepare screenplay_data
+    const screenplayData = {
+      scenes: validated.screenplay.scenes,
+      generatedAt: new Date().toISOString(),
+      generatedBy: {
+        model: result.metadata.model,
+        provider: result.metadata.provider,
+        costCents,
+      },
+      metadata: validated.screenplay.metadata,
+    };
+
+    // Extract and create dialogue_lines
+    const dialogueLines = [];
+    for (const scene of validated.screenplay.scenes) {
+      for (const dialogue of scene.dialogue) {
+        dialogueLines.push({
+          episode_id: data.episodeId,
+          scene_number: scene.number,
+          character_name: dialogue.character,
+          text: dialogue.text,
+          emotion: dialogue.parenthetical ?? null,
+          sequence_number: dialogueLines.length + 1,
+        });
+      }
+    }
+
+    // Insert dialogue lines
+    const { error: dialogueError } = await client
+      .from('dialogue_lines')
+      .insert(dialogueLines);
+
+    if (dialogueError) {
+      throw new Error(`Failed to create dialogue lines: ${dialogueError.message}`);
+    }
+
+    // Update episode
+    const { data: updatedEpisode, error: updateError } = await client
+      .from('episodes')
+      .update({
+        screenplay_data: screenplayData,
+        status: 'storyboard',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.episodeId)
+      .eq('version', episode.version)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw new Error(`Failed to update episode: ${updateError.message}`);
+    }
+
+    if (!updatedEpisode) {
+      throw new Error('Episode was modified by another user');
+    }
+
+    const duration = Date.now() - startTime;
+
+    console.log('[Screenplay Conversion]', {
+      userId: user.id,
+      episodeId: data.episodeId,
+      projectId: episode.project_id,
+      provider: result.metadata.provider,
+      model: result.metadata.model,
+      costCents,
+      duration,
+      sceneCount: validated.screenplay.scenes.length,
+      dialogueLineCount: dialogueLines.length,
+    });
+
+    return {
+      screenplay: validated.screenplay,
+      dialogueLinesCreated: dialogueLines.length,
+      episode: {
+        id: updatedEpisode.id,
+        status: updatedEpisode.status,
+        version: updatedEpisode.version,
+      },
+      metadata: {
+        provider: result.metadata.provider,
+        model: result.metadata.model,
+        costCents,
+        tokensUsed: result.metadata.inputTokens + result.metadata.outputTokens,
+        generatedAt: screenplayData.generatedAt,
+      },
+    };
+  },
+  { schema: ConvertToScreenplaySchema, auth: true }
+);
+```
+
+---
+
+## Implementation Details
+
+### File Structure
+
+```
+packages/features/episodes/src/
+├── lib/
+│   ├── schemas/
+│   │   └── screenplay.schema.ts      # Zod schemas (CREATE THIS)
+│   └── server/
+│       └── mutations/
+│           └── screenplay-actions.ts  # Screenplay actions (CREATE THIS)
+└── types/
+    └── screenplay.types.ts            # TypeScript interfaces (CREATE THIS)
+```
+
+### Dialogue Lines Extraction
+
+```typescript
+// Extract all dialogue lines from screenplay
+function extractDialogueLines(screenplay: Screenplay, episodeId: string) {
+  const lines = [];
+  let sequenceNumber = 1;
+
+  for (const scene of screenplay.scenes) {
+    for (const dialogue of scene.dialogue) {
+      lines.push({
+        episode_id: episodeId,
+        scene_number: scene.number,
+        character_name: dialogue.character,
+        text: dialogue.text,
+        emotion: dialogue.parenthetical ?? null,
+        sequence_number: sequenceNumber++,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+    }
+  }
+
+  return lines;
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **packages/features/episodes/src/lib/schemas/screenplay.schema.ts**
+2. **packages/features/episodes/src/lib/server/mutations/screenplay-actions.ts**
+3. **packages/features/episodes/src/types/screenplay.types.ts**
+
+---
+
+## Acceptance Criteria
+
+- [ ] `convertToScreenplayAction` converts story to screenplay
+- [ ] Creates dialogue_lines records for all dialogue
+- [ ] Updates episode.screenplay_data
+- [ ] Updates episode status to 'storyboard'
+- [ ] Validates output with Zod schema
+- [ ] Handles optimistic locking
+- [ ] Completes within 30 seconds
+- [ ] Enforces authentication
+
+---
+
+## Test Plan
+
+### Unit Tests
+
+```typescript
+describe('convertToScreenplayAction', () => {
+  it('should convert story to screenplay', async () => {
+    // Test implementation
+  });
+
+  it('should create dialogue_lines records', async () => {
+    // Test dialogue extraction
+  });
+
+  it('should validate episode has story', async () => {
+    // Test prerequisite check
+  });
+});
+```
+
+---
+
+## References
+
+- **FILM-305**: Story generation
+- **FILM-304**: Prompt templates
+- **FILM-101**: Dialogue lines table

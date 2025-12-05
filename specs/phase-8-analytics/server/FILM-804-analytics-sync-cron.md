@@ -1,0 +1,443 @@
+# FILM-804: Analytics Sync Cron
+
+## Metadata
+- **Phase:** 8 - Analytics
+- **Priority:** P2 (Post-MVP)
+- **Effort:** M (4-8 hours)
+- **Dependencies:** FILM-801-803 (Analytics Providers), FILM-CC-03 (OAuth Refresh)
+- **Blocks:** FILM-805 (Analytics Dashboard)
+
+---
+
+## Context
+
+A background job syncs analytics from all connected platforms on a schedule. This ensures dashboard data is fresh without requiring manual refresh while respecting API rate limits.
+
+---
+
+## Specification
+
+### Requirements
+
+1. **Scheduled Sync**: Run daily to fetch new metrics
+2. **Incremental Updates**: Only fetch data since last sync
+3. **Rate Limiting**: Respect per-platform API limits
+4. **Error Recovery**: Retry failed syncs with backoff
+5. **Notification**: Alert users of sync issues
+6. **Cost Efficiency**: Minimize API calls
+
+### Sync Job Structure
+
+```typescript
+// packages/features/content-analytics/src/server/sync-job.ts
+
+interface SyncJob {
+  id: string;
+  accountId: string;
+  publishId: string;
+  platform: 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+  connectionId: string;
+  platformContentId: string;
+  lastSyncAt: Date | null;
+  status: 'pending' | 'syncing' | 'completed' | 'failed';
+  errorMessage?: string;
+  retryCount: number;
+}
+
+interface SyncResult {
+  publishId: string;
+  platform: string;
+  success: boolean;
+  metricsUpdated: number;
+  error?: string;
+}
+
+interface SyncSchedule {
+  // How often to sync based on content age
+  rules: Array<{
+    maxAgeDays: number;
+    intervalHours: number;
+  }>;
+}
+
+const DEFAULT_SYNC_SCHEDULE: SyncSchedule = {
+  rules: [
+    { maxAgeDays: 1, intervalHours: 1 },    // First day: hourly
+    { maxAgeDays: 7, intervalHours: 6 },    // First week: every 6 hours
+    { maxAgeDays: 30, intervalHours: 24 },  // First month: daily
+    { maxAgeDays: 90, intervalHours: 168 }, // After: weekly
+  ],
+};
+```
+
+### Cron Handler
+
+```typescript
+// packages/features/content-analytics/src/server/analytics-sync-cron.ts
+
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { YouTubeAnalyticsProvider } from '../providers/youtube';
+import { TikTokAnalyticsProvider } from '../providers/tiktok';
+import { InstagramInsightsProvider } from '../providers/instagram';
+import { ensureValidToken } from '@kit/publishing/oauth/ensure-token';
+
+const BATCH_SIZE = 50;
+const MAX_RETRIES = 3;
+
+/**
+ * Main cron job entry point
+ * Scheduled to run every hour
+ */
+export async function runAnalyticsSync(): Promise<{
+  totalProcessed: number;
+  successful: number;
+  failed: number;
+}> {
+  const client = getSupabaseServerClient();
+
+  // Get publishes that need syncing
+  const { data: publishesToSync } = await client
+    .from('publishes')
+    .select(`
+      id,
+      platform,
+      platform_content_id,
+      platform_connection_id,
+      published_at,
+      episodes (project_id, projects (account_id))
+    `)
+    .eq('status', 'published')
+    .not('platform_content_id', 'is', null)
+    .order('published_at', { ascending: false })
+    .limit(BATCH_SIZE);
+
+  if (!publishesToSync?.length) {
+    return { totalProcessed: 0, successful: 0, failed: 0 };
+  }
+
+  // Filter to those needing sync based on schedule
+  const needsSync = publishesToSync.filter((pub) =>
+    shouldSync(pub, DEFAULT_SYNC_SCHEDULE)
+  );
+
+  const results = await Promise.allSettled(
+    needsSync.map((publish) => syncPublishAnalytics(publish, client))
+  );
+
+  const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+  const failed = results.filter((r) => r.status === 'rejected' || !r.value?.success).length;
+
+  return {
+    totalProcessed: needsSync.length,
+    successful,
+    failed,
+  };
+}
+
+/**
+ * Determines if a publish needs syncing based on schedule
+ */
+function shouldSync(publish: any, schedule: SyncSchedule): boolean {
+  const now = Date.now();
+  const publishedAt = new Date(publish.published_at).getTime();
+  const ageDays = (now - publishedAt) / (1000 * 60 * 60 * 24);
+
+  // Find applicable rule
+  const rule = schedule.rules.find((r) => ageDays <= r.maxAgeDays)
+    || schedule.rules[schedule.rules.length - 1];
+
+  // Check if enough time has passed since last sync
+  const lastSync = publish.last_analytics_sync_at
+    ? new Date(publish.last_analytics_sync_at).getTime()
+    : 0;
+  const hoursSinceSync = (now - lastSync) / (1000 * 60 * 60);
+
+  return hoursSinceSync >= rule.intervalHours;
+}
+
+/**
+ * Syncs analytics for a single publish
+ */
+async function syncPublishAnalytics(
+  publish: any,
+  client: any
+): Promise<SyncResult> {
+  const { platform, platform_content_id, platform_connection_id, id: publishId } = publish;
+  const accountId = publish.episodes?.projects?.account_id;
+
+  try {
+    // Ensure valid token
+    const tokenResult = await ensureValidToken(platform_connection_id);
+    if (!tokenResult.valid) {
+      throw new Error(`Token invalid: ${tokenResult.error}`);
+    }
+
+    // Fetch analytics based on platform
+    let analyticsData;
+    const endDate = new Date();
+    const startDate = new Date(publish.published_at);
+
+    switch (platform) {
+      case 'youtube': {
+        const provider = new YouTubeAnalyticsProvider(tokenResult.accessToken!);
+        analyticsData = await provider.getVideoAnalytics({
+          videoId: platform_content_id,
+          startDate,
+          endDate,
+        });
+        break;
+      }
+      case 'tiktok': {
+        const provider = new TikTokAnalyticsProvider(tokenResult.accessToken!);
+        analyticsData = await provider.getVideoAnalytics({
+          videoId: platform_content_id,
+        });
+        break;
+      }
+      case 'instagram': {
+        const { data: connection } = await client
+          .from('platform_connections')
+          .select('platform_account_id')
+          .eq('id', platform_connection_id)
+          .single();
+
+        const provider = new InstagramInsightsProvider(
+          tokenResult.accessToken!,
+          connection.platform_account_id
+        );
+        analyticsData = await provider.getMediaInsights({
+          mediaId: platform_content_id,
+        });
+        break;
+      }
+      default:
+        throw new Error(`Unsupported platform: ${platform}`);
+    }
+
+    // Upsert analytics snapshot for today
+    const snapshotDate = endDate.toISOString().split('T')[0];
+
+    await client
+      .from('content_analytics')
+      .upsert({
+        publish_id: publishId,
+        snapshot_date: snapshotDate,
+        views: analyticsData.totals?.views || 0,
+        likes: analyticsData.totals?.likes || 0,
+        comments: analyticsData.totals?.comments || 0,
+        shares: analyticsData.totals?.shares || 0,
+        watch_time_seconds: (analyticsData.totals?.estimatedMinutesWatched || 0) * 60,
+        subscribers_gained: analyticsData.totals?.subscribersGained || 0,
+        revenue_cents: analyticsData.totals?.estimatedRevenue || 0,
+        retention_data: analyticsData.retention || null,
+        raw_data: analyticsData,
+      }, {
+        onConflict: 'publish_id,snapshot_date',
+      });
+
+    // Update last sync timestamp
+    await client
+      .from('publishes')
+      .update({
+        metadata: {
+          ...publish.metadata,
+          last_analytics_sync_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', publishId);
+
+    return {
+      publishId,
+      platform,
+      success: true,
+      metricsUpdated: 1,
+    };
+  } catch (error) {
+    // Log error and update publish metadata
+    console.error(`Analytics sync failed for ${publishId}:`, error);
+
+    await client
+      .from('publishes')
+      .update({
+        metadata: {
+          ...publish.metadata,
+          last_analytics_error: error.message,
+          last_analytics_error_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', publishId);
+
+    return {
+      publishId,
+      platform,
+      success: false,
+      metricsUpdated: 0,
+      error: error.message,
+    };
+  }
+}
+```
+
+### API Route (Manual Trigger)
+
+```typescript
+// apps/web/app/api/analytics/sync/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { enhanceRouteHandler } from '@kit/next/routes';
+import { runAnalyticsSync } from '@kit/content-analytics/server/sync';
+
+export const POST = enhanceRouteHandler(
+  async ({ request }) => {
+    // Verify cron secret or admin auth
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const result = await runAnalyticsSync();
+
+    return NextResponse.json({
+      success: true,
+      ...result,
+    });
+  },
+  { auth: false }
+);
+```
+
+### Cron Configuration
+
+```typescript
+// vercel.json or cron configuration
+{
+  "crons": [
+    {
+      "path": "/api/analytics/sync",
+      "schedule": "0 * * * *" // Every hour
+    }
+  ]
+}
+
+// Or for AWS Lambda with SST
+// sst.config.ts
+new Cron(stack, "analytics-sync", {
+  schedule: "rate(1 hour)",
+  job: "packages/functions/src/analytics-sync.handler",
+});
+```
+
+### Server Action for Manual Sync
+
+```typescript
+// packages/features/content-analytics/src/server/sync-actions.ts
+
+'use server';
+
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { z } from 'zod';
+
+export const manualSyncAction = enhanceAction(
+  async ({ publishId }) => {
+    const client = getSupabaseServerClient();
+
+    const { data: publish } = await client
+      .from('publishes')
+      .select('*')
+      .eq('id', publishId)
+      .single();
+
+    if (!publish) {
+      throw new Error('Publish not found');
+    }
+
+    // Trigger immediate sync (bypass schedule check)
+    const result = await syncPublishAnalytics(publish, client);
+
+    return result;
+  },
+  {
+    schema: z.object({ publishId: z.string().uuid() }),
+    auth: true,
+  }
+);
+
+export const getSyncStatusAction = enhanceAction(
+  async ({ publishId }) => {
+    const client = getSupabaseServerClient();
+
+    const { data: publish } = await client
+      .from('publishes')
+      .select('metadata')
+      .eq('id', publishId)
+      .single();
+
+    return {
+      lastSyncAt: publish?.metadata?.last_analytics_sync_at,
+      lastError: publish?.metadata?.last_analytics_error,
+      lastErrorAt: publish?.metadata?.last_analytics_error_at,
+    };
+  },
+  {
+    schema: z.object({ publishId: z.string().uuid() }),
+    auth: true,
+  }
+);
+```
+
+### File Changes
+
+| Action | Path |
+|--------|------|
+| CREATE | `packages/features/content-analytics/src/server/analytics-sync-cron.ts` |
+| CREATE | `packages/features/content-analytics/src/server/sync-actions.ts` |
+| CREATE | `apps/web/app/api/analytics/sync/route.ts` |
+
+---
+
+## Acceptance Criteria
+
+- [ ] Cron runs on schedule (hourly)
+- [ ] Syncs new content more frequently
+- [ ] Older content synced less often
+- [ ] Handles token refresh before sync
+- [ ] Stores daily snapshots
+- [ ] Updates existing snapshots
+- [ ] Handles sync failures gracefully
+- [ ] Logs errors for debugging
+- [ ] Manual sync trigger works
+- [ ] Respects API rate limits
+
+---
+
+## Test Plan
+
+### Unit Tests
+- [ ] Test schedule calculation
+- [ ] Test age-based sync frequency
+
+### Integration Tests
+- [ ] Test sync flow with mocked providers
+- [ ] Test error handling and retry
+
+---
+
+## Performance Considerations
+
+- Batch processing to limit concurrent requests
+- Stagger syncs across the hour
+- Priority queue for newer content
+- Skip syncs for content with no changes
+
+---
+
+## Monitoring
+
+Track these metrics:
+- `analytics_sync_total` - Total syncs attempted
+- `analytics_sync_success` - Successful syncs
+- `analytics_sync_errors` - Failed syncs by error type
+- `analytics_sync_duration` - Sync job duration

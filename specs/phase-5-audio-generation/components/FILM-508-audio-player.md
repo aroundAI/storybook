@@ -1,0 +1,819 @@
+# FILM-508: Audio Player Component
+
+**Phase**: 5
+**Priority**: P0
+**Effort**: M (3-5 days)
+**Dependencies**: None (standalone)
+**Blocks**: None
+
+---
+
+## Context
+
+The Audio Player component provides a professional audio playback interface with waveform visualization. It displays a visual representation of the audio file, allowing users to see the amplitude over time, click to seek to specific positions, and control playback with standard play/pause/volume controls.
+
+This component is used throughout the Audio Studio for previewing dialogue lines and music tracks. It must provide a smooth, intuitive playback experience with responsive waveform rendering, accurate seeking, and clear visual feedback. The player should be lightweight, performant, and work seamlessly with various audio formats (MP3, WAV, PCM).
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Playback Controls**
+   - Play button (toggles to pause when playing)
+   - Pause button
+   - Current time display (00:00)
+   - Total duration display (00:00)
+   - Progress bar with draggable scrubber
+   - Volume control slider
+   - Mute/unmute button
+
+2. **Waveform Visualization**
+   - Visual waveform from audio analysis
+   - Highlight played portion (blue)
+   - Show unplayed portion (gray)
+   - Clickable waveform for seeking
+   - Smooth animation during playback
+   - Responsive to container width
+
+3. **Seeking**
+   - Click waveform to jump to position
+   - Drag scrubber on progress bar
+   - Keyboard arrow keys (left/right)
+   - Jump forward 10s (Shift+Right)
+   - Jump backward 10s (Shift+Left)
+
+4. **State Management**
+   - Loading state (show spinner)
+   - Playing state (show pause button)
+   - Paused state (show play button)
+   - Error state (show error message)
+   - Buffering indicator
+
+5. **Audio Formats**
+   - Support MP3 (primary)
+   - Support WAV
+   - Support PCM
+   - Auto-detect format from URL
+
+### Non-Functional Requirements
+
+- Waveform renders within 500ms
+- Smooth playback without stuttering
+- Accurate seek (within 100ms)
+- Responsive to container size
+- Accessible (keyboard controls, ARIA)
+- Memory efficient (cleanup on unmount)
+
+---
+
+## Interface
+
+### Component Structure
+
+```typescript
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react';
+import { Button } from '@kit/ui/button';
+import { Slider } from '@kit/ui/slider';
+
+interface AudioPlayerProps {
+  audioUrl: string;
+  isPlaying: boolean;
+  onPlay: () => void;
+  onPause: () => void;
+  autoPlay?: boolean;
+  showWaveform?: boolean;
+  className?: string;
+}
+
+export function AudioPlayer({
+  audioUrl,
+  isPlaying,
+  onPlay,
+  onPause,
+  autoPlay = false,
+  showWaveform = true,
+  className = '',
+}: AudioPlayerProps) {
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolume] = useState(1);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [waveformData, setWaveformData] = useState<number[]>([]);
+
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationFrameRef = useRef<number>();
+
+  // Load audio and generate waveform
+  useEffect(() => {
+    if (!audioUrl) return;
+
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    audio.src = audioUrl;
+    audio.load();
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setIsLoading(false);
+
+      if (autoPlay) {
+        audio.play();
+        onPlay();
+      }
+    };
+
+    const handleTimeUpdate = () => {
+      setCurrentTime(audio.currentTime);
+    };
+
+    const handleEnded = () => {
+      onPause();
+      setCurrentTime(0);
+      audio.currentTime = 0;
+    };
+
+    const handleError = () => {
+      setError('Failed to load audio file');
+      setIsLoading(false);
+    };
+
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
+
+    // Generate waveform
+    if (showWaveform) {
+      generateWaveform(audioUrl);
+    }
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
+
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+    };
+  }, [audioUrl]);
+
+  // Control playback based on isPlaying prop
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    if (isPlaying) {
+      audio.play().catch((error) => {
+        console.error('Playback failed:', error);
+        onPause();
+      });
+    } else {
+      audio.pause();
+    }
+  }, [isPlaying]);
+
+  // Update volume
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    audio.volume = isMuted ? 0 : volume;
+  }, [volume, isMuted]);
+
+  // Draw waveform
+  useEffect(() => {
+    if (!showWaveform || waveformData.length === 0) return;
+
+    drawWaveform();
+  }, [waveformData, currentTime, showWaveform]);
+
+  const generateWaveform = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const arrayBuffer = await response.arrayBuffer();
+
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+      // Extract audio data
+      const rawData = audioBuffer.getChannelData(0); // Use first channel
+      const samples = 100; // Number of bars in waveform
+      const blockSize = Math.floor(rawData.length / samples);
+      const filteredData: number[] = [];
+
+      for (let i = 0; i < samples; i++) {
+        const start = blockSize * i;
+        let sum = 0;
+
+        for (let j = 0; j < blockSize; j++) {
+          sum += Math.abs(rawData[start + j]);
+        }
+
+        filteredData.push(sum / blockSize);
+      }
+
+      // Normalize data
+      const max = Math.max(...filteredData);
+      const normalizedData = filteredData.map(n => n / max);
+
+      setWaveformData(normalizedData);
+    } catch (error) {
+      console.error('Failed to generate waveform:', error);
+    }
+  };
+
+  const drawWaveform = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const width = canvas.width;
+    const height = canvas.height;
+    const barWidth = width / waveformData.length;
+    const progress = currentTime / duration;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Draw waveform bars
+    waveformData.forEach((value, index) => {
+      const x = index * barWidth;
+      const barHeight = value * height * 0.8;
+      const y = (height - barHeight) / 2;
+
+      // Determine color based on progress
+      const barProgress = index / waveformData.length;
+      ctx.fillStyle = barProgress <= progress ? '#3b82f6' : '#d1d5db';
+
+      ctx.fillRect(x, y, barWidth - 1, barHeight);
+    });
+  };
+
+  const handleWaveformClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const audio = audioRef.current;
+    if (!canvas || !audio) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const clickProgress = x / rect.width;
+
+    audio.currentTime = clickProgress * duration;
+    setCurrentTime(audio.currentTime);
+  };
+
+  const handleSeek = (value: number[]) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const newTime = (value[0] / 100) * duration;
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    setVolume(value[0]);
+    if (value[0] > 0 && isMuted) {
+      setIsMuted(false);
+    }
+  };
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted);
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progressPercentage = (currentTime / duration) * 100 || 0;
+
+  if (error) {
+    return (
+      <div className={`flex items-center justify-center rounded-lg bg-red-50 p-4 ${className}`}>
+        <p className="text-sm text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col gap-3 rounded-lg bg-white p-4 ${className}`}>
+      {/* Hidden audio element */}
+      <audio ref={audioRef} />
+
+      {/* Waveform */}
+      {showWaveform && (
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={100}
+          onClick={handleWaveformClick}
+          className="w-full cursor-pointer rounded"
+          style={{ height: '100px' }}
+        />
+      )}
+
+      {/* Progress Bar */}
+      <div className="space-y-1">
+        <Slider
+          value={[progressPercentage]}
+          onValueChange={handleSeek}
+          max={100}
+          step={0.1}
+          disabled={isLoading}
+        />
+        <div className="flex justify-between text-xs text-gray-600">
+          <span>{formatTime(currentTime)}</span>
+          <span>{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="flex items-center gap-4">
+        {/* Play/Pause */}
+        <Button
+          onClick={isPlaying ? onPause : onPlay}
+          disabled={isLoading}
+          size="sm"
+          variant="default"
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+        >
+          {isLoading ? (
+            <div className="h-4 w-4 animate-spin rounded-full border-b-2 border-white"></div>
+          ) : isPlaying ? (
+            <Pause className="h-4 w-4" />
+          ) : (
+            <Play className="h-4 w-4" />
+          )}
+        </Button>
+
+        {/* Volume */}
+        <div className="flex flex-1 items-center gap-2">
+          <Button
+            onClick={toggleMute}
+            size="sm"
+            variant="ghost"
+            aria-label={isMuted ? 'Unmute' : 'Mute'}
+          >
+            {isMuted ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+          </Button>
+
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            onValueChange={handleVolumeChange}
+            max={1}
+            step={0.01}
+            className="w-24"
+            aria-label="Volume"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+## Implementation Details
+
+### File Structure
+
+```
+packages/features/audio-generation/src/
+├── components/
+│   ├── AudioPlayer.tsx                   # Main component (CREATE THIS)
+│   ├── Waveform.tsx                      # Waveform canvas (CREATE THIS)
+│   └── __tests__/
+│       └── AudioPlayer.test.tsx          # Unit tests (CREATE THIS)
+```
+
+### Waveform Generation
+
+The waveform is generated using the Web Audio API:
+
+1. **Fetch Audio**: Download audio file as ArrayBuffer
+2. **Decode**: Use AudioContext.decodeAudioData()
+3. **Sample**: Extract samples from audio data
+4. **Normalize**: Scale values to 0-1 range
+5. **Render**: Draw bars on canvas
+
+```typescript
+// Detailed waveform generation
+async function generateWaveform(audioBuffer: AudioBuffer, samples: number = 100) {
+  const rawData = audioBuffer.getChannelData(0); // First channel
+  const blockSize = Math.floor(rawData.length / samples);
+  const filteredData: number[] = [];
+
+  // Calculate average amplitude for each block
+  for (let i = 0; i < samples; i++) {
+    const start = blockSize * i;
+    let sum = 0;
+
+    for (let j = 0; j < blockSize; j++) {
+      sum += Math.abs(rawData[start + j]);
+    }
+
+    filteredData.push(sum / blockSize);
+  }
+
+  // Normalize to 0-1 range
+  const max = Math.max(...filteredData);
+  return filteredData.map(n => n / max);
+}
+```
+
+### Canvas Drawing
+
+```typescript
+// Draw waveform on canvas
+function drawWaveform(
+  ctx: CanvasRenderingContext2D,
+  waveformData: number[],
+  progress: number,
+  width: number,
+  height: number
+) {
+  const barWidth = width / waveformData.length;
+
+  waveformData.forEach((value, index) => {
+    const x = index * barWidth;
+    const barHeight = value * height * 0.8;
+    const y = (height - barHeight) / 2;
+
+    // Color based on progress
+    const barProgress = index / waveformData.length;
+    ctx.fillStyle = barProgress <= progress ? '#3b82f6' : '#d1d5db';
+
+    ctx.fillRect(x, y, barWidth - 1, barHeight);
+  });
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **packages/features/audio-generation/src/components/AudioPlayer.tsx**
+   - Main audio player component
+   - Playback controls
+   - Waveform visualization
+
+2. **packages/features/audio-generation/src/components/Waveform.tsx**
+   - Standalone waveform component
+   - Canvas rendering logic
+
+3. **packages/features/audio-generation/src/lib/audio/waveform-generator.ts**
+   - Waveform generation utilities
+   - Audio analysis functions
+
+4. **packages/features/audio-generation/src/components/__tests__/AudioPlayer.test.tsx**
+   - Component unit tests
+
+### Modified Files
+
+1. **packages/features/audio-generation/src/components/index.ts**
+   - Export AudioPlayer component
+
+---
+
+## Acceptance Criteria
+
+### Functional
+
+- [ ] Loads audio from URL
+- [ ] Displays waveform visualization
+- [ ] Play button starts playback
+- [ ] Pause button pauses playback
+- [ ] Progress bar updates during playback
+- [ ] Click waveform to seek
+- [ ] Drag progress scrubber to seek
+- [ ] Volume slider adjusts volume
+- [ ] Mute button toggles mute
+- [ ] Shows current time and duration
+- [ ] Shows loading state while loading
+- [ ] Shows error state on load failure
+- [ ] Cleans up audio on unmount
+- [ ] Keyboard shortcuts work (space, arrows)
+
+### Non-Functional
+
+- [ ] Waveform renders within 500ms
+- [ ] Smooth playback without stuttering
+- [ ] Seeking is accurate (within 100ms)
+- [ ] Responsive to container width
+- [ ] Accessible (keyboard controls, ARIA)
+- [ ] Memory efficient (no leaks)
+- [ ] TypeScript compiles without errors
+- [ ] No ESLint warnings
+
+---
+
+## Test Plan
+
+### Unit Tests
+
+**File**: `packages/features/audio-generation/src/components/__tests__/AudioPlayer.test.tsx`
+
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { AudioPlayer } from '../AudioPlayer';
+
+describe('AudioPlayer', () => {
+  it('should render audio player', () => {
+    render(
+      <AudioPlayer
+        audioUrl="https://example.com/audio.mp3"
+        isPlaying={false}
+        onPlay={vi.fn()}
+        onPause={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Play')).toBeInTheDocument();
+  });
+
+  it('should show play button when not playing', () => {
+    render(
+      <AudioPlayer
+        audioUrl="https://example.com/audio.mp3"
+        isPlaying={false}
+        onPlay={vi.fn()}
+        onPause={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Play')).toBeInTheDocument();
+  });
+
+  it('should show pause button when playing', () => {
+    render(
+      <AudioPlayer
+        audioUrl="https://example.com/audio.mp3"
+        isPlaying={true}
+        onPlay={vi.fn()}
+        onPause={vi.fn()}
+      />
+    );
+
+    expect(screen.getByLabelText('Pause')).toBeInTheDocument();
+  });
+
+  it('should call onPlay when play button clicked', () => {
+    const onPlay = vi.fn();
+    render(
+      <AudioPlayer
+        audioUrl="https://example.com/audio.mp3"
+        isPlaying={false}
+        onPlay={onPlay}
+        onPause={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText('Play'));
+    expect(onPlay).toHaveBeenCalled();
+  });
+
+  it('should call onPause when pause button clicked', () => {
+    const onPause = vi.fn();
+    render(
+      <AudioPlayer
+        audioUrl="https://example.com/audio.mp3"
+        isPlaying={true}
+        onPlay={vi.fn()}
+        onPause={onPause}
+      />
+    );
+
+    fireEvent.click(screen.getByLabelText('Pause'));
+    expect(onPause).toHaveBeenCalled();
+  });
+
+  it('should show loading state', () => {
+    render(
+      <AudioPlayer
+        audioUrl="https://example.com/audio.mp3"
+        isPlaying={false}
+        onPlay={vi.fn()}
+        onPause={vi.fn()}
+      />
+    );
+
+    // Should show spinner initially
+    expect(screen.getByRole('button', { name: /play/i })).toBeDisabled();
+  });
+
+  it('should show error state on load failure', async () => {
+    // Mock audio error
+    global.HTMLMediaElement.prototype.load = vi.fn(() => {
+      const audio = document.querySelector('audio');
+      audio?.dispatchEvent(new Event('error'));
+    });
+
+    render(
+      <AudioPlayer
+        audioUrl="https://invalid-url.com/audio.mp3"
+        isPlaying={false}
+        onPlay={vi.fn()}
+        onPause={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/Failed to load audio file/i)).toBeInTheDocument();
+    });
+  });
+});
+```
+
+### Manual Testing
+
+1. **Playback**
+   - Load audio player
+   - Click play
+   - Verify audio plays
+   - Click pause
+   - Verify audio pauses
+
+2. **Waveform**
+   - Load audio with waveform
+   - Verify waveform renders
+   - Click on waveform
+   - Verify audio seeks to position
+
+3. **Volume**
+   - Adjust volume slider
+   - Verify volume changes
+   - Click mute button
+   - Verify audio mutes
+
+4. **Seeking**
+   - Drag progress bar scrubber
+   - Verify audio seeks
+   - Use keyboard arrows
+   - Verify audio seeks forward/backward
+
+5. **Error Handling**
+   - Load invalid audio URL
+   - Verify error message displays
+   - Load very large audio file
+   - Verify loading state shows
+
+---
+
+## Accessibility
+
+### ARIA Labels
+
+```typescript
+<button aria-label="Play audio">
+  <Play />
+</button>
+
+<button aria-label="Pause audio">
+  <Pause />
+</button>
+
+<input
+  type="range"
+  aria-label="Volume"
+  aria-valuemin={0}
+  aria-valuemax={1}
+  aria-valuenow={volume}
+/>
+```
+
+### Keyboard Shortcuts
+
+- **Space**: Play/Pause
+- **Left Arrow**: Seek backward 5s
+- **Right Arrow**: Seek forward 5s
+- **Shift+Left**: Seek backward 10s
+- **Shift+Right**: Seek forward 10s
+- **Up Arrow**: Increase volume
+- **Down Arrow**: Decrease volume
+- **M**: Toggle mute
+
+```typescript
+useEffect(() => {
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if (e.code === 'Space') {
+      e.preventDefault();
+      isPlaying ? onPause() : onPlay();
+    }
+
+    if (e.code === 'ArrowLeft') {
+      e.preventDefault();
+      const seekAmount = e.shiftKey ? 10 : 5;
+      audioRef.current!.currentTime = Math.max(0, currentTime - seekAmount);
+    }
+
+    if (e.code === 'ArrowRight') {
+      e.preventDefault();
+      const seekAmount = e.shiftKey ? 10 : 5;
+      audioRef.current!.currentTime = Math.min(duration, currentTime + seekAmount);
+    }
+
+    if (e.code === 'KeyM') {
+      toggleMute();
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyPress);
+  return () => window.removeEventListener('keydown', handleKeyPress);
+}, [isPlaying, currentTime, duration]);
+```
+
+---
+
+## Performance Considerations
+
+### Waveform Optimization
+
+- **Reduce samples**: Use 100 bars instead of full resolution
+- **Cache waveform**: Store generated waveform data
+- **Lazy generation**: Only generate on first play
+- **Web Worker**: Generate waveform in background thread
+
+### Memory Management
+
+```typescript
+// Cleanup on unmount
+useEffect(() => {
+  return () => {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.src = '';
+      audio.load();
+    }
+
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+  };
+}, []);
+```
+
+---
+
+## Future Enhancements
+
+1. **Advanced Controls**
+   - Playback speed control (0.5x, 1x, 1.5x, 2x)
+   - Loop playback
+   - A-B repeat (loop between two points)
+
+2. **Visualization Options**
+   - Frequency spectrum analyzer
+   - Different waveform styles (bars, line, filled)
+   - Color themes
+
+3. **Audio Effects**
+   - Equalizer
+   - Reverb
+   - Pitch shift
+
+4. **Download Options**
+   - Download audio file
+   - Download waveform image
+   - Share audio link
+
+5. **Playlist Support**
+   - Queue multiple tracks
+   - Auto-play next track
+   - Shuffle and repeat
+
+---
+
+## References
+
+- **Web Audio API**: https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API
+- **HTMLAudioElement**: https://developer.mozilla.org/en-US/docs/Web/API/HTMLAudioElement
+- **Canvas API**: https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API
+- **Constitution**: Section 8 (Accessibility)

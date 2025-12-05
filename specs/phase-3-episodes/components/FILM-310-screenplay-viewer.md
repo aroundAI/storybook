@@ -1,0 +1,231 @@
+# FILM-310: Screenplay Viewer Component
+
+**Phase**: 3
+**Priority**: P0
+**Effort**: M (3-5 days)
+**Dependencies**: FILM-306 (screenplay-conversion)
+**Blocks**: None
+
+---
+
+## Context
+
+The Screenplay Viewer displays generated screenplays in professional format with scene headings, action lines, and dialogue. It provides an approval flow allowing users to review, request regeneration, or approve the screenplay to continue to shot list generation.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Screenplay Display**
+   - Format scene headings (INT/EXT. LOCATION - TIME)
+   - Display action lines with proper spacing
+   - Show character names and dialogue
+   - Include parentheticals for emotions
+   - Responsive typography
+
+2. **Scene Navigation**
+   - Scene list sidebar (collapsible on mobile)
+   - Click to scroll to scene
+   - Highlight active scene on scroll
+   - Show scene duration estimates
+
+3. **Actions**
+   - "Approve Screenplay" button
+   - "Regenerate" button with confirmation
+   - "Edit Scene" inline editing (future)
+   - Export to PDF (future)
+
+---
+
+## Interface
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@kit/ui/button';
+import { Card } from '@kit/ui/card';
+import { ScrollArea } from '@kit/ui/scroll-area';
+import { toast } from '@kit/ui/sonner';
+import { Check, RefreshCw } from 'lucide-react';
+import { convertToScreenplayAction } from '../lib/server/mutations/screenplay-actions';
+
+interface ScreenplayViewerProps {
+  episode: {
+    id: string;
+    version: number;
+    screenplayData: any;
+  };
+  onApprove: () => void;
+}
+
+export function ScreenplayViewer({ episode, onApprove }: ScreenplayViewerProps) {
+  const [activeScene, setActiveScene] = useState(1);
+  const queryClient = useQueryClient();
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => convertToScreenplayAction({
+      episodeId: episode.id,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['episode', episode.id] });
+      toast.success('Screenplay regenerated successfully');
+    },
+    onError: () => {
+      toast.error('Failed to regenerate screenplay');
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: () => updateEpisodeAction({
+      episodeId: episode.id,
+      version: episode.version,
+      screenplayData: {
+        ...episode.screenplayData,
+        approvedAt: new Date().toISOString(),
+      },
+    }),
+    onSuccess: () => {
+      toast.success('Screenplay approved');
+      onApprove();
+    },
+  });
+
+  if (!episode.screenplayData) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground mb-4">
+          No screenplay generated yet
+        </p>
+        <Button onClick={() => regenerateMutation.mutate()}>
+          Generate Screenplay
+        </Button>
+      </div>
+    );
+  }
+
+  const { scenes } = episode.screenplayData;
+
+  return (
+    <div className="flex gap-4">
+      {/* Scene Navigation */}
+      <aside className="w-64 hidden md:block">
+        <Card className="p-4">
+          <h4 className="font-semibold mb-4">Scenes</h4>
+          <ScrollArea className="h-[600px]">
+            <div className="space-y-2">
+              {scenes.map((scene: any) => (
+                <button
+                  key={scene.number}
+                  onClick={() => setActiveScene(scene.number)}
+                  className={`w-full text-left p-2 rounded text-sm transition-colors ${
+                    activeScene === scene.number
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted'
+                  }`}
+                >
+                  <div className="font-medium">Scene {scene.number}</div>
+                  <div className="text-xs opacity-80">{scene.location}</div>
+                  <div className="text-xs opacity-60">
+                    {scene.estimatedDuration}s
+                  </div>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </Card>
+      </aside>
+
+      {/* Screenplay Content */}
+      <div className="flex-1">
+        <Card className="p-8">
+          <ScrollArea className="h-[600px]">
+            <div className="max-w-2xl mx-auto font-mono text-sm space-y-6">
+              {scenes.map((scene: any) => (
+                <SceneContent key={scene.number} scene={scene} />
+              ))}
+            </div>
+          </ScrollArea>
+
+          <div className="flex justify-between items-center mt-6 pt-6 border-t">
+            <Button
+              variant="outline"
+              onClick={() => regenerateMutation.mutate()}
+              disabled={regenerateMutation.isPending}
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Regenerate
+            </Button>
+
+            <Button
+              onClick={() => approveMutation.mutate()}
+              disabled={approveMutation.isPending}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Approve & Continue
+            </Button>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function SceneContent({ scene }: { scene: any }) {
+  return (
+    <div id={`scene-${scene.number}`}>
+      {/* Scene Heading */}
+      <div className="font-bold uppercase mb-4">
+        {scene.heading}
+      </div>
+
+      {/* Action Lines */}
+      <div className="mb-4 whitespace-pre-wrap">
+        {scene.description}
+      </div>
+
+      {/* Dialogue */}
+      {scene.dialogue.map((line: any, index: number) => (
+        <div key={index} className="mb-4 text-center">
+          <div className="font-bold uppercase">{line.character}</div>
+          {line.parenthetical && (
+            <div className="text-xs italic">({line.parenthetical})</div>
+          )}
+          <div className="max-w-md mx-auto">{line.text}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **packages/features/episodes/src/components/ScreenplayViewer.tsx** (CREATE THIS)
+2. **packages/features/episodes/src/components/SceneContent.tsx** (CREATE THIS)
+
+---
+
+## Acceptance Criteria
+
+- [ ] Displays scenes in professional screenplay format
+- [ ] Scene navigation sidebar works
+- [ ] Active scene highlights on click
+- [ ] Approve button advances pipeline
+- [ ] Regenerate button triggers conversion
+- [ ] Loading states display correctly
+- [ ] Responsive on mobile (sidebar collapses)
+
+---
+
+## References
+
+- **FILM-306**: Screenplay conversion
+- **FILM-308**: Story Studio

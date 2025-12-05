@@ -1,0 +1,775 @@
+# FILM-208: Asset Library Page
+
+**Phase**: 2
+**Priority**: P0
+**Effort**: M (3-5 days)
+**Dependencies**: FILM-204 (AssetGallery component)
+**Blocks**: None
+
+---
+
+## Context
+
+The Asset Library Page serves as the main hub for managing all assets (characters, locations, voices) within a project. It integrates the AssetGallery component with navigation, breadcrumbs, and create actions. This page is accessible from the Film Studio sidebar and provides the primary interface for asset management.
+
+The page follows the existing application structure with nested layouts, team account routing, and proper authentication guards.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Page Layout**
+   - Display breadcrumb navigation (Home > Studio > Project Name > Assets)
+   - Page title: "Asset Library"
+   - Description: "Manage characters, locations, and voice profiles for your project"
+   - Create Asset button (opens modal or navigates to editor)
+
+2. **Asset Gallery Integration**
+   - Embed AssetGallery component
+   - Pass project ID from route params
+   - Handle tab selection from URL
+   - Maintain scroll position on tab change
+
+3. **Create Actions**
+   - "Create Asset" dropdown button
+   - Options: Create Character, Create Location, Create Voice Profile
+   - Opens respective editor in modal or new page
+   - Refresh gallery after creation
+
+4. **Navigation**
+   - Accessible from Film Studio sidebar
+   - Route: `/home/[account]/studio/[projectId]/assets`
+   - Back to project dashboard link
+   - Persist tab selection in URL
+
+5. **Loading States**
+   - Skeleton loader while fetching project data
+   - Loading indicator during asset fetch
+   - Optimistic UI updates after actions
+
+6. **Error Handling**
+   - 404 if project not found
+   - 403 if user lacks access
+   - Error boundary for unexpected errors
+   - Retry option on failure
+
+### Non-Functional Requirements
+
+- Page loads within 2 seconds
+- Responsive layout (mobile to desktop)
+- SEO metadata for page
+- Analytics tracking (page view, create actions)
+- Keyboard shortcuts (Cmd+K to create)
+
+---
+
+## Interface
+
+### Route Parameters
+
+```typescript
+interface AssetLibraryPageParams {
+  account: string;          // Account slug
+  projectId: string;        // Project UUID
+}
+
+interface AssetLibraryPageSearchParams {
+  tab?: 'character' | 'location' | 'voice';
+}
+```
+
+### Page Metadata
+
+```typescript
+export const metadata: Metadata = {
+  title: 'Asset Library',
+  description: 'Manage characters, locations, and voice profiles for your project',
+};
+```
+
+---
+
+## Implementation
+
+### File Structure
+
+```
+apps/web/app/home/[account]/studio/[projectId]/assets/
+├── page.tsx                         # Asset Library page (CREATE THIS)
+└── _components/
+    └── CreateAssetButton.tsx        # Create dropdown (CREATE THIS)
+```
+
+### Main Page Component
+
+**File**: `apps/web/app/home/[account]/studio/[projectId]/assets/page.tsx`
+
+```typescript
+import { use } from 'react';
+import { redirect } from 'next/navigation';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { PageHeader } from '@kit/ui/page-header';
+import { Button } from '@kit/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
+import { AssetGallery } from '@kit/assets/components/AssetGallery';
+import { CreateAssetButton } from './_components/CreateAssetButton';
+
+interface AssetLibraryPageProps {
+  params: {
+    account: string;
+    projectId: string;
+  };
+  searchParams: {
+    tab?: 'character' | 'location' | 'voice';
+  };
+}
+
+export default function AssetLibraryPage(props: AssetLibraryPageProps) {
+  const params = use(Promise.resolve(props.params));
+  const searchParams = use(Promise.resolve(props.searchParams));
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-7xl">
+      {/* Breadcrumb Navigation */}
+      <div className="mb-4">
+        <Link
+          href={`/home/${params.account}/studio/${params.projectId}`}
+          className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Project
+        </Link>
+      </div>
+
+      {/* Page Header */}
+      <PageHeader
+        title="Asset Library"
+        description="Manage characters, locations, and voice profiles for your project"
+      >
+        <CreateAssetButton projectId={params.projectId} account={params.account} />
+      </PageHeader>
+
+      {/* Asset Gallery */}
+      <div className="mt-8">
+        <AssetGallery
+          projectId={params.projectId}
+          initialTab={searchParams.tab}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Generate static params for static rendering (optional)
+export async function generateStaticParams() {
+  // Return empty array for dynamic rendering
+  return [];
+}
+
+// Generate metadata
+export async function generateMetadata({ params }: AssetLibraryPageProps) {
+  const client = getSupabaseServerClient();
+
+  const { data: project } = await client
+    .from('projects')
+    .select('name')
+    .eq('id', params.projectId)
+    .single();
+
+  return {
+    title: project ? `${project.name} - Asset Library` : 'Asset Library',
+    description: 'Manage characters, locations, and voice profiles for your project',
+  };
+}
+```
+
+### Create Asset Button Component
+
+**File**: `apps/web/app/home/[account]/studio/[projectId]/assets/_components/CreateAssetButton.tsx`
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@kit/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
+import { Plus, User, MapPin, Mic } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@kit/ui/dialog';
+import { CharacterEditor } from '@kit/assets/components/CharacterEditor';
+import { VoiceProfileEditor } from '@kit/assets/components/VoiceProfileEditor';
+
+interface CreateAssetButtonProps {
+  projectId: string;
+  account: string;
+}
+
+type AssetType = 'character' | 'location' | 'voice' | null;
+
+export function CreateAssetButton({ projectId, account }: CreateAssetButtonProps) {
+  const router = useRouter();
+  const [openDialog, setOpenDialog] = useState<AssetType>(null);
+
+  const handleCreate = (type: AssetType) => {
+    setOpenDialog(type);
+  };
+
+  const handleSuccess = (assetId: string) => {
+    setOpenDialog(null);
+    router.refresh(); // Refresh to show new asset
+  };
+
+  const handleCancel = () => {
+    setOpenDialog(null);
+  };
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Asset
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => handleCreate('character')}>
+            <User className="mr-2 h-4 w-4" />
+            Create Character
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleCreate('location')}>
+            <MapPin className="mr-2 h-4 w-4" />
+            Create Location
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => handleCreate('voice')}>
+            <Mic className="mr-2 h-4 w-4" />
+            Create Voice Profile
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Character Dialog */}
+      <Dialog open={openDialog === 'character'} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Character</DialogTitle>
+          </DialogHeader>
+          <CharacterEditor
+            projectId={projectId}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Voice Profile Dialog */}
+      <Dialog open={openDialog === 'voice'} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Voice Profile</DialogTitle>
+          </DialogHeader>
+          <VoiceProfileEditor
+            projectId={projectId}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* Location Dialog - TODO: Implement LocationEditor */}
+      <Dialog open={openDialog === 'location'} onOpenChange={(open) => !open && handleCancel()}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Location</DialogTitle>
+          </DialogHeader>
+          <div className="p-8 text-center text-muted-foreground">
+            Location editor coming soon...
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+```
+
+### Layout Integration
+
+**File**: `apps/web/app/home/[account]/studio/[projectId]/layout.tsx` (VERIFY EXISTS)
+
+```typescript
+import { use } from 'react';
+import { redirect } from 'next/navigation';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { StudioSidebar } from './_components/StudioSidebar';
+
+interface StudioLayoutProps {
+  children: React.ReactNode;
+  params: {
+    account: string;
+    projectId: string;
+  };
+}
+
+export default async function StudioLayout({ children, params }: StudioLayoutProps) {
+  const client = getSupabaseServerClient();
+
+  // Verify project access
+  const { data: project, error } = await client
+    .from('projects')
+    .select('id, name, account_id')
+    .eq('id', params.projectId)
+    .single();
+
+  if (error || !project) {
+    redirect(`/home/${params.account}/studio`);
+  }
+
+  return (
+    <div className="flex h-screen">
+      <StudioSidebar project={project} account={params.account} />
+      <main className="flex-1 overflow-y-auto">
+        {children}
+      </main>
+    </div>
+  );
+}
+```
+
+### Sidebar Navigation Item
+
+**File**: `apps/web/app/home/[account]/studio/[projectId]/_components/StudioSidebar.tsx` (MODIFY)
+
+Add Assets navigation item:
+
+```typescript
+import { User, MapPin, Mic, Film, FileText, Settings } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+interface StudioSidebarProps {
+  project: {
+    id: string;
+    name: string;
+  };
+  account: string;
+}
+
+export function StudioSidebar({ project, account }: StudioSidebarProps) {
+  const pathname = usePathname();
+
+  const navItems = [
+    {
+      href: `/home/${account}/studio/${project.id}`,
+      label: 'Dashboard',
+      icon: Film,
+    },
+    {
+      href: `/home/${account}/studio/${project.id}/assets`,
+      label: 'Assets',
+      icon: User,
+    },
+    {
+      href: `/home/${account}/studio/${project.id}/episodes`,
+      label: 'Episodes',
+      icon: FileText,
+    },
+    {
+      href: `/home/${account}/studio/${project.id}/settings`,
+      label: 'Settings',
+      icon: Settings,
+    },
+  ];
+
+  return (
+    <aside className="w-64 border-r bg-muted/10">
+      <div className="p-6">
+        <h2 className="font-semibold text-lg mb-6">{project.name}</h2>
+        <nav className="space-y-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-3 py-2 rounded-lg transition-colors
+                  ${isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'}
+                `}
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
+    </aside>
+  );
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **apps/web/app/home/[account]/studio/[projectId]/assets/page.tsx**
+   - Main Asset Library page component
+
+2. **apps/web/app/home/[account]/studio/[projectId]/assets/_components/CreateAssetButton.tsx**
+   - Create asset dropdown with dialogs
+
+### Modified Files
+
+1. **apps/web/app/home/[account]/studio/[projectId]/_components/StudioSidebar.tsx**
+   - Add Assets navigation item
+
+---
+
+## Acceptance Criteria
+
+### Functional
+
+- [ ] Page accessible at `/home/[account]/studio/[projectId]/assets`
+- [ ] Breadcrumb displays: Home > Studio > [Project Name] > Assets
+- [ ] Page title: "Asset Library"
+- [ ] Description displayed below title
+- [ ] "Create Asset" button in page header
+- [ ] Dropdown shows: Create Character, Create Location, Create Voice Profile
+- [ ] Character dialog opens CharacterEditor
+- [ ] Voice dialog opens VoiceProfileEditor
+- [ ] Location dialog shows placeholder (coming soon)
+- [ ] AssetGallery renders with project assets
+- [ ] Tab selection persisted in URL (?tab=character)
+- [ ] Back link navigates to project dashboard
+- [ ] Sidebar highlights "Assets" when active
+- [ ] Page refreshes after asset creation
+- [ ] Dialog closes after successful creation
+
+### Non-Functional
+
+- [ ] Page loads within 2 seconds
+- [ ] Responsive layout on mobile, tablet, desktop
+- [ ] SEO metadata generated dynamically
+- [ ] Keyboard shortcut Cmd/Ctrl+K opens create menu (future)
+- [ ] TypeScript compiles without errors
+- [ ] No ESLint warnings
+
+---
+
+## Test Plan
+
+### Integration Tests
+
+**File**: `apps/web/__tests__/integration/asset-library-page.test.tsx`
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import AssetLibraryPage from '../app/home/[account]/studio/[projectId]/assets/page';
+
+describe('Asset Library Page', () => {
+  it('should render page header', async () => {
+    render(
+      <AssetLibraryPage
+        params={{ account: 'test-account', projectId: 'project-1' }}
+        searchParams={{}}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Asset Library')).toBeInTheDocument();
+    });
+  });
+
+  it('should render create asset button', () => {
+    render(
+      <AssetLibraryPage
+        params={{ account: 'test-account', projectId: 'project-1' }}
+        searchParams={{}}
+      />
+    );
+
+    expect(screen.getByText('Create Asset')).toBeInTheDocument();
+  });
+
+  it('should open character dialog on menu click', async () => {
+    render(
+      <AssetLibraryPage
+        params={{ account: 'test-account', projectId: 'project-1' }}
+        searchParams={{}}
+      />
+    );
+    const user = userEvent.setup();
+
+    await user.click(screen.getByText('Create Asset'));
+    await user.click(screen.getByText('Create Character'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Create Character')).toBeInTheDocument();
+    });
+  });
+
+  it('should render asset gallery', () => {
+    render(
+      <AssetLibraryPage
+        params={{ account: 'test-account', projectId: 'project-1' }}
+        searchParams={{}}
+      />
+    );
+
+    expect(screen.getByText('Characters')).toBeInTheDocument();
+  });
+
+  it('should pass tab from URL to gallery', () => {
+    render(
+      <AssetLibraryPage
+        params={{ account: 'test-account', projectId: 'project-1' }}
+        searchParams={{ tab: 'voice' }}
+      />
+    );
+
+    // Verify voice tab is active
+  });
+});
+```
+
+### E2E Tests
+
+**File**: `apps/e2e/tests/asset-library.spec.ts`
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Asset Library', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/home/test-account/studio/test-project/assets');
+  });
+
+  test('should display asset library page', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Asset Library' })).toBeVisible();
+  });
+
+  test('should create character', async ({ page }) => {
+    await page.getByRole('button', { name: 'Create Asset' }).click();
+    await page.getByRole('menuitem', { name: 'Create Character' }).click();
+
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expect(page.getByText('Create Character')).toBeVisible();
+
+    await page.getByLabel('Name *').fill('Test Character');
+    await page.getByRole('button', { name: 'Create Character' }).click();
+
+    await expect(page.getByText('Character created successfully')).toBeVisible();
+  });
+
+  test('should switch tabs', async ({ page }) => {
+    await page.getByRole('tab', { name: 'Locations' }).click();
+
+    await expect(page).toHaveURL(/tab=location/);
+    await expect(page.getByRole('tab', { name: 'Locations' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+  });
+
+  test('should navigate back to project', async ({ page }) => {
+    await page.getByRole('link', { name: 'Back to Project' }).click();
+
+    await expect(page).toHaveURL(/\/studio\/test-project$/);
+  });
+});
+```
+
+---
+
+## Security Considerations
+
+### Authentication
+
+- Page protected by Next.js middleware
+- User must be authenticated
+- Session token validated
+
+### Authorization
+
+- Verify user has project access via RLS
+- Redirect if no access (403)
+- Check team membership
+
+### Rate Limiting
+
+- Limit asset creation (10 per minute)
+- Prevent spam via API route protection
+
+---
+
+## Performance Considerations
+
+### Page Load Optimization
+
+- Use React Suspense for async components
+- Lazy load editor dialogs
+- Prefetch navigation links
+
+### Caching Strategy
+
+```typescript
+// React Query cache for project data
+const { data: project } = useQuery({
+  queryKey: ['project', projectId],
+  queryFn: () => getProjectAction({ projectId }),
+  staleTime: 5 * 60 * 1000, // 5 minutes
+});
+
+// Asset gallery has own cache (see FILM-204)
+```
+
+### Scroll Restoration
+
+- Maintain scroll position on tab change
+- Restore scroll after dialog close
+- Use Next.js built-in scroll restoration
+
+---
+
+## Responsive Design
+
+### Mobile Layout
+
+- Collapse sidebar to hamburger menu
+- Stack header and actions vertically
+- Reduce gallery columns to 1-2
+
+### Tablet Layout
+
+- Show sidebar with icons only
+- 2-3 columns in gallery
+- Responsive dialog width
+
+### Desktop Layout
+
+- Full sidebar with labels
+- 3-4 columns in gallery
+- Large dialogs for editors
+
+---
+
+## Accessibility
+
+### Keyboard Navigation
+
+- Tab through interactive elements
+- Cmd/Ctrl+K to open create menu
+- Esc to close dialogs
+- Arrow keys for tab navigation
+
+### ARIA Attributes
+
+```typescript
+<PageHeader
+  title="Asset Library"
+  aria-label="Asset Library for project"
+>
+  ...
+</PageHeader>
+
+<Button
+  aria-label="Create new asset"
+  aria-haspopup="menu"
+>
+  Create Asset
+</Button>
+```
+
+### Focus Management
+
+- Focus trap in dialogs
+- Return focus to trigger on close
+- Skip link to main content
+
+---
+
+## Analytics Tracking
+
+```typescript
+import { trackEvent } from '@kit/analytics';
+
+// Track page view
+useEffect(() => {
+  trackEvent('page_view', {
+    page: 'asset_library',
+    projectId,
+  });
+}, [projectId]);
+
+// Track asset creation
+const handleCreate = (type: AssetType) => {
+  trackEvent('asset_create_started', {
+    assetType: type,
+    projectId,
+  });
+  setOpenDialog(type);
+};
+
+const handleSuccess = (assetId: string) => {
+  trackEvent('asset_created', {
+    assetId,
+    projectId,
+  });
+  setOpenDialog(null);
+  router.refresh();
+};
+```
+
+---
+
+## Future Enhancements
+
+1. **Keyboard Shortcuts**
+   - Cmd+K: Open create menu
+   - Cmd+N: Create character
+   - Cmd+1/2/3: Switch tabs
+
+2. **Bulk Operations**
+   - Select multiple assets
+   - Bulk delete, bulk export
+
+3. **Asset Templates**
+   - Quick start with pre-made assets
+   - Community asset library
+
+4. **Asset Import/Export**
+   - Export assets as JSON
+   - Import from other projects
+
+5. **Asset Search**
+   - Global search across all tabs
+   - Advanced filters (created date, modified date)
+
+---
+
+## References
+
+- **FILM-204**: AssetGallery component
+- **FILM-205**: CharacterEditor component
+- **FILM-206**: VoiceProfileEditor component
+- **Next.js Pages**: https://nextjs.org/docs/app/building-your-application/routing/pages-and-layouts
+- **Constitution**: Section 2.3 (Component Pattern)

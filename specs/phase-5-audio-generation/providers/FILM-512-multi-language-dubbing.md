@@ -1,0 +1,543 @@
+# FILM-512: Multi-Language Dubbing
+
+## Metadata
+- **Phase:** 5 - Audio Generation
+- **Priority:** P2 (Future Enhancement)
+- **Effort:** L (1-3 days)
+- **Dependencies:** FILM-502 (Voice Generation), FILM-511 (Lip Sync)
+- **Blocks:** None
+
+---
+
+## Context
+
+Multi-language dubbing automatically translates and voices dialogue in different languages, expanding content reach to international audiences. Combined with lip sync, this creates localized versions of episodes with minimal manual effort.
+
+---
+
+## Specification
+
+### Requirements
+
+1. **Dialogue Translation**: Translate screenplay/dialogue to target languages
+2. **Voice Matching**: Match or approximate original voice characteristics
+3. **Timing Adjustment**: Adjust speech speed to match original duration
+4. **Lip Sync Integration**: Re-sync lip movements for dubbed audio
+5. **Language Selection**: Support major languages (Spanish, French, German, Japanese, etc.)
+6. **Quality Review**: Preview and edit translations before generating audio
+
+### Database Schema
+
+```sql
+-- Dubbed versions table
+CREATE TABLE dubbed_versions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  episode_id UUID NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  language VARCHAR(10) NOT NULL, -- ISO 639-1 code
+  status VARCHAR(50) DEFAULT 'draft', -- draft, translating, voicing, syncing, ready
+  translation_status VARCHAR(50) DEFAULT 'pending',
+  voice_status VARCHAR(50) DEFAULT 'pending',
+  sync_status VARCHAR(50) DEFAULT 'pending',
+  final_video_url TEXT,
+  metadata JSONB DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(episode_id, language)
+);
+
+-- Dubbed dialogue lines
+CREATE TABLE dubbed_dialogue_lines (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  dubbed_version_id UUID NOT NULL REFERENCES dubbed_versions(id) ON DELETE CASCADE,
+  original_dialogue_id UUID NOT NULL REFERENCES dialogue_lines(id),
+  translated_text TEXT NOT NULL,
+  audio_url TEXT,
+  timing_adjustment DECIMAL DEFAULT 1.0, -- Speed multiplier
+  status VARCHAR(50) DEFAULT 'pending',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX idx_dubbed_dialogue_version ON dubbed_dialogue_lines(dubbed_version_id);
+```
+
+### Supported Languages
+
+```typescript
+// packages/features/audio-generation/src/lib/dubbing-languages.ts
+
+export const SUPPORTED_LANGUAGES = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'es', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'fr', name: 'French', flag: '🇫🇷' },
+  { code: 'de', name: 'German', flag: '🇩🇪' },
+  { code: 'it', name: 'Italian', flag: '🇮🇹' },
+  { code: 'pt', name: 'Portuguese', flag: '🇧🇷' },
+  { code: 'ja', name: 'Japanese', flag: '🇯🇵' },
+  { code: 'ko', name: 'Korean', flag: '🇰🇷' },
+  { code: 'zh', name: 'Chinese (Mandarin)', flag: '🇨🇳' },
+  { code: 'hi', name: 'Hindi', flag: '🇮🇳' },
+  { code: 'ar', name: 'Arabic', flag: '🇸🇦' },
+  { code: 'ru', name: 'Russian', flag: '🇷🇺' },
+] as const;
+
+export type LanguageCode = typeof SUPPORTED_LANGUAGES[number]['code'];
+```
+
+### Dubbing Manager Component
+
+```typescript
+// packages/features/audio-generation/src/components/dubbing-manager.tsx
+
+'use client';
+
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+import { Button } from '@kit/ui/button';
+import { Badge } from '@kit/ui/badge';
+import { Progress } from '@kit/ui/progress';
+import { ScrollArea } from '@kit/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@kit/ui/dialog';
+import {
+  Languages,
+  Plus,
+  Play,
+  CheckCircle,
+  Clock,
+  Edit2,
+  Trash2,
+  Volume2,
+} from 'lucide-react';
+import { SUPPORTED_LANGUAGES, LanguageCode } from '../lib/dubbing-languages';
+import {
+  createDubbedVersionAction,
+  translateDialogueAction,
+  generateDubbedAudioAction,
+} from '../server/dubbing-actions';
+
+interface DubbingManagerProps {
+  episodeId: string;
+  originalLanguage: LanguageCode;
+}
+
+export function DubbingManager({ episodeId, originalLanguage }: DubbingManagerProps) {
+  const [showAddLanguage, setShowAddLanguage] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const { data: dubbedVersions, isLoading } = useQuery({
+    queryKey: ['dubbed-versions', episodeId],
+    queryFn: () => getDubbedVersionsAction({ episodeId }),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: createDubbedVersionAction,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dubbed-versions', episodeId] });
+      setShowAddLanguage(false);
+    },
+  });
+
+  const existingLanguages = dubbedVersions?.map((v) => v.language) || [];
+  const availableLanguages = SUPPORTED_LANGUAGES.filter(
+    (l) => l.code !== originalLanguage && !existingLanguages.includes(l.code)
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Languages className="h-5 w-5" />
+              Multi-Language Dubbing
+            </CardTitle>
+            <CardDescription>
+              Create dubbed versions in different languages
+            </CardDescription>
+          </div>
+          <Button onClick={() => setShowAddLanguage(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Language
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {/* Original Language */}
+        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+          <div className="flex items-center gap-2">
+            <span className="text-lg">
+              {SUPPORTED_LANGUAGES.find((l) => l.code === originalLanguage)?.flag}
+            </span>
+            <span className="font-medium">
+              {SUPPORTED_LANGUAGES.find((l) => l.code === originalLanguage)?.name}
+            </span>
+            <Badge>Original</Badge>
+          </div>
+        </div>
+
+        {/* Dubbed Versions */}
+        <div className="space-y-3">
+          {dubbedVersions?.map((version) => (
+            <DubbedVersionCard
+              key={version.id}
+              version={version}
+              onSelect={() => setSelectedVersion(version.id)}
+            />
+          ))}
+
+          {dubbedVersions?.length === 0 && (
+            <div className="text-center py-8 text-muted-foreground">
+              <Languages className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No dubbed versions yet</p>
+              <p className="text-sm">Add a language to start dubbing</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+
+      {/* Add Language Dialog */}
+      <Dialog open={showAddLanguage} onOpenChange={setShowAddLanguage}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Dubbed Language</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-96">
+            <div className="space-y-2">
+              {availableLanguages.map((language) => (
+                <button
+                  key={language.code}
+                  onClick={() =>
+                    createMutation.mutate({ episodeId, language: language.code })
+                  }
+                  className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-muted transition-colors"
+                >
+                  <span className="text-2xl">{language.flag}</span>
+                  <span className="font-medium">{language.name}</span>
+                </button>
+              ))}
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Version Editor Dialog */}
+      {selectedVersion && (
+        <DubbedVersionEditor
+          versionId={selectedVersion}
+          open={!!selectedVersion}
+          onOpenChange={(open) => !open && setSelectedVersion(null)}
+        />
+      )}
+    </Card>
+  );
+}
+
+function DubbedVersionCard({ version, onSelect }) {
+  const language = SUPPORTED_LANGUAGES.find((l) => l.code === version.language);
+  const progress = calculateProgress(version);
+
+  return (
+    <div className="p-3 rounded-lg border">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">{language?.flag}</span>
+          <span className="font-medium">{language?.name}</span>
+          <DubbingStatusBadge status={version.status} />
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="sm" onClick={onSelect}>
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          {version.status === 'ready' && (
+            <Button variant="ghost" size="sm">
+              <Play className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+      <Progress value={progress} className="h-2" />
+      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+        <span>Translation: {version.translation_status}</span>
+        <span>Voice: {version.voice_status}</span>
+        <span>Sync: {version.sync_status}</span>
+      </div>
+    </div>
+  );
+}
+
+function DubbingStatusBadge({ status }: { status: string }) {
+  const configs = {
+    draft: { label: 'Draft', className: 'bg-slate-100 text-slate-700' },
+    translating: { label: 'Translating', className: 'bg-blue-100 text-blue-700' },
+    voicing: { label: 'Voicing', className: 'bg-purple-100 text-purple-700' },
+    syncing: { label: 'Syncing', className: 'bg-amber-100 text-amber-700' },
+    ready: { label: 'Ready', className: 'bg-green-100 text-green-700' },
+  };
+  const config = configs[status] || configs.draft;
+  return <Badge className={config.className}>{config.label}</Badge>;
+}
+
+function calculateProgress(version: any): number {
+  let progress = 0;
+  if (version.translation_status === 'completed') progress += 33;
+  if (version.voice_status === 'completed') progress += 33;
+  if (version.sync_status === 'completed') progress += 34;
+  return progress;
+}
+```
+
+### Server Actions
+
+```typescript
+// packages/features/audio-generation/src/server/dubbing-actions.ts
+
+'use server';
+
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { z } from 'zod';
+import { createLLMClient } from '@kit/llm';
+
+export const createDubbedVersionAction = enhanceAction(
+  async ({ episodeId, language }, user) => {
+    const client = getSupabaseServerClient();
+
+    // Create dubbed version
+    const { data: version } = await client
+      .from('dubbed_versions')
+      .insert({
+        episode_id: episodeId,
+        language,
+        status: 'draft',
+      })
+      .select()
+      .single();
+
+    // Get original dialogue lines
+    const { data: dialogues } = await client
+      .from('dialogue_lines')
+      .select('*')
+      .eq('episode_id', episodeId)
+      .order('sequence_number');
+
+    // Create placeholder dubbed lines
+    const dubbedLines = dialogues.map((d) => ({
+      dubbed_version_id: version.id,
+      original_dialogue_id: d.id,
+      translated_text: d.text, // Placeholder, will be translated
+      status: 'pending',
+    }));
+
+    await client.from('dubbed_dialogue_lines').insert(dubbedLines);
+
+    return { versionId: version.id };
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+      language: z.string().length(2),
+    }),
+    auth: true,
+  }
+);
+
+export const translateDialogueAction = enhanceAction(
+  async ({ versionId }, user) => {
+    const client = getSupabaseServerClient();
+
+    // Get version with dubbed lines and original text
+    const { data: version } = await client
+      .from('dubbed_versions')
+      .select(`
+        *,
+        dubbed_dialogue_lines (
+          id,
+          original_dialogue_id,
+          dialogue_lines (text, character_asset_id, assets (name))
+        )
+      `)
+      .eq('id', versionId)
+      .single();
+
+    // Update status
+    await client
+      .from('dubbed_versions')
+      .update({ status: 'translating', translation_status: 'processing' })
+      .eq('id', versionId);
+
+    // Use LLM for context-aware translation
+    const llmClient = createLLMClient();
+
+    for (const line of version.dubbed_dialogue_lines) {
+      const response = await llmClient.chat.completions.create({
+        model: 'claude-3-5-sonnet-20241022',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a professional translator. Translate the dialogue to ${version.language}.
+              Maintain the character's voice and emotional tone.
+              Keep the translation natural and similar in length to the original.
+              Return only the translated text.`,
+          },
+          {
+            role: 'user',
+            content: JSON.stringify({
+              character: line.dialogue_lines.assets?.name,
+              originalText: line.dialogue_lines.text,
+              targetLanguage: version.language,
+            }),
+          },
+        ],
+      });
+
+      const translatedText = response.choices[0].message.content;
+
+      await client
+        .from('dubbed_dialogue_lines')
+        .update({ translated_text: translatedText, status: 'translated' })
+        .eq('id', line.id);
+    }
+
+    // Update status
+    await client
+      .from('dubbed_versions')
+      .update({ translation_status: 'completed' })
+      .eq('id', versionId);
+
+    return { success: true };
+  },
+  {
+    schema: z.object({ versionId: z.string().uuid() }),
+    auth: true,
+  }
+);
+
+export const generateDubbedAudioAction = enhanceAction(
+  async ({ versionId }, user) => {
+    const client = getSupabaseServerClient();
+
+    // Update status
+    await client
+      .from('dubbed_versions')
+      .update({ status: 'voicing', voice_status: 'processing' })
+      .eq('id', versionId);
+
+    // Get dubbed lines with character voice profiles
+    const { data: version } = await client
+      .from('dubbed_versions')
+      .select(`
+        *,
+        episodes (projects (account_id)),
+        dubbed_dialogue_lines (
+          id,
+          translated_text,
+          original_dialogue_id,
+          dialogue_lines (
+            character_asset_id,
+            assets (voice_profiles (*))
+          )
+        )
+      `)
+      .eq('id', versionId)
+      .single();
+
+    const apiKey = await getApiKey(version.episodes.projects.account_id, 'elevenlabs');
+
+    // Generate audio for each line
+    for (const line of version.dubbed_dialogue_lines) {
+      const voiceProfile = line.dialogue_lines.assets?.voice_profiles;
+
+      if (voiceProfile?.provider_voice_id) {
+        // Use ElevenLabs to generate audio
+        const response = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${voiceProfile.provider_voice_id}`,
+          {
+            method: 'POST',
+            headers: {
+              'xi-api-key': apiKey,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              text: line.translated_text,
+              model_id: 'eleven_multilingual_v2',
+              voice_settings: voiceProfile.settings,
+            }),
+          }
+        );
+
+        const audioBuffer = await response.arrayBuffer();
+        const audioUrl = await uploadAudio(audioBuffer, `dub_${line.id}.mp3`);
+
+        await client
+          .from('dubbed_dialogue_lines')
+          .update({ audio_url: audioUrl, status: 'voiced' })
+          .eq('id', line.id);
+      }
+    }
+
+    // Update status
+    await client
+      .from('dubbed_versions')
+      .update({ voice_status: 'completed' })
+      .eq('id', versionId);
+
+    return { success: true };
+  },
+  {
+    schema: z.object({ versionId: z.string().uuid() }),
+    auth: true,
+  }
+);
+```
+
+### File Changes
+
+| Action | Path |
+|--------|------|
+| CREATE | `packages/features/audio-generation/src/lib/dubbing-languages.ts` |
+| CREATE | `packages/features/audio-generation/src/components/dubbing-manager.tsx` |
+| CREATE | `packages/features/audio-generation/src/components/dubbed-version-editor.tsx` |
+| CREATE | `packages/features/audio-generation/src/server/dubbing-actions.ts` |
+| MODIFY | `apps/web/supabase/schemas/30-film-studio.sql` |
+
+---
+
+## Acceptance Criteria
+
+- [ ] Create dubbed version for any supported language
+- [ ] AI translation maintains context and character voice
+- [ ] Edit translations before generating audio
+- [ ] Voice generation uses matching voice profiles
+- [ ] Timing adjustments for different language lengths
+- [ ] Progress tracking through translation → voice → sync stages
+- [ ] Preview dubbed audio before finalizing
+- [ ] Integration with lip sync for video versions
+
+---
+
+## Test Plan
+
+### Unit Tests
+- [ ] Test language code validation
+- [ ] Test progress calculation
+- [ ] Test timing adjustment calculation
+
+### Integration Tests
+- [ ] Test full dubbing pipeline
+- [ ] Test translation quality (spot check)
+- [ ] Test voice generation with multilingual model
+
+---
+
+## Error Handling
+
+| Error | User Experience |
+|-------|-----------------|
+| Translation failed | Allow manual translation input |
+| Voice generation failed | Retry or use alternative voice |
+| Unsupported language | Show supported languages list |

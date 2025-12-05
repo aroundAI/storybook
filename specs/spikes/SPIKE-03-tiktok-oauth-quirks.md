@@ -1,0 +1,285 @@
+# SPIKE-03: TikTok OAuth Implementation Quirks
+
+## Metadata
+- **Priority**: P0
+- **Effort**: S (Small - 2-3 days)
+- **Timeline**: Sprint 2, Week 1
+- **Owner**: TBD
+- **Status**: Not Started
+- **Created**: 2025-12-04
+
+## Objective
+
+Document TikTok OAuth implementation specifics, known quirks, and best practices to ensure reliable authentication and video publishing. Identify common pitfalls and create robust error handling for TikTok's API.
+
+## Background
+
+TikTok's OAuth and API are known to have quirks and inconsistencies. Unlike YouTube or Instagram, TikTok's developer documentation is less mature and the API behavior can be unpredictable. We need to thoroughly understand these issues before building our publishing integration.
+
+## Research Questions
+
+### 1. OAuth Flow & Scopes
+- What scopes are required for video publishing?
+- Are there separate scopes for video upload vs video posting?
+- What user permissions must be granted?
+- Does the OAuth flow differ for Creator vs Business accounts?
+- Are there regional restrictions or differences?
+- What happens if users revoke permissions?
+
+### 2. Token Management
+- How long do access tokens last?
+- How does token refresh work?
+- Are refresh tokens issued? How long are they valid?
+- What happens when refresh token expires?
+- Do tokens expire during long video upload processes?
+- Is there a token revocation webhook?
+
+### 3. Rate Limits
+- What are the rate limits for OAuth endpoints?
+- What are the rate limits for video upload endpoints?
+- Are limits per user, per app, or both?
+- How are rate limits communicated? (Headers, error codes)
+- What's the recommended backoff strategy?
+- Do limits reset at specific times or use sliding windows?
+
+### 4. Video Upload API
+- What is the complete upload flow? (Initiate -> Upload -> Publish)
+- What video formats are accepted? (MP4, MOV, etc.)
+- What are the file size limits?
+- What are the video duration limits?
+- What resolution and aspect ratios are supported?
+- Is chunked upload supported/required for large files?
+- What happens if upload times out?
+
+### 5. Video Metadata & Publishing
+- What metadata fields are required?
+- What's the character limit for captions/descriptions?
+- How do hashtags work in the API?
+- Can we set privacy levels? (Public, Friends, Private)
+- Can we schedule posts or only publish immediately?
+- Can we enable/disable comments, duet, stitch?
+- What content disclosure options exist?
+
+### 6. Known Issues & Quirks
+- What are the common error codes and their actual meanings?
+- Are there undocumented errors or edge cases?
+- What's the webhook behavior for upload completion?
+- Are there timezone issues with timestamps?
+- Do special characters in captions cause issues?
+- Are there CORS issues for client-side implementation?
+- What's the retry behavior for failed uploads?
+
+### 7. Testing & Sandbox
+- Is there a sandbox/test environment?
+- Can we test uploads without posting publicly?
+- How do we avoid hitting rate limits during development?
+- Can we delete test videos easily?
+
+### 8. Account Types & Restrictions
+- Do personal accounts have different limits than Creator accounts?
+- Are there age restrictions for accounts?
+- What regions/countries are supported?
+- Are there restrictions based on account standing?
+
+## Approach
+
+### Phase 1: Documentation Review (6 hours)
+1. Read official TikTok for Developers documentation
+2. Review OAuth 2.0 implementation guide
+3. Document all available scopes and permissions
+4. Note any ambiguities or gaps
+5. Search for known issues in developer forums
+6. Review GitHub issues in TikTok SDK repositories
+7. Check Stack Overflow for common problems
+
+### Phase 2: OAuth Implementation (8 hours)
+1. Register TikTok developer app
+2. Implement OAuth authorization flow
+3. Test with multiple TikTok accounts (personal, creator)
+4. Handle authorization success and denial cases
+5. Implement token storage securely
+6. Test token refresh mechanism
+7. Test token expiration scenarios
+8. Document complete OAuth flow with code examples
+
+### Phase 3: Token Management Testing (6 hours)
+1. Measure actual access token lifetime
+2. Test refresh token behavior
+3. Simulate expired token scenarios
+4. Test concurrent requests with same token
+5. Test token invalidation when user revokes access
+6. Implement token refresh scheduling
+7. Document best practices for token management
+
+### Phase 4: Video Upload Testing (10 hours)
+1. Test basic video upload with small file
+2. Test with various video formats (MP4, MOV, WebM)
+3. Test with different resolutions (720p, 1080p, 4K)
+4. Test with different aspect ratios (16:9, 9:16, 1:1)
+5. Test with large files near size limit
+6. Test upload progress tracking
+7. Test upload timeout scenarios
+8. Test upload retry on failure
+9. Measure actual upload times
+10. Document complete upload flow
+
+### Phase 5: Metadata & Publishing Testing (6 hours)
+1. Test caption with various lengths
+2. Test special characters and emojis in captions
+3. Test hashtags (single, multiple, with spaces)
+4. Test privacy settings (public, friends, private)
+5. Test enabling/disabling comments, duet, stitch
+6. Test without optional fields
+7. Document all metadata options and constraints
+
+### Phase 6: Error Handling (8 hours)
+1. Trigger all known error codes
+2. Document error response formats
+3. Test rate limit errors and responses
+4. Test authentication errors
+5. Test validation errors (invalid format, size, etc.)
+6. Test network timeout scenarios
+7. Create error code reference with solutions
+8. Implement robust error handling
+
+### Phase 7: Edge Cases & Quirks (6 hours)
+1. Test during high traffic times
+2. Test with recently created accounts
+3. Test with accounts that have posting restrictions
+4. Test with VPN/different regions
+5. Test rapid successive uploads
+6. Test very long running upload processes
+7. Document all discovered quirks and workarounds
+
+### Phase 8: Integration Testing (4 hours)
+1. Test complete flow: OAuth -> Upload -> Publish
+2. Test with multiple simultaneous users
+3. Test error recovery paths
+4. Test user disconnecting mid-upload
+5. Validate webhook reliability if available
+
+## Success Criteria
+
+- [ ] Working OAuth implementation with token refresh
+- [ ] Successful video upload to TikTok from our app
+- [ ] Complete documentation of all API quirks and workarounds
+- [ ] Error handling covers all known error scenarios
+- [ ] Test suite covers OAuth, upload, and publishing flows
+- [ ] Clear guidance on rate limit management
+- [ ] Known issues documented with mitigation strategies
+
+## Deliverables
+
+1. **TikTok OAuth Integration Guide** (`docs/tiktok-oauth-guide.md`)
+   - Step-by-step OAuth setup
+   - Required scopes and permissions
+   - Token management best practices
+   - Code examples in TypeScript
+   - Common pitfalls and solutions
+
+2. **TikTok API Quirks Reference** (`docs/tiktok-api-quirks.md`)
+   - Known issues and workarounds
+   - Undocumented behaviors
+   - Regional differences
+   - Account type limitations
+   - Rate limit strategies
+
+3. **Error Code Reference** (`docs/tiktok-error-codes.md`)
+   - Complete list of error codes
+   - What each error actually means
+   - How to handle each error
+   - When to retry vs fail
+   - User-friendly error messages
+
+4. **Upload Implementation** (`packages/publishing/src/providers/tiktok/`)
+   - OAuth service with token management
+   - Video upload service
+   - Error handling utilities
+   - Retry logic
+   - Progress tracking
+
+5. **Test Suite** (`packages/publishing/tests/tiktok/`)
+   - OAuth flow tests
+   - Token refresh tests
+   - Video upload tests
+   - Error scenario tests
+   - Mock API responses
+
+6. **Testing Checklist** (`docs/tiktok-testing-checklist.md`)
+   - Pre-launch testing requirements
+   - Edge cases to verify
+   - Rate limit testing procedures
+   - User acceptance test scenarios
+
+## Risks if Not Completed
+
+### Critical Risks (P0)
+- **Authentication Failures**: Users can't connect TikTok accounts
+- **Upload Failures**: Videos fail to upload, frustrating users
+- **Token Expiration**: Users get logged out unexpectedly
+- **Rate Limit Hits**: App gets throttled or blocked
+
+### High Risks (P1)
+- **Poor Error Handling**: Cryptic errors confuse users
+- **Data Loss**: Failed uploads without proper retry lose user content
+- **Account Bans**: Improper API usage gets our app flagged
+- **Regional Issues**: Feature doesn't work in certain countries
+
+### Medium Risks (P2)
+- **Performance Issues**: Slow uploads due to inefficient implementation
+- **Maintenance Burden**: Undocumented quirks cause ongoing issues
+- **User Support Load**: Users can't troubleshoot problems themselves
+- **Testing Gaps**: Edge cases discovered in production
+
+## Dependencies
+
+- TikTok Developer Account approved
+- TikTok app registered with publishing permissions
+- Test TikTok accounts (personal and creator)
+- Sample videos for upload testing
+- Webhook endpoint for testing callbacks (if available)
+
+## Follow-up Spikes
+
+This spike may reveal the need for:
+- Spike on TikTok video format optimization if requirements are strict
+- Spike on TikTok content moderation if uploads are frequently rejected
+- Spike on TikTok analytics API if we want to track published video performance
+
+## Known Issues from Community
+
+Before starting, review these commonly reported issues:
+- Token refresh can fail silently
+- Upload endpoints sometimes return success but video doesn't appear
+- Rate limits are more restrictive than documented
+- Some error codes are reused for different errors
+- Webhook callbacks can be delayed by minutes
+- Regional API differences (US vs EU vs Asia)
+- Special characters in captions can break API calls
+
+## Testing Accounts Needed
+
+- Personal TikTok account (no restrictions)
+- Creator account with existing followers
+- New account created < 24 hours ago
+- Account from different region (EU, Asia)
+- Business account (if we support later)
+
+## Notes
+
+- TikTok API is less stable than YouTube/Instagram
+- Documentation is sometimes outdated
+- Community support is limited compared to other platforms
+- API changes can happen without notice
+- Some features available in app are not in API
+- Consider fallback messaging if TikTok integration fails
+- Monitor TikTok developer forums for breaking changes
+
+## References
+
+- TikTok for Developers: https://developers.tiktok.com/
+- TikTok API Documentation: https://developers.tiktok.com/doc/
+- TikTok Login Kit: https://developers.tiktok.com/doc/login-kit-web/
+- TikTok Content Posting API: https://developers.tiktok.com/doc/content-posting-api-overview/
+- Community Forums: https://developers.tiktok.com/community/
+- GitHub TikTok API Issues: (search for tiktok-api repos)

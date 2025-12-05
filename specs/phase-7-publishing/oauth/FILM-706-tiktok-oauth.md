@@ -1,0 +1,474 @@
+# FILM-706: TikTok OAuth
+
+## Metadata
+- **Phase:** 7 - Publishing
+- **Priority:** P1 (Post-MVP)
+- **Effort:** M (4-8 hours)
+- **Dependencies:** FILM-CC-03 (OAuth Token Refresh), SPIKE-03 (TikTok OAuth Quirks)
+- **Blocks:** FILM-702 (TikTok Provider), FILM-708 (Publish Hub)
+
+---
+
+## Context
+
+TikTok uses OAuth 2.0 with some unique requirements including PKCE, specific scope naming, and a 24-hour refresh token policy. This spec covers the complete TikTok Login Kit integration for Content Posting API access.
+
+---
+
+## Specification
+
+### Requirements
+
+1. **OAuth with PKCE**: TikTok requires PKCE for mobile and recommends for web
+2. **Scope Request**: Request `video.upload` and `user.info.basic` scopes
+3. **Token Storage**: Store encrypted tokens with short expiry tracking
+4. **Refresh Token Rotation**: Handle TikTok's rotating refresh tokens
+5. **Open ID**: Retrieve TikTok open_id for user identification
+6. **Unlink Flow**: Allow users to disconnect their TikTok account
+
+### OAuth Configuration
+
+```typescript
+// packages/features/publishing/src/oauth/tiktok/config.ts
+
+export const TIKTOK_OAUTH_CONFIG = {
+  authUrl: 'https://www.tiktok.com/v2/auth/authorize/',
+  tokenUrl: 'https://open.tiktokapis.com/v2/oauth/token/',
+  revokeUrl: 'https://open.tiktokapis.com/v2/oauth/revoke/',
+  userInfoUrl: 'https://open.tiktokapis.com/v2/user/info/',
+  scopes: [
+    'user.info.basic',
+    'video.upload',
+  ],
+  // Access token expires in 24 hours
+  accessTokenExpiry: 24 * 60 * 60 * 1000,
+  // Refresh token expires in 365 days but rotates on use
+  refreshTokenExpiry: 365 * 24 * 60 * 60 * 1000,
+};
+
+export interface TikTokOAuthState {
+  accountId: string;
+  returnUrl: string;
+  codeVerifier: string;
+  nonce: string;
+}
+
+// PKCE utilities
+export function generateCodeVerifier(): string {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Buffer.from(array).toString('base64url');
+}
+
+export async function generateCodeChallenge(verifier: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return Buffer.from(digest).toString('base64url');
+}
+```
+
+### Connect Route
+
+```typescript
+// apps/web/app/api/platforms/connect/tiktok/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import {
+  TIKTOK_OAUTH_CONFIG,
+  generateCodeVerifier,
+  generateCodeChallenge,
+  TikTokOAuthState,
+} from '@kit/publishing/oauth/tiktok';
+
+export async function GET(request: NextRequest) {
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect('/auth/sign-in');
+  }
+
+  const accountId = request.nextUrl.searchParams.get('accountId');
+  const returnUrl = request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
+
+  if (!accountId) {
+    return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
+  }
+
+  // Generate PKCE values
+  const codeVerifier = generateCodeVerifier();
+  const codeChallenge = await generateCodeChallenge(codeVerifier);
+  const nonce = crypto.randomUUID();
+
+  // Store state with code verifier for token exchange
+  const state: TikTokOAuthState = { accountId, returnUrl, codeVerifier, nonce };
+  const encodedState = Buffer.from(JSON.stringify(state)).toString('base64url');
+
+  // Store state server-side (code verifier must not be in URL)
+  await client
+    .from('oauth_states')
+    .insert({
+      nonce,
+      user_id: user.id,
+      platform: 'tiktok',
+      metadata: { codeVerifier }, // Encrypted at rest
+      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+    });
+
+  const params = new URLSearchParams({
+    client_key: process.env.TIKTOK_CLIENT_KEY!,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/platforms/callback/tiktok`,
+    response_type: 'code',
+    scope: TIKTOK_OAUTH_CONFIG.scopes.join(','),
+    state: encodedState,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  });
+
+  return NextResponse.redirect(`${TIKTOK_OAUTH_CONFIG.authUrl}?${params}`);
+}
+```
+
+### Callback Route
+
+```typescript
+// apps/web/app/api/platforms/callback/tiktok/route.ts
+
+import { NextRequest, NextResponse } from 'next/server';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { TIKTOK_OAUTH_CONFIG, TikTokOAuthState } from '@kit/publishing/oauth/tiktok';
+import { encrypt } from '@kit/shared/encryption';
+
+export async function GET(request: NextRequest) {
+  const client = getSupabaseServerClient();
+  const { data: { user } } = await client.auth.getUser();
+
+  if (!user) {
+    return NextResponse.redirect('/auth/sign-in');
+  }
+
+  const code = request.nextUrl.searchParams.get('code');
+  const stateParam = request.nextUrl.searchParams.get('state');
+  const error = request.nextUrl.searchParams.get('error');
+
+  if (error) {
+    const errorDesc = request.nextUrl.searchParams.get('error_description');
+    return NextResponse.redirect(
+      `/settings/platforms?error=${encodeURIComponent(errorDesc || error)}`
+    );
+  }
+
+  if (!code || !stateParam) {
+    return NextResponse.redirect('/settings/platforms?error=missing_params');
+  }
+
+  // Decode state
+  let state: TikTokOAuthState;
+  try {
+    state = JSON.parse(Buffer.from(stateParam, 'base64url').toString());
+  } catch {
+    return NextResponse.redirect('/settings/platforms?error=invalid_state');
+  }
+
+  // Verify nonce and retrieve code verifier
+  const { data: storedState, error: stateError } = await client
+    .from('oauth_states')
+    .select('*')
+    .eq('nonce', state.nonce)
+    .eq('user_id', user.id)
+    .eq('platform', 'tiktok')
+    .gt('expires_at', new Date().toISOString())
+    .single();
+
+  if (stateError || !storedState) {
+    return NextResponse.redirect('/settings/platforms?error=state_expired');
+  }
+
+  const codeVerifier = storedState.metadata?.codeVerifier;
+
+  // Clean up used state
+  await client.from('oauth_states').delete().eq('nonce', state.nonce);
+
+  // Exchange code for tokens
+  const tokenResponse = await fetch(TIKTOK_OAUTH_CONFIG.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: process.env.TIKTOK_CLIENT_KEY!,
+      client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/platforms/callback/tiktok`,
+      code_verifier: codeVerifier,
+    }),
+  });
+
+  const tokens = await tokenResponse.json();
+
+  if (tokens.error) {
+    return NextResponse.redirect(
+      `/settings/platforms?error=${encodeURIComponent(tokens.error_description || tokens.error)}`
+    );
+  }
+
+  // Get user info
+  const userInfoResponse = await fetch(
+    `${TIKTOK_OAUTH_CONFIG.userInfoUrl}?fields=open_id,union_id,avatar_url,display_name`,
+    {
+      headers: {
+        Authorization: `Bearer ${tokens.access_token}`,
+      },
+    }
+  );
+
+  const userInfo = await userInfoResponse.json();
+  const tiktokUser = userInfo.data?.user;
+
+  if (!tiktokUser) {
+    return NextResponse.redirect('/settings/platforms?error=no_user_info');
+  }
+
+  // Calculate expiration times
+  const accessTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+  const refreshTokenExpiresAt = new Date(Date.now() + tokens.refresh_expires_in * 1000);
+
+  // Store connection
+  const { error: insertError } = await client
+    .from('platform_connections')
+    .upsert({
+      account_id: state.accountId,
+      platform: 'tiktok',
+      platform_account_id: tiktokUser.open_id,
+      platform_account_name: tiktokUser.display_name,
+      access_token_encrypted: encrypt(tokens.access_token),
+      refresh_token_encrypted: encrypt(tokens.refresh_token),
+      token_expires_at: accessTokenExpiresAt.toISOString(),
+      scopes: tokens.scope?.split(',') || TIKTOK_OAUTH_CONFIG.scopes,
+      is_active: true,
+      metadata: {
+        union_id: tiktokUser.union_id,
+        avatar_url: tiktokUser.avatar_url,
+        refresh_expires_at: refreshTokenExpiresAt.toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    }, {
+      onConflict: 'account_id,platform,platform_account_id',
+    });
+
+  if (insertError) {
+    console.error('Failed to store TikTok connection:', insertError);
+    return NextResponse.redirect('/settings/platforms?error=storage_failed');
+  }
+
+  return NextResponse.redirect(
+    `${state.returnUrl}?success=tiktok_connected&username=${encodeURIComponent(tiktokUser.display_name || '')}`
+  );
+}
+```
+
+### Token Refresh
+
+```typescript
+// packages/features/publishing/src/oauth/tiktok/refresh.ts
+
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { decrypt, encrypt } from '@kit/shared/encryption';
+import { TIKTOK_OAUTH_CONFIG } from './config';
+
+export async function refreshTikTokToken(
+  connectionId: string
+): Promise<{ accessToken: string; expiresAt: Date }> {
+  const client = getSupabaseServerClient();
+
+  const { data: connection } = await client
+    .from('platform_connections')
+    .select('*')
+    .eq('id', connectionId)
+    .eq('platform', 'tiktok')
+    .single();
+
+  if (!connection) {
+    throw new Error('Connection not found');
+  }
+
+  const refreshToken = decrypt(connection.refresh_token_encrypted);
+
+  const response = await fetch(TIKTOK_OAUTH_CONFIG.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_key: process.env.TIKTOK_CLIENT_KEY!,
+      client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    }),
+  });
+
+  const tokens = await response.json();
+
+  if (tokens.error) {
+    throw new Error(`TikTok refresh failed: ${tokens.error_description || tokens.error}`);
+  }
+
+  const accessTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
+  const refreshTokenExpiresAt = new Date(Date.now() + tokens.refresh_expires_in * 1000);
+
+  // TikTok rotates refresh tokens - must store new one
+  await client
+    .from('platform_connections')
+    .update({
+      access_token_encrypted: encrypt(tokens.access_token),
+      refresh_token_encrypted: encrypt(tokens.refresh_token), // New refresh token!
+      token_expires_at: accessTokenExpiresAt.toISOString(),
+      metadata: {
+        ...connection.metadata,
+        refresh_expires_at: refreshTokenExpiresAt.toISOString(),
+      },
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', connectionId);
+
+  return {
+    accessToken: tokens.access_token,
+    expiresAt: accessTokenExpiresAt,
+  };
+}
+```
+
+### Disconnect Action
+
+```typescript
+// packages/features/publishing/src/oauth/tiktok/disconnect.ts
+
+'use server';
+
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { decrypt } from '@kit/shared/encryption';
+import { TIKTOK_OAUTH_CONFIG } from './config';
+import { z } from 'zod';
+
+export const disconnectTikTokAction = enhanceAction(
+  async ({ connectionId }) => {
+    const client = getSupabaseServerClient();
+
+    const { data: connection } = await client
+      .from('platform_connections')
+      .select('*')
+      .eq('id', connectionId)
+      .eq('platform', 'tiktok')
+      .single();
+
+    if (!connection) {
+      throw new Error('Connection not found');
+    }
+
+    // Revoke token at TikTok
+    const accessToken = decrypt(connection.access_token_encrypted);
+    await fetch(TIKTOK_OAUTH_CONFIG.revokeUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_key: process.env.TIKTOK_CLIENT_KEY!,
+        client_secret: process.env.TIKTOK_CLIENT_SECRET!,
+        token: accessToken,
+      }),
+    });
+
+    // Delete connection
+    await client
+      .from('platform_connections')
+      .delete()
+      .eq('id', connectionId);
+
+    return { success: true };
+  },
+  {
+    schema: z.object({ connectionId: z.string().uuid() }),
+    auth: true,
+  }
+);
+```
+
+### File Changes
+
+| Action | Path |
+|--------|------|
+| CREATE | `packages/features/publishing/src/oauth/tiktok/config.ts` |
+| CREATE | `packages/features/publishing/src/oauth/tiktok/refresh.ts` |
+| CREATE | `packages/features/publishing/src/oauth/tiktok/disconnect.ts` |
+| CREATE | `packages/features/publishing/src/oauth/tiktok/index.ts` |
+| CREATE | `apps/web/app/api/platforms/connect/tiktok/route.ts` |
+| CREATE | `apps/web/app/api/platforms/callback/tiktok/route.ts` |
+
+---
+
+## Acceptance Criteria
+
+- [ ] Connect button redirects to TikTok authorization page
+- [ ] PKCE code challenge is properly generated
+- [ ] Callback exchanges code for tokens with code verifier
+- [ ] User info (open_id, display_name) is retrieved and stored
+- [ ] Tokens are encrypted before storage
+- [ ] Refresh token rotation is handled correctly
+- [ ] Token refresh updates both access and refresh tokens
+- [ ] Disconnect revokes token at TikTok
+- [ ] State/nonce prevents CSRF attacks
+
+---
+
+## Test Plan
+
+### Unit Tests
+- [ ] Test PKCE code verifier generation
+- [ ] Test code challenge generation
+- [ ] Test state encoding/decoding
+
+### Integration Tests
+- [ ] Test OAuth flow with mocked TikTok endpoints
+- [ ] Test token refresh with rotation
+- [ ] Test disconnect flow
+
+---
+
+## Security Considerations
+
+- PKCE prevents authorization code interception
+- Code verifier stored server-side, never in URL
+- State parameter prevents CSRF
+- Tokens encrypted at rest
+- Refresh tokens rotated on each use
+- Revocation on disconnect
+
+---
+
+## TikTok-Specific Quirks
+
+1. **PKCE Required**: While optional for web, TikTok recommends PKCE
+2. **Refresh Token Rotation**: New refresh token issued on each refresh
+3. **Short Access Token**: Only 24-hour validity
+4. **Scope Format**: Comma-separated, not space-separated
+5. **User ID Types**: `open_id` (app-specific) vs `union_id` (cross-app)
+
+---
+
+## Error Handling
+
+| Error | Handling |
+|-------|----------|
+| `access_denied` | User cancelled authorization |
+| `invalid_grant` | Code expired or already used |
+| `invalid_scope` | App not approved for requested scopes |
+| `spam_risk_user_banned` | User account suspended |
+| Refresh token expired | Mark connection inactive, notify user |
+
+---
+
+## Open Questions
+
+- [ ] Should we support TikTok for Business accounts? (post-MVP)
+- [ ] Should we use union_id for cross-app identification? (future)

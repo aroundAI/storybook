@@ -1,0 +1,337 @@
+# FILM-309: Story Ideation Component
+
+**Phase**: 3
+**Priority**: P0
+**Effort**: M (3-5 days)
+**Dependencies**: FILM-308 (story-studio)
+**Blocks**: None
+
+---
+
+## Context
+
+The Story Ideation component provides the initial step in the content creation pipeline, allowing users to input a premise and generate multiple story concepts. It displays a form for premise entry with genre/style options, triggers story idea generation, displays generated ideas in cards, and allows users to select an idea to advance to full story generation.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Premise Input Form**
+   - Text area for premise (10-500 chars)
+   - Genre dropdown (sci-fi, fantasy, drama, comedy, thriller, etc.)
+   - Target audience select (children, young adult, adult)
+   - Style select (natural, dramatic, comedic)
+   - Number of ideas slider (1-5, default 3)
+
+2. **Generation Trigger**
+   - "Generate Ideas" button
+   - Loading state during generation
+   - Disable form during generation
+   - Display estimated time (10-15 seconds)
+
+3. **Ideas Display**
+   - Show ideas in card grid (1-2 columns responsive)
+   - Display title, logline, themes, hook, visual potential
+   - "Select This Idea" button on each card
+   - Highlight selected idea
+   - Allow reselection
+
+4. **Actions**
+   - "Generate More Ideas" button (regenerate with same premise)
+   - "Start Over" button (clear and restart)
+   - "Continue with Selected Idea" button (advance to story generation)
+
+---
+
+## Interface
+
+```typescript
+'use client';
+
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { Button } from '@kit/ui/button';
+import { Form, FormField, FormItem, FormLabel, FormControl } from '@kit/ui/form';
+import { Textarea } from '@kit/ui/textarea';
+import { Select } from '@kit/ui/select';
+import { Slider } from '@kit/ui/slider';
+import { Card } from '@kit/ui/card';
+import { toast } from '@kit/ui/sonner';
+import { generateStoryIdeasAction } from '../lib/server/mutations/story-actions';
+
+const FormSchema = z.object({
+  premise: z.string().min(10).max(500),
+  genre: z.string().optional(),
+  targetAudience: z.string().optional(),
+  style: z.string().optional(),
+  numberOfIdeas: z.number().min(1).max(5).default(3),
+});
+
+interface StoryIdeationProps {
+  episodeId: string;
+  projectId: string;
+  onComplete: (selectedIdea: StoryIdea) => void;
+}
+
+interface StoryIdea {
+  title: string;
+  logline: string;
+  themes: string[];
+  hook: string;
+  visualPotential: string;
+}
+
+export function StoryIdeation({ episodeId, projectId, onComplete }: StoryIdeationProps) {
+  const [ideas, setIdeas] = useState<StoryIdea[]>([]);
+  const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
+
+  const form = useForm({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      premise: '',
+      genre: 'general',
+      targetAudience: 'general',
+      style: 'balanced',
+      numberOfIdeas: 3,
+    },
+  });
+
+  const generateMutation = useMutation({
+    mutationFn: generateStoryIdeasAction,
+    onSuccess: (data) => {
+      setIdeas(data.ideas);
+      toast.success(`Generated ${data.ideas.length} story ideas`);
+    },
+    onError: (error) => {
+      toast.error('Failed to generate ideas');
+      console.error(error);
+    },
+  });
+
+  const handleGenerate = form.handleSubmit((data) => {
+    generateMutation.mutate(data);
+  });
+
+  const handleSelectIdea = (idea: StoryIdea) => {
+    setSelectedIdea(idea);
+  };
+
+  const handleContinue = () => {
+    if (selectedIdea) {
+      onComplete(selectedIdea);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="prose dark:prose-invert max-w-none">
+        <h3>Story Ideation</h3>
+        <p>Enter a premise to generate multiple story concepts. Select your favorite to develop into a full narrative.</p>
+      </div>
+
+      <Form {...form}>
+        <form onSubmit={handleGenerate} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="premise"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Premise *</FormLabel>
+                <FormControl>
+                  <Textarea
+                    {...field}
+                    placeholder="e.g., A robot discovers emotions for the first time"
+                    rows={3}
+                    disabled={generateMutation.isPending}
+                  />
+                </FormControl>
+                <p className="text-xs text-muted-foreground">
+                  {field.value.length}/500 characters
+                </p>
+              </FormItem>
+            )}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <FormField
+              control={form.control}
+              name="genre"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Genre</FormLabel>
+                  <Select {...field}>
+                    <option value="general">General</option>
+                    <option value="sci-fi">Sci-Fi</option>
+                    <option value="fantasy">Fantasy</option>
+                    <option value="drama">Drama</option>
+                    <option value="comedy">Comedy</option>
+                    <option value="thriller">Thriller</option>
+                  </Select>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="targetAudience"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target Audience</FormLabel>
+                  <Select {...field}>
+                    <option value="general">General</option>
+                    <option value="children">Children</option>
+                    <option value="young-adult">Young Adult</option>
+                    <option value="adult">Adult</option>
+                  </Select>
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="style"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Style</FormLabel>
+                  <Select {...field}>
+                    <option value="balanced">Balanced</option>
+                    <option value="dramatic">Dramatic</option>
+                    <option value="comedic">Comedic</option>
+                    <option value="suspenseful">Suspenseful</option>
+                  </Select>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="numberOfIdeas"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Number of Ideas: {field.value}</FormLabel>
+                <FormControl>
+                  <Slider
+                    value={[field.value]}
+                    onValueChange={([value]) => field.onChange(value)}
+                    min={1}
+                    max={5}
+                    step={1}
+                  />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type="submit"
+            disabled={generateMutation.isPending}
+            className="w-full md:w-auto"
+          >
+            {generateMutation.isPending ? 'Generating Ideas...' : 'Generate Ideas'}
+          </Button>
+        </form>
+      </Form>
+
+      {ideas.length > 0 && (
+        <div className="space-y-4">
+          <h4 className="font-semibold">Select a Story Idea</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {ideas.map((idea, index) => (
+              <IdeaCard
+                key={index}
+                idea={idea}
+                isSelected={selectedIdea === idea}
+                onSelect={() => handleSelectIdea(idea)}
+              />
+            ))}
+          </div>
+
+          {selectedIdea && (
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setSelectedIdea(null)}>
+                Clear Selection
+              </Button>
+              <Button onClick={handleContinue}>
+                Continue with Selected Idea
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IdeaCard({ idea, isSelected, onSelect }: {
+  idea: StoryIdea;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <Card
+      className={`p-4 cursor-pointer transition-all ${
+        isSelected ? 'ring-2 ring-primary' : 'hover:shadow-md'
+      }`}
+      onClick={onSelect}
+    >
+      <h5 className="font-semibold mb-2">{idea.title}</h5>
+      <p className="text-sm text-muted-foreground mb-3">{idea.logline}</p>
+      <div className="space-y-2 text-sm">
+        <div>
+          <span className="font-medium">Themes:</span>{' '}
+          {idea.themes.join(', ')}
+        </div>
+        <div>
+          <span className="font-medium">Hook:</span> {idea.hook}
+        </div>
+        <div>
+          <span className="font-medium">Visual Potential:</span>{' '}
+          {idea.visualPotential}
+        </div>
+      </div>
+      <Button
+        variant={isSelected ? 'default' : 'outline'}
+        size="sm"
+        className="w-full mt-4"
+      >
+        {isSelected ? 'Selected' : 'Select This Idea'}
+      </Button>
+    </Card>
+  );
+}
+```
+
+---
+
+## File Changes
+
+### New Files
+
+1. **packages/features/episodes/src/components/StoryIdeation.tsx** (CREATE THIS)
+2. **packages/features/episodes/src/components/IdeaCard.tsx** (CREATE THIS)
+
+---
+
+## Acceptance Criteria
+
+- [ ] Premise input validates 10-500 characters
+- [ ] Genre, audience, style dropdowns work
+- [ ] Number of ideas slider works (1-5)
+- [ ] Generate button disabled during generation
+- [ ] Ideas display in responsive card grid
+- [ ] Idea cards highlight on selection
+- [ ] Continue button only enabled when idea selected
+- [ ] Toast notifications on success/error
+
+---
+
+## References
+
+- **FILM-305**: Story generation
+- **FILM-308**: Story Studio

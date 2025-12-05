@@ -1,0 +1,1002 @@
+# FILM-301: Episode CRUD Server Actions
+
+**Phase**: 3
+**Priority**: P0
+**Effort**: M (3-5 days)
+**Dependencies**: FILM-101b (episodes table)
+**Blocks**: FILM-305, FILM-306, FILM-308, FILM-312
+
+---
+
+## Context
+
+The Episode Management system requires server-side actions to handle CRUD operations for episodes. These actions serve as the foundation for the story generation pipeline, enabling users to create episodes, manage their lifecycle through multiple workflow states (draft → story → storyboard → generating → editing → ready → published), and coordinate with shots and seasons.
+
+Episodes are the core content unit in the film studio. Each episode includes story data, screenplay data, and shot lists stored as JSONB. The system must support soft deletes to preserve historical data and optimistic locking (version column) to prevent concurrent edit conflicts during collaborative editing.
+
+---
+
+## Requirements
+
+### Functional Requirements
+
+1. **Create Episode**
+   - Accept episode data (project_id, season_id, title, number, description)
+   - Validate user has write access to project
+   - Initialize episode in 'draft' status
+   - Auto-assign episode number if not provided
+   - Return created episode with all fields
+
+2. **Get Episode with Shots**
+   - Fetch single episode by ID
+   - Include all related shots (ordered by sequence)
+   - Include season information if present
+   - Return complete episode data including JSONB fields
+   - Validate user has read access
+
+3. **Update Episode Status**
+   - Accept episode ID and new status
+   - Validate status transition is valid (workflow enforcement)
+   - Update status and updated_at timestamp
+   - Increment version for optimistic locking
+   - Return updated episode
+
+4. **List Project Episodes**
+   - Fetch all episodes for a project
+   - Support filtering by season_id
+   - Support filtering by status
+   - Support pagination (limit/offset)
+   - Order by episode number
+   - Include soft delete filtering (exclude deleted_at IS NOT NULL)
+
+5. **Update Episode**
+   - Accept partial episode updates
+   - Update story_data, screenplay_data, or shot_list
+   - Update metadata
+   - Validate user has write access
+   - Increment version for optimistic locking
+   - Return updated episode
+
+6. **Delete Episode**
+   - Soft delete (set deleted_at timestamp)
+   - Validate user has write access
+   - Cascade delete to all related shots (soft delete)
+   - Return success confirmation
+
+### Non-Functional Requirements
+
+- All actions must complete within 3 seconds (except bulk operations)
+- Actions must be idempotent where possible
+- Must enforce RLS policies via Supabase client
+- Must log errors with context for debugging
+- Must validate all inputs with Zod schemas
+- Must handle optimistic locking conflicts gracefully
+
+---
+
+## Interface
+
+### TypeScript Types
+
+```typescript
+// Zod Schemas
+import { z } from 'zod';
+
+export const EpisodeStatusSchema = z.enum([
+  'draft',
+  'story',
+  'storyboard',
+  'generating',
+  'editing',
+  'ready',
+  'published'
+]);
+
+export const CreateEpisodeSchema = z.object({
+  projectId: z.string().uuid(),
+  seasonId: z.string().uuid().optional(),
+  number: z.number().int().positive().optional(),
+  title: z.string().min(1).max(255),
+  description: z.string().max(2000).optional(),
+});
+
+export const GetEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
+});
+
+export const UpdateEpisodeStatusSchema = z.object({
+  episodeId: z.string().uuid(),
+  status: EpisodeStatusSchema,
+  version: z.number().int().positive(),
+});
+
+export const ListProjectEpisodesSchema = z.object({
+  projectId: z.string().uuid(),
+  seasonId: z.string().uuid().optional(),
+  status: EpisodeStatusSchema.optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+  offset: z.number().int().min(0).default(0),
+});
+
+export const UpdateEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
+  version: z.number().int().positive(),
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().max(2000).optional(),
+  storyData: z.object({
+    premise: z.string(),
+    fullStory: z.string(),
+    generatedAt: z.string().datetime(),
+    approvedAt: z.string().datetime().optional(),
+    generatedBy: z.object({
+      model: z.string(),
+      provider: z.string(),
+      costCents: z.number(),
+    }),
+  }).optional(),
+  screenplayData: z.object({
+    scenes: z.array(z.object({
+      number: z.number(),
+      location: z.string(),
+      timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']),
+      description: z.string(),
+      duration: z.number(),
+    })),
+    dialogue: z.array(z.object({
+      sceneNumber: z.number(),
+      characterName: z.string(),
+      text: z.string(),
+      emotion: z.string().optional(),
+    })),
+    generatedAt: z.string().datetime(),
+    approvedAt: z.string().datetime().optional(),
+    generatedBy: z.object({
+      model: z.string(),
+      provider: z.string(),
+      costCents: z.number(),
+    }),
+  }).optional(),
+  shotList: z.object({
+    shots: z.array(z.object({
+      sequenceNumber: z.number(),
+      sceneNumber: z.number(),
+      duration: z.number(),
+      sceneDescription: z.string(),
+      actionDescription: z.string(),
+      prompt: z.string(),
+      cameraDirection: z.string(),
+      characters: z.array(z.string()),
+    })),
+    generatedAt: z.string().datetime(),
+    approvedAt: z.string().datetime().optional(),
+    totalEstimatedDuration: z.number(),
+  }).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+export const DeleteEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
+});
+
+// Return Types
+export interface Episode {
+  id: string;
+  projectId: string;
+  seasonId: string | null;
+  number: number;
+  title: string;
+  description: string | null;
+  status: 'draft' | 'story' | 'storyboard' | 'generating' | 'editing' | 'ready' | 'published';
+  durationSeconds: number | null;
+  thumbnailUrl: string | null;
+  finalVideoUrl: string | null;
+  storyData: StoryData | null;
+  screenplayData: ScreenplayData | null;
+  shotList: ShotList | null;
+  metadata: Record<string, unknown>;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt: string | null;
+}
+
+export interface StoryData {
+  premise: string;
+  fullStory: string;
+  generatedAt: string;
+  approvedAt?: string;
+  generatedBy: {
+    model: string;
+    provider: string;
+    costCents: number;
+  };
+}
+
+export interface ScreenplayData {
+  scenes: Scene[];
+  dialogue: DialogueLine[];
+  generatedAt: string;
+  approvedAt?: string;
+  generatedBy: {
+    model: string;
+    provider: string;
+    costCents: number;
+  };
+}
+
+export interface Scene {
+  number: number;
+  location: string;
+  timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+  description: string;
+  duration: number;
+}
+
+export interface DialogueLine {
+  sceneNumber: number;
+  characterName: string;
+  text: string;
+  emotion?: string;
+}
+
+export interface ShotList {
+  shots: ShotDefinition[];
+  generatedAt: string;
+  approvedAt?: string;
+  totalEstimatedDuration: number;
+}
+
+export interface ShotDefinition {
+  sequenceNumber: number;
+  sceneNumber: number;
+  duration: number;
+  sceneDescription: string;
+  actionDescription: string;
+  prompt: string;
+  cameraDirection: string;
+  characters: string[];
+}
+
+export interface EpisodeWithShots extends Episode {
+  shots: Shot[];
+  season: {
+    id: string;
+    title: string;
+    number: number;
+  } | null;
+}
+
+export interface Shot {
+  id: string;
+  episodeId: string;
+  sceneNumber: number;
+  shotNumber: number;
+  sequenceNumber: number;
+  description: string;
+  prompt: string;
+  durationSeconds: number;
+  status: string;
+  videoUrl: string | null;
+  thumbnailUrl: string | null;
+  cameraDirection: string | null;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ListEpisodesResponse {
+  episodes: Episode[];
+  total: number;
+  hasMore: boolean;
+}
+
+export interface DeleteEpisodeResponse {
+  success: boolean;
+  episodeId: string;
+}
+```
+
+### Server Actions
+
+```typescript
+'use server';
+
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import {
+  CreateEpisodeSchema,
+  GetEpisodeSchema,
+  UpdateEpisodeStatusSchema,
+  ListProjectEpisodesSchema,
+  UpdateEpisodeSchema,
+  DeleteEpisodeSchema,
+} from '../schemas/episode.schema';
+
+/**
+ * Creates a new episode for a project
+ * @throws {Error} If user lacks project access or validation fails
+ */
+export const createEpisodeAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // Auto-assign episode number if not provided
+    let episodeNumber = data.number;
+    if (!episodeNumber) {
+      const { data: existingEpisodes } = await client
+        .from('episodes')
+        .select('number')
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
+    }
+
+    // Insert episode
+    const { data: episode, error } = await client
+      .from('episodes')
+      .insert({
+        project_id: data.projectId,
+        season_id: data.seasonId ?? null,
+        number: episodeNumber,
+        title: data.title,
+        description: data.description ?? null,
+        status: 'draft',
+        metadata: {},
+        version: 1,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return episode;
+  },
+  { schema: CreateEpisodeSchema, auth: true }
+);
+
+/**
+ * Fetches a single episode with all related shots
+ * @throws {Error} If user lacks access or episode not found
+ */
+export const getEpisodeWithShotsAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // Fetch episode with season info
+    const { data: episode, error: episodeError } = await client
+      .from('episodes')
+      .select(`
+        *,
+        season:seasons(id, title, number)
+      `)
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (episodeError) throw episodeError;
+
+    // Fetch related shots
+    const { data: shots, error: shotsError } = await client
+      .from('shots')
+      .select('*')
+      .eq('episode_id', data.episodeId)
+      .is('deleted_at', null)
+      .order('sequence_number', { ascending: true });
+
+    if (shotsError) throw shotsError;
+
+    return {
+      ...episode,
+      shots: shots ?? [],
+    };
+  },
+  { schema: GetEpisodeSchema, auth: true }
+);
+
+/**
+ * Updates an episode's workflow status
+ * @throws {Error} If user lacks access, episode not found, or version mismatch
+ */
+export const updateEpisodeStatusAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // Validate status transition (workflow enforcement)
+    const validTransitions: Record<string, string[]> = {
+      draft: ['story'],
+      story: ['draft', 'storyboard'],
+      storyboard: ['story', 'generating'],
+      generating: ['storyboard', 'editing'],
+      editing: ['generating', 'ready'],
+      ready: ['editing', 'published'],
+      published: ['ready'],
+    };
+
+    const { data: currentEpisode } = await client
+      .from('episodes')
+      .select('status, version')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (!currentEpisode) {
+      throw new Error('Episode not found');
+    }
+
+    if (currentEpisode.version !== data.version) {
+      throw new Error('OPTIMISTIC_LOCK_ERROR: Episode was modified by another user');
+    }
+
+    const allowedStatuses = validTransitions[currentEpisode.status];
+    if (!allowedStatuses?.includes(data.status)) {
+      throw new Error(
+        `Invalid status transition from ${currentEpisode.status} to ${data.status}`
+      );
+    }
+
+    // Update status
+    const { data: episode, error } = await client
+      .from('episodes')
+      .update({
+        status: data.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.episodeId)
+      .eq('version', data.version)
+      .is('deleted_at', null)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!episode) throw new Error('OPTIMISTIC_LOCK_ERROR: Version mismatch');
+
+    return episode;
+  },
+  { schema: UpdateEpisodeStatusSchema, auth: true }
+);
+
+/**
+ * Lists all episodes for a project with filtering and pagination
+ * @throws {Error} If user lacks project access
+ */
+export const listProjectEpisodesAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // Build query
+    let query = client
+      .from('episodes')
+      .select('*', { count: 'exact' })
+      .eq('project_id', data.projectId)
+      .is('deleted_at', null)
+      .order('number', { ascending: true })
+      .range(data.offset, data.offset + data.limit - 1);
+
+    // Apply filters
+    if (data.seasonId) {
+      query = query.eq('season_id', data.seasonId);
+    }
+
+    if (data.status) {
+      query = query.eq('status', data.status);
+    }
+
+    const { data: episodes, error, count } = await query;
+
+    if (error) throw error;
+
+    return {
+      episodes: episodes ?? [],
+      total: count ?? 0,
+      hasMore: (count ?? 0) > data.offset + data.limit,
+    };
+  },
+  { schema: ListProjectEpisodesSchema, auth: true }
+);
+
+/**
+ * Updates an episode with partial data
+ * @throws {Error} If user lacks access, episode not found, or version mismatch
+ */
+export const updateEpisodeAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    // Verify version
+    const { data: currentEpisode } = await client
+      .from('episodes')
+      .select('version')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (!currentEpisode) {
+      throw new Error('Episode not found');
+    }
+
+    if (currentEpisode.version !== data.version) {
+      throw new Error('OPTIMISTIC_LOCK_ERROR: Episode was modified by another user');
+    }
+
+    // Build update object (only include provided fields)
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (data.title !== undefined) updates.title = data.title;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.storyData !== undefined) updates.story_data = data.storyData;
+    if (data.screenplayData !== undefined) updates.screenplay_data = data.screenplayData;
+    if (data.shotList !== undefined) updates.shot_list = data.shotList;
+    if (data.metadata !== undefined) updates.metadata = data.metadata;
+
+    const { data: episode, error } = await client
+      .from('episodes')
+      .update(updates)
+      .eq('id', data.episodeId)
+      .eq('version', data.version)
+      .is('deleted_at', null)
+      .select()
+      .single();
+
+    if (error) throw error;
+    if (!episode) throw new Error('OPTIMISTIC_LOCK_ERROR: Version mismatch');
+
+    return episode;
+  },
+  { schema: UpdateEpisodeSchema, auth: true }
+);
+
+/**
+ * Soft deletes an episode and all related shots
+ * @throws {Error} If user lacks access or episode not found
+ */
+export const deleteEpisodeAction = enhanceAction(
+  async (data, user) => {
+    const client = getSupabaseServerClient();
+
+    const now = new Date().toISOString();
+
+    // Soft delete episode
+    const { error: episodeError } = await client
+      .from('episodes')
+      .update({ deleted_at: now })
+      .eq('id', data.episodeId)
+      .is('deleted_at', null);
+
+    if (episodeError) throw episodeError;
+
+    // Soft delete all related shots
+    const { error: shotsError } = await client
+      .from('shots')
+      .update({ deleted_at: now })
+      .eq('episode_id', data.episodeId)
+      .is('deleted_at', null);
+
+    if (shotsError) throw shotsError;
+
+    return {
+      success: true,
+      episodeId: data.episodeId,
+    };
+  },
+  { schema: DeleteEpisodeSchema, auth: true }
+);
+```
+
+---
+
+## Implementation Details
+
+### File Structure
+
+```
+packages/features/episodes/src/
+├── lib/
+│   ├── schemas/
+│   │   └── episode.schema.ts         # Zod schemas (CREATE THIS)
+│   └── server/
+│       ├── mutations/
+│       │   └── episode-actions.ts     # CRUD actions (CREATE THIS)
+│       └── queries/
+│           └── episode-queries.ts     # Read-only queries (CREATE THIS)
+└── types/
+    └── episode.types.ts               # TypeScript interfaces (CREATE THIS)
+```
+
+### Status Workflow
+
+Valid status transitions:
+
+```
+draft → story
+story → draft | storyboard
+storyboard → story | generating
+generating → storyboard | editing
+editing → generating | ready
+ready → editing | published
+published → ready
+```
+
+Workflow enforcement prevents invalid transitions (e.g., cannot go directly from 'draft' to 'published').
+
+### Optimistic Locking
+
+Episodes use optimistic locking to prevent concurrent edit conflicts:
+
+1. Client reads episode with version number
+2. Client makes changes locally
+3. Client submits update with original version number
+4. Server checks if current version matches
+5. If mismatch, throw OPTIMISTIC_LOCK_ERROR
+6. If match, update and increment version
+
+### Error Handling
+
+| Error Condition | Error Code | User Message | HTTP Status |
+|----------------|------------|--------------|-------------|
+| Invalid UUID | VALIDATION_ERROR | "Invalid episode ID format" | 400 |
+| Episode not found | NOT_FOUND | "Episode not found" | 404 |
+| No project access | FORBIDDEN | "You don't have access to this project" | 403 |
+| Invalid status transition | CONFLICT | "Invalid status transition" | 409 |
+| Version mismatch | OPTIMISTIC_LOCK_ERROR | "Episode was modified by another user" | 409 |
+| Database error | INTERNAL_ERROR | "Failed to perform operation" | 500 |
+
+### Validation Rules
+
+- **title**: 1-255 characters, required
+- **description**: Max 2000 characters, optional
+- **number**: Positive integer, auto-assigned if not provided
+- **status**: Must be valid enum value
+- **projectId**: Valid UUID, required
+- **seasonId**: Valid UUID, optional
+- **version**: Positive integer, required for updates
+- **limit**: 1-100, default 50
+- **offset**: >= 0, default 0
+
+---
+
+## File Changes
+
+### New Files
+
+1. **packages/features/episodes/src/lib/schemas/episode.schema.ts**
+   - Export all Zod schemas
+   - Include type inference helpers
+   - Add JSDoc comments
+
+2. **packages/features/episodes/src/lib/server/mutations/episode-actions.ts**
+   - Implement all CRUD actions
+   - Use enhanceAction wrapper
+   - Include comprehensive error handling
+   - Implement optimistic locking
+
+3. **packages/features/episodes/src/lib/server/queries/episode-queries.ts**
+   - Helper functions for read operations
+   - Reusable query builders
+   - Type-safe return values
+
+4. **packages/features/episodes/src/types/episode.types.ts**
+   - Export Episode interface
+   - Export all response types
+   - Mirror database types
+
+### Modified Files
+
+None (new feature)
+
+---
+
+## Acceptance Criteria
+
+### Functional
+
+- [ ] `createEpisodeAction` successfully creates episode with valid data
+- [ ] `createEpisodeAction` auto-assigns episode number if not provided
+- [ ] `createEpisodeAction` respects RLS (cannot create for inaccessible project)
+- [ ] `getEpisodeWithShotsAction` returns episode with all related shots
+- [ ] `getEpisodeWithShotsAction` includes season information
+- [ ] `updateEpisodeStatusAction` enforces valid status transitions
+- [ ] `updateEpisodeStatusAction` throws error on version mismatch
+- [ ] `updateEpisodeStatusAction` increments version on success
+- [ ] `listProjectEpisodesAction` returns all non-deleted episodes
+- [ ] `listProjectEpisodesAction` filters by season and status
+- [ ] `listProjectEpisodesAction` respects pagination
+- [ ] `updateEpisodeAction` updates only provided fields
+- [ ] `updateEpisodeAction` validates version for optimistic locking
+- [ ] `deleteEpisodeAction` soft deletes episode and all shots
+- [ ] All actions enforce authentication
+
+### Non-Functional
+
+- [ ] All actions complete within 3 seconds
+- [ ] All inputs validated with Zod schemas
+- [ ] All database errors properly caught and thrown
+- [ ] TypeScript compiles without errors
+- [ ] No ESLint warnings
+
+---
+
+## Test Plan
+
+### Unit Tests
+
+**File**: `packages/features/episodes/src/lib/server/mutations/__tests__/episode-actions.test.ts`
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  createEpisodeAction,
+  getEpisodeWithShotsAction,
+  updateEpisodeStatusAction,
+  listProjectEpisodesAction,
+  updateEpisodeAction,
+  deleteEpisodeAction,
+} from '../episode-actions';
+
+// Mock Supabase client
+vi.mock('@kit/supabase/server-client');
+
+describe('Episode CRUD Actions', () => {
+  describe('createEpisodeAction', () => {
+    it('should create episode with valid data', async () => {
+      // Test implementation
+    });
+
+    it('should auto-assign episode number', async () => {
+      // Test implementation
+    });
+
+    it('should enforce authentication', async () => {
+      // Test implementation
+    });
+  });
+
+  describe('getEpisodeWithShotsAction', () => {
+    it('should return episode with shots', async () => {
+      // Test implementation
+    });
+
+    it('should include season information', async () => {
+      // Test implementation
+    });
+
+    it('should exclude deleted shots', async () => {
+      // Test implementation
+    });
+  });
+
+  describe('updateEpisodeStatusAction', () => {
+    it('should update status with valid transition', async () => {
+      // Test implementation
+    });
+
+    it('should reject invalid status transition', async () => {
+      // Test implementation
+    });
+
+    it('should throw error on version mismatch', async () => {
+      // Test implementation
+    });
+
+    it('should increment version on success', async () => {
+      // Test implementation
+    });
+  });
+
+  describe('listProjectEpisodesAction', () => {
+    it('should return all project episodes', async () => {
+      // Test implementation
+    });
+
+    it('should filter by season', async () => {
+      // Test implementation
+    });
+
+    it('should filter by status', async () => {
+      // Test implementation
+    });
+
+    it('should respect pagination', async () => {
+      // Test implementation
+    });
+  });
+
+  describe('updateEpisodeAction', () => {
+    it('should update only provided fields', async () => {
+      // Test implementation
+    });
+
+    it('should validate version', async () => {
+      // Test implementation
+    });
+
+    it('should update JSONB fields', async () => {
+      // Test implementation
+    });
+  });
+
+  describe('deleteEpisodeAction', () => {
+    it('should soft delete episode', async () => {
+      // Test implementation
+    });
+
+    it('should cascade delete to shots', async () => {
+      // Test implementation
+    });
+  });
+});
+```
+
+### Integration Tests
+
+**File**: `apps/web/__tests__/integration/episode-crud.test.ts`
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { createClient } from '@supabase/supabase-js';
+
+describe('Episode CRUD Integration', () => {
+  it('should complete full CRUD lifecycle', async () => {
+    // 1. Create episode
+    // 2. Read episode with shots
+    // 3. Update episode status
+    // 4. Update episode data
+    // 5. Delete episode
+    // 6. Verify soft delete
+  });
+
+  it('should enforce optimistic locking', async () => {
+    // Simulate concurrent edits
+    // Verify version conflict detection
+  });
+
+  it('should enforce status workflow', async () => {
+    // Try invalid status transitions
+    // Verify errors
+  });
+});
+```
+
+### Manual Testing
+
+1. **Create Episode**
+   - Open Supabase Studio
+   - Execute: `SELECT * FROM episodes WHERE id = '<new-episode-id>'`
+   - Verify all fields populated correctly
+   - Verify version = 1
+
+2. **Update Status**
+   - Create episode in 'draft' status
+   - Update to 'story' (valid)
+   - Try updating to 'published' (invalid - should fail)
+   - Verify error message
+
+3. **Optimistic Locking**
+   - Open episode in two browser tabs
+   - Edit in tab 1, save
+   - Edit in tab 2, save
+   - Verify tab 2 shows version conflict error
+
+4. **Delete Episode**
+   - Create episode with shots
+   - Delete episode
+   - Verify deleted_at set on episode and all shots
+
+---
+
+## Security Considerations
+
+### Authentication
+
+- All actions require authenticated user via `auth: true`
+- User identity retrieved from session token
+- No direct user ID parameters accepted
+
+### Authorization
+
+- RLS policies enforce project-level access control
+- Helper functions verify team membership
+- Write operations require explicit write access
+
+### Input Validation
+
+- All inputs validated with Zod schemas
+- UUID format validated for IDs
+- JSONB data validated with nested schemas
+- Status enum strictly validated
+
+### SQL Injection Prevention
+
+- Supabase client uses parameterized queries
+- No raw SQL string concatenation
+- All inputs properly escaped
+
+### Optimistic Locking
+
+- Version column prevents lost updates
+- Concurrent edits detected and rejected
+- User-friendly error messages
+
+### Rate Limiting
+
+Consider adding rate limiting in future iteration:
+- Max 100 episode creations per hour per user
+- Max 1000 reads per hour per user
+
+---
+
+## Performance Considerations
+
+### Database Indexes
+
+Verify the following indexes exist (from FILM-101b):
+
+```sql
+CREATE INDEX idx_episodes_project_status ON episodes(project_id, status)
+  WHERE deleted_at IS NULL;
+
+CREATE INDEX idx_episodes_season ON episodes(season_id)
+  WHERE deleted_at IS NULL;
+```
+
+### Query Optimization
+
+- Use `.select()` to specify columns (avoid SELECT * for large JSONB)
+- Implement cursor-based pagination for large datasets (future)
+- Cache episode counts with React Query
+
+### Caching Strategy
+
+```typescript
+// Client-side React Query cache
+const queryClient = useQueryClient();
+
+// Cache episodes for 2 minutes
+const { data } = useQuery({
+  queryKey: ['episodes', projectId, seasonId, status],
+  queryFn: () => listProjectEpisodesAction({ projectId, seasonId, status }),
+  staleTime: 2 * 60 * 1000,
+});
+
+// Invalidate cache after mutations
+await createEpisodeAction(data);
+queryClient.invalidateQueries({ queryKey: ['episodes', projectId] });
+```
+
+---
+
+## Future Enhancements
+
+1. **Batch Operations**
+   - `bulkCreateEpisodesAction` for importing multiple episodes
+   - `bulkUpdateEpisodesAction` for mass updates
+
+2. **Episode Duplication**
+   - `duplicateEpisodeAction` to clone existing episodes
+
+3. **Episode Search**
+   - Full-text search on title and description
+   - Search within story_data and screenplay_data
+
+4. **Episode History**
+   - Track all changes to episodes
+   - Implement audit log table
+   - Version history viewer
+
+5. **Episode Templates**
+   - Predefined episode templates
+   - Template marketplace
+
+---
+
+## References
+
+- **FILM-101b**: Episodes table schema
+- **Constitution**: Section 2.2 (Server Actions Pattern)
+- **Constitution**: Section 3 (Database Conventions)
+- **Constitution**: Section 4.1 (RLS Policies)
+- **Constitution**: Section 5 (Error Handling)
+- **Next.js Actions**: https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions-and-mutations

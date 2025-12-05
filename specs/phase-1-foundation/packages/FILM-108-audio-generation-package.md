@@ -1,0 +1,490 @@
+# FILM-108 @kit/audio-generation Package
+
+## Metadata
+- **Phase:** 1
+- **Priority:** P0
+- **Effort:** S
+- **Dependencies:** None
+- **Blocks:** Phase 5 (Audio Generation)
+
+## Context
+The @kit/audio-generation package provides the abstraction layer for audio generation services including ElevenLabs for voice synthesis and Suno for music generation. It handles API integration, voice management, music generation, and audio processing. This package enables dialogue, voiceovers, and background music for the Film Studio.
+
+## Specification
+
+### Package Structure
+```
+packages/features/audio-generation/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── index.ts
+    ├── components/
+    │   └── index.ts
+    ├── server/
+    │   ├── index.ts
+    │   ├── actions.ts
+    │   └── queries.ts
+    ├── providers/
+    │   ├── index.ts
+    │   ├── elevenlabs.ts
+    │   ├── suno.ts
+    │   └── base.ts
+    ├── lib/
+    │   ├── index.ts
+    │   ├── types.ts
+    │   ├── schemas.ts
+    │   └── constants.ts
+    └── hooks/
+        └── index.ts
+```
+
+### package.json
+```json
+{
+  "name": "@kit/audio-generation",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./server": "./src/server/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./lib": "./src/lib/index.ts",
+    "./schemas": "./src/lib/schemas.ts",
+    "./types": "./src/lib/types.ts",
+    "./hooks": "./src/hooks/index.ts"
+  },
+  "dependencies": {
+    "@kit/supabase": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "zod": "^3.22.4",
+    "react": "^18.2.0",
+    "next": "^14.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0",
+    "tsup": "^8.0.0",
+    "rimraf": "^5.0.0"
+  }
+}
+```
+
+### tsconfig.json
+```json
+{
+  "extends": "../../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+### Exports
+| Export Path | Description |
+|-------------|-------------|
+| `.` | Main exports (re-exports from all modules) |
+| `./components` | UI components for audio generation |
+| `./server` | Server actions for audio generation |
+| `./providers` | Provider implementations (ElevenLabs, Suno) |
+| `./lib` | Shared utilities, types, and constants |
+| `./schemas` | Zod validation schemas |
+| `./types` | TypeScript type definitions |
+| `./hooks` | React hooks for audio generation |
+
+### Dependencies
+| Package | Purpose |
+|---------|---------|
+| @kit/supabase | Database access for audio storage |
+| @kit/shared | Shared utilities |
+| @kit/ui | UI components library |
+| zod | Schema validation |
+| react | React framework |
+| next | Next.js framework |
+
+### Initial Files
+
+#### src/index.ts
+```typescript
+export * from './components';
+export * from './server';
+export * from './providers';
+export * from './lib';
+export * from './hooks';
+```
+
+#### src/components/index.ts
+```typescript
+// Export audio generation components here
+// VoiceSelector, VoiceSettings, MusicGenerator, AudioPlayer, etc.
+export {};
+```
+
+#### src/server/index.ts
+```typescript
+export * from './actions';
+export * from './queries';
+```
+
+#### src/server/actions.ts
+```typescript
+'use server';
+
+// Server actions for audio generation
+export {};
+```
+
+#### src/server/queries.ts
+```typescript
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+// Database queries for audio generation
+export async function getAvailableVoices(provider: string) {
+  const client = getSupabaseServerClient();
+  // Implementation will be added
+  return { data: [], error: null };
+}
+```
+
+#### src/providers/index.ts
+```typescript
+export * from './base';
+export * from './elevenlabs';
+export * from './suno';
+```
+
+#### src/providers/base.ts
+```typescript
+import type {
+  VoiceGenerationRequest,
+  VoiceGenerationResponse,
+  MusicGenerationRequest,
+  MusicGenerationResponse,
+  Voice
+} from '../lib/types';
+
+// Base voice provider interface
+export interface VoiceGenerationProvider {
+  readonly name: string;
+  readonly supportedLanguages: string[];
+
+  generateVoice(request: VoiceGenerationRequest): Promise<VoiceGenerationResponse>;
+  getVoices(): Promise<Voice[]>;
+  cloneVoice?(audioFile: File, name: string): Promise<Voice>;
+}
+
+export abstract class BaseVoiceGenerationProvider implements VoiceGenerationProvider {
+  abstract readonly name: string;
+  abstract readonly supportedLanguages: string[];
+
+  abstract generateVoice(request: VoiceGenerationRequest): Promise<VoiceGenerationResponse>;
+  abstract getVoices(): Promise<Voice[]>;
+
+  protected validateRequest(request: VoiceGenerationRequest): void {
+    // Common validation logic
+  }
+}
+
+// Base music provider interface
+export interface MusicGenerationProvider {
+  readonly name: string;
+  readonly maxDuration: number;
+
+  generateMusic(request: MusicGenerationRequest): Promise<MusicGenerationResponse>;
+  getStatus(jobId: string): Promise<{ status: string; audioUrl?: string }>;
+}
+
+export abstract class BaseMusicGenerationProvider implements MusicGenerationProvider {
+  abstract readonly name: string;
+  abstract readonly maxDuration: number;
+
+  abstract generateMusic(request: MusicGenerationRequest): Promise<MusicGenerationResponse>;
+  abstract getStatus(jobId: string): Promise<{ status: string; audioUrl?: string }>;
+
+  protected validateRequest(request: MusicGenerationRequest): void {
+    // Common validation logic
+  }
+}
+```
+
+#### src/providers/elevenlabs.ts
+```typescript
+import { BaseVoiceGenerationProvider } from './base';
+import type { VoiceGenerationRequest, VoiceGenerationResponse, Voice } from '../lib/types';
+
+export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
+  readonly name = 'elevenlabs';
+  readonly supportedLanguages = ['en', 'es', 'fr', 'de', 'it', 'pt', 'pl', 'hi', 'ja', 'ko', 'zh'];
+
+  async generateVoice(request: VoiceGenerationRequest): Promise<VoiceGenerationResponse> {
+    // Implementation will be added
+    throw new Error('Not implemented');
+  }
+
+  async getVoices(): Promise<Voice[]> {
+    // Implementation will be added
+    return [];
+  }
+
+  async cloneVoice(audioFile: File, name: string): Promise<Voice> {
+    // Implementation will be added
+    throw new Error('Not implemented');
+  }
+}
+```
+
+#### src/providers/suno.ts
+```typescript
+import { BaseMusicGenerationProvider } from './base';
+import type { MusicGenerationRequest, MusicGenerationResponse } from '../lib/types';
+
+export class SunoProvider extends BaseMusicGenerationProvider {
+  readonly name = 'suno';
+  readonly maxDuration = 240; // 4 minutes
+
+  async generateMusic(request: MusicGenerationRequest): Promise<MusicGenerationResponse> {
+    // Implementation will be added
+    throw new Error('Not implemented');
+  }
+
+  async getStatus(jobId: string): Promise<{ status: string; audioUrl?: string }> {
+    // Implementation will be added
+    throw new Error('Not implemented');
+  }
+}
+```
+
+#### src/lib/index.ts
+```typescript
+export * from './types';
+export * from './schemas';
+export * from './constants';
+```
+
+#### src/lib/types.ts
+```typescript
+// Audio generation types
+export type AudioProvider = 'elevenlabs' | 'suno';
+export type AudioType = 'voice' | 'music' | 'sfx';
+
+export interface Voice {
+  id: string;
+  name: string;
+  provider: AudioProvider;
+  language: string;
+  gender?: string;
+  age?: string;
+  accent?: string;
+  description?: string;
+  previewUrl?: string;
+  settings?: VoiceSettings;
+}
+
+export interface VoiceSettings {
+  stability?: number; // 0-1
+  similarityBoost?: number; // 0-1
+  style?: number; // 0-1
+  useSpeakerBoost?: boolean;
+}
+
+export interface VoiceGenerationRequest {
+  text: string;
+  voiceId: string;
+  settings?: VoiceSettings;
+  modelId?: string;
+  outputFormat?: 'mp3' | 'wav' | 'pcm';
+}
+
+export interface VoiceGenerationResponse {
+  audioUrl: string;
+  duration: number;
+  format: string;
+  size: number;
+}
+
+export interface MusicGenerationRequest {
+  prompt: string;
+  duration: number;
+  genre?: string;
+  mood?: string;
+  tempo?: string;
+  instrumentalOnly?: boolean;
+}
+
+export interface MusicGenerationResponse {
+  jobId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  audioUrl?: string;
+  estimatedTime?: number;
+}
+
+export interface AudioGenerationJob {
+  id: string;
+  shotId: string | null;
+  episodeId: string | null;
+  type: AudioType;
+  provider: AudioProvider;
+  providerJobId: string | null;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  audioUrl: string | null;
+  duration: number | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+```
+
+#### src/lib/schemas.ts
+```typescript
+import { z } from 'zod';
+
+// Audio generation schemas
+export const AudioProviderSchema = z.enum(['elevenlabs', 'suno']);
+export const AudioTypeSchema = z.enum(['voice', 'music', 'sfx']);
+
+export const VoiceSettingsSchema = z.object({
+  stability: z.number().min(0).max(1).optional(),
+  similarityBoost: z.number().min(0).max(1).optional(),
+  style: z.number().min(0).max(1).optional(),
+  useSpeakerBoost: z.boolean().optional(),
+});
+
+export const VoiceGenerationRequestSchema = z.object({
+  text: z.string().min(1).max(5000),
+  voiceId: z.string().min(1),
+  settings: VoiceSettingsSchema.optional(),
+  modelId: z.string().optional(),
+  outputFormat: z.enum(['mp3', 'wav', 'pcm']).optional(),
+});
+
+export const MusicGenerationRequestSchema = z.object({
+  prompt: z.string().min(1).max(1000),
+  duration: z.number().positive().max(240),
+  genre: z.string().optional(),
+  mood: z.string().optional(),
+  tempo: z.string().optional(),
+  instrumentalOnly: z.boolean().optional(),
+});
+
+export const GenerateVoiceSchema = z.object({
+  shotId: z.string().uuid().optional(),
+  episodeId: z.string().uuid().optional(),
+  request: VoiceGenerationRequestSchema,
+});
+
+export const GenerateMusicSchema = z.object({
+  episodeId: z.string().uuid(),
+  request: MusicGenerationRequestSchema,
+});
+```
+
+#### src/lib/constants.ts
+```typescript
+// Audio generation constants
+export const AUDIO_PROVIDERS = {
+  ELEVENLABS: 'elevenlabs',
+  SUNO: 'suno',
+} as const;
+
+export const AUDIO_TYPES = {
+  VOICE: 'voice',
+  MUSIC: 'music',
+  SFX: 'sfx',
+} as const;
+
+export const AUDIO_FORMATS = {
+  MP3: 'mp3',
+  WAV: 'wav',
+  PCM: 'pcm',
+} as const;
+
+export const DEFAULT_VOICE_SETTINGS = {
+  stability: 0.5,
+  similarityBoost: 0.75,
+  style: 0.0,
+  useSpeakerBoost: true,
+} as const;
+
+export const MUSIC_GENRES = [
+  'cinematic',
+  'orchestral',
+  'electronic',
+  'ambient',
+  'rock',
+  'pop',
+  'jazz',
+  'classical',
+] as const;
+
+export const MUSIC_MOODS = [
+  'epic',
+  'dramatic',
+  'suspenseful',
+  'uplifting',
+  'melancholic',
+  'energetic',
+  'calm',
+  'dark',
+] as const;
+
+export const DEFAULT_MUSIC_DURATION = 60; // seconds
+export const MAX_TEXT_LENGTH = 5000;
+export const MAX_MUSIC_DURATION = 240; // 4 minutes
+```
+
+#### src/hooks/index.ts
+```typescript
+// Export React hooks for audio generation
+export {};
+```
+
+## File Changes
+| Action | Path |
+|--------|------|
+| CREATE | `packages/features/audio-generation/package.json` |
+| CREATE | `packages/features/audio-generation/tsconfig.json` |
+| CREATE | `packages/features/audio-generation/src/index.ts` |
+| CREATE | `packages/features/audio-generation/src/components/index.ts` |
+| CREATE | `packages/features/audio-generation/src/server/index.ts` |
+| CREATE | `packages/features/audio-generation/src/server/actions.ts` |
+| CREATE | `packages/features/audio-generation/src/server/queries.ts` |
+| CREATE | `packages/features/audio-generation/src/providers/index.ts` |
+| CREATE | `packages/features/audio-generation/src/providers/base.ts` |
+| CREATE | `packages/features/audio-generation/src/providers/elevenlabs.ts` |
+| CREATE | `packages/features/audio-generation/src/providers/suno.ts` |
+| CREATE | `packages/features/audio-generation/src/lib/index.ts` |
+| CREATE | `packages/features/audio-generation/src/lib/types.ts` |
+| CREATE | `packages/features/audio-generation/src/lib/schemas.ts` |
+| CREATE | `packages/features/audio-generation/src/lib/constants.ts` |
+| CREATE | `packages/features/audio-generation/src/hooks/index.ts` |
+
+## Acceptance Criteria
+- [ ] Package builds without errors
+- [ ] All exports work correctly
+- [ ] TypeScript types exported and accessible
+- [ ] Zod schemas validate correctly
+- [ ] Provider interfaces are properly defined
+- [ ] Both providers implement base interfaces
+- [ ] Can be imported by other packages
+
+## Test Plan
+### Unit Tests
+- [ ] Package can be imported from other workspace packages
+- [ ] All export paths are accessible
+- [ ] Provider interface methods are defined
+- [ ] Zod schemas validate valid voice requests
+- [ ] Zod schemas validate valid music requests
+- [ ] Zod schemas reject invalid input
+- [ ] Constants are accessible
