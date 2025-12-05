@@ -3,16 +3,22 @@
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
-**Dependencies**: FILM-501 (ElevenLabs provider)
+**Dependencies**: FILM-501 (ElevenLabs provider), FILM-502b (Audio provider factory)
 **Blocks**: FILM-503, FILM-505, FILM-506
 
 ---
 
 ## Context
 
-The voice generation server action provides the primary interface for generating voice audio from dialogue text. It orchestrates the complete workflow: validating inputs, calling the ElevenLabs provider, uploading audio to storage, updating database records, and tracking costs.
+The voice generation server action provides the primary interface for generating voice audio from dialogue text. It orchestrates the complete workflow: validating inputs, calling the voice provider via the factory (FILM-502b), uploading audio to storage, updating database records, and tracking costs.
 
-This action serves as the bridge between the UI components and the voice generation provider. It must handle authentication, budget validation, storage management, and graceful error handling. The action should support both individual dialogue line generation and provide the foundation for batch processing.
+This action serves as the bridge between the UI components and the voice generation providers. It uses the **audio provider factory** (FILM-502b) to support multiple providers (ElevenLabs, PlayHT, Azure TTS, Google Cloud TTS) without code changes. It must handle authentication, budget validation, storage management, and graceful error handling. The action should support both individual dialogue line generation and provide the foundation for batch processing.
+
+**Provider Selection**: The factory automatically selects the appropriate provider based on:
+1. User preference (if specified)
+2. BYOK (Bring Your Own Key) availability
+3. Platform key availability
+4. Default provider (ElevenLabs)
 
 ---
 
@@ -75,6 +81,7 @@ import { z } from 'zod';
 export const GenerateVoiceSchema = z.object({
   dialogueLineId: z.string().uuid(),
   voiceId: z.string().optional(),
+  provider: z.enum(['elevenlabs', 'playht', 'azure', 'google']).optional(), // Via FILM-502b factory
   settings: z.object({
     stability: z.number().min(0).max(1).optional(),
     similarityBoost: z.number().min(0).max(1).optional(),
@@ -88,6 +95,7 @@ export const GenerateVoiceFromTextSchema = z.object({
   episodeId: z.string().uuid(),
   text: z.string().min(1).max(5000),
   voiceId: z.string(),
+  provider: z.enum(['elevenlabs', 'playht', 'azure', 'google']).optional(), // Via FILM-502b factory
   settings: z.object({
     stability: z.number().min(0).max(1).optional(),
     similarityBoost: z.number().min(0).max(1).optional(),
@@ -166,7 +174,7 @@ export interface VoiceProfile {
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
-import { ElevenLabsProvider } from '@kit/audio-generation/providers';
+import { createVoiceProvider } from '@kit/audio-generation/providers/factory';
 import { GenerateVoiceSchema, GenerateVoiceFromTextSchema } from '../schemas/voice.schema';
 import type {
   GenerateVoiceResult,
@@ -227,11 +235,13 @@ export const generateVoiceAction = enhanceAction(
       .eq('id', data.dialogueLineId);
 
     try {
-      // 6. Get API key
-      const apiKey = await getApiKey(client, dialogueLine.episodes.account_id, 'elevenlabs');
+      // 6. Create provider via factory (handles BYOK and provider selection)
+      const provider = await createVoiceProvider({
+        accountId: dialogueLine.episodes.account_id,
+        preferredProvider: data.provider, // Optional: 'elevenlabs', 'playht', etc.
+      });
 
       // 7. Generate audio
-      const provider = new ElevenLabsProvider({ apiKey });
       const result = await provider.generateVoice({
         text: dialogueLine.text,
         voiceId,
@@ -348,11 +358,13 @@ export const generateVoiceFromTextAction = enhanceAction(
     const estimatedCost = Math.ceil((data.text.length / 1000) * 30);
     await checkBudget(client, episode.account_id, estimatedCost);
 
-    // 3. Get API key
-    const apiKey = await getApiKey(client, episode.account_id, 'elevenlabs');
+    // 3. Create provider via factory (handles BYOK and provider selection)
+    const provider = await createVoiceProvider({
+      accountId: episode.account_id,
+      preferredProvider: data.provider, // Optional: 'elevenlabs', 'playht', etc.
+    });
 
     // 4. Generate audio
-    const provider = new ElevenLabsProvider({ apiKey });
     const result = await provider.generateVoice({
       text: data.text,
       voiceId: data.voiceId,
@@ -1056,7 +1068,9 @@ if (count >= MAX_CONCURRENT_GENERATIONS) {
 
 ## References
 
-- **FILM-501**: ElevenLabs Provider
+- **FILM-501**: ElevenLabs Provider (primary)
+- **FILM-501b**: PlayHT Provider (secondary)
+- **FILM-502b**: Audio Provider Factory (provider abstraction)
 - **FILM-108**: Audio Generation Package
 - **Constitution**: Section 2.2 (Server Actions Pattern)
 - **Constitution**: Section 4.2 (API Keys)

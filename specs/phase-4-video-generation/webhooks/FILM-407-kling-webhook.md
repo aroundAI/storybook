@@ -1,16 +1,26 @@
-# FILM-407: Kling Webhook Handler
+# FILM-407: Video Provider Webhooks
 
 **Phase**: 4
 **Priority**: P0
 **Effort**: M (3-4 days)
-**Dependencies**: FILM-405 (generate-video-action)
+**Dependencies**: FILM-405 (generate-video-action), FILM-402 (provider-factory)
 **Blocks**: None
 
 ---
 
 ## Context
 
-Kling sends webhook callbacks when video generation completes. The webhook handler must verify request signatures, parse provider responses, update generation job status, update shot records with video URLs, record actual costs, and trigger client notifications via Supabase Realtime.
+Video generation providers send webhook callbacks when video generation completes. This spec covers webhook handlers for all supported video providers (Kling, Runway, Hailuo), using a unified architecture with provider-specific adapters.
+
+**Provider Webhook Support:**
+
+| Provider | Webhook Support | Callback Parameter | Signature Verification |
+|----------|----------------|-------------------|------------------------|
+| **Kling** | Yes (native) | `callback_url` | HMAC-SHA256 |
+| **Runway** | Polling only* | N/A | N/A |
+| **Hailuo** | Yes (via PiAPI) | `callback_url` | HMAC-SHA256 |
+
+*Note: Runway's official API requires polling via `GET /v1/tasks/{id}`. Third-party wrappers (KIE API) may provide webhook support.
 
 ---
 
@@ -25,18 +35,24 @@ Kling sends webhook callbacks when video generation completes. The webhook handl
    - Log verification failures
 
 2. **Status Processing**
-   - Parse Kling callback payload
+   - Parse provider-specific callback payloads (Kling, Hailuo)
    - Map provider status to internal status
    - Extract video URL and metadata
    - Handle error states
+   - Route to correct handler based on provider
 
-3. **Database Updates**
+3. **Runway Polling Fallback**
+   - Since Runway doesn't support webhooks, use polling
+   - Poll via background job every 30 seconds
+   - Integrate with job queue (FILM-404)
+
+4. **Database Updates**
    - Update generation_jobs record
    - Update shots table with video_url
    - Record actual cost
    - Set completion timestamp
 
-4. **Client Notifications**
+5. **Client Notifications**
    - Trigger Supabase Realtime event
    - Send push notification if enabled
    - Update job queue status
@@ -83,6 +99,44 @@ interface KlingWebhookPayload {
     code: string;
     message: string;
   };
+}
+```
+
+### Hailuo (MiniMax) Webhook Payload
+
+```typescript
+interface HailuoWebhookPayload {
+  task_id: string;
+  status: 'Queueing' | 'Processing' | 'Success' | 'Fail';
+  progress?: number;
+  video_url?: string;
+  cover_url?: string;  // Thumbnail
+  duration?: number;
+  error?: {
+    code: number;
+    message: string;
+  };
+  created_at: number;
+  finished_at?: number;
+}
+```
+
+### Runway Status Response (Polling)
+
+```typescript
+// Runway requires polling GET /v1/tasks/{id}
+interface RunwayStatusResponse {
+  id: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  progress?: number;
+  output?: {
+    url: string;
+    duration: number;
+  }[];
+  failure?: string;
+  failureCode?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -230,9 +284,21 @@ export const POST = enhanceRouteHandler(
 ```
 apps/web/app/api/generation/webhooks/
 ├── kling/
-│   └── route.ts                      # Webhook handler (CREATE THIS)
+│   └── route.ts                      # Kling webhook handler (CREATE)
+├── hailuo/
+│   └── route.ts                      # Hailuo webhook handler (CREATE)
 └── __tests__/
-    └── kling-webhook.test.ts         # Tests (CREATE THIS)
+    ├── kling-webhook.test.ts         # Kling tests (CREATE)
+    └── hailuo-webhook.test.ts        # Hailuo tests (CREATE)
+
+packages/features/video-generation/src/
+├── lib/
+│   ├── webhook-security.ts           # Signature verification (CREATE)
+│   ├── webhook-processor.ts          # Unified status processing (CREATE)
+│   └── runway-poller.ts              # Runway polling logic (CREATE)
+└── webhooks/
+    ├── types.ts                       # Webhook payload types (CREATE)
+    └── index.ts                       # Exports (CREATE)
 ```
 
 ### Signature Verification
@@ -275,22 +341,46 @@ if (job.status === 'completed' || job.status === 'failed') {
 
 ### New Files
 
-1. **apps/web/app/api/generation/webhooks/kling/route.ts**
-2. **packages/features/video-generation/src/lib/webhook-security.ts**
-3. **apps/web/app/api/generation/webhooks/__tests__/kling-webhook.test.ts**
+| File | Description |
+|------|-------------|
+| `apps/web/app/api/generation/webhooks/kling/route.ts` | Kling webhook handler |
+| `apps/web/app/api/generation/webhooks/hailuo/route.ts` | Hailuo webhook handler |
+| `packages/features/video-generation/src/lib/webhook-security.ts` | Signature verification |
+| `packages/features/video-generation/src/lib/webhook-processor.ts` | Unified status processor |
+| `packages/features/video-generation/src/lib/runway-poller.ts` | Runway polling fallback |
+| `packages/features/video-generation/src/webhooks/types.ts` | TypeScript types |
+| `apps/web/app/api/generation/webhooks/__tests__/kling-webhook.test.ts` | Kling tests |
+| `apps/web/app/api/generation/webhooks/__tests__/hailuo-webhook.test.ts` | Hailuo tests |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Webhook verifies signature
-- [ ] Webhook rejects invalid signatures
-- [ ] Webhook updates generation_jobs correctly
-- [ ] Webhook updates shots with video URL
-- [ ] Webhook records actual cost
-- [ ] Webhook handles duplicate calls
-- [ ] Webhook logs all requests
-- [ ] Webhook returns 200 for success
+### Kling Webhook
+- [ ] Verifies HMAC-SHA256 signature
+- [ ] Rejects invalid signatures with 401
+- [ ] Updates generation_jobs with correct status mapping
+- [ ] Updates shots with video URL on success
+- [ ] Records actual cost via cost-tracking
+- [ ] Handles duplicate calls idempotently
+- [ ] Logs all webhook requests
+
+### Hailuo Webhook
+- [ ] Verifies HMAC-SHA256 signature (PiAPI format)
+- [ ] Maps Hailuo status (Queueing/Processing/Success/Fail) to internal status
+- [ ] Extracts video_url and cover_url
+- [ ] Handles Hailuo-specific error codes
+
+### Runway Polling (No Webhook)
+- [ ] Polling job runs every 30 seconds for active Runway jobs
+- [ ] Correctly maps Runway status (PENDING/RUNNING/SUCCEEDED/FAILED)
+- [ ] Updates job on completion without webhook
+- [ ] Integrates with job queue (FILM-404)
+
+### Common
+- [ ] All handlers return 200 for valid requests
+- [ ] All handlers return 400/401 for invalid requests
+- [ ] TypeScript types exported for all payloads
 
 ---
 
@@ -370,10 +460,17 @@ describe('Kling Webhook', () => {
 
 ### Secret Management
 
-Store webhook secret in environment variables:
+Store webhook secrets in environment variables:
 
 ```env
-KLING_WEBHOOK_SECRET=your-secret-key-here
+# Kling (via PiAPI)
+KLING_WEBHOOK_SECRET=your-kling-secret-key
+
+# Hailuo (via PiAPI)
+HAILUO_WEBHOOK_SECRET=your-hailuo-secret-key
+
+# Runway - No webhook secret needed (polling only)
+# RUNWAY_WEBHOOK_SECRET=not-applicable
 ```
 
 Rotate secrets periodically via provider dashboard.
@@ -411,7 +508,14 @@ Rotate secrets periodically via provider dashboard.
 
 ## References
 
+- **FILM-401**: Kling provider
+- **FILM-401b**: Runway provider
+- **FILM-401c**: Hailuo provider
+- **FILM-402**: Provider factory
+- **FILM-404**: Job queue (for Runway polling)
 - **FILM-405**: Generate video action
 - **FILM-412**: Cost tracking
 - **Constitution**: Section 4.3 (Webhook Security)
 - **Kling Webhook Docs**: https://docs.piapi.ai/kling/webhooks
+- **Hailuo (MiniMax) API**: https://platform.minimaxi.com/document/Video%20Generation
+- **Runway API Docs**: https://docs.runwayml.com (polling via GET /v1/tasks/{id})
