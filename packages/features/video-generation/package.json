@@ -1,0 +1,41 @@
+{
+  "name": "@kit/video-generation",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Video generation package with rate limiting, job queue, and provider integrations",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "prettier": "@kit/prettier-config",
+  "exports": {
+    ".": "./src/index.ts",
+    "./rate-limiter": "./src/lib/rate-limiter/index.ts",
+    "./rate-limiter/types": "./src/lib/rate-limiter/types.ts",
+    "./rate-limiter/config": "./src/lib/rate-limiter/config.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
+    "vitest": "^3.2.4"
+  },
+  "dependencies": {
+    "@kit/cache": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "zod": "^3.25.74"
+  },
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
