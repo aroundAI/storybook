@@ -1,0 +1,43 @@
+{
+  "name": "@kit/publishing",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    "./oauth/youtube": "./src/oauth/youtube/index.ts",
+    "./oauth/tiktok": "./src/oauth/tiktok/index.ts",
+    "./providers/youtube": "./src/providers/youtube/index.ts",
+    "./providers/tiktok": "./src/providers/tiktok/index.ts",
+    "./lib/token-refresh": "./src/lib/token-refresh.ts",
+    "./jobs": "./src/jobs/index.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/next": "workspace:*",
+    "@kit/notifications": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
+    "@types/node": "^24.5.0",
+    "googleapis": "^148.0.0",
+    "vitest": "^3.2.4",
+    "zod": "^3.25.74"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
