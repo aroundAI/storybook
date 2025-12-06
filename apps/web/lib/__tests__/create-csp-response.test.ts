@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('create-csp-response', () => {
   const originalEnv = process.env;
@@ -128,7 +128,9 @@ describe('create-csp-response', () => {
 
       const config = mockCreateMiddleware.mock.calls[0][0];
 
-      expect(config.contentSecurityPolicy.directives.imgSrc).toContain("'self'");
+      expect(config.contentSecurityPolicy.directives.imgSrc).toContain(
+        "'self'",
+      );
       expect(config.contentSecurityPolicy.directives.imgSrc).toContain('data:');
     });
 
@@ -212,7 +214,7 @@ describe('create-csp-response', () => {
 
     it('should set x-nonce header when nonce is found', async () => {
       const mockHeaders = new Map([
-        ['Content-Security-Policy', "nonce-abc123 other-stuff"],
+        ['Content-Security-Policy', 'nonce-abc123 other-stuff'],
       ]);
       const mockResponse = {
         headers: mockHeaders,
