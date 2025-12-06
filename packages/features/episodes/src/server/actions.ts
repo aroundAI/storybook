@@ -16,9 +16,9 @@ import {
   UpdateShotSchema,
 } from '../lib/schemas';
 
-// Note: These actions assume the episodes and shots tables exist in the database.
-// The tables will be created as part of the database migration in FILM-101.
-// RLS policies will enforce project-level authorization.
+// Note: These actions use type assertions because the internal type definitions
+// differ from the generated database types. The database schema will be aligned
+// in a future update. RLS policies enforce project-level authorization.
 
 export const createEpisodeAction = enhanceAction(
   async (data) => {

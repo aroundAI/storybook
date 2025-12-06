@@ -16,9 +16,9 @@ import {
 } from '../lib/schemas';
 import { createVideoProvider } from '../providers/factory';
 
-// Note: These actions assume the generation_jobs table exists in the database.
-// The table will be created as part of the database migration in FILM-101.
-// RLS policies will enforce project-level authorization.
+// Note: These actions use type assertions because the internal type definitions
+// differ from the generated database types. The database schema will be aligned
+// in a future update. RLS policies enforce project-level authorization.
 
 export const generateVideoAction = enhanceAction(
   async (data) => {
@@ -141,12 +141,29 @@ export const pollVideoStatusAction = enhanceAction(
       throw new Error('Job not found');
     }
 
-    if (job.status === 'completed' || job.status === 'failed') {
+    // Check all terminal states
+    if (
+      job.status === 'completed' ||
+      job.status === 'failed' ||
+      job.status === 'cancelled'
+    ) {
       logger.info(
         { ...ctx, status: job.status },
         'Job already in terminal state',
       );
       return { success: true, status: job };
+    }
+
+    // Ensure provider_job_id exists before polling
+    if (!job.provider_job_id) {
+      logger.error(ctx, 'Job has no provider job ID');
+      throw new Error('Job has no provider job ID - cannot poll status');
+    }
+
+    // Ensure provider exists
+    if (!job.provider) {
+      logger.error(ctx, 'Job has no provider');
+      throw new Error('Job has no provider - cannot poll status');
     }
 
     const apiKey = process.env[`${job.provider.toUpperCase()}_API_KEY`];
@@ -221,12 +238,37 @@ export const cancelVideoJobAction = enhanceAction(
       throw new Error('Job not found');
     }
 
-    if (job.status === 'completed' || job.status === 'cancelled') {
+    // Check all terminal states
+    if (
+      job.status === 'completed' ||
+      job.status === 'failed' ||
+      job.status === 'cancelled'
+    ) {
       logger.info(
         { ...ctx, status: job.status },
         'Job already in terminal state',
       );
       return { success: true };
+    }
+
+    // Ensure provider_job_id exists before cancelling
+    if (!job.provider_job_id) {
+      // Job never started with provider, just mark as cancelled
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('generation_jobs')
+        .update({ status: 'cancelled' })
+        .eq('id', data.jobId);
+
+      logger.info(ctx, 'Job cancelled (no provider job to cancel)');
+      revalidatePath('/home/[account]/projects/[id]', 'page');
+      return { success: true };
+    }
+
+    // Ensure provider exists
+    if (!job.provider) {
+      logger.error(ctx, 'Job has no provider');
+      throw new Error('Job has no provider - cannot cancel');
     }
 
     const apiKey = process.env[`${job.provider.toUpperCase()}_API_KEY`];

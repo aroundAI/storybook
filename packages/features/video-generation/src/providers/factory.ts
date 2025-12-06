@@ -9,13 +9,31 @@ interface CachedProvider {
   configHash: string;
 }
 
+// Provider instances are cached per Lambda invocation.
+// Each Lambda container has isolated memory, so no cross-request cache sharing.
 const providerInstances = new Map<VideoProvider, CachedProvider>();
 
 function hashConfig(config: ProviderConfig): string {
   return JSON.stringify({
-    apiKey: config.apiKey?.slice(-8), // Only use last 8 chars for comparison
+    apiKey: config.apiKey,
     baseUrl: config.baseUrl,
   });
+}
+
+function createProviderInstance(
+  provider: VideoProvider,
+  config: ProviderConfig,
+): VideoGenerationProvider {
+  switch (provider) {
+    case 'kling':
+      return new KlingProvider(config);
+    case 'runway':
+      return new RunwayProvider(config);
+    case 'luma':
+      return new LumaProvider(config);
+    default:
+      throw new Error(`Unknown video provider: ${provider}`);
+  }
 }
 
 export function createVideoProvider(
@@ -23,29 +41,17 @@ export function createVideoProvider(
   config: ProviderConfig,
 ): VideoGenerationProvider {
   const configHash = hashConfig(config);
-  const cached = providerInstances.get(provider);
 
+  // Check if already cached with same config
+  const cached = providerInstances.get(provider);
   if (cached && cached.configHash === configHash) {
     return cached.instance;
   }
 
-  let instance: VideoGenerationProvider;
-
-  switch (provider) {
-    case 'kling':
-      instance = new KlingProvider(config);
-      break;
-    case 'runway':
-      instance = new RunwayProvider(config);
-      break;
-    case 'luma':
-      instance = new LumaProvider(config);
-      break;
-    default:
-      throw new Error(`Unknown video provider: ${provider}`);
-  }
-
+  // Create new instance and cache it
+  const instance = createProviderInstance(provider, config);
   providerInstances.set(provider, { instance, configHash });
+
   return instance;
 }
 
