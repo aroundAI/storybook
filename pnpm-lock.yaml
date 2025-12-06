@@ -994,6 +994,63 @@ importers:
         specifier: ^3.25.74
         version: 3.25.76
 
+  packages/features/assets:
+    devDependencies:
+      '@hookform/resolvers':
+        specifier: ^5.2.2
+        version: 5.2.2(react-hook-form@7.62.0(react@19.1.1))
+      '@kit/eslint-config':
+        specifier: workspace:*
+        version: link:../../../tooling/eslint
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../next
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
+      '@kit/tsconfig':
+        specifier: workspace:*
+        version: link:../../../tooling/typescript
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../ui
+      '@types/node':
+        specifier: ^24.5.0
+        version: 24.5.0
+      '@types/react':
+        specifier: 19.1.13
+        version: 19.1.13
+      '@types/react-dom':
+        specifier: 19.1.9
+        version: 19.1.9(@types/react@19.1.13)
+      next:
+        specifier: 15.5.3
+        version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      react:
+        specifier: 19.1.1
+        version: 19.1.1
+      react-dom:
+        specifier: 19.1.1
+        version: 19.1.1(react@19.1.1)
+      react-hook-form:
+        specifier: ^7.62.0
+        version: 7.62.0(react@19.1.1)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)
+      zod:
+        specifier: ^3.25.74
+        version: 3.25.76
+
   packages/features/auth:
     devDependencies:
       '@hookform/resolvers':
@@ -1047,6 +1104,54 @@ importers:
       sonner:
         specifier: ^2.0.7
         version: 2.0.7(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)
+      zod:
+        specifier: ^3.25.74
+        version: 3.25.76
+
+  packages/features/film-studio:
+    devDependencies:
+      '@kit/eslint-config':
+        specifier: workspace:*
+        version: link:../../../tooling/eslint
+      '@kit/prettier-config':
+        specifier: workspace:*
+        version: link:../../../tooling/prettier
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
+      '@kit/tsconfig':
+        specifier: workspace:*
+        version: link:../../../tooling/typescript
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../ui
+      '@types/node':
+        specifier: ^24.5.0
+        version: 24.5.0
+      '@types/react':
+        specifier: 19.1.13
+        version: 19.1.13
+      '@types/react-dom':
+        specifier: 19.1.9
+        version: 19.1.9(@types/react@19.1.13)
+      next:
+        specifier: 15.5.3
+        version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      react:
+        specifier: 19.1.1
+        version: 19.1.1
+      react-dom:
+        specifier: 19.1.1
+        version: 19.1.1(react@19.1.1)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.2
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(lightningcss@1.30.1)(terser@5.44.0)
