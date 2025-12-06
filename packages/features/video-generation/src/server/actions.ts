@@ -1,6 +1,12 @@
 'use server';
 
+import 'server-only';
+
+import { revalidatePath } from 'next/cache';
+
 import { enhanceAction } from '@kit/next/actions';
+import { getLogger } from '@kit/shared/logger';
+import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
@@ -12,10 +18,26 @@ import { createVideoProvider } from '../providers/factory';
 
 // Note: These actions assume the generation_jobs table exists in the database.
 // The table will be created as part of the database migration in FILM-101.
+// RLS policies will enforce project-level authorization.
 
 export const generateVideoAction = enhanceAction(
   async (data) => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'video.generate',
+      shotId: data.shotId,
+      provider: data.provider,
+    };
+
+    logger.info(ctx, 'Starting video generation');
+
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized video generation attempt');
+      throw new Error('Authentication required');
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: createError } = await (client as any)
@@ -31,6 +53,10 @@ export const generateVideoAction = enhanceAction(
       .single();
 
     if (createError) {
+      logger.error(
+        { ...ctx, error: createError },
+        'Failed to create generation job',
+      );
       throw createError;
     }
 
@@ -45,6 +71,7 @@ export const generateVideoAction = enhanceAction(
         })
         .eq('id', job.id);
 
+      logger.error(ctx, 'Missing API key for provider');
       throw new Error(`Missing API key for provider: ${data.provider}`);
     }
 
@@ -61,7 +88,13 @@ export const generateVideoAction = enhanceAction(
         })
         .eq('id', job.id);
 
-      return { job: { ...job, providerJobId: response.jobId } };
+      logger.info(
+        { ...ctx, jobId: job.id, providerJobId: response.jobId },
+        'Video generation started',
+      );
+      revalidatePath('/home/[account]/projects/[id]', 'page');
+
+      return { success: true, job: { ...job, providerJobId: response.jobId } };
     } catch (error) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (client as any)
@@ -72,6 +105,7 @@ export const generateVideoAction = enhanceAction(
         })
         .eq('id', job.id);
 
+      logger.error({ ...ctx, error }, 'Video generation failed');
       throw error;
     }
   },
@@ -82,7 +116,18 @@ export const generateVideoAction = enhanceAction(
 
 export const pollVideoStatusAction = enhanceAction(
   async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'video.poll', jobId: data.jobId };
+
+    logger.info(ctx, 'Polling video generation status');
+
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized video status poll attempt');
+      throw new Error('Authentication required');
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
@@ -92,15 +137,21 @@ export const pollVideoStatusAction = enhanceAction(
       .single();
 
     if (fetchError || !job) {
+      logger.error({ ...ctx, error: fetchError }, 'Job not found');
       throw new Error('Job not found');
     }
 
     if (job.status === 'completed' || job.status === 'failed') {
-      return { status: job };
+      logger.info(
+        { ...ctx, status: job.status },
+        'Job already in terminal state',
+      );
+      return { success: true, status: job };
     }
 
     const apiKey = process.env[`${job.provider.toUpperCase()}_API_KEY`];
     if (!apiKey) {
+      logger.error({ ...ctx, provider: job.provider }, 'Missing API key');
       throw new Error(`Missing API key for provider: ${job.provider}`);
     }
 
@@ -130,7 +181,13 @@ export const pollVideoStatusAction = enhanceAction(
       .update(updateData)
       .eq('id', data.jobId);
 
-    return { status: { ...job, ...updateData } };
+    logger.info({ ...ctx, status: status.status }, 'Video status updated');
+
+    if (status.status === 'completed') {
+      revalidatePath('/home/[account]/projects/[id]', 'page');
+    }
+
+    return { success: true, status: { ...job, ...updateData } };
   },
   {
     schema: PollVideoStatusSchema,
@@ -139,7 +196,18 @@ export const pollVideoStatusAction = enhanceAction(
 
 export const cancelVideoJobAction = enhanceAction(
   async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'video.cancel', jobId: data.jobId };
+
+    logger.info(ctx, 'Cancelling video generation job');
+
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized video cancellation attempt');
+      throw new Error('Authentication required');
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
@@ -149,15 +217,21 @@ export const cancelVideoJobAction = enhanceAction(
       .single();
 
     if (fetchError || !job) {
+      logger.error({ ...ctx, error: fetchError }, 'Job not found');
       throw new Error('Job not found');
     }
 
     if (job.status === 'completed' || job.status === 'cancelled') {
+      logger.info(
+        { ...ctx, status: job.status },
+        'Job already in terminal state',
+      );
       return { success: true };
     }
 
     const apiKey = process.env[`${job.provider.toUpperCase()}_API_KEY`];
     if (!apiKey) {
+      logger.error({ ...ctx, provider: job.provider }, 'Missing API key');
       throw new Error(`Missing API key for provider: ${job.provider}`);
     }
 
@@ -169,6 +243,9 @@ export const cancelVideoJobAction = enhanceAction(
       .from('generation_jobs')
       .update({ status: 'cancelled' })
       .eq('id', data.jobId);
+
+    logger.info(ctx, 'Video generation job cancelled');
+    revalidatePath('/home/[account]/projects/[id]', 'page');
 
     return { success: true };
   },

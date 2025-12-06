@@ -4,15 +4,29 @@ import { KlingProvider } from './kling';
 import { LumaProvider } from './luma';
 import { RunwayProvider } from './runway';
 
-const providerInstances = new Map<VideoProvider, VideoGenerationProvider>();
+interface CachedProvider {
+  instance: VideoGenerationProvider;
+  configHash: string;
+}
+
+const providerInstances = new Map<VideoProvider, CachedProvider>();
+
+function hashConfig(config: ProviderConfig): string {
+  return JSON.stringify({
+    apiKey: config.apiKey?.slice(-8), // Only use last 8 chars for comparison
+    baseUrl: config.baseUrl,
+  });
+}
 
 export function createVideoProvider(
   provider: VideoProvider,
   config: ProviderConfig,
 ): VideoGenerationProvider {
+  const configHash = hashConfig(config);
   const cached = providerInstances.get(provider);
-  if (cached) {
-    return cached;
+
+  if (cached && cached.configHash === configHash) {
+    return cached.instance;
   }
 
   let instance: VideoGenerationProvider;
@@ -31,14 +45,15 @@ export function createVideoProvider(
       throw new Error(`Unknown video provider: ${provider}`);
   }
 
-  providerInstances.set(provider, instance);
+  providerInstances.set(provider, { instance, configHash });
   return instance;
 }
 
 export function getVideoProvider(
   provider: VideoProvider,
 ): VideoGenerationProvider | undefined {
-  return providerInstances.get(provider);
+  const cached = providerInstances.get(provider);
+  return cached?.instance;
 }
 
 export function clearProviderCache(): void {
