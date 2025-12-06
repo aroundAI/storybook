@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { getFontsClassName } from '../fonts';
+
 // Mock next/font/google
 vi.mock('next/font/google', () => ({
   Inter: vi.fn(() => ({
@@ -7,8 +9,6 @@ vi.mock('next/font/google', () => ({
     className: 'font-sans',
   })),
 }));
-
-import { getFontsClassName } from '../fonts';
 
 describe('fonts', () => {
   describe('getFontsClassName', () => {
