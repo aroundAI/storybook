@@ -1,3 +1,4 @@
+import { fetchWithRetry, formatProviderError } from '../lib/http';
 import { VoiceGenerationRequestSchema } from '../lib/schemas';
 import type {
   CloneVoiceRequest,
@@ -155,10 +156,7 @@ export abstract class BaseVoiceGenerationProvider
    * Handle and format errors consistently
    */
   protected handleError(error: unknown, operation: string): Error {
-    if (error instanceof Error) {
-      return new Error(`${this.name} ${operation} failed: ${error.message}`);
-    }
-    return new Error(`${this.name} ${operation} failed: Unknown error`);
+    return formatProviderError(this.name, operation, error);
   }
 
   /**
@@ -169,49 +167,15 @@ export abstract class BaseVoiceGenerationProvider
     options: RequestInit,
     binary: boolean = false,
   ): Promise<T> {
-    const maxRetries = this.config.maxRetries ?? 5;
-    const timeout = this.config.timeout ?? 30000;
-    let lastError: Error;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal: AbortSignal.timeout(timeout),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            `API error: ${(errorData as { message?: string }).message ?? response.statusText}`,
-          );
-        }
-
-        if (binary) {
-          return (await response.arrayBuffer()) as T;
-        }
-
-        return (await response.json()) as T;
-      } catch (error) {
-        lastError = error as Error;
-
-        // Don't retry on validation errors
-        if (
-          error instanceof Error &&
-          error.message.includes('Invalid request')
-        ) {
-          throw error;
-        }
-
-        // Exponential backoff
-        if (attempt < maxRetries - 1) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    throw lastError!;
+    return fetchWithRetry<T>(
+      url,
+      options,
+      {
+        maxRetries: this.config.maxRetries,
+        timeout: this.config.timeout,
+      },
+      binary,
+    );
   }
 }
 
@@ -280,10 +244,7 @@ export abstract class BaseMusicGenerationProvider
    * Handle and format errors consistently
    */
   protected handleError(error: unknown, operation: string): Error {
-    if (error instanceof Error) {
-      return new Error(`${this.name} ${operation} failed: ${error.message}`);
-    }
-    return new Error(`${this.name} ${operation} failed: Unknown error`);
+    return formatProviderError(this.name, operation, error);
   }
 
   /**
@@ -293,44 +254,9 @@ export abstract class BaseMusicGenerationProvider
     url: string,
     options: RequestInit,
   ): Promise<T> {
-    const maxRetries = this.config.maxRetries ?? 5;
-    const timeout = this.config.timeout ?? 60000;
-    let lastError: Error;
-
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        const response = await fetch(url, {
-          ...options,
-          signal: AbortSignal.timeout(timeout),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            `API error: ${(errorData as { message?: string }).message ?? response.statusText}`,
-          );
-        }
-
-        return (await response.json()) as T;
-      } catch (error) {
-        lastError = error as Error;
-
-        // Don't retry on validation errors
-        if (
-          error instanceof Error &&
-          error.message.includes('Invalid request')
-        ) {
-          throw error;
-        }
-
-        // Exponential backoff
-        if (attempt < maxRetries - 1) {
-          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
-      }
-    }
-
-    throw lastError!;
+    return fetchWithRetry<T>(url, options, {
+      maxRetries: this.config.maxRetries,
+      timeout: this.config.timeout ?? 60000,
+    });
   }
 }

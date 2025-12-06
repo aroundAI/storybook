@@ -2,6 +2,7 @@
   "name": "@kit/audio-generation",
   "private": true,
   "version": "0.1.0",
+  "sideEffects": false,
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
