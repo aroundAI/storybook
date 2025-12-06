@@ -1,12 +1,13 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { cookies } from 'next/headers';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { getRootTheme } from '../root-theme';
 
 // Mock Next.js cookies - must define inline to avoid hoisting issues
 vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
-
-import { cookies } from 'next/headers';
-import { getRootTheme } from '../root-theme';
 
 describe('root-theme', () => {
   const mockCookies = vi.mocked(cookies);

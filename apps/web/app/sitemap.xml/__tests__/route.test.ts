@@ -1,4 +1,10 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { getServerSideSitemap } from 'next-sitemap';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createCmsClient } from '@kit/cms';
+
+// Import after mocking
+import { GET } from '../route';
 
 // Mock dependencies - declare before vi.mock to avoid hoisting issues
 vi.mock('next-sitemap', () => ({
@@ -15,11 +21,6 @@ vi.mock('~/config/app.config', () => ({
     name: 'Test App',
   },
 }));
-
-// Import after mocking
-import { GET } from '../route';
-import { getServerSideSitemap } from 'next-sitemap';
-import { createCmsClient } from '@kit/cms';
 
 describe('sitemap.xml/route', () => {
   const mockGetContentItems = vi.fn();
@@ -86,9 +87,7 @@ describe('sitemap.xml/route', () => {
         await GET();
 
         const [[paths]] = mockGetServerSideSitemap.mock.calls;
-        const homePath = paths.find(
-          (p: any) => p.loc === 'https://test.com/',
-        );
+        const homePath = paths.find((p: any) => p.loc === 'https://test.com/');
 
         expect(homePath.lastmod).toBeDefined();
         expect(new Date(homePath.lastmod)).toBeInstanceOf(Date);
@@ -336,7 +335,9 @@ describe('sitemap.xml/route', () => {
         const [[paths]] = mockGetServerSideSitemap.mock.calls;
 
         expect(paths.length).toBeGreaterThanOrEqual(11); // 9 static + 1 blog + 1 doc
-        expect(paths.find((p: any) => p.loc === 'https://test.com/')).toBeDefined();
+        expect(
+          paths.find((p: any) => p.loc === 'https://test.com/'),
+        ).toBeDefined();
         expect(
           paths.find((p: any) => p.loc === 'https://test.com/blog/blog-post'),
         ).toBeDefined();
@@ -379,9 +380,7 @@ describe('sitemap.xml/route', () => {
         const [[paths]] = mockGetServerSideSitemap.mock.calls;
 
         expect(Array.isArray(paths)).toBe(true);
-        expect(paths.every((item: any) => item.loc && item.lastmod)).toBe(
-          true,
-        );
+        expect(paths.every((item: any) => item.loc && item.lastmod)).toBe(true);
       });
     });
 
