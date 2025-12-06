@@ -25,6 +25,7 @@ export const generateVideoAction = enhanceAction(
     const logger = await getLogger();
     const ctx = {
       name: 'video.generate',
+      accountId: data.accountId,
       shotId: data.shotId,
       provider: data.provider,
     };
@@ -43,6 +44,7 @@ export const generateVideoAction = enhanceAction(
     const { data: job, error: createError } = await (client as any)
       .from('generation_jobs')
       .insert({
+        account_id: data.accountId,
         shot_id: data.shotId,
         provider: data.provider,
         status: 'pending',

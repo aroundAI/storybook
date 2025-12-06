@@ -21,6 +21,7 @@ export const VideoGenerationRequestSchema = z.object({
 });
 
 export const GenerateVideoSchema = z.object({
+  accountId: z.string().uuid(),
   shotId: z.string().uuid(),
   provider: VideoProviderSchema,
   request: VideoGenerationRequestSchema,
