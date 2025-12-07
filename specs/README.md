@@ -288,7 +288,7 @@ specs/
 | FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | DRAFT | S |
 | FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | DRAFT | M |
 | FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | DRAFT | M |
-| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DRAFT | S |
+| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DONE | S |
 
 ---
 

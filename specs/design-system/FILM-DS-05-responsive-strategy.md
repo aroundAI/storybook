@@ -324,14 +324,14 @@ When container queries have broader support:
 
 ## Acceptance Criteria
 
-- [ ] All pages render correctly at all breakpoints
-- [ ] Sidebar collapses to sheet on tablet/mobile
-- [ ] Bottom navigation appears on mobile
-- [ ] Touch gestures work on mobile devices
-- [ ] Timeline has simplified mobile view
-- [ ] Modals become full-screen sheets on mobile
-- [ ] Typography scales appropriately
-- [ ] No horizontal overflow at any breakpoint
+- [x] All pages render correctly at all breakpoints
+- [x] Sidebar collapses to sheet on tablet/mobile
+- [x] Bottom navigation appears on mobile
+- [x] Touch gestures work on mobile devices
+- [ ] Timeline has simplified mobile view (future implementation in FILM-601)
+- [x] Modals become full-screen sheets on mobile
+- [x] Typography scales appropriately
+- [x] No horizontal overflow at any breakpoint
 
 ---
 
