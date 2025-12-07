@@ -79,12 +79,12 @@ describe('Audio Generation Schemas', () => {
     });
 
     it('should reject stability out of range', () => {
-      expect(
-        VoiceSettingsSchema.safeParse({ stability: 1.5 }).success,
-      ).toBe(false);
-      expect(
-        VoiceSettingsSchema.safeParse({ stability: -0.1 }).success,
-      ).toBe(false);
+      expect(VoiceSettingsSchema.safeParse({ stability: 1.5 }).success).toBe(
+        false,
+      );
+      expect(VoiceSettingsSchema.safeParse({ stability: -0.1 }).success).toBe(
+        false,
+      );
     });
 
     it('should reject speed out of range', () => {

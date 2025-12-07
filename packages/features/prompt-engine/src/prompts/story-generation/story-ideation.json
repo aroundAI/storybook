@@ -1,0 +1,87 @@
+{
+  "slug": "story-ideation",
+  "name": "Story Ideation",
+  "version": 1,
+  "category": "story-generation",
+  "description": "Generate multiple story ideas from a premise. Creates diverse, creative story concepts suitable for short-form video content.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 2000,
+    "temperature": 0.8,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Story Consultant Role",
+      "content": "You are an expert story consultant and creative writer. Your role is to help filmmakers develop compelling story ideas from initial premises. Generate diverse, creative story concepts that are visually interesting and suitable for short-form video content (1-10 minutes).",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 2
+    }
+  ],
+
+  "user_prompt": "Generate {{number_of_ideas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{target_audience}}\n- Style: {{style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5. **Visual Potential**: Why this story works well for video\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\"\n    }\n  ]\n}\n```",
+
+  "variables": {
+    "premise": {
+      "type": "text",
+      "required": true,
+      "description": "One-sentence story premise or hook"
+    },
+    "genre": {
+      "type": "text",
+      "required": false,
+      "description": "Story genre (e.g., sci-fi, fantasy, drama). Defaults to 'general'"
+    },
+    "target_audience": {
+      "type": "text",
+      "required": false,
+      "description": "Target audience (e.g., children, young adult, adult). Defaults to 'general'"
+    },
+    "style": {
+      "type": "text",
+      "required": false,
+      "description": "Storytelling style (e.g., comedic, dramatic, thriller). Defaults to 'balanced'"
+    },
+    "number_of_ideas": {
+      "type": "number",
+      "required": false,
+      "description": "Number of story ideas to generate. Defaults to 3"
+    }
+  },
+
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ ideas: z.array(z.object({ title: z.string(), logline: z.string(), themes: z.array(z.string()), hook: z.string(), visualPotential: z.string() })) })"
+    },
+    "schema_for_llm": "Return JSON: { \"ideas\": [{ \"title\": \"string\", \"logline\": \"string\", \"themes\": [\"string\"], \"hook\": \"string\", \"visualPotential\": \"string\" }] }",
+    "example_output": {
+      "ideas": [
+        {
+          "title": "The Last Signal",
+          "logline": "A lonely astronaut discovers a message from Earth that changes everything she thought she knew about her mission.",
+          "themes": ["isolation", "hope", "identity"],
+          "hook": "The twist reveals the message was sent from the future, creating a paradox the protagonist must resolve.",
+          "visualPotential": "Stunning space visuals, intimate spacecraft interiors, emotional close-ups of the astronaut's reactions."
+        }
+      ]
+    }
+  }
+}

@@ -63,7 +63,10 @@ export async function fetchWithRetry<T>(
 
       // Exponential backoff with jitter (±25% randomization)
       if (attempt < maxRetries - 1) {
-        const baseBackoff = Math.min(baseDelay * Math.pow(2, attempt), maxDelay);
+        const baseBackoff = Math.min(
+          baseDelay * Math.pow(2, attempt),
+          maxDelay,
+        );
         const jitter = baseBackoff * 0.25 * (Math.random() * 2 - 1); // -25% to +25%
         const delay = Math.max(0, baseBackoff + jitter);
         await new Promise((resolve) => setTimeout(resolve, delay));
