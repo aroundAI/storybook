@@ -1,3 +1,2 @@
-// Export episode components here
-// EpisodeList, EpisodeCard, EpisodeForm, ShotList, ShotCard, ShotForm, SceneEditor, etc.
+// Episode components (FILM-DS-01)
 export {};

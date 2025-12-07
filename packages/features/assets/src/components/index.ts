@@ -1,3 +1,2 @@
-// Export asset components here
-// AssetList, AssetCard, AssetForm, CharacterForm, LocationForm, etc.
+// Asset components (FILM-DS-01)
 export {};
