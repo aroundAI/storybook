@@ -31,6 +31,7 @@ export const statusTokens = {
     bg: 'bg-slate-100 dark:bg-slate-800',
     text: 'text-slate-600 dark:text-slate-400',
     border: 'border-slate-200 dark:border-slate-700',
+    ring: 'ring-slate-300 dark:ring-slate-600',
     icon: 'Clock',
     label: 'Pending',
   },
@@ -38,6 +39,7 @@ export const statusTokens = {
     bg: 'bg-amber-100 dark:bg-amber-900/30',
     text: 'text-amber-700 dark:text-amber-400',
     border: 'border-amber-200 dark:border-amber-800',
+    ring: 'ring-amber-300 dark:ring-amber-600',
     icon: 'Hourglass',
     label: 'Queued',
   },
@@ -45,6 +47,7 @@ export const statusTokens = {
     bg: 'bg-blue-100 dark:bg-blue-900/30',
     text: 'text-blue-700 dark:text-blue-400',
     border: 'border-blue-200 dark:border-blue-800',
+    ring: 'ring-blue-300 dark:ring-blue-600',
     icon: 'Loader2', // animated
     label: 'Generating',
   },
@@ -52,6 +55,7 @@ export const statusTokens = {
     bg: 'bg-green-100 dark:bg-green-900/30',
     text: 'text-green-700 dark:text-green-400',
     border: 'border-green-200 dark:border-green-800',
+    ring: 'ring-green-300 dark:ring-green-600',
     icon: 'CheckCircle',
     label: 'Completed',
   },
@@ -59,6 +63,7 @@ export const statusTokens = {
     bg: 'bg-red-100 dark:bg-red-900/30',
     text: 'text-red-700 dark:text-red-400',
     border: 'border-red-200 dark:border-red-800',
+    ring: 'ring-red-300 dark:ring-red-600',
     icon: 'XCircle',
     label: 'Failed',
   },
@@ -66,6 +71,7 @@ export const statusTokens = {
     bg: 'bg-purple-100 dark:bg-purple-900/30',
     text: 'text-purple-700 dark:text-purple-400',
     border: 'border-purple-200 dark:border-purple-800',
+    ring: 'ring-purple-300 dark:ring-purple-600',
     icon: 'BadgeCheck',
     label: 'Approved',
   },
@@ -231,64 +237,77 @@ export type EpisodeStatus = keyof typeof episodeStatusTokens;
 Used for provider selection and connection status:
 
 ```typescript
+export type ProviderCategory = 'video' | 'audio' | 'platform';
+
 export const providerTokens = {
   // Video providers
   kling: {
     name: 'Kling',
     bg: 'bg-indigo-600',
     icon: 'Video',
+    category: 'video' as const,
   },
   runway: {
     name: 'Runway',
     bg: 'bg-violet-600',
     icon: 'Film',
+    category: 'video' as const,
   },
   hailuo: {
     name: 'Hailuo',
     bg: 'bg-sky-600',
     icon: 'Clapperboard',
+    category: 'video' as const,
   },
   // Audio providers
   elevenlabs: {
     name: 'ElevenLabs',
     bg: 'bg-emerald-600',
     icon: 'AudioLines',
+    category: 'audio' as const,
   },
   playht: {
     name: 'PlayHT',
     bg: 'bg-teal-600',
     icon: 'Mic2',
+    category: 'audio' as const,
   },
   suno: {
     name: 'Suno',
     bg: 'bg-orange-600',
     icon: 'Music4',
+    category: 'audio' as const,
   },
   udio: {
     name: 'Udio',
     bg: 'bg-rose-600',
     icon: 'Music2',
+    category: 'audio' as const,
   },
   // Platforms
   youtube: {
     name: 'YouTube',
     bg: 'bg-red-600',
     icon: 'Youtube',
+    category: 'platform' as const,
   },
   tiktok: {
     name: 'TikTok',
     bg: 'bg-black dark:bg-white',
     icon: 'Music2',
+    category: 'platform' as const,
   },
   instagram: {
     name: 'Instagram',
     bg: 'bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500',
     icon: 'Instagram',
+    category: 'platform' as const,
   },
   facebook: {
     name: 'Facebook',
     bg: 'bg-blue-600',
     icon: 'Facebook',
+    category: 'platform' as const,
   },
 } as const;
 ```

@@ -229,6 +229,7 @@ describe('Utility Functions', () => {
       expect(classes).toContain('bg-slate-100');
       expect(classes).toContain('text-slate-600');
       expect(classes).toContain('border-slate-200');
+      expect(classes).toContain('ring-slate-300');
     });
 
     it('should include dark mode classes', () => {
@@ -236,6 +237,14 @@ describe('Utility Functions', () => {
 
       expect(classes).toContain('dark:bg-green-900/30');
       expect(classes).toContain('dark:text-green-400');
+      expect(classes).toContain('dark:ring-green-600');
+    });
+
+    it('should include ring classes for focus states', () => {
+      const classes = getStatusClasses('failed');
+
+      expect(classes).toContain('ring-red-300');
+      expect(classes).toContain('dark:ring-red-600');
     });
   });
 

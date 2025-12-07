@@ -318,11 +318,11 @@ export function getStatusToken(status: StatusType) {
 }
 
 /**
- * Compose Tailwind classes for status styling
+ * Compose Tailwind classes for status styling (includes focus ring for a11y)
  */
 export function getStatusClasses(status: StatusType): string {
   const token = statusTokens[status];
-  return `${token.bg} ${token.text} ${token.border}`;
+  return `${token.bg} ${token.text} ${token.border} ${token.ring}`;
 }
 
 /**
