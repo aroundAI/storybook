@@ -1,7 +1,11 @@
 import { type CacheClient, createCacheClient } from '@kit/cache';
 import { getLogger } from '@kit/shared/logger';
 
-import { getRateLimitConfig, isProviderSupported, SUPPORTED_PROVIDERS } from './config';
+import {
+  SUPPORTED_PROVIDERS,
+  getRateLimitConfig,
+  isProviderSupported,
+} from './config';
 import type {
   RateLimitConfig,
   RateLimitResult,
@@ -72,7 +76,10 @@ export class RateLimiter {
 
     // Validate provider before proceeding
     if (!isProviderSupported(validated.provider)) {
-      throw new UnsupportedProviderError(validated.provider, SUPPORTED_PROVIDERS);
+      throw new UnsupportedProviderError(
+        validated.provider,
+        SUPPORTED_PROVIDERS,
+      );
     }
 
     const tier = await this.getAccountTier(validated.accountId);
@@ -80,7 +87,11 @@ export class RateLimiter {
     const key = this.getKey(validated.accountId, validated.provider);
 
     try {
-      const result = await this.executeTokenBucketWithLock(key, config, validated.cost);
+      const result = await this.executeTokenBucketWithLock(
+        key,
+        config,
+        validated.cost,
+      );
 
       if (!result.allowed) {
         const logger = await getLogger();

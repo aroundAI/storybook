@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 
 import { enhanceRouteHandler } from '@kit/next/routes';
-import { refreshExpiringTokens } from '@kit/publishing/jobs';
+import {
+  cleanupExpiredOAuthStates,
+  refreshExpiringTokens,
+} from '@kit/publishing/jobs';
 import { getLogger } from '@kit/shared/logger';
 
 /**
@@ -47,16 +50,18 @@ export const GET = enhanceRouteHandler(
 
     try {
       const results = await refreshExpiringTokens();
+      const cleanedStates = await cleanupExpiredOAuthStates();
       const duration = Date.now() - startTime;
 
       logger.info(
-        { ...ctx, ...results, durationMs: duration },
+        { ...ctx, ...results, cleanedStates, durationMs: duration },
         `Job completed in ${duration}ms`,
       );
 
       return NextResponse.json({
         success: true,
         ...results,
+        oauthStates: { cleaned: cleanedStates },
         durationMs: duration,
       });
     } catch (error) {

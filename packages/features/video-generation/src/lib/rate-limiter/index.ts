@@ -43,7 +43,11 @@ export type {
 } from './types';
 
 // Export schemas and errors
-export { CheckLimitSchema, GetRemainingSchema, UnsupportedProviderError } from './types';
+export {
+  CheckLimitSchema,
+  GetRemainingSchema,
+  UnsupportedProviderError,
+} from './types';
 
 // Export configuration
 export {

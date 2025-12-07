@@ -960,6 +960,36 @@ export type Database = {
           },
         ];
       };
+      oauth_states: {
+        Row: {
+          created_at: string;
+          expires_at: string;
+          id: string;
+          metadata: Json | null;
+          nonce: string;
+          platform: string;
+          user_id: string;
+        };
+        Insert: {
+          created_at?: string;
+          expires_at: string;
+          id?: string;
+          metadata?: Json | null;
+          nonce: string;
+          platform: string;
+          user_id: string;
+        };
+        Update: {
+          created_at?: string;
+          expires_at?: string;
+          id?: string;
+          metadata?: Json | null;
+          nonce?: string;
+          platform?: string;
+          user_id?: string;
+        };
+        Relationships: [];
+      };
       order_items: {
         Row: {
           created_at: string;
@@ -1723,6 +1753,7 @@ export type Database = {
         };
         Returns: boolean;
       };
+      cleanup_expired_oauth_states: { Args: never; Returns: number };
       create_invitation: {
         Args: { account_id: string; email: string; role: string };
         Returns: {

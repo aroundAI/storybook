@@ -41,7 +41,7 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
   const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
 
   // Find active connections expiring soon using untyped query
-  // Until platform_connections table is created per FILM-101j
+  // Until platform_connections table types are regenerated
   const untypedClient = client as unknown as {
     from: (table: string) => {
       select: (cols: string) => {
@@ -49,17 +49,23 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
           col: string,
           val: boolean,
         ) => {
-          lt: (
+          not: (
             col: string,
-            val: string,
+            filter: string,
+            val: null,
           ) => {
-            order: (
+            lt: (
               col: string,
-              opts: { ascending: boolean },
-            ) => Promise<{
-              data: ExpiringConnection[] | null;
-              error: { message: string } | null;
-            }>;
+              val: string,
+            ) => {
+              order: (
+                col: string,
+                opts: { ascending: boolean },
+              ) => Promise<{
+                data: ExpiringConnection[] | null;
+                error: { message: string } | null;
+              }>;
+            };
           };
         };
       };
@@ -70,6 +76,7 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
     .from('platform_connections')
     .select('id, platform, account_id')
     .eq('is_active', true)
+    .not('token_expires_at', 'is', null)
     .lt('token_expires_at', oneHourFromNow.toISOString())
     .order('token_expires_at', { ascending: true });
 
@@ -145,6 +152,37 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
  */
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Cleans up expired OAuth states
+ * Should run periodically to remove stale state entries
+ */
+export async function cleanupExpiredOAuthStates(): Promise<number> {
+  const logger = await getLogger();
+  const ctx = { name: 'token-refresh.cleanup' };
+  const client = getSupabaseServerClient();
+
+  // Note: Type assertion needed until database types are regenerated
+  const { data, error } = (await client.rpc(
+    'cleanup_expired_oauth_states' as 'get_config',
+  )) as { data: number | null; error: unknown };
+
+  if (error) {
+    logger.error({ ...ctx, error }, 'Failed to cleanup OAuth states');
+    return 0;
+  }
+
+  const deletedCount = data ?? 0;
+
+  if (deletedCount > 0) {
+    logger.info(
+      { ...ctx, deletedCount },
+      `Cleaned up ${deletedCount} expired OAuth states`,
+    );
+  }
+
+  return deletedCount;
 }
 
 /**

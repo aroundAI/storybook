@@ -1,9 +1,10 @@
 import 'server-only';
 
+import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { decrypt, encrypt } from './crypto';
+import type { PlatformConnection } from './database-types';
 
 /**
  * Result of a token refresh operation
@@ -20,7 +21,12 @@ export interface TokenRefreshResult {
 export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
-  error?: 'EXPIRED' | 'REFRESH_FAILED' | 'CONNECTION_INACTIVE' | 'NOT_FOUND';
+  error?:
+    | 'EXPIRED'
+    | 'REFRESH_FAILED'
+    | 'CONNECTION_INACTIVE'
+    | 'NOT_FOUND'
+    | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 
@@ -28,25 +34,6 @@ export interface TokenValidationResult {
  * Supported publishing platforms
  */
 export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
-
-/**
- * Platform connection row type (from platform_connections table)
- * This type should match the database schema in FILM-101j
- */
-export interface PlatformConnection {
-  id: string;
-  account_id: string;
-  platform: string;
-  platform_account_id: string;
-  platform_account_name: string;
-  access_token_encrypted: string;
-  refresh_token_encrypted: string;
-  token_expires_at: string;
-  scopes: string[];
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-}
 
 /**
  * Buffer time before expiry to trigger refresh (5 minutes)
@@ -96,10 +83,15 @@ export async function ensureValidToken(
 async function doEnsureValidToken(
   connectionId: string,
 ): Promise<TokenValidationResult> {
-  // 1. Fetch connection using untyped query (table may not exist in schema yet)
-  // Once platform_connections table is created per FILM-101j, update to typed query
-  const { data: connection, error } =
-    await queryPlatformConnection(connectionId);
+  const client = getSupabaseServerClient();
+
+  // 1. Fetch connection
+  // Note: Type assertion needed until database types are regenerated
+  const { data: connection, error } = (await client
+    .from('platform_connections' as 'accounts')
+    .select('*')
+    .eq('id', connectionId)
+    .single()) as { data: PlatformConnection | null; error: unknown };
 
   if (error || !connection) {
     return { valid: false, error: 'NOT_FOUND' };
@@ -110,17 +102,26 @@ async function doEnsureValidToken(
   }
 
   // 2. Check if token is still valid with buffer
-  const expiresAt = new Date(connection.token_expires_at);
+  const expiresAt = connection.token_expires_at
+    ? new Date(connection.token_expires_at)
+    : null;
   const now = new Date();
-  const needsRefresh = expiresAt.getTime() - now.getTime() < EXPIRY_BUFFER_MS;
+  const needsRefresh =
+    !expiresAt || expiresAt.getTime() - now.getTime() < EXPIRY_BUFFER_MS;
 
-  if (!needsRefresh) {
+  if (!needsRefresh && connection.access_token_encrypted) {
     // Token still valid
     const accessToken = await decrypt(connection.access_token_encrypted);
     return { valid: true, accessToken };
   }
 
-  // 3. Attempt refresh
+  // 3. Check if we have a refresh token
+  if (!connection.refresh_token_encrypted) {
+    await markConnectionInactive(connectionId);
+    return { valid: false, error: 'NO_REFRESH_TOKEN', requiresReauth: true };
+  }
+
+  // 4. Attempt refresh
   try {
     const refreshToken = await decrypt(connection.refresh_token_encrypted);
     const refreshed = await refreshTokenForPlatform(
@@ -128,7 +129,7 @@ async function doEnsureValidToken(
       refreshToken,
     );
 
-    // 4. Update stored tokens
+    // 5. Update stored tokens
     const updateData: Record<string, string | boolean> = {
       access_token_encrypted: await encrypt(refreshed.accessToken),
       token_expires_at: refreshed.expiresAt.toISOString(),
@@ -142,17 +143,27 @@ async function doEnsureValidToken(
       );
     }
 
-    await updatePlatformConnection(connectionId, updateData);
+    await client
+      .from('platform_connections' as 'accounts')
+      .update(updateData as Record<string, unknown>)
+      .eq('id', connectionId);
 
     return { valid: true, accessToken: refreshed.accessToken };
-  } catch {
-    // 5. Mark connection as inactive
-    await updatePlatformConnection(connectionId, {
-      is_active: false,
-      updated_at: new Date().toISOString(),
-    });
+  } catch (refreshError) {
+    const logger = await getLogger();
+    logger.error(
+      {
+        name: 'token-refresh',
+        platform: connection.platform,
+        error: refreshError,
+      },
+      `Failed to refresh ${connection.platform}`,
+    );
 
-    // 6. Send notification to user (if notification system available)
+    // 6. Mark connection as inactive
+    await markConnectionInactive(connectionId);
+
+    // 7. Send notification to user
     await sendReauthNotification(
       connection.account_id,
       connection.platform as Platform,
@@ -167,63 +178,16 @@ async function doEnsureValidToken(
 }
 
 /**
- * Queries a platform connection by ID.
- * Uses untyped query until platform_connections table is in schema.
+ * Marks a connection as inactive
  */
-async function queryPlatformConnection(
-  connectionId: string,
-): Promise<{ data: PlatformConnection | null; error: unknown }> {
+async function markConnectionInactive(connectionId: string): Promise<void> {
   const client = getSupabaseServerClient();
-
-  // Cast to unknown first to bypass strict type checking
-  // This allows querying tables not yet in the schema
-  const result = await (
-    client as unknown as {
-      from: (table: string) => {
-        select: (cols: string) => {
-          eq: (
-            col: string,
-            val: string,
-          ) => {
-            single: () => Promise<{
-              data: PlatformConnection | null;
-              error: unknown;
-            }>;
-          };
-        };
-      };
-    }
-  )
-    .from('platform_connections')
-    .select('*')
-    .eq('id', connectionId)
-    .single();
-
-  return result;
-}
-
-/**
- * Updates a platform connection record.
- * Uses untyped query until platform_connections table is in schema.
- */
-async function updatePlatformConnection(
-  connectionId: string,
-  data: Record<string, string | boolean>,
-): Promise<void> {
-  const client = getSupabaseServerClient();
-
-  // Use untyped query pattern until table exists in schema
-  await (
-    client as unknown as {
-      from: (table: string) => {
-        update: (data: Record<string, unknown>) => {
-          eq: (col: string, val: string) => Promise<{ error: unknown }>;
-        };
-      };
-    }
-  )
-    .from('platform_connections')
-    .update(data)
+  await client
+    .from('platform_connections' as 'accounts')
+    .update({
+      is_active: false,
+      updated_at: new Date().toISOString(),
+    } as Record<string, unknown>)
     .eq('id', connectionId);
 }
 
@@ -315,6 +279,13 @@ async function refreshTikTokToken(
   }
 
   const data = await response.json();
+
+  if (data.error || !data.access_token) {
+    throw new Error(
+      `TikTok refresh failed: ${data.error_description || data.error}`,
+    );
+  }
+
   return {
     accessToken: data.access_token,
     refreshToken: data.refresh_token, // TikTok always returns new refresh token
@@ -361,8 +332,8 @@ async function refreshMetaToken(
 /**
  * Formats platform name for display
  */
-export function formatPlatformName(platform: Platform): string {
-  const names: Record<Platform, string> = {
+export function formatPlatformName(platform: Platform | string): string {
+  const names: Record<string, string> = {
     youtube: 'YouTube',
     tiktok: 'TikTok',
     instagram: 'Instagram',
