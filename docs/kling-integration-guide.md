@@ -244,7 +244,7 @@ import { headers } from 'next/headers';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import type { WebhookPayload } from '@kit/video-generation/kling';
+import type { WebhookPayload } from '@kit/video-generation/webhooks/types';
 
 export async function POST(request: NextRequest) {
   try {
@@ -362,7 +362,7 @@ async function notifyUserOfFailure(accountId: string, shotId: string, errorMessa
 import { z } from 'zod';
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { KlingClient } from '@kit/video-generation/kling';
+import { KlingClient } from '@kit/video-generation/providers';
 
 const GenerateVideoSchema = z.object({
   shotId: z.string().uuid(),
