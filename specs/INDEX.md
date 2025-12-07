@@ -325,7 +325,7 @@ graph TD
 | FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | ✅ DONE | S | - |
 | FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | DRAFT | M | FILM-DS-01 |
 | FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | DRAFT | M | FILM-DS-01 |
-| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DRAFT | S | FILM-DS-01 |
+| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | ✅ DONE | S | FILM-DS-01 |
 
 ### Phase 2: Assets (9 specs)
 
