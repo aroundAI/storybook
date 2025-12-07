@@ -20,7 +20,7 @@ function createMockFile(
   type: string,
   size?: number,
 ): File {
-  const blob = new Blob([content], { type });
+  const blob = new Blob([content as BlobPart], { type });
 
   // Create a File-like object with custom size if specified
   const file = new File([blob], name, { type });

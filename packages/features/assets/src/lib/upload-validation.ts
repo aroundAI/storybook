@@ -180,7 +180,7 @@ async function verifyMagicBytes(
 
   try {
     const buffer = await file.slice(0, 12).arrayBuffer();
-    const bytes = new Uint8Array(buffer);
+    const bytes = new Uint8Array(buffer as ArrayBuffer);
 
     // Check if file starts with expected magic bytes
     for (let i = 0; i < magicBytes.length; i++) {
