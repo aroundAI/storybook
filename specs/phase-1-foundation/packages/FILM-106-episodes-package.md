@@ -6,6 +6,8 @@
 - **Effort:** S
 - **Dependencies:** None
 - **Blocks:** Phase 3 (Episode Management)
+- **Status:** ✅ COMPLETED
+- **PR:** https://github.com/aroundAI/storybook/pull/4
 
 ## Context
 The @kit/episodes package manages episodes and shots within the film production pipeline. It handles episode planning, shot creation, scene management, and coordinates the relationship between episodes, shots, and assets. This package is essential for organizing the narrative structure and production workflow.
@@ -360,18 +362,25 @@ export {};
 | CREATE | `packages/features/episodes/src/hooks/index.ts` |
 
 ## Acceptance Criteria
-- [ ] Package builds without errors
-- [ ] All exports work correctly
-- [ ] TypeScript types exported and accessible
-- [ ] Zod schemas validate correctly
-- [ ] Can be imported by other packages
-- [ ] Server actions have 'use server' directive
+- [x] Package builds without errors
+- [x] All exports work correctly
+- [x] TypeScript types exported and accessible
+- [x] Zod schemas validate correctly
+- [x] Can be imported by other packages
+- [x] Server actions have 'use server' directive
 
 ## Test Plan
 ### Unit Tests
-- [ ] Package can be imported from other workspace packages
-- [ ] All export paths are accessible
-- [ ] Zod schemas validate valid episode data
-- [ ] Zod schemas validate valid shot data
-- [ ] Zod schemas reject invalid input
-- [ ] Constants are accessible
+- [x] Package can be imported from other workspace packages
+- [x] All export paths are accessible
+- [x] Zod schemas validate valid episode data
+- [x] Zod schemas validate valid shot data
+- [x] Zod schemas reject invalid input
+- [x] Constants are accessible
+
+## Implementation Notes
+- Implemented in PR #4
+- Database operations use type assertions (`client as any`) since tables will be created in FILM-101
+- Full CRUD server actions implemented: create, update, delete for episodes and shots
+- Reorder shots action for sequence management
+- All queries return proper typed results

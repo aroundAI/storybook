@@ -282,20 +282,20 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-101a | [seasons-table](./phase-1-foundation/database/FILM-101-seasons-table.md) | DRAFT | S | - |
-| FILM-101b | [episodes-table](./phase-1-foundation/database/FILM-101-episodes-table.md) | DRAFT | S | - |
-| FILM-101c | [shots-table](./phase-1-foundation/database/FILM-101-shots-table.md) | DRAFT | S | FILM-101b |
-| FILM-101d | [assets-table](./phase-1-foundation/database/FILM-101-assets-table.md) | DRAFT | S | - |
-| FILM-101e | [character-details-table](./phase-1-foundation/database/FILM-101-character-details-table.md) | DRAFT | XS | FILM-101d |
-| FILM-101f | [voice-profiles-table](./phase-1-foundation/database/FILM-101-voice-profiles-table.md) | DRAFT | XS | FILM-101d |
-| FILM-101g | [dialogue-lines-table](./phase-1-foundation/database/FILM-101-dialogue-lines-table.md) | DRAFT | XS | FILM-101b, FILM-101c |
-| FILM-101h | [audio-tracks-table](./phase-1-foundation/database/FILM-101-audio-tracks-table.md) | DRAFT | XS | FILM-101b |
-| FILM-101i | [generation-jobs-table](./phase-1-foundation/database/FILM-101-generation-jobs-table.md) | DRAFT | M | - |
-| FILM-101j | [platform-connections-table](./phase-1-foundation/database/FILM-101-platform-connections-table.md) | DRAFT | S | - |
-| FILM-101k | [publishes-table](./phase-1-foundation/database/FILM-101-publishes-table.md) | DRAFT | S | FILM-101b, FILM-101j |
-| FILM-101l | [content-analytics-table](./phase-1-foundation/database/FILM-101-content-analytics-table.md) | DRAFT | S | FILM-101k |
-| FILM-101m | [shared-resources-table](./phase-1-foundation/database/FILM-101-shared-resources-table.md) | DRAFT | XS | - |
-| FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.md) | DRAFT | XS | - |
+| FILM-101a | [seasons-table](./phase-1-foundation/database/FILM-101-seasons-table.md) | ✅ DONE | S | - |
+| FILM-101b | [episodes-table](./phase-1-foundation/database/FILM-101-episodes-table.md) | ✅ DONE | S | - |
+| FILM-101c | [shots-table](./phase-1-foundation/database/FILM-101-shots-table.md) | ✅ DONE | S | FILM-101b |
+| FILM-101d | [assets-table](./phase-1-foundation/database/FILM-101-assets-table.md) | ✅ DONE | S | - |
+| FILM-101e | [character-details-table](./phase-1-foundation/database/FILM-101-character-details-table.md) | ✅ DONE | XS | FILM-101d |
+| FILM-101f | [voice-profiles-table](./phase-1-foundation/database/FILM-101-voice-profiles-table.md) | ✅ DONE | XS | FILM-101d |
+| FILM-101g | [dialogue-lines-table](./phase-1-foundation/database/FILM-101-dialogue-lines-table.md) | ✅ DONE | XS | FILM-101b, FILM-101c |
+| FILM-101h | [audio-tracks-table](./phase-1-foundation/database/FILM-101-audio-tracks-table.md) | ✅ DONE | XS | FILM-101b |
+| FILM-101i | [generation-jobs-table](./phase-1-foundation/database/FILM-101-generation-jobs-table.md) | ✅ DONE | M | - |
+| FILM-101j | [platform-connections-table](./phase-1-foundation/database/FILM-101-platform-connections-table.md) | ✅ DONE | S | - |
+| FILM-101k | [publishes-table](./phase-1-foundation/database/FILM-101-publishes-table.md) | ✅ DONE | S | FILM-101b, FILM-101j |
+| FILM-101l | [content-analytics-table](./phase-1-foundation/database/FILM-101-content-analytics-table.md) | ✅ DONE | S | FILM-101k |
+| FILM-101m | [shared-resources-table](./phase-1-foundation/database/FILM-101-shared-resources-table.md) | ✅ DONE | XS | - |
+| FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.md) | ✅ DONE | XS | - |
 | FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.md) | DRAFT | XS | FILM-101* |
 | FILM-102b | [project-policies](./phase-1-foundation/rls/FILM-102-project-policies.md) | DRAFT | M | FILM-102a |
 | FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.md) | DRAFT | S | FILM-102a |
@@ -515,7 +515,7 @@ SPIKE-01 through SPIKE-05
 
 | Phase | Total | Draft | Review | Approved | In Progress | Done |
 |-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 26 | 26 | 0 | 0 | 0 | 0 |
+| 1. Foundation | 26 | 12 | 0 | 0 | 0 | 14 |
 | Cross-Cutting | 3 | 3 | 0 | 0 | 0 | 0 |
 | Design System | 5 | 5 | 0 | 0 | 0 | 0 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
@@ -527,13 +527,13 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 5 | 0 | 0 | 0 | 0 |
-| **TOTAL** | **130** | **130** | **0** | **0** | **0** | **0** |
+| **TOTAL** | **130** | **116** | **0** | **0** | **0** | **14** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 0 | 0% |
+| MVP Specs | 93 | 14 | 15% |
 | Post-MVP | 37 | 0 | 0% |
 
 ---
@@ -543,7 +543,7 @@ SPIKE-01 through SPIKE-05
 ### Database Migrations
 | Spec | Migration File |
 |------|----------------|
-| FILM-101* | `apps/web/supabase/migrations/YYYYMMDD_film-studio-tables.sql` |
+| FILM-101* | `apps/web/supabase/migrations/20251205125737_film-studio-tables.sql` ✅ |
 | FILM-102* | `apps/web/supabase/migrations/YYYYMMDD_film-studio-rls.sql` |
 | FILM-103 | `apps/web/supabase/migrations/YYYYMMDD_film-studio-functions.sql` |
 
