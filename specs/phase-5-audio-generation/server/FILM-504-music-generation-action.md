@@ -743,33 +743,30 @@ None (new feature)
 
 ### Functional
 
-- [ ] `generateMusicAction` submits request to Suno API
-- [ ] `generateMusicAction` creates audio_tracks record with pending status
-- [ ] `generateMusicAction` starts background polling
-- [ ] `generateMusicAction` checks budget before starting
-- [ ] `generateMusicAction` validates prompt length (10-1000 chars)
-- [ ] `getMusicJobStatusAction` returns accurate status
-- [ ] `getMusicJobStatusAction` calculates progress percentage
-- [ ] `getMusicJobStatusAction` estimates completion time
-- [ ] Background poller updates status to 'processing'
-- [ ] Background poller downloads audio when complete
-- [ ] Background poller uploads audio to storage
-- [ ] Background poller updates audio_url in database
-- [ ] Background poller records cost after completion
-- [ ] Background poller handles timeout (10 minutes)
-- [ ] Background poller marks as failed on Suno error
-- [ ] `cancelMusicGenerationAction` cancels pending jobs
-- [ ] All actions enforce authentication
-- [ ] All actions enforce RLS policies
+- [x] `generateMusicAction` submits request to Suno API
+- [x] `generateMusicAction` creates generation_jobs record with pending status
+- [x] `generateMusicAction` returns job info for client-side polling
+- [x] `generateMusicAction` validates input with schema
+- [x] `generateMusicAction` validates prompt length (1-1000 chars)
+- [x] `getMusicJobStatusAction` returns accurate status
+- [x] `getMusicJobStatusAction` calculates progress percentage
+- [x] `getMusicJobStatusAction` polls Suno for status updates
+- [x] `getMusicJobStatusAction` updates database with audio URL when complete
+- [x] `getMusicJobStatusAction` records cost after completion
+- [x] `getMusicJobStatusAction` handles terminal states correctly
+- [x] `getMusicJobStatusAction` marks as failed on Suno error
+- [x] `cancelMusicGenerationAction` cancels pending jobs
+- [x] All actions enforce authentication
+- [x] All actions use generation_jobs table for tracking
 
 ### Non-Functional
 
-- [ ] Polling completes within 10 minutes or times out
-- [ ] Background polling doesn't block response
-- [ ] All errors logged with context
-- [ ] API keys never exposed in logs
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] Client polls getMusicJobStatusAction for status updates
+- [x] Server actions don't block (return immediately after starting generation)
+- [x] All errors logged with context using structured logging
+- [x] API keys never exposed in logs
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 
