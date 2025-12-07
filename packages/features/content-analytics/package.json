@@ -1,0 +1,40 @@
+{
+  "name": "@kit/content-analytics",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    "./providers/youtube": "./src/providers/youtube/index.ts",
+    "./providers/youtube/types": "./src/providers/youtube/types.ts"
+  },
+  "dependencies": {
+    "@kit/publishing": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@supabase/supabase-js": "2.57.4",
+    "@types/node": "^24.5.0",
+    "googleapis": "^148.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
