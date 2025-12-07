@@ -16,7 +16,8 @@
   "exports": {
     "./server": "./src/lib/server/index.ts",
     "./types": "./src/lib/types.ts",
-    "./validation": "./src/lib/validation/index.ts"
+    "./validation": "./src/lib/validation/index.ts",
+    "./schemas": "./src/schemas/index.ts"
   },
   "dependencies": {
     "@kit/llm": "workspace:*",

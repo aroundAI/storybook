@@ -676,6 +676,8 @@ const form = useForm({
 
 **IMPORTANT**: Always use `origin` as the remote name, not `upstream`.
 
+**CRITICAL**: NEVER discard uncommitted changes with `git checkout --` or `git restore` without explicit user approval. Modified files may contain work from linting, formatting, or type fixes that need to be committed. Always ask before discarding changes.
+
 ```bash
 # ✅ CORRECT - Use origin
 git push origin feature-branch

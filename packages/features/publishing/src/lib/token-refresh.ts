@@ -383,7 +383,10 @@ async function sendReauthNotification(
   const ctx = { name: 'token-refresh.reauth', accountId, platform };
 
   // Log for now - integrate with @kit/notifications when available
-  logger.info(ctx, `Re-auth required for account ${accountId}, platform ${platform}`);
+  logger.info(
+    ctx,
+    `Re-auth required for account ${accountId}, platform ${platform}`,
+  );
 
   // TODO: Integrate with notification system
   // await sendNotification(accountId, {
