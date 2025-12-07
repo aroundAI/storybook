@@ -54,6 +54,7 @@ CREATE OR REPLACE FUNCTION public.cleanup_expired_oauth_states()
 RETURNS INTEGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = ''
 AS $$
 DECLARE
   deleted_count INTEGER;

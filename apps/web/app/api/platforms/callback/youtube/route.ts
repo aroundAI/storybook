@@ -72,8 +72,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Clean up used state
-  await client.from('oauth_states').delete().eq('nonce', state.nonce);
+  // Note: State deletion moved to after successful connection storage
+  // to allow retry on token exchange failure
 
   const clientId = process.env.YOUTUBE_CLIENT_ID;
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
@@ -176,6 +176,20 @@ export async function GET(request: NextRequest) {
     logger.error({ ...ctx, error: insertError }, 'Failed to store connection');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=storage_failed`,
+    );
+  }
+
+  // Clean up used state after successful connection storage
+  const { error: deleteError } = await client
+    .from('oauth_states')
+    .delete()
+    .eq('nonce', state.nonce);
+
+  if (deleteError) {
+    // Log but don't fail - connection was already stored successfully
+    logger.warn(
+      { ...ctx, error: deleteError },
+      'Failed to cleanup OAuth state',
     );
   }
 

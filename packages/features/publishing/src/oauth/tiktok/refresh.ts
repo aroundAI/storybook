@@ -64,6 +64,18 @@ export async function refreshTikTokToken(
     );
   }
 
+  // Validate expiry fields before date calculations
+  if (typeof tokens.expires_in !== 'number' || tokens.expires_in <= 0) {
+    throw new Error('Invalid expires_in in token refresh response');
+  }
+
+  if (
+    typeof tokens.refresh_expires_in !== 'number' ||
+    tokens.refresh_expires_in <= 0
+  ) {
+    throw new Error('Invalid refresh_expires_in in token refresh response');
+  }
+
   const accessTokenExpiresAt = new Date(Date.now() + tokens.expires_in * 1000);
   const refreshTokenExpiresAt = new Date(
     Date.now() + tokens.refresh_expires_in * 1000,
