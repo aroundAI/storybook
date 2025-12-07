@@ -1,5 +1,6 @@
 # FILM-401: Kling Video Generation Provider
 
+**Status**: ✅ DONE
 **Phase**: 4
 **Priority**: P0
 **Effort**: L (5-7 days)
