@@ -369,7 +369,7 @@ graph TD
 | FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | DRAFT | M | FILM-107, FILM-402 |
 | FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S | FILM-401 |
 | FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | ✅ DONE | M | - |
-| FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | DRAFT | L | FILM-403 |
+| FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | ✅ DONE | L | FILM-403 |
 | FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | DRAFT | L | FILM-401, FILM-404 |
 | FILM-406 | [batch-generate-action](./phase-4-video-generation/server/FILM-406-batch-generate-action.md) | DRAFT | M | FILM-405 |
 | FILM-407 | [kling-webhook](./phase-4-video-generation/webhooks/FILM-407-kling-webhook.md) | DRAFT | M | FILM-CC-02 |
