@@ -1,4 +1,16 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { getLogger } from '@kit/shared/logger';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import {
+  getAuditLogsByAction,
+  getAuditLogsByUser,
+  getAuditLogsForObject,
+  getAuditLogsForScope,
+  getChangeSummary,
+  getRecentAuditLogs,
+} from '../src/server/queries';
 
 // Mock server-only before imports
 vi.mock('server-only', () => ({}));
@@ -19,17 +31,6 @@ vi.mock('@kit/supabase/server-client', () => ({
     rpc: vi.fn(),
   })),
 }));
-
-import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import {
-  getAuditLogsForObject,
-  getAuditLogsForScope,
-  getRecentAuditLogs,
-  getAuditLogsByUser,
-  getAuditLogsByAction,
-  getChangeSummary,
-} from '../src/server/queries';
 
 describe('audit-log-queries', () => {
   const mockGetLogger = vi.mocked(getLogger);
@@ -597,16 +598,18 @@ describe('audit-log-queries', () => {
       const error = new Error('RPC failed');
       mockRpc.mockResolvedValue({ data: null, error });
 
-      await expect(
-        getChangeSummary('account-123', 'project'),
-      ).rejects.toThrow(error);
+      await expect(getChangeSummary('account-123', 'project')).rejects.toThrow(
+        error,
+      );
     });
 
     it('should log error when RPC fails', async () => {
       const error = new Error('RPC failed');
       mockRpc.mockResolvedValue({ data: null, error });
 
-      await expect(getChangeSummary('account-123', 'project')).rejects.toThrow();
+      await expect(
+        getChangeSummary('account-123', 'project'),
+      ).rejects.toThrow();
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -666,11 +669,7 @@ describe('audit-log-queries', () => {
 
       // Get recent logs for account
       mockRpc.mockResolvedValue({
-        data: [
-          { id: 'log-1' },
-          { id: 'log-2' },
-          { id: 'log-3' },
-        ],
+        data: [{ id: 'log-1' }, { id: 'log-2' }, { id: 'log-3' }],
         error: null,
       });
 

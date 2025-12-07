@@ -54,9 +54,7 @@ describe('LeaveTeamAccountService', () => {
         userId: '987fcdeb-51a2-43d7-8f9e-123456789abc',
       };
 
-      await expect(
-        service.leaveTeamAccount(params),
-      ).resolves.not.toThrow();
+      await expect(service.leaveTeamAccount(params)).resolves.not.toThrow();
 
       expect(mockClient.from).toHaveBeenCalledWith('accounts_memberships');
     });

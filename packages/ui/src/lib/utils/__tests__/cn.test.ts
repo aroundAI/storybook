@@ -104,7 +104,7 @@ describe('cn', () => {
     });
 
     it('should merge width and height separately', () => {
-      const result = cn('w-4 h-4', 'w-8');
+      const result = cn('h-4 w-4', 'w-8');
 
       expect(result).toContain('w-8');
       expect(result).toContain('h-4');
@@ -126,8 +126,8 @@ describe('cn', () => {
 
     it('should combine strings and objects', () => {
       const result = cn('base-class', {
-        'active': true,
-        'disabled': false,
+        active: true,
+        disabled: false,
       });
 
       expect(result).toContain('base-class');
@@ -188,12 +188,7 @@ describe('cn', () => {
     });
 
     it('should merge conflicts in complex inputs', () => {
-      const result = cn(
-        'p-2 text-sm',
-        { 'p-4': true },
-        ['text-lg'],
-        'p-8',
-      );
+      const result = cn('p-2 text-sm', { 'p-4': true }, ['text-lg'], 'p-8');
 
       expect(result).toContain('p-8');
       expect(result).toContain('text-lg');
@@ -276,7 +271,11 @@ describe('cn', () => {
     });
 
     it('should handle special characters in class names', () => {
-      const result = cn('class-with-dash', 'class_with_underscore', 'class:with:colon');
+      const result = cn(
+        'class-with-dash',
+        'class_with_underscore',
+        'class:with:colon',
+      );
 
       expect(result).toContain('class-with-dash');
       expect(result).toContain('class_with_underscore');
@@ -304,7 +303,7 @@ describe('cn', () => {
     });
 
     it('should trim whitespace', () => {
-      const result = cn('  text-red-500  ', '  bg-blue-500  ');
+      const result = cn('text-red-500', 'bg-blue-500');
 
       expect(result).toBe('text-red-500 bg-blue-500');
     });

@@ -469,7 +469,9 @@ describe('ConfigBasedTransformer', () => {
         const config: AuditObjectConfig = { objectType: 'test' };
         const transformer = new ConfigBasedTransformer(config);
 
-        const changes = transformer.calculateChanges('string', { name: 'After' });
+        const changes = transformer.calculateChanges('string', {
+          name: 'After',
+        });
 
         expect(changes).toEqual({});
       });
@@ -478,7 +480,10 @@ describe('ConfigBasedTransformer', () => {
         const config: AuditObjectConfig = { objectType: 'test' };
         const transformer = new ConfigBasedTransformer(config);
 
-        const changes = transformer.calculateChanges({ name: 'Before' }, 'string');
+        const changes = transformer.calculateChanges(
+          { name: 'Before' },
+          'string',
+        );
 
         expect(changes).toEqual({});
       });

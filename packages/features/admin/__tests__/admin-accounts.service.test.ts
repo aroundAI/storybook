@@ -1,5 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createAdminAccountsService } from '../src/lib/server/services/admin-accounts.service';
 
 describe('AdminAccountsService', () => {
@@ -151,9 +153,9 @@ describe('AdminAccountsService', () => {
         const error = new Error('Account not found');
         mockEq.mockResolvedValue({ error, data: null });
 
-        await expect(
-          service.deleteAccount('non-existent-id'),
-        ).rejects.toThrow('Account not found');
+        await expect(service.deleteAccount('non-existent-id')).rejects.toThrow(
+          'Account not found',
+        );
       });
 
       it('should throw error on network failure', async () => {

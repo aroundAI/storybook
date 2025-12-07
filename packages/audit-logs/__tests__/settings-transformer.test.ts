@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { settingsTransformer } from '../src/transformers/settings-transformer';
 import type { AuditAction } from '../src/types';
 

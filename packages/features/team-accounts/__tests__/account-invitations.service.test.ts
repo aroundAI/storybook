@@ -1,4 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createAccountInvitationsService } from '../src/server/services/account-invitations.service';
 
 // Mock logger
@@ -196,13 +197,16 @@ describe('AccountInvitationsService', () => {
       expect(mockClient.rpc).toHaveBeenCalledWith('get_account_members', {
         account_slug: 'test-account',
       });
-      expect(mockClient.rpc).toHaveBeenCalledWith('add_invitations_to_account', {
-        invitations: [
-          { email: 'user1@example.com', role: 'member' },
-          { email: 'user2@example.com', role: 'admin' },
-        ],
-        account_slug: 'test-account',
-      });
+      expect(mockClient.rpc).toHaveBeenCalledWith(
+        'add_invitations_to_account',
+        {
+          invitations: [
+            { email: 'user1@example.com', role: 'member' },
+            { email: 'user2@example.com', role: 'admin' },
+          ],
+          account_slug: 'test-account',
+        },
+      );
     });
 
     it('should throw error when validation fails', async () => {

@@ -1,4 +1,17 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+// Import after mocking
+import { cookies, headers } from 'next/headers';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  initializeServerI18n,
+  parseAcceptLanguageHeader,
+} from '@kit/i18n/server';
+
+import { getI18nSettings } from '~/lib/i18n/i18n.settings';
+
+import { i18nResolver } from '../i18n.resolver';
+import { createI18nServerInstance } from '../i18n.server';
 
 // Mock next/headers
 vi.mock('next/headers', () => ({
@@ -30,13 +43,6 @@ vi.mock('~/config/feature-flags.config', () => ({
 vi.mock('../i18n.resolver', () => ({
   i18nResolver: vi.fn(),
 }));
-
-// Import after mocking
-import { cookies, headers } from 'next/headers';
-import { initializeServerI18n, parseAcceptLanguageHeader } from '@kit/i18n/server';
-import { getI18nSettings } from '~/lib/i18n/i18n.settings';
-import { i18nResolver } from '../i18n.resolver';
-import { createI18nServerInstance } from '../i18n.server';
 
 // Get mocked functions
 const mockCookies = vi.mocked(cookies);
@@ -341,7 +347,10 @@ describe('i18n.server', () => {
       it('should handle async cookie/header operations', async () => {
         // Simulate slow operations
         mockCookies.mockImplementation(
-          () => new Promise((resolve) => setTimeout(() => resolve({ get: vi.fn() }), 10)),
+          () =>
+            new Promise((resolve) =>
+              setTimeout(() => resolve({ get: vi.fn() }), 10),
+            ),
         );
 
         const result = await createI18nServerInstance();
@@ -425,9 +434,7 @@ describe('i18n.server', () => {
       });
 
       it('should handle initializeServerI18n throwing error', async () => {
-        mockInitializeServerI18n.mockRejectedValue(
-          new Error('Init error'),
-        );
+        mockInitializeServerI18n.mockRejectedValue(new Error('Init error'));
 
         await expect(createI18nServerInstance()).rejects.toThrow('Init error');
       });
