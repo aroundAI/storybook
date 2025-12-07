@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RATE_LIMIT_CONFIGS, isProviderSupported, SUPPORTED_PROVIDERS } from '../config';
+import {
+  RATE_LIMIT_CONFIGS,
+  SUPPORTED_PROVIDERS,
+  isProviderSupported,
+} from '../config';
 import {
   RateLimiter,
   checkRateLimit,
@@ -413,12 +417,20 @@ describe('RateLimiter', () => {
 
     it('should include provider name in error message', async () => {
       try {
-        await limiter.checkAndConsumeToken(TEST_ACCOUNT_ID, 'invalid-provider', 1);
+        await limiter.checkAndConsumeToken(
+          TEST_ACCOUNT_ID,
+          'invalid-provider',
+          1,
+        );
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(UnsupportedProviderError);
-        expect((error as UnsupportedProviderError).provider).toBe('invalid-provider');
-        expect((error as UnsupportedProviderError).supportedProviders).toEqual(SUPPORTED_PROVIDERS);
+        expect((error as UnsupportedProviderError).provider).toBe(
+          'invalid-provider',
+        );
+        expect((error as UnsupportedProviderError).supportedProviders).toEqual(
+          SUPPORTED_PROVIDERS,
+        );
       }
     });
 

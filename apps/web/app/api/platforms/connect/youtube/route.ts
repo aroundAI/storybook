@@ -4,6 +4,7 @@ import {
   YOUTUBE_OAUTH_CONFIG,
   YouTubeOAuthState,
 } from '@kit/publishing/oauth/youtube';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -15,6 +16,9 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * - returnUrl: Where to redirect after OAuth completes
  */
 export async function GET(request: NextRequest) {
+  const logger = await getLogger();
+  const ctx = { name: 'oauth.youtube.connect' };
+
   const client = getSupabaseServerClient();
   const {
     data: { user },
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
     });
 
   if (insertError) {
-    console.error('[YouTube OAuth] Failed to store state:', insertError);
+    logger.error({ ...ctx, error: insertError }, 'Failed to store OAuth state');
     return NextResponse.json(
       { error: 'Failed to initiate OAuth flow' },
       { status: 500 },
@@ -61,9 +65,7 @@ export async function GET(request: NextRequest) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
   if (!clientId || !appUrl) {
-    console.error(
-      '[YouTube OAuth] Missing YOUTUBE_CLIENT_ID or NEXT_PUBLIC_APP_URL',
-    );
+    logger.error(ctx, 'Missing YOUTUBE_CLIENT_ID or NEXT_PUBLIC_APP_URL');
     return NextResponse.json(
       { error: 'YouTube OAuth not configured' },
       { status: 500 },

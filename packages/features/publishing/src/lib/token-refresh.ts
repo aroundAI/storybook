@@ -138,7 +138,9 @@ async function doEnsureValidToken(
 
     // Only update refresh token if a new one was provided
     if (refreshed.refreshToken) {
-      updateData.refresh_token_encrypted = await encrypt(refreshed.refreshToken);
+      updateData.refresh_token_encrypted = await encrypt(
+        refreshed.refreshToken,
+      );
     }
 
     await client
@@ -150,7 +152,11 @@ async function doEnsureValidToken(
   } catch (refreshError) {
     const logger = await getLogger();
     logger.error(
-      { name: 'token-refresh', platform: connection.platform, error: refreshError },
+      {
+        name: 'token-refresh',
+        platform: connection.platform,
+        error: refreshError,
+      },
       `Failed to refresh ${connection.platform}`,
     );
 

@@ -5,6 +5,7 @@ import {
   TikTokOAuthState,
 } from '@kit/publishing/oauth/tiktok';
 import { encrypt } from '@kit/shared/crypto';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 interface TikTokOAuthMetadata {
@@ -17,6 +18,9 @@ interface TikTokOAuthMetadata {
  * and stores the connection
  */
 export async function GET(request: NextRequest) {
+  const logger = await getLogger();
+  const ctx = { name: 'oauth.tiktok.callback' };
+
   const client = getSupabaseServerClient();
   const {
     data: { user },
@@ -111,7 +115,7 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenResponse.json();
 
   if (tokens.error || !tokens.access_token) {
-    console.error('[TikTok OAuth] Token exchange failed:', tokens);
+    logger.error({ ...ctx, error: tokens.error }, 'Token exchange failed');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=${encodeURIComponent(tokens.error_description || tokens.error || 'token_exchange_failed')}`,
     );
@@ -131,7 +135,7 @@ export async function GET(request: NextRequest) {
   const tiktokUser = userInfo.data?.user;
 
   if (!tiktokUser) {
-    console.error('[TikTok OAuth] Failed to get user info:', userInfo);
+    logger.error({ ...ctx, error: userInfo }, 'Failed to get user info');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=no_user_info`,
     );
@@ -175,7 +179,7 @@ export async function GET(request: NextRequest) {
     );
 
   if (insertError) {
-    console.error('[TikTok OAuth] Failed to store connection:', insertError);
+    logger.error({ ...ctx, error: insertError }, 'Failed to store connection');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=storage_failed`,
     );

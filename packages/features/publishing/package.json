@@ -16,8 +16,7 @@
     "./providers/youtube": "./src/providers/youtube/index.ts",
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
-    "./jobs": "./src/jobs/index.ts",
-    "./crypto": "./src/lib/crypto.ts"
+    "./jobs": "./src/jobs/index.ts"
   },
   "dependencies": {
     "@kit/shared": "workspace:*",

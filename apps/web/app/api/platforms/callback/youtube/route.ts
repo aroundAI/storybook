@@ -7,6 +7,7 @@ import {
   YouTubeOAuthState,
 } from '@kit/publishing/oauth/youtube';
 import { encrypt } from '@kit/shared/crypto';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -15,6 +16,9 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * and stores the connection
  */
 export async function GET(request: NextRequest) {
+  const logger = await getLogger();
+  const ctx = { name: 'oauth.youtube.callback' };
+
   const client = getSupabaseServerClient();
   const {
     data: { user },
@@ -99,7 +103,7 @@ export async function GET(request: NextRequest) {
   const tokens = await tokenResponse.json();
 
   if (tokens.error) {
-    console.error('[YouTube OAuth] Token exchange failed:', tokens);
+    logger.error({ ...ctx, error: tokens.error }, 'Token exchange failed');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=${encodeURIComponent(tokens.error_description || tokens.error)}`,
     );
@@ -124,7 +128,7 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (channelError) {
-    console.error('[YouTube OAuth] Failed to get channel:', channelError);
+    logger.error({ ...ctx, error: channelError }, 'Failed to get channel');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=channel_fetch_failed`,
     );
@@ -165,7 +169,7 @@ export async function GET(request: NextRequest) {
     );
 
   if (insertError) {
-    console.error('[YouTube OAuth] Failed to store connection:', insertError);
+    logger.error({ ...ctx, error: insertError }, 'Failed to store connection');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=storage_failed`,
     );
