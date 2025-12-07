@@ -11,12 +11,32 @@
     "test:coverage": "vitest --coverage"
   },
   "exports": {
+    ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./mutations": "./src/lib/server/asset.mutations.ts",
+    "./queries": "./src/lib/server/asset.queries.ts",
+    "./lib": "./src/lib/index.ts",
+    "./schemas": "./src/lib/schemas/asset.schema.ts",
+    "./types": "./src/lib/types.ts",
+    "./hooks": "./src/hooks/index.ts",
     "./upload-validation": "./src/lib/upload-validation.ts"
   },
   "devDependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@kit/eslint-config": "workspace:*",
+    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "@types/node": "^24.5.0",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "next": "15.5.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "react-hook-form": "^7.62.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"

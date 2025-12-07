@@ -11,6 +11,14 @@
     "test:coverage": "vitest --coverage"
   },
   "exports": {
+    ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./server": "./src/server/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./lib": "./src/lib/index.ts",
+    "./schemas": "./src/lib/schemas.ts",
+    "./types": "./src/lib/types.ts",
+    "./hooks": "./src/hooks/index.ts",
     "./webhooks/types": "./src/webhooks/types.ts",
     "./webhooks/handler": "./src/webhooks/handler.ts",
     "./webhooks/verifiers/kling": "./src/webhooks/verifiers/kling.ts",
@@ -18,12 +26,21 @@
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
+    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
     "@types/node": "^24.5.0",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
     "next": "15.5.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "zod": "^3.25.74"
   },
   "prettier": "@kit/prettier-config",
   "typesVersions": {
