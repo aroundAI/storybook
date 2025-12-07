@@ -23,6 +23,10 @@ import {
 } from '../lib/schemas';
 import { SunoProvider } from '../providers/suno';
 
+// Note: These actions use type assertions because the internal type definitions
+// differ from the generated database types. The database schema will be aligned
+// in a future update. RLS policies enforce project-level authorization.
+
 /**
  * Generate music for an episode using Suno API
  *
@@ -209,17 +213,36 @@ export const getMusicJobStatusAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch the job
+    // Fetch the job with account info for authorization
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
       .from('generation_jobs')
-      .select('*')
+      .select('*, accounts!inner(primary_owner_user_id)')
       .eq('id', data.jobId)
       .single();
 
     if (fetchError || !job) {
       logger.error({ ...ctx, error: fetchError }, 'Job not found');
       throw new Error('Job not found');
+    }
+
+    // Verify user has access to this job's account
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: membership } = await (client as any)
+      .from('accounts_memberships')
+      .select('account_id')
+      .eq('account_id', job.account_id)
+      .eq('user_id', user.id)
+      .single();
+
+    const isOwner = job.accounts?.primary_owner_user_id === user.id;
+
+    if (!membership && !isOwner) {
+      logger.warn(
+        { ...ctx, accountId: job.account_id },
+        'User not authorized to access this job',
+      );
+      throw new Error('Not authorized to access this job');
     }
 
     // Check if already in terminal state
@@ -352,17 +375,36 @@ export const cancelMusicGenerationAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch the job
+    // Fetch the job with account info for authorization
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
       .from('generation_jobs')
-      .select('id, status')
+      .select('id, status, account_id, accounts!inner(primary_owner_user_id)')
       .eq('id', data.jobId)
       .single();
 
     if (fetchError || !job) {
       logger.error({ ...ctx, error: fetchError }, 'Job not found');
       throw new Error('Job not found');
+    }
+
+    // Verify user has access to this job's account
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: membership } = await (client as any)
+      .from('accounts_memberships')
+      .select('account_id')
+      .eq('account_id', job.account_id)
+      .eq('user_id', user.id)
+      .single();
+
+    const isOwner = job.accounts?.primary_owner_user_id === user.id;
+
+    if (!membership && !isOwner) {
+      logger.warn(
+        { ...ctx, accountId: job.account_id },
+        'User not authorized to cancel this job',
+      );
+      throw new Error('Not authorized to cancel this job');
     }
 
     // Check if already in terminal state
