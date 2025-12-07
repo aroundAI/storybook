@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RATE_LIMIT_CONFIGS } from '../config';
+import { RATE_LIMIT_CONFIGS, isProviderSupported, SUPPORTED_PROVIDERS } from '../config';
 import {
   RateLimiter,
   checkRateLimit,
@@ -10,6 +10,7 @@ import {
   resetRateLimiter,
 } from '../rate-limiter';
 import type { TokenBucketState } from '../types';
+import { UnsupportedProviderError } from '../types';
 
 // Test UUIDs
 const TEST_ACCOUNT_ID = '00000000-0000-0000-0000-000000000001';
@@ -47,6 +48,35 @@ vi.mock('@kit/shared/logger', () => ({
   getLogger: vi.fn(() => Promise.resolve(mockLogger)),
 }));
 
+// Track the lock value that was set
+let lastSetLockValue: string | null = null;
+
+// Helper to setup mock for successful lock acquisition
+function setupLockMock(bucketState: TokenBucketState | null) {
+  lastSetLockValue = null;
+
+  // Capture the lock value when set is called
+  mockCache.set.mockImplementation(async (key: string, value: unknown) => {
+    if (key.endsWith(':lock')) {
+      lastSetLockValue = value as string;
+    }
+  });
+
+  mockCache.get.mockImplementation(async (key: string) => {
+    if (key.endsWith(':lock')) {
+      // First call returns null (no lock), subsequent calls return the set value
+      if (lastSetLockValue === null) {
+        return null;
+      }
+      return lastSetLockValue;
+    }
+    // Return bucket state for bucket key
+    return bucketState;
+  });
+
+  mockCache.del.mockResolvedValue(undefined);
+}
+
 describe('RateLimiter', () => {
   let limiter: RateLimiter;
 
@@ -63,8 +93,7 @@ describe('RateLimiter', () => {
 
   describe('checkAndConsumeToken', () => {
     it('should allow first request with full tokens', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(null);
 
       const result = await limiter.checkAndConsumeToken(
         TEST_ACCOUNT_ID,
@@ -83,8 +112,7 @@ describe('RateLimiter', () => {
         tokens: 0,
         lastRefill: Date.now(),
       };
-      mockCache.get.mockResolvedValue(bucketState);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(bucketState);
 
       const result = await limiter.checkAndConsumeToken(
         TEST_ACCOUNT_ID,
@@ -105,8 +133,7 @@ describe('RateLimiter', () => {
         tokens: 50,
         lastRefill: oneDayAgo,
       };
-      mockCache.get.mockResolvedValue(bucketState);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(bucketState);
 
       const result = await limiter.checkAndConsumeToken(
         TEST_ACCOUNT_ID,
@@ -120,8 +147,7 @@ describe('RateLimiter', () => {
     });
 
     it('should handle cost-based consumption', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(null);
 
       const result = await limiter.checkAndConsumeToken(
         TEST_ACCOUNT_ID,
@@ -138,8 +164,7 @@ describe('RateLimiter', () => {
         tokens: 3,
         lastRefill: Date.now(),
       };
-      mockCache.get.mockResolvedValue(bucketState);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(bucketState);
 
       const result = await limiter.checkAndConsumeToken(
         TEST_ACCOUNT_ID,
@@ -172,8 +197,7 @@ describe('RateLimiter', () => {
     });
 
     it('should handle different providers', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(null);
 
       // Runway has different limits
       const result = await limiter.checkAndConsumeToken(
@@ -305,8 +329,7 @@ describe('RateLimiter', () => {
 
   describe('tier handling', () => {
     it('should use different limits for different tiers', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(null);
 
       // Set to free tier
       limiter.setAccountTier(TEST_ACCOUNT_ID, 'free');
@@ -322,12 +345,14 @@ describe('RateLimiter', () => {
     });
 
     it('should cache tier lookups', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
-
+      // First call
+      setupLockMock(null);
       limiter.setAccountTier(TEST_ACCOUNT_ID, 'pro');
 
       await limiter.checkAndConsumeToken(TEST_ACCOUNT_ID, 'kling', 1);
+
+      // Second call
+      setupLockMock(null);
       await limiter.checkAndConsumeToken(TEST_ACCOUNT_ID, 'kling', 1);
 
       // Tier should be cached after first call
@@ -339,16 +364,86 @@ describe('RateLimiter', () => {
       limiter.setAccountTier(TEST_ACCOUNT_ID, 'pro');
       limiter.clearTierCache();
 
-      // After clearing, should default to 'standard'
+      // After clearing, should default to 'free' (most restrictive)
       const status = await limiter.getStatus(TEST_ACCOUNT_ID, 'kling');
-      expect(status.tier).toBe('standard');
+      expect(status.tier).toBe('free');
+    });
+
+    it('should use tier lookup function when provided', async () => {
+      setupLockMock(null);
+
+      const tierLookupFn = vi.fn().mockResolvedValue('enterprise');
+      limiter.setTierLookupFn(tierLookupFn);
+      limiter.clearTierCache();
+
+      const result = await limiter.checkAndConsumeToken(
+        TEST_ACCOUNT_ID,
+        'kling',
+        1,
+      );
+
+      expect(tierLookupFn).toHaveBeenCalledWith(TEST_ACCOUNT_ID);
+      expect(result.limit).toBe(10000); // Enterprise tier limit
+    });
+
+    it('should fall back to free tier if tier lookup fails', async () => {
+      setupLockMock(null);
+
+      const tierLookupFn = vi.fn().mockRejectedValue(new Error('DB error'));
+      limiter.setTierLookupFn(tierLookupFn);
+      limiter.clearTierCache();
+
+      const result = await limiter.checkAndConsumeToken(
+        TEST_ACCOUNT_ID,
+        'kling',
+        1,
+      );
+
+      expect(result.limit).toBe(10); // Free tier limit
+      expect(mockLogger.error).toHaveBeenCalled();
+    });
+  });
+
+  describe('provider validation', () => {
+    it('should throw UnsupportedProviderError for invalid provider', async () => {
+      await expect(
+        limiter.checkAndConsumeToken(TEST_ACCOUNT_ID, 'invalid-provider', 1),
+      ).rejects.toThrow(UnsupportedProviderError);
+    });
+
+    it('should include provider name in error message', async () => {
+      try {
+        await limiter.checkAndConsumeToken(TEST_ACCOUNT_ID, 'invalid-provider', 1);
+        expect.fail('Should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(UnsupportedProviderError);
+        expect((error as UnsupportedProviderError).provider).toBe('invalid-provider');
+        expect((error as UnsupportedProviderError).supportedProviders).toEqual(SUPPORTED_PROVIDERS);
+      }
+    });
+
+    it('should throw for checkLimit with invalid provider', async () => {
+      await expect(
+        limiter.checkLimit(TEST_ACCOUNT_ID, 'unknown-provider', 1),
+      ).rejects.toThrow(UnsupportedProviderError);
+    });
+
+    it('should accept all supported providers', async () => {
+      for (const provider of SUPPORTED_PROVIDERS) {
+        setupLockMock(null);
+        const result = await limiter.checkAndConsumeToken(
+          TEST_ACCOUNT_ID,
+          provider,
+          1,
+        );
+        expect(result.allowed).toBe(true);
+      }
     });
   });
 
   describe('provider case handling', () => {
     it('should handle uppercase provider names', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(null);
 
       const result = await limiter.checkAndConsumeToken(
         TEST_ACCOUNT_ID,
@@ -357,10 +452,9 @@ describe('RateLimiter', () => {
       );
 
       expect(result.allowed).toBe(true);
-      expect(mockCache.set).toHaveBeenCalledWith(
-        `rate-limit:${TEST_ACCOUNT_ID}:kling`,
-        expect.any(Object),
-        expect.any(Number),
+      // The cache key should use lowercase provider
+      expect(mockCache.del).toHaveBeenCalledWith(
+        `rate-limit:${TEST_ACCOUNT_ID}:kling:lock`,
       );
     });
   });
@@ -391,8 +485,7 @@ describe('Singleton functions', () => {
 
   describe('checkRateLimit', () => {
     it('should use singleton limiter', async () => {
-      mockCache.get.mockResolvedValue(null);
-      mockCache.set.mockResolvedValue(undefined);
+      setupLockMock(null);
 
       const limiter = getRateLimiter();
       limiter.setAccountTier(TEST_ACCOUNT_ID_2, 'standard');
@@ -466,4 +559,65 @@ describe('Configuration', () => {
       }
     }
   });
+
+  it('should correctly identify supported providers', () => {
+    expect(isProviderSupported('kling')).toBe(true);
+    expect(isProviderSupported('KLING')).toBe(true);
+    expect(isProviderSupported('runway')).toBe(true);
+    expect(isProviderSupported('luma')).toBe(true);
+    expect(isProviderSupported('hailuo')).toBe(true);
+    expect(isProviderSupported('invalid')).toBe(false);
+    expect(isProviderSupported('')).toBe(false);
+  });
+
+  it('should export list of supported providers', () => {
+    expect(SUPPORTED_PROVIDERS).toContain('kling');
+    expect(SUPPORTED_PROVIDERS).toContain('runway');
+    expect(SUPPORTED_PROVIDERS).toContain('luma');
+    expect(SUPPORTED_PROVIDERS).toContain('hailuo');
+    expect(SUPPORTED_PROVIDERS.length).toBe(4);
+  });
+});
+
+describe('Distributed Locking', () => {
+  let limiter: RateLimiter;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetRateLimiter();
+    limiter = new RateLimiter(mockCache as never);
+    limiter.setAccountTier(TEST_ACCOUNT_ID, 'standard');
+  });
+
+  it('should acquire and release lock during token consumption', async () => {
+    setupLockMock(null);
+
+    const result = await limiter.checkAndConsumeToken(
+      TEST_ACCOUNT_ID,
+      'kling',
+      1,
+    );
+
+    expect(result.allowed).toBe(true);
+    // Lock should be released after operation
+    expect(mockCache.del).toHaveBeenCalledWith(
+      `rate-limit:${TEST_ACCOUNT_ID}:kling:lock`,
+    );
+  });
+
+  it('should fail open if lock cannot be acquired', async () => {
+    // Simulate lock always held by another process
+    mockCache.get.mockResolvedValue('other-process-lock');
+    mockCache.set.mockResolvedValue(undefined);
+
+    const result = await limiter.checkAndConsumeToken(
+      TEST_ACCOUNT_ID,
+      'kling',
+      1,
+    );
+
+    // Should fail open (allow request)
+    expect(result.allowed).toBe(true);
+    expect(mockLogger.warn).toHaveBeenCalled();
+  }, 10000); // Increase timeout for lock retries
 });

@@ -99,3 +99,23 @@ export interface VideoCostMapping {
   /** 10 second pro quality video */
   video_10s_pro: number;
 }
+
+/**
+ * Error thrown when an unsupported provider is used
+ */
+export class UnsupportedProviderError extends Error {
+  constructor(
+    public readonly provider: string,
+    public readonly supportedProviders: string[],
+  ) {
+    super(
+      `Unsupported video provider: '${provider}'. Supported providers: ${supportedProviders.join(', ')}`,
+    );
+    this.name = 'UnsupportedProviderError';
+  }
+}
+
+/**
+ * Tier lookup function type for dependency injection
+ */
+export type TierLookupFn = (accountId: string) => Promise<RateLimitTier>;

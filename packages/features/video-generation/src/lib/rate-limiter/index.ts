@@ -39,10 +39,11 @@ export type {
   CheckLimitInput,
   GetRemainingInput,
   VideoCostMapping,
+  TierLookupFn,
 } from './types';
 
-// Export schemas
-export { CheckLimitSchema, GetRemainingSchema } from './types';
+// Export schemas and errors
+export { CheckLimitSchema, GetRemainingSchema, UnsupportedProviderError } from './types';
 
 // Export configuration
 export {

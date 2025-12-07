@@ -1,4 +1,5 @@
 import type { RateLimitConfig, RateLimitTier, VideoCostMapping } from './types';
+import { UnsupportedProviderError } from './types';
 
 /**
  * 24 hours in milliseconds
@@ -149,22 +150,25 @@ export const VIDEO_COSTS: VideoCostMapping = {
  *
  * @param provider - The video provider name (e.g., 'kling', 'runway')
  * @param tier - The account tier
- * @returns Rate limit configuration or default if not found
+ * @returns Rate limit configuration
+ * @throws {UnsupportedProviderError} If provider is not supported
  */
 export function getRateLimitConfig(
   provider: string,
   tier: RateLimitTier,
 ): RateLimitConfig {
-  const providerConfig = RATE_LIMIT_CONFIGS[provider.toLowerCase()];
+  const normalizedProvider = provider.toLowerCase();
+  const providerConfig = RATE_LIMIT_CONFIGS[normalizedProvider];
 
   if (!providerConfig) {
-    return DEFAULT_RATE_LIMIT_CONFIG;
+    throw new UnsupportedProviderError(provider, SUPPORTED_PROVIDERS);
   }
 
   const tierConfig = providerConfig[tier];
 
   if (!tierConfig) {
-    return DEFAULT_RATE_LIMIT_CONFIG;
+    // Tier should always exist for known providers, fall back to free tier
+    return providerConfig.free;
   }
 
   return tierConfig;
