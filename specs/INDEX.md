@@ -296,7 +296,7 @@ graph TD
 | FILM-101l | [content-analytics-table](./phase-1-foundation/database/FILM-101-content-analytics-table.md) | ✅ DONE | S | FILM-101k |
 | FILM-101m | [shared-resources-table](./phase-1-foundation/database/FILM-101-shared-resources-table.md) | ✅ DONE | XS | - |
 | FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.md) | ✅ DONE | XS | - |
-| FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.md) | DRAFT | XS | FILM-101* |
+| FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.md) | ✅ DONE | XS | FILM-101* |
 | FILM-102b | [project-policies](./phase-1-foundation/rls/FILM-102-project-policies.md) | DRAFT | M | FILM-102a |
 | FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.md) | DRAFT | S | FILM-102a |
 | FILM-103 | [transaction-functions](./phase-1-foundation/functions/FILM-103-transaction-functions.md) | DRAFT | M | FILM-101* |
@@ -325,7 +325,7 @@ graph TD
 | FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | ✅ DONE | S | - |
 | FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | DRAFT | M | FILM-DS-01 |
 | FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | DRAFT | M | FILM-DS-01 |
-| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DRAFT | S | FILM-DS-01 |
+| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | ✅ DONE | S | FILM-DS-01 |
 
 ### Phase 2: Assets (9 specs)
 
@@ -418,8 +418,8 @@ graph TD
 | FILM-702 | [tiktok-provider](./phase-7-publishing/providers/FILM-702-tiktok-provider.md) | ✅ DONE | L | - |
 | FILM-703 | [instagram-provider](./phase-7-publishing/providers/FILM-703-instagram-provider.md) | DRAFT | M | - |
 | FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.md) | ✅ DONE | M | - |
-| FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.md) | DRAFT | M | FILM-CC-03 |
-| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | DRAFT | M | FILM-CC-03 |
+| FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.md) | ✅ DONE | M | FILM-CC-03 |
+| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | ✅ DONE | M | FILM-CC-03 |
 | FILM-707 | [meta-oauth](./phase-7-publishing/oauth/FILM-707-meta-oauth.md) | DRAFT | M | FILM-CC-03 |
 | FILM-708 | [publish-hub](./phase-7-publishing/components/FILM-708-publish-hub.md) | DRAFT | L | FILM-701 |
 | FILM-709 | [platform-selector](./phase-7-publishing/components/FILM-709-platform-selector.md) | DRAFT | M | FILM-708 |
@@ -515,7 +515,7 @@ SPIKE-01 through SPIKE-05
 
 | Phase | Total | Draft | Review | Approved | In Progress | Done |
 |-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 26 | 7 | 0 | 0 | 0 | 19 |
+| 1. Foundation | 26 | 6 | 0 | 0 | 0 | 20 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 3 | 0 | 0 | 0 | 2 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
@@ -523,18 +523,18 @@ SPIKE-01 through SPIKE-05
 | 4. Video Gen | 15 | 14 | 0 | 0 | 0 | 1 |
 | 5. Audio Gen | 16 | 16 | 0 | 0 | 0 | 0 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
-| 7. Publishing | 15 | 13 | 0 | 0 | 0 | 2 |
+| 7. Publishing | 15 | 10 | 0 | 0 | 0 | 5 |
 | 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **100** | **0** | **0** | **0** | **30** |
+| **TOTAL** | **130** | **96** | **0** | **0** | **0** | **34** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 28 | 30% |
-| Post-MVP | 37 | 2 | 5% |
+| MVP Specs | 93 | 29 | 31% |
+| Post-MVP | 37 | 4 | 11% |
 
 ---
 
