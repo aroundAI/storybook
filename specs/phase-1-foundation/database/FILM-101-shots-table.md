@@ -4,6 +4,9 @@
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** S
+- **Status:** ✅ COMPLETE
+- **Completed:** 2025-12-05
+- **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (episodes-table)
 - **Blocks:** FILM-303 (shot-crud-actions), FILM-405 (generate-video-action)
 
