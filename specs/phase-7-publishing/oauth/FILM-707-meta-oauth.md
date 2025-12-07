@@ -1,6 +1,7 @@
 # FILM-707: Meta OAuth (Instagram & Facebook)
 
 ## Metadata
+- **Status:** DONE
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** M (4-8 hours)
