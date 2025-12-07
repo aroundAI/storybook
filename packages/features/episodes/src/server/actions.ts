@@ -4,22 +4,41 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
+import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   CreateEpisodeSchema,
   CreateShotSchema,
+  DeleteEpisodeSchema,
+  GetEpisodeSchema,
+  ListProjectEpisodesSchema,
   UpdateEpisodeSchema,
+  UpdateEpisodeStatusSchema,
   UpdateShotSchema,
 } from '../lib/schemas';
+import {
+  InvalidStatusTransitionError,
+  OptimisticLockError,
+  isValidStatusTransition,
+} from '../lib/status-workflow';
+import type {
+  Episode,
+  EpisodeStatus,
+  EpisodeWithShots,
+  ListEpisodesResponse,
+} from '../lib/types';
 
-// Note: These actions use type assertions because the internal type definitions
-// differ from the generated database types. The database schema will be aligned
-// in a future update. RLS policies enforce project-level authorization.
-
+/**
+ * Create a new episode
+ * - Auto-assigns episode number if not provided
+ * - Initializes in 'draft' status with version 1
+ * - Creates audit log entry
+ */
 export const createEpisodeAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
@@ -35,40 +54,327 @@ export const createEpisodeAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    // Auto-assign episode number if not provided
+    let episodeNumber = data.number;
+    if (!episodeNumber) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: existingEpisodes } = await (client as any)
+        .from('episodes')
+        .select('number')
+        .eq('project_id', data.projectId)
+        .is('deleted_at', null)
+        .order('number', { ascending: false })
+        .limit(1);
+
+      episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error } = await (client as any)
       .from('episodes')
       .insert({
         project_id: data.projectId,
+        season_id: data.seasonId ?? null,
+        number: episodeNumber,
         title: data.title,
-        description: data.description,
-        episode_number: data.episodeNumber,
-        script: data.script,
-        metadata: data.metadata,
+        description: data.description ?? null,
         status: 'draft',
+        metadata: {},
+        version: 1,
       })
       .select()
       .single();
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to create episode');
-      throw error;
+      throw new Error(`Failed to create episode: ${error.message}`);
+    }
+
+    // Get project for audit log scope
+    const { data: project } = await client
+      .from('projects')
+      .select('account_id')
+      .eq('id', data.projectId)
+      .single();
+
+    // Create audit log
+    if (project) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId: project.account_id,
+        userId: user.id,
+        action: 'create',
+        objectType: 'episode',
+        objectId: episode.id,
+        objectName: episode.title,
+        after: episode,
+        scopes: [
+          { type: 'account', id: project.account_id },
+          { type: 'project', id: data.projectId },
+          { type: 'episode', id: episode.id },
+        ],
+        ...networkContext,
+      });
     }
 
     logger.info({ ...ctx, episodeId: episode.id }, 'Episode created');
     revalidatePath('/home/[account]/projects/[id]', 'page');
 
-    return { success: true, episode };
+    return { success: true, data: episode as Episode };
   },
   {
     schema: CreateEpisodeSchema,
   },
 );
 
+/**
+ * Get episode with all related shots and season info
+ */
+export const getEpisodeWithShotsAction = enhanceAction(
+  async (data): Promise<{ success: true; data: EpisodeWithShots }> => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.getWithShots', episodeId: data.episodeId };
+
+    logger.info(ctx, 'Fetching episode with shots');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Fetch episode with season info
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episode, error: episodeError } = await (client as any)
+      .from('episodes')
+      .select(
+        `
+        *,
+        season:seasons(id, name, number)
+      `,
+      )
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (episodeError) {
+      logger.error({ ...ctx, error: episodeError }, 'Failed to fetch episode');
+      throw new Error('Episode not found');
+    }
+
+    // Fetch related shots (excluding soft-deleted)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: shots, error: shotsError } = await (client as any)
+      .from('shots')
+      .select('*')
+      .eq('episode_id', data.episodeId)
+      .order('sequence_number', { ascending: true });
+
+    if (shotsError) {
+      logger.error({ ...ctx, error: shotsError }, 'Failed to fetch shots');
+      throw new Error('Failed to fetch episode shots');
+    }
+
+    logger.info(ctx, 'Episode fetched with shots');
+
+    return {
+      success: true,
+      data: {
+        ...episode,
+        shots: shots ?? [],
+        season: episode.season?.[0] ?? null,
+      } as EpisodeWithShots,
+    };
+  },
+  {
+    schema: GetEpisodeSchema,
+  },
+);
+
+/**
+ * Update episode status with workflow enforcement
+ * - Validates status transition is allowed
+ * - Uses optimistic locking to prevent conflicts
+ * - Creates audit log entry
+ */
+export const updateEpisodeStatusAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.updateStatus', episodeId: data.episodeId };
+
+    logger.info(ctx, 'Updating episode status');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Fetch current episode state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: currentEpisode, error: fetchError } = await (client as any)
+      .from('episodes')
+      .select('*, project:projects(account_id)')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchError || !currentEpisode) {
+      throw new Error('Episode not found');
+    }
+
+    // Check version for optimistic locking
+    if (currentEpisode.version !== data.version) {
+      throw new OptimisticLockError('episode');
+    }
+
+    // Validate status transition
+    if (
+      !isValidStatusTransition(
+        currentEpisode.status as EpisodeStatus,
+        data.status,
+      )
+    ) {
+      throw new InvalidStatusTransitionError(
+        currentEpisode.status as EpisodeStatus,
+        data.status,
+      );
+    }
+
+    // Update status (version is auto-incremented by database trigger)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episode, error: updateError } = await (client as any)
+      .from('episodes')
+      .update({
+        status: data.status,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.episodeId)
+      .eq('version', data.version)
+      .is('deleted_at', null)
+      .select()
+      .single();
+
+    if (updateError) {
+      logger.error(
+        { ...ctx, error: updateError },
+        'Failed to update episode status',
+      );
+      throw new Error('Failed to update episode status');
+    }
+
+    if (!episode) {
+      throw new OptimisticLockError('episode');
+    }
+
+    // Create audit log
+    const accountId = currentEpisode.project?.account_id;
+    if (accountId) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId,
+        userId: user.id,
+        action: 'update',
+        objectType: 'episode',
+        objectId: episode.id,
+        objectName: episode.title,
+        before: currentEpisode,
+        after: episode,
+        scopes: [
+          { type: 'account', id: accountId },
+          { type: 'project', id: episode.project_id },
+          { type: 'episode', id: episode.id },
+        ],
+        ...networkContext,
+      });
+    }
+
+    logger.info(
+      { ...ctx, oldStatus: currentEpisode.status, newStatus: data.status },
+      'Episode status updated',
+    );
+    revalidatePath('/home/[account]/projects/[id]', 'page');
+
+    return { success: true, data: episode as Episode };
+  },
+  {
+    schema: UpdateEpisodeStatusSchema,
+  },
+);
+
+/**
+ * List episodes for a project with filtering and pagination
+ */
+export const listProjectEpisodesAction = enhanceAction(
+  async (data): Promise<{ success: true; data: ListEpisodesResponse }> => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.list', projectId: data.projectId };
+
+    logger.info(ctx, 'Listing project episodes');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Build query
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = (client as any)
+      .from('episodes')
+      .select('*', { count: 'exact' })
+      .eq('project_id', data.projectId)
+      .is('deleted_at', null)
+      .order('number', { ascending: true })
+      .range(data.offset, data.offset + data.limit - 1);
+
+    // Apply filters
+    if (data.seasonId) {
+      query = query.eq('season_id', data.seasonId);
+    }
+
+    if (data.status) {
+      query = query.eq('status', data.status);
+    }
+
+    const { data: episodes, error, count } = await query;
+
+    if (error) {
+      logger.error({ ...ctx, error }, 'Failed to list episodes');
+      throw new Error('Failed to list episodes');
+    }
+
+    logger.info({ ...ctx, count: episodes?.length ?? 0 }, 'Episodes listed');
+
+    return {
+      success: true,
+      data: {
+        episodes: (episodes ?? []) as Episode[],
+        total: count ?? 0,
+        hasMore: (count ?? 0) > data.offset + data.limit,
+      },
+    };
+  },
+  {
+    schema: ListProjectEpisodesSchema,
+  },
+);
+
+/**
+ * Update episode with partial data
+ * - Supports updating metadata, story_data, screenplay_data, shot_list
+ * - Uses optimistic locking
+ * - Creates audit log entry
+ */
 export const updateEpisodeAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.update', episodeId: data.id };
+    const ctx = { name: 'episodes.update', episodeId: data.episodeId };
 
     logger.info(ctx, 'Updating episode');
 
@@ -80,45 +386,100 @@ export const updateEpisodeAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    const updateData: Record<string, unknown> = {};
+    // Fetch current episode for audit log and version check
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: currentEpisode, error: fetchError } = await (client as any)
+      .from('episodes')
+      .select('*, project:projects(account_id)')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
 
-    if (data.title !== undefined) updateData.title = data.title;
-    if (data.description !== undefined)
-      updateData.description = data.description;
-    if (data.episodeNumber !== undefined)
-      updateData.episode_number = data.episodeNumber;
-    if (data.script !== undefined) updateData.script = data.script;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.duration !== undefined) updateData.duration = data.duration;
-    if (data.metadata !== undefined) updateData.metadata = data.metadata;
+    if (fetchError || !currentEpisode) {
+      throw new Error('Episode not found');
+    }
+
+    // Check version for optimistic locking
+    if (currentEpisode.version !== data.version) {
+      throw new OptimisticLockError('episode');
+    }
+
+    // Build update object (only include provided fields)
+    const updates: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (data.title !== undefined) updates.title = data.title;
+    if (data.description !== undefined) updates.description = data.description;
+    if (data.storyData !== undefined)
+      updates.story_data = data.storyData as Json;
+    if (data.screenplayData !== undefined)
+      updates.screenplay_data = data.screenplayData as Json;
+    if (data.shotList !== undefined) updates.shot_list = data.shotList as Json;
+    if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error } = await (client as any)
+    const { data: episode, error: updateError } = await (client as any)
       .from('episodes')
-      .update(updateData)
-      .eq('id', data.id)
+      .update(updates)
+      .eq('id', data.episodeId)
+      .eq('version', data.version)
+      .is('deleted_at', null)
       .select()
       .single();
 
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to update episode');
-      throw error;
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to update episode');
+      throw new Error('Failed to update episode');
+    }
+
+    if (!episode) {
+      throw new OptimisticLockError('episode');
+    }
+
+    // Create audit log
+    const accountId = currentEpisode.project?.account_id;
+    if (accountId) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId,
+        userId: user.id,
+        action: 'update',
+        objectType: 'episode',
+        objectId: episode.id,
+        objectName: episode.title,
+        before: currentEpisode,
+        after: episode,
+        scopes: [
+          { type: 'account', id: accountId },
+          { type: 'project', id: episode.project_id },
+          { type: 'episode', id: episode.id },
+        ],
+        ...networkContext,
+      });
     }
 
     logger.info(ctx, 'Episode updated');
     revalidatePath('/home/[account]/projects/[id]', 'page');
 
-    return { success: true, episode };
+    return { success: true, data: episode as Episode };
   },
   {
     schema: UpdateEpisodeSchema,
   },
 );
 
+/**
+ * Soft delete episode and cascade to related shots
+ * - Sets deleted_at timestamp instead of hard delete
+ * - Cascades soft delete to all related shots
+ * - Creates audit log entry
+ */
 export const deleteEpisodeAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
-    const ctx = { name: 'episodes.delete', episodeId: data.id };
+    const ctx = { name: 'episodes.delete', episodeId: data.episodeId };
 
     logger.info(ctx, 'Deleting episode');
 
@@ -130,26 +491,75 @@ export const deleteEpisodeAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    // Fetch episode for audit log
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (client as any)
+    const { data: episode, error: fetchError } = await (client as any)
       .from('episodes')
-      .delete()
-      .eq('id', data.id);
+      .select('*, project:projects(account_id)')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
 
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to delete episode');
-      throw error;
+    if (fetchError || !episode) {
+      throw new Error('Episode not found');
+    }
+
+    const now = new Date().toISOString();
+
+    // Soft delete episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: episodeError } = await (client as any)
+      .from('episodes')
+      .update({ deleted_at: now })
+      .eq('id', data.episodeId)
+      .is('deleted_at', null);
+
+    if (episodeError) {
+      logger.error({ ...ctx, error: episodeError }, 'Failed to delete episode');
+      throw new Error('Failed to delete episode');
+    }
+
+    // Cascade soft delete to related shots
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client as any)
+      .from('shots')
+      .update({ deleted_at: now })
+      .eq('episode_id', data.episodeId);
+
+    // Create audit log
+    const accountId = episode.project?.account_id;
+    if (accountId) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId,
+        userId: user.id,
+        action: 'delete',
+        objectType: 'episode',
+        objectId: episode.id,
+        objectName: episode.title,
+        before: episode,
+        scopes: [
+          { type: 'account', id: accountId },
+          { type: 'project', id: episode.project_id },
+        ],
+        ...networkContext,
+      });
     }
 
     logger.info(ctx, 'Episode deleted');
     revalidatePath('/home/[account]/projects/[id]', 'page');
 
-    return { success: true };
+    return { success: true, episodeId: data.episodeId };
   },
   {
-    schema: UpdateEpisodeSchema.pick({ id: true }),
+    schema: DeleteEpisodeSchema,
   },
 );
+
+// ============================================================================
+// Shot Actions (Out of scope for FILM-301, will be updated in FILM-303)
+// ============================================================================
 
 export const createShotAction = enhanceAction(
   async (data) => {
