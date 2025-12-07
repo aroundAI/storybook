@@ -14,6 +14,7 @@ import {
   getNextEpisodeStatus,
   getPlatformProviders,
   getProviderInfo,
+  getProvidersByCategory,
   getStatusClasses,
   getStatusToken,
   getTrackClasses,
@@ -47,6 +48,7 @@ describe('Design Tokens', () => {
         expect(token).toHaveProperty('bg');
         expect(token).toHaveProperty('text');
         expect(token).toHaveProperty('border');
+        expect(token).toHaveProperty('ring');
         expect(token).toHaveProperty('icon');
         expect(token).toHaveProperty('label');
       });
@@ -55,6 +57,13 @@ describe('Design Tokens', () => {
     it('should have dark mode variants for background classes', () => {
       Object.values(statusTokens).forEach((token) => {
         expect(token.bg).toMatch(/dark:/);
+      });
+    });
+
+    it('should have ring classes for focus states with dark mode variants', () => {
+      Object.values(statusTokens).forEach((token) => {
+        expect(token.ring).toMatch(/^ring-/);
+        expect(token.ring).toMatch(/dark:ring-/);
       });
     });
   });
@@ -170,7 +179,36 @@ describe('Design Tokens', () => {
         expect(token).toHaveProperty('name');
         expect(token).toHaveProperty('bg');
         expect(token).toHaveProperty('icon');
+        expect(token).toHaveProperty('category');
       });
+    });
+
+    it('should have valid category for each provider', () => {
+      const validCategories = ['video', 'audio', 'platform'];
+
+      Object.values(providerTokens).forEach((token) => {
+        expect(validCategories).toContain(token.category);
+      });
+    });
+
+    it('should have correct category for video providers', () => {
+      expect(providerTokens.kling.category).toBe('video');
+      expect(providerTokens.runway.category).toBe('video');
+      expect(providerTokens.hailuo.category).toBe('video');
+    });
+
+    it('should have correct category for audio providers', () => {
+      expect(providerTokens.elevenlabs.category).toBe('audio');
+      expect(providerTokens.playht.category).toBe('audio');
+      expect(providerTokens.suno.category).toBe('audio');
+      expect(providerTokens.udio.category).toBe('audio');
+    });
+
+    it('should have correct category for platform providers', () => {
+      expect(providerTokens.youtube.category).toBe('platform');
+      expect(providerTokens.tiktok.category).toBe('platform');
+      expect(providerTokens.instagram.category).toBe('platform');
+      expect(providerTokens.facebook.category).toBe('platform');
     });
   });
 });
@@ -355,11 +393,45 @@ describe('Utility Functions', () => {
     });
   });
 
+  describe('getProvidersByCategory', () => {
+    it('should return video providers when category is video', () => {
+      const providers = getProvidersByCategory('video');
+
+      expect(providers).toContain('kling');
+      expect(providers).toContain('runway');
+      expect(providers).toContain('hailuo');
+      expect(providers).toHaveLength(3);
+    });
+
+    it('should return audio providers when category is audio', () => {
+      const providers = getProvidersByCategory('audio');
+
+      expect(providers).toContain('elevenlabs');
+      expect(providers).toContain('playht');
+      expect(providers).toContain('suno');
+      expect(providers).toContain('udio');
+      expect(providers).toHaveLength(4);
+    });
+
+    it('should return platform providers when category is platform', () => {
+      const providers = getProvidersByCategory('platform');
+
+      expect(providers).toContain('youtube');
+      expect(providers).toContain('tiktok');
+      expect(providers).toContain('instagram');
+      expect(providers).toContain('facebook');
+      expect(providers).toHaveLength(4);
+    });
+  });
+
   describe('getVideoProviders', () => {
     it('should return only video providers', () => {
       const providers = getVideoProviders();
 
-      expect(providers).toEqual(['kling', 'runway', 'hailuo']);
+      expect(providers).toContain('kling');
+      expect(providers).toContain('runway');
+      expect(providers).toContain('hailuo');
+      expect(providers).toHaveLength(3);
     });
   });
 
@@ -367,7 +439,11 @@ describe('Utility Functions', () => {
     it('should return only audio providers', () => {
       const providers = getAudioProviders();
 
-      expect(providers).toEqual(['elevenlabs', 'playht', 'suno', 'udio']);
+      expect(providers).toContain('elevenlabs');
+      expect(providers).toContain('playht');
+      expect(providers).toContain('suno');
+      expect(providers).toContain('udio');
+      expect(providers).toHaveLength(4);
     });
   });
 
@@ -375,7 +451,11 @@ describe('Utility Functions', () => {
     it('should return only platform providers', () => {
       const providers = getPlatformProviders();
 
-      expect(providers).toEqual(['youtube', 'tiktok', 'instagram', 'facebook']);
+      expect(providers).toContain('youtube');
+      expect(providers).toContain('tiktok');
+      expect(providers).toContain('instagram');
+      expect(providers).toContain('facebook');
+      expect(providers).toHaveLength(4);
     });
   });
 });
