@@ -15,6 +15,7 @@
     "./oauth/tiktok": "./src/oauth/tiktok/index.ts",
     "./providers/youtube": "./src/providers/youtube/index.ts",
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
+    "./providers/facebook": "./src/providers/facebook/index.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts"
   },
