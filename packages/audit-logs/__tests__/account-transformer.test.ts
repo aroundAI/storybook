@@ -346,7 +346,9 @@ describe('accountTransformer', () => {
           'create',
         );
 
-        expect(description).toBe('Personal account "Unnamed account" was created');
+        expect(description).toBe(
+          'Personal account "Unnamed account" was created',
+        );
       });
 
       it('should handle empty string name', () => {

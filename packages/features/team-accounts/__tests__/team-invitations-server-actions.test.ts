@@ -1,4 +1,15 @@
+import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  acceptInvitationAction,
+  createInvitationsAction,
+  deleteInvitationAction,
+  renewInvitationAction,
+  updateInvitationAction,
+} from '../src/server/actions/team-invitations-server-actions';
 
 // Mock Next.js functions - must be defined before import
 vi.mock('next/cache', () => ({
@@ -25,16 +36,6 @@ vi.mock('@kit/next/actions', () => ({
     };
   },
 }));
-
-import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
-import {
-  acceptInvitationAction,
-  createInvitationsAction,
-  deleteInvitationAction,
-  renewInvitationAction,
-  updateInvitationAction,
-} from '../src/server/actions/team-invitations-server-actions';
 
 const mockRevalidatePath = vi.mocked(revalidatePath);
 const mockRedirect = vi.mocked(redirect);
@@ -91,30 +92,24 @@ const mockAcceptInvitationToTeam = vi.fn(() =>
 );
 const mockRenewInvitation = vi.fn(() => Promise.resolve());
 
-vi.mock(
-  '../src/server/services/account-invitations.service',
-  () => ({
-    createAccountInvitationsService: vi.fn(() => ({
-      sendInvitations: mockSendInvitations,
-      deleteInvitation: mockDeleteInvitation,
-      updateInvitation: mockUpdateInvitation,
-      acceptInvitationToTeam: mockAcceptInvitationToTeam,
-      renewInvitation: mockRenewInvitation,
-    })),
-  }),
-);
+vi.mock('../src/server/services/account-invitations.service', () => ({
+  createAccountInvitationsService: vi.fn(() => ({
+    sendInvitations: mockSendInvitations,
+    deleteInvitation: mockDeleteInvitation,
+    updateInvitation: mockUpdateInvitation,
+    acceptInvitationToTeam: mockAcceptInvitationToTeam,
+    renewInvitation: mockRenewInvitation,
+  })),
+}));
 
 // Mock per-seat billing service
 const mockIncreaseSeats = vi.fn(() => Promise.resolve());
 
-vi.mock(
-  '../src/server/services/account-per-seat-billing.service',
-  () => ({
-    createAccountPerSeatBillingService: vi.fn(() => ({
-      increaseSeats: mockIncreaseSeats,
-    })),
-  }),
-);
+vi.mock('../src/server/services/account-per-seat-billing.service', () => ({
+  createAccountPerSeatBillingService: vi.fn(() => ({
+    increaseSeats: mockIncreaseSeats,
+  })),
+}));
 
 describe('team-invitations-server-actions', () => {
   beforeEach(() => {
@@ -363,9 +358,7 @@ describe('team-invitations-server-actions', () => {
 
     describe('error handling', () => {
       it('should propagate update errors', async () => {
-        mockUpdateInvitation.mockRejectedValueOnce(
-          new Error('Invalid role'),
-        );
+        mockUpdateInvitation.mockRejectedValueOnce(new Error('Invalid role'));
 
         const data = { invitationId: 123, role: 'invalid-role' };
 
@@ -380,17 +373,14 @@ describe('team-invitations-server-actions', () => {
     describe('successful acceptance', () => {
       it('should accept invitation with valid token', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '123e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '123e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/test-team');
 
         const user = { id: '987fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(
-          acceptInvitationAction(formData, user),
-        ).rejects.toThrow('NEXT_REDIRECT;/home/test-team');
+        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
+          'NEXT_REDIRECT;/home/test-team',
+        );
 
         expect(mockAcceptInvitationToTeam).toHaveBeenCalledWith(
           mockAdminClient,
@@ -403,17 +393,14 @@ describe('team-invitations-server-actions', () => {
 
       it('should increase seats after accepting invitation', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '223e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '223e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/new-team');
 
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(
-          acceptInvitationAction(formData, user),
-        ).rejects.toThrow('NEXT_REDIRECT');
+        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
+          'NEXT_REDIRECT',
+        );
 
         expect(mockIncreaseSeats).toHaveBeenCalledWith(
           '123e4567-e89b-12d3-a456-426614174000',
@@ -422,34 +409,28 @@ describe('team-invitations-server-actions', () => {
 
       it('should redirect to specified next path', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '323e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '323e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/custom-path');
 
         const user = { id: '787fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(
-          acceptInvitationAction(formData, user),
-        ).rejects.toThrow('NEXT_REDIRECT;/home/custom-path');
+        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
+          'NEXT_REDIRECT;/home/custom-path',
+        );
 
         expect(mockRedirect).toHaveBeenCalledWith('/home/custom-path');
       });
 
       it('should use admin client for acceptance', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '423e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '423e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/team');
 
         const user = { id: '687fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(
-          acceptInvitationAction(formData, user),
-        ).rejects.toThrow('NEXT_REDIRECT');
+        await expect(acceptInvitationAction(formData, user)).rejects.toThrow(
+          'NEXT_REDIRECT',
+        );
 
         expect(mockAcceptInvitationToTeam).toHaveBeenCalledWith(
           mockAdminClient,
@@ -471,10 +452,7 @@ describe('team-invitations-server-actions', () => {
 
       it('should reject empty next path', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '523e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '523e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '');
 
         const user = { id: '487fcdeb-51a2-43d7-8f9e-123456789abc' };
@@ -493,10 +471,7 @@ describe('team-invitations-server-actions', () => {
 
       it('should reject missing next path', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '623e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '623e4567-e89b-12d3-a456-426614174000');
 
         const user = { id: '287fcdeb-51a2-43d7-8f9e-123456789abc' };
 
@@ -509,10 +484,7 @@ describe('team-invitations-server-actions', () => {
         mockAcceptInvitationToTeam.mockResolvedValueOnce(null);
 
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '723e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '723e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/team');
 
         const user = { id: '187fcdeb-51a2-43d7-8f9e-123456789abc' };
@@ -528,10 +500,7 @@ describe('team-invitations-server-actions', () => {
         );
 
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '823e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '823e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/team');
 
         const user = { id: '087fcdeb-51a2-43d7-8f9e-123456789abc' };
@@ -547,10 +516,7 @@ describe('team-invitations-server-actions', () => {
         );
 
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          '923e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', '923e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/team');
 
         const user = { id: 'f87fcdeb-51a2-43d7-8f9e-123456789abc' };
@@ -564,10 +530,7 @@ describe('team-invitations-server-actions', () => {
     describe('edge cases', () => {
       it('should handle null user', async () => {
         const formData = new FormData();
-        formData.append(
-          'inviteToken',
-          'a23e4567-e89b-12d3-a456-426614174000',
-        );
+        formData.append('inviteToken', 'a23e4567-e89b-12d3-a456-426614174000');
         formData.append('nextPath', '/home/team');
 
         await expect(

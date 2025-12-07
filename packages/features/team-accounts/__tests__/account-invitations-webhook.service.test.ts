@@ -290,9 +290,9 @@ describe('AccountInvitationsWebhookService', () => {
         created_at: '2024-01-01',
       };
 
-      await expect(
-        service.handleInvitationWebhook(invitation),
-      ).rejects.toThrow('Inviter not found');
+      await expect(service.handleInvitationWebhook(invitation)).rejects.toThrow(
+        'Inviter not found',
+      );
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -351,9 +351,9 @@ describe('AccountInvitationsWebhookService', () => {
         created_at: '2024-01-01',
       };
 
-      await expect(
-        service.handleInvitationWebhook(invitation),
-      ).rejects.toThrow('Team not found');
+      await expect(service.handleInvitationWebhook(invitation)).rejects.toThrow(
+        'Team not found',
+      );
 
       expect(mockLogger.error).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -398,9 +398,7 @@ describe('AccountInvitationsWebhookService', () => {
     });
 
     it('should catch errors in email rendering', async () => {
-      mockRenderInviteEmail.mockRejectedValue(
-        new Error('Template error'),
-      );
+      mockRenderInviteEmail.mockRejectedValue(new Error('Template error'));
 
       const service = createAccountInvitationsWebhookService(
         mockAdminClient as any,

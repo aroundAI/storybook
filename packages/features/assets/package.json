@@ -18,7 +18,8 @@
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas/asset.schema.ts",
     "./types": "./src/lib/types.ts",
-    "./hooks": "./src/hooks/index.ts"
+    "./hooks": "./src/hooks/index.ts",
+    "./upload-validation": "./src/lib/upload-validation.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",

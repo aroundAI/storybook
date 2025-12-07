@@ -18,7 +18,11 @@
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",
     "./types": "./src/lib/types.ts",
-    "./hooks": "./src/hooks/index.ts"
+    "./hooks": "./src/hooks/index.ts",
+    "./webhooks/types": "./src/webhooks/types.ts",
+    "./webhooks/handler": "./src/webhooks/handler.ts",
+    "./webhooks/verifiers/kling": "./src/webhooks/verifiers/kling.ts",
+    "./webhooks": "./src/webhooks/index.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -28,11 +32,13 @@
     "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@kit/ui": "workspace:*",
+    "@types/node": "^24.5.0",
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
     "next": "15.5.3",
     "react": "19.1.1",
     "react-dom": "19.1.1",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },

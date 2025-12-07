@@ -1,4 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createBillingGatewayService } from '../src/server/services/billing-gateway/billing-gateway.service';
 
 // Mock the billing strategy registry
@@ -14,11 +15,14 @@ const mockStrategy = {
   getSubscription: vi.fn(),
 };
 
-vi.mock('../src/server/services/billing-gateway/billing-gateway-registry', () => ({
-  billingStrategyRegistry: {
-    get: vi.fn(() => Promise.resolve(mockStrategy)),
-  },
-}));
+vi.mock(
+  '../src/server/services/billing-gateway/billing-gateway-registry',
+  () => ({
+    billingStrategyRegistry: {
+      get: vi.fn(() => Promise.resolve(mockStrategy)),
+    },
+  }),
+);
 
 describe('BillingGatewayService', () => {
   beforeEach(() => {
@@ -28,7 +32,10 @@ describe('BillingGatewayService', () => {
   describe('createCheckoutSession', () => {
     it('should create checkout session with valid params', async () => {
       const service = createBillingGatewayService('stripe');
-      const mockSession = { id: 'session_123', url: 'https://checkout.stripe.com/123' };
+      const mockSession = {
+        id: 'session_123',
+        url: 'https://checkout.stripe.com/123',
+      };
 
       mockStrategy.createCheckoutSession.mockResolvedValue(mockSession);
 
@@ -40,17 +47,21 @@ describe('BillingGatewayService', () => {
           name: 'Pro Plan',
           paymentType: 'recurring' as const,
           interval: 'month' as const,
-          lineItems: [{
-            id: 'li_123',
-            name: 'Base subscription',
-            cost: 2900,
-            type: 'flat' as const,
-          }]
+          lineItems: [
+            {
+              id: 'li_123',
+              name: 'Base subscription',
+              cost: 2900,
+              type: 'flat' as const,
+            },
+          ],
         },
-        variantQuantities: [{
-          variantId: 'variant-123',
-          quantity: 1,
-        }],
+        variantQuantities: [
+          {
+            variantId: 'variant-123',
+            quantity: 1,
+          },
+        ],
         customerId: 'cus_123',
       };
 
@@ -68,14 +79,17 @@ describe('BillingGatewayService', () => {
         returnUrl: 'not-a-url', // Invalid URL
       };
 
-      await expect(service.createCheckoutSession(invalidParams as any))
-        .rejects.toThrow();
+      await expect(
+        service.createCheckoutSession(invalidParams as any),
+      ).rejects.toThrow();
     });
 
     it('should delegate to correct strategy provider', async () => {
       const service = createBillingGatewayService('stripe');
 
-      mockStrategy.createCheckoutSession.mockResolvedValue({ id: 'session_123' });
+      mockStrategy.createCheckoutSession.mockResolvedValue({
+        id: 'session_123',
+      });
 
       await service.createCheckoutSession({
         returnUrl: 'https://example.com/success',
@@ -85,17 +99,21 @@ describe('BillingGatewayService', () => {
           name: 'Starter Plan',
           paymentType: 'recurring' as const,
           interval: 'month' as const,
-          lineItems: [{
-            id: 'li_456',
-            name: 'Monthly subscription',
-            cost: 1500,
-            type: 'flat' as const,
-          }]
+          lineItems: [
+            {
+              id: 'li_456',
+              name: 'Monthly subscription',
+              cost: 1500,
+              type: 'flat' as const,
+            },
+          ],
         },
-        variantQuantities: [{
-          variantId: 'variant-456',
-          quantity: 1,
-        }],
+        variantQuantities: [
+          {
+            variantId: 'variant-456',
+            quantity: 1,
+          },
+        ],
         customerId: 'cus_123',
       });
 
@@ -109,26 +127,27 @@ describe('BillingGatewayService', () => {
       const mockSession = {
         id: 'session_123',
         status: 'complete',
-        customer: 'cus_123'
+        customer: 'cus_123',
       };
 
       mockStrategy.retrieveCheckoutSession.mockResolvedValue(mockSession);
 
       const result = await service.retrieveCheckoutSession({
-        sessionId: 'session_123'
+        sessionId: 'session_123',
       });
 
       expect(result).toEqual(mockSession);
       expect(mockStrategy.retrieveCheckoutSession).toHaveBeenCalledWith({
-        sessionId: 'session_123'
+        sessionId: 'session_123',
       });
     });
 
     it('should validate session ID param', async () => {
       const service = createBillingGatewayService('stripe');
 
-      await expect(service.retrieveCheckoutSession({ sessionId: null as any }))
-        .rejects.toThrow();
+      await expect(
+        service.retrieveCheckoutSession({ sessionId: null as any }),
+      ).rejects.toThrow();
     });
   });
 
@@ -136,10 +155,12 @@ describe('BillingGatewayService', () => {
     it('should create portal session with customer ID', async () => {
       const service = createBillingGatewayService('stripe');
       const mockPortalSession = {
-        url: 'https://billing.stripe.com/session/portal_123'
+        url: 'https://billing.stripe.com/session/portal_123',
       };
 
-      mockStrategy.createBillingPortalSession.mockResolvedValue(mockPortalSession);
+      mockStrategy.createBillingPortalSession.mockResolvedValue(
+        mockPortalSession,
+      );
 
       const params = {
         customerId: 'cus_123',
@@ -149,16 +170,20 @@ describe('BillingGatewayService', () => {
       const result = await service.createBillingPortalSession(params);
 
       expect(result).toEqual(mockPortalSession);
-      expect(mockStrategy.createBillingPortalSession).toHaveBeenCalledWith(params);
+      expect(mockStrategy.createBillingPortalSession).toHaveBeenCalledWith(
+        params,
+      );
     });
 
     it('should validate customer ID and return URL', async () => {
       const service = createBillingGatewayService('stripe');
 
-      await expect(service.createBillingPortalSession({
-        customerId: '',
-        returnUrl: 'not-a-url',
-      })).rejects.toThrow();
+      await expect(
+        service.createBillingPortalSession({
+          customerId: '',
+          returnUrl: 'not-a-url',
+        }),
+      ).rejects.toThrow();
     });
   });
 
@@ -168,7 +193,7 @@ describe('BillingGatewayService', () => {
       const mockCanceled = {
         id: 'sub_123',
         status: 'canceled',
-        canceled_at: Date.now()
+        canceled_at: Date.now(),
       };
 
       mockStrategy.cancelSubscription.mockResolvedValue(mockCanceled);
@@ -186,20 +211,23 @@ describe('BillingGatewayService', () => {
     it('should validate subscription ID', async () => {
       const service = createBillingGatewayService('stripe');
 
-      await expect(service.cancelSubscription({ subscriptionId: 123 as any }))
-        .rejects.toThrow();
+      await expect(
+        service.cancelSubscription({ subscriptionId: 123 as any }),
+      ).rejects.toThrow();
     });
 
     it('should handle cancellation errors from provider', async () => {
       const service = createBillingGatewayService('stripe');
 
       mockStrategy.cancelSubscription.mockRejectedValue(
-        new Error('Subscription not found')
+        new Error('Subscription not found'),
       );
 
-      await expect(service.cancelSubscription({
-        subscriptionId: 'sub_nonexistent'
-      })).rejects.toThrow('Subscription not found');
+      await expect(
+        service.cancelSubscription({
+          subscriptionId: 'sub_nonexistent',
+        }),
+      ).rejects.toThrow('Subscription not found');
     });
   });
 
@@ -228,10 +256,12 @@ describe('BillingGatewayService', () => {
     it('should validate usage params', async () => {
       const service = createBillingGatewayService('stripe');
 
-      await expect(service.reportUsage({
-        id: 123 as any, // Invalid type
-        usage: 'invalid' as any, // Invalid type
-      })).rejects.toThrow();
+      await expect(
+        service.reportUsage({
+          id: 123 as any, // Invalid type
+          usage: 'invalid' as any, // Invalid type
+        }),
+      ).rejects.toThrow();
     });
   });
 
@@ -241,7 +271,7 @@ describe('BillingGatewayService', () => {
       const mockUsage = {
         total: 500,
         period_start: '2024-01-01',
-        period_end: '2024-01-31'
+        period_end: '2024-01-31',
       };
 
       mockStrategy.queryUsage.mockResolvedValue(mockUsage);
@@ -264,12 +294,13 @@ describe('BillingGatewayService', () => {
     it('should validate subscription item ID', async () => {
       const service = createBillingGatewayService('stripe');
 
-      await expect(service.queryUsage({
-        id: 123 as any,  // Invalid type
-        customerId: null as any,  // Invalid type
-        filter: 'invalid' as any, // Invalid type
-      }))
-        .rejects.toThrow();
+      await expect(
+        service.queryUsage({
+          id: 123 as any, // Invalid type
+          customerId: null as any, // Invalid type
+          filter: 'invalid' as any, // Invalid type
+        }),
+      ).rejects.toThrow();
     });
   });
 
@@ -295,12 +326,11 @@ describe('BillingGatewayService', () => {
     it('should handle missing plan errors', async () => {
       const service = createBillingGatewayService('stripe');
 
-      mockStrategy.getPlanById.mockRejectedValue(
-        new Error('Plan not found')
-      );
+      mockStrategy.getPlanById.mockRejectedValue(new Error('Plan not found'));
 
-      await expect(service.getPlanById('price_nonexistent'))
-        .rejects.toThrow('Plan not found');
+      await expect(service.getPlanById('price_nonexistent')).rejects.toThrow(
+        'Plan not found',
+      );
     });
   });
 
@@ -310,7 +340,7 @@ describe('BillingGatewayService', () => {
       const mockUpdated = {
         id: 'sub_123',
         quantity: 5,
-        updated_at: Date.now()
+        updated_at: Date.now(),
       };
 
       mockStrategy.updateSubscriptionItem.mockResolvedValue(mockUpdated);
@@ -330,25 +360,29 @@ describe('BillingGatewayService', () => {
     it('should validate update params', async () => {
       const service = createBillingGatewayService('stripe');
 
-      await expect(service.updateSubscriptionItem({
-        subscriptionId: '',
-        subscriptionItemId: '',
-        quantity: -1,
-      })).rejects.toThrow();
+      await expect(
+        service.updateSubscriptionItem({
+          subscriptionId: '',
+          subscriptionItemId: '',
+          quantity: -1,
+        }),
+      ).rejects.toThrow();
     });
 
     it('should handle update errors from provider', async () => {
       const service = createBillingGatewayService('stripe');
 
       mockStrategy.updateSubscriptionItem.mockRejectedValue(
-        new Error('Invalid subscription item')
+        new Error('Invalid subscription item'),
       );
 
-      await expect(service.updateSubscriptionItem({
-        subscriptionId: 'sub_123',
-        subscriptionItemId: 'si_invalid',
-        quantity: 10,
-      })).rejects.toThrow('Invalid subscription item');
+      await expect(
+        service.updateSubscriptionItem({
+          subscriptionId: 'sub_123',
+          subscriptionItemId: 'si_invalid',
+          quantity: 10,
+        }),
+      ).rejects.toThrow('Invalid subscription item');
     });
   });
 
@@ -374,11 +408,12 @@ describe('BillingGatewayService', () => {
       const service = createBillingGatewayService('stripe');
 
       mockStrategy.getSubscription.mockRejectedValue(
-        new Error('Subscription not found')
+        new Error('Subscription not found'),
       );
 
-      await expect(service.getSubscription('sub_nonexistent'))
-        .rejects.toThrow('Subscription not found');
+      await expect(service.getSubscription('sub_nonexistent')).rejects.toThrow(
+        'Subscription not found',
+      );
     });
   });
 

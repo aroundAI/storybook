@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
+
 import {
   AUDIT_CONFIG,
-  shouldTrackObject,
-  getObjectConfig,
   getEnabledObjectTypes,
+  getObjectConfig,
   isSensitiveField,
+  shouldTrackObject,
 } from '../src/config/audit-config';
 
 describe('audit-config', () => {
@@ -75,9 +76,7 @@ describe('audit-config', () => {
         expect(AUDIT_CONFIG.user.excludeFields).toContain('password_hash');
         expect(AUDIT_CONFIG.user.excludeFields).toContain('encrypted_password');
         expect(AUDIT_CONFIG.user.excludeFields).toContain('raw_app_meta_data');
-        expect(AUDIT_CONFIG.user.excludeFields).toContain(
-          'raw_user_meta_data',
-        );
+        expect(AUDIT_CONFIG.user.excludeFields).toContain('raw_user_meta_data');
       });
 
       it('should mark PII as sensitive', () => {

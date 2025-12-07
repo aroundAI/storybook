@@ -6,7 +6,11 @@ import { fileURLToPath } from 'url';
 
 import { getLogger } from '@kit/shared/logger';
 
-import type { PromptOutputConfig, PromptTemplate, RenderedPrompt } from '../types';
+import type {
+  PromptOutputConfig,
+  PromptTemplate,
+  RenderedPrompt,
+} from '../types';
 
 // Re-export types for convenience
 export type { PromptOutputConfig, RenderedPrompt };
@@ -211,7 +215,9 @@ export async function loadAndRenderPrompt(
   // At this point, both filePath and content are guaranteed to be defined
   // (or an error would have been thrown)
   if (!content || !filePath) {
-    throw new Error(`Unexpected error: content or filePath is undefined for slug: ${slug}`);
+    throw new Error(
+      `Unexpected error: content or filePath is undefined for slug: ${slug}`,
+    );
   }
 
   // 2. Parse JSON

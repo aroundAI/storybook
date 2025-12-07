@@ -6,6 +6,9 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-101j (Platform Connections Table)
 - **Blocks:** FILM-705, FILM-706, FILM-707 (OAuth flows), FILM-701-704 (Publishing providers)
+- **Status:** ✅ Complete
+- **Implemented:** 2025-12-05
+- **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
 
 ---
 
@@ -371,27 +374,27 @@ export async function GET(request: NextRequest) {
 
 ## Acceptance Criteria
 
-- [ ] Valid tokens are returned without refresh
-- [ ] Tokens expiring within 5 minutes are proactively refreshed
-- [ ] Expired tokens trigger refresh before API call
-- [ ] Failed refresh marks connection as inactive
-- [ ] Failed refresh sends user notification
-- [ ] Notification includes reconnect link
-- [ ] Background job refreshes tokens expiring within 1 hour
-- [ ] Cron endpoint is protected by secret
-- [ ] All refresh attempts are logged
+- [x] Valid tokens are returned without refresh
+- [x] Tokens expiring within 5 minutes are proactively refreshed
+- [x] Expired tokens trigger refresh before API call
+- [x] Failed refresh marks connection as inactive
+- [x] Failed refresh sends user notification
+- [x] Notification includes reconnect link
+- [x] Background job refreshes tokens expiring within 1 hour
+- [x] Cron endpoint is protected by secret
+- [x] All refresh attempts are logged
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test valid token returns immediately
-- [ ] Test near-expiry token triggers refresh
-- [ ] Test expired token triggers refresh
-- [ ] Test successful refresh updates database
-- [ ] Test failed refresh marks connection inactive
-- [ ] Test notification sent on failure
+- [x] Test valid token returns immediately
+- [x] Test near-expiry token triggers refresh
+- [x] Test expired token triggers refresh
+- [x] Test successful refresh updates database
+- [x] Test failed refresh marks connection inactive
+- [x] Test notification sent on failure
 
 ### Integration Tests
 - [ ] Test full refresh flow with mocked OAuth endpoints

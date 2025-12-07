@@ -19,7 +19,10 @@
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",
     "./types": "./src/lib/types.ts",
-    "./hooks": "./src/hooks/index.ts"
+    "./hooks": "./src/hooks/index.ts",
+    "./webhooks/types": "./src/webhooks/types.ts",
+    "./webhooks/verifiers/elevenlabs": "./src/webhooks/verifiers/elevenlabs.ts",
+    "./webhooks": "./src/webhooks/index.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -32,6 +35,7 @@
     "@types/react": "19.1.13",
     "next": "15.5.3",
     "react": "19.1.1",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },
