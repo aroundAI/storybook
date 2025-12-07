@@ -1,2 +1,6 @@
-// Audio generation components (FILM-DS-01)
-export {};
+/**
+ * Audio generation components
+ */
+
+export { AudioPlayer, type AudioPlayerProps } from './AudioPlayer';
+export { Waveform, type WaveformProps } from './Waveform';
