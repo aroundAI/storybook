@@ -49,7 +49,10 @@ export const GET = enhanceRouteHandler(
       const results = await refreshExpiringTokens();
       const duration = Date.now() - startTime;
 
-      logger.info({ ...ctx, ...results, durationMs: duration }, `Job completed in ${duration}ms`);
+      logger.info(
+        { ...ctx, ...results, durationMs: duration },
+        `Job completed in ${duration}ms`,
+      );
 
       return NextResponse.json({
         success: true,
@@ -59,7 +62,14 @@ export const GET = enhanceRouteHandler(
     } catch (error) {
       const duration = Date.now() - startTime;
 
-      logger.error({ ...ctx, error: error instanceof Error ? error.message : String(error), durationMs: duration }, 'Job failed');
+      logger.error(
+        {
+          ...ctx,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs: duration,
+        },
+        'Job failed',
+      );
 
       return NextResponse.json(
         {
@@ -108,7 +118,10 @@ export const POST = enhanceRouteHandler(
       const results = await refreshExpiringTokens();
       const duration = Date.now() - startTime;
 
-      logger.info({ ...ctx, ...results, durationMs: duration }, `Manual refresh completed in ${duration}ms`);
+      logger.info(
+        { ...ctx, ...results, durationMs: duration },
+        `Manual refresh completed in ${duration}ms`,
+      );
 
       return NextResponse.json({
         success: true,
@@ -118,7 +131,14 @@ export const POST = enhanceRouteHandler(
     } catch (error) {
       const duration = Date.now() - startTime;
 
-      logger.error({ ...ctx, error: error instanceof Error ? error.message : String(error), durationMs: duration }, 'Manual refresh failed');
+      logger.error(
+        {
+          ...ctx,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs: duration,
+        },
+        'Manual refresh failed',
+      );
 
       return NextResponse.json(
         {
