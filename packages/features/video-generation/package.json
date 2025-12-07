@@ -23,6 +23,7 @@
     "./webhooks/types": "./src/webhooks/types.ts",
     "./webhooks/handler": "./src/webhooks/handler.ts",
     "./webhooks/verifiers/kling": "./src/webhooks/verifiers/kling.ts",
+    "./webhooks/verifiers/hailuo": "./src/webhooks/verifiers/hailuo.ts",
     "./webhooks": "./src/webhooks/index.ts",
     "./rate-limiter": "./src/lib/rate-limiter/index.ts",
     "./rate-limiter/types": "./src/lib/rate-limiter/types.ts",

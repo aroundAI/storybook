@@ -72,36 +72,114 @@ export interface WebhookLogEntry {
 }
 
 /**
- * Base payload structure for generation webhooks
+ * Internal status type used by generation_jobs table
  */
-export interface GenerationWebhookPayload {
+export type InternalJobStatus =
+  | 'queued'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'cancelled'
+  | 'dead_letter';
+
+/**
+ * Kling-specific webhook payload (via PiAPI)
+ * Status values: submitted, processing, succeed, failed
+ */
+export interface KlingWebhookPayload {
   task_id: string;
-  status: 'completed' | 'failed' | 'processing';
-  timestamp?: number;
-  error_message?: string;
+  task_status: 'submitted' | 'processing' | 'succeed' | 'failed';
+  task_status_msg: string;
+  updated_at: number; // Unix timestamp
+  progress: number; // 0-100
+  task_result?: {
+    videos: Array<{
+      id: string;
+      url: string;
+      duration: number;
+    }>;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+  timestamp?: number; // For replay protection
 }
 
 /**
- * Kling-specific webhook payload
+ * Hailuo (MiniMax) webhook payload
+ * Status values: Queueing, Processing, Success, Fail
  */
-export interface KlingWebhookPayload extends GenerationWebhookPayload {
+export interface HailuoWebhookPayload {
+  task_id: string;
+  status: 'Queueing' | 'Processing' | 'Success' | 'Fail';
+  progress?: number;
   video_url?: string;
-  thumbnail_url?: string;
+  cover_url?: string; // Thumbnail
   duration?: number;
+  error?: {
+    code: number;
+    message: string;
+  };
+  created_at: number;
+  finished_at?: number;
+  timestamp?: number; // For replay protection
 }
 
 /**
- * Runway-specific webhook payload
+ * Runway status response (polling-based, no webhook)
+ * Status values: PENDING, RUNNING, SUCCEEDED, FAILED, CANCELLED
  */
-export interface RunwayWebhookPayload extends GenerationWebhookPayload {
-  output_url?: string;
-  preview_url?: string;
+export interface RunwayStatusResponse {
+  id: string;
+  status: 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+  progress?: number;
+  output?: Array<{
+    url: string;
+    duration: number;
+  }>;
+  failure?: string;
+  failureCode?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
- * Hailuo-specific webhook payload
+ * Status mapping: Kling provider status to internal status
  */
-export interface HailuoWebhookPayload extends GenerationWebhookPayload {
-  result_url?: string;
-  cover_url?: string;
-}
+export const KLING_STATUS_MAP: Record<
+  KlingWebhookPayload['task_status'],
+  InternalJobStatus
+> = {
+  submitted: 'queued',
+  processing: 'processing',
+  succeed: 'completed',
+  failed: 'failed',
+};
+
+/**
+ * Status mapping: Hailuo provider status to internal status
+ */
+export const HAILUO_STATUS_MAP: Record<
+  HailuoWebhookPayload['status'],
+  InternalJobStatus
+> = {
+  Queueing: 'queued',
+  Processing: 'processing',
+  Success: 'completed',
+  Fail: 'failed',
+};
+
+/**
+ * Status mapping: Runway provider status to internal status
+ */
+export const RUNWAY_STATUS_MAP: Record<
+  RunwayStatusResponse['status'],
+  InternalJobStatus
+> = {
+  PENDING: 'queued',
+  RUNNING: 'processing',
+  SUCCEEDED: 'completed',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+};
