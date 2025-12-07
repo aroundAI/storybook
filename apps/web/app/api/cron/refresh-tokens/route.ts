@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
+import { enhanceRouteHandler } from '@kit/next/routes';
 import { refreshExpiringTokens } from '@kit/publishing/jobs';
+import { getLogger } from '@kit/shared/logger';
 
 /**
  * Cron endpoint for proactively refreshing OAuth tokens.
@@ -19,96 +21,116 @@ import { refreshExpiringTokens } from '@kit/publishing/jobs';
  *
  * @returns JSON with refresh statistics
  */
-export async function GET(request: NextRequest) {
-  // Verify cron secret
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
+export const GET = enhanceRouteHandler(
+  async ({ request }) => {
+    const logger = await getLogger();
+    const ctx = { name: 'cron.refresh-tokens' };
 
-  if (!cronSecret) {
-    console.error('[TokenRefresh] CRON_SECRET not configured');
-    return NextResponse.json(
-      { error: 'Server configuration error' },
-      { status: 500 },
-    );
-  }
+    // Verify cron secret
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    console.warn('[TokenRefresh] Unauthorized cron request');
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!cronSecret) {
+      logger.error(ctx, 'CRON_SECRET not configured');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 },
+      );
+    }
 
-  const startTime = Date.now();
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      logger.warn(ctx, 'Unauthorized cron request');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  try {
-    const results = await refreshExpiringTokens();
-    const duration = Date.now() - startTime;
+    const startTime = Date.now();
 
-    console.log(`[TokenRefresh] Job completed in ${duration}ms`, results);
+    try {
+      const results = await refreshExpiringTokens();
+      const duration = Date.now() - startTime;
 
-    return NextResponse.json({
-      success: true,
-      ...results,
-      durationMs: duration,
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
+      logger.info({ ...ctx, ...results, durationMs: duration }, `Job completed in ${duration}ms`);
 
-    console.error('[TokenRefresh] Job failed:', error);
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal error',
+      return NextResponse.json({
+        success: true,
+        ...results,
         durationMs: duration,
-      },
-      { status: 500 },
-    );
-  }
-}
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      logger.error({ ...ctx, error: error instanceof Error ? error.message : String(error), durationMs: duration }, 'Job failed');
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Internal error',
+          durationMs: duration,
+        },
+        { status: 500 },
+      );
+    }
+  },
+  {
+    auth: false,
+  },
+);
 
 /**
  * POST endpoint for manual refresh trigger.
  * Can be called from admin panel to force refresh all expiring tokens.
  */
-export async function POST(request: NextRequest) {
-  // Same authorization as GET
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
+export const POST = enhanceRouteHandler(
+  async ({ request }) => {
+    const logger = await getLogger();
+    const ctx = { name: 'cron.refresh-tokens.manual' };
 
-  if (!cronSecret) {
-    return NextResponse.json(
-      { error: 'Server configuration error' },
-      { status: 500 },
-    );
-  }
+    // Verify cron secret
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+    if (!cronSecret) {
+      logger.error(ctx, 'CRON_SECRET not configured');
+      return NextResponse.json(
+        { error: 'Server configuration error' },
+        { status: 500 },
+      );
+    }
 
-  const startTime = Date.now();
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      logger.warn(ctx, 'Unauthorized manual refresh request');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  try {
-    const results = await refreshExpiringTokens();
-    const duration = Date.now() - startTime;
+    const startTime = Date.now();
 
-    return NextResponse.json({
-      success: true,
-      ...results,
-      durationMs: duration,
-    });
-  } catch (error) {
-    const duration = Date.now() - startTime;
+    try {
+      const results = await refreshExpiringTokens();
+      const duration = Date.now() - startTime;
 
-    console.error('[TokenRefresh] Manual refresh failed:', error);
+      logger.info({ ...ctx, ...results, durationMs: duration }, `Manual refresh completed in ${duration}ms`);
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal error',
+      return NextResponse.json({
+        success: true,
+        ...results,
         durationMs: duration,
-      },
-      { status: 500 },
-    );
-  }
-}
+      });
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      logger.error({ ...ctx, error: error instanceof Error ? error.message : String(error), durationMs: duration }, 'Manual refresh failed');
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Internal error',
+          durationMs: duration,
+        },
+        { status: 500 },
+      );
+    }
+  },
+  {
+    auth: false,
+  },
+);

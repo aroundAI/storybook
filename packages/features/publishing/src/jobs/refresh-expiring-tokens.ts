@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ensureValidToken } from '../lib/token-refresh';
@@ -34,6 +35,8 @@ interface ExpiringConnection {
  * @returns Statistics about the refresh job execution
  */
 export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
+  const logger = await getLogger();
+  const ctx = { name: 'token-refresh.job' };
   const client = getSupabaseServerClient();
   const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
 
@@ -71,15 +74,15 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
     .order('token_expires_at', { ascending: true });
 
   if (error) {
-    console.error(
-      '[TokenRefresh] Failed to query expiring connections:',
-      error.message,
+    logger.error(
+      { ...ctx, error: error.message },
+      'Failed to query expiring connections',
     );
     return { checked: 0, refreshed: 0, failed: 0 };
   }
 
   if (!expiringConnections || expiringConnections.length === 0) {
-    console.log('[TokenRefresh] No expiring connections found');
+    logger.info(ctx, 'No expiring connections found');
     return { checked: 0, refreshed: 0, failed: 0 };
   }
 
@@ -96,21 +99,22 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
 
       if (result.valid) {
         results.refreshed++;
-        console.log(
-          `[TokenRefresh] Refreshed ${conn.platform} for account ${conn.account_id}`,
+        logger.info(
+          { ...ctx, platform: conn.platform, accountId: conn.account_id },
+          `Refreshed ${conn.platform} for account ${conn.account_id}`,
         );
       } else {
         results.failed++;
-        console.error(
-          `[TokenRefresh] Failed ${conn.platform} for account ${conn.account_id}:`,
-          result.error,
+        logger.error(
+          { ...ctx, platform: conn.platform, accountId: conn.account_id, error: result.error },
+          `Failed ${conn.platform} for account ${conn.account_id}`,
         );
       }
-    } catch (error) {
+    } catch (err) {
       results.failed++;
-      console.error(
-        `[TokenRefresh] Error refreshing ${conn.platform} for account ${conn.account_id}:`,
-        error instanceof Error ? error.message : error,
+      logger.error(
+        { ...ctx, platform: conn.platform, accountId: conn.account_id, error: err instanceof Error ? err.message : String(err) },
+        `Error refreshing ${conn.platform} for account ${conn.account_id}`,
       );
     }
 
@@ -118,8 +122,9 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
     await sleep(100);
   }
 
-  console.log(
-    `[TokenRefresh] Complete: ${results.refreshed}/${results.checked} refreshed, ${results.failed} failed`,
+  logger.info(
+    { ...ctx, ...results },
+    `Complete: ${results.refreshed}/${results.checked} refreshed, ${results.failed} failed`,
   );
 
   return results;

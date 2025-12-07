@@ -1,5 +1,6 @@
 import 'server-only';
 
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { decrypt, encrypt } from './crypto';
@@ -53,13 +54,46 @@ export interface PlatformConnection {
 const EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 
 /**
+ * In-memory map to track in-flight token refresh operations.
+ * Prevents race conditions when multiple concurrent requests try to refresh the same token.
+ */
+const inFlightRefreshes = new Map<string, Promise<TokenValidationResult>>();
+
+/**
  * Ensures a valid access token is available for the connection.
  * Refreshes if needed, marks inactive if refresh fails.
+ * Uses deduplication to prevent race conditions on concurrent refresh attempts.
  *
  * @param connectionId The platform connection ID
  * @returns TokenValidationResult with valid access token or error
  */
 export async function ensureValidToken(
+  connectionId: string,
+): Promise<TokenValidationResult> {
+  // Check if a refresh is already in progress for this connection
+  const inFlight = inFlightRefreshes.get(connectionId);
+  if (inFlight) {
+    // Wait for the existing refresh to complete
+    return inFlight;
+  }
+
+  // Start the refresh and track it
+  const refreshPromise = doEnsureValidToken(connectionId);
+  inFlightRefreshes.set(connectionId, refreshPromise);
+
+  try {
+    return await refreshPromise;
+  } finally {
+    // Clean up after refresh completes (success or failure)
+    inFlightRefreshes.delete(connectionId);
+  }
+}
+
+/**
+ * Internal implementation of token validation/refresh.
+ * Separated to allow deduplication wrapper.
+ */
+async function doEnsureValidToken(
   connectionId: string,
 ): Promise<TokenValidationResult> {
   // 1. Fetch connection using untyped query (table may not exist in schema yet)
@@ -345,10 +379,11 @@ async function sendReauthNotification(
   accountId: string,
   platform: Platform,
 ): Promise<void> {
+  const logger = await getLogger();
+  const ctx = { name: 'token-refresh.reauth', accountId, platform };
+
   // Log for now - integrate with @kit/notifications when available
-  console.log(
-    `[TokenRefresh] Re-auth required for account ${accountId}, platform ${platform}`,
-  );
+  logger.info(ctx, `Re-auth required for account ${accountId}, platform ${platform}`);
 
   // TODO: Integrate with notification system
   // await sendNotification(accountId, {

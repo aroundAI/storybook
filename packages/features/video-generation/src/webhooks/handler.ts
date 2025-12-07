@@ -1,5 +1,7 @@
 import type { NextRequest } from 'next/server';
 
+import { getLogger } from '@kit/shared/logger';
+
 import type {
   ProcessedWebhook,
   WebhookConfig,
@@ -34,7 +36,7 @@ export async function processWebhook<T>(
   // 1. Extract signature from headers
   const signature = request.headers.get(config.signatureHeader);
   if (!signature) {
-    logWebhookAttempt(request, 'MISSING_SIGNATURE', startTime);
+    await logWebhookAttempt(request, 'MISSING_SIGNATURE', startTime);
     return {
       success: false,
       error: 'Missing signature header',
@@ -50,7 +52,7 @@ export async function processWebhook<T>(
   try {
     isValid = verifier.verify(payload, signature);
   } catch (error) {
-    logWebhookAttempt(request, 'VERIFICATION_ERROR', startTime, error);
+    await logWebhookAttempt(request, 'VERIFICATION_ERROR', startTime, error);
     return {
       success: false,
       error: 'Signature verification failed',
@@ -59,7 +61,7 @@ export async function processWebhook<T>(
   }
 
   if (!isValid) {
-    logWebhookAttempt(request, 'INVALID_SIGNATURE', startTime);
+    await logWebhookAttempt(request, 'INVALID_SIGNATURE', startTime);
     return {
       success: false,
       error: 'Invalid signature',
@@ -72,7 +74,7 @@ export async function processWebhook<T>(
   try {
     data = JSON.parse(payload) as T;
   } catch {
-    logWebhookAttempt(request, 'INVALID_JSON', startTime);
+    await logWebhookAttempt(request, 'INVALID_JSON', startTime);
     return {
       success: false,
       error: 'Invalid JSON payload',
@@ -86,7 +88,7 @@ export async function processWebhook<T>(
     if (timestamp) {
       const age = Math.floor(Date.now() / 1000) - timestamp;
       if (age > config.maxAgeSeconds) {
-        logWebhookAttempt(request, 'EXPIRED', startTime, {
+        await logWebhookAttempt(request, 'EXPIRED', startTime, {
           age,
           maxAge: config.maxAgeSeconds,
         });
@@ -99,7 +101,7 @@ export async function processWebhook<T>(
 
       // Reject webhooks from the future (clock skew protection)
       if (age < -60) {
-        logWebhookAttempt(request, 'FUTURE_TIMESTAMP', startTime, {
+        await logWebhookAttempt(request, 'FUTURE_TIMESTAMP', startTime, {
           age,
         });
         return {
@@ -114,14 +116,14 @@ export async function processWebhook<T>(
   // 6. Process webhook
   try {
     await handler(data);
-    logWebhookAttempt(request, 'SUCCESS', startTime);
+    await logWebhookAttempt(request, 'SUCCESS', startTime);
     return {
       success: true,
       data,
       statusCode: 200,
     };
   } catch (error) {
-    logWebhookAttempt(request, 'HANDLER_ERROR', startTime, error);
+    await logWebhookAttempt(request, 'HANDLER_ERROR', startTime, error);
     return {
       success: false,
       error: 'Internal processing error',
@@ -134,12 +136,13 @@ export async function processWebhook<T>(
  * Logs webhook attempts for debugging and security monitoring.
  * Successful webhooks log to info, failures log to error.
  */
-function logWebhookAttempt(
+async function logWebhookAttempt(
   request: NextRequest,
   result: string,
   startTime: number,
   error?: unknown,
-): void {
+): Promise<void> {
+  const logger = await getLogger();
   const duration = Date.now() - startTime;
   const logEntry: WebhookLogEntry = {
     timestamp: new Date().toISOString(),
@@ -159,10 +162,12 @@ function logWebhookAttempt(
     delete logEntry.error;
   }
 
+  const ctx = { name: 'webhook.handler', ...logEntry };
+
   if (result === 'SUCCESS') {
-    console.log('[Webhook]', JSON.stringify(logEntry));
+    logger.info(ctx, 'Webhook processed successfully');
   } else {
-    console.error('[Webhook]', JSON.stringify(logEntry));
+    logger.error(ctx, 'Webhook processing failed');
   }
 }
 

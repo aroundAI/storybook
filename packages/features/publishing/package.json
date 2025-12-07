@@ -16,6 +16,7 @@
     "./crypto": "./src/lib/crypto.ts"
   },
   "dependencies": {
+    "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*"
   },
   "devDependencies": {
