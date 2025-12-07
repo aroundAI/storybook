@@ -711,3 +711,4 @@ After implementation:
 1. **Run `pnpm typecheck`** - Must pass without errors
 2. **Run `pnpm lint:fix`** - Auto-fix issues
 3. **Run `pnpm format:fix`** - Format code
+4. **Verify spec compliance** - If implementing a feature from `specs/`, ensure the spec document is updated to match any implementation changes
