@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { teamMemberTransformer } from '../src/transformers/team-member-transformer';
 import type { AuditAction } from '../src/types';
 
@@ -6,9 +7,9 @@ describe('teamMemberTransformer', () => {
   describe('transform()', () => {
     describe('data validation', () => {
       it('should return primitive values unchanged', async () => {
-        expect(
-          await teamMemberTransformer.transform('string', 'create'),
-        ).toBe('string');
+        expect(await teamMemberTransformer.transform('string', 'create')).toBe(
+          'string',
+        );
         expect(await teamMemberTransformer.transform(123, 'create')).toBe(123);
         expect(await teamMemberTransformer.transform(true, 'create')).toBe(
           true,

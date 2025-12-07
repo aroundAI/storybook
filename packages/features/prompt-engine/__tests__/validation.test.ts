@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  validateExampleOutput,
   validatePromptTemplate,
   validateVariablePlaceholders,
   validateZodSchemaCompilation,
-  validateExampleOutput,
 } from '../src/lib/validation';
 
 describe('Prompt Template Validation', () => {

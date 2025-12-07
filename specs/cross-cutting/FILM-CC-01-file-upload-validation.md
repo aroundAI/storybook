@@ -6,6 +6,9 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** None
 - **Blocks:** FILM-203 (Upload Route), FILM-207 (Image Uploader)
+- **Status:** ✅ Complete
+- **Implemented:** 2025-12-05
+- **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
 
 ---
 
@@ -260,29 +263,29 @@ export const UploadResponseSchema = z.object({
 
 ## Acceptance Criteria
 
-- [ ] Images over 10MB are rejected with clear error message
-- [ ] Videos over 500MB are rejected with clear error message
-- [ ] Audio over 50MB is rejected with clear error message
-- [ ] Invalid MIME types are rejected
-- [ ] Mismatched extensions are rejected
-- [ ] Files with wrong magic bytes are detected
-- [ ] Filenames are sanitized (no path traversal)
-- [ ] Storage paths are unique and predictable
-- [ ] Error messages include actionable details
+- [x] Images over 10MB are rejected with clear error message
+- [x] Videos over 500MB are rejected with clear error message
+- [x] Audio over 50MB is rejected with clear error message
+- [x] Invalid MIME types are rejected
+- [x] Mismatched extensions are rejected
+- [x] Files with wrong magic bytes are detected
+- [x] Filenames are sanitized (no path traversal)
+- [x] Storage paths are unique and predictable
+- [x] Error messages include actionable details
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test each file type at exactly max size (should pass)
-- [ ] Test each file type 1 byte over max size (should fail)
-- [ ] Test valid MIME types pass
-- [ ] Test invalid MIME types fail
-- [ ] Test extension/MIME type mismatch detection
-- [ ] Test magic byte verification for each supported type
-- [ ] Test filename sanitization removes dangerous characters
-- [ ] Test path traversal attempts are blocked
+- [x] Test each file type at exactly max size (should pass)
+- [x] Test each file type 1 byte over max size (should fail)
+- [x] Test valid MIME types pass
+- [x] Test invalid MIME types fail
+- [x] Test extension/MIME type mismatch detection
+- [x] Test magic byte verification for each supported type
+- [x] Test filename sanitization removes dangerous characters
+- [x] Test path traversal attempts are blocked
 
 ### Integration Tests
 - [ ] Test full upload flow with valid file

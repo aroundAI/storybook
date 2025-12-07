@@ -1,12 +1,13 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import type { AuditTransformer } from '../src/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import {
-  registerTransformer,
-  getTransformer,
-  hasTransformer,
   clearTransformerRegistry,
   getRegisteredObjectTypes,
+  getTransformer,
+  hasTransformer,
+  registerTransformer,
 } from '../src/config/audit-registry';
+import type { AuditTransformer } from '../src/types';
 
 describe('audit-registry', () => {
   // Create mock transformers

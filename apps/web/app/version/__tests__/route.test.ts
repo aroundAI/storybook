@@ -1,4 +1,7 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Import after mocking
+import { GET } from '../route';
 
 // Mock child_process
 const mockExecSync = vi.fn();
@@ -6,9 +9,6 @@ const mockExecSync = vi.fn();
 vi.mock('child_process', () => ({
   execSync: mockExecSync,
 }));
-
-// Import after mocking
-import { GET } from '../route';
 
 describe('version/route', () => {
   const originalEnv = process.env;

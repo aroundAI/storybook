@@ -8,29 +8,48 @@
     "format": "prettier --check \"**/*.{ts,tsx}\"",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "vitest",
     "test:coverage": "vitest --coverage"
   },
-  "prettier": "@kit/prettier-config",
   "exports": {
     ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./server": "./src/server/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./lib": "./src/lib/index.ts",
+    "./schemas": "./src/lib/schemas.ts",
+    "./types": "./src/lib/types.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./webhooks/types": "./src/webhooks/types.ts",
+    "./webhooks/handler": "./src/webhooks/handler.ts",
+    "./webhooks/verifiers/kling": "./src/webhooks/verifiers/kling.ts",
+    "./webhooks": "./src/webhooks/index.ts",
     "./rate-limiter": "./src/lib/rate-limiter/index.ts",
     "./rate-limiter/types": "./src/lib/rate-limiter/types.ts",
     "./rate-limiter/config": "./src/lib/rate-limiter/config.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
+    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/tsconfig": "workspace:*",
-    "@types/node": "^24.5.0",
-    "vitest": "^3.2.4"
-  },
-  "dependencies": {
-    "@kit/cache": "workspace:*",
     "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "@types/node": "^24.5.0",
+    "@types/react": "19.1.13",
+    "@types/react-dom": "19.1.9",
+    "next": "15.5.3",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },
+  "dependencies": {
+    "@kit/cache": "workspace:*"
+  },
+  "prettier": "@kit/prettier-config",
   "typesVersions": {
     "*": {
       "*": [

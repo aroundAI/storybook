@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock the @kit/i18n module
 const mockCreateI18nSettings = vi.fn();
@@ -148,7 +148,8 @@ describe('i18n.settings', () => {
 
     describe('namespace handling', () => {
       it('should use default namespaces when not provided', async () => {
-        const { getI18nSettings, defaultI18nNamespaces } = await importSettings();
+        const { getI18nSettings, defaultI18nNamespaces } =
+          await importSettings();
 
         getI18nSettings('en');
 

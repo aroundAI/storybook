@@ -1,4 +1,14 @@
+import { revalidatePath } from 'next/cache';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+
+import {
+  removeMemberFromAccountAction,
+  transferOwnershipAction,
+  updateMemberRoleAction,
+} from '../src/server/actions/team-members-server-actions';
 
 // Mock Next.js functions - must be defined before import
 vi.mock('next/cache', () => ({
@@ -19,13 +29,6 @@ vi.mock('@kit/next/actions', () => ({
     };
   },
 }));
-
-import { revalidatePath } from 'next/cache';
-import {
-  removeMemberFromAccountAction,
-  transferOwnershipAction,
-  updateMemberRoleAction,
-} from '../src/server/actions/team-members-server-actions';
 
 const mockRevalidatePath = vi.mocked(revalidatePath);
 
@@ -88,8 +91,6 @@ vi.mock('@kit/audit-logs/server', () => ({
   ),
 }));
 
-import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
-
 const mockCreateAuditLog = vi.mocked(createAuditLog);
 const mockExtractNetworkContext = vi.mocked(extractNetworkContext);
 
@@ -108,7 +109,7 @@ vi.mock('../src/server/services/account-members.service', () => ({
 
 // Mock OTP API
 const mockVerifyToken = vi.fn((params: any) =>
-  Promise.resolve({ valid: true, user_id: params.userId })
+  Promise.resolve({ valid: true, user_id: params.userId }),
 );
 
 vi.mock('@kit/otp', () => ({
@@ -128,7 +129,7 @@ describe('team-members-server-actions', () => {
     });
     mockRpc.mockResolvedValue({ data: true, error: null });
     mockVerifyToken.mockImplementation((params: any) =>
-      Promise.resolve({ valid: true, user_id: params.userId })
+      Promise.resolve({ valid: true, user_id: params.userId }),
     );
   });
 
@@ -295,9 +296,9 @@ describe('team-members-server-actions', () => {
         };
         const user = { id: '887fcdeb-51a2-43d7-8f9e-123456789abc' };
 
-        await expect(
-          removeMemberFromAccountAction(data, user),
-        ).rejects.toThrow('Member not found');
+        await expect(removeMemberFromAccountAction(data, user)).rejects.toThrow(
+          'Member not found',
+        );
       });
     });
   });
@@ -315,7 +316,10 @@ describe('team-members-server-actions', () => {
         const result = await updateMemberRoleAction(data, user);
 
         expect(result).toEqual({ success: true });
-        expect(mockUpdateMemberRole).toHaveBeenCalledWith(data, mockAdminClient);
+        expect(mockUpdateMemberRole).toHaveBeenCalledWith(
+          data,
+          mockAdminClient,
+        );
       });
 
       it('should revalidate account layout after update', async () => {
@@ -675,7 +679,7 @@ describe('team-members-server-actions', () => {
         const user = { id: '487fcdeb-51a2-43d7-8f9e-123456789abc' };
 
         mockVerifyToken.mockImplementationOnce(() =>
-          Promise.resolve({ valid: false })
+          Promise.resolve({ valid: false }),
         );
 
         await expect(transferOwnershipAction(data, user)).rejects.toThrow(
@@ -700,7 +704,7 @@ describe('team-members-server-actions', () => {
           Promise.resolve({
             valid: true,
             user_id: 'f87fcdeb-51a2-43d7-8f9e-123456789abc', // Different from user.id
-          })
+          }),
         );
 
         await expect(transferOwnershipAction(data, user)).rejects.toThrow(

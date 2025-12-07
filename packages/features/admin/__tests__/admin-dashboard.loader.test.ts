@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
+// Import after mocks
+import { loadAdminDashboard } from '../src/lib/server/loaders/admin-dashboard.loader';
+
 // Mock dependencies
 const mockGetDashboardData = vi.fn();
 
@@ -12,9 +15,6 @@ vi.mock('../src/lib/server/services/admin-dashboard.service', () => ({
     getDashboardData: mockGetDashboardData,
   })),
 }));
-
-// Import after mocks
-import { loadAdminDashboard } from '../src/lib/server/loaders/admin-dashboard.loader';
 
 describe('admin-dashboard.loader', () => {
   describe('loadAdminDashboard', () => {

@@ -56,6 +56,7 @@
     "@kit/notifications": "workspace:*",
     "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
+    "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/team-accounts": "workspace:*",

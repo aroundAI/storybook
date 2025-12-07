@@ -1,5 +1,12 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import type { InitOptions, BackendModule, CallbackError } from 'i18next';
+import type { BackendModule, CallbackError, InitOptions } from 'i18next';
+// Import after mocking
+import i18next from 'i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import resourcesToBackend from 'i18next-resources-to-backend';
+import { initReactI18next } from 'react-i18next';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { initializeI18nClient } from '../i18n.client';
 
 // Mock i18next
 vi.mock('i18next', () => ({
@@ -23,13 +30,6 @@ vi.mock('i18next-resources-to-backend', () => ({
 vi.mock('react-i18next', () => ({
   initReactI18next: vi.fn(),
 }));
-
-// Import after mocking
-import i18next from 'i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
-import resourcesToBackend from 'i18next-resources-to-backend';
-import { initReactI18next } from 'react-i18next';
-import { initializeI18nClient } from '../i18n.client';
 
 // Get mocked functions
 const mockI18next = vi.mocked(i18next);
@@ -161,7 +161,10 @@ describe('i18n.client', () => {
           return mockBackend;
         });
 
-        const result = await initializeI18nClient(defaultSettings, mockResolver);
+        const result = await initializeI18nClient(
+          defaultSettings,
+          mockResolver,
+        );
 
         expect(result).toBe(mockI18next);
       });
@@ -241,7 +244,11 @@ describe('i18n.client', () => {
         const initCall = mockI18next.init.mock.calls[0];
         const options = initCall?.[0];
 
-        expect(options?.detection?.order).toEqual(['htmlTag', 'cookie', 'navigator']);
+        expect(options?.detection?.order).toEqual([
+          'htmlTag',
+          'cookie',
+          'navigator',
+        ]);
       });
 
       it('should configure cookie caching', async () => {
@@ -490,7 +497,10 @@ describe('i18n.client', () => {
           return {} as BackendModule;
         });
 
-        const result = await initializeI18nClient(defaultSettings, mockResolver);
+        const result = await initializeI18nClient(
+          defaultSettings,
+          mockResolver,
+        );
         expect(result).toBe(mockI18next);
         expect(mockI18next.use).toHaveBeenCalled();
         expect(mockI18next.init).toHaveBeenCalled();

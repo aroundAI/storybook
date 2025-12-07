@@ -1,4 +1,14 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { getLogger } from '@kit/shared/logger';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { getTransformer, shouldTrackObject } from '../src/config';
+import { calculateChanges } from '../src/server/calculate-changes';
+import {
+  createAuditLog,
+  createAuditLogsBatch,
+} from '../src/server/create-audit-log';
 
 // Mock server-only before imports
 vi.mock('server-only', () => ({}));
@@ -28,18 +38,6 @@ vi.mock('../src/config', () => ({
 vi.mock('../src/server/calculate-changes', () => ({
   calculateChanges: vi.fn(),
 }));
-
-import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import {
-  shouldTrackObject,
-  getTransformer,
-} from '../src/config';
-import { calculateChanges } from '../src/server/calculate-changes';
-import {
-  createAuditLog,
-  createAuditLogsBatch,
-} from '../src/server/create-audit-log';
 
 describe('create-audit-log', () => {
   const mockGetLogger = vi.mocked(getLogger);
@@ -399,7 +397,9 @@ describe('create-audit-log', () => {
         mockGetTransformer.mockReturnValue({
           transform: vi.fn((data: any) => data),
         });
-        mockCalculateChanges.mockReturnValue({ name: { old: 'Old', new: 'New' } });
+        mockCalculateChanges.mockReturnValue({
+          name: { old: 'Old', new: 'New' },
+        });
 
         const beforeState = { id: 'user-123', name: 'Old' };
         const afterState = { id: 'user-123', name: 'New' };
@@ -414,7 +414,10 @@ describe('create-audit-log', () => {
           after: afterState,
         });
 
-        expect(mockCalculateChanges).toHaveBeenCalledWith(beforeState, afterState);
+        expect(mockCalculateChanges).toHaveBeenCalledWith(
+          beforeState,
+          afterState,
+        );
         expect(mockInsert).toHaveBeenCalledWith(
           expect.objectContaining({
             changes: { name: { old: 'Old', new: 'New' } },
