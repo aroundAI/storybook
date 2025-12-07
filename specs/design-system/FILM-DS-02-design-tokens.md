@@ -254,10 +254,20 @@ export const providerTokens = {
     bg: 'bg-emerald-600',
     icon: 'AudioLines',
   },
+  playht: {
+    name: 'PlayHT',
+    bg: 'bg-teal-600',
+    icon: 'Mic2',
+  },
   suno: {
     name: 'Suno',
     bg: 'bg-orange-600',
     icon: 'Music4',
+  },
+  udio: {
+    name: 'Udio',
+    bg: 'bg-rose-600',
+    icon: 'Music2',
   },
   // Platforms
   youtube: {
