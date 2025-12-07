@@ -4,6 +4,9 @@
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** XS
+- **Status:** ✅ COMPLETE
+- **Completed:** 2025-12-05
+- **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** FILM-101 (episodes-table)
 - **Blocks:** FILM-504 (music-generation-action), FILM-505 (audio-studio)
 

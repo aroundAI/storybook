@@ -1,21 +1,22 @@
-'use server';
+import 'server-only';
 
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { ensureValidToken, formatPlatformName } from '../lib/token-refresh';
+import { ensureValidToken } from '../lib/token-refresh';
 
-interface RefreshResult {
+/**
+ * Result of the token refresh job
+ */
+export interface RefreshJobResult {
   checked: number;
   refreshed: number;
   failed: number;
-  failedConnections: Array<{
-    id: string;
-    platform: string;
-    accountId: string;
-    error: string;
-  }>;
 }
 
+/**
+ * Expiring connection summary type
+ */
 interface ExpiringConnection {
   id: string;
   platform: string;
@@ -23,93 +24,134 @@ interface ExpiringConnection {
 }
 
 /**
- * Cron job to proactively refresh tokens expiring within 1 hour.
- * Should run every 30 minutes via cron.
+ * Proactively refreshes tokens that are expiring within 1 hour.
+ * This job should run every 30 minutes via cron.
+ *
+ * Benefits:
+ * - Prevents publish failures due to expired tokens
+ * - Reduces user-facing token refresh latency
+ * - Allows graceful handling of refresh failures before scheduled posts
+ *
+ * @returns Statistics about the refresh job execution
  */
-export async function refreshExpiringTokens(): Promise<RefreshResult> {
+export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
+  const logger = await getLogger();
+  const ctx = { name: 'token-refresh.job' };
   const client = getSupabaseServerClient();
   const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
 
-  // Find active connections expiring soon
-  // Note: Type assertion needed until database types are regenerated
-  const { data: expiringConnections, error } = (await client
-    .from('platform_connections' as 'accounts')
+  // Find active connections expiring soon using untyped query
+  // Until platform_connections table types are regenerated
+  const untypedClient = client as unknown as {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (
+          col: string,
+          val: boolean,
+        ) => {
+          not: (
+            col: string,
+            filter: string,
+            val: null,
+          ) => {
+            lt: (
+              col: string,
+              val: string,
+            ) => {
+              order: (
+                col: string,
+                opts: { ascending: boolean },
+              ) => Promise<{
+                data: ExpiringConnection[] | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+    };
+  };
+
+  const { data: expiringConnections, error } = await untypedClient
+    .from('platform_connections')
     .select('id, platform, account_id')
     .eq('is_active', true)
     .not('token_expires_at', 'is', null)
     .lt('token_expires_at', oneHourFromNow.toISOString())
-    .order('token_expires_at', { ascending: true })) as {
-    data: ExpiringConnection[] | null;
-    error: unknown;
-  };
+    .order('token_expires_at', { ascending: true });
 
   if (error) {
-    console.error(
-      '[TokenRefresh] Failed to query expiring connections:',
-      error,
+    logger.error(
+      { ...ctx, error: error.message },
+      'Failed to query expiring connections',
     );
-    return { checked: 0, refreshed: 0, failed: 0, failedConnections: [] };
+    return { checked: 0, refreshed: 0, failed: 0 };
   }
-
-  const results: RefreshResult = {
-    checked: expiringConnections?.length ?? 0,
-    refreshed: 0,
-    failed: 0,
-    failedConnections: [],
-  };
 
   if (!expiringConnections || expiringConnections.length === 0) {
-    console.log('[TokenRefresh] No connections need refreshing');
-    return results;
+    logger.info(ctx, 'No expiring connections found');
+    return { checked: 0, refreshed: 0, failed: 0 };
   }
 
-  console.log(
-    `[TokenRefresh] Found ${expiringConnections.length} connections expiring soon`,
-  );
+  const results: RefreshJobResult = {
+    checked: expiringConnections.length,
+    refreshed: 0,
+    failed: 0,
+  };
 
+  // Process connections sequentially to avoid rate limiting
   for (const conn of expiringConnections) {
     try {
       const result = await ensureValidToken(conn.id);
 
       if (result.valid) {
         results.refreshed++;
-        console.log(
-          `[TokenRefresh] Refreshed ${formatPlatformName(conn.platform)} for account ${conn.account_id}`,
+        logger.info(
+          { ...ctx, platform: conn.platform, accountId: conn.account_id },
+          `Refreshed ${conn.platform} for account ${conn.account_id}`,
         );
       } else {
         results.failed++;
-        results.failedConnections.push({
-          id: conn.id,
-          platform: conn.platform,
-          accountId: conn.account_id,
-          error: result.error || 'Unknown error',
-        });
-        console.error(
-          `[TokenRefresh] Failed ${formatPlatformName(conn.platform)} for account ${conn.account_id}:`,
-          result.error,
+        logger.error(
+          {
+            ...ctx,
+            platform: conn.platform,
+            accountId: conn.account_id,
+            error: result.error,
+          },
+          `Failed ${conn.platform} for account ${conn.account_id}`,
         );
       }
-    } catch (e) {
+    } catch (err) {
       results.failed++;
-      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-      results.failedConnections.push({
-        id: conn.id,
-        platform: conn.platform,
-        accountId: conn.account_id,
-        error: errorMessage,
-      });
-      console.error(
-        `[TokenRefresh] Exception for ${conn.platform} account ${conn.account_id}:`,
-        e,
+      logger.error(
+        {
+          ...ctx,
+          platform: conn.platform,
+          accountId: conn.account_id,
+          error: err instanceof Error ? err.message : String(err),
+        },
+        `Error refreshing ${conn.platform} for account ${conn.account_id}`,
       );
     }
+
+    // Small delay between refreshes to avoid rate limiting
+    await sleep(100);
   }
 
-  console.log(
-    `[TokenRefresh] Complete: ${results.refreshed}/${results.checked} refreshed, ${results.failed} failed`,
+  logger.info(
+    { ...ctx, ...results },
+    `Complete: ${results.refreshed}/${results.checked} refreshed, ${results.failed} failed`,
   );
 
   return results;
+}
+
+/**
+ * Utility function for async sleep
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
@@ -117,6 +159,8 @@ export async function refreshExpiringTokens(): Promise<RefreshResult> {
  * Should run periodically to remove stale state entries
  */
 export async function cleanupExpiredOAuthStates(): Promise<number> {
+  const logger = await getLogger();
+  const ctx = { name: 'token-refresh.cleanup' };
   const client = getSupabaseServerClient();
 
   // Note: Type assertion needed until database types are regenerated
@@ -125,17 +169,96 @@ export async function cleanupExpiredOAuthStates(): Promise<number> {
   )) as { data: number | null; error: unknown };
 
   if (error) {
-    console.error('[TokenRefresh] Failed to cleanup OAuth states:', error);
+    logger.error({ ...ctx, error }, 'Failed to cleanup OAuth states');
     return 0;
   }
 
   const deletedCount = data ?? 0;
 
   if (deletedCount > 0) {
-    console.log(
-      `[TokenRefresh] Cleaned up ${deletedCount} expired OAuth states`,
+    logger.info(
+      { ...ctx, deletedCount },
+      `Cleaned up ${deletedCount} expired OAuth states`,
     );
   }
 
   return deletedCount;
+}
+
+/**
+ * Connection status for UI display
+ */
+interface ConnectionStatus {
+  id: string;
+  platform: string;
+  is_active: boolean;
+  token_expires_at: string;
+}
+
+/**
+ * Checks the health of all platform connections for an account.
+ * Useful for displaying connection status in the UI.
+ *
+ * @param accountId The account to check
+ * @returns Map of platform to connection status
+ */
+export async function checkAccountConnections(accountId: string): Promise<
+  Map<
+    string,
+    {
+      id: string;
+      isActive: boolean;
+      expiresAt: Date;
+      isExpiringSoon: boolean;
+    }
+  >
+> {
+  const client = getSupabaseServerClient();
+  const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+
+  // Use untyped query until platform_connections table exists in schema
+  const untypedClient = client as unknown as {
+    from: (table: string) => {
+      select: (cols: string) => {
+        eq: (
+          col: string,
+          val: string,
+        ) => Promise<{
+          data: ConnectionStatus[] | null;
+          error: unknown;
+        }>;
+      };
+    };
+  };
+
+  const { data: connections, error } = await untypedClient
+    .from('platform_connections')
+    .select('id, platform, is_active, token_expires_at')
+    .eq('account_id', accountId);
+
+  if (error || !connections) {
+    return new Map();
+  }
+
+  const result = new Map<
+    string,
+    {
+      id: string;
+      isActive: boolean;
+      expiresAt: Date;
+      isExpiringSoon: boolean;
+    }
+  >();
+
+  for (const conn of connections) {
+    const expiresAt = new Date(conn.token_expires_at);
+    result.set(conn.platform, {
+      id: conn.id,
+      isActive: conn.is_active,
+      expiresAt,
+      isExpiringSoon: expiresAt < oneHourFromNow,
+    });
+  }
+
+  return result;
 }

@@ -1,17 +1,24 @@
-'use server';
+import 'server-only';
 
 import { decrypt, encrypt } from '@kit/shared/crypto';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection } from './database-types';
 
-interface TokenRefreshResult {
+/**
+ * Result of a token refresh operation
+ */
+export interface TokenRefreshResult {
   accessToken: string;
   refreshToken?: string;
   expiresAt: Date;
 }
 
-interface TokenValidationResult {
+/**
+ * Result of token validation/refresh attempt
+ */
+export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
@@ -24,15 +31,56 @@ interface TokenValidationResult {
 }
 
 /**
+ * Supported publishing platforms
+ */
+export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+
+/**
  * Buffer time before expiry to trigger refresh (5 minutes)
  */
 const EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 
 /**
+ * In-memory map to track in-flight token refresh operations.
+ * Prevents race conditions when multiple concurrent requests try to refresh the same token.
+ */
+const inFlightRefreshes = new Map<string, Promise<TokenValidationResult>>();
+
+/**
  * Ensures a valid access token is available for the connection.
  * Refreshes if needed, marks inactive if refresh fails.
+ * Uses deduplication to prevent race conditions on concurrent refresh attempts.
+ *
+ * @param connectionId The platform connection ID
+ * @returns TokenValidationResult with valid access token or error
  */
 export async function ensureValidToken(
+  connectionId: string,
+): Promise<TokenValidationResult> {
+  // Check if a refresh is already in progress for this connection
+  const inFlight = inFlightRefreshes.get(connectionId);
+  if (inFlight) {
+    // Wait for the existing refresh to complete
+    return inFlight;
+  }
+
+  // Start the refresh and track it
+  const refreshPromise = doEnsureValidToken(connectionId);
+  inFlightRefreshes.set(connectionId, refreshPromise);
+
+  try {
+    return await refreshPromise;
+  } finally {
+    // Clean up after refresh completes (success or failure)
+    inFlightRefreshes.delete(connectionId);
+  }
+}
+
+/**
+ * Internal implementation of token validation/refresh.
+ * Separated to allow deduplication wrapper.
+ */
+async function doEnsureValidToken(
   connectionId: string,
 ): Promise<TokenValidationResult> {
   const client = getSupabaseServerClient();
@@ -77,32 +125,43 @@ export async function ensureValidToken(
   try {
     const refreshToken = await decrypt(connection.refresh_token_encrypted);
     const refreshed = await refreshTokenForPlatform(
-      connection.platform,
+      connection.platform as Platform,
       refreshToken,
     );
 
     // 5. Update stored tokens
+    const updateData: Record<string, string | boolean> = {
+      access_token_encrypted: await encrypt(refreshed.accessToken),
+      token_expires_at: refreshed.expiresAt.toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Only update refresh token if a new one was provided
+    if (refreshed.refreshToken) {
+      updateData.refresh_token_encrypted = await encrypt(refreshed.refreshToken);
+    }
+
     await client
       .from('platform_connections' as 'accounts')
-      .update({
-        access_token_encrypted: await encrypt(refreshed.accessToken),
-        refresh_token_encrypted: refreshed.refreshToken
-          ? await encrypt(refreshed.refreshToken)
-          : connection.refresh_token_encrypted,
-        token_expires_at: refreshed.expiresAt.toISOString(),
-        updated_at: new Date().toISOString(),
-      } as Record<string, unknown>)
+      .update(updateData as Record<string, unknown>)
       .eq('id', connectionId);
 
     return { valid: true, accessToken: refreshed.accessToken };
   } catch (refreshError) {
-    console.error(
-      `[TokenRefresh] Failed to refresh ${connection.platform}:`,
-      refreshError,
+    const logger = await getLogger();
+    logger.error(
+      { name: 'token-refresh', platform: connection.platform, error: refreshError },
+      `Failed to refresh ${connection.platform}`,
     );
 
     // 6. Mark connection as inactive
     await markConnectionInactive(connectionId);
+
+    // 7. Send notification to user
+    await sendReauthNotification(
+      connection.account_id,
+      connection.platform as Platform,
+    );
 
     return {
       valid: false,
@@ -130,7 +189,7 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
  * Platform-specific token refresh implementations
  */
 async function refreshTokenForPlatform(
-  platform: string,
+  platform: Platform,
   refreshToken: string,
 ): Promise<TokenRefreshResult> {
   switch (platform) {
@@ -138,11 +197,17 @@ async function refreshTokenForPlatform(
       return refreshYouTubeToken(refreshToken);
     case 'tiktok':
       return refreshTikTokToken(refreshToken);
+    case 'instagram':
+    case 'facebook':
+      return refreshMetaToken(refreshToken, platform);
     default:
       throw new Error(`Unknown platform: ${platform}`);
   }
 }
 
+/**
+ * Refreshes a YouTube OAuth token
+ */
 async function refreshYouTubeToken(
   refreshToken: string,
 ): Promise<TokenRefreshResult> {
@@ -150,7 +215,7 @@ async function refreshYouTubeToken(
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    throw new Error('YouTube OAuth not configured');
+    throw new Error('YouTube OAuth credentials not configured');
   }
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -165,9 +230,9 @@ async function refreshYouTubeToken(
   });
 
   if (!response.ok) {
-    const error = await response.json();
+    const error = await response.json().catch(() => ({}));
     throw new Error(
-      `YouTube refresh failed: ${error.error_description || error.error}`,
+      `YouTube refresh failed: ${error.error_description ?? error.error ?? 'Unknown error'}`,
     );
   }
 
@@ -179,6 +244,9 @@ async function refreshYouTubeToken(
   };
 }
 
+/**
+ * Refreshes a TikTok OAuth token
+ */
 async function refreshTikTokToken(
   refreshToken: string,
 ): Promise<TokenRefreshResult> {
@@ -186,7 +254,7 @@ async function refreshTikTokToken(
   const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
 
   if (!clientKey || !clientSecret) {
-    throw new Error('TikTok OAuth not configured');
+    throw new Error('TikTok OAuth credentials not configured');
   }
 
   const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
@@ -220,14 +288,86 @@ async function refreshTikTokToken(
 }
 
 /**
- * Gets the platform display name
+ * Refreshes a Meta (Instagram/Facebook) OAuth token
+ * Meta uses long-lived tokens that need to be exchanged before expiry
  */
-export function formatPlatformName(platform: string): string {
+async function refreshMetaToken(
+  accessToken: string,
+  _platform: 'instagram' | 'facebook',
+): Promise<TokenRefreshResult> {
+  const appId = process.env.FACEBOOK_APP_ID;
+  const appSecret = process.env.FACEBOOK_APP_SECRET;
+
+  if (!appId || !appSecret) {
+    throw new Error('Meta OAuth credentials not configured');
+  }
+
+  const url = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+  url.searchParams.set('grant_type', 'fb_exchange_token');
+  url.searchParams.set('client_id', appId);
+  url.searchParams.set('client_secret', appSecret);
+  url.searchParams.set('fb_exchange_token', accessToken);
+
+  const response = await fetch(url.toString());
+
+  if (!response.ok) {
+    throw new Error('Meta refresh failed');
+  }
+
+  const data = await response.json();
+  return {
+    accessToken: data.access_token,
+    // Meta tokens are long-lived, expires_in is in seconds
+    // Default 60 days if not specified
+    expiresAt: new Date(Date.now() + (data.expires_in ?? 5184000) * 1000),
+  };
+}
+
+/**
+ * Formats platform name for display
+ */
+export function formatPlatformName(platform: Platform | string): string {
   const names: Record<string, string> = {
     youtube: 'YouTube',
     tiktok: 'TikTok',
     instagram: 'Instagram',
     facebook: 'Facebook',
   };
-  return names[platform] || platform;
+  return names[platform] ?? platform;
+}
+
+/**
+ * Sends a notification to the user when re-authentication is required.
+ * This is a stub - integrate with your notification system.
+ */
+async function sendReauthNotification(
+  accountId: string,
+  platform: Platform,
+): Promise<void> {
+  const logger = await getLogger();
+  const ctx = { name: 'token-refresh.reauth', accountId, platform };
+
+  // Log for now - integrate with @kit/notifications when available
+  logger.info(
+    ctx,
+    `Re-auth required for account ${accountId}, platform ${platform}`,
+  );
+
+  // TODO: Integrate with notification system
+  // await sendNotification(accountId, {
+  //   type: 'platform_reauth_required',
+  //   title: `${formatPlatformName(platform)} connection expired`,
+  //   body: 'Please reconnect your account to continue publishing.',
+  //   action: {
+  //     label: 'Reconnect',
+  //     url: `/settings/platforms?reconnect=${platform}`,
+  //   },
+  // });
+}
+
+/**
+ * Gets the expiry buffer in milliseconds
+ */
+export function getExpiryBuffer(): number {
+  return EXPIRY_BUFFER_MS;
 }

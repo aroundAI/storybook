@@ -15,20 +15,24 @@
     "./oauth/tiktok": "./src/oauth/tiktok/index.ts",
     "./providers/youtube": "./src/providers/youtube/index.ts",
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
-    "./lib/token-refresh": "./src/lib/token-refresh.ts",
-    "./jobs": "./src/jobs/index.ts"
+    "./token-refresh": "./src/lib/token-refresh.ts",
+    "./jobs": "./src/jobs/index.ts",
+    "./crypto": "./src/lib/crypto.ts"
+  },
+  "dependencies": {
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/notifications": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@supabase/supabase-js": "2.57.4",
     "@types/node": "^24.5.0",
     "googleapis": "^148.0.0",
+    "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },

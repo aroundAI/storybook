@@ -4,6 +4,9 @@
 - **Phase:** 1
 - **Priority:** P0
 - **Effort:** S
+- **Status:** ✅ COMPLETE
+- **Completed:** 2025-12-05
+- **PR:** [#3](https://github.com/aroundAI/storybook/pull/3)
 - **Dependencies:** None (depends on existing projects table)
 - **Blocks:** FILM-101 (episodes-table), FILM-302 (season-crud-actions)
 
@@ -66,12 +69,12 @@ FOR EACH ROW EXECUTE FUNCTION public.trigger_set_timestamps();
 | CREATE | `apps/web/supabase/schemas/30-film-studio.sql` |
 
 ## Acceptance Criteria
-- [ ] Table created successfully with all columns
-- [ ] Foreign key to projects with CASCADE delete behavior
-- [ ] Unique constraint on (project_id, number) enforced
-- [ ] Indexes created for performance
-- [ ] Timestamps auto-populate on insert/update
-- [ ] Deleting a project cascades to delete all its seasons
+- [x] Table created successfully with all columns
+- [x] Foreign key to projects with CASCADE delete behavior
+- [x] Unique constraint on (project_id, number) enforced
+- [x] Indexes created for performance
+- [x] Timestamps auto-populate on insert/update
+- [x] Deleting a project cascades to delete all its seasons
 
 ## Test Plan
 
