@@ -12,6 +12,7 @@
   },
   "exports": {
     ".": "./src/index.ts",
+    "./design-tokens": "./src/lib/design-tokens.ts",
     "./components": "./src/components/index.ts",
     "./server": "./src/server/index.ts",
     "./lib": "./src/lib/index.ts",
@@ -27,6 +28,7 @@
     "@types/node": "^24.5.0",
     "@types/react": "19.1.13",
     "@types/react-dom": "19.1.9",
+    "lucide-react": "^0.544.0",
     "next": "15.5.3",
     "react": "19.1.1",
     "react-dom": "19.1.1",

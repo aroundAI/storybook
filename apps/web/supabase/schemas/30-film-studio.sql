@@ -289,12 +289,12 @@ create table if not exists public.external_api_keys (
   is_active boolean default true not null,
   last_used_at timestamp with time zone,
   created_at timestamp with time zone default now() not null,
-  check (provider in ('kling', 'runway', 'hailuo', 'elevenlabs', 'playht', 'suno', 'claude', 'openai', 'gemini')),
+  check (provider in ('kling', 'runway', 'hailuo', 'elevenlabs', 'playht', 'suno', 'udio', 'claude', 'openai', 'gemini')),
   unique(account_id, provider)
 );
 
 comment on table public.external_api_keys is 'BYOK (Bring Your Own Key) for external AI services';
-comment on column public.external_api_keys.provider is 'Provider: kling, runway, hailuo, elevenlabs, playht, suno, claude, openai, gemini';
+comment on column public.external_api_keys.provider is 'Provider: kling, runway, hailuo, elevenlabs, playht, suno, udio, claude, openai, gemini';
 comment on column public.external_api_keys.encrypted_key is 'Encrypted API key (never stored in plaintext)';
 comment on column public.external_api_keys.is_active is 'Whether the key is active for use';
 comment on column public.external_api_keys.last_used_at is 'Last time the key was used for generation';

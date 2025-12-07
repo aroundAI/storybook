@@ -1,31 +1,17 @@
-# FILM-DS-02: Design Tokens
+/**
+ * Design tokens for the Film Studio feature
+ *
+ * Provides standardized colors, status indicators, and semantic meanings
+ * for generation statuses, asset types, timeline tracks, and providers.
+ */
 
-## Metadata
-- **Phase:** Design System
-- **Priority:** P0 (Critical)
-- **Effort:** S (2-4 hours)
-- **Dependencies:** FILM-DS-01 (Component Inventory)
-- **Blocks:** All UI component implementations
+// ============================================================================
+// 1. Generation Status Colors
+// ============================================================================
 
----
-
-## Context
-
-Consistent visual language across the Film Studio requires standardized design tokens. These tokens define colors, spacing, and semantic meanings for statuses, asset types, and timeline tracks.
-
----
-
-## Specification
-
-### Token Categories
-
-#### 1. Generation Status Colors
-
-Used for job status badges, shot overlays, and progress indicators:
-
-```typescript
-// packages/features/film-studio/src/lib/design-tokens.ts
-
+/**
+ * Status tokens for job status badges, shot overlays, and progress indicators
+ */
 export const statusTokens = {
   pending: {
     bg: 'bg-slate-100 dark:bg-slate-800',
@@ -48,7 +34,7 @@ export const statusTokens = {
     text: 'text-blue-700 dark:text-blue-400',
     border: 'border-blue-200 dark:border-blue-800',
     ring: 'ring-blue-300 dark:ring-blue-600',
-    icon: 'Loader2', // animated
+    icon: 'Loader2',
     label: 'Generating',
   },
   completed: {
@@ -78,13 +64,14 @@ export const statusTokens = {
 } as const;
 
 export type StatusType = keyof typeof statusTokens;
-```
 
-#### 2. Asset Type Colors
+// ============================================================================
+// 2. Asset Type Colors
+// ============================================================================
 
-Used for asset cards, type badges, and filters:
-
-```typescript
+/**
+ * Asset type tokens for asset cards, type badges, and filters
+ */
 export const assetTypeTokens = {
   character: {
     bg: 'bg-pink-500',
@@ -131,13 +118,14 @@ export const assetTypeTokens = {
 } as const;
 
 export type AssetType = keyof typeof assetTypeTokens;
-```
 
-#### 3. Timeline Track Colors
+// ============================================================================
+// 3. Timeline Track Colors
+// ============================================================================
 
-Used for the multi-track timeline editor:
-
-```typescript
+/**
+ * Timeline track tokens for the multi-track timeline editor
+ */
 export const timelineTrackTokens = {
   video: {
     bg: 'bg-blue-600',
@@ -177,13 +165,14 @@ export const timelineTrackTokens = {
 } as const;
 
 export type TrackType = keyof typeof timelineTrackTokens;
-```
 
-#### 4. Episode Status Workflow
+// ============================================================================
+// 4. Episode Status Workflow
+// ============================================================================
 
-Used for episode progress and pipeline visualization:
-
-```typescript
+/**
+ * Episode status tokens for episode progress and pipeline visualization
+ */
 export const episodeStatusTokens = {
   draft: {
     label: 'Draft',
@@ -230,15 +219,19 @@ export const episodeStatusTokens = {
 } as const;
 
 export type EpisodeStatus = keyof typeof episodeStatusTokens;
-```
 
-#### 5. Provider Brand Colors
+// ============================================================================
+// 5. Provider Brand Colors
+// ============================================================================
 
-Used for provider selection and connection status:
-
-```typescript
+/**
+ * Provider category type for explicit categorization
+ */
 export type ProviderCategory = 'video' | 'audio' | 'platform';
 
+/**
+ * Provider tokens for provider selection and connection status
+ */
 export const providerTokens = {
   // Video providers
   kling: {
@@ -310,23 +303,31 @@ export const providerTokens = {
     category: 'platform' as const,
   },
 } as const;
-```
 
-### Utility Functions
+export type ProviderType = keyof typeof providerTokens;
 
-```typescript
-// Helper to get status token with type safety
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Get status token with type safety
+ */
 export function getStatusToken(status: StatusType) {
   return statusTokens[status];
 }
 
-// Helper to compose Tailwind classes for status
+/**
+ * Compose Tailwind classes for status styling (includes focus ring for a11y)
+ */
 export function getStatusClasses(status: StatusType): string {
   const token = statusTokens[status];
-  return `${token.bg} ${token.text} ${token.border}`;
+  return `${token.bg} ${token.text} ${token.border} ${token.ring}`;
 }
 
-// Helper for asset type badge
+/**
+ * Get asset type badge styling information
+ */
 export function getAssetTypeBadge(type: AssetType) {
   const token = assetTypeTokens[type];
   return {
@@ -335,48 +336,120 @@ export function getAssetTypeBadge(type: AssetType) {
     label: token.label,
   };
 }
-```
 
-### File Changes
+/**
+ * Get timeline track styling information
+ */
+export function getTrackClasses(type: TrackType): string {
+  const token = timelineTrackTokens[type];
+  return `${token.bg} ${token.text} ${token.border}`;
+}
 
-| Action | Path |
-|--------|------|
-| CREATE | `packages/features/film-studio/src/lib/design-tokens.ts` |
-| CREATE | `packages/features/film-studio/src/lib/design-tokens.test.ts` |
+/**
+ * Get episode status information
+ */
+export function getEpisodeStatus(status: EpisodeStatus) {
+  return episodeStatusTokens[status];
+}
 
----
+/**
+ * Get provider information by type
+ */
+export function getProviderInfo(provider: ProviderType) {
+  return providerTokens[provider];
+}
 
-## Acceptance Criteria
+/**
+ * Check if status is in a terminal state (completed, failed, or approved)
+ */
+export function isTerminalStatus(status: StatusType): boolean {
+  return status === 'completed' || status === 'failed' || status === 'approved';
+}
 
-- [x] All status states have distinct, accessible colors
-- [x] Dark mode variants are defined for all tokens
-- [x] Token names match database enum values
-- [x] Helper functions provide type-safe access
-- [x] Colors meet WCAG AA contrast requirements
-- [x] Icons are specified using Lucide icon names
+/**
+ * Check if status is in an active/processing state
+ */
+export function isActiveStatus(status: StatusType): boolean {
+  return status === 'queued' || status === 'generating';
+}
 
----
+/**
+ * Get the next episode status in the workflow
+ */
+export function getNextEpisodeStatus(
+  currentStatus: EpisodeStatus,
+): EpisodeStatus | null {
+  const currentStep = episodeStatusTokens[currentStatus].step;
+  const nextStep = currentStep + 1;
 
-## Test Plan
+  const nextStatus = Object.entries(episodeStatusTokens).find(
+    ([, value]) => value.step === nextStep,
+  );
 
-### Unit Tests
-- [x] Test getStatusToken returns correct values
-- [x] Test getStatusClasses composes correctly
-- [x] Test all token types are exported
-- [x] Test TypeScript types match token keys
+  return nextStatus ? (nextStatus[0] as EpisodeStatus) : null;
+}
 
----
+/**
+ * Get all statuses as an array for iteration
+ */
+export function getAllStatuses(): StatusType[] {
+  return Object.keys(statusTokens) as StatusType[];
+}
 
-## Accessibility Considerations
+/**
+ * Get all asset types as an array for iteration
+ */
+export function getAllAssetTypes(): AssetType[] {
+  return Object.keys(assetTypeTokens) as AssetType[];
+}
 
-- All color combinations must meet WCAG AA (4.5:1 contrast)
-- Status indicators use icons + color (never color alone)
-- Dark mode tokens tested for visibility
-- Focus states visible on all interactive elements
+/**
+ * Get all track types as an array for iteration
+ */
+export function getAllTrackTypes(): TrackType[] {
+  return Object.keys(timelineTrackTokens) as TrackType[];
+}
 
----
+/**
+ * Get all episode statuses as an array for iteration
+ */
+export function getAllEpisodeStatuses(): EpisodeStatus[] {
+  return Object.keys(episodeStatusTokens) as EpisodeStatus[];
+}
 
-## Open Questions
+/**
+ * Get all providers as an array for iteration
+ */
+export function getAllProviders(): ProviderType[] {
+  return Object.keys(providerTokens) as ProviderType[];
+}
 
-- [x] Should we use CSS variables instead of Tailwind classes? **No, Tailwind for consistency with @kit/ui**
-- [ ] Should provider colors match official brand guidelines? (nice-to-have)
+/**
+ * Get providers by category
+ */
+export function getProvidersByCategory(category: ProviderCategory): ProviderType[] {
+  return (Object.entries(providerTokens) as [ProviderType, (typeof providerTokens)[ProviderType]][])
+    .filter(([, token]) => token.category === category)
+    .map(([key]) => key);
+}
+
+/**
+ * Get video providers only
+ */
+export function getVideoProviders(): ProviderType[] {
+  return getProvidersByCategory('video');
+}
+
+/**
+ * Get audio providers only
+ */
+export function getAudioProviders(): ProviderType[] {
+  return getProvidersByCategory('audio');
+}
+
+/**
+ * Get platform providers only
+ */
+export function getPlatformProviders(): ProviderType[] {
+  return getProvidersByCategory('platform');
+}
