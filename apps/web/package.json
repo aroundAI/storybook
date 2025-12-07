@@ -49,6 +49,7 @@
     "@kit/cms": "workspace:*",
     "@kit/database-webhooks": "workspace:*",
     "@kit/email-templates": "workspace:*",
+    "@kit/film-studio-schemas": "workspace:*",
     "@kit/i18n": "workspace:*",
     "@kit/mailers": "workspace:*",
     "@kit/monitoring": "workspace:*",

@@ -1,7 +1,16 @@
+import type { StudioProjectSettings } from '@kit/film-studio-schemas/project';
 import type { Tables } from '@kit/supabase/database';
 
 export type Project = Tables<'projects'>;
 export type ProjectMember = Tables<'project_members'>;
+
+// Re-export for convenience
+export type { StudioProjectSettings } from '@kit/film-studio-schemas/project';
+
+// Film Studio project with typed settings
+export interface FilmStudioProject extends Omit<Project, 'metadata'> {
+  metadata: StudioProjectSettings;
+}
 
 export type ProjectRole = 'owner' | 'admin' | 'member' | 'viewer';
 export type ProjectAction =
