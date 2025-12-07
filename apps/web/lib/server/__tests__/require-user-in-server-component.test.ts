@@ -1,4 +1,11 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { redirect } from 'next/navigation';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { requireUser } from '@kit/supabase/require-user';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import { requireUserInServerComponent } from '../require-user-in-server-component';
 
 // Mock server-only
 vi.mock('server-only', () => ({}));
@@ -18,11 +25,6 @@ vi.mock('@kit/supabase/require-user', () => ({
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(),
 }));
-
-import { redirect } from 'next/navigation';
-import { requireUser } from '@kit/supabase/require-user';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { requireUserInServerComponent } from '../require-user-in-server-component';
 
 describe('require-user-in-server-component', () => {
   const mockRedirect = vi.mocked(redirect);

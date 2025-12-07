@@ -36,7 +36,8 @@ async function executeWithRetry<T>(
       lastError = error as Error;
 
       // Check if error is retryable (network/connection errors)
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorCode = (error as { code?: string }).code;
 
       const isRetryable = options.retryableErrors.some(
@@ -326,7 +327,8 @@ export async function executeLLM<T = unknown>(
     );
 
     // Log request size to identify potentially problematic large requests
-    const promptLength = systemPromptContent.length + rendered.userPrompt.length;
+    const promptLength =
+      systemPromptContent.length + rendered.userPrompt.length;
     const estimatedTokens = Math.ceil(promptLength / 3); // Rough estimate: 3 chars per token
 
     if (estimatedTokens > 15000 || promptLength > 45000) {
@@ -347,7 +349,8 @@ export async function executeLLM<T = unknown>(
       () =>
         llm.createChatCompletion({
           messages,
-          temperature: config.temperature ?? rendered.llmConfig.temperature ?? 0.5,
+          temperature:
+            config.temperature ?? rendered.llmConfig.temperature ?? 0.5,
           maxTokens: resolvedMaxTokens,
         }),
       logger,

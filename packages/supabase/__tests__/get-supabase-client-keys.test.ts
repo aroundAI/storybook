@@ -1,4 +1,5 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
 import { getSupabaseClientKeys } from '../src/get-supabase-client-keys';
 
 describe('get-supabase-client-keys', () => {

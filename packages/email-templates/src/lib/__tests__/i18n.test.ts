@@ -1,14 +1,15 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { i18n } from 'i18next';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Import after mocking
+import { initializeServerI18n } from '@kit/i18n/server';
+
+import { initializeEmailI18n } from '../i18n';
 
 // Mock @kit/i18n/server
 vi.mock('@kit/i18n/server', () => ({
   initializeServerI18n: vi.fn(),
 }));
-
-// Import after mocking
-import { initializeServerI18n } from '@kit/i18n/server';
-import { initializeEmailI18n } from '../i18n';
 
 // Get mocked function with proper type
 const mockInitializeServerI18n = vi.mocked(initializeServerI18n);
@@ -114,7 +115,12 @@ describe('email-templates i18n', () => {
       });
 
       it('should handle different namespace values', async () => {
-        const namespaces = ['welcome', 'password-reset', 'invitation', 'notification'];
+        const namespaces = [
+          'welcome',
+          'password-reset',
+          'invitation',
+          'notification',
+        ];
 
         for (const namespace of namespaces) {
           vi.clearAllMocks();
@@ -185,7 +191,9 @@ describe('email-templates i18n', () => {
       });
 
       it('should log error when translation file not found', async () => {
-        const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+        const consoleLogSpy = vi
+          .spyOn(console, 'log')
+          .mockImplementation(() => {});
 
         await initializeEmailI18n({
           language: 'en',
@@ -321,7 +329,8 @@ describe('email-templates i18n', () => {
       });
 
       it('should handle long namespace names', async () => {
-        const longNamespace = 'very-long-namespace-name-for-specific-email-template';
+        const longNamespace =
+          'very-long-namespace-name-for-specific-email-template';
 
         await initializeEmailI18n({
           language: 'en',

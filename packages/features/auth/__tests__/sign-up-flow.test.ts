@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock Supabase hooks
 vi.mock('@kit/supabase/hooks/use-supabase', () => ({
@@ -287,7 +287,9 @@ describe('Sign-Up Flow Integration Tests', () => {
       });
 
       expect(result.error).toBeDefined();
-      expect(result.error.message).toContain('Failed to send confirmation email');
+      expect(result.error.message).toContain(
+        'Failed to send confirmation email',
+      );
     });
 
     it('should handle custom email redirect URL', async () => {

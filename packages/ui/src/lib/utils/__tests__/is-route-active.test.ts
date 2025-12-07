@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  checkIfRouteIsActive,
-  isRouteActive,
-} from '../is-route-active';
+import { checkIfRouteIsActive, isRouteActive } from '../is-route-active';
 
 describe('is-route-active', () => {
   describe('isRouteActive', () => {
@@ -77,7 +74,11 @@ describe('is-route-active', () => {
       });
 
       it('should use depth 3 when end is false', () => {
-        const result = isRouteActive('/home', '/home/dashboard/settings', false);
+        const result = isRouteActive(
+          '/home',
+          '/home/dashboard/settings',
+          false,
+        );
 
         expect(result).toBe(true); // Deep matching
       });
@@ -105,7 +106,11 @@ describe('is-route-active', () => {
       });
 
       it('should not match parent with child path at depth 1', () => {
-        const result = isRouteActive('/home/dashboard', '/home/dashboard/edit', true);
+        const result = isRouteActive(
+          '/home/dashboard',
+          '/home/dashboard/edit',
+          true,
+        );
 
         // Depth 1 requires exact match
         expect(result).toBe(false);
@@ -114,7 +119,11 @@ describe('is-route-active', () => {
 
     describe('segment matching - depth 3', () => {
       it('should match deep nested paths with depth 3', () => {
-        const result = isRouteActive('/home', '/home/dashboard/settings', false);
+        const result = isRouteActive(
+          '/home',
+          '/home/dashboard/settings',
+          false,
+        );
 
         expect(result).toBe(true);
       });
@@ -175,7 +184,10 @@ describe('is-route-active', () => {
       });
 
       it('should return true for exact nested match', () => {
-        const result = checkIfRouteIsActive('/home/dashboard', '/home/dashboard');
+        const result = checkIfRouteIsActive(
+          '/home/dashboard',
+          '/home/dashboard',
+        );
 
         expect(result).toBe(true);
       });
@@ -195,19 +207,28 @@ describe('is-route-active', () => {
       });
 
       it('should match with query params in current route', () => {
-        const result = checkIfRouteIsActive('/home/dashboard', '/home/dashboard?view=grid');
+        const result = checkIfRouteIsActive(
+          '/home/dashboard',
+          '/home/dashboard?view=grid',
+        );
 
         expect(result).toBe(true);
       });
 
       it('should handle multiple query params', () => {
-        const result = checkIfRouteIsActive('/home', '/home?tab=settings&mode=dark');
+        const result = checkIfRouteIsActive(
+          '/home',
+          '/home?tab=settings&mode=dark',
+        );
 
         expect(result).toBe(true);
       });
 
       it('should handle query params with special characters', () => {
-        const result = checkIfRouteIsActive('/search', '/search?q=hello%20world');
+        const result = checkIfRouteIsActive(
+          '/search',
+          '/search?q=hello%20world',
+        );
 
         expect(result).toBe(true);
       });
@@ -242,7 +263,11 @@ describe('is-route-active', () => {
       });
 
       it('should not match grandchildren with depth 1', () => {
-        const result = checkIfRouteIsActive('/home', '/home/dashboard/settings', 1);
+        const result = checkIfRouteIsActive(
+          '/home',
+          '/home/dashboard/settings',
+          1,
+        );
 
         expect(result).toBe(false);
       });
@@ -254,14 +279,22 @@ describe('is-route-active', () => {
       });
 
       it('should match three levels deep with depth 3', () => {
-        const result = checkIfRouteIsActive('/home', '/home/dashboard/settings', 3);
+        const result = checkIfRouteIsActive(
+          '/home',
+          '/home/dashboard/settings',
+          3,
+        );
 
         expect(result).toBe(true);
       });
 
       it('should use default depth of 1', () => {
         const resultDefault = checkIfRouteIsActive('/home', '/home/dashboard');
-        const resultExplicit = checkIfRouteIsActive('/home', '/home/dashboard', 1);
+        const resultExplicit = checkIfRouteIsActive(
+          '/home',
+          '/home/dashboard',
+          1,
+        );
 
         expect(resultDefault).toBe(resultExplicit);
       });
@@ -290,19 +323,31 @@ describe('is-route-active', () => {
 
     describe('segment counting', () => {
       it('should match when all segments are present', () => {
-        const result = checkIfRouteIsActive('/home/dashboard', '/home/dashboard/settings', 2);
+        const result = checkIfRouteIsActive(
+          '/home/dashboard',
+          '/home/dashboard/settings',
+          2,
+        );
 
         expect(result).toBe(true);
       });
 
       it('should not match when segments differ', () => {
-        const result = checkIfRouteIsActive('/home/dashboard', '/home/settings', 1);
+        const result = checkIfRouteIsActive(
+          '/home/dashboard',
+          '/home/settings',
+          1,
+        );
 
         expect(result).toBe(false);
       });
 
       it('should handle complex nested paths', () => {
-        const result = checkIfRouteIsActive('/app/user/profile', '/app/user/profile/edit', 1);
+        const result = checkIfRouteIsActive(
+          '/app/user/profile',
+          '/app/user/profile/edit',
+          1,
+        );
 
         // Depth 1 requires exact match
         expect(result).toBe(false);
@@ -317,7 +362,10 @@ describe('is-route-active', () => {
 
     describe('edge cases', () => {
       it('should handle paths with double slashes', () => {
-        const result = checkIfRouteIsActive('/home//dashboard', '/home/dashboard');
+        const result = checkIfRouteIsActive(
+          '/home//dashboard',
+          '/home/dashboard',
+        );
 
         expect(result).toBe(false);
       });

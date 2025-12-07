@@ -230,19 +230,28 @@ describe('projectTransformer', () => {
       };
 
       it('should describe create action', () => {
-        const description = projectTransformer.getDescription(project, 'create');
+        const description = projectTransformer.getDescription(
+          project,
+          'create',
+        );
 
         expect(description).toBe('Project "My Project" was created');
       });
 
       it('should describe update action', () => {
-        const description = projectTransformer.getDescription(project, 'update');
+        const description = projectTransformer.getDescription(
+          project,
+          'update',
+        );
 
         expect(description).toBe('Project "My Project" was updated');
       });
 
       it('should describe delete action', () => {
-        const description = projectTransformer.getDescription(project, 'delete');
+        const description = projectTransformer.getDescription(
+          project,
+          'delete',
+        );
 
         expect(description).toBe('Project "My Project" was deleted');
       });
@@ -279,7 +288,10 @@ describe('projectTransformer', () => {
       it('should handle unnamed project', () => {
         const project = {};
 
-        const description = projectTransformer.getDescription(project, 'create');
+        const description = projectTransformer.getDescription(
+          project,
+          'create',
+        );
 
         expect(description).toBe('Project "Unnamed project" was created');
       });
@@ -289,7 +301,10 @@ describe('projectTransformer', () => {
           name: null,
         };
 
-        const description = projectTransformer.getDescription(project, 'update');
+        const description = projectTransformer.getDescription(
+          project,
+          'update',
+        );
 
         expect(description).toBe('Project "Unnamed project" was updated');
       });
@@ -299,7 +314,10 @@ describe('projectTransformer', () => {
           name: '',
         };
 
-        const description = projectTransformer.getDescription(project, 'delete');
+        const description = projectTransformer.getDescription(
+          project,
+          'delete',
+        );
 
         expect(description).toBe('Project "Unnamed project" was deleted');
       });
@@ -309,9 +327,14 @@ describe('projectTransformer', () => {
           name: 'Project "Alpha" & Beta',
         };
 
-        const description = projectTransformer.getDescription(project, 'create');
+        const description = projectTransformer.getDescription(
+          project,
+          'create',
+        );
 
-        expect(description).toBe('Project "Project "Alpha" & Beta" was created');
+        expect(description).toBe(
+          'Project "Project "Alpha" & Beta" was created',
+        );
       });
     });
   });

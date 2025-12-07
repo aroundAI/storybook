@@ -1,4 +1,8 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { headers } from 'next/headers';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { generateRootMetadata } from '../root-metdata';
 
 // Mock Next.js headers - must define inline to avoid hoisting issues
 vi.mock('next/headers', () => ({
@@ -14,9 +18,6 @@ vi.mock('~/config/app.config', () => ({
     url: 'https://test-app.com',
   },
 }));
-
-import { headers } from 'next/headers';
-import { generateRootMetadata } from '../root-metdata';
 
 describe('root-metadata', () => {
   const mockHeaders = vi.mocked(headers);
@@ -188,7 +189,9 @@ describe('root-metadata', () => {
 
       expect(metadata.icons).toBeDefined();
       expect(metadata.icons?.icon).toBe('/images/favicon/favicon.ico');
-      expect(metadata.icons?.apple).toBe('/images/favicon/apple-touch-icon.png');
+      expect(metadata.icons?.apple).toBe(
+        '/images/favicon/apple-touch-icon.png',
+      );
     });
 
     it('should handle very long csrf tokens', async () => {
