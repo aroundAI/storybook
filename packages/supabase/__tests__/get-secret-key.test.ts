@@ -1,12 +1,12 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-
-// Mock server-only before imports
-vi.mock('server-only', () => ({}));
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   getSupabaseSecretKey,
   warnServiceRoleKeyUsage,
 } from '../src/get-secret-key';
+
+// Mock server-only before imports
+vi.mock('server-only', () => ({}));
 
 describe('get-secret-key', () => {
   const originalEnv = process.env;

@@ -1,5 +1,8 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createAdminDashboardService } from '../src/lib/server/services/admin-dashboard.service';
 
 // Mock logger
 vi.mock('@kit/shared/logger', () => ({
@@ -12,8 +15,6 @@ vi.mock('@kit/shared/logger', () => ({
     }),
   ),
 }));
-
-import { createAdminDashboardService } from '../src/lib/server/services/admin-dashboard.service';
 
 describe('admin-dashboard.service', () => {
   let mockClient: SupabaseClient;

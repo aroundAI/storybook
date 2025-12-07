@@ -1,4 +1,5 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createAnalyticsManager } from '../src/analytics-manager';
 import { NullAnalyticsService } from '../src/null-analytics-service';
 import type {
@@ -184,7 +185,10 @@ describe('analytics-manager', () => {
       // Clear the initial factory call
       mockFactory.mockClear();
 
-      const config = { apiKey: 'test-key', endpoint: 'https://api.example.com' };
+      const config = {
+        apiKey: 'test-key',
+        endpoint: 'https://api.example.com',
+      };
       await manager.addProvider('test', config);
 
       expect(mockFactory).toHaveBeenCalledWith(config);
@@ -408,8 +412,14 @@ describe('analytics-manager', () => {
       const properties = { button_id: 'signup', page: 'homepage' };
       await manager.trackEvent('button_clicked', properties);
 
-      expect(mockTrackEvent1).toHaveBeenCalledWith('button_clicked', properties);
-      expect(mockTrackEvent2).toHaveBeenCalledWith('button_clicked', properties);
+      expect(mockTrackEvent1).toHaveBeenCalledWith(
+        'button_clicked',
+        properties,
+      );
+      expect(mockTrackEvent2).toHaveBeenCalledWith(
+        'button_clicked',
+        properties,
+      );
     });
 
     it('should work without event properties', async () => {
@@ -584,7 +594,9 @@ describe('analytics-manager', () => {
         },
       });
 
-      await expect(manager.trackEvent('test')).rejects.toThrow('Tracking failed');
+      await expect(manager.trackEvent('test')).rejects.toThrow(
+        'Tracking failed',
+      );
     });
 
     it('should handle partial failures with multiple providers', async () => {
@@ -609,7 +621,9 @@ describe('analytics-manager', () => {
         },
       });
 
-      await expect(manager.trackEvent('test')).rejects.toThrow('Service 2 failed');
+      await expect(manager.trackEvent('test')).rejects.toThrow(
+        'Service 2 failed',
+      );
     });
   });
 });

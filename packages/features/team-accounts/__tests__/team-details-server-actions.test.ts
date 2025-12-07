@@ -1,4 +1,10 @@
+import { redirect } from 'next/navigation';
+
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+
+import { updateTeamAccountName } from '../src/server/actions/team-details-server-actions';
 
 // Mock Next.js functions - must be defined before import
 vi.mock('next/navigation', () => ({
@@ -21,9 +27,6 @@ vi.mock('@kit/next/actions', () => ({
     };
   },
 }));
-
-import { redirect } from 'next/navigation';
-import { updateTeamAccountName } from '../src/server/actions/team-details-server-actions';
 
 const mockRedirect = vi.mocked(redirect);
 
@@ -79,8 +82,6 @@ vi.mock('@kit/audit-logs/server', () => ({
     }),
   ),
 }));
-
-import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 
 const mockCreateAuditLog = vi.mocked(createAuditLog);
 const mockExtractNetworkContext = vi.mocked(extractNetworkContext);

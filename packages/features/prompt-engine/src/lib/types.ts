@@ -3,7 +3,6 @@
  *
  * Core type definitions for the JSON file-based prompt engine.
  */
-
 import type { LLMProvider } from '@kit/llm';
 
 /**

@@ -6,6 +6,9 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** None
 - **Blocks:** FILM-407 (Kling Webhook), all provider webhooks
+- **Status:** ✅ Complete
+- **Implemented:** 2025-12-05
+- **PR:** [#6](https://github.com/aroundAI/storybook/pull/6)
 
 ---
 
@@ -359,26 +362,26 @@ export async function POST(request: NextRequest) {
 
 ## Acceptance Criteria
 
-- [ ] Valid signatures are accepted
-- [ ] Invalid signatures return 401
-- [ ] Missing signatures return 401
-- [ ] Expired webhooks (>5 minutes old) are rejected
-- [ ] All webhook attempts are logged with timing
-- [ ] Constant-time comparison is used (no timing attacks)
-- [ ] Failed webhooks don't modify database state
-- [ ] Handler errors return 500 (not 200)
+- [x] Valid signatures are accepted
+- [x] Invalid signatures return 401
+- [x] Missing signatures return 401
+- [x] Expired webhooks (>5 minutes old) are rejected
+- [x] All webhook attempts are logged with timing
+- [x] Constant-time comparison is used (no timing attacks)
+- [x] Failed webhooks don't modify database state
+- [x] Handler errors return 500 (not 200)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test valid signature verification
-- [ ] Test invalid signature rejection
-- [ ] Test signature with wrong secret
-- [ ] Test timestamp extraction
-- [ ] Test expired webhook detection
-- [ ] Test constant-time comparison (mock crypto)
+- [x] Test valid signature verification
+- [x] Test invalid signature rejection
+- [x] Test signature with wrong secret
+- [x] Test timestamp extraction
+- [x] Test expired webhook detection
+- [x] Test constant-time comparison (mock crypto)
 
 ### Integration Tests
 - [ ] Test full webhook flow with mocked database

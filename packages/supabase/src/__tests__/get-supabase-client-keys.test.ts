@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getSupabaseClientKeys } from '../get-supabase-client-keys';
 
@@ -20,8 +20,7 @@ describe('get-supabase-client-keys', () => {
   describe('getSupabaseClientKeys', () => {
     describe('successful key retrieval', () => {
       it('should return URL and public key when both are set', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key-123';
 
         const result = getSupabaseClientKeys();
@@ -33,8 +32,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should use NEXT_PUBLIC_SUPABASE_ANON_KEY as fallback for publicKey', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key-456';
 
         const result = getSupabaseClientKeys();
@@ -46,8 +44,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should prioritize NEXT_PUBLIC_SUPABASE_PUBLIC_KEY over ANON_KEY', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key-123';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key-456';
 
@@ -57,8 +54,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should return object with correct property names', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result = getSupabaseClientKeys();
@@ -69,8 +65,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should handle URLs with trailing slashes', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co/';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co/';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result = getSupabaseClientKeys();
@@ -87,8 +82,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should throw error when public key is missing', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
 
         expect(() => getSupabaseClientKeys()).toThrow();
       });
@@ -102,8 +96,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should throw error with descriptive message for missing public key', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
 
         expect(() => getSupabaseClientKeys()).toThrow(
           /NEXT_PUBLIC_SUPABASE_PUBLIC_KEY/,
@@ -129,8 +122,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should throw error when public key is empty string', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = '';
 
         expect(() => getSupabaseClientKeys()).toThrow();
@@ -146,8 +138,7 @@ describe('get-supabase-client-keys', () => {
 
     describe('validation', () => {
       it('should validate that URL is a string', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result = getSupabaseClientKeys();
@@ -156,8 +147,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should validate that publicKey is a string', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result = getSupabaseClientKeys();
@@ -166,8 +156,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should parse and validate using Zod schema', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         // Should not throw - Zod validation passes
@@ -175,8 +164,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should validate object structure', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result = getSupabaseClientKeys();
@@ -240,8 +228,7 @@ describe('get-supabase-client-keys', () => {
 
     describe('key formats', () => {
       it('should handle JWT-like public keys', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY =
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example.signature';
 
@@ -252,8 +239,7 @@ describe('get-supabase-client-keys', () => {
 
       it('should handle very long keys', () => {
         const longKey = 'a'.repeat(1000);
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = longKey;
 
         const result = getSupabaseClientKeys();
@@ -263,8 +249,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should handle keys with special characters', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY =
           'key-with-special-!@#$%^&*()';
 
@@ -287,8 +272,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should handle whitespace in public key', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = '  public-key  ';
 
         const result = getSupabaseClientKeys();
@@ -304,8 +288,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should handle keys with newlines', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'key-with\nnewline';
 
         const result = getSupabaseClientKeys();
@@ -316,8 +299,7 @@ describe('get-supabase-client-keys', () => {
 
     describe('integration scenarios', () => {
       it('should work with typical production setup', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://abcdefg.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://abcdefg.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY =
           'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.prod';
 
@@ -354,8 +336,7 @@ describe('get-supabase-client-keys', () => {
 
       it('should work when migrating from ANON_KEY to PUBLIC_KEY', () => {
         // Start with anon key
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'old-anon-key';
         expect(getSupabaseClientKeys().publicKey).toBe('old-anon-key');
 
@@ -371,8 +352,7 @@ describe('get-supabase-client-keys', () => {
 
     describe('return value immutability', () => {
       it('should return a new object on each call', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result1 = getSupabaseClientKeys();
@@ -383,8 +363,7 @@ describe('get-supabase-client-keys', () => {
       });
 
       it('should not allow modification of returned values', () => {
-        process.env.NEXT_PUBLIC_SUPABASE_URL =
-          'https://example.supabase.co';
+        process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
         process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY = 'public-key';
 
         const result = getSupabaseClientKeys();

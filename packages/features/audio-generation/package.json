@@ -1,0 +1,50 @@
+{
+  "name": "@kit/audio-generation",
+  "private": true,
+  "version": "0.1.0",
+  "sideEffects": false,
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./components": "./src/components/index.ts",
+    "./server": "./src/server/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./lib": "./src/lib/index.ts",
+    "./schemas": "./src/lib/schemas.ts",
+    "./types": "./src/lib/types.ts",
+    "./hooks": "./src/hooks/index.ts",
+    "./webhooks/types": "./src/webhooks/types.ts",
+    "./webhooks/verifiers/elevenlabs": "./src/webhooks/verifiers/elevenlabs.ts",
+    "./webhooks": "./src/webhooks/index.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@kit/ui": "workspace:*",
+    "@types/node": "^24.5.0",
+    "@types/react": "19.1.13",
+    "next": "15.5.3",
+    "react": "19.1.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "zod": "^3.25.74"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
