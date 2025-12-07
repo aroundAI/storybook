@@ -2,6 +2,7 @@
   "name": "@kit/video-generation",
   "private": true,
   "version": "0.1.0",
+  "description": "Video generation package with rate limiting, job queue, and provider integrations",
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",
     "format": "prettier --check \"**/*.{ts,tsx}\"",
@@ -22,7 +23,10 @@
     "./webhooks/types": "./src/webhooks/types.ts",
     "./webhooks/handler": "./src/webhooks/handler.ts",
     "./webhooks/verifiers/kling": "./src/webhooks/verifiers/kling.ts",
-    "./webhooks": "./src/webhooks/index.ts"
+    "./webhooks": "./src/webhooks/index.ts",
+    "./rate-limiter": "./src/lib/rate-limiter/index.ts",
+    "./rate-limiter/types": "./src/lib/rate-limiter/types.ts",
+    "./rate-limiter/config": "./src/lib/rate-limiter/config.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -41,6 +45,9 @@
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"
+  },
+  "dependencies": {
+    "@kit/cache": "workspace:*"
   },
   "prettier": "@kit/prettier-config",
   "typesVersions": {

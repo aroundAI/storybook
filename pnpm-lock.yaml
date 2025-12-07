@@ -1550,6 +1550,10 @@ importers:
         version: 3.25.76
 
   packages/features/video-generation:
+    dependencies:
+      '@kit/cache':
+        specifier: workspace:*
+        version: link:../../cache
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*
