@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  type PromptTemplateSchemaType,
   safeValidatePromptTemplate,
   validateExampleOutput,
   validateVariablePlaceholders,
@@ -9,7 +10,6 @@ import {
 import screenplayConversion from '../src/prompts/story-generation/screenplay-conversion.json';
 import shotListGeneration from '../src/prompts/story-generation/shot-list-generation.json';
 import storyGeneration from '../src/prompts/story-generation/story-generation.json';
-// Import the JSON templates
 import storyIdeation from '../src/prompts/story-generation/story-ideation.json';
 import {
   ScreenplayConversionOutputSchema,
@@ -23,9 +23,6 @@ describe('Story Generation Prompt Templates', () => {
     it('should have valid template structure', () => {
       const result = safeValidatePromptTemplate(storyIdeation);
       expect(result.success).toBe(true);
-      if (!result.success) {
-        console.error('Validation errors:', result.error.errors);
-      }
     });
 
     it('should have correct metadata', () => {
@@ -54,12 +51,16 @@ describe('Story Generation Prompt Templates', () => {
     });
 
     it('should have example output that matches schema', () => {
-      const result = validateExampleOutput(storyIdeation as never);
+      const result = validateExampleOutput(
+        storyIdeation as unknown as PromptTemplateSchemaType,
+      );
       expect(result.success).toBe(true);
     });
 
     it('should have all variables used in user_prompt', () => {
-      const errors = validateVariablePlaceholders(storyIdeation as never);
+      const errors = validateVariablePlaceholders(
+        storyIdeation as unknown as PromptTemplateSchemaType,
+      );
       expect(errors).toHaveLength(0);
     });
 
@@ -75,9 +76,6 @@ describe('Story Generation Prompt Templates', () => {
     it('should have valid template structure', () => {
       const result = safeValidatePromptTemplate(storyGeneration);
       expect(result.success).toBe(true);
-      if (!result.success) {
-        console.error('Validation errors:', result.error.errors);
-      }
     });
 
     it('should have correct metadata', () => {
@@ -106,12 +104,16 @@ describe('Story Generation Prompt Templates', () => {
     });
 
     it('should have example output that matches schema', () => {
-      const result = validateExampleOutput(storyGeneration as never);
+      const result = validateExampleOutput(
+        storyGeneration as unknown as PromptTemplateSchemaType,
+      );
       expect(result.success).toBe(true);
     });
 
     it('should have all variables used in user_prompt', () => {
-      const errors = validateVariablePlaceholders(storyGeneration as never);
+      const errors = validateVariablePlaceholders(
+        storyGeneration as unknown as PromptTemplateSchemaType,
+      );
       expect(errors).toHaveLength(0);
     });
 
@@ -127,9 +129,6 @@ describe('Story Generation Prompt Templates', () => {
     it('should have valid template structure', () => {
       const result = safeValidatePromptTemplate(screenplayConversion);
       expect(result.success).toBe(true);
-      if (!result.success) {
-        console.error('Validation errors:', result.error.errors);
-      }
     });
 
     it('should have correct metadata', () => {
@@ -157,13 +156,15 @@ describe('Story Generation Prompt Templates', () => {
     });
 
     it('should have example output that matches schema', () => {
-      const result = validateExampleOutput(screenplayConversion as never);
+      const result = validateExampleOutput(
+        screenplayConversion as unknown as PromptTemplateSchemaType,
+      );
       expect(result.success).toBe(true);
     });
 
     it('should have all variables used in user_prompt', () => {
       const errors = validateVariablePlaceholders(
-        screenplayConversion as never,
+        screenplayConversion as unknown as PromptTemplateSchemaType,
       );
       expect(errors).toHaveLength(0);
     });
@@ -180,9 +181,6 @@ describe('Story Generation Prompt Templates', () => {
     it('should have valid template structure', () => {
       const result = safeValidatePromptTemplate(shotListGeneration);
       expect(result.success).toBe(true);
-      if (!result.success) {
-        console.error('Validation errors:', result.error.errors);
-      }
     });
 
     it('should have correct metadata', () => {
@@ -213,12 +211,16 @@ describe('Story Generation Prompt Templates', () => {
     });
 
     it('should have example output that matches schema', () => {
-      const result = validateExampleOutput(shotListGeneration as never);
+      const result = validateExampleOutput(
+        shotListGeneration as unknown as PromptTemplateSchemaType,
+      );
       expect(result.success).toBe(true);
     });
 
     it('should have all variables used in user_prompt', () => {
-      const errors = validateVariablePlaceholders(shotListGeneration as never);
+      const errors = validateVariablePlaceholders(
+        shotListGeneration as unknown as PromptTemplateSchemaType,
+      );
       expect(errors).toHaveLength(0);
     });
 
