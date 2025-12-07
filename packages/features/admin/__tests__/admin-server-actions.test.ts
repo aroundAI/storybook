@@ -1,4 +1,19 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { revalidatePath } from 'next/cache';
+import { notFound, redirect } from 'next/navigation';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  banUserAction,
+  createUserAction,
+  deleteAccountAction,
+  deleteUserAction,
+  impersonateUserAction,
+  reactivateUserAction,
+  resetPasswordAction,
+} from '../src/lib/server/admin-server-actions';
+// Import after mocking
+import { isSuperAdmin } from '../src/lib/server/utils/is-super-admin';
 
 // Mock dependencies
 vi.mock('next/cache', () => ({
@@ -69,20 +84,6 @@ vi.mock('@kit/supabase/server-admin-client', () => ({
 vi.mock('../src/lib/server/utils/is-super-admin', () => ({
   isSuperAdmin: vi.fn(),
 }));
-
-// Import after mocking
-import { isSuperAdmin } from '../src/lib/server/utils/is-super-admin';
-import { notFound, redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
-import {
-  banUserAction,
-  createUserAction,
-  deleteAccountAction,
-  deleteUserAction,
-  impersonateUserAction,
-  reactivateUserAction,
-  resetPasswordAction,
-} from '../src/lib/server/admin-server-actions';
 
 describe('Admin Server Actions', () => {
   beforeEach(() => {
@@ -967,11 +968,12 @@ describe('Admin Server Actions', () => {
 
         expect(result).toEqual({ success: true });
 
-        expect(
-          mockAdminClient.auth.resetPasswordForEmail,
-        ).toHaveBeenCalledWith('user@example.com', {
-          redirectTo: 'https://example.com/update-password',
-        });
+        expect(mockAdminClient.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+          'user@example.com',
+          {
+            redirectTo: 'https://example.com/update-password',
+          },
+        );
       });
 
       it('should use correct redirect URL from environment', async () => {
@@ -994,11 +996,12 @@ describe('Admin Server Actions', () => {
 
         await resetPasswordAction(validResetRequest);
 
-        expect(
-          mockAdminClient.auth.resetPasswordForEmail,
-        ).toHaveBeenCalledWith('user@example.com', {
-          redirectTo: 'https://custom-domain.com/update-password',
-        });
+        expect(mockAdminClient.auth.resetPasswordForEmail).toHaveBeenCalledWith(
+          'user@example.com',
+          {
+            redirectTo: 'https://custom-domain.com/update-password',
+          },
+        );
       });
     });
 

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { DeleteTeamAccountSchema } from '../../../schema/delete-team-account.schema';
 
 describe('deleteTeamAccountAction', () => {
