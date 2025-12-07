@@ -13,6 +13,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./components": "./src/components/index.ts",
+    "./server": "./src/lib/server/index.ts",
     "./mutations": "./src/lib/server/asset.mutations.ts",
     "./queries": "./src/lib/server/asset.queries.ts",
     "./lib": "./src/lib/index.ts",
