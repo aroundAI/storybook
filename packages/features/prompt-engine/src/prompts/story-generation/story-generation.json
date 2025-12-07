@@ -1,0 +1,102 @@
+{
+  "slug": "story-generation",
+  "name": "Story Generation",
+  "version": 1,
+  "category": "story-generation",
+  "description": "Generate a complete story from a selected idea. Creates a full narrative with three-act structure, character arcs, and visual storytelling elements.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 4000,
+    "temperature": 0.7,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Screenwriter Role",
+      "content": "You are an expert screenwriter and story developer. Your role is to craft compelling, complete narratives suitable for short-form video content. Your stories should have clear three-act structure, strong character arcs, and visual storytelling elements.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 2
+    }
+  ],
+
+  "user_prompt": "Write a complete story based on this concept:\n\n**Title**: {{title}}\n**Logline**: {{logline}}\n**Target Duration**: {{target_duration}} seconds\n**Style**: {{style}}\n\n{{characters}}\n\n{{world_details}}\n\n**Requirements**:\n\n1. **Story Length**: Write 500-1000 words, appropriate for the target duration\n2. **Structure**: Clear three-act structure (setup, confrontation, resolution)\n3. **Character Arc**: Protagonist should undergo meaningful change\n4. **Visual Storytelling**: Focus on showing, not telling - include vivid imagery\n5. **Pacing**: Maintain engagement throughout with clear story beats\n6. **Conflict**: Include central conflict and stakes\n7. **Resolution**: Satisfying conclusion that ties up main threads\n\n**Story Guidelines**:\n- Write in present tense for immediacy\n- Use vivid, sensory descriptions\n- Include emotional moments\n- Create visual variety (different locations, actions)\n- Keep dialogue natural and purposeful\n- Consider what can be shown visually vs. narrated\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"story\": {\n    \"title\": \"string\",\n    \"fullText\": \"string (500-1000 words)\",\n    \"actBreakdown\": {\n      \"act1\": \"string (setup summary)\",\n      \"act2\": \"string (confrontation summary)\",\n      \"act3\": \"string (resolution summary)\"\n    },\n    \"characters\": [\n      {\n        \"name\": \"string\",\n        \"role\": \"string (protagonist/antagonist/supporting)\",\n        \"arc\": \"string (character journey)\"\n      }\n    ],\n    \"themes\": [\"string\"],\n    \"tone\": \"string\",\n    \"estimatedSceneCount\": number\n  }\n}\n```",
+
+  "variables": {
+    "title": {
+      "type": "text",
+      "required": true,
+      "description": "Story title"
+    },
+    "logline": {
+      "type": "text",
+      "required": true,
+      "description": "Story logline - one-sentence summary"
+    },
+    "target_duration": {
+      "type": "number",
+      "required": true,
+      "description": "Target video duration in seconds (60-600)"
+    },
+    "characters": {
+      "type": "text",
+      "required": false,
+      "description": "Character descriptions formatted as markdown. Empty string if not provided."
+    },
+    "world_details": {
+      "type": "text",
+      "required": false,
+      "description": "World setting and context. Empty string if not provided."
+    },
+    "style": {
+      "type": "text",
+      "required": false,
+      "description": "Storytelling style. Defaults to 'balanced'"
+    }
+  },
+
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ story: z.object({ title: z.string(), fullText: z.string(), actBreakdown: z.object({ act1: z.string(), act2: z.string(), act3: z.string() }), characters: z.array(z.object({ name: z.string(), role: z.enum(['protagonist', 'antagonist', 'supporting']), arc: z.string() })), themes: z.array(z.string()), tone: z.string(), estimatedSceneCount: z.number() }) })"
+    },
+    "schema_for_llm": "Return JSON: { \"story\": { \"title\": \"string\", \"fullText\": \"string\", \"actBreakdown\": { \"act1\": \"string\", \"act2\": \"string\", \"act3\": \"string\" }, \"characters\": [{ \"name\": \"string\", \"role\": \"protagonist|antagonist|supporting\", \"arc\": \"string\" }], \"themes\": [\"string\"], \"tone\": \"string\", \"estimatedSceneCount\": number } }",
+    "example_output": {
+      "story": {
+        "title": "The Last Signal",
+        "fullText": "Commander Maya Chen floats in the silence of the observation deck, watching Earth grow smaller through the reinforced glass. Three months into her solo mission to establish humanity's first deep space relay station, the loneliness has become a physical weight...",
+        "actBreakdown": {
+          "act1": "Maya struggles with isolation on her deep space mission, finding comfort only in routine transmissions to Earth. She discovers an anomalous signal that shouldn't exist.",
+          "act2": "Maya investigates the signal, realizing it contains information about events that haven't happened yet. She faces a choice: ignore it or act on a warning about a catastrophe on Earth.",
+          "act3": "Maya transmits the warning, sacrificing her mission and career. The signal stops, and she realizes she was always meant to receive and send this message - she was the one who sent it."
+        },
+        "characters": [
+          {
+            "name": "Maya Chen",
+            "role": "protagonist",
+            "arc": "From isolated and routine-bound to empowered and purposeful, accepting her unique role in the universe."
+          }
+        ],
+        "themes": ["isolation", "purpose", "sacrifice", "time"],
+        "tone": "contemplative, suspenseful",
+        "estimatedSceneCount": 8
+      }
+    }
+  }
+}
