@@ -20,8 +20,6 @@ export interface FacebookUploadInput {
   scheduledPublishTime?: Date;
   /** Target audience settings */
   targeting?: FacebookTargeting;
-  /** Crosspost to linked Instagram account */
-  crosspostToInstagram?: boolean;
 }
 
 export interface FacebookTargeting {

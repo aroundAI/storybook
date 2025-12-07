@@ -116,6 +116,13 @@ export class FacebookProvider {
       },
     );
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook upload failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
     const data = await response.json();
 
     if (data.error) {
@@ -159,6 +166,12 @@ export class FacebookProvider {
         currentOffset,
       );
 
+      // Validate that offset actually advances to prevent infinite loop
+      if (transferResult.startOffset <= currentOffset) {
+        throw new Error(
+          `Facebook upload stalled: offset did not advance (current: ${currentOffset}, returned: ${transferResult.startOffset})`,
+        );
+      }
       currentOffset = transferResult.startOffset;
 
       // Report progress
@@ -196,6 +209,13 @@ export class FacebookProvider {
       },
     );
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook resumable start failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
     const data = await response.json();
 
     if (data.error) {
@@ -231,6 +251,13 @@ export class FacebookProvider {
         }),
       },
     );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook chunk transfer failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
 
     const data = await response.json();
 
@@ -280,6 +307,13 @@ export class FacebookProvider {
       },
     );
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook resumable finish failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
     const data = await response.json();
 
     if (data.error) {
@@ -302,6 +336,13 @@ export class FacebookProvider {
       `${FACEBOOK_GRAPH_API_BASE}/${videoId}?fields=status,permalink_url&access_token=${this.accessToken}`,
     );
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook status check failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
     const data = await response.json();
 
     if (data.error) {
@@ -323,6 +364,13 @@ export class FacebookProvider {
     const response = await fetch(
       `${FACEBOOK_GRAPH_API_BASE}/me/accounts?fields=id,name,picture,fan_count,access_token&access_token=${userAccessToken}`,
     );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook pages fetch failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
 
     const data = await response.json();
 
@@ -370,7 +418,13 @@ export class FacebookProvider {
           `Failed to get file size: ${response.status} ${response.statusText}`,
         );
       }
-      return parseInt(response.headers.get('content-length') ?? '0', 10);
+      const contentLength = response.headers.get('content-length');
+      if (!contentLength) {
+        throw new Error(
+          'Cannot determine file size: Content-Length header missing from URL. Please provide a local file path instead.',
+        );
+      }
+      return parseInt(contentLength, 10);
     }
     const stats = await fsPromises.stat(path);
     return stats.size;
