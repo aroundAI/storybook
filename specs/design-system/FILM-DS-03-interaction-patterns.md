@@ -6,6 +6,9 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-DS-01 (Component Inventory), FILM-DS-02 (Design Tokens)
 - **Blocks:** FILM-410 (Shot Grid), FILM-601 (Timeline Editor)
+- **Status:** ✅ Complete
+- **Implemented:** 2025-12-07
+- **PR:** #16
 
 ---
 
@@ -329,18 +332,22 @@ function useShotUpdates(episodeId: string) {
 | CREATE | `packages/features/film-studio/src/lib/interaction-patterns.ts` |
 | CREATE | `packages/features/film-studio/src/hooks/use-keyboard-navigation.ts` |
 | CREATE | `packages/features/film-studio/src/hooks/use-drag-drop.ts` |
+| CREATE | `packages/features/film-studio/src/hooks/index.ts` |
+| CREATE | `packages/features/film-studio/__tests__/interaction-patterns.test.ts` |
+| UPDATE | `packages/features/film-studio/src/lib/index.ts` |
+| UPDATE | `packages/features/film-studio/package.json` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Shot grid supports keyboard navigation
-- [ ] Timeline supports keyboard shortcuts for playback
-- [ ] Drag and drop has clear visual feedback
-- [ ] Loading states use skeletons (not spinners for content)
-- [ ] Empty states include actionable next steps
-- [ ] Error states include recovery options when possible
-- [ ] Real-time updates don't cause layout shift
+- [x] Shot grid supports keyboard navigation
+- [x] Timeline supports keyboard shortcuts for playback
+- [x] Drag and drop has clear visual feedback
+- [x] Loading states use skeletons (not spinners for content)
+- [x] Empty states include actionable next steps
+- [x] Error states include recovery options when possible
+- [x] Real-time updates don't cause layout shift
 
 ---
 
