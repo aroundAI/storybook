@@ -1,3 +1,8 @@
+import 'server-only';
+
+import { type CacheClient, createCacheClient } from '@kit/cache';
+import { getLogger } from '@kit/shared/logger';
+
 import { PROVIDER_CAPABILITIES } from '../lib/constants';
 import { KlingGenerationRequestSchema } from '../lib/kling-schemas';
 import type {
@@ -50,6 +55,11 @@ const ESTIMATED_TIME = {
 } as const;
 
 /**
+ * Cache TTL for status responses in seconds.
+ */
+const STATUS_CACHE_TTL = 5;
+
+/**
  * Kling AI video generation provider.
  *
  * Integrates with the PiAPI endpoint to provide text-to-video and
@@ -76,8 +86,9 @@ export class KlingProvider extends BaseVideoGenerationProvider {
   private readonly config: KlingProviderConfig;
   private readonly baseUrl: string;
   private readonly timeout: number;
+  private readonly cache: CacheClient;
 
-  constructor(config: ProviderConfig) {
+  constructor(config: ProviderConfig, cache?: CacheClient) {
     super();
     this.config = {
       apiKey: config.apiKey,
@@ -86,6 +97,7 @@ export class KlingProvider extends BaseVideoGenerationProvider {
     };
     this.baseUrl = config.baseUrl ?? KLING_DEFAULTS.baseUrl;
     this.timeout = KLING_DEFAULTS.timeout;
+    this.cache = cache ?? createCacheClient();
   }
 
   /**
@@ -197,11 +209,20 @@ export class KlingProvider extends BaseVideoGenerationProvider {
 
   /**
    * Get job status from Kling API.
+   * Results are cached for 5 seconds to reduce API calls.
    *
    * @param jobId Provider job ID
    * @returns Current job status with video URL if completed
    */
   async getStatus(jobId: string): Promise<VideoGenerationStatus> {
+    const cacheKey = `kling:status:${jobId}`;
+
+    // Check cache first
+    const cached = await this.cache.get<VideoGenerationStatus>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const response = await this.makeRequest<PiAPIStatusResponse>(
       `/generations/${jobId}`,
       { method: 'GET' },
@@ -218,7 +239,7 @@ export class KlingProvider extends BaseVideoGenerationProvider {
     const status = this.mapStatus(data.task_status);
     const videoResult = data.task_result?.videos?.[0];
 
-    return {
+    const result: VideoGenerationStatus = {
       jobId: data.task_id,
       status,
       progress: data.progress,
@@ -230,15 +251,29 @@ export class KlingProvider extends BaseVideoGenerationProvider {
           ? new Date(data.updated_at * 1000).toISOString()
           : undefined,
     };
+
+    // Cache the result (don't cache completed/failed status for long)
+    await this.cache.set(cacheKey, result, STATUS_CACHE_TTL);
+
+    return result;
   }
 
   /**
    * Get detailed Kling job status with additional fields.
+   * Results are cached for 5 seconds to reduce API calls.
    *
    * @param jobId Provider job ID
    * @returns Kling-specific job status
    */
   async getKlingStatus(jobId: string): Promise<KlingJobStatus> {
+    const cacheKey = `kling:kling-status:${jobId}`;
+
+    // Check cache first
+    const cached = await this.cache.get<KlingJobStatus>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const response = await this.makeRequest<PiAPIStatusResponse>(
       `/generations/${jobId}`,
       { method: 'GET' },
@@ -255,18 +290,25 @@ export class KlingProvider extends BaseVideoGenerationProvider {
     const status = this.mapStatus(data.task_status);
     const videoResult = data.task_result?.videos?.[0];
 
-    return {
+    const result: KlingJobStatus = {
       jobId: data.task_id,
       status,
       progress: data.progress,
       videoUrl: videoResult?.url,
       thumbnailUrl: undefined,
       errorMessage: status === 'failed' ? data.task_status_msg : undefined,
+      errorCode:
+        status === 'failed' ? this.mapErrorCode(response.code) : undefined,
       completedAt:
         status === 'completed'
           ? new Date(data.updated_at * 1000).toISOString()
           : undefined,
     };
+
+    // Cache the result
+    await this.cache.set(cacheKey, result, STATUS_CACHE_TTL);
+
+    return result;
   }
 
   /**
@@ -279,7 +321,11 @@ export class KlingProvider extends BaseVideoGenerationProvider {
    */
   async cancelJob(jobId: string): Promise<void> {
     // Kling API does not currently support job cancellation
-    console.warn(`Kling job cancellation not supported: ${jobId}`);
+    const logger = await getLogger();
+    logger.warn(
+      { name: 'kling-job-cancellation-unsupported', jobId },
+      'Kling job cancellation not supported',
+    );
   }
 
   /**
@@ -305,6 +351,7 @@ export class KlingProvider extends BaseVideoGenerationProvider {
 
   /**
    * Convert base VideoGenerationRequest to Kling-specific format.
+   * Note: Validation is handled by the Zod schema in generateVideo().
    */
   private convertToKlingRequest(
     request: VideoGenerationRequest,
@@ -317,29 +364,11 @@ export class KlingProvider extends BaseVideoGenerationProvider {
       (request.modelVersion as 'kling-v1.0' | 'kling-v1.5') ??
       KLING_DEFAULTS.defaultModel;
 
-    // Validate and convert duration
-    const duration = request.duration;
-    if (duration !== 5 && duration !== 10) {
-      throw new KlingProviderError(
-        `Invalid duration: ${duration}. Kling only supports 5 or 10 seconds.`,
-        'VALIDATION_ERROR',
-      );
-    }
-
-    // Validate aspect ratio
-    const aspectRatio = request.aspectRatio as '16:9' | '9:16' | '1:1';
-    if (!['16:9', '9:16', '1:1'].includes(aspectRatio)) {
-      throw new KlingProviderError(
-        `Invalid aspect ratio: ${aspectRatio}. Kling only supports 16:9, 9:16, or 1:1.`,
-        'VALIDATION_ERROR',
-      );
-    }
-
     return {
       prompt: request.prompt,
       negativePrompt: request.negativePrompt,
-      duration: duration as 5 | 10,
-      aspectRatio,
+      duration: request.duration as 5 | 10,
+      aspectRatio: request.aspectRatio as '16:9' | '9:16' | '1:1',
       model,
       mode,
       seed: request.seed,
@@ -465,8 +494,12 @@ export class KlingProvider extends BaseVideoGenerationProvider {
  * Factory function to create a Kling provider instance.
  *
  * @param config Provider configuration
+ * @param cache Optional cache client for status caching
  * @returns New KlingProvider instance
  */
-export function createKlingProvider(config: ProviderConfig): KlingProvider {
-  return new KlingProvider(config);
+export function createKlingProvider(
+  config: ProviderConfig,
+  cache?: CacheClient,
+): KlingProvider {
+  return new KlingProvider(config, cache);
 }

@@ -4,6 +4,36 @@ import { KlingProviderError } from '../src/lib/kling-types';
 import type { VideoGenerationRequest } from '../src/lib/types';
 import { KlingProvider } from '../src/providers/kling';
 
+// Mock server-only module
+vi.mock('server-only', () => ({}));
+
+// Mock cache client
+const mockCacheGet = vi.fn().mockResolvedValue(null);
+const mockCacheSet = vi.fn().mockResolvedValue(undefined);
+const mockCacheDel = vi.fn().mockResolvedValue(undefined);
+const mockCacheClient = {
+  get: mockCacheGet,
+  set: mockCacheSet,
+  del: mockCacheDel,
+};
+
+vi.mock('@kit/cache', () => ({
+  createCacheClient: () => mockCacheClient,
+}));
+
+// Mock logger
+const mockLoggerWarn = vi.fn();
+const mockLoggerError = vi.fn();
+const mockLoggerInfo = vi.fn();
+vi.mock('@kit/shared/logger', () => ({
+  getLogger: () =>
+    Promise.resolve({
+      warn: mockLoggerWarn,
+      error: mockLoggerError,
+      info: mockLoggerInfo,
+    }),
+}));
+
 // Mock fetch globally
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
@@ -55,6 +85,8 @@ describe('KlingProvider', () => {
     provider = new KlingProvider(validConfig);
     vi.clearAllMocks();
     vi.useFakeTimers();
+    // Reset cache mock to always miss
+    mockCacheGet.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -479,15 +511,12 @@ describe('KlingProvider', () => {
 
   describe('cancelJob', () => {
     it('should log warning (cancellation not supported)', async () => {
-      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
       await provider.cancelJob('task-123');
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        'Kling job cancellation not supported: task-123',
+      expect(mockLoggerWarn).toHaveBeenCalledWith(
+        { name: 'kling-job-cancellation-unsupported', jobId: 'task-123' },
+        'Kling job cancellation not supported',
       );
-
-      warnSpy.mockRestore();
     });
   });
 
