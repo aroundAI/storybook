@@ -427,8 +427,15 @@ export function getAllProviders(): ProviderType[] {
 /**
  * Get providers by category
  */
-export function getProvidersByCategory(category: ProviderCategory): ProviderType[] {
-  return (Object.entries(providerTokens) as [ProviderType, (typeof providerTokens)[ProviderType]][])
+export function getProvidersByCategory(
+  category: ProviderCategory,
+): ProviderType[] {
+  return (
+    Object.entries(providerTokens) as [
+      ProviderType,
+      (typeof providerTokens)[ProviderType],
+    ][]
+  )
     .filter(([, token]) => token.category === category)
     .map(([key]) => key);
 }

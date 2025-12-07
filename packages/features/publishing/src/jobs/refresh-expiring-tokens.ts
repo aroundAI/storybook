@@ -106,14 +106,24 @@ export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
       } else {
         results.failed++;
         logger.error(
-          { ...ctx, platform: conn.platform, accountId: conn.account_id, error: result.error },
+          {
+            ...ctx,
+            platform: conn.platform,
+            accountId: conn.account_id,
+            error: result.error,
+          },
           `Failed ${conn.platform} for account ${conn.account_id}`,
         );
       }
     } catch (err) {
       results.failed++;
       logger.error(
-        { ...ctx, platform: conn.platform, accountId: conn.account_id, error: err instanceof Error ? err.message : String(err) },
+        {
+          ...ctx,
+          platform: conn.platform,
+          accountId: conn.account_id,
+          error: err instanceof Error ? err.message : String(err),
+        },
         `Error refreshing ${conn.platform} for account ${conn.account_id}`,
       );
     }
