@@ -48,17 +48,13 @@ export async function GET(request: NextRequest) {
   const encodedState = Buffer.from(JSON.stringify(state)).toString('base64url');
 
   // Store state server-side (code verifier must not be in URL)
-  // Note: Type assertion needed until database types are regenerated
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: insertError } = await (client as any)
-    .from('oauth_states')
-    .insert({
-      nonce,
-      user_id: user.id,
-      platform: 'tiktok',
-      metadata: { codeVerifier }, // Stored securely in database
-      expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 min
-    });
+  const { error: insertError } = await client.from('oauth_states').insert({
+    nonce,
+    user_id: user.id,
+    platform: 'tiktok',
+    metadata: { codeVerifier }, // Stored securely in database
+    expires_at: new Date(Date.now() + 10 * 60 * 1000).toISOString(), // 10 min
+  });
 
   if (insertError) {
     logger.error({ ...ctx, error: insertError }, 'Failed to store OAuth state');

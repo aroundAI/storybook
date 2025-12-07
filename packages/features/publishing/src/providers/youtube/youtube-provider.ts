@@ -226,6 +226,11 @@ export class YouTubeProvider {
   private async getVideoStream(path: string): Promise<Readable> {
     if (path.startsWith('http')) {
       const response = await fetch(path);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch video: ${response.status} ${response.statusText}`,
+        );
+      }
       if (!response.body) {
         throw new Error('Failed to fetch video stream');
       }
@@ -243,6 +248,11 @@ export class YouTubeProvider {
   private async getFileSize(path: string): Promise<number> {
     if (path.startsWith('http')) {
       const response = await fetch(path, { method: 'HEAD' });
+      if (!response.ok) {
+        throw new Error(
+          `Failed to get file size: ${response.status} ${response.statusText}`,
+        );
+      }
       return parseInt(response.headers.get('content-length') ?? '0', 10);
     }
     const stats = await fsPromises.stat(path);

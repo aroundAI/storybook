@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt } from '@kit/shared/crypto';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection } from '../../lib/database-types';
@@ -40,8 +41,14 @@ export const disconnectYouTubeAction = enhanceAction(
         await fetch(`${YOUTUBE_OAUTH_CONFIG.revokeUrl}?token=${accessToken}`, {
           method: 'POST',
         });
-      } catch {
+      } catch (revokeError) {
         // Continue even if revocation fails - token may already be invalid
+        // Log for observability but don't block deletion
+        const logger = await getLogger();
+        logger.warn(
+          { name: 'oauth.youtube.disconnect', error: revokeError },
+          'Token revocation failed (continuing with deletion)',
+        );
       }
     }
 

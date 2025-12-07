@@ -1,5 +1,7 @@
 'use server';
 
+import 'server-only';
+
 /**
  * Encryption utilities for sensitive data storage (OAuth tokens, API keys)
  * Uses AES-256-GCM with HMAC for authenticated encryption

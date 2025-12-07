@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt } from '@kit/shared/crypto';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { PlatformConnection } from '../../lib/database-types';
@@ -53,8 +54,14 @@ export const disconnectTikTokAction = enhanceAction(
             }),
           });
         }
-      } catch {
+      } catch (revokeError) {
         // Continue even if revocation fails - token may already be invalid
+        // Log for observability but don't block deletion
+        const logger = await getLogger();
+        logger.warn(
+          { name: 'oauth.tiktok.disconnect', error: revokeError },
+          'Token revocation failed (continuing with deletion)',
+        );
       }
     }
 

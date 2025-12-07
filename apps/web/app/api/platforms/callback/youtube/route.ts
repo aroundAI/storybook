@@ -57,9 +57,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Verify nonce
-  // Note: Type assertions needed until database types are regenerated
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: storedState, error: stateError } = await (client as any)
+  const { data: storedState, error: stateError } = await client
     .from('oauth_states')
     .select('*')
     .eq('nonce', state.nonce)
@@ -75,8 +73,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Clean up used state
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client as any).from('oauth_states').delete().eq('nonce', state.nonce);
+  await client.from('oauth_states').delete().eq('nonce', state.nonce);
 
   const clientId = process.env.YOUTUBE_CLIENT_ID;
   const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
@@ -102,10 +99,18 @@ export async function GET(request: NextRequest) {
 
   const tokens = await tokenResponse.json();
 
-  if (tokens.error) {
+  if (tokens.error || !tokens.access_token) {
     logger.error({ ...ctx, error: tokens.error }, 'Token exchange failed');
     return NextResponse.redirect(
-      `${appUrl}/settings/platforms?error=${encodeURIComponent(tokens.error_description || tokens.error)}`,
+      `${appUrl}/settings/platforms?error=${encodeURIComponent(tokens.error_description || tokens.error || 'token_exchange_failed')}`,
+    );
+  }
+
+  // Validate expires_in for token expiration calculation
+  if (typeof tokens.expires_in !== 'number' || tokens.expires_in <= 0) {
+    logger.error({ ...ctx, tokens }, 'Invalid expires_in in token response');
+    return NextResponse.redirect(
+      `${appUrl}/settings/platforms?error=invalid_token_response`,
     );
   }
 
@@ -141,8 +146,7 @@ export async function GET(request: NextRequest) {
     : null;
 
   // Store connection
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: insertError } = await (client as any)
+  const { error: insertError } = await client
     .from('platform_connections')
     .upsert(
       {
@@ -155,7 +159,7 @@ export async function GET(request: NextRequest) {
         token_expires_at: new Date(
           Date.now() + tokens.expires_in * 1000,
         ).toISOString(),
-        scopes: YOUTUBE_OAUTH_CONFIG.scopes,
+        scopes: [...YOUTUBE_OAUTH_CONFIG.scopes],
         metadata: {
           thumbnail_url: channel.snippet?.thumbnails?.default?.url,
           subscriber_count: channel.statistics?.subscriberCount,
