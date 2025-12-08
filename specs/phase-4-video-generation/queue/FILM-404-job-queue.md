@@ -436,14 +436,14 @@ queued → processing → [webhook] → completed
 
 ## Acceptance Criteria
 
-- [ ] Jobs added to queue successfully
-- [ ] Worker processes jobs in priority order
-- [ ] Retry logic works with exponential backoff
-- [ ] Dead letter queue captures max-retry failures
-- [ ] Rate limiter prevents over-requests
-- [ ] Concurrent jobs respect provider limits
-- [ ] Job cancellation works
-- [ ] Queue metrics accurate
+- [x] Jobs added to queue successfully
+- [x] Worker processes jobs in priority order
+- [x] Retry logic works with exponential backoff
+- [x] Dead letter queue captures max-retry failures
+- [x] Rate limiter prevents over-requests
+- [x] Concurrent jobs respect provider limits
+- [x] Job cancellation works
+- [x] Queue metrics accurate
 
 ---
 
