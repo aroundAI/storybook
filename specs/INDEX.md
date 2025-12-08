@@ -345,7 +345,7 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | DRAFT | M | FILM-101b, FILM-106 |
+| FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | ✅ DONE | M | FILM-101b, FILM-106 |
 | FILM-302 | [season-crud-actions](./phase-3-episodes/server/FILM-302-season-crud-actions.md) | DRAFT | S | FILM-301 |
 | FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | DRAFT | M | FILM-301 |
 | FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | ✅ DONE | S | - |
@@ -519,7 +519,7 @@ SPIKE-01 through SPIKE-05
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 1 | 0 | 0 | 0 | 4 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
-| 3. Episodes | 14 | 13 | 0 | 0 | 0 | 1 |
+| 3. Episodes | 14 | 12 | 0 | 0 | 0 | 2 |
 | 4. Video Gen | 15 | 13 | 0 | 0 | 0 | 2 |
 | 5. Audio Gen | 16 | 16 | 0 | 0 | 0 | 0 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
@@ -527,13 +527,13 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **96** | **0** | **0** | **0** | **34** |
+| **TOTAL** | **130** | **95** | **0** | **0** | **0** | **35** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 30 | 32% |
+| MVP Specs | 93 | 31 | 33% |
 | Post-MVP | 37 | 4 | 11% |
 
 ---
@@ -561,7 +561,7 @@ SPIKE-01 through SPIKE-05
 |------|-----------|
 | FILM-201 | `packages/features/assets/src/server/asset-actions.ts` |
 | FILM-202 | `packages/features/assets/src/server/character-actions.ts` |
-| FILM-301 | `packages/features/episodes/src/server/episode-actions.ts` |
+| FILM-301 | `packages/features/episodes/src/server/actions.ts` ✅ |
 | FILM-405 | `packages/features/video-generation/src/server/generate-video.ts` |
 | FILM-502 | `packages/features/audio-generation/src/server/voice-actions.ts` |
 

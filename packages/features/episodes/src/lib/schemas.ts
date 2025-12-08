@@ -1,10 +1,16 @@
 import { z } from 'zod';
 
+/**
+ * Episode status enum matching database CHECK constraint
+ * Workflow: draft → story → storyboard → generating → editing → ready → published
+ */
 export const EpisodeStatusSchema = z.enum([
   'draft',
-  'planning',
-  'in_progress',
-  'completed',
+  'story',
+  'storyboard',
+  'generating',
+  'editing',
+  'ready',
   'published',
 ]);
 
@@ -48,24 +54,66 @@ export const EpisodeMetadataSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 
+/**
+ * Schema for creating a new episode
+ * Episode number is auto-assigned if not provided
+ */
 export const CreateEpisodeSchema = z.object({
   projectId: z.string().uuid(),
+  seasonId: z.string().uuid().optional(),
+  number: z.number().int().positive().optional(),
   title: z.string().min(1).max(255),
-  description: z.string().optional(),
-  episodeNumber: z.number().int().positive(),
-  script: z.string().optional(),
-  metadata: EpisodeMetadataSchema.optional(),
+  description: z.string().max(2000).optional(),
 });
 
-export const UpdateEpisodeSchema = z.object({
-  id: z.string().uuid(),
-  title: z.string().min(1).max(255).optional(),
-  description: z.string().optional(),
-  episodeNumber: z.number().int().positive().optional(),
-  script: z.string().optional(),
+/**
+ * Schema for getting a single episode
+ */
+export const GetEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
+});
+
+/**
+ * Schema for updating episode status with workflow validation
+ * Requires version for optimistic locking
+ */
+export const UpdateEpisodeStatusSchema = z.object({
+  episodeId: z.string().uuid(),
+  status: EpisodeStatusSchema,
+  version: z.number().int().positive(),
+});
+
+/**
+ * Schema for listing episodes with filters and pagination
+ */
+export const ListProjectEpisodesSchema = z.object({
+  projectId: z.string().uuid(),
+  seasonId: z.string().uuid().optional(),
   status: EpisodeStatusSchema.optional(),
-  duration: z.number().nonnegative().optional(),
-  metadata: EpisodeMetadataSchema.optional(),
+  limit: z.number().int().min(1).max(100).default(50),
+  offset: z.number().int().min(0).default(0),
+});
+
+/**
+ * Schema for updating episode data
+ * Requires version for optimistic locking
+ */
+export const UpdateEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
+  version: z.number().int().positive(),
+  title: z.string().min(1).max(255).optional(),
+  description: z.string().max(2000).optional(),
+  storyData: z.record(z.unknown()).optional(),
+  screenplayData: z.record(z.unknown()).optional(),
+  shotList: z.record(z.unknown()).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Schema for deleting an episode (soft delete)
+ */
+export const DeleteEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
 });
 
 export const ShotMetadataSchema = z.object({
@@ -118,6 +166,10 @@ export const UpdateShotSchema = z.object({
 });
 
 export type CreateEpisodeInput = z.infer<typeof CreateEpisodeSchema>;
+export type GetEpisodeInput = z.infer<typeof GetEpisodeSchema>;
+export type UpdateEpisodeStatusInput = z.infer<typeof UpdateEpisodeStatusSchema>;
+export type ListProjectEpisodesInput = z.infer<typeof ListProjectEpisodesSchema>;
 export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
+export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
