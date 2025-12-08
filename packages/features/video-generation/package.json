@@ -27,7 +27,10 @@
     "./webhooks": "./src/webhooks/index.ts",
     "./rate-limiter": "./src/lib/rate-limiter/index.ts",
     "./rate-limiter/types": "./src/lib/rate-limiter/types.ts",
-    "./rate-limiter/config": "./src/lib/rate-limiter/config.ts"
+    "./rate-limiter/config": "./src/lib/rate-limiter/config.ts",
+    "./queue": "./src/queue/index.ts",
+    "./queue/types": "./src/queue/types.ts",
+    "./queue/config": "./src/queue/config.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -48,7 +51,9 @@
     "zod": "^3.25.74"
   },
   "dependencies": {
-    "@kit/cache": "workspace:*"
+    "@kit/cache": "workspace:*",
+    "bullmq": "^5.34.0",
+    "ioredis": "^5.4.2"
   },
   "prettier": "@kit/prettier-config",
   "typesVersions": {

@@ -74,6 +74,16 @@ export const GenerateMusicSchema = z.object({
   request: MusicGenerationRequestSchema,
 });
 
+// Music job status schema
+export const GetMusicJobStatusSchema = z.object({
+  jobId: z.string().uuid(),
+});
+
+// Cancel music generation schema
+export const CancelMusicGenerationSchema = z.object({
+  jobId: z.string().uuid(),
+});
+
 export const GetVoicesSchema = z.object({
   provider: VoiceProviderNameSchema.optional(),
   language: z.string().optional(),
@@ -127,5 +137,11 @@ export type MusicGenerationRequestSchemaType = z.infer<
 >;
 export type GenerateVoiceSchemaType = z.infer<typeof GenerateVoiceSchema>;
 export type GenerateMusicSchemaType = z.infer<typeof GenerateMusicSchema>;
+export type GetMusicJobStatusSchemaType = z.infer<
+  typeof GetMusicJobStatusSchema
+>;
+export type CancelMusicGenerationSchemaType = z.infer<
+  typeof CancelMusicGenerationSchema
+>;
 export type GetVoicesSchemaType = z.infer<typeof GetVoicesSchema>;
 export type CloneVoiceSchemaType = z.infer<typeof CloneVoiceSchema>;

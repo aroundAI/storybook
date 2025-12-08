@@ -206,14 +206,14 @@ export const generateSunoMusicAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Suno provider implements MusicGenerationProvider interface
-- [ ] Text-to-music generation works with style prompts
-- [ ] Instrumental mode generates music without vocals
-- [ ] Duration parameter controls output length (30-240 seconds)
-- [ ] Cost estimation returns correct value (50 cents)
-- [ ] Rate limits enforced (5/min, 2 concurrent, 50/day)
-- [ ] Generated audio saved to audio_tracks table
-- [ ] Error handling for API failures with retry logic
+- [x] Suno provider implements MusicGenerationProvider interface
+- [x] Text-to-music generation works with style prompts
+- [x] Instrumental mode generates music without vocals
+- [x] Duration parameter controls output length (30-240 seconds)
+- [x] Cost estimation returns correct value (50 cents)
+- [x] Rate limits enforced (5/min, 2 concurrent, 50/day)
+- [x] Generated audio saved to audio_tracks table
+- [x] Error handling for API failures with retry logic
 
 ---
 

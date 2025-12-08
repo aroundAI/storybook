@@ -125,8 +125,9 @@ export class SunoProvider extends BaseMusicGenerationProvider {
    */
   getRateLimits() {
     return {
-      requestsPerMinute: 10,
-      concurrentRequests: 5,
+      requestsPerMinute: 5,
+      concurrentRequests: 2,
+      dailyLimit: 50,
     };
   }
 
@@ -144,6 +145,7 @@ export class SunoProvider extends BaseMusicGenerationProvider {
       pending: 'pending',
       processing: 'processing',
       running: 'processing',
+      complete: 'completed',
       completed: 'completed',
       done: 'completed',
       success: 'completed',
