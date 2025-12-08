@@ -6,6 +6,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-101a through FILM-101n (all database tables)
 - **Blocks:** FILM-202 (Character Actions), FILM-303 (Shot CRUD)
+- **Status:** ✅ Completed
 
 ---
 
@@ -263,22 +264,22 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 | Action | Path |
 |--------|------|
-| CREATE | `apps/web/supabase/schemas/32-film-studio-functions.sql` |
+| CREATE | `apps/web/supabase/schemas/33-film-studio-functions.sql` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `create_character_with_details` creates both records atomically
-- [ ] `create_character_with_details` rolls back on any failure
-- [ ] `update_episode_with_lock` returns conflict data when version mismatch
-- [ ] `update_episode_with_lock` increments version on success
-- [ ] `batch_create_shots` deletes existing shots before inserting new ones
-- [ ] `batch_create_shots` returns array of new shot IDs
-- [ ] `soft_delete_episode` cancels pending generation jobs
-- [ ] `get_project_generation_costs` aggregates costs correctly
-- [ ] All functions use `SECURITY DEFINER` for RLS bypass
-- [ ] All functions have proper error handling with meaningful messages
+- [x] `create_character_with_details` creates both records atomically
+- [x] `create_character_with_details` rolls back on any failure
+- [x] `update_episode_with_lock` returns conflict data when version mismatch
+- [x] `update_episode_with_lock` increments version on success
+- [x] `batch_create_shots` deletes existing shots before inserting new ones
+- [x] `batch_create_shots` returns array of new shot IDs
+- [x] `soft_delete_episode` cancels pending generation jobs
+- [x] `get_project_generation_costs` aggregates costs correctly
+- [x] All functions use `SECURITY DEFINER` for RLS bypass
+- [x] All functions have proper error handling with meaningful messages
 
 ---
 
