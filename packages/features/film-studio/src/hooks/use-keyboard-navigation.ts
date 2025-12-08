@@ -152,6 +152,9 @@ export function useShotGridKeyboard({
     ],
   );
 
+  // useEffect is required here to attach global keyboard event listeners to the document.
+  // This enables keyboard navigation when the grid is focused, regardless of which
+  // specific element has focus. The cleanup function ensures proper listener removal.
   useEffect(() => {
     if (!enabled) return;
 
@@ -330,6 +333,9 @@ export function useTimelineKeyboard({
     ],
   );
 
+  // useEffect is required here to attach global keyboard event listeners to the document.
+  // This enables timeline shortcuts (playback, scrubbing, zoom) when the timeline is focused,
+  // regardless of which specific element has focus. The cleanup function ensures proper listener removal.
   useEffect(() => {
     if (!enabled) return;
 

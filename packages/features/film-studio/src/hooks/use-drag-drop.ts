@@ -374,15 +374,13 @@ export function useDropZone({
   const handleDragLeave = useCallback(
     (e: React.DragEvent) => {
       if (disabled) return;
-      // Only set isOver to false if we're actually leaving the drop zone
-      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-      const { clientX, clientY } = e;
-      if (
-        clientX < rect.left ||
-        clientX > rect.right ||
-        clientY < rect.top ||
-        clientY > rect.bottom
-      ) {
+      // Only set isOver to false if we're actually leaving the drop zone.
+      // relatedTarget is the element the mouse is moving to.
+      // If relatedTarget is null (leaving window) or outside the drop zone, reset state.
+      const currentTarget = e.currentTarget as HTMLElement;
+      const relatedTarget = e.relatedTarget as HTMLElement | null;
+
+      if (!relatedTarget || !currentTarget.contains(relatedTarget)) {
         setIsOver(false);
         setDraggedType(null);
       }
