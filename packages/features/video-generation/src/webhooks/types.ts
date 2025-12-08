@@ -72,36 +72,46 @@ export interface WebhookLogEntry {
 }
 
 /**
- * Base payload structure for generation webhooks
+ * Kling-specific webhook payload (via PiAPI)
+ * Status values: submitted, processing, succeed, failed
  */
-export interface GenerationWebhookPayload {
+export interface KlingWebhookPayload {
   task_id: string;
-  status: 'completed' | 'failed' | 'processing';
-  timestamp?: number;
-  error_message?: string;
+  task_status: 'submitted' | 'processing' | 'succeed' | 'failed';
+  task_status_msg: string;
+  updated_at: number; // Unix timestamp
+  progress: number; // 0-100
+  task_result?: {
+    videos: Array<{
+      id: string;
+      url: string;
+      duration: number;
+    }>;
+  };
+  error?: {
+    code: string;
+    message: string;
+  };
+  timestamp?: number; // For replay protection
 }
 
 /**
- * Kling-specific webhook payload
+ * Hailuo (MiniMax) webhook payload
+ * Status values: Queueing, Processing, Success, Fail
  */
-export interface KlingWebhookPayload extends GenerationWebhookPayload {
+export interface HailuoWebhookPayload {
+  task_id: string;
+  status: 'Queueing' | 'Processing' | 'Success' | 'Fail';
+  progress?: number;
   video_url?: string;
-  thumbnail_url?: string;
+  cover_url?: string; // Thumbnail
   duration?: number;
+  error?: {
+    code: number;
+    message: string;
+  };
+  created_at: number;
+  finished_at?: number;
+  timestamp?: number; // For replay protection
 }
 
-/**
- * Runway-specific webhook payload
- */
-export interface RunwayWebhookPayload extends GenerationWebhookPayload {
-  output_url?: string;
-  preview_url?: string;
-}
-
-/**
- * Hailuo-specific webhook payload
- */
-export interface HailuoWebhookPayload extends GenerationWebhookPayload {
-  result_url?: string;
-  cover_url?: string;
-}

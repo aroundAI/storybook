@@ -124,7 +124,10 @@ describe('Webhook Security', () => {
       it('should extract timestamp from valid payload', () => {
         const payload: KlingWebhookPayload = {
           task_id: 'abc123',
-          status: 'completed',
+          task_status: 'succeed',
+          task_status_msg: 'Completed',
+          updated_at: 1700000000,
+          progress: 100,
           timestamp: 1700000000,
         };
 
@@ -133,7 +136,7 @@ describe('Webhook Security', () => {
       });
 
       it('should return null when timestamp is missing', () => {
-        const payload = { task_id: 'abc123', status: 'completed' };
+        const payload = { task_id: 'abc123', task_status: 'succeed' };
 
         const result = verifier.extractTimestamp(payload);
         expect(result).toBeNull();
@@ -176,9 +179,16 @@ describe('Webhook Security', () => {
     it('should process valid webhooks successfully', async () => {
       const payload: KlingWebhookPayload = {
         task_id: 'abc123',
-        status: 'completed',
-        video_url: 'https://example.com/video.mp4',
+        task_status: 'succeed',
+        task_status_msg: 'Completed',
+        updated_at: Math.floor(Date.now() / 1000),
+        progress: 100,
         timestamp: Math.floor(Date.now() / 1000),
+        task_result: {
+          videos: [
+            { id: 'v1', url: 'https://example.com/video.mp4', duration: 5 },
+          ],
+        },
       };
       const payloadStr = JSON.stringify(payload);
       const signature = createValidSignature(payloadStr, testSecret);
@@ -312,7 +322,10 @@ describe('Webhook Security', () => {
     it('should return 500 when handler throws', async () => {
       const payload: KlingWebhookPayload = {
         task_id: 'abc123',
-        status: 'completed',
+        task_status: 'succeed',
+        task_status_msg: 'Completed',
+        updated_at: Math.floor(Date.now() / 1000),
+        progress: 100,
         timestamp: Math.floor(Date.now() / 1000),
       };
       const payloadStr = JSON.stringify(payload);

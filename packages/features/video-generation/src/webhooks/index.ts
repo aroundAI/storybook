@@ -5,18 +5,23 @@ export type {
   WebhookVerificationResult,
   ProcessedWebhook,
   WebhookLogEntry,
-  GenerationWebhookPayload,
   KlingWebhookPayload,
-  RunwayWebhookPayload,
   HailuoWebhookPayload,
 } from './types';
 
 // Handler
 export { processWebhook, createWebhookConfig } from './handler';
 
-// Verifiers
+// Verifiers - Kling
 export {
   KlingWebhookVerifier,
   KLING_WEBHOOK_CONFIG,
   createKlingWebhookVerifier,
 } from './verifiers/kling';
+
+// Verifiers - Hailuo
+export {
+  HailuoWebhookVerifier,
+  HAILUO_WEBHOOK_CONFIG,
+  createHailuoWebhookVerifier,
+} from './verifiers/hailuo';

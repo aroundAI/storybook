@@ -3,18 +3,18 @@ import 'server-only';
 import crypto from 'crypto';
 
 import type {
-  KlingWebhookPayload,
+  HailuoWebhookPayload,
   WebhookConfig,
   WebhookVerifier,
 } from '../types';
 
 /**
- * Webhook signature verifier for Kling AI video generation provider.
+ * Webhook signature verifier for Hailuo (MiniMax) video generation provider.
  *
- * Kling uses HMAC-SHA256 for webhook signature verification.
- * The signature is provided in the 'x-kling-signature' header.
+ * Hailuo uses HMAC-SHA256 for webhook signature verification.
+ * The signature is provided in the 'x-hailuo-signature' header.
  */
-export class KlingWebhookVerifier implements WebhookVerifier {
+export class HailuoWebhookVerifier implements WebhookVerifier {
   private readonly secret: string;
 
   constructor(config: Pick<WebhookConfig, 'secret'>) {
@@ -26,7 +26,7 @@ export class KlingWebhookVerifier implements WebhookVerifier {
    * Uses constant-time comparison to prevent timing attacks.
    *
    * @param payload Raw request body as string
-   * @param signature Signature from x-kling-signature header
+   * @param signature Signature from x-hailuo-signature header
    * @returns true if signature matches
    */
   verify(payload: string, signature: string): boolean {
@@ -49,17 +49,27 @@ export class KlingWebhookVerifier implements WebhookVerifier {
 
   /**
    * Extracts the Unix timestamp from the webhook payload for replay protection.
+   * Uses `created_at` field from Hailuo payload.
    *
-   * @param payload Parsed Kling webhook payload
+   * @param payload Parsed Hailuo webhook payload
    * @returns Unix timestamp in seconds, or null if not present
    */
   extractTimestamp(payload: unknown): number | null {
     if (
       typeof payload === 'object' &&
       payload !== null &&
+      'created_at' in payload
+    ) {
+      const ts = (payload as HailuoWebhookPayload).created_at;
+      return typeof ts === 'number' ? ts : null;
+    }
+    // Fallback to timestamp field if present
+    if (
+      typeof payload === 'object' &&
+      payload !== null &&
       'timestamp' in payload
     ) {
-      const ts = (payload as KlingWebhookPayload).timestamp;
+      const ts = (payload as HailuoWebhookPayload).timestamp;
       return typeof ts === 'number' ? ts : null;
     }
     return null;
@@ -67,24 +77,24 @@ export class KlingWebhookVerifier implements WebhookVerifier {
 }
 
 /**
- * Default Kling webhook configuration
+ * Default Hailuo webhook configuration
  */
-export const KLING_WEBHOOK_CONFIG = {
-  signatureHeader: 'x-kling-signature',
+export const HAILUO_WEBHOOK_CONFIG = {
+  signatureHeader: 'x-hailuo-signature',
   maxAgeSeconds: 300, // 5 minutes
 } as const;
 
 /**
- * Creates a Kling webhook verifier from environment configuration
+ * Creates a Hailuo webhook verifier from environment configuration
  */
-export function createKlingWebhookVerifier(): KlingWebhookVerifier {
-  const secret = process.env.KLING_WEBHOOK_SECRET;
+export function createHailuoWebhookVerifier(): HailuoWebhookVerifier {
+  const secret = process.env.HAILUO_WEBHOOK_SECRET;
 
   if (!secret) {
     throw new Error(
-      'KLING_WEBHOOK_SECRET environment variable is not configured',
+      'HAILUO_WEBHOOK_SECRET environment variable is not configured',
     );
   }
 
-  return new KlingWebhookVerifier({ secret });
+  return new HailuoWebhookVerifier({ secret });
 }

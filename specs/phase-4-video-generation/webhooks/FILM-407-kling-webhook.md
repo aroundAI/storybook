@@ -357,30 +357,30 @@ if (job.status === 'completed' || job.status === 'failed') {
 ## Acceptance Criteria
 
 ### Kling Webhook
-- [ ] Verifies HMAC-SHA256 signature
-- [ ] Rejects invalid signatures with 401
-- [ ] Updates generation_jobs with correct status mapping
-- [ ] Updates shots with video URL on success
-- [ ] Records actual cost via cost-tracking
-- [ ] Handles duplicate calls idempotently
-- [ ] Logs all webhook requests
+- [x] Verifies HMAC-SHA256 signature
+- [x] Rejects invalid signatures with 401
+- [x] Updates generation_jobs with correct status mapping
+- [x] Updates shots with video URL on success
+- [x] Records actual cost via cost-tracking
+- [x] Handles duplicate calls idempotently
+- [x] Logs all webhook requests
 
 ### Hailuo Webhook
-- [ ] Verifies HMAC-SHA256 signature (PiAPI format)
-- [ ] Maps Hailuo status (Queueing/Processing/Success/Fail) to internal status
-- [ ] Extracts video_url and cover_url
-- [ ] Handles Hailuo-specific error codes
+- [x] Verifies HMAC-SHA256 signature (PiAPI format)
+- [x] Maps Hailuo status (Queueing/Processing/Success/Fail) to internal status
+- [x] Extracts video_url and cover_url
+- [x] Handles Hailuo-specific error codes
 
 ### Runway Polling (No Webhook)
-- [ ] Polling job runs every 30 seconds for active Runway jobs
-- [ ] Correctly maps Runway status (PENDING/RUNNING/SUCCEEDED/FAILED)
-- [ ] Updates job on completion without webhook
-- [ ] Integrates with job queue (FILM-404)
+- [x] Polling job runs every 30 seconds for active Runway jobs
+- [x] Correctly maps Runway status (PENDING/RUNNING/SUCCEEDED/FAILED)
+- [x] Updates job on completion without webhook
+- [ ] Integrates with job queue (FILM-404) - *Poller created; scheduled job invocation is infrastructure concern*
 
 ### Common
-- [ ] All handlers return 200 for valid requests
-- [ ] All handlers return 400/401 for invalid requests
-- [ ] TypeScript types exported for all payloads
+- [x] All handlers return 200 for valid requests
+- [x] All handlers return 400/401 for invalid requests
+- [x] TypeScript types exported for all payloads
 
 ---
 
