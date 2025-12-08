@@ -1,14 +1,13 @@
+import sharp from 'sharp';
 import { describe, expect, it, vi } from 'vitest';
 
-import sharp from 'sharp';
-
 import {
-  getImageDimensions,
-  validateImageDimensions,
-  generateThumbnail,
-  getThumbnailContentType,
   IMAGE_DIMENSION_CONSTRAINTS,
   THUMBNAIL_SIZE,
+  generateThumbnail,
+  getImageDimensions,
+  getThumbnailContentType,
+  validateImageDimensions,
 } from '../image-processor';
 
 // Mock sharp for testing without actual image files
@@ -176,7 +175,10 @@ describe('image-processor', () => {
         toBuffer: vi.fn(),
       } as unknown as ReturnType<typeof sharp>);
 
-      const result = await validateImageDimensions(mockBuffer, customConstraints);
+      const result = await validateImageDimensions(
+        mockBuffer,
+        customConstraints,
+      );
 
       expect(result.valid).toBe(true);
     });
@@ -197,7 +199,10 @@ describe('image-processor', () => {
         toBuffer: vi.fn(),
       } as unknown as ReturnType<typeof sharp>);
 
-      const result = await validateImageDimensions(mockBuffer, customConstraints);
+      const result = await validateImageDimensions(
+        mockBuffer,
+        customConstraints,
+      );
 
       expect(result.valid).toBe(false);
       expect(result.error?.code).toBe('DIMENSIONS_TOO_LARGE');

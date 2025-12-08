@@ -17,7 +17,9 @@ interface StorageClient {
         },
       ) => Promise<{ error: { message: string } | null }>;
       getPublicUrl: (path: string) => { data: { publicUrl: string } };
-      remove: (paths: string[]) => Promise<{ error: { message: string } | null }>;
+      remove: (
+        paths: string[],
+      ) => Promise<{ error: { message: string } | null }>;
     };
     getBucket: (name: string) => Promise<{
       data: unknown;

@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server';
 
+import {
+  PROJECT_ASSETS_BUCKET,
+  deleteFromStorage,
+  generateThumbnail,
+  getImageDimensions,
+  getThumbnailContentType,
+  uploadToStorage,
+  validateImageDimensions,
+} from '@kit/assets/upload';
+import {
+  generateStoragePath,
+  sanitizeFilename,
+  validateUpload,
+} from '@kit/assets/upload-validation';
+import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-import { enhanceRouteHandler } from '@kit/next/routes';
-import {
-  validateUpload,
-  sanitizeFilename,
-  generateStoragePath,
-} from '@kit/assets/upload-validation';
-import {
-  validateImageDimensions,
-  generateThumbnail,
-  getThumbnailContentType,
-  getImageDimensions,
-  uploadToStorage,
-  PROJECT_ASSETS_BUCKET,
-} from '@kit/assets/upload';
 
 /**
  * POST /api/projects/[projectId]/assets/upload
@@ -59,29 +59,13 @@ export const POST = enhanceRouteHandler(
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
-    // 2. Verify user has role on project (RLS should handle this, but double-check)
-    const { data: hasRole } = await client.rpc('has_role_on_project', {
-      target_project_id: projectId,
-    });
-
-    if (!hasRole) {
-      logger.warn(ctx, 'User does not have access to project');
-      return NextResponse.json(
-        { error: 'You do not have access to this project' },
-        { status: 403 },
-      );
-    }
-
-    // 3. Parse form data
+    // 2. Parse form data
     let formData: FormData;
     try {
       formData = await request.formData();
     } catch (error) {
       logger.error({ ...ctx, error }, 'Failed to parse form data');
-      return NextResponse.json(
-        { error: 'Invalid form data' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
     }
 
     const file = formData.get('file') as File | null;
@@ -93,7 +77,7 @@ export const POST = enhanceRouteHandler(
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // 4. Validate file type, size, and magic bytes
+    // 3. Validate file type, size, and magic bytes
     const validation = await validateUpload(file, 'image');
 
     if (!validation.valid) {
@@ -113,7 +97,7 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    // 5. Read file buffer
+    // 4. Read file buffer
     let buffer: Buffer;
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -126,7 +110,7 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    // 6. Validate image dimensions
+    // 5. Validate image dimensions
     const dimensionValidation = await validateImageDimensions(buffer);
 
     if (!dimensionValidation.valid) {
@@ -144,10 +128,10 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    // 7. Get image dimensions for response
+    // 6. Get image dimensions for response
     const dimensions = await getImageDimensions(buffer);
 
-    // 8. Generate storage paths
+    // 7. Generate storage paths
     const sanitizedFilename = sanitizeFilename(file.name);
     const originalPath = generateStoragePath(
       projectId,
@@ -162,50 +146,74 @@ export const POST = enhanceRouteHandler(
       sanitizedFilename.replace(/\.[^.]+$/, '.webp'),
     );
 
+    // 8. Upload original image
+    let originalResult: { url: string };
     try {
-      // 9. Upload original image
       logger.info({ ...ctx, path: originalPath }, 'Uploading original image');
-      const originalResult = await uploadToStorage(
+      originalResult = await uploadToStorage(
         client,
         PROJECT_ASSETS_BUCKET,
         originalPath,
         buffer,
         { contentType: file.type },
       );
+    } catch (error) {
+      logger.error({ ...ctx, error }, 'Original image upload failed');
+      return NextResponse.json(
+        { error: 'Upload failed. Please try again.' },
+        { status: 500 },
+      );
+    }
 
-      // 10. Generate and upload thumbnail
+    // 9. Generate and upload thumbnail
+    let thumbnailResult: { url: string };
+    try {
       logger.info({ ...ctx, path: thumbnailPath }, 'Generating thumbnail');
       const thumbnailBuffer = await generateThumbnail(buffer);
 
       logger.info({ ...ctx, path: thumbnailPath }, 'Uploading thumbnail');
-      const thumbnailResult = await uploadToStorage(
+      thumbnailResult = await uploadToStorage(
         client,
         PROJECT_ASSETS_BUCKET,
         thumbnailPath,
         thumbnailBuffer,
         { contentType: getThumbnailContentType() },
       );
-
-      logger.info(ctx, 'Asset upload completed successfully');
-
-      // 11. Return success response
-      return NextResponse.json({
-        success: true,
-        imageUrl: originalResult.url,
-        thumbnailUrl: thumbnailResult.url,
-        width: dimensions?.width ?? 0,
-        height: dimensions?.height ?? 0,
-        size: file.size,
-        contentType: file.type,
-        path: originalPath,
-      });
     } catch (error) {
-      logger.error({ ...ctx, error }, 'Storage upload failed');
+      // Cleanup: delete the original image since thumbnail failed
+      logger.warn(
+        { ...ctx, path: originalPath },
+        'Thumbnail upload failed, cleaning up original image',
+      );
+      try {
+        await deleteFromStorage(client, PROJECT_ASSETS_BUCKET, originalPath);
+      } catch (cleanupError) {
+        logger.error(
+          { ...ctx, error: cleanupError, path: originalPath },
+          'Failed to cleanup original image after thumbnail failure',
+        );
+      }
+
+      logger.error({ ...ctx, error }, 'Thumbnail upload failed');
       return NextResponse.json(
         { error: 'Upload failed. Please try again.' },
         { status: 500 },
       );
     }
+
+    logger.info(ctx, 'Asset upload completed successfully');
+
+    // 10. Return success response
+    return NextResponse.json({
+      success: true,
+      imageUrl: originalResult.url,
+      thumbnailUrl: thumbnailResult.url,
+      width: dimensions?.width ?? 0,
+      height: dimensions?.height ?? 0,
+      size: file.size,
+      contentType: file.type,
+      path: originalPath,
+    });
   },
   { auth: true },
 );
