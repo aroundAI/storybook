@@ -13,8 +13,11 @@
   "exports": {
     "./oauth/youtube": "./src/oauth/youtube/index.ts",
     "./oauth/tiktok": "./src/oauth/tiktok/index.ts",
+    "./oauth/meta": "./src/oauth/meta/index.ts",
     "./providers/youtube": "./src/providers/youtube/index.ts",
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
+    "./providers/facebook": "./src/providers/facebook/index.ts",
+    "./providers/instagram": "./src/providers/instagram/index.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts"
   },

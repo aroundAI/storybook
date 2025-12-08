@@ -1,8 +1,14 @@
+/**
+ * Episode status type matching database CHECK constraint
+ * Workflow: draft → story → storyboard → generating → editing → ready → published
+ */
 export type EpisodeStatus =
   | 'draft'
-  | 'planning'
-  | 'in_progress'
-  | 'completed'
+  | 'story'
+  | 'storyboard'
+  | 'generating'
+  | 'editing'
+  | 'ready'
   | 'published';
 
 export type ShotStatus = 'pending' | 'generating' | 'completed' | 'failed';
@@ -38,18 +44,109 @@ export interface EpisodeMetadata {
   tags?: string[];
 }
 
+/**
+ * Story generation output stored in story_data JSONB
+ */
+export interface StoryData {
+  premise?: string;
+  fullStory?: string;
+  generatedAt?: string;
+  approvedAt?: string;
+  generatedBy?: {
+    model: string;
+    provider: string;
+    costCents: number;
+  };
+}
+
+/**
+ * Screenplay conversion output stored in screenplay_data JSONB
+ */
+export interface ScreenplayData {
+  scenes?: Array<{
+    number: number;
+    location: string;
+    timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+    description: string;
+    duration: number;
+  }>;
+  dialogue?: Array<{
+    sceneNumber: number;
+    characterName: string;
+    text: string;
+    emotion?: string;
+  }>;
+  generatedAt?: string;
+  approvedAt?: string;
+  generatedBy?: {
+    model: string;
+    provider: string;
+    costCents: number;
+  };
+}
+
+/**
+ * Shot list generation output stored in shot_list JSONB
+ */
+export interface ShotListData {
+  shots?: Array<{
+    sequenceNumber: number;
+    sceneNumber: number;
+    duration: number;
+    sceneDescription: string;
+    actionDescription: string;
+    prompt: string;
+    cameraDirection: string;
+    characters: string[];
+  }>;
+  generatedAt?: string;
+  approvedAt?: string;
+  totalEstimatedDuration?: number;
+}
+
+/**
+ * Episode entity with all fields from database
+ */
 export interface Episode {
   id: string;
   projectId: string;
+  seasonId: string | null;
+  number: number;
   title: string;
   description: string | null;
-  episodeNumber: number;
   status: EpisodeStatus;
-  script: string | null;
-  duration: number | null;
+  durationSeconds: number | null;
+  thumbnailUrl: string | null;
+  finalVideoUrl: string | null;
+  storyData: StoryData | null;
+  screenplayData: ScreenplayData | null;
+  shotList: ShotListData | null;
   metadata: EpisodeMetadata | null;
+  version: number;
   createdAt: string;
   updatedAt: string;
+  deletedAt: string | null;
+}
+
+/**
+ * Episode with related shots and season info
+ */
+export interface EpisodeWithShots extends Episode {
+  shots: Shot[];
+  season: {
+    id: string;
+    name: string;
+    number: number;
+  } | null;
+}
+
+/**
+ * Response for listing episodes with pagination
+ */
+export interface ListEpisodesResponse {
+  episodes: Episode[];
+  total: number;
+  hasMore: boolean;
 }
 
 export interface ShotMetadata {

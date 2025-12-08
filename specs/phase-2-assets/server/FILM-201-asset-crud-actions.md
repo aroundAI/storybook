@@ -421,27 +421,27 @@ None (new feature)
 
 ### Functional
 
-- [ ] `createAssetAction` successfully creates asset with valid data
-- [ ] `createAssetAction` throws error for invalid project ID
-- [ ] `createAssetAction` respects RLS (cannot create for inaccessible project)
-- [ ] `getProjectAssetsAction` returns all non-deleted assets for project
-- [ ] `getProjectAssetsAction` filters by type when specified
-- [ ] `getProjectAssetsAction` respects pagination (limit/offset)
-- [ ] `getProjectAssetsAction` returns correct total count
-- [ ] `updateAssetAction` updates only provided fields
-- [ ] `updateAssetAction` updates updated_at timestamp
-- [ ] `updateAssetAction` throws error for deleted assets
-- [ ] `deleteAssetAction` soft deletes asset (sets deleted_at)
-- [ ] `deleteAssetAction` prevents deletion of assets in use
-- [ ] All actions enforce authentication (reject unauthenticated users)
+- [x] `createAssetAction` successfully creates asset with valid data
+- [x] `createAssetAction` throws error for invalid project ID
+- [x] `createAssetAction` respects RLS (cannot create for inaccessible project)
+- [x] `getProjectAssetsAction` returns all non-deleted assets for project
+- [x] `getProjectAssetsAction` filters by type when specified
+- [x] `getProjectAssetsAction` respects pagination (limit/offset)
+- [x] `getProjectAssetsAction` returns correct total count
+- [x] `updateAssetAction` updates only provided fields
+- [x] `updateAssetAction` updates updated_at timestamp
+- [x] `updateAssetAction` throws error for deleted assets
+- [x] `deleteAssetAction` soft deletes asset (sets deleted_at)
+- [x] `deleteAssetAction` prevents deletion of assets in use
+- [x] All actions enforce authentication (reject unauthenticated users)
 
 ### Non-Functional
 
-- [ ] All actions complete within 2 seconds
-- [ ] All inputs validated with Zod schemas
-- [ ] All database errors properly caught and thrown
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] All actions complete within 2 seconds
+- [x] All inputs validated with Zod schemas
+- [x] All database errors properly caught and thrown
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 
