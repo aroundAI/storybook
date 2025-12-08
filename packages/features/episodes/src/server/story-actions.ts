@@ -1,0 +1,347 @@
+'use server';
+
+import 'server-only';
+
+import { revalidatePath } from 'next/cache';
+
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+import { enhanceAction } from '@kit/next/actions';
+import type {
+  StoryGenerationOutput,
+  StoryIdeationOutput,
+} from '@kit/prompt-engine/schemas';
+import { executeLLM } from '@kit/prompt-engine/server';
+import { getLogger } from '@kit/shared/logger';
+import type { Json } from '@kit/supabase/database';
+import { requireUser } from '@kit/supabase/require-user';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+import {
+  GenerateFullStorySchema,
+  GenerateStoryIdeasSchema,
+  type GenerationMetadata,
+} from '../lib/schemas/story.schema';
+import { OptimisticLockError } from '../lib/status-workflow';
+import type { EpisodeStatus } from '../lib/types';
+
+/**
+ * Response type for story ideation
+ */
+export interface GenerateStoryIdeasResponse {
+  ideas: StoryIdeationOutput['ideas'];
+  metadata: GenerationMetadata;
+}
+
+/**
+ * Response type for full story generation
+ */
+export interface GenerateFullStoryResponse {
+  story: StoryGenerationOutput['story'];
+  episode: {
+    id: string;
+    status: string;
+    version: number;
+  };
+  metadata: GenerationMetadata;
+}
+
+/**
+ * Generate multiple story ideas from a premise
+ *
+ * Uses the story-ideation prompt template to generate 1-5 diverse story concepts.
+ * Does not modify any database records - purely generative.
+ *
+ * @throws {Error} If LLM call fails or output validation fails
+ */
+export const generateStoryIdeasAction = enhanceAction(
+  async (
+    data,
+  ): Promise<{ success: true; data: GenerateStoryIdeasResponse }> => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.generateStoryIdeas' };
+
+    logger.info(ctx, 'Generating story ideas');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized story ideation attempt');
+      throw new Error('Authentication required');
+    }
+
+    // Get user's account for cost tracking
+    const { data: accounts } = await client
+      .from('accounts')
+      .select('id')
+      .eq('primary_owner_user_id', user.id)
+      .limit(1);
+
+    const accountId = accounts?.[0]?.id ?? user.id;
+
+    // Prepare variables for prompt template (matching template variable names)
+    const variables = {
+      premise: data.premise,
+      genre: data.genre ?? 'general',
+      target_audience: data.targetAudience ?? 'general',
+      style: data.style ?? 'balanced',
+      number_of_ideas: data.numberOfIdeas,
+    };
+
+    logger.info(
+      {
+        ...ctx,
+        variables: { ...variables, premise: data.premise.substring(0, 50) },
+      },
+      'Executing story ideation prompt',
+    );
+
+    // Execute LLM with story-ideation template
+    const result = await executeLLM<StoryIdeationOutput>({
+      templateSlug: 'story-generation/story-ideation',
+      variables,
+      context: {
+        name: 'story-ideation',
+        accountId,
+        userId: user.id,
+      },
+    });
+
+    // Cost is in USD, convert to cents
+    const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
+    const generatedAt = new Date().toISOString();
+
+    logger.info(
+      {
+        ...ctx,
+        provider: result.metadata.provider,
+        model: result.metadata.model,
+        costCents,
+        tokensUsed: result.metadata.tokens,
+        ideasGenerated: result.data.ideas.length,
+      },
+      'Story ideas generated successfully',
+    );
+
+    return {
+      success: true,
+      data: {
+        ideas: result.data.ideas,
+        metadata: {
+          provider: result.metadata.provider,
+          model: result.metadata.model,
+          costCents,
+          tokensUsed: result.metadata.tokens,
+          generatedAt,
+        },
+      },
+    };
+  },
+  {
+    schema: GenerateStoryIdeasSchema,
+  },
+);
+
+/**
+ * Generate a complete story from a selected idea and update the episode
+ *
+ * Uses the story-generation prompt template to create a 500-1000 word narrative.
+ * Updates the episode's story_data JSONB field and changes status to 'story'.
+ *
+ * @throws {Error} If episode not found, LLM fails, validation fails, or optimistic lock fails
+ */
+export const generateFullStoryAction = enhanceAction(
+  async (data): Promise<{ success: true; data: GenerateFullStoryResponse }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'episodes.generateFullStory',
+      episodeId: data.episodeId,
+    };
+
+    logger.info(ctx, 'Generating full story');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized story generation attempt');
+      throw new Error('Authentication required');
+    }
+
+    // Fetch current episode with project info
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episode, error: fetchError } = await (client as any)
+      .from('episodes')
+      .select('*, project:projects(id, account_id)')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchError || !episode) {
+      logger.error({ ...ctx, error: fetchError }, 'Episode not found');
+      throw new Error('Episode not found');
+    }
+
+    // Check version for optimistic locking
+    if (episode.version !== data.version) {
+      throw new OptimisticLockError('episode');
+    }
+
+    // Validate status transition (must be in 'draft' to generate story)
+    const currentStatus = episode.status as EpisodeStatus;
+    if (currentStatus !== 'draft' && currentStatus !== 'story') {
+      throw new Error(
+        `Cannot generate story for episode in '${currentStatus}' status. Episode must be in 'draft' or 'story' status.`,
+      );
+    }
+
+    const accountId = episode.project?.account_id;
+    if (!accountId) {
+      throw new Error('Project not found or access denied');
+    }
+
+    // Format characters for prompt template
+    const charactersFormatted = data.characters?.length
+      ? `**Characters**:\n${data.characters.map((c) => `- ${c.name}: ${c.description}`).join('\n')}`
+      : '';
+
+    // Format world details for prompt template
+    const worldDetailsFormatted = data.worldDetails
+      ? `**World/Setting**:\n${data.worldDetails}`
+      : '';
+
+    // Prepare variables for prompt template (matching template variable names)
+    const variables = {
+      title: data.title,
+      logline: data.logline,
+      target_duration: data.targetDuration,
+      characters: charactersFormatted,
+      world_details: worldDetailsFormatted,
+      style: data.style ?? 'balanced',
+    };
+
+    logger.info(
+      { ...ctx, title: data.title, targetDuration: data.targetDuration },
+      'Executing story generation prompt',
+    );
+
+    // Execute LLM with story-generation template
+    const result = await executeLLM<StoryGenerationOutput>({
+      templateSlug: 'story-generation/story-generation',
+      variables,
+      context: {
+        name: 'story-generation',
+        accountId,
+        userId: user.id,
+      },
+    });
+
+    // Cost is in USD, convert to cents
+    const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
+    const generatedAt = new Date().toISOString();
+
+    // Prepare story_data for episode (matching StoryData interface)
+    const storyData = {
+      premise: data.logline,
+      fullStory: result.data.story.fullText,
+      generatedAt,
+      generatedBy: {
+        model: result.metadata.model,
+        provider: result.metadata.provider,
+        costCents,
+      },
+      title: result.data.story.title,
+      actBreakdown: result.data.story.actBreakdown,
+      characters: result.data.story.characters,
+      themes: result.data.story.themes,
+      tone: result.data.story.tone,
+      estimatedSceneCount: result.data.story.estimatedSceneCount,
+    };
+
+    // Update episode with story data and change status to 'story'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updatedEpisode, error: updateError } = await (client as any)
+      .from('episodes')
+      .update({
+        story_data: storyData as Json,
+        status: 'story',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.episodeId)
+      .eq('version', data.version)
+      .is('deleted_at', null)
+      .select()
+      .single();
+
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to update episode');
+      throw new Error(`Failed to update episode: ${updateError.message}`);
+    }
+
+    if (!updatedEpisode) {
+      throw new OptimisticLockError('episode');
+    }
+
+    // Create audit log
+    const networkContext = await extractNetworkContext();
+
+    await createAuditLog({
+      accountId,
+      userId: user.id,
+      action: 'update',
+      objectType: 'episode',
+      objectId: episode.id,
+      objectName: episode.title,
+      before: episode,
+      after: updatedEpisode,
+      scopes: [
+        { type: 'account', id: accountId },
+        { type: 'project', id: episode.project_id },
+        { type: 'episode', id: episode.id },
+      ],
+      metadata: {
+        operation: 'story_generation',
+        costCents,
+        tokensUsed: result.metadata.tokens,
+      },
+      ...networkContext,
+    });
+
+    logger.info(
+      {
+        ...ctx,
+        provider: result.metadata.provider,
+        model: result.metadata.model,
+        costCents,
+        tokensUsed: result.metadata.tokens,
+        wordCount: result.data.story.fullText.split(/\s+/).length,
+        newVersion: updatedEpisode.version,
+      },
+      'Full story generated and episode updated',
+    );
+
+    revalidatePath('/home/[account]/projects/[id]', 'page');
+
+    return {
+      success: true,
+      data: {
+        story: result.data.story,
+        episode: {
+          id: updatedEpisode.id,
+          status: updatedEpisode.status,
+          version: updatedEpisode.version,
+        },
+        metadata: {
+          provider: result.metadata.provider,
+          model: result.metadata.model,
+          costCents,
+          tokensUsed: result.metadata.tokens,
+          generatedAt,
+        },
+      },
+    };
+  },
+  {
+    schema: GenerateFullStorySchema,
+  },
+);

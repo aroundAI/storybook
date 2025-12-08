@@ -13,16 +13,18 @@ import type { EpisodeStatus } from './types';
  * ready → editing | published
  * published → ready
  */
-export const EPISODE_STATUS_TRANSITIONS: Record<EpisodeStatus, EpisodeStatus[]> =
-  {
-    draft: ['story'],
-    story: ['draft', 'storyboard'],
-    storyboard: ['story', 'generating'],
-    generating: ['storyboard', 'editing'],
-    editing: ['generating', 'ready'],
-    ready: ['editing', 'published'],
-    published: ['ready'],
-  };
+export const EPISODE_STATUS_TRANSITIONS: Record<
+  EpisodeStatus,
+  EpisodeStatus[]
+> = {
+  draft: ['story'],
+  story: ['draft', 'storyboard'],
+  storyboard: ['story', 'generating'],
+  generating: ['storyboard', 'editing'],
+  editing: ['generating', 'ready'],
+  ready: ['editing', 'published'],
+  published: ['ready'],
+};
 
 /**
  * Validates if a status transition is allowed

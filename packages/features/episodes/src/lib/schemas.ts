@@ -167,9 +167,24 @@ export const UpdateShotSchema = z.object({
 
 export type CreateEpisodeInput = z.infer<typeof CreateEpisodeSchema>;
 export type GetEpisodeInput = z.infer<typeof GetEpisodeSchema>;
-export type UpdateEpisodeStatusInput = z.infer<typeof UpdateEpisodeStatusSchema>;
-export type ListProjectEpisodesInput = z.infer<typeof ListProjectEpisodesSchema>;
+export type UpdateEpisodeStatusInput = z.infer<
+  typeof UpdateEpisodeStatusSchema
+>;
+export type ListProjectEpisodesInput = z.infer<
+  typeof ListProjectEpisodesSchema
+>;
 export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
+
+// Story generation schemas (FILM-305)
+export {
+  GenerateStoryIdeasSchema,
+  GenerateFullStorySchema,
+  CharacterInputSchema,
+  type GenerateStoryIdeasInput,
+  type GenerateFullStoryInput,
+  type CharacterInput,
+  type GenerationMetadata,
+} from './schemas/story.schema';

@@ -1,4 +1,9 @@
 /**
+ * Story Studio tab identifiers
+ */
+export type StudioTab = 'ideation' | 'story' | 'screenplay' | 'shot-list';
+
+/**
  * Episode status type matching database CHECK constraint
  * Workflow: draft → story → storyboard → generating → editing → ready → published
  */
@@ -48,6 +53,8 @@ export interface EpisodeMetadata {
  * Story generation output stored in story_data JSONB
  */
 export interface StoryData {
+  title?: string;
+  logline?: string;
   premise?: string;
   fullStory?: string;
   generatedAt?: string;

@@ -318,16 +318,28 @@ function IdeaCard({ idea, isSelected, onSelect }: {
 
 ---
 
+## Implementation Status
+
+**Status**: COMPLETED
+**Completed Date**: 2025-12-08
+**PR**: feat/film-308-story-studio
+
+### Files Created
+- `packages/features/episodes/src/components/story-ideation/story-ideation.tsx`
+- `packages/features/episodes/src/components/story-ideation/idea-card.tsx`
+
+---
+
 ## Acceptance Criteria
 
-- [ ] Premise input validates 10-500 characters
-- [ ] Genre, audience, style dropdowns work
-- [ ] Number of ideas slider works (1-5)
-- [ ] Generate button disabled during generation
-- [ ] Ideas display in responsive card grid
-- [ ] Idea cards highlight on selection
-- [ ] Continue button only enabled when idea selected
-- [ ] Toast notifications on success/error
+- [x] Premise input validates 10-500 characters
+- [x] Genre, audience, style dropdowns work
+- [x] Number of ideas slider works (1-5)
+- [x] Generate button disabled during generation
+- [x] Ideas display in responsive card grid
+- [x] Idea cards highlight on selection
+- [x] Continue button only enabled when idea selected
+- [x] Toast notifications on success/error
 
 ---
 
