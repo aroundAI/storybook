@@ -19,6 +19,9 @@
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts"
   },
+  "dependencies": {
+    "@kit/prompt-engine": "workspace:*"
+  },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@kit/audit-logs": "workspace:*",

@@ -167,9 +167,17 @@ export const UpdateShotSchema = z.object({
 
 export type CreateEpisodeInput = z.infer<typeof CreateEpisodeSchema>;
 export type GetEpisodeInput = z.infer<typeof GetEpisodeSchema>;
-export type UpdateEpisodeStatusInput = z.infer<typeof UpdateEpisodeStatusSchema>;
-export type ListProjectEpisodesInput = z.infer<typeof ListProjectEpisodesSchema>;
+export type UpdateEpisodeStatusInput = z.infer<
+  typeof UpdateEpisodeStatusSchema
+>;
+export type ListProjectEpisodesInput = z.infer<
+  typeof ListProjectEpisodesSchema
+>;
 export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
+
+// Shot CRUD schemas are in ./schemas/shot.schema.ts (FILM-303)
+// Shot list generation schemas are in ./schemas/shot-list.schema.ts (FILM-307)
+// Import directly from those files to avoid naming conflicts

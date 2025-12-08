@@ -1,2 +1,9 @@
 export * from './actions';
 export * from './queries';
+
+// Shot CRUD actions (FILM-303)
+export * from '../lib/server/mutations/shot-actions';
+export * from '../lib/server/queries/shot-queries';
+
+// Shot list generation (FILM-307)
+export * from '../lib/server/mutations/shot-list-actions';

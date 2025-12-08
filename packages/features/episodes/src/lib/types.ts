@@ -99,9 +99,25 @@ export interface ShotListData {
     cameraDirection: string;
     characters: string[];
   }>;
-  generatedAt?: string;
-  approvedAt?: string;
+  generatedAt?: string | null;
+  approvedAt?: string | null;
   totalEstimatedDuration?: number;
+  generatedBy?: {
+    model: string;
+    provider: string;
+    costCents: number;
+  };
+  metadata?: {
+    totalShots: number;
+    shotTypes: {
+      wide: number;
+      medium: number;
+      closeUp: number;
+    };
+    locations: string[];
+    characters: string[];
+    inputSource: 'screenplay' | 'story';
+  };
 }
 
 /**
@@ -174,11 +190,14 @@ export interface Shot {
   episodeId: string;
   sceneNumber: number;
   shotNumber: number;
+  sequenceNumber?: number;
   description: string;
   duration: number;
+  durationSeconds?: number;
   status: ShotStatus;
   cameraAngle: CameraAngle | null;
   cameraMovement: CameraMovement | null;
+  cameraDirection?: string | null;
   prompt: string | null;
   videoUrl: string | null;
   thumbnailUrl: string | null;
@@ -189,4 +208,100 @@ export interface Shot {
   generationCompletedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  deletedAt?: string | null;
+}
+
+/**
+ * Shot with generation job status information
+ */
+export interface ShotWithJobStatus extends Shot {
+  generationJob: {
+    id: string;
+    status: string;
+    provider: string;
+    progress: number;
+    error_message: string | null;
+  } | null;
+}
+
+/**
+ * Response for batch creating shots
+ */
+export interface BatchCreateShotsResponse {
+  success: boolean;
+  shots: Shot[];
+  count: number;
+}
+
+/**
+ * Response for reordering shots
+ */
+export interface ReorderShotsResponse {
+  success: boolean;
+  shots: Shot[];
+  count: number;
+}
+
+/**
+ * Response for getting episode shots
+ */
+export interface GetEpisodeShotsResponse {
+  success: boolean;
+  shots: ShotWithJobStatus[];
+  total: number;
+  hasMore: boolean;
+}
+
+/**
+ * Response for deleting a shot
+ */
+export interface DeleteShotResponse {
+  success: boolean;
+  shotId: string;
+}
+
+/**
+ * Generated shot from LLM (used in generation response)
+ */
+export interface GeneratedShot {
+  sequenceNumber: number;
+  sceneNumber: number;
+  shotNumber: number;
+  shotType: string;
+  cameraDirection: string;
+  description: string;
+  action: string;
+  prompt: string;
+  characters: string[];
+  duration: number;
+  metadata: {
+    location: string;
+    timeOfDay: string;
+    mood?: string;
+    lighting?: string;
+  };
+}
+
+/**
+ * Response for generating a shot list
+ */
+export interface GenerateShotListResponse {
+  success: boolean;
+  shots: GeneratedShot[];
+  shotsCreated: number;
+  episode: {
+    id: string;
+    status: string;
+    version: number;
+  };
+  metadata: {
+    provider: string;
+    model: string;
+    costCents: number;
+    tokensUsed: number;
+    generatedAt: string;
+    totalShots: number;
+    totalDuration: number;
+    inputSource: 'screenplay' | 'story';
+  };
 }
