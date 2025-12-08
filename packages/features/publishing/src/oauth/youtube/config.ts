@@ -11,6 +11,7 @@ export const YOUTUBE_OAUTH_CONFIG = {
     'https://www.googleapis.com/auth/youtube.upload',
     'https://www.googleapis.com/auth/youtube.readonly',
     'https://www.googleapis.com/auth/youtube.force-ssl',
+    'https://www.googleapis.com/auth/yt-analytics.readonly',
   ],
   // Token expires in 1 hour, refresh 5 minutes before
   tokenRefreshBuffer: 5 * 60 * 1000,

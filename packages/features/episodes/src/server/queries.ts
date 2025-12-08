@@ -2,11 +2,12 @@ import 'server-only';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import type { Episode, Shot } from '../lib/types';
+import type { Episode, EpisodeWithShots, Shot } from '../lib/types';
 
-// Note: These queries assume the episodes and shots tables exist in the database.
-// The tables will be created as part of the database migration in FILM-101.
-
+/**
+ * Get all episodes for a project (excluding soft-deleted)
+ * Ordered by episode number ascending
+ */
 export async function getEpisodesByProject(projectId: string) {
   const client = getSupabaseServerClient();
 
@@ -15,7 +16,8 @@ export async function getEpisodesByProject(projectId: string) {
     .from('episodes')
     .select('*')
     .eq('project_id', projectId)
-    .order('episode_number', { ascending: true });
+    .is('deleted_at', null)
+    .order('number', { ascending: true });
 
   if (error) {
     return { data: null, error };
@@ -27,6 +29,9 @@ export async function getEpisodesByProject(projectId: string) {
   };
 }
 
+/**
+ * Get a single episode by ID (excluding soft-deleted)
+ */
 export async function getEpisode(episodeId: string) {
   const client = getSupabaseServerClient();
 
@@ -35,6 +40,7 @@ export async function getEpisode(episodeId: string) {
     .from('episodes')
     .select('*')
     .eq('id', episodeId)
+    .is('deleted_at', null)
     .single();
 
   if (error) {
@@ -47,6 +53,103 @@ export async function getEpisode(episodeId: string) {
   };
 }
 
+/**
+ * Get episode with all related shots and season info
+ */
+export async function getEpisodeWithShots(episodeId: string) {
+  const client = getSupabaseServerClient();
+
+  // Fetch episode with season info
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: episode, error: episodeError } = await (client as any)
+    .from('episodes')
+    .select(
+      `
+      *,
+      season:seasons(id, name, number)
+    `,
+    )
+    .eq('id', episodeId)
+    .is('deleted_at', null)
+    .single();
+
+  if (episodeError) {
+    return { data: null, error: episodeError };
+  }
+
+  // Fetch related shots (ordered by sequence)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: shots, error: shotsError } = await (client as any)
+    .from('shots')
+    .select('*')
+    .eq('episode_id', episodeId)
+    .order('sequence_number', { ascending: true });
+
+  if (shotsError) {
+    return { data: null, error: shotsError };
+  }
+
+  return {
+    data: {
+      ...episode,
+      shots: shots ?? [],
+      season: episode.season?.[0] ?? null,
+    } as EpisodeWithShots,
+    error: null,
+  };
+}
+
+/**
+ * Get the next episode number for auto-assignment
+ */
+export async function getNextEpisodeNumber(projectId: string) {
+  const client = getSupabaseServerClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client as any)
+    .from('episodes')
+    .select('number')
+    .eq('project_id', projectId)
+    .is('deleted_at', null)
+    .order('number', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    return { number: 1, error };
+  }
+
+  return {
+    number: (data?.[0]?.number ?? 0) + 1,
+    error: null,
+  };
+}
+
+/**
+ * Get episode count for a project (excluding soft-deleted)
+ */
+export async function getEpisodeCount(projectId: string) {
+  const client = getSupabaseServerClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { count, error } = await (client as any)
+    .from('episodes')
+    .select('*', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .is('deleted_at', null);
+
+  if (error) {
+    return { count: 0, error };
+  }
+
+  return {
+    count: count ?? 0,
+    error: null,
+  };
+}
+
+/**
+ * Get all shots for an episode (ordered by sequence)
+ */
 export async function getShotsByEpisode(episodeId: string) {
   const client = getSupabaseServerClient();
 
@@ -55,8 +158,7 @@ export async function getShotsByEpisode(episodeId: string) {
     .from('shots')
     .select('*')
     .eq('episode_id', episodeId)
-    .order('scene_number', { ascending: true })
-    .order('shot_number', { ascending: true });
+    .order('sequence_number', { ascending: true });
 
   if (error) {
     return { data: null, error };
@@ -68,6 +170,9 @@ export async function getShotsByEpisode(episodeId: string) {
   };
 }
 
+/**
+ * Get a single shot by ID
+ */
 export async function getShot(shotId: string) {
   const client = getSupabaseServerClient();
 
@@ -88,6 +193,9 @@ export async function getShot(shotId: string) {
   };
 }
 
+/**
+ * Get shots by scene number within an episode
+ */
 export async function getShotsByScene(episodeId: string, sceneNumber: number) {
   const client = getSupabaseServerClient();
 
@@ -97,7 +205,7 @@ export async function getShotsByScene(episodeId: string, sceneNumber: number) {
     .select('*')
     .eq('episode_id', episodeId)
     .eq('scene_number', sceneNumber)
-    .order('shot_number', { ascending: true });
+    .order('sequence_number', { ascending: true });
 
   if (error) {
     return { data: null, error };
