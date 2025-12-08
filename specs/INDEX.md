@@ -345,7 +345,7 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | DRAFT | M | FILM-101b, FILM-106 |
+| FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | ✅ DONE | M | FILM-101b, FILM-106 |
 | FILM-302 | [season-crud-actions](./phase-3-episodes/server/FILM-302-season-crud-actions.md) | DRAFT | S | FILM-301 |
 | FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | DRAFT | M | FILM-301 |
 | FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | ✅ DONE | S | - |
@@ -392,13 +392,8 @@ graph TD
 | FILM-505 | [audio-studio](./phase-5-audio-generation/components/FILM-505-audio-studio.md) | DRAFT | L | FILM-502 |
 | FILM-506 | [dialogue-list](./phase-5-audio-generation/components/FILM-506-dialogue-list.md) | DRAFT | M | FILM-503 |
 | FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.md) | DRAFT | M | FILM-206, FILM-506 |
-<<<<<<< HEAD
-| FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | DRAFT | M | - |
-| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
-=======
 | FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | ✅ DONE | M | - |
-| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | DRAFT | M | FILM-108 |
->>>>>>> origin/main
+| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | DRAFT | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/server/FILM-510-voice-cloning.md) | DRAFT | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/lib/FILM-511-lip-sync.md) | DRAFT | L | FILM-502 |
@@ -524,22 +519,22 @@ SPIKE-01 through SPIKE-05
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 1 | 0 | 0 | 0 | 4 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
-| 3. Episodes | 14 | 13 | 0 | 0 | 0 | 1 |
+| 3. Episodes | 14 | 12 | 0 | 0 | 0 | 2 |
 | 4. Video Gen | 15 | 13 | 0 | 0 | 0 | 2 |
-| 5. Audio Gen | 16 | 14 | 0 | 0 | 0 | 2 |
+| 5. Audio Gen | 16 | 13 | 0 | 0 | 0 | 3 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 10 | 0 | 0 | 0 | 5 |
 | 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **92** | **0** | **0** | **0** | **38** |
+| **TOTAL** | **130** | **89** | **0** | **0** | **0** | **41** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 34 | 37% |
-| Post-MVP | 37 | 4 | 11% |
+| MVP Specs | 93 | 36 | 39% |
+| Post-MVP | 37 | 5 | 14% |
 
 ---
 
@@ -566,7 +561,7 @@ SPIKE-01 through SPIKE-05
 |------|-----------|
 | FILM-201 | `packages/features/assets/src/server/asset-actions.ts` |
 | FILM-202 | `packages/features/assets/src/server/character-actions.ts` |
-| FILM-301 | `packages/features/episodes/src/server/episode-actions.ts` |
+| FILM-301 | `packages/features/episodes/src/server/actions.ts` ✅ |
 | FILM-405 | `packages/features/video-generation/src/server/generate-video.ts` |
 | FILM-502 | `packages/features/audio-generation/src/server/voice-actions.ts` |
 
