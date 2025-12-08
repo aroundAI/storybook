@@ -1,12 +1,15 @@
 /**
  * React hooks for audio generation
  *
- * Hooks will be implemented as needed in Phase 5:
- * - useVoiceGeneration
- * - useMusicGeneration
- * - useAudioPlayer
- * - useVoiceSelector
+ * Phase 5 hooks:
+ * - useAudioPlayer (implemented)
+ * - useVoiceGeneration (planned)
+ * - useMusicGeneration (planned)
+ * - useVoiceSelector (planned)
  */
 
-// Placeholder exports - hooks will be added in Phase 5
-export {};
+export {
+  useAudioPlayer,
+  type UseAudioPlayerOptions,
+  type UseAudioPlayerReturn,
+} from './useAudioPlayer';
