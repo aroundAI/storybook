@@ -388,12 +388,12 @@ graph TD
 | FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.md) | DRAFT | M | FILM-501 |
 | FILM-502b | [audio-provider-factory](./phase-5-audio-generation/providers/FILM-502b-audio-provider-factory.md) | DRAFT | M | FILM-501, FILM-509 |
 | FILM-503 | [batch-dialogue-action](./phase-5-audio-generation/server/FILM-503-batch-dialogue-action.md) | DRAFT | M | FILM-502 |
-| FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.md) | DRAFT | M | - |
+| FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.md) | ✅ DONE | M | - |
 | FILM-505 | [audio-studio](./phase-5-audio-generation/components/FILM-505-audio-studio.md) | DRAFT | L | FILM-502 |
 | FILM-506 | [dialogue-list](./phase-5-audio-generation/components/FILM-506-dialogue-list.md) | DRAFT | M | FILM-503 |
 | FILM-507 | [voice-assignment](./phase-5-audio-generation/components/FILM-507-voice-assignment.md) | DRAFT | M | FILM-206, FILM-506 |
 | FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | ✅ DONE | M | - |
-| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | DRAFT | M | FILM-108 |
+| FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | DRAFT | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/server/FILM-510-voice-cloning.md) | DRAFT | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/lib/FILM-511-lip-sync.md) | DRAFT | L | FILM-502 |
@@ -521,20 +521,20 @@ SPIKE-01 through SPIKE-05
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
 | 3. Episodes | 14 | 12 | 0 | 0 | 0 | 2 |
 | 4. Video Gen | 15 | 13 | 0 | 0 | 0 | 2 |
-| 5. Audio Gen | 16 | 16 | 0 | 0 | 0 | 0 |
+| 5. Audio Gen | 16 | 13 | 0 | 0 | 0 | 3 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 10 | 0 | 0 | 0 | 5 |
 | 8. Analytics | 10 | 10 | 0 | 0 | 0 | 0 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **95** | **0** | **0** | **0** | **35** |
+| **TOTAL** | **130** | **89** | **0** | **0** | **0** | **41** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 31 | 33% |
-| Post-MVP | 37 | 4 | 11% |
+| MVP Specs | 93 | 36 | 39% |
+| Post-MVP | 37 | 5 | 14% |
 
 ---
 

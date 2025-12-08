@@ -24,15 +24,20 @@
     "./webhooks/verifiers/elevenlabs": "./src/webhooks/verifiers/elevenlabs.ts",
     "./webhooks": "./src/webhooks/index.ts"
   },
+  "dependencies": {
+    "@kit/next": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "uuid": "^11.1.0"
+  },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@kit/ui": "workspace:*",
     "@types/node": "^24.5.0",
     "@types/react": "19.1.13",
+    "@types/uuid": "^10.0.0",
     "@vitejs/plugin-react": "^5.0.3",
     "happy-dom": "^18.0.1",
     "lucide-react": "^0.544.0",
