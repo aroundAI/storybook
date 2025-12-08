@@ -324,7 +324,7 @@ graph TD
 | FILM-DS-01 | [component-inventory](./design-system/FILM-DS-01-component-inventory.md) | ✅ DONE | M | - |
 | FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | ✅ DONE | S | - |
 | FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | DRAFT | M | FILM-DS-01 |
-| FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | DRAFT | M | FILM-DS-01 |
+| FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | ✅ DONE | M | FILM-DS-01 |
 | FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | ✅ DONE | S | FILM-DS-01 |
 
 ### Phase 2: Assets (9 specs)
@@ -517,7 +517,7 @@ SPIKE-01 through SPIKE-05
 |-------|-------|-------|--------|----------|-------------|------|
 | 1. Foundation | 26 | 6 | 0 | 0 | 0 | 20 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
-| Design System | 5 | 3 | 0 | 0 | 0 | 2 |
+| Design System | 5 | 1 | 0 | 0 | 0 | 4 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |
 | 3. Episodes | 14 | 13 | 0 | 0 | 0 | 1 |
 | 4. Video Gen | 15 | 13 | 0 | 0 | 0 | 2 |
@@ -533,7 +533,7 @@ SPIKE-01 through SPIKE-05
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 29 | 31% |
+| MVP Specs | 93 | 30 | 32% |
 | Post-MVP | 37 | 4 | 11% |
 
 ---
