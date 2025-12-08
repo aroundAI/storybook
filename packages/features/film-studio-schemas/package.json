@@ -1,5 +1,5 @@
 {
-  "name": "@kit/film-studio",
+  "name": "@kit/film-studio-schemas",
   "private": true,
   "version": "0.1.0",
   "scripts": {
@@ -12,28 +12,18 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./design-tokens": "./src/lib/design-tokens.ts",
-    "./components": "./src/components/index.ts",
-    "./hooks": "./src/hooks/index.ts",
-    "./server": "./src/server/index.ts",
-    "./lib": "./src/lib/index.ts",
-    "./types": "./src/lib/types.ts"
+    "./common": "./src/common.ts",
+    "./project": "./src/project.ts",
+    "./asset": "./src/asset.ts",
+    "./episode": "./src/episode.ts",
+    "./shot": "./src/shot.ts",
+    "./video": "./src/video.ts",
+    "./audio": "./src/audio.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
-    "@kit/ui": "workspace:*",
-    "@types/node": "^24.5.0",
-    "@types/react": "19.1.13",
-    "@types/react-dom": "19.1.9",
-    "lucide-react": "^0.544.0",
-    "next": "15.5.3",
-    "react": "19.1.1",
-    "react-dom": "19.1.1",
-    "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"
   },
