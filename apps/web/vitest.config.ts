@@ -106,6 +106,14 @@ export default defineConfig({
         __dirname,
         '../../packages/mailers/core/src/index.ts',
       ),
+      '@kit/assets/upload-validation': path.resolve(
+        __dirname,
+        '../../packages/features/assets/src/lib/upload-validation.ts',
+      ),
+      '@kit/assets/upload': path.resolve(
+        __dirname,
+        '../../packages/features/assets/src/lib/upload/index.ts',
+      ),
       '@kit/ui/utils': path.resolve(
         __dirname,
         '../../packages/ui/src/lib/utils/index.ts',

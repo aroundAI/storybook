@@ -3,8 +3,29 @@
 **Phase**: 2
 **Priority**: P0
 **Effort**: M (3-5 days)
-**Dependencies**: FILM-201 (asset CRUD)
+**Dependencies**: FILM-201 (asset CRUD), FILM-CC-01 (file upload validation)
 **Blocks**: FILM-207 (ImageUploader component)
+**Status**: ✅ COMPLETED
+**Completed**: 2025-12-07
+
+---
+
+## Completed Deliverables
+
+| Deliverable | Location |
+|-------------|----------|
+| Upload Route Handler | `apps/web/app/api/projects/[projectId]/assets/upload/route.ts` |
+| Image Processor | `packages/features/assets/src/lib/upload/image-processor.ts` |
+| Storage Client | `packages/features/assets/src/lib/upload/storage-client.ts` |
+| Storage Bucket Migration | `apps/web/supabase/migrations/20251207162036_project-assets-bucket.sql` |
+| Unit Tests | `packages/features/assets/src/lib/upload/__tests__/image-processor.test.ts` |
+
+### Implementation Notes
+
+- Uses `sharp` for image dimension validation and thumbnail generation (webp, 256x256)
+- Storage path format: `{projectId}/{assetId}/{fieldType}-{timestamp}-{random}-{filename}`
+- Bucket name: `project-assets` with RLS policies for project member access
+- Leverages existing `validateUpload()` from FILM-CC-01 for file validation
 
 ---
 
