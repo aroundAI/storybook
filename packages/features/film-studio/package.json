@@ -18,7 +18,6 @@
     "./server": "./src/server/index.ts",
     "./lib": "./src/lib/index.ts",
     "./types": "./src/lib/types.ts",
-    "./hooks": "./src/hooks/index.ts",
     "./interaction-patterns": "./src/lib/interaction-patterns.ts"
   },
   "devDependencies": {
