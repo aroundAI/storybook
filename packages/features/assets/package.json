@@ -20,7 +20,8 @@
     "./schemas": "./src/lib/schemas/asset.schema.ts",
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts",
-    "./upload-validation": "./src/lib/upload-validation.ts"
+    "./upload-validation": "./src/lib/upload-validation.ts",
+    "./upload": "./src/lib/upload/index.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -49,5 +50,8 @@
         "src/*"
       ]
     }
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
   }
 }
