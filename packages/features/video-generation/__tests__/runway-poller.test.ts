@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { RUNWAY_STATUS_MAP } from '../src/webhooks/types';
+import { RUNWAY_STATUS_MAP } from '../src/lib/provider-status';
 
 // Mock the logger
 vi.mock('@kit/shared/logger', () => ({

@@ -9,8 +9,8 @@ import { getLogger } from '@kit/shared/logger';
 import type {
   InternalJobStatus,
   RunwayStatusResponse,
-} from '../webhooks/types';
-import { RUNWAY_STATUS_MAP } from '../webhooks/types';
+} from './provider-status';
+import { RUNWAY_STATUS_MAP } from './provider-status';
 
 export interface RunwayPollerConfig {
   /** Runway API key */

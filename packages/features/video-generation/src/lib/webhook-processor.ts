@@ -8,10 +8,10 @@ import { getLogger } from '@kit/shared/logger';
 
 import type {
   HailuoWebhookPayload,
-  InternalJobStatus,
   KlingWebhookPayload,
 } from '../webhooks/types';
-import { HAILUO_STATUS_MAP, KLING_STATUS_MAP } from '../webhooks/types';
+import type { InternalJobStatus } from './provider-status';
+import { HAILUO_STATUS_MAP, KLING_STATUS_MAP } from './provider-status';
 
 export type VideoProvider = 'kling' | 'hailuo' | 'runway';
 
