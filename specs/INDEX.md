@@ -305,8 +305,8 @@ graph TD
 | FILM-106 | [episodes-package](./phase-1-foundation/packages/FILM-106-episodes-package.md) | ✅ DONE | S | - |
 | FILM-107 | [video-generation-package](./phase-1-foundation/packages/FILM-107-video-generation-package.md) | ✅ DONE | S | - |
 | FILM-108 | [audio-generation-package](./phase-1-foundation/packages/FILM-108-audio-generation-package.md) | ✅ DONE | S | - |
-| FILM-109 | [zod-schemas](./phase-1-foundation/packages/FILM-109-zod-schemas.md) | DRAFT | M | FILM-105, FILM-106 |
-| FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.md) | DRAFT | M | FILM-104 |
+| FILM-109 | [zod-schemas](./phase-1-foundation/packages/FILM-109-zod-schemas.md) | ✅ DONE | M | FILM-105, FILM-106 |
+| FILM-110 | [project-extension](./phase-1-foundation/packages/FILM-110-project-extension.md) | ✅ DONE | M | FILM-104 |
 | FILM-111 | [project-templates](./phase-1-foundation/packages/FILM-111-project-templates.md) | DRAFT | M | FILM-110 |
 
 ### Cross-Cutting Concerns (3 specs)
@@ -515,7 +515,7 @@ SPIKE-01 through SPIKE-05
 
 | Phase | Total | Draft | Review | Approved | In Progress | Done |
 |-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 26 | 6 | 0 | 0 | 0 | 20 |
+| 1. Foundation | 26 | 4 | 0 | 0 | 0 | 22 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 1 | 0 | 0 | 0 | 4 |
 | 2. Assets | 9 | 9 | 0 | 0 | 0 | 0 |

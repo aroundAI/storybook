@@ -199,6 +199,9 @@ importers:
       '@kit/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
+      '@kit/film-studio-schemas':
+        specifier: workspace:*
+        version: link:../../packages/features/film-studio-schemas
       '@kit/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
@@ -1388,6 +1391,9 @@ importers:
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
+      '@kit/film-studio-schemas':
+        specifier: workspace:*
+        version: link:../film-studio-schemas
       '@kit/monitoring':
         specifier: workspace:*
         version: link:../../monitoring/api
