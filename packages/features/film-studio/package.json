@@ -19,7 +19,8 @@
     "./server": "./src/server/index.ts",
     "./lib": "./src/lib/index.ts",
     "./lib/a11y": "./src/lib/a11y-utils.ts",
-    "./types": "./src/lib/types.ts"
+    "./types": "./src/lib/types.ts",
+    "./interaction-patterns": "./src/lib/interaction-patterns.ts"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
