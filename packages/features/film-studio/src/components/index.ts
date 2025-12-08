@@ -1,2 +1,2 @@
 // Film studio components (FILM-DS-01)
-export {};
+export * from './layout';
