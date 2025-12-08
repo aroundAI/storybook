@@ -231,6 +231,14 @@ describe('a11y-utils', () => {
       expect(formatTimeForScreenReader(30.7)).toBe('31 seconds');
       expect(formatTimeForScreenReader(90.4)).toBe('1 minute and 30 seconds');
     });
+
+    it('should handle edge case when seconds round up to 60', () => {
+      // 59.5 rounds to 60, should return "1 minute" not "60 seconds"
+      expect(formatTimeForScreenReader(59.5)).toBe('1 minute');
+      expect(formatTimeForScreenReader(59.6)).toBe('1 minute');
+      // 119.5 rounds to 120, should return "2 minutes"
+      expect(formatTimeForScreenReader(119.5)).toBe('2 minutes');
+    });
   });
 
   describe('createProgressLabel', () => {

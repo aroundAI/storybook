@@ -189,12 +189,15 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
  * @returns Human-readable time string
  */
 export function formatTimeForScreenReader(seconds: number): string {
-  if (seconds < 60) {
-    return `${Math.round(seconds)} second${seconds === 1 ? '' : 's'}`;
+  // Round first to handle edge cases like 59.5 -> 60
+  const roundedSeconds = Math.round(seconds);
+
+  if (roundedSeconds < 60) {
+    return `${roundedSeconds} second${roundedSeconds === 1 ? '' : 's'}`;
   }
 
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
+  const minutes = Math.floor(roundedSeconds / 60);
+  const remainingSeconds = roundedSeconds % 60;
 
   if (remainingSeconds === 0) {
     return `${minutes} minute${minutes === 1 ? '' : 's'}`;
