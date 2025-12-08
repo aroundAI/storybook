@@ -288,7 +288,7 @@ specs/
 | FILM-DS-02 | [design-tokens](./design-system/FILM-DS-02-design-tokens.md) | DRAFT | S |
 | FILM-DS-03 | [interaction-patterns](./design-system/FILM-DS-03-interaction-patterns.md) | DRAFT | M |
 | FILM-DS-04 | [accessibility](./design-system/FILM-DS-04-accessibility.md) | DRAFT | M |
-| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DRAFT | S |
+| FILM-DS-05 | [responsive-strategy](./design-system/FILM-DS-05-responsive-strategy.md) | DONE | S |
 
 ---
 
@@ -316,13 +316,13 @@ specs/
 | FILM-701 | [youtube-provider](./phase-7-publishing/providers/FILM-701-youtube-provider.md) | DRAFT | L |
 | FILM-702 | [tiktok-provider](./phase-7-publishing/providers/FILM-702-tiktok-provider.md) | DRAFT | L |
 | FILM-703 | [instagram-provider](./phase-7-publishing/providers/FILM-703-instagram-provider.md) | DRAFT | M |
-| FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.md) | DRAFT | M |
+| FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.md) | ✅ DONE | M |
 
 ### OAuth
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
-| FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.md) | DRAFT | M |
-| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | DRAFT | M |
+| FILM-705 | [youtube-oauth](./phase-7-publishing/oauth/FILM-705-youtube-oauth.md) | DONE | M |
+| FILM-706 | [tiktok-oauth](./phase-7-publishing/oauth/FILM-706-tiktok-oauth.md) | DONE | M |
 | FILM-707 | [meta-oauth](./phase-7-publishing/oauth/FILM-707-meta-oauth.md) | DRAFT | M |
 
 ### Components

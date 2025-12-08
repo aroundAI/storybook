@@ -13,13 +13,15 @@
   "exports": {
     ".": "./src/index.ts",
     "./components": "./src/components/index.ts",
+    "./server": "./src/lib/server/index.ts",
     "./mutations": "./src/lib/server/asset.mutations.ts",
     "./queries": "./src/lib/server/asset.queries.ts",
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas/asset.schema.ts",
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts",
-    "./upload-validation": "./src/lib/upload-validation.ts"
+    "./upload-validation": "./src/lib/upload-validation.ts",
+    "./upload": "./src/lib/upload/index.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -48,5 +50,8 @@
         "src/*"
       ]
     }
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
   }
 }

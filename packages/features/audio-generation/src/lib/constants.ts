@@ -118,6 +118,10 @@ export const ELEVENLABS = {
     'pcm_44100',
   ],
   COST_PER_1000_CHARS: 30, // cents ($0.30)
+  RATE_LIMITS: {
+    REQUESTS_PER_MINUTE: 100,
+    CONCURRENT_REQUESTS: 10,
+  },
 } as const;
 
 // PlayHT specific constants
