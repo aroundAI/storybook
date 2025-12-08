@@ -21,8 +21,9 @@ export type {
   YouTubeVideoInfo,
 } from './types';
 
-// Provider class and factory
+// Provider class, factory, and errors
 export {
   createYouTubeAnalyticsProvider,
   YouTubeAnalyticsProvider,
+  YouTubeAnalyticsScopeError,
 } from './youtube-analytics';

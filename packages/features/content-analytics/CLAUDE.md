@@ -71,14 +71,35 @@ The YouTube connection must include these scopes:
 
 | Error | Behavior |
 |-------|----------|
+| `YouTubeAnalyticsScopeError` | Thrown when connection is missing analytics scope - user must reconnect |
 | `quotaExceeded` | Throws error - caller should queue for later |
 | `forbidden` | Throws error - token may need re-auth |
 | `notFound` | Throws error for getVideoInfo, returns undefined for optional fields |
 | Missing data | Returns `undefined` for optional fields (retention, demographics) |
 
+### Handling Scope Errors
+
+Users who connected their YouTube account before FILM-801 will not have the `yt-analytics.readonly` scope. When they try to use analytics features, a `YouTubeAnalyticsScopeError` is thrown:
+
+```typescript
+import {
+  createYouTubeAnalyticsProvider,
+  YouTubeAnalyticsScopeError,
+} from '@kit/content-analytics/providers/youtube';
+
+try {
+  const analytics = await provider.getVideoAnalytics({ ... });
+} catch (error) {
+  if (error instanceof YouTubeAnalyticsScopeError) {
+    // Prompt user to reconnect their YouTube account
+    showReconnectDialog('Please reconnect your YouTube account to enable analytics.');
+  }
+  throw error;
+}
+```
+
 ## Dependencies
 
-- `@kit/publishing` - For token refresh integration (future)
 - `googleapis` - Google API client library
 
 ## Testing

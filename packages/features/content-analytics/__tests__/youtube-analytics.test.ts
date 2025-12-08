@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   YouTubeAnalyticsProvider,
+  YouTubeAnalyticsScopeError,
   createYouTubeAnalyticsProvider,
 } from '../src/providers/youtube/youtube-analytics';
 
@@ -244,6 +245,44 @@ describe('YouTubeAnalyticsProvider', () => {
       });
 
       expect(result.demographics).toBeUndefined();
+    });
+
+    it('should throw YouTubeAnalyticsScopeError for forbidden errors', async () => {
+      mockReportsQuery.mockRejectedValueOnce(
+        new Error('Request had insufficient authentication scopes'),
+      );
+
+      await expect(
+        provider.getVideoAnalytics({
+          videoId: 'test-video-id',
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-01-31'),
+        }),
+      ).rejects.toThrow(YouTubeAnalyticsScopeError);
+    });
+
+    it('should throw YouTubeAnalyticsScopeError for access denied errors', async () => {
+      mockReportsQuery.mockRejectedValueOnce(new Error('Forbidden'));
+
+      await expect(
+        provider.getVideoAnalytics({
+          videoId: 'test-video-id',
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-01-31'),
+        }),
+      ).rejects.toThrow(YouTubeAnalyticsScopeError);
+    });
+
+    it('should re-throw non-scope errors', async () => {
+      mockReportsQuery.mockRejectedValueOnce(new Error('Network error'));
+
+      await expect(
+        provider.getVideoAnalytics({
+          videoId: 'test-video-id',
+          startDate: new Date('2025-01-01'),
+          endDate: new Date('2025-01-31'),
+        }),
+      ).rejects.toThrow('Network error');
     });
   });
 });

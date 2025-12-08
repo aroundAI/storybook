@@ -16,6 +16,38 @@ import type {
 } from './types';
 
 /**
+ * Error thrown when the YouTube connection is missing the analytics scope.
+ * This occurs when users connected their YouTube account before analytics
+ * features were added (FILM-801).
+ */
+export class YouTubeAnalyticsScopeError extends Error {
+  constructor() {
+    super(
+      'YouTube Analytics access denied. Your YouTube connection was created before analytics features were added. ' +
+        'Please disconnect and reconnect your YouTube account to grant the required analytics permissions.',
+    );
+    this.name = 'YouTubeAnalyticsScopeError';
+  }
+}
+
+/**
+ * Checks if an error indicates missing analytics scope
+ */
+function isScopeMissingError(error: unknown): boolean {
+  if (error instanceof Error) {
+    const message = error.message.toLowerCase();
+    // Google API returns these for missing scopes
+    return (
+      message.includes('forbidden') ||
+      message.includes('insufficientpermissions') ||
+      message.includes('access denied') ||
+      message.includes('request had insufficient authentication scopes')
+    );
+  }
+  return false;
+}
+
+/**
  * YouTube Analytics Provider
  *
  * Fetches comprehensive analytics data from YouTube Analytics API v2
@@ -39,6 +71,8 @@ export class YouTubeAnalyticsProvider {
    * Fetches comprehensive analytics for a video
    *
    * Makes parallel API calls for optimal performance.
+   *
+   * @throws {YouTubeAnalyticsScopeError} If the connection is missing analytics scope
    */
   async getVideoAnalytics(
     input: YouTubeAnalyticsInput,
@@ -47,33 +81,41 @@ export class YouTubeAnalyticsProvider {
     const startDateStr = formatDate(startDate);
     const endDateStr = formatDate(endDate);
 
-    // Fetch metrics in parallel for optimal performance
-    const [
-      totals,
-      dailyData,
-      retention,
-      demographics,
-      trafficSources,
-      geography,
-    ] = await Promise.all([
-      this.fetchTotals(videoId, startDateStr, endDateStr),
-      this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
-      this.fetchRetention(videoId),
-      this.fetchDemographics(videoId, startDateStr, endDateStr),
-      this.fetchTrafficSources(videoId, startDateStr, endDateStr),
-      this.fetchGeography(videoId, startDateStr, endDateStr),
-    ]);
+    try {
+      // Fetch metrics in parallel for optimal performance
+      const [
+        totals,
+        dailyData,
+        retention,
+        demographics,
+        trafficSources,
+        geography,
+      ] = await Promise.all([
+        this.fetchTotals(videoId, startDateStr, endDateStr),
+        this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
+        this.fetchRetention(videoId),
+        this.fetchDemographics(videoId, startDateStr, endDateStr),
+        this.fetchTrafficSources(videoId, startDateStr, endDateStr),
+        this.fetchGeography(videoId, startDateStr, endDateStr),
+      ]);
 
-    return {
-      videoId,
-      period: { startDate: startDateStr, endDate: endDateStr },
-      totals,
-      dailyData,
-      retention,
-      demographics,
-      trafficSources,
-      geography,
-    };
+      return {
+        videoId,
+        period: { startDate: startDateStr, endDate: endDateStr },
+        totals,
+        dailyData,
+        retention,
+        demographics,
+        trafficSources,
+        geography,
+      };
+    } catch (error) {
+      // Check if this is a scope/permission error from existing connections
+      if (isScopeMissingError(error)) {
+        throw new YouTubeAnalyticsScopeError();
+      }
+      throw error;
+    }
   }
 
   /**

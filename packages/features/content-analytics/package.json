@@ -15,9 +15,7 @@
     "./providers/youtube/types": "./src/providers/youtube/types.ts"
   },
   "dependencies": {
-    "@kit/publishing": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*"
+    "googleapis": "^148.0.0"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -25,7 +23,6 @@
     "@kit/tsconfig": "workspace:*",
     "@supabase/supabase-js": "2.57.4",
     "@types/node": "^24.5.0",
-    "googleapis": "^148.0.0",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4"
   },
