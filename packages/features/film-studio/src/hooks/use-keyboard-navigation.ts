@@ -3,8 +3,8 @@
 import { useCallback, useEffect } from 'react';
 
 import {
-  getNextGridIndex,
   type NavigationDirection,
+  getNextGridIndex,
 } from '../lib/interaction-patterns';
 
 // ============================================================================

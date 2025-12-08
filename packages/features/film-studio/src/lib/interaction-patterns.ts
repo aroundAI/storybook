@@ -4,7 +4,6 @@
  * Provides standardized patterns for drag-and-drop, keyboard navigation,
  * loading states, empty states, and error states.
  */
-
 import type { AssetType } from './design-tokens';
 
 // ============================================================================
@@ -214,7 +213,8 @@ export const emptyStates = {
   },
   assets: {
     title: 'No assets uploaded',
-    description: 'Upload images, audio, or reference materials for your project',
+    description:
+      'Upload images, audio, or reference materials for your project',
     actionLabel: 'Upload Asset',
   },
 } as const;

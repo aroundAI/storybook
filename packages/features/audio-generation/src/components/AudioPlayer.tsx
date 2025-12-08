@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { Loader2, Pause, Play, Volume2, VolumeX } from 'lucide-react';
 
@@ -103,7 +103,13 @@ export const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
       }
     }, [isPlaying, internalIsPlaying, isLoading, play, pause]);
 
-    // Handle keyboard shortcuts
+    // Store frequently-changing values in refs to avoid re-registering event listener
+    const stateRef = useRef({ currentTime, volume, internalIsPlaying });
+    useEffect(() => {
+      stateRef.current = { currentTime, volume, internalIsPlaying };
+    });
+
+    // Handle keyboard shortcuts - registered once to avoid performance issues
     useEffect(() => {
       const handleKeyDown = (event: KeyboardEvent) => {
         // Skip if user is typing in an input
@@ -114,10 +120,16 @@ export const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
           return;
         }
 
+        const {
+          currentTime: time,
+          volume: vol,
+          internalIsPlaying: playing,
+        } = stateRef.current;
+
         switch (event.key) {
           case ' ':
             event.preventDefault();
-            if (internalIsPlaying) {
+            if (playing) {
               pause();
             } else {
               play();
@@ -129,35 +141,26 @@ export const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
             break;
           case 'ArrowLeft':
             event.preventDefault();
-            seek(currentTime - (event.shiftKey ? 10 : 5));
+            seek(time - (event.shiftKey ? 10 : 5));
             break;
           case 'ArrowRight':
             event.preventDefault();
-            seek(currentTime + (event.shiftKey ? 10 : 5));
+            seek(time + (event.shiftKey ? 10 : 5));
             break;
           case 'ArrowUp':
             event.preventDefault();
-            setVolume(Math.min(1, volume + 0.1));
+            setVolume(Math.min(1, vol + 0.1));
             break;
           case 'ArrowDown':
             event.preventDefault();
-            setVolume(Math.max(0, volume - 0.1));
+            setVolume(Math.max(0, vol - 0.1));
             break;
         }
       };
 
       document.addEventListener('keydown', handleKeyDown);
       return () => document.removeEventListener('keydown', handleKeyDown);
-    }, [
-      currentTime,
-      internalIsPlaying,
-      volume,
-      play,
-      pause,
-      seek,
-      setVolume,
-      toggleMute,
-    ]);
+    }, [play, pause, seek, setVolume, toggleMute]);
 
     // Handle progress slider change
     const handleProgressChange = useCallback(
