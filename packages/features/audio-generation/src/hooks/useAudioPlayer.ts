@@ -252,6 +252,8 @@ export function useAudioPlayer(
         }
       } catch (err) {
         // Waveform generation failure is non-critical, just log it
+        // Note: Using console.warn here because this is a client-side hook
+        // and the structured logger (getLogger) is async/server-side only
         console.warn('Failed to generate waveform:', err);
       }
     };

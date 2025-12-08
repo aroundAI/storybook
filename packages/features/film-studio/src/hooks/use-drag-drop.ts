@@ -6,11 +6,11 @@ import type { AssetType } from '../lib/design-tokens';
 import {
   type ClipDragState,
   type DragState,
+  SNAP_THRESHOLD_PX,
   dropZoneStyles,
   getDropZoneStyle,
   initialDragState,
   isAssetAccepted,
-  SNAP_THRESHOLD_PX,
   snapToGrid,
 } from '../lib/interaction-patterns';
 

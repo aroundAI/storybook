@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  SNAP_POINTS,
+  SNAP_THRESHOLD_PX,
   dragStyles,
   dropZoneStyles,
   emptyStates,
@@ -14,8 +16,6 @@ import {
   realtimeChannels,
   shotGridKeyboardShortcuts,
   skeletonPatterns,
-  SNAP_POINTS,
-  SNAP_THRESHOLD_PX,
   snapToGrid,
   timelineKeyboardShortcuts,
 } from '../src/lib/interaction-patterns';
@@ -280,7 +280,14 @@ describe('Utility Functions', () => {
 
   describe('isAssetAccepted', () => {
     const mockDropZone = {
-      accepts: ['character', 'location'] as ('character' | 'location' | 'prop' | 'voice' | 'music' | 'sfx')[],
+      accepts: ['character', 'location'] as (
+        | 'character'
+        | 'location'
+        | 'prop'
+        | 'voice'
+        | 'music'
+        | 'sfx'
+      )[],
       onDrop: () => {},
     };
 
