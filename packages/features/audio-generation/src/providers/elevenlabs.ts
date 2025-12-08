@@ -14,7 +14,11 @@ import { BaseVoiceGenerationProvider } from './base';
  * ElevenLabs voice generation provider
  * Premium AI voice synthesis with natural-sounding voices
  *
- * Full implementation will be done in FILM-501
+ * Features:
+ * - Text-to-speech with customizable voice settings
+ * - Streaming audio generation for real-time playback
+ * - Voice cloning from audio samples (up to 25 files)
+ * - Voice listing with filtering by language, gender, age, accent
  */
 export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
   readonly name = 'elevenlabs';
@@ -55,6 +59,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
               stability: settings.stability,
               similarity_boost: settings.similarityBoost,
               style: settings.style,
+              speed: settings.speed,
               use_speaker_boost: settings.useSpeakerBoost,
             },
             output_format: request.outputFormat ?? 'mp3_44100_128',
@@ -111,6 +116,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
             stability: settings.stability,
             similarity_boost: settings.similarityBoost,
             style: settings.style,
+            speed: settings.speed,
             use_speaker_boost: settings.useSpeakerBoost,
           },
         }),
@@ -230,25 +236,16 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         }
       });
 
-      const response = await fetch(`${this.baseUrl}/voices/add`, {
+      const data = await this.makeRequestWithRetry<{
+        voice_id: string;
+        name: string;
+      }>(`${this.baseUrl}/voices/add`, {
         method: 'POST',
         headers: {
           'xi-api-key': this.config.apiKey,
         },
         body: formData,
       });
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(
-          `Voice cloning failed: ${(error as { message?: string }).message ?? response.statusText}`,
-        );
-      }
-
-      const data = (await response.json()) as {
-        voice_id: string;
-        name: string;
-      };
 
       return {
         voiceId: data.voice_id,
@@ -286,8 +283,8 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
    */
   getRateLimits() {
     return {
-      requestsPerMinute: 100,
-      concurrentRequests: 10,
+      requestsPerMinute: ELEVENLABS.RATE_LIMITS.REQUESTS_PER_MINUTE,
+      concurrentRequests: ELEVENLABS.RATE_LIMITS.CONCURRENT_REQUESTS,
     };
   }
 
