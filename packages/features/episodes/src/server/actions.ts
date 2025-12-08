@@ -54,40 +54,71 @@ export const createEpisodeAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Auto-assign episode number if not provided
-    let episodeNumber = data.number;
-    if (!episodeNumber) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existingEpisodes } = await (client as any)
-        .from('episodes')
-        .select('number')
-        .eq('project_id', data.projectId)
-        .is('deleted_at', null)
-        .order('number', { ascending: false })
-        .limit(1);
+    // Auto-assign episode number with retry logic for race conditions
+    // The database has a unique constraint (unique_episode_number_per_project)
+    // so we retry if there's a conflict
+    const MAX_RETRIES = 3;
+    let episode;
+    let lastError;
 
-      episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      let episodeNumber = data.number;
+      if (!episodeNumber) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existingEpisodes } = await (client as any)
+          .from('episodes')
+          .select('number')
+          .eq('project_id', data.projectId)
+          .is('deleted_at', null)
+          .order('number', { ascending: false })
+          .limit(1);
+
+        episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: insertedEpisode, error } = await (client as any)
+        .from('episodes')
+        .insert({
+          project_id: data.projectId,
+          season_id: data.seasonId ?? null,
+          number: episodeNumber,
+          title: data.title,
+          description: data.description ?? null,
+          status: 'draft',
+          metadata: {},
+          version: 1,
+        })
+        .select()
+        .single();
+
+      if (!error) {
+        episode = insertedEpisode;
+        break;
+      }
+
+      // Check if it's a unique constraint violation (race condition)
+      const isUniqueViolation =
+        error.code === '23505' || error.message?.includes('unique');
+
+      if (isUniqueViolation && !data.number && attempt < MAX_RETRIES - 1) {
+        // Retry with a new auto-assigned number
+        logger.warn(
+          { ...ctx, attempt, error },
+          'Episode number conflict, retrying',
+        );
+        continue;
+      }
+
+      lastError = error;
+      break;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error } = await (client as any)
-      .from('episodes')
-      .insert({
-        project_id: data.projectId,
-        season_id: data.seasonId ?? null,
-        number: episodeNumber,
-        title: data.title,
-        description: data.description ?? null,
-        status: 'draft',
-        metadata: {},
-        version: 1,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to create episode');
-      throw new Error(`Failed to create episode: ${error.message}`);
+    if (!episode) {
+      logger.error({ ...ctx, error: lastError }, 'Failed to create episode');
+      throw new Error(
+        `Failed to create episode: ${lastError?.message ?? 'Unknown error'}`,
+      );
     }
 
     // Get project for audit log scope
@@ -519,12 +550,21 @@ export const deleteEpisodeAction = enhanceAction(
       throw new Error('Failed to delete episode');
     }
 
-    // Cascade soft delete to related shots
+    // Hard delete related shots (shots table doesn't have deleted_at column)
+    // TODO: Add deleted_at column to shots table in FILM-303 for soft delete consistency
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { error: shotsError } = await (client as any)
       .from('shots')
-      .update({ deleted_at: now })
+      .delete()
       .eq('episode_id', data.episodeId);
+
+    if (shotsError) {
+      logger.error(
+        { ...ctx, error: shotsError },
+        'Failed to delete related shots',
+      );
+      // Don't throw - episode is already soft-deleted, log and continue
+    }
 
     // Create audit log
     const accountId = episode.project?.account_id;
