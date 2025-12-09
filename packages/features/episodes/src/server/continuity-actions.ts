@@ -2,6 +2,9 @@
 
 import 'server-only';
 
+import { revalidatePath } from 'next/cache';
+
+import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { createLLMClient } from '@kit/llm';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -220,11 +223,11 @@ export const fixContinuityIssueAction = enhanceAction(
       throw new Error('This issue cannot be auto-fixed');
     }
 
-    // Fetch episode for fixing
+    // Fetch episode for fixing (include project for audit log)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
-      .select('*')
+      .select('*, project:projects(id, account_id)')
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -293,6 +296,43 @@ export const fixContinuityIssueAction = enhanceAction(
         logger.error({ ...ctx, error: updateError }, 'Failed to apply fix');
         throw new Error('Failed to apply fix');
       }
+
+      // Create audit log
+      const accountId = episode.project?.account_id;
+      if (accountId) {
+        const networkContext = await extractNetworkContext();
+
+        await createAuditLog({
+          accountId,
+          userId: user.id,
+          action: 'update',
+          objectType: 'episode',
+          objectId: data.episodeId,
+          objectName: episode.title,
+          before: {
+            story_data: episode.story_data,
+            screenplay_data: episode.screenplay_data,
+          },
+          after: {
+            story_data: fix.story ?? episode.story_data,
+            screenplay_data: fix.screenplay ?? episode.screenplay_data,
+          },
+          scopes: [
+            { type: 'account', id: accountId },
+            { type: 'project', id: episode.project_id },
+            { type: 'episode', id: data.episodeId },
+          ],
+          metadata: {
+            fixType: 'continuity',
+            issueId: data.issueId,
+            issueType: issue.type,
+          },
+          ...networkContext,
+        });
+      }
+
+      // Revalidate cache
+      revalidatePath('/home/[account]/projects/[id]', 'page');
     }
 
     logger.info(ctx, 'Continuity issue fixed');
