@@ -321,16 +321,28 @@ function ShotRow({ shot, episodeId, isSelected, onSelect }: {
 
 ---
 
+## Implementation Status
+
+**Status**: COMPLETED
+**Completed Date**: 2025-12-08
+**PR**: feat/film-308-story-studio
+
+### Files Created
+- `packages/features/episodes/src/components/shot-list-editor/shot-list-editor.tsx`
+- `packages/features/episodes/src/components/shot-list-editor/shot-row.tsx`
+
+---
+
 ## Acceptance Criteria
 
-- [ ] Displays shots in sortable table
-- [ ] Drag-and-drop reordering works
-- [ ] Inline editing saves changes
-- [ ] Status badges color-coded
-- [ ] Bulk actions work (select multiple)
-- [ ] Search/filter functionality works
-- [ ] Generate buttons trigger video generation
-- [ ] Responsive on mobile
+- [x] Displays shots in sortable table
+- [x] Drag-and-drop reordering works
+- [x] Inline editing saves changes
+- [x] Status badges color-coded
+- [x] Bulk actions work (select multiple)
+- [x] Search/filter functionality works
+- [x] Generate buttons trigger video generation
+- [x] Responsive on mobile
 
 ---
 
