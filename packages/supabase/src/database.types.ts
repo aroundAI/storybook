@@ -483,10 +483,13 @@ export type Database = {
         Row: {
           audio_url: string | null;
           character_asset_id: string | null;
+          character_name: string | null;
           created_at: string;
+          emotion: string | null;
           episode_id: string;
           generation_metadata: Json | null;
           id: string;
+          scene_number: number | null;
           sequence_number: number;
           shot_id: string | null;
           status: string;
@@ -495,10 +498,13 @@ export type Database = {
         Insert: {
           audio_url?: string | null;
           character_asset_id?: string | null;
+          character_name?: string | null;
           created_at?: string;
+          emotion?: string | null;
           episode_id: string;
           generation_metadata?: Json | null;
           id?: string;
+          scene_number?: number | null;
           sequence_number: number;
           shot_id?: string | null;
           status?: string;
@@ -507,10 +513,13 @@ export type Database = {
         Update: {
           audio_url?: string | null;
           character_asset_id?: string | null;
+          character_name?: string | null;
           created_at?: string;
+          emotion?: string | null;
           episode_id?: string;
           generation_metadata?: Json | null;
           id?: string;
+          scene_number?: number | null;
           sequence_number?: number;
           shot_id?: string | null;
           status?: string;
