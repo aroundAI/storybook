@@ -283,18 +283,22 @@ function formatScreenplayForPrompt(screenplayData: any): string {
 
 ## Acceptance Criteria
 
-- [ ] `generateShotListAction` generates shots from screenplay
-- [ ] Creates shot records via batchCreateShotsAction
-- [ ] Updates episode.shot_list with metadata
-- [ ] Validates output with Zod schema
-- [ ] Handles optimistic locking
-- [ ] Completes within 40 seconds
-- [ ] Enforces authentication
+**Status**: ✅ Complete (2025-12-08)
+**Implementation**: PR #TBD
+
+- [x] `generateShotListAction` generates shots from screenplay
+- [x] Creates shot records via batchCreateShotsAction
+- [x] Updates episode.shot_list with metadata
+- [x] Validates output with Zod schema
+- [x] Handles optimistic locking
+- [x] Completes within 40 seconds
+- [x] Enforces authentication
+- [x] Supports both screenplay_data and story_data as input sources (fallback)
 
 ---
 
 ## References
 
-- **FILM-303**: Shot CRUD actions
+- **FILM-303**: Shot CRUD actions (implemented together)
 - **FILM-306**: Screenplay conversion
 - **FILM-304**: Prompt templates

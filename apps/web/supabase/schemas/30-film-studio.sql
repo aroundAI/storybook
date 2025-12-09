@@ -313,6 +313,8 @@ create index if not exists idx_external_api_keys_active on public.external_api_k
 create table if not exists public.shots (
   id uuid primary key default extensions.uuid_generate_v4(),
   episode_id uuid not null references public.episodes(id) on delete cascade,
+  scene_number integer,
+  shot_number integer,
   sequence_number integer not null,
   duration_seconds integer default 10 not null,
   scene_description text,
@@ -326,23 +328,30 @@ create table if not exists public.shots (
   generation_metadata jsonb,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
+  deleted_at timestamp with time zone default null,
   check (status in ('pending', 'queued', 'generating', 'completed', 'failed', 'approved')),
   check (duration_seconds > 0 and duration_seconds <= 60),
   unique(episode_id, sequence_number)
 );
 
 comment on table public.shots is 'Individual video clips that make up an episode';
+comment on column public.shots.scene_number is 'Scene number this shot belongs to';
+comment on column public.shots.shot_number is 'Shot number within the scene';
 comment on column public.shots.sequence_number is 'Order within episode (1, 2, 3...)';
 comment on column public.shots.prompt is 'Kling/Runway-ready prompt';
 comment on column public.shots.status is 'Generation status: pending, queued, generating, completed, failed, approved';
 comment on column public.shots.generation_metadata is 'Provider-specific metadata (provider, cost, parameters)';
+comment on column public.shots.deleted_at is 'Soft delete timestamp';
 
 -- Indexes for shots
-create index if not exists idx_shots_episode_sequence on public.shots(episode_id, sequence_number);
+create index if not exists idx_shots_episode_sequence on public.shots(episode_id, sequence_number)
+  where deleted_at is null;
 create index if not exists idx_shots_status on public.shots(status);
 create index if not exists idx_shots_generation_job_id on public.shots(generation_job_id)
   where generation_job_id is not null;
 create index if not exists idx_shots_episode_id on public.shots(episode_id);
+create index if not exists idx_shots_deleted_at on public.shots(deleted_at)
+  where deleted_at is not null;
 
 -- Timestamps trigger for shots
 create trigger shots_set_timestamps

@@ -13,13 +13,11 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   CreateEpisodeSchema,
-  CreateShotSchema,
   DeleteEpisodeSchema,
   GetEpisodeSchema,
   ListProjectEpisodesSchema,
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
-  UpdateShotSchema,
 } from '../lib/schemas';
 import {
   InvalidStatusTransitionError,
@@ -597,150 +595,5 @@ export const deleteEpisodeAction = enhanceAction(
   },
 );
 
-// ============================================================================
-// Shot Actions (Out of scope for FILM-301, will be updated in FILM-303)
-// ============================================================================
-
-export const createShotAction = enhanceAction(
-  async (data) => {
-    const logger = await getLogger();
-    const ctx = { name: 'shots.create', episodeId: data.episodeId };
-
-    logger.info(ctx, 'Creating shot');
-
-    const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      logger.warn(ctx, 'Unauthorized shot creation attempt');
-      throw new Error('Authentication required');
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: shot, error } = await (client as any)
-      .from('shots')
-      .insert({
-        episode_id: data.episodeId,
-        scene_number: data.sceneNumber,
-        shot_number: data.shotNumber,
-        description: data.description,
-        duration: data.duration,
-        camera_angle: data.cameraAngle,
-        camera_movement: data.cameraMovement,
-        prompt: data.prompt,
-        metadata: data.metadata,
-        generation_settings: data.generationSettings,
-        status: 'pending',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to create shot');
-      throw error;
-    }
-
-    logger.info({ ...ctx, shotId: shot.id }, 'Shot created');
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-
-    return { success: true, shot };
-  },
-  {
-    schema: CreateShotSchema,
-  },
-);
-
-export const updateShotAction = enhanceAction(
-  async (data) => {
-    const logger = await getLogger();
-    const ctx = { name: 'shots.update', shotId: data.id };
-
-    logger.info(ctx, 'Updating shot');
-
-    const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      logger.warn(ctx, 'Unauthorized shot update attempt');
-      throw new Error('Authentication required');
-    }
-
-    const updateData: Record<string, unknown> = {};
-
-    if (data.sceneNumber !== undefined)
-      updateData.scene_number = data.sceneNumber;
-    if (data.shotNumber !== undefined) updateData.shot_number = data.shotNumber;
-    if (data.description !== undefined)
-      updateData.description = data.description;
-    if (data.duration !== undefined) updateData.duration = data.duration;
-    if (data.cameraAngle !== undefined)
-      updateData.camera_angle = data.cameraAngle;
-    if (data.cameraMovement !== undefined)
-      updateData.camera_movement = data.cameraMovement;
-    if (data.prompt !== undefined) updateData.prompt = data.prompt;
-    if (data.status !== undefined) updateData.status = data.status;
-    if (data.videoUrl !== undefined) updateData.video_url = data.videoUrl;
-    if (data.thumbnailUrl !== undefined)
-      updateData.thumbnail_url = data.thumbnailUrl;
-    if (data.metadata !== undefined) updateData.metadata = data.metadata;
-    if (data.generationSettings !== undefined)
-      updateData.generation_settings = data.generationSettings;
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: shot, error } = await (client as any)
-      .from('shots')
-      .update(updateData)
-      .eq('id', data.id)
-      .select()
-      .single();
-
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to update shot');
-      throw error;
-    }
-
-    logger.info(ctx, 'Shot updated');
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-
-    return { success: true, shot };
-  },
-  {
-    schema: UpdateShotSchema,
-  },
-);
-
-export const deleteShotAction = enhanceAction(
-  async (data) => {
-    const logger = await getLogger();
-    const ctx = { name: 'shots.delete', shotId: data.id };
-
-    logger.info(ctx, 'Deleting shot');
-
-    const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      logger.warn(ctx, 'Unauthorized shot deletion attempt');
-      throw new Error('Authentication required');
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (client as any)
-      .from('shots')
-      .delete()
-      .eq('id', data.id);
-
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to delete shot');
-      throw error;
-    }
-
-    logger.info(ctx, 'Shot deleted');
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-
-    return { success: true };
-  },
-  {
-    schema: UpdateShotSchema.pick({ id: true }),
-  },
-);
+// Shot CRUD actions have been moved to lib/server/mutations/shot-actions.ts (FILM-303)
+// Shot list generation has been moved to lib/server/mutations/shot-list-actions.ts (FILM-307)
