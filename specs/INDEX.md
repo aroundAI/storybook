@@ -367,7 +367,7 @@ graph TD
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | ✅ DONE | L | FILM-107 |
 | FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | DRAFT | M | FILM-107, FILM-402 |
 | FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | DRAFT | M | FILM-107, FILM-402 |
-| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S | FILM-401 |
+| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | S | FILM-401 |
 | FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | ✅ DONE | M | - |
 | FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | ✅ DONE | L | FILM-403 |
 | FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | ✅ DONE | L | FILM-401, FILM-404 |
