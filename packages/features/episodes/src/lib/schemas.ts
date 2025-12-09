@@ -199,6 +199,10 @@ export {
   type GenerationMetadata,
 } from './schemas/story.schema';
 
+// Shot CRUD schemas are in ./schemas/shot.schema.ts (FILM-303)
+// Shot list generation schemas are in ./schemas/shot-list.schema.ts (FILM-307)
+// Import directly from those files to avoid naming conflicts
+
 // ============================================================================
 // Screenplay Conversion Schemas (FILM-306)
 // ============================================================================

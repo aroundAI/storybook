@@ -17,7 +17,7 @@ import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
 import type { Shot, ShotStatus } from '../../lib/types';
-import { updateShotAction } from '../../server/actions';
+import { updateShotAction } from '../../server';
 
 interface ShotRowProps {
   shot: Shot;
@@ -62,7 +62,7 @@ export function ShotRow({
     startTransition(async () => {
       try {
         await updateShotAction({
-          id: shot.id,
+          shotId: shot.id,
           prompt: editedPrompt,
         });
         setIsEditing(false);

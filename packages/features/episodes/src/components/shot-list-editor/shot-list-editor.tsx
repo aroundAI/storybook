@@ -47,7 +47,7 @@ import {
 } from '@kit/ui/table';
 
 import type { EpisodeWithShots, Shot, ShotStatus } from '../../lib/types';
-import { reorderShotsAction } from '../../server/actions';
+import { reorderShotsAction } from '../../server';
 import { useStoryStudioContext } from '../story-studio/story-studio-context';
 import { ShotRow } from './shot-row';
 
