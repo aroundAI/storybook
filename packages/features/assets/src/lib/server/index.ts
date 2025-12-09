@@ -21,3 +21,11 @@ export {
   updateAssetAction,
   deleteAssetAction,
 } from './asset.mutations';
+
+// Re-export character actions (FILM-202)
+export {
+  createCharacterAction,
+  getCharacterAction,
+  updateCharacterAction,
+  listCharactersAction,
+} from './character-actions';

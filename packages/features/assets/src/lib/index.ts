@@ -1,3 +1,71 @@
-export * from './types';
-export * from './schemas/asset.schema';
+// Base types (FILM-201)
+export {
+  type Asset,
+  type AssetType,
+  type AssetRow,
+  type GetProjectAssetsResponse,
+  type DeleteAssetResponse,
+  // Legacy character metadata (for backwards compatibility)
+  type CharacterMetadata,
+  type LocationMetadata,
+  type Location,
+  type PropMetadata,
+  type Prop,
+  type VoiceMetadata,
+  type Voice,
+  mapRowToAsset,
+} from './types';
+
+// Extended character types (FILM-202)
+export {
+  type Character,
+  type PhysicalAttributes,
+  type PersonalityTraits,
+  type ClothingStyle,
+  type ListCharactersResponse,
+  type CharacterDetailsRow,
+} from './types/character.types';
+
+// Base asset schemas (FILM-201)
+export {
+  AssetTypeSchema,
+  CharacterMetadataSchema,
+  LocationMetadataSchema,
+  PropMetadataSchema,
+  VoiceMetadataSchema,
+  VoiceSettingsSchema,
+  CreateAssetSchema,
+  UpdateAssetSchema,
+  GetProjectAssetsSchema,
+  DeleteAssetSchema,
+  GetAssetSchema,
+  CreateLocationSchema,
+  CreatePropSchema,
+  CreateVoiceSchema,
+  type CreateAssetInput,
+  type UpdateAssetInput,
+  type GetProjectAssetsInput,
+  type DeleteAssetInput,
+  type GetAssetInput,
+} from './schemas/asset.schema';
+
+// Extended character schemas (FILM-202)
+export {
+  PhysicalAttributesSchema,
+  PersonalityTraitsSchema,
+  ClothingStyleSchema,
+  CreateCharacterSchema,
+  GetCharacterSchema,
+  UpdateCharacterSchema,
+  ListCharactersSchema,
+  type CreateCharacterInput,
+  type GetCharacterInput,
+  type UpdateCharacterInput,
+  type ListCharactersInput,
+  type PhysicalAttributesInput,
+  type PersonalityTraitsInput,
+  type ClothingStyleInput,
+} from './schemas/character.schema';
+
+// Constants
 export * from './constants';
