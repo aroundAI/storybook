@@ -1,8 +1,8 @@
 'server-only';
 
-import { Queue, type Job } from 'bullmq';
+import { type Job, Queue } from 'bullmq';
 
-import { getQueueConfig, QUEUE_NAME } from './config';
+import { QUEUE_NAME, getQueueConfig } from './config';
 import type {
   AddJobOptions,
   QueueJobStatus,
