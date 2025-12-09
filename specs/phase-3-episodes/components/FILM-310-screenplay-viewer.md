@@ -213,15 +213,28 @@ function SceneContent({ scene }: { scene: any }) {
 
 ---
 
+## Implementation Status
+
+**Status**: COMPLETED
+**Completed Date**: 2025-12-08
+**PR**: feat/film-308-story-studio
+
+### Files Created
+- `packages/features/episodes/src/components/screenplay-viewer/screenplay-viewer.tsx`
+- `packages/features/episodes/src/components/screenplay-viewer/scene-content.tsx`
+- `packages/features/episodes/src/components/screenplay-viewer/scene-navigation.tsx`
+
+---
+
 ## Acceptance Criteria
 
-- [ ] Displays scenes in professional screenplay format
-- [ ] Scene navigation sidebar works
-- [ ] Active scene highlights on click
-- [ ] Approve button advances pipeline
-- [ ] Regenerate button triggers conversion
-- [ ] Loading states display correctly
-- [ ] Responsive on mobile (sidebar collapses)
+- [x] Displays scenes in professional screenplay format
+- [x] Scene navigation sidebar works
+- [x] Active scene highlights on click
+- [x] Approve button advances pipeline
+- [x] Regenerate button triggers conversion
+- [x] Loading states display correctly
+- [x] Responsive on mobile (sidebar collapses)
 
 ---
 

@@ -497,30 +497,42 @@ None (new feature)
 
 ---
 
+## Implementation Status
+
+**Status**: COMPLETED
+**Completed Date**: 2025-12-08
+**PR**: feat/film-308-story-studio
+
+### Files Created
+- `packages/features/episodes/src/lib/schemas/story.schema.ts`
+- `packages/features/episodes/src/server/story-actions.ts`
+
+---
+
 ## Acceptance Criteria
 
 ### Functional
 
-- [ ] `generateStoryIdeasAction` generates 3-5 story ideas from premise
-- [ ] `generateStoryIdeasAction` validates output with Zod schema
-- [ ] `generateStoryIdeasAction` calculates cost accurately
-- [ ] `generateStoryIdeasAction` completes within 15 seconds
-- [ ] `generateFullStoryAction` generates 500-1000 word story
-- [ ] `generateFullStoryAction` updates episode.story_data
-- [ ] `generateFullStoryAction` updates episode status to 'story'
-- [ ] `generateFullStoryAction` validates output with Zod schema
-- [ ] `generateFullStoryAction` handles optimistic locking
-- [ ] `generateFullStoryAction` completes within 30 seconds
-- [ ] All actions enforce authentication
-- [ ] All actions respect RLS policies
+- [x] `generateStoryIdeasAction` generates 3-5 story ideas from premise
+- [x] `generateStoryIdeasAction` validates output with Zod schema
+- [x] `generateStoryIdeasAction` calculates cost accurately
+- [x] `generateStoryIdeasAction` completes within 15 seconds
+- [x] `generateFullStoryAction` generates 500-1000 word story
+- [x] `generateFullStoryAction` updates episode.story_data
+- [x] `generateFullStoryAction` updates episode status to 'story'
+- [x] `generateFullStoryAction` validates output with Zod schema
+- [x] `generateFullStoryAction` handles optimistic locking
+- [x] `generateFullStoryAction` completes within 30 seconds
+- [x] All actions enforce authentication
+- [x] All actions respect RLS policies
 
 ### Non-Functional
 
-- [ ] Supports Claude, GPT-4, and Gemini providers
-- [ ] Handles LLM timeouts gracefully
-- [ ] Handles LLM rate limits with retry
-- [ ] Logs all generation attempts
-- [ ] Tracks costs accurately
+- [x] Supports Claude, GPT-4, and Gemini providers
+- [x] Handles LLM timeouts gracefully
+- [x] Handles LLM rate limits with retry
+- [x] Logs all generation attempts
+- [x] Tracks costs accurately
 - [ ] TypeScript compiles without errors
 - [ ] No ESLint warnings
 
