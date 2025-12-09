@@ -178,6 +178,10 @@ export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
 
+// Shot CRUD schemas are in ./schemas/shot.schema.ts (FILM-303)
+// Shot list generation schemas are in ./schemas/shot-list.schema.ts (FILM-307)
+// Import directly from those files to avoid naming conflicts
+
 // ============================================================================
 // Screenplay Conversion Schemas (FILM-306)
 // ============================================================================
