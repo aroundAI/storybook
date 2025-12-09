@@ -435,7 +435,7 @@ graph TD
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-801 | [youtube-analytics](./phase-8-analytics/providers/FILM-801-youtube-analytics.md) | ✅ DONE | M | - |
-| FILM-802 | [tiktok-analytics](./phase-8-analytics/providers/FILM-802-tiktok-analytics.md) | DRAFT | M | - |
+| FILM-802 | [tiktok-analytics](./phase-8-analytics/providers/FILM-802-tiktok-analytics.md) | ✅ DONE | M | FILM-706 |
 | FILM-803 | [instagram-insights](./phase-8-analytics/providers/FILM-803-instagram-insights.md) | DRAFT | M | - |
 | FILM-804 | [analytics-sync-cron](./phase-8-analytics/server/FILM-804-analytics-sync-cron.md) | DRAFT | M | FILM-801-803 |
 | FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | DRAFT | L | FILM-804 |
@@ -524,17 +524,17 @@ SPIKE-01 through SPIKE-05
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 8 | 0 | 0 | 0 | 7 |
-| 8. Analytics | 10 | 9 | 0 | 0 | 0 | 1 |
+| 8. Analytics | 10 | 8 | 0 | 0 | 0 | 2 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **73** | **0** | **0** | **0** | **57** |
+| **TOTAL** | **130** | **72** | **0** | **0** | **0** | **58** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
 | MVP Specs | 93 | 49 | 53% |
-| Post-MVP | 37 | 8 | 22% |
+| Post-MVP | 37 | 9 | 24% |
 
 ---
 

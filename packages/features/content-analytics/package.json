@@ -12,7 +12,9 @@
   },
   "exports": {
     "./providers/youtube": "./src/providers/youtube/index.ts",
-    "./providers/youtube/types": "./src/providers/youtube/types.ts"
+    "./providers/youtube/types": "./src/providers/youtube/types.ts",
+    "./providers/tiktok": "./src/providers/tiktok/index.ts",
+    "./providers/tiktok/types": "./src/providers/tiktok/types.ts"
   },
   "dependencies": {
     "googleapis": "^148.0.0"
