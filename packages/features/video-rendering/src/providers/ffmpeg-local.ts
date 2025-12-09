@@ -86,7 +86,7 @@ export class FFmpegLocalProvider extends BaseVideoRenderProvider {
    */
   async isAvailable(): Promise<boolean> {
     return new Promise((resolve) => {
-      ffmpeg.getAvailableFormats((err) => {
+      ffmpeg.getAvailableFormats((err: Error | null) => {
         resolve(!err);
       });
     });
@@ -146,8 +146,8 @@ export class FFmpegLocalProvider extends BaseVideoRenderProvider {
 
       // Set up event handlers
       command
-        .on('start', (cmdLine) => {
-          console.log(`[FFmpeg] Job ${jobId} started:`, cmdLine);
+        .on('start', (_cmdLine: string) => {
+          // Job started - command line available for debugging if needed
         })
         .on('progress', (progress) => {
           const percent = progress.percent ?? 0;
@@ -193,14 +193,11 @@ export class FFmpegLocalProvider extends BaseVideoRenderProvider {
             renderTime: Date.now() - startTime,
           });
         })
-        .on('error', (err) => {
+        .on('error', (err: Error) => {
           this.activeJobs.delete(jobId);
-          console.error(`[FFmpeg] Job ${jobId} failed:`, err);
 
-          // Clean up partial output
-          if (fs.existsSync(outputPath)) {
-            fs.unlinkSync(outputPath);
-          }
+          // Clean up partial output safely (avoid race with cancel())
+          this.safeUnlink(outputPath);
 
           reject({
             jobId,
@@ -240,9 +237,23 @@ export class FFmpegLocalProvider extends BaseVideoRenderProvider {
       job.command.kill('SIGTERM');
       this.activeJobs.delete(jobId);
 
-      // Clean up partial output
-      if (fs.existsSync(job.outputPath)) {
-        fs.unlinkSync(job.outputPath);
+      // Clean up partial output safely
+      this.safeUnlink(job.outputPath);
+    }
+  }
+
+  /**
+   * Safely unlink a file, ignoring ENOENT errors (file already deleted)
+   */
+  private safeUnlink(filePath: string): void {
+    try {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    } catch (err) {
+      // Ignore ENOENT errors (file already deleted by another handler)
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw err;
       }
     }
   }

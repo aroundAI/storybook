@@ -59,14 +59,14 @@ export function timelineToRenderRequest(
     timelineClipToVideoClip(clip, project.frameRate)
   );
 
-  // Extract transitions between clips
+  // Extract transitions between clips (N-1 transitions for N clips)
   const transitions: Transition[] = [];
-  for (let i = 0; i < sortedVideoClips.length; i++) {
+  for (let i = 1; i < sortedVideoClips.length; i++) {
     const clip = sortedVideoClips[i];
     if (clip.transitionIn) {
       transitions.push(timelineTransitionToTransition(clip.transitionIn, project.frameRate));
-    } else if (i > 0) {
-      // Default cut transition
+    } else {
+      // Default cut transition between clips
       transitions.push({ type: 'cut', duration: 0 });
     }
   }
@@ -290,8 +290,8 @@ function buildVideoFilterChain(
     const concatInputs = clipOutputs.map((l) => `[${l}]`).join('');
     filters.push(`${concatInputs}concat=n=${clipOutputs.length}:v=1:a=0[outv]`);
   } else if (clipOutputs.length === 1) {
-    // Rename single clip to output
-    filters.push(`[${clipOutputs[0]}]copy[outv]`);
+    // Use null filter to pass through single clip (FFmpeg doesn't have a 'copy' video filter)
+    filters.push(`[${clipOutputs[0]}]null[outv]`);
   }
 
   return filters;
@@ -383,7 +383,7 @@ function buildEffectFilter(effect: ClipEffect, frameRate: number): string {
     case 'flip-vertical':
       return 'vflip';
     default:
-      return 'copy';
+      return 'null'; // Use null filter for unknown effects (pass-through)
   }
 }
 

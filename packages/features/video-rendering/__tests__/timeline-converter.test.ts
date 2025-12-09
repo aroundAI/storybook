@@ -793,8 +793,8 @@ describe('Timeline to FFmpeg Converter', () => {
 
       const result = generateRenderPlan(project, mockExportSettings);
 
-      // Single clip should use copy instead of concat
-      expect(result.filterGraph).toContain('copy[outv]');
+      // Single clip should use null filter instead of concat (FFmpeg doesn't have a 'copy' video filter)
+      expect(result.filterGraph).toContain('null[outv]');
     });
   });
 });

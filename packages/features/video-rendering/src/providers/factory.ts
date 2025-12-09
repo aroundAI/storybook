@@ -49,8 +49,7 @@ export function createVideoRenderProvider(
 
     case 'ffmpeg-docker':
       // Docker provider would connect to a Docker container running FFmpeg
-      // For now, fall back to local
-      console.warn('ffmpeg-docker provider not yet implemented, using ffmpeg-local');
+      // For now, fall back to local (intentional fallback for POC)
       instance = new FFmpegLocalProvider(config);
       break;
 
@@ -80,10 +79,32 @@ export function createVideoRenderProvider(
 }
 
 /**
+ * Valid render providers for type validation
+ */
+const VALID_PROVIDERS: RenderProvider[] = [
+  'ffmpeg-local',
+  'ffmpeg-docker',
+  'remotion',
+  'shotstack',
+  'creatomate',
+  'mux',
+];
+
+/**
+ * Validate if a string is a valid RenderProvider
+ */
+function isValidProvider(provider: string): provider is RenderProvider {
+  return VALID_PROVIDERS.includes(provider as RenderProvider);
+}
+
+/**
  * Get a provider from environment configuration
  */
 export function createProviderFromEnv(): VideoRenderProvider {
-  const provider = (process.env.VIDEO_RENDER_PROVIDER || 'ffmpeg-local') as RenderProvider;
+  const providerFromEnv = process.env.VIDEO_RENDER_PROVIDER || 'ffmpeg-local';
+  const provider: RenderProvider = isValidProvider(providerFromEnv)
+    ? providerFromEnv
+    : 'ffmpeg-local';
 
   const config: ProviderConfig = {
     ffmpegPath: process.env.FFMPEG_PATH,
