@@ -199,6 +199,9 @@ importers:
       '@kit/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
+      '@kit/film-studio':
+        specifier: workspace:*
+        version: link:../../packages/features/film-studio
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../../packages/features/film-studio-schemas
@@ -1312,6 +1315,9 @@ importers:
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../next
       '@kit/prettier-config':
         specifier: workspace:*
         version: link:../../../tooling/prettier
@@ -1327,6 +1333,9 @@ importers:
       '@kit/ui':
         specifier: workspace:*
         version: link:../../ui
+      '@tanstack/react-query':
+        specifier: 5.89.0
+        version: 5.89.0(react@19.1.1)
       '@testing-library/react':
         specifier: ^16.3.0
         version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -1354,6 +1363,9 @@ importers:
       react-dom:
         specifier: 19.1.1
         version: 19.1.1(react@19.1.1)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
