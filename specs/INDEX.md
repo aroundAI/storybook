@@ -298,7 +298,7 @@ graph TD
 | FILM-101n | [external-api-keys-table](./phase-1-foundation/database/FILM-101-external-api-keys-table.md) | ✅ DONE | XS | - |
 | FILM-102a | [enable-rls](./phase-1-foundation/rls/FILM-102-enable-rls.md) | ✅ DONE | XS | FILM-101* |
 | FILM-102b | [project-policies](./phase-1-foundation/rls/FILM-102-project-policies.md) | DRAFT | M | FILM-102a |
-| FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.md) | DRAFT | S | FILM-102a |
+| FILM-102c | [account-policies](./phase-1-foundation/rls/FILM-102-account-policies.md) | ✅ DONE | S | FILM-102a |
 | FILM-103 | [transaction-functions](./phase-1-foundation/functions/FILM-103-transaction-functions.md) | ✅ DONE | M | FILM-101* |
 | FILM-104 | [film-studio-package](./phase-1-foundation/packages/FILM-104-film-studio-package.md) | ✅ DONE | S | - |
 | FILM-105 | [assets-package](./phase-1-foundation/packages/FILM-105-assets-package.md) | ✅ DONE | S | - |
@@ -515,7 +515,7 @@ SPIKE-01 through SPIKE-05
 
 | Phase | Total | Draft | Review | Approved | In Progress | Done |
 |-------|-------|-------|--------|----------|-------------|------|
-| 1. Foundation | 26 | 3 | 0 | 0 | 0 | 23 |
+| 1. Foundation | 26 | 2 | 0 | 0 | 0 | 24 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 7 | 0 | 0 | 0 | 2 |
@@ -527,13 +527,13 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 9 | 0 | 0 | 0 | 1 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **73** | **0** | **0** | **0** | **57** |
+| **TOTAL** | **130** | **72** | **0** | **0** | **0** | **58** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 49 | 53% |
+| MVP Specs | 93 | 50 | 54% |
 | Post-MVP | 37 | 8 | 22% |
 
 ---

@@ -1307,3 +1307,58 @@ create policy "content_analytics_update" on public.content_analytics for update
   );
 
 -- No delete policy for content_analytics - historical data should not be deleted
+
+-- ==================================
+-- Section: Account RLS Helper Functions (FILM-102c)
+-- ==================================
+-- Utility functions for account-scoped authorization checks
+
+-- Function to check if current user owns an account
+-- Returns TRUE if the account belongs to the current authenticated user
+create or replace function public.user_owns_account(p_account_id uuid)
+returns boolean
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+begin
+    return exists (
+        select 1
+        from public.accounts a
+        where a.id = p_account_id
+        and a.primary_owner_user_id = auth.uid()
+    );
+end;
+$$;
+
+comment on function public.user_owns_account(uuid) is
+  'Returns TRUE if the current authenticated user is the primary owner of the specified account.';
+
+grant execute on function public.user_owns_account(uuid) to authenticated;
+
+-- Function to get current user's personal account_id
+create or replace function public.get_current_account_id()
+returns uuid
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+declare
+    v_account_id uuid;
+begin
+    select a.id into v_account_id
+    from public.accounts a
+    where a.primary_owner_user_id = auth.uid()
+    and a.is_personal_account = true
+    limit 1;
+
+    return v_account_id;
+end;
+$$;
+
+comment on function public.get_current_account_id() is
+  'Returns the personal account ID for the current authenticated user.';
+
+grant execute on function public.get_current_account_id() to authenticated;
