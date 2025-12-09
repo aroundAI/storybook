@@ -30,11 +30,13 @@ describe('InstagramInsightsProvider', () => {
     it('should fetch insights for a Reel', async () => {
       // Mock media type response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ media_type: 'REELS' }),
       });
 
       // Mock insights response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             data: [
@@ -51,6 +53,7 @@ describe('InstagramInsightsProvider', () => {
 
       // Mock reach breakdown response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             data: [
@@ -72,6 +75,7 @@ describe('InstagramInsightsProvider', () => {
 
       // Mock audience response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             data: [
@@ -112,11 +116,13 @@ describe('InstagramInsightsProvider', () => {
     it('should fetch insights for a Video without plays metric', async () => {
       // Mock media type response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ media_type: 'VIDEO' }),
       });
 
       // Mock insights response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             data: [
@@ -132,6 +138,7 @@ describe('InstagramInsightsProvider', () => {
 
       // Mock audience response (no reach breakdown for Video)
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ data: [] }),
       });
 
@@ -147,6 +154,7 @@ describe('InstagramInsightsProvider', () => {
 
     it('should throw InstagramInsightsScopeError on permission error', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             error: {
@@ -162,23 +170,39 @@ describe('InstagramInsightsProvider', () => {
       ).rejects.toThrow(InstagramInsightsScopeError);
     });
 
+    it('should throw error on HTTP failure', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({}),
+      });
+
+      await expect(
+        provider.getMediaInsights({ mediaId: 'test-media-id' }),
+      ).rejects.toThrow('Failed to fetch media info: HTTP 500');
+    });
+
     it('should handle missing metrics gracefully', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ media_type: 'REELS' }),
       });
 
       // Empty insights response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ data: [] }),
       });
 
       // Empty reach breakdown
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ data: [] }),
       });
 
       // Empty audience
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ data: [] }),
       });
 
@@ -196,6 +220,7 @@ describe('InstagramInsightsProvider', () => {
     it('should fetch account insights for a week', async () => {
       // Mock metrics response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             data: [
@@ -215,6 +240,7 @@ describe('InstagramInsightsProvider', () => {
 
       // Mock follower count response
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ followers_count: 5000 }),
       });
 
@@ -229,6 +255,7 @@ describe('InstagramInsightsProvider', () => {
 
     it('should throw InstagramInsightsScopeError on permission error', async () => {
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () =>
           Promise.resolve({
             error: {
@@ -239,11 +266,74 @@ describe('InstagramInsightsProvider', () => {
       });
 
       mockFetch.mockResolvedValueOnce({
+        ok: true,
         json: () => Promise.resolve({ followers_count: 0 }),
       });
 
       await expect(provider.getAccountInsights('week')).rejects.toThrow(
         InstagramInsightsScopeError,
+      );
+    });
+
+    it('should throw error on HTTP failure for metrics', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: () => Promise.resolve({}),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ followers_count: 5000 }),
+      });
+
+      await expect(provider.getAccountInsights('week')).rejects.toThrow(
+        'Failed to fetch account insights: HTTP 503',
+      );
+    });
+
+    it('should throw error on HTTP failure for follower count', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [{ name: 'impressions', values: [{ value: 1000 }] }],
+          }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        json: () => Promise.resolve({}),
+      });
+
+      await expect(provider.getAccountInsights('week')).rejects.toThrow(
+        'Failed to fetch follower count: HTTP 404',
+      );
+    });
+
+    it('should throw error on accountData error response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            data: [{ name: 'impressions', values: [{ value: 1000 }] }],
+          }),
+      });
+
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            error: {
+              message: 'Account not found',
+              type: 'GraphMethodException',
+            },
+          }),
+      });
+
+      await expect(provider.getAccountInsights('week')).rejects.toThrow(
+        'Account not found',
       );
     });
   });

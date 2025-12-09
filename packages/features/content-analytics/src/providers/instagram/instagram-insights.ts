@@ -79,6 +79,13 @@ export class InstagramInsightsProvider {
       const mediaInfoResponse = await fetch(
         `${GRAPH_API_BASE}/${mediaId}?fields=media_type&access_token=${this.accessToken}`,
       );
+
+      if (!mediaInfoResponse.ok) {
+        throw new Error(
+          `Failed to fetch media info: HTTP ${mediaInfoResponse.status}`,
+        );
+      }
+
       const mediaInfo = (await mediaInfoResponse.json()) as {
         media_type?: InstagramMediaType;
       } & GraphAPIError;
@@ -163,6 +170,12 @@ export class InstagramInsightsProvider {
         }),
     );
 
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch media insights: HTTP ${response.status}`,
+      );
+    }
+
     const data = (await response.json()) as {
       data?: InsightsDataItem[];
     } & GraphAPIError;
@@ -189,6 +202,10 @@ export class InstagramInsightsProvider {
             access_token: this.accessToken,
           }),
       );
+
+      if (!response.ok) {
+        return undefined;
+      }
 
       const data = (await response.json()) as {
         data?: Array<{
@@ -246,6 +263,10 @@ export class InstagramInsightsProvider {
           }),
       );
 
+      if (!response.ok) {
+        return undefined;
+      }
+
       const data = (await response.json()) as {
         data?: DemographicDataItem[];
       } & GraphAPIError;
@@ -293,6 +314,18 @@ export class InstagramInsightsProvider {
         ),
       ]);
 
+      if (!metricsResponse.ok) {
+        throw new Error(
+          `Failed to fetch account insights: HTTP ${metricsResponse.status}`,
+        );
+      }
+
+      if (!accountResponse.ok) {
+        throw new Error(
+          `Failed to fetch follower count: HTTP ${accountResponse.status}`,
+        );
+      }
+
       const metricsData = (await metricsResponse.json()) as {
         data?: Array<{
           name: string;
@@ -307,6 +340,12 @@ export class InstagramInsightsProvider {
       if (metricsData.error) {
         throw new Error(
           metricsData.error.message ?? 'Failed to fetch account insights',
+        );
+      }
+
+      if (accountData.error) {
+        throw new Error(
+          accountData.error.message ?? 'Failed to fetch follower count',
         );
       }
 
