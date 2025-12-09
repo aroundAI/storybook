@@ -19,14 +19,23 @@ export default async function StudioProjectLayout({
   const { account, projectId } = await params;
   const client = getSupabaseServerClient();
 
-  // Verify project access
-  const { data: project, error } = await client
-    .from('projects')
-    .select('id, name, account_id')
-    .eq('id', projectId)
-    .single();
+  // Verify project exists and belongs to the account in the URL
+  const [{ data: project, error: projectError }, { data: accountData }] =
+    await Promise.all([
+      client
+        .from('projects')
+        .select('id, name, account_id')
+        .eq('id', projectId)
+        .single(),
+      client.from('accounts').select('id').eq('slug', account).single(),
+    ]);
 
-  if (error || !project) {
+  if (projectError || !project) {
+    notFound();
+  }
+
+  // Verify project belongs to the account from URL (explicit auth check)
+  if (!accountData || project.account_id !== accountData.id) {
     notFound();
   }
 

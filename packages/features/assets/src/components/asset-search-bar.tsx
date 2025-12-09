@@ -1,11 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Search, X } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
+
+import { useDebounce } from '../hooks/use-debounce';
 
 interface AssetSearchBarProps {
   value: string;
@@ -19,15 +21,17 @@ export function AssetSearchBar({
   placeholder = 'Search assets...',
 }: AssetSearchBarProps) {
   const [localValue, setLocalValue] = useState(value);
+  const debouncedValue = useDebounce(localValue, 300);
+  const isFirstRender = useRef(true);
 
-  // Debounce search input
+  // Call onChange when debounced value changes (skip initial render)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onChange(localValue);
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [localValue, onChange]);
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    onChange(debouncedValue);
+  }, [debouncedValue, onChange]);
 
   // Sync with external value changes
   useEffect(() => {

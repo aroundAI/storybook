@@ -38,7 +38,7 @@ export function AssetGallery({
   const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch assets for active tab
-  const { assets, total, isLoading, deleteAsset, fetchAssets } = useAssets({
+  const { assets, isLoading, deleteAsset, fetchAssets } = useAssets({
     projectId,
     type: activeTab,
   });

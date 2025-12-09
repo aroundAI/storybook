@@ -56,27 +56,31 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
     notFound();
   }
 
-  // Fetch asset counts
-  const { count: characterCount } = await client
-    .from('assets')
-    .select('*', { count: 'exact', head: true })
-    .eq('project_id', projectId)
-    .eq('type', 'character')
-    .is('deleted_at', null);
-
-  const { count: locationCount } = await client
-    .from('assets')
-    .select('*', { count: 'exact', head: true })
-    .eq('project_id', projectId)
-    .eq('type', 'location')
-    .is('deleted_at', null);
-
-  const { count: voiceCount } = await client
-    .from('assets')
-    .select('*', { count: 'exact', head: true })
-    .eq('project_id', projectId)
-    .eq('type', 'voice')
-    .is('deleted_at', null);
+  // Fetch asset counts in parallel for better performance
+  const [
+    { count: characterCount },
+    { count: locationCount },
+    { count: voiceCount },
+  ] = await Promise.all([
+    client
+      .from('assets')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('type', 'character')
+      .is('deleted_at', null),
+    client
+      .from('assets')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('type', 'location')
+      .is('deleted_at', null),
+    client
+      .from('assets')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('type', 'voice')
+      .is('deleted_at', null),
+  ]);
 
   const baseUrl = `/home/${account}/studio/${projectId}`;
 

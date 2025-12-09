@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useState, useTransition } from 'react';
 
 import { toast } from '@kit/ui/sonner';
 

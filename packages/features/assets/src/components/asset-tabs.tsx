@@ -4,8 +4,6 @@ import { MapPin, Mic, User } from 'lucide-react';
 
 import { Tabs, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
-import type { AssetType } from '../lib/types';
-
 type TabType = 'character' | 'location' | 'voice';
 
 interface AssetTabsProps {

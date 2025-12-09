@@ -42,8 +42,6 @@ const VoiceProfileFormSchema = z.object({
   }),
 });
 
-type VoiceProfileFormData = z.infer<typeof VoiceProfileFormSchema>;
-
 // Sample voices for demo (in production, these would come from ElevenLabs API)
 const SAMPLE_VOICES: VoiceOption[] = [
   {
@@ -98,7 +96,7 @@ export function VoiceProfileEditor({
   onCancel,
 }: VoiceProfileEditorProps) {
   const [isPending, startTransition] = useTransition();
-  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
+  const [previewAudioUrl, _setPreviewAudioUrl] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
 
   const isEditMode = !!voiceProfile;
