@@ -33,36 +33,21 @@ function parseScreenplayData(
     return null;
   }
 
-  // Transform the stored ScreenplayData format to the Screenplay schema format
+  // The new ScreenplayData format already matches the Screenplay schema
+  // Just map the scenes and use the existing metadata
   const scenes: Scene[] = screenplayData.scenes.map((scene) => ({
     number: scene.number,
-    heading: `${scene.intExt ?? 'INT'}. ${scene.location.toUpperCase()} - ${scene.timeOfDay.toUpperCase()}`,
+    heading: scene.heading,
     location: scene.location,
     timeOfDay: scene.timeOfDay,
     description: scene.description,
-    dialogue: (screenplayData.dialogue ?? [])
-      .filter((d) => d.sceneNumber === scene.number)
-      .map((d) => ({
-        character: d.characterName,
-        text: d.text,
-        parenthetical: d.emotion,
-      })),
-    estimatedDuration: scene.duration,
+    dialogue: scene.dialogue,
+    estimatedDuration: scene.estimatedDuration,
   }));
 
   return {
     scenes,
-    metadata: {
-      totalScenes: scenes.length,
-      estimatedDuration: scenes.reduce(
-        (acc, s) => acc + s.estimatedDuration,
-        0,
-      ),
-      locations: [...new Set(scenes.map((s) => s.location))],
-      characters: [
-        ...new Set((screenplayData.dialogue ?? []).map((d) => d.characterName)),
-      ],
-    },
+    metadata: screenplayData.metadata,
   };
 }
 

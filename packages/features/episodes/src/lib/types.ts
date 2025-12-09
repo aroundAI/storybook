@@ -67,23 +67,43 @@ export interface StoryData {
 }
 
 /**
+ * Dialogue line within a screenplay scene
+ */
+export interface ScreenplayDialogueLine {
+  character: string;
+  text: string;
+  parenthetical?: string;
+}
+
+/**
+ * Scene in a screenplay
+ */
+export interface ScreenplayScene {
+  number: number;
+  heading: string;
+  location: string;
+  timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+  description: string;
+  dialogue: ScreenplayDialogueLine[];
+  estimatedDuration: number;
+}
+
+/**
+ * Screenplay metadata summary
+ */
+export interface ScreenplayMetadataSummary {
+  totalScenes: number;
+  estimatedDuration: number;
+  locations: string[];
+  characters: string[];
+}
+
+/**
  * Screenplay conversion output stored in screenplay_data JSONB
  */
 export interface ScreenplayData {
-  scenes?: Array<{
-    number: number;
-    location: string;
-    timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
-    intExt?: 'INT' | 'EXT';
-    description: string;
-    duration: number;
-  }>;
-  dialogue?: Array<{
-    sceneNumber: number;
-    characterName: string;
-    text: string;
-    emotion?: string;
-  }>;
+  scenes: ScreenplayScene[];
+  metadata: ScreenplayMetadataSummary;
   generatedAt?: string;
   approvedAt?: string;
   generatedBy?: {
