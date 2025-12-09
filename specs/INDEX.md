@@ -357,7 +357,7 @@ graph TD
 | FILM-310 | [screenplay-viewer](./phase-3-episodes/components/FILM-310-screenplay-viewer.md) | DRAFT | M | FILM-306 |
 | FILM-311 | [shot-list-editor](./phase-3-episodes/components/FILM-311-shot-list-editor.md) | DRAFT | L | FILM-307 |
 | FILM-312 | [episode-workspace](./phase-3-episodes/pages/FILM-312-episode-workspace.md) | DRAFT | L | FILM-308-311 |
-| FILM-313 | [continuity-checker](./phase-3-episodes/lib/FILM-313-continuity-checker.md) | DRAFT | M | FILM-305, FILM-202 |
+| FILM-313 | [continuity-checker](./phase-3-episodes/lib/FILM-313-continuity-checker.md) | ✅ DONE | M | FILM-305, FILM-202 |
 | FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | DRAFT | M | FILM-301 |
 
 ### Phase 4: Video Generation (15 specs)
@@ -519,7 +519,7 @@ SPIKE-01 through SPIKE-05
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 7 | 0 | 0 | 0 | 2 |
-| 3. Episodes | 14 | 12 | 0 | 0 | 0 | 2 |
+| 3. Episodes | 14 | 11 | 0 | 0 | 0 | 3 |
 | 4. Video Gen | 15 | 11 | 0 | 0 | 0 | 4 |
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
@@ -527,13 +527,13 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 9 | 0 | 0 | 0 | 1 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **77** | **0** | **0** | **0** | **53** |
+| **TOTAL** | **130** | **76** | **0** | **0** | **0** | **54** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 45 | 48% |
+| MVP Specs | 93 | 46 | 49% |
 | Post-MVP | 37 | 8 | 22% |
 
 ---

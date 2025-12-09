@@ -1,5 +1,8 @@
 // Episode components
 
+// Continuity Checker (FILM-313)
+export { ContinuityChecker } from './continuity-checker';
+
 // Story Studio (FILM-308)
 export { StoryStudio } from './story-studio/story-studio';
 export { PipelineProgress } from './story-studio/pipeline-progress';
