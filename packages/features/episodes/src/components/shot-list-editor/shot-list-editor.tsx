@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useTransition } from 'react';
 
 import {
   DndContext,
@@ -47,6 +47,7 @@ import {
 } from '@kit/ui/table';
 
 import type { EpisodeWithShots, Shot, ShotStatus } from '../../lib/types';
+import { reorderShotsAction } from '../../server/actions';
 import { useStoryStudioContext } from '../story-studio/story-studio-context';
 import { ShotRow } from './shot-row';
 
@@ -69,6 +70,7 @@ export function ShotListEditor({
   const [shots, setShots] = useState<Shot[]>(episode.shots);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<ShotFilter>({});
+  const [_isReordering, startReorderTransition] = useTransition();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -109,21 +111,36 @@ export function ShotListEditor({
     });
   }, [shots, filter]);
 
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      setShots((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+      if (over && active.id !== over.id) {
+        setShots((items) => {
+          const oldIndex = items.findIndex((item) => item.id === active.id);
+          const newIndex = items.findIndex((item) => item.id === over.id);
+          const newOrder = arrayMove(items, oldIndex, newIndex);
 
-        return arrayMove(items, oldIndex, newIndex);
-      });
+          // Persist the new order to the database
+          startReorderTransition(async () => {
+            try {
+              await reorderShotsAction({
+                episodeId: episode.id,
+                shotIds: newOrder.map((s) => s.id),
+              });
+              toast.success('Shot order saved');
+              refetchEpisode();
+            } catch {
+              toast.error('Failed to save shot order');
+            }
+          });
 
-      // TODO: Call reorderShotsAction to persist the order
-      toast.info('Shot order updated (save pending)');
-    }
-  }, []);
+          return newOrder;
+        });
+      }
+    },
+    [episode.id, refetchEpisode],
+  );
 
   const handleSelectAll = useCallback(
     (checked: boolean) => {

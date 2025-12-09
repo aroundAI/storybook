@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -24,24 +24,14 @@ export function useUrlTabState(
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const urlTab = searchParams.get('tab');
-  const initialTab = isValidTab(urlTab) ? urlTab : defaultTab;
-
-  const [activeTab, setActiveTabState] = useState<StudioTab>(initialTab);
-
-  // Sync URL to state on mount and URL changes
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab');
-
-    if (isValidTab(tabFromUrl) && tabFromUrl !== activeTab) {
-      setActiveTabState(tabFromUrl);
-    }
-  }, [searchParams, activeTab]);
+  // Derive active tab directly from URL - single source of truth
+  const activeTab = useMemo(() => {
+    const urlTab = searchParams.get('tab');
+    return isValidTab(urlTab) ? urlTab : defaultTab;
+  }, [searchParams, defaultTab]);
 
   const setActiveTab = useCallback(
     (newTab: StudioTab) => {
-      setActiveTabState(newTab);
-
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', newTab);
       router.push(`${pathname}?${params.toString()}`, { scroll: false });

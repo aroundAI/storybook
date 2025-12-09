@@ -36,7 +36,7 @@ function parseScreenplayData(
   // Transform the stored ScreenplayData format to the Screenplay schema format
   const scenes: Scene[] = screenplayData.scenes.map((scene) => ({
     number: scene.number,
-    heading: `${scene.timeOfDay.toUpperCase()}. ${scene.location.toUpperCase()} - ${scene.timeOfDay.toUpperCase()}`,
+    heading: `${scene.intExt ?? 'INT'}. ${scene.location.toUpperCase()} - ${scene.timeOfDay.toUpperCase()}`,
     location: scene.location,
     timeOfDay: scene.timeOfDay,
     description: scene.description,

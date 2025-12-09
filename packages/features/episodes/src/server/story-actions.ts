@@ -70,14 +70,31 @@ export const generateStoryIdeasAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Get user's account for cost tracking
-    const { data: accounts } = await client
-      .from('accounts')
-      .select('id')
-      .eq('primary_owner_user_id', user.id)
+    // Get user's account for cost tracking and authorization
+    // User must belong to at least one account to use LLM features
+    const { data: accountMemberships } = await client
+      .from('accounts_memberships')
+      .select('account_id')
+      .eq('user_id', user.id)
       .limit(1);
 
-    const accountId = accounts?.[0]?.id ?? user.id;
+    if (!accountMemberships?.length) {
+      // Fallback to personal account (where user is primary owner)
+      const { data: personalAccount } = await client
+        .from('accounts')
+        .select('id')
+        .eq('primary_owner_user_id', user.id)
+        .limit(1);
+
+      if (!personalAccount?.length) {
+        logger.warn(ctx, 'User has no account for story ideation');
+        throw new Error(
+          'No account found. Please ensure you have an active account.',
+        );
+      }
+    }
+
+    const accountId = accountMemberships?.[0]?.account_id ?? user.id;
 
     // Prepare variables for prompt template (matching template variable names)
     const variables = {

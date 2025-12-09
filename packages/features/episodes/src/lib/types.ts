@@ -74,6 +74,7 @@ export interface ScreenplayData {
     number: number;
     location: string;
     timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+    intExt?: 'INT' | 'EXT';
     description: string;
     duration: number;
   }>;

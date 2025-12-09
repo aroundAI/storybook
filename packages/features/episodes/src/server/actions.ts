@@ -17,6 +17,7 @@ import {
   DeleteEpisodeSchema,
   GetEpisodeSchema,
   ListProjectEpisodesSchema,
+  ReorderShotsSchema,
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
   UpdateShotSchema,
@@ -742,5 +743,82 @@ export const deleteShotAction = enhanceAction(
   },
   {
     schema: UpdateShotSchema.pick({ id: true }),
+  },
+);
+
+/**
+ * Reorder shots by updating their sequence_number
+ * Accepts an array of shot IDs in their new order
+ */
+export const reorderShotsAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'shots.reorder', episodeId: data.episodeId };
+
+    logger.info(ctx, 'Reordering shots');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized shot reorder attempt');
+      throw new Error('Authentication required');
+    }
+
+    // Verify all shots belong to this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: existingShots, error: fetchError } = await (client as any)
+      .from('shots')
+      .select('id')
+      .eq('episode_id', data.episodeId);
+
+    if (fetchError) {
+      logger.error({ ...ctx, error: fetchError }, 'Failed to fetch shots');
+      throw new Error('Failed to verify shots');
+    }
+
+    const existingIds = new Set(
+      existingShots?.map((s: { id: string }) => s.id),
+    );
+    const invalidIds = data.shotIds.filter((id) => !existingIds.has(id));
+
+    if (invalidIds.length > 0) {
+      logger.warn(
+        { ...ctx, invalidIds },
+        'Invalid shot IDs in reorder request',
+      );
+      throw new Error('Some shots do not belong to this episode');
+    }
+
+    // Update sequence_number for each shot
+    const updates = data.shotIds.map((id, index) => ({
+      id,
+      sequence_number: index + 1,
+    }));
+
+    // Batch update using individual updates (Supabase doesn't support bulk update with different values)
+    for (const update of updates) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (client as any)
+        .from('shots')
+        .update({ sequence_number: update.sequence_number })
+        .eq('id', update.id);
+
+      if (error) {
+        logger.error(
+          { ...ctx, shotId: update.id, error },
+          'Failed to update shot sequence',
+        );
+        throw new Error('Failed to reorder shots');
+      }
+    }
+
+    logger.info({ ...ctx, count: updates.length }, 'Shots reordered');
+    revalidatePath('/home/[account]/projects/[id]', 'page');
+
+    return { success: true };
+  },
+  {
+    schema: ReorderShotsSchema,
   },
 );

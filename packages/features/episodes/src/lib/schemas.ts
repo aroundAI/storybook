@@ -165,6 +165,15 @@ export const UpdateShotSchema = z.object({
   generationSettings: ShotGenerationSettingsSchema.optional(),
 });
 
+/**
+ * Schema for reordering shots
+ * Accepts an array of shot IDs in their new order
+ */
+export const ReorderShotsSchema = z.object({
+  episodeId: z.string().uuid(),
+  shotIds: z.array(z.string().uuid()).min(1),
+});
+
 export type CreateEpisodeInput = z.infer<typeof CreateEpisodeSchema>;
 export type GetEpisodeInput = z.infer<typeof GetEpisodeSchema>;
 export type UpdateEpisodeStatusInput = z.infer<
@@ -177,6 +186,7 @@ export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
+export type ReorderShotsInput = z.infer<typeof ReorderShotsSchema>;
 
 // Story generation schemas (FILM-305)
 export {
