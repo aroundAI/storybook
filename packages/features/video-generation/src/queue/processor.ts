@@ -5,11 +5,7 @@ import type { Job } from 'bullmq';
 import { checkRateLimit } from '../lib/rate-limiter';
 import type { ProviderConfig, VideoProvider } from '../lib/types';
 import { createVideoProvider } from '../providers';
-
-import type {
-  VideoGenerationJobData,
-  VideoGenerationJobResult,
-} from './types';
+import type { VideoGenerationJobData, VideoGenerationJobResult } from './types';
 
 /**
  * Get provider configuration from environment variables
@@ -19,12 +15,14 @@ function getProviderConfig(provider: VideoProvider): ProviderConfig {
     kling: 'KLING_API_KEY',
     runway: 'RUNWAY_API_KEY',
     luma: 'LUMA_API_KEY',
+    hailuo: 'HAILUO_API_KEY',
   };
 
   const envBaseUrlMap: Record<VideoProvider, string> = {
     kling: 'KLING_BASE_URL',
     runway: 'RUNWAY_BASE_URL',
     luma: 'LUMA_BASE_URL',
+    hailuo: 'HAILUO_BASE_URL',
   };
 
   const apiKey = process.env[envKeyMap[provider]];

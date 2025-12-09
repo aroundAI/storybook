@@ -287,13 +287,13 @@ interface HailuoStatusResponse {
 
 ## Acceptance Criteria
 
-- [ ] `generateVideo()` successfully submits to Hailuo API
-- [ ] `generateVideoWithImage()` works with first_frame_image
-- [ ] `getStatus()` correctly polls and maps status
-- [ ] `getVideoUrl()` retrieves downloadable URL from file_id
-- [ ] `estimateCost()` returns flat rate ($0.40)
-- [ ] Provider registered in factory registry
-- [ ] Fast timeout (30s) configured by default
+- [x] `generateVideo()` successfully submits to Hailuo API
+- [x] `generateVideoWithImage()` works with first_frame_image
+- [x] `getStatus()` correctly polls and maps status
+- [x] `getVideoUrl()` retrieves downloadable URL from file_id
+- [x] `estimateCost()` returns flat rate ($0.40)
+- [x] Provider registered in factory registry
+- [x] Fast timeout (30s) configured by default
 
 ---
 

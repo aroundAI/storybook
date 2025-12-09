@@ -1,5 +1,6 @@
 import type { ProviderConfig, VideoProvider } from '../lib/types';
 import type { VideoGenerationProvider } from './base';
+import { HailuoProvider } from './hailuo';
 import { KlingProvider } from './kling';
 import { LumaProvider } from './luma';
 import { RunwayProvider } from './runway';
@@ -31,6 +32,8 @@ function createProviderInstance(
       return new RunwayProvider(config);
     case 'luma':
       return new LumaProvider(config);
+    case 'hailuo':
+      return new HailuoProvider(config);
     default:
       throw new Error(`Unknown video provider: ${provider}`);
   }

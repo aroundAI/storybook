@@ -2,6 +2,7 @@ export const VIDEO_PROVIDERS = {
   KLING: 'kling',
   RUNWAY: 'runway',
   LUMA: 'luma',
+  HAILUO: 'hailuo',
 } as const;
 
 export const GENERATION_STATUS = {
@@ -45,6 +46,12 @@ export const PROVIDER_CAPABILITIES = {
   luma: {
     supportedAspectRatios: ['16:9', '9:16', '1:1', '4:3', '3:4'],
     maxDuration: 5,
+    supportsImageToVideo: true,
+    supportsNegativePrompt: false,
+  },
+  hailuo: {
+    supportedAspectRatios: ['16:9', '9:16', '1:1'],
+    maxDuration: 6,
     supportsImageToVideo: true,
     supportsNegativePrompt: false,
   },
