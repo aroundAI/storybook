@@ -200,7 +200,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | DRAFT | L |
-| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S |
+| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | S |
 
 ### Library
 | Task ID | Spec | Status | Effort |

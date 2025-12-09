@@ -356,9 +356,9 @@ graph TD
 | FILM-309 | [story-ideation](./phase-3-episodes/components/FILM-309-story-ideation.md) | DRAFT | M | FILM-308 |
 | FILM-310 | [screenplay-viewer](./phase-3-episodes/components/FILM-310-screenplay-viewer.md) | DRAFT | M | FILM-306 |
 | FILM-311 | [shot-list-editor](./phase-3-episodes/components/FILM-311-shot-list-editor.md) | DRAFT | L | FILM-307 |
-| FILM-312 | [episode-workspace](./phase-3-episodes/pages/FILM-312-episode-workspace.md) | DRAFT | L | FILM-308-311 |
+| FILM-312 | [episode-workspace](./phase-3-episodes/pages/FILM-312-episode-workspace.md) | ✅ DONE | L | FILM-308-311 |
 | FILM-313 | [continuity-checker](./phase-3-episodes/lib/FILM-313-continuity-checker.md) | ✅ DONE | M | FILM-305, FILM-202 |
-| FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | DRAFT | M | FILM-301 |
+| FILM-314 | [batch-episode-creation](./phase-3-episodes/server/FILM-314-batch-episode-creation.md) | ✅ DONE | M | FILM-301 |
 
 ### Phase 4: Video Generation (15 specs)
 
@@ -367,7 +367,7 @@ graph TD
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | ✅ DONE | L | FILM-107 |
 | FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | DRAFT | M | FILM-107, FILM-402 |
 | FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | DRAFT | M | FILM-107, FILM-402 |
-| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S | FILM-401 |
+| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | S | FILM-401 |
 | FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | ✅ DONE | M | - |
 | FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | ✅ DONE | L | FILM-403 |
 | FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | ✅ DONE | L | FILM-401, FILM-404 |
@@ -519,7 +519,7 @@ SPIKE-01 through SPIKE-05
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 7 | 0 | 0 | 0 | 2 |
-| 3. Episodes | 14 | 11 | 0 | 0 | 0 | 3 |
+| 3. Episodes | 14 | 10 | 0 | 0 | 0 | 4 |
 | 4. Video Gen | 15 | 8 | 0 | 0 | 0 | 7 |
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
