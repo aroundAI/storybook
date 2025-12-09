@@ -1,11 +1,27 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
-import { FileText, Film, Settings, User } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 
+import { ScrollArea } from '@kit/ui/scroll-area';
+import { SidebarNavigation } from '@kit/ui/shadcn-sidebar';
+import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
+
+import { getStudioNavigationConfig } from '~/config/studio-navigation.config';
+
+/**
+ * Placeholder for GenerationStatusIndicator.
+ * Full implementation is in FILM-903.
+ */
+function GenerationStatusIndicatorStub({
+  compact: _compact,
+}: {
+  compact?: boolean;
+}) {
+  return null;
+}
 
 interface StudioSidebarProps {
   project: {
@@ -15,73 +31,47 @@ interface StudioSidebarProps {
   account: string;
 }
 
+/**
+ * Studio sidebar navigation for project-level routes.
+ * Uses the config-based navigation system to render routes.
+ *
+ * @param project - The current project with id and name
+ * @param account - The account slug for URL building
+ */
 export function StudioSidebar({ project, account }: StudioSidebarProps) {
-  const pathname = usePathname();
-
-  const baseUrl = `/home/${account}/studio/${project.id}`;
-
-  const navItems = [
-    {
-      href: baseUrl,
-      label: 'Dashboard',
-      icon: Film,
-    },
-    {
-      href: `${baseUrl}/assets`,
-      label: 'Assets',
-      icon: User,
-    },
-    {
-      href: `${baseUrl}/episodes`,
-      label: 'Episodes',
-      icon: FileText,
-    },
-    {
-      href: `${baseUrl}/settings`,
-      label: 'Settings',
-      icon: Settings,
-    },
-  ];
+  const config = getStudioNavigationConfig({
+    accountSlug: account,
+    projectId: project.id,
+  });
 
   return (
     <aside className="bg-muted/10 flex w-64 flex-col border-r">
-      <div className="border-b p-6">
+      {/* Header with back navigation and project name */}
+      <div className="flex h-14 items-center justify-between border-b px-4">
         <Link
           href={`/home/${account}/studio`}
-          className="text-muted-foreground hover:text-foreground text-sm transition-colors"
+          className={cn(
+            'text-muted-foreground hover:text-foreground',
+            'flex items-center gap-2 text-sm transition-colors',
+          )}
         >
-          &larr; All Projects
+          <ChevronLeft className="h-4 w-4" />
+          <Trans i18nKey="studio:sidebar.backToProjects" defaults="Back" />
         </Link>
-        <h2 className="mt-2 truncate text-lg font-semibold">{project.name}</h2>
+        <span className="max-w-[120px] truncate font-medium">
+          {project.name}
+        </span>
       </div>
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive =
-              item.href === baseUrl
-                ? pathname === baseUrl
-                : pathname.startsWith(item.href);
 
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-lg px-3 py-2 transition-colors',
-                    isActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted',
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      {/* Navigation using config system */}
+      <ScrollArea className="flex-1 py-4">
+        <SidebarNavigation config={config} />
+      </ScrollArea>
+
+      {/* Generation Status placeholder - FILM-903 */}
+      <div className="border-t p-4">
+        <GenerationStatusIndicatorStub compact />
+      </div>
     </aside>
   );
 }

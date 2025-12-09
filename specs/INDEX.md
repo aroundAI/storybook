@@ -449,7 +449,7 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.md) | DRAFT | M | - |
+| FILM-901 | [main-navigation](./phase-9-integration/navigation/FILM-901-main-navigation.md) | ✅ DONE | M | - |
 | FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DRAFT | M | - |
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.md) | DRAFT | M | - |
@@ -525,9 +525,9 @@ SPIKE-01 through SPIKE-05
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 8 | 0 | 0 | 0 | 7 |
 | 8. Analytics | 10 | 9 | 0 | 0 | 0 | 1 |
-| 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
+| 9. Integration | 6 | 5 | 0 | 0 | 0 | 1 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **73** | **0** | **0** | **0** | **57** |
+| **TOTAL** | **130** | **72** | **0** | **0** | **0** | **58** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

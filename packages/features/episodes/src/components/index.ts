@@ -1,5 +1,8 @@
 // Episode components
 
+// Episode Tabs (FILM-901)
+export { EpisodeTabs } from './episode-tabs';
+
 // Continuity Checker (FILM-313)
 export { ContinuityChecker } from './continuity-checker';
 
