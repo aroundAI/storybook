@@ -1,4 +1,4 @@
-export type VideoProvider = 'kling' | 'runway' | 'luma';
+export type VideoProvider = 'kling' | 'runway' | 'luma' | 'hailuo';
 
 export type GenerationStatus =
   | 'pending'

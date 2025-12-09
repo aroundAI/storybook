@@ -41,6 +41,7 @@ export const PROVIDER_CONCURRENCY_LIMITS: Record<VideoProvider, number> = {
   kling: 5,
   runway: 3,
   luma: 3,
+  hailuo: 3,
 };
 
 /**
