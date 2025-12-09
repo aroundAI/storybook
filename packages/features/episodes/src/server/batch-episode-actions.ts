@@ -54,8 +54,7 @@ export const generateSeasonOutlineAction = enhanceAction(
     }
 
     // Verify project access and get account ID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project, error: projectError } = await (client as any)
+    const { data: project, error: projectError } = await client
       .from('projects')
       .select('id, account_id')
       .eq('id', data.projectId)
@@ -203,8 +202,7 @@ export const batchCreateEpisodesAction = enhanceAction(
     }
 
     // Verify project access and get account ID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project, error: projectError } = await (client as any)
+    const { data: project, error: projectError } = await client
       .from('projects')
       .select('id, account_id')
       .eq('id', data.projectId)
@@ -217,8 +215,7 @@ export const batchCreateEpisodesAction = enhanceAction(
     const accountId = project.account_id;
 
     // Get next episode number for the project/season
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let existingEpisodesQuery = (client as any)
+    let existingEpisodesQuery = client
       .from('episodes')
       .select('number')
       .eq('project_id', data.projectId)
@@ -257,8 +254,7 @@ export const batchCreateEpisodesAction = enhanceAction(
     );
 
     // Insert all episodes atomically
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: createdEpisodes, error: insertError } = await (client as any)
+    const { data: createdEpisodes, error: insertError } = await client
       .from('episodes')
       .insert(episodesToInsert)
       .select('id, number, title, status');
@@ -299,7 +295,7 @@ export const batchCreateEpisodesAction = enhanceAction(
       'Episodes batch created successfully',
     );
 
-    revalidatePath('/home/[account]/studio/[projectId]', 'page');
+    revalidatePath('/home/[account]/projects/[id]', 'page');
 
     return {
       success: true,
@@ -344,8 +340,7 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
     }
 
     // Verify project access and get account ID
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project, error: projectError } = await (client as any)
+    const { data: project, error: projectError } = await client
       .from('projects')
       .select('id, account_id')
       .eq('id', data.projectId)
