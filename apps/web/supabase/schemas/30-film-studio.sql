@@ -32,6 +32,7 @@ create table if not exists public.seasons (
   description text,
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
+  deleted_at timestamp with time zone default null,
   unique(project_id, number),
   check (number > 0)
 );
@@ -39,10 +40,14 @@ create table if not exists public.seasons (
 comment on table public.seasons is 'Seasons organize episodes for series-type projects';
 comment on column public.seasons.number is 'Sequential season number (1, 2, 3...)';
 comment on column public.seasons.name is 'Display name (e.g., "Season 1: Origins")';
+comment on column public.seasons.deleted_at is 'Soft delete timestamp - NULL means active';
 
 -- Indexes for seasons
-create index if not exists idx_seasons_project_number on public.seasons(project_id, number);
+create index if not exists idx_seasons_project_number on public.seasons(project_id, number)
+  where deleted_at is null;
 create index if not exists idx_seasons_project_id on public.seasons(project_id);
+create index if not exists idx_seasons_deleted_at on public.seasons(deleted_at)
+  where deleted_at is not null;
 
 -- Timestamps trigger for seasons
 create trigger seasons_set_timestamps
