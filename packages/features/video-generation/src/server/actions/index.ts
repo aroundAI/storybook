@@ -7,4 +7,7 @@
 export * from './schemas';
 export { generateVideoAction } from './generate-video-action';
 export { batchGenerateVideosAction } from './batch-generate-action';
-export { pollVideoStatusAction, cancelVideoJobAction } from './poll-cancel-actions';
+export {
+  pollVideoStatusAction,
+  cancelVideoJobAction,
+} from './poll-cancel-actions';
