@@ -95,6 +95,28 @@ export interface HailuoFileResponse {
 }
 
 /**
+ * Base response structure from Hailuo API.
+ * All API responses include this structure.
+ */
+export interface HailuoBaseResponse {
+  base_resp: {
+    status_code: number;
+    status_msg: string;
+  };
+}
+
+/**
+ * Error response from Hailuo API.
+ * Used for parsing error details from failed requests.
+ */
+export interface HailuoErrorResponse extends HailuoBaseResponse {
+  error?: {
+    code: number;
+    message: string;
+  };
+}
+
+/**
  * Hailuo provider error codes.
  */
 export type HailuoErrorCode =

@@ -20,7 +20,9 @@ import {
 } from './constants';
 import type {
   HailuoApiStatus,
+  HailuoBaseResponse,
   HailuoCostEstimate,
+  HailuoErrorResponse,
   HailuoFileResponse,
   HailuoGenerationRequest,
   HailuoGenerationResponse,
@@ -222,12 +224,22 @@ export class HailuoProvider extends BaseVideoGenerationProvider {
 
   /**
    * Get downloadable video URL from file_id.
+   *
+   * @throws {HailuoProviderError} If the file or download URL is not available
    */
   private async getVideoUrl(fileId: string): Promise<string> {
     const response = await this.makeRequest<HailuoFileResponse>(
       `/files/retrieve?file_id=${fileId}`,
       { method: 'GET' },
     );
+
+    if (!response.file?.download_url) {
+      throw new HailuoProviderError(
+        'Video URL not available from Hailuo API',
+        'PROVIDER_ERROR',
+      );
+    }
+
     return response.file.download_url;
   }
 
@@ -271,7 +283,9 @@ export class HailuoProvider extends BaseVideoGenerationProvider {
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
+        const errorResponse: Partial<HailuoErrorResponse> = await response
+          .json()
+          .catch(() => ({}));
 
         if (response.status === 429) {
           throw new HailuoProviderError('Rate limit exceeded', 'RATE_LIMITED', {
@@ -287,16 +301,19 @@ export class HailuoProvider extends BaseVideoGenerationProvider {
           );
         }
 
+        const errorMessage =
+          errorResponse.base_resp?.status_msg ||
+          errorResponse.error?.message ||
+          response.statusText;
+
         throw new HailuoProviderError(
-          `HTTP ${response.status}: ${(error as { base_resp?: { status_msg?: string } }).base_resp?.status_msg || response.statusText}`,
+          `HTTP ${response.status}: ${errorMessage}`,
           'PROVIDER_ERROR',
           { retryable: response.status >= 500 },
         );
       }
 
-      const data = (await response.json()) as {
-        base_resp?: { status_code?: number; status_msg?: string };
-      } & T;
+      const data = (await response.json()) as HailuoBaseResponse & T;
 
       if (data.base_resp && data.base_resp.status_code !== 0) {
         throw new HailuoProviderError(
