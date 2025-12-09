@@ -114,4 +114,3 @@ export interface HailuoWebhookPayload {
   finished_at?: number;
   timestamp?: number; // For replay protection
 }
-

@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HAILUO_STATUS_MAP, KLING_STATUS_MAP } from '../src/lib/provider-status';
+import {
+  HAILUO_STATUS_MAP,
+  KLING_STATUS_MAP,
+} from '../src/lib/provider-status';
 
 // Mock the logger
 vi.mock('@kit/shared/logger', () => ({
