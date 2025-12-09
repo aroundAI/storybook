@@ -9,6 +9,14 @@ export * from './types';
 export * from './schemas';
 export * from './constants';
 
+// Kling-specific types and schemas
+export * from './kling-types';
+export * from './kling-schemas';
+
+// Runway-specific types and schemas
+export * from './runway-types';
+export * from './runway-schemas';
+
 // Provider status types and mappings
 export type {
   InternalJobStatus,
