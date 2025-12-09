@@ -64,9 +64,9 @@ export const createAssetAction = enhanceAction(
 
     logger.info({ ...ctx, assetId: asset.id }, 'Asset created successfully');
 
-    // Revalidate asset list pages
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-    revalidatePath('/home/(user)/projects/[id]', 'page');
+    // Revalidate asset pages
+    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectId]', 'page');
 
     return { success: true, data: mapRowToAsset(asset as AssetRow) };
   },
@@ -184,8 +184,8 @@ export const updateAssetAction = enhanceAction(
     logger.info(ctx, 'Asset updated successfully');
 
     // Revalidate asset pages
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-    revalidatePath('/home/(user)/projects/[id]', 'page');
+    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectId]', 'page');
 
     return { success: true, data: mapRowToAsset(asset as AssetRow) };
   },
@@ -242,8 +242,8 @@ export const deleteAssetAction = enhanceAction(
     logger.info(ctx, 'Asset deleted successfully');
 
     // Revalidate asset pages
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-    revalidatePath('/home/(user)/projects/[id]', 'page');
+    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
+    revalidatePath('/home/[account]/studio/[projectId]', 'page');
 
     return {
       success: true,
