@@ -2,12 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   DEFAULT_JOB_OPTIONS,
-  getQueueConcurrency,
-  getQueueRateLimitConfig,
   MAX_RETRY_ATTEMPTS,
   PROVIDER_CONCURRENCY_LIMITS,
   QUEUE_NAME,
   RETRY_DELAYS,
+  getQueueConcurrency,
+  getQueueRateLimitConfig,
 } from '../src/queue/config';
 import {
   ProviderApiError,
@@ -17,7 +17,10 @@ import { VideoGenerationJobSchema } from '../src/queue/types';
 
 // Mock state that can be controlled by tests
 const mockState = {
-  checkRateLimitResult: { allowed: true } as { allowed: boolean; retryAfter?: number },
+  checkRateLimitResult: { allowed: true } as {
+    allowed: boolean;
+    retryAfter?: number;
+  },
   generateVideoResult: { jobId: 'provider-job-123' } as { jobId: string },
   generateVideoError: null as Error | null,
   jobState: 'waiting' as string,
@@ -39,15 +42,21 @@ const mockJob = {
     priority: 5,
   },
   attemptsMade: 0,
-  getState: vi.fn().mockImplementation(() => Promise.resolve(mockState.jobState)),
+  getState: vi
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockState.jobState)),
   remove: vi.fn().mockResolvedValue(undefined),
 };
 
 const mockQueue = {
   add: vi.fn().mockImplementation(() => Promise.resolve(mockJob)),
-  getJob: vi.fn().mockImplementation(() =>
-    Promise.resolve(mockState.getJobResult === null ? mockJob : mockState.getJobResult),
-  ),
+  getJob: vi
+    .fn()
+    .mockImplementation(() =>
+      Promise.resolve(
+        mockState.getJobResult === null ? mockJob : mockState.getJobResult,
+      ),
+    ),
   getWaitingCount: vi.fn().mockResolvedValue(5),
   getActiveCount: vi.fn().mockResolvedValue(2),
   getCompletedCount: vi.fn().mockResolvedValue(100),
@@ -73,7 +82,9 @@ vi.mock('bullmq', () => ({
 
 // Mock rate limiter
 vi.mock('../src/lib/rate-limiter', () => ({
-  checkRateLimit: vi.fn().mockImplementation(() => Promise.resolve(mockState.checkRateLimitResult)),
+  checkRateLimit: vi
+    .fn()
+    .mockImplementation(() => Promise.resolve(mockState.checkRateLimitResult)),
 }));
 
 // Mock providers
@@ -316,7 +327,11 @@ describe('Video Generation Queue', () => {
       });
 
       it('should accept code and custom message', () => {
-        const error = new ProviderApiError('runway', 'RATE_LIMIT', 'Too many requests');
+        const error = new ProviderApiError(
+          'runway',
+          'RATE_LIMIT',
+          'Too many requests',
+        );
         expect(error.provider).toBe('runway');
         expect(error.code).toBe('RATE_LIMIT');
         expect(error.message).toBe('Too many requests');
@@ -574,7 +589,9 @@ describe('Video Generation Queue', () => {
 
       mockState.checkRateLimitResult = { allowed: false, retryAfter: 60 };
 
-      await expect(processVideoGenerationJob(mockJob as any)).rejects.toMatchObject({
+      await expect(
+        processVideoGenerationJob(mockJob as any),
+      ).rejects.toMatchObject({
         name: 'RateLimitExceededError',
         retryAfter: 60,
       });
