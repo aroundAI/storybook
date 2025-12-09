@@ -1,4 +1,6 @@
-// Asset components (FILM-DS-01)
+/**
+ * Asset Components (FILM-DS-01, FILM-204, FILM-205, FILM-206)
+ */
 
 // Foundation components
 export { AssetCard } from './asset-card';
@@ -11,14 +13,10 @@ export { EmptyAssetState } from './empty-asset-state';
 // Gallery (FILM-204)
 export { AssetGallery } from './asset-gallery';
 
-// Character Editor (FILM-205)
-export { CharacterEditor, type CharacterFormData } from './character-editor';
-export { CharacterEditorForm } from './character-editor-form';
-export { CharacterBasicInfo } from './character-basic-info';
-export { CharacterPhysicalAttributes } from './character-physical-attributes';
-export { CharacterPersonality } from './character-personality';
-export { CharacterClothing } from './character-clothing';
-export { CharacterBackstory } from './character-backstory';
+// Character Editor (FILM-205) - new folder structure from main
+export { CharacterEditor } from './character-editor';
+export { CharacterEditorForm } from './character-editor/CharacterEditorForm';
+export * from './character-editor/sections';
 
 // Voice Profile Editor (FILM-206)
 export { VoiceProfileEditor } from './voice-profile-editor';
