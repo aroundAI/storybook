@@ -1,2 +1,2 @@
 // Episode components (FILM-DS-01)
-export {};
+export { ContinuityChecker } from './continuity-checker';

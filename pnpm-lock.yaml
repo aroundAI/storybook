@@ -1233,6 +1233,9 @@ importers:
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
+      '@kit/llm':
+        specifier: workspace:*
+        version: link:../../llm
       '@kit/next':
         specifier: workspace:*
         version: link:../../next
@@ -1251,12 +1254,18 @@ importers:
       '@kit/ui':
         specifier: workspace:*
         version: link:../../ui
+      '@tanstack/react-query':
+        specifier: 5.89.0
+        version: 5.89.0(react@19.1.1)
       '@types/react':
         specifier: 19.1.13
         version: 19.1.13
       '@types/react-dom':
         specifier: 19.1.9
         version: 19.1.9(@types/react@19.1.13)
+      lucide-react:
+        specifier: ^0.544.0
+        version: 0.544.0(react@19.1.1)
       next:
         specifier: 15.5.3
         version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
