@@ -15,6 +15,7 @@ import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { invalidatePromptCache } from '../element-prompt/cache';
 import {
   CreateCharacterSchema,
   DeleteCharacterSchema,
@@ -363,6 +364,9 @@ export const updateCharacterAction = enhanceAction(
     }
 
     logger.info(ctx, 'Character updated successfully');
+
+    // Invalidate element prompt cache since character data changed
+    await invalidatePromptCache(data.assetId);
 
     // Revalidate asset pages
     revalidatePath('/home/[account]/projects/[id]', 'page');
