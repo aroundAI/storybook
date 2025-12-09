@@ -5,8 +5,7 @@
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-103 (character_details table), FILM-201 (asset CRUD)
 **Blocks**: FILM-205 (CharacterEditor component)
-**Status**: ✅ COMPLETED (2024-12-09)
-**PR**: feat/film-202-209-character-element-prompts
+**Status**: ✅ Complete (2025-12-08)
 
 ---
 
