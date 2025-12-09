@@ -72,6 +72,8 @@ export function CreateEpisodeDialog({
         router.push(
           `/home/${account}/studio/${projectId}/episodes/${result.data.id}`,
         );
+      } else {
+        toast.error('Failed to create episode');
       }
     } catch (error) {
       toast.error(

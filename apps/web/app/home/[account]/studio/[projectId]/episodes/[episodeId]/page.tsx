@@ -82,30 +82,29 @@ async function EpisodeWorkspacePage({
 
   const client = getSupabaseServerClient();
 
-  // Fetch episode with season info and verify it belongs to the project
-  const { data: episodeData, error: episodeError } = await client
-    .from('episodes')
-    .select(
-      `
-      *,
-      season:seasons(id, name, number)
-    `,
-    )
-    .eq('id', episodeId)
-    .eq('project_id', projectId)
-    .is('deleted_at', null)
-    .single();
+  // Fetch episode and project in parallel for optimal performance
+  const [episodeResult, projectResult] = await Promise.all([
+    client
+      .from('episodes')
+      .select(
+        `
+        *,
+        season:seasons(id, name, number)
+      `,
+      )
+      .eq('id', episodeId)
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .single(),
+    client.from('projects').select('name').eq('id', projectId).single(),
+  ]);
+
+  const { data: episodeData, error: episodeError } = episodeResult;
+  const { data: project } = projectResult;
 
   if (episodeError || !episodeData) {
     notFound();
   }
-
-  // Fetch project name for breadcrumb
-  const { data: project } = await client
-    .from('projects')
-    .select('name')
-    .eq('id', projectId)
-    .single();
 
   // Get season data - Supabase returns relations as objects for single matches
   const seasonData = Array.isArray(episodeData.season)

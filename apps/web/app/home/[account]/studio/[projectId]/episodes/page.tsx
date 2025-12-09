@@ -50,24 +50,23 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const { account, projectId } = await params;
   const client = getSupabaseServerClient();
 
-  // Verify project exists
-  const { data: project, error: projectError } = await client
-    .from('projects')
-    .select('id, name')
-    .eq('id', projectId)
-    .single();
+  // Fetch project and episodes in parallel for optimal performance
+  const [projectResult, episodesResult] = await Promise.all([
+    client.from('projects').select('id, name').eq('id', projectId).single(),
+    client
+      .from('episodes')
+      .select('*')
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .order('number', { ascending: true }),
+  ]);
+
+  const { data: project, error: projectError } = projectResult;
+  const { data: episodes, error: episodesError } = episodesResult;
 
   if (projectError || !project) {
     notFound();
   }
-
-  // Fetch episodes for the project
-  const { data: episodes, error: episodesError } = await client
-    .from('episodes')
-    .select('*')
-    .eq('project_id', projectId)
-    .is('deleted_at', null)
-    .order('number', { ascending: true });
 
   if (episodesError) {
     throw new Error('Failed to load episodes');

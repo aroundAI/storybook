@@ -52,6 +52,8 @@ export function QuickActionsMenu({
       if (result.success) {
         toast.success('Episode deleted successfully');
         router.push(`/home/${account}/studio/${projectId}/episodes`);
+      } else {
+        toast.error('Failed to delete episode');
       }
     } catch (error) {
       toast.error(
