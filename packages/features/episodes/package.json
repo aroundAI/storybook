@@ -28,7 +28,6 @@
     "@kit/eslint-config": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
