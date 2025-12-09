@@ -19,13 +19,15 @@
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts"
   },
+  "dependencies": {
+    "@kit/prompt-engine": "workspace:*"
+  },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@kit/audit-logs": "workspace:*",
     "@kit/eslint-config": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",

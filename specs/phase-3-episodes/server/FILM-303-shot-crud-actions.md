@@ -666,33 +666,36 @@ None (new feature)
 
 ## Acceptance Criteria
 
+**Status**: ✅ Complete (2025-12-08)
+**Implementation**: PR #TBD
+
 ### Functional
 
-- [ ] `createShotAction` successfully creates shot with valid data
-- [ ] `createShotAction` auto-assigns sequence_number
-- [ ] `createShotAction` respects RLS (cannot create for inaccessible project)
-- [ ] `batchCreateShotsAction` creates all shots atomically
-- [ ] `batchCreateShotsAction` rolls back on any failure
-- [ ] `batchCreateShotsAction` assigns sequential sequence_numbers
-- [ ] `reorderShotsAction` updates all sequence_numbers correctly
-- [ ] `reorderShotsAction` validates all shots belong to same episode
-- [ ] `getEpisodeShotsAction` returns shots ordered by sequence_number
-- [ ] `getEpisodeShotsAction` includes generation job status
-- [ ] `getEpisodeShotsAction` filters by status
-- [ ] `updateShotAction` updates only provided fields
-- [ ] `deleteShotAction` soft deletes shot
-- [ ] `deleteShotAction` reorders remaining shots to close gap
-- [ ] `deleteShotAction` cancels in-progress generation job
-- [ ] All actions enforce authentication
+- [x] `createShotAction` successfully creates shot with valid data
+- [x] `createShotAction` auto-assigns sequence_number
+- [x] `createShotAction` respects RLS (cannot create for inaccessible project)
+- [x] `batchCreateShotsAction` creates all shots atomically
+- [x] `batchCreateShotsAction` rolls back on any failure
+- [x] `batchCreateShotsAction` assigns sequential sequence_numbers
+- [x] `reorderShotsAction` updates all sequence_numbers correctly
+- [x] `reorderShotsAction` validates all shots belong to same episode
+- [x] `getEpisodeShotsAction` returns shots ordered by sequence_number
+- [x] `getEpisodeShotsAction` includes generation job status
+- [x] `getEpisodeShotsAction` filters by status
+- [x] `updateShotAction` updates only provided fields
+- [x] `deleteShotAction` soft deletes shot
+- [x] `deleteShotAction` reorders remaining shots to close gap
+- [x] `deleteShotAction` cancels in-progress generation job
+- [x] All actions enforce authentication
 
 ### Non-Functional
 
-- [ ] All actions complete within 3 seconds (except batch)
-- [ ] Batch create handles 100+ shots
-- [ ] All inputs validated with Zod schemas
-- [ ] All database errors properly caught and thrown
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] All actions complete within 3 seconds (except batch)
+- [x] Batch create handles 100+ shots
+- [x] All inputs validated with Zod schemas
+- [x] All database errors properly caught and thrown
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 
