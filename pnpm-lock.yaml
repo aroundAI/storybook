@@ -1541,6 +1541,9 @@ importers:
       '@kit/supabase':
         specifier: workspace:*
         version: link:../../supabase
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../ui
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*
@@ -1563,9 +1566,18 @@ importers:
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
+      '@types/react':
+        specifier: 19.1.13
+        version: 19.1.13
       googleapis:
         specifier: ^148.0.0
         version: 148.0.0
+      lucide-react:
+        specifier: ^0.544.0
+        version: 0.544.0(react@19.1.1)
+      react:
+        specifier: 19.1.1
+        version: 19.1.1
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
