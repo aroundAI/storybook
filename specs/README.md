@@ -263,7 +263,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | SPIKE-01 | [kling-api-research](./spikes/SPIKE-01-kling-api-research.md) | DRAFT | S |
-| SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.md) | DRAFT | M |
+| SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.md) | DONE | M |
 | SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.md) | DRAFT | S |
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.md) | DRAFT | M |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.md) | DRAFT | M |
