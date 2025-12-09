@@ -105,6 +105,7 @@ export function clearProviderCache(): void {
 
 interface AccountCachedProvider {
   instance: VideoGenerationProvider;
+  configHash: string;
 }
 
 // Account-based provider cache: key = `${accountId}:${providerName}`
@@ -143,13 +144,6 @@ export async function createAccountVideoProvider(
   // Determine which provider to use
   const providerName = options.provider ?? (await getDefaultProvider(accountId));
 
-  // Check cache first
-  const cacheKey = makeAccountCacheKey(accountId, providerName);
-  const cached = accountProviderCache.get(cacheKey);
-  if (cached) {
-    return cached.instance;
-  }
-
   // Validate provider exists in registry
   if (!isProviderRegistered(providerName)) {
     throw new ProviderNotFoundError(providerName);
@@ -162,11 +156,21 @@ export async function createAccountVideoProvider(
     webhookBaseUrl,
   );
 
+  // Compute config hash for cache validation
+  const configHash = hashConfig(config);
+
+  // Check cache - only use if config hasn't changed
+  const cacheKey = makeAccountCacheKey(accountId, providerName);
+  const cached = accountProviderCache.get(cacheKey);
+  if (cached && cached.configHash === configHash) {
+    return cached.instance;
+  }
+
   // Create provider instance from registry
   const instance = createProviderFromRegistry(providerName, config);
 
-  // Cache the instance
-  accountProviderCache.set(cacheKey, { instance });
+  // Cache the instance with config hash
+  accountProviderCache.set(cacheKey, { instance, configHash });
 
   return instance;
 }

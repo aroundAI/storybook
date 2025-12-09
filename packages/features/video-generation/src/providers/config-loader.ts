@@ -28,7 +28,7 @@ const PLATFORM_KEY_ENV_MAP: Record<VideoProviderName, string> = {
  *
  * @param accountId - The account to load configuration for
  * @param providerName - The provider to configure
- * @param webhookBaseUrl - Optional base URL for webhooks (defaults to NEXT_PUBLIC_APP_URL)
+ * @param webhookBaseUrl - Optional base URL for webhooks (defaults to NEXT_PUBLIC_SITE_URL)
  * @returns Provider configuration with decrypted API key
  * @throws NoAPIKeyError if no API key is available
  */
@@ -66,7 +66,7 @@ export async function loadProviderConfig(
   }
 
   // Build webhook URL
-  const baseUrl = webhookBaseUrl ?? process.env.NEXT_PUBLIC_APP_URL ?? '';
+  const baseUrl = webhookBaseUrl ?? process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const webhookUrl = `${baseUrl}/api/generation/webhooks/${providerName}`;
 
   return {
