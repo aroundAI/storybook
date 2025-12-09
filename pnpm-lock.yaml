@@ -199,6 +199,9 @@ importers:
       '@kit/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
+      '@kit/episodes':
+        specifier: workspace:*
+        version: link:../../packages/features/episodes
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../../packages/features/film-studio-schemas
