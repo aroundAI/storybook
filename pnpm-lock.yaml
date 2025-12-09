@@ -199,6 +199,9 @@ importers:
       '@kit/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
+      '@kit/film-studio':
+        specifier: workspace:*
+        version: link:../../packages/features/film-studio
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../../packages/features/film-studio-schemas
@@ -1308,6 +1311,19 @@ importers:
         version: 3.25.76
 
   packages/features/film-studio:
+    dependencies:
+      '@kit/film-studio-schemas':
+        specifier: workspace:*
+        version: link:../film-studio-schemas
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../next
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*
@@ -1315,12 +1331,6 @@ importers:
       '@kit/prettier-config':
         specifier: workspace:*
         version: link:../../../tooling/prettier
-      '@kit/shared':
-        specifier: workspace:*
-        version: link:../../shared
-      '@kit/supabase':
-        specifier: workspace:*
-        version: link:../../supabase
       '@kit/tsconfig':
         specifier: workspace:*
         version: link:../../../tooling/typescript
