@@ -1,0 +1,92 @@
+import type { Metadata } from 'next';
+
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+
+import { ArrowLeft } from 'lucide-react';
+
+import { AssetGallery } from '@kit/assets/components';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { withI18n } from '~/lib/i18n/with-i18n';
+
+import { CreateAssetButton } from './_components/create-asset-button';
+
+interface AssetLibraryPageProps {
+  params: Promise<{
+    account: string;
+    projectId: string;
+  }>;
+  searchParams: Promise<{
+    tab?: 'character' | 'location' | 'voice';
+  }>;
+}
+
+export async function generateMetadata({
+  params,
+}: AssetLibraryPageProps): Promise<Metadata> {
+  const { projectId } = await params;
+  const client = getSupabaseServerClient();
+
+  const { data: project } = await client
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .single();
+
+  return {
+    title: project ? `${project.name} - Asset Library` : 'Asset Library',
+    description:
+      'Manage characters, locations, and voice profiles for your project',
+  };
+}
+
+async function AssetLibraryPage({
+  params,
+  searchParams,
+}: AssetLibraryPageProps) {
+  const { account, projectId } = await params;
+  const { tab } = await searchParams;
+
+  const client = getSupabaseServerClient();
+
+  // Verify project exists
+  const { data: project, error } = await client
+    .from('projects')
+    .select('id, name')
+    .eq('id', projectId)
+    .single();
+
+  if (error || !project) {
+    notFound();
+  }
+
+  return (
+    <>
+      {/* Back Link */}
+      <div className="px-6 pt-6">
+        <Link
+          href={`/home/${account}/studio/${projectId}`}
+          className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm transition-colors"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Project
+        </Link>
+      </div>
+
+      <PageHeader
+        title="Asset Library"
+        description="Manage characters, locations, and voice profiles for your project"
+      >
+        <CreateAssetButton projectId={projectId} account={account} />
+      </PageHeader>
+
+      <PageBody>
+        <AssetGallery projectId={projectId} initialTab={tab ?? 'character'} />
+      </PageBody>
+    </>
+  );
+}
+
+export default withI18n(AssetLibraryPage);
