@@ -532,14 +532,14 @@ export function LinkedInComposer({ initialText, isCompanyPage = false, onSave }:
 
 ## Acceptance Criteria
 
-- [ ] OAuth 2.0 connection flow works for personal accounts
-- [ ] OAuth 2.0 connection flow works for company pages
-- [ ] Video upload with proper initialization and finalization
-- [ ] Post composition with character limit enforcement
-- [ ] Hashtag tracking in composer
-- [ ] Analytics retrieval (impressions, likes, comments, shares)
-- [ ] Delete post functionality
-- [ ] Video duration validation (10 min personal, 15 min company)
+- [x] OAuth 2.0 connection flow works for personal accounts
+- [x] OAuth 2.0 connection flow works for company pages
+- [x] Video upload with proper initialization and finalization
+- [x] Post composition with character limit enforcement
+- [x] Hashtag tracking in composer
+- [x] Analytics retrieval (impressions, likes, comments, shares)
+- [x] Delete post functionality
+- [x] Video duration validation (10 min personal, 15 min company)
 
 ---
 

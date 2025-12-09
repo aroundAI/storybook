@@ -33,7 +33,12 @@ export interface TokenValidationResult {
 /**
  * Supported publishing platforms
  */
-export type Platform = 'youtube' | 'tiktok' | 'instagram' | 'facebook';
+export type Platform =
+  | 'youtube'
+  | 'tiktok'
+  | 'instagram'
+  | 'facebook'
+  | 'linkedin';
 
 /**
  * Buffer time before expiry to trigger refresh (5 minutes)
@@ -206,6 +211,8 @@ async function refreshTokenForPlatform(
     case 'instagram':
     case 'facebook':
       return refreshMetaToken(refreshToken, platform);
+    case 'linkedin':
+      return refreshLinkedInToken(refreshToken);
     default:
       throw new Error(`Unknown platform: ${platform}`);
   }
@@ -330,6 +337,54 @@ async function refreshMetaToken(
 }
 
 /**
+ * Refreshes a LinkedIn OAuth token
+ */
+async function refreshLinkedInToken(
+  refreshToken: string,
+): Promise<TokenRefreshResult> {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+
+  if (!clientId || !clientSecret) {
+    throw new Error('LinkedIn OAuth credentials not configured');
+  }
+
+  const response = await fetch(
+    'https://www.linkedin.com/oauth/v2/accessToken',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      `LinkedIn refresh failed: ${error.error_description ?? error.error ?? 'Unknown error'}`,
+    );
+  }
+
+  const data = await response.json();
+
+  if (!data.access_token) {
+    throw new Error('LinkedIn refresh failed: No access token returned');
+  }
+
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token, // LinkedIn may return new refresh token
+    // LinkedIn access tokens expire in 60 days (5184000 seconds)
+    expiresAt: new Date(Date.now() + (data.expires_in ?? 5184000) * 1000),
+  };
+}
+
+/**
  * Formats platform name for display
  */
 export function formatPlatformName(platform: Platform | string): string {
@@ -338,6 +393,7 @@ export function formatPlatformName(platform: Platform | string): string {
     tiktok: 'TikTok',
     instagram: 'Instagram',
     facebook: 'Facebook',
+    linkedin: 'LinkedIn',
   };
   return names[platform] ?? platform;
 }
