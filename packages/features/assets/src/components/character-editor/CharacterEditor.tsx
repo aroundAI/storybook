@@ -37,6 +37,13 @@ import {
 import type { CharacterWithDetails, VoiceAssetOption } from '../../lib/types';
 import { CharacterEditorForm } from './CharacterEditorForm';
 
+/**
+ * Character Editor (FILM-205)
+ *
+ * Main editor component for creating and editing characters.
+ * Features: auto-save, draft restoration, unsaved changes warning.
+ */
+
 interface CharacterEditorProps {
   /** Project ID for new characters */
   projectId: string;
