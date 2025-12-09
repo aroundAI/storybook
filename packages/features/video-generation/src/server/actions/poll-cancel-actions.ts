@@ -9,112 +9,12 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import {
-  CancelVideoJobSchema,
-  GenerateVideoSchema,
-  PollVideoStatusSchema,
-} from '../lib/schemas';
-import { createVideoProvider } from '../providers/factory';
+import { CancelVideoJobSchema, PollVideoStatusSchema } from '../../lib/schemas';
+import { createVideoProvider } from '../../providers/factory';
 
 // Note: These actions use type assertions because the internal type definitions
 // differ from the generated database types. The database schema will be aligned
 // in a future update. RLS policies enforce project-level authorization.
-
-export const generateVideoAction = enhanceAction(
-  async (data) => {
-    const logger = await getLogger();
-    const ctx = {
-      name: 'video.generate',
-      accountId: data.accountId,
-      shotId: data.shotId,
-      provider: data.provider,
-    };
-
-    logger.info(ctx, 'Starting video generation');
-
-    const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      logger.warn(ctx, 'Unauthorized video generation attempt');
-      throw new Error('Authentication required');
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: job, error: createError } = await (client as any)
-      .from('generation_jobs')
-      .insert({
-        account_id: data.accountId,
-        shot_id: data.shotId,
-        provider: data.provider,
-        status: 'pending',
-        request: data.request,
-        started_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (createError) {
-      logger.error(
-        { ...ctx, error: createError },
-        'Failed to create generation job',
-      );
-      throw createError;
-    }
-
-    const apiKey = process.env[`${data.provider.toUpperCase()}_API_KEY`];
-    if (!apiKey) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
-        .from('generation_jobs')
-        .update({
-          status: 'failed',
-          error: `Missing API key for provider: ${data.provider}`,
-        })
-        .eq('id', job.id);
-
-      logger.error(ctx, 'Missing API key for provider');
-      throw new Error(`Missing API key for provider: ${data.provider}`);
-    }
-
-    try {
-      const provider = createVideoProvider(data.provider, { apiKey });
-      const response = await provider.generateVideo(data.request);
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
-        .from('generation_jobs')
-        .update({
-          provider_job_id: response.jobId,
-          status: response.status,
-        })
-        .eq('id', job.id);
-
-      logger.info(
-        { ...ctx, jobId: job.id, providerJobId: response.jobId },
-        'Video generation started',
-      );
-      revalidatePath('/home/[account]/projects/[id]', 'page');
-
-      return { success: true, job: { ...job, providerJobId: response.jobId } };
-    } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (client as any)
-        .from('generation_jobs')
-        .update({
-          status: 'failed',
-          error: error instanceof Error ? error.message : 'Unknown error',
-        })
-        .eq('id', job.id);
-
-      logger.error({ ...ctx, error }, 'Video generation failed');
-      throw error;
-    }
-  },
-  {
-    schema: GenerateVideoSchema,
-  },
-);
 
 export const pollVideoStatusAction = enhanceAction(
   async (data) => {

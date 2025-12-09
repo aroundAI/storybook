@@ -258,14 +258,16 @@ Prevent duplicate submissions within 5 minutes using unique constraint.
 
 ## Acceptance Criteria
 
-- [ ] Action validates shot exists
-- [ ] Action checks budget before generation
-- [ ] Action reserves budget atomically
-- [ ] Action creates generation_jobs record
-- [ ] Action adds job to queue
-- [ ] Action returns generation job ID
-- [ ] Action rejects duplicate submissions
-- [ ] Action enforces authentication
+- [x] Action validates shot exists
+- [x] Action checks budget before generation
+- [x] Action reserves budget atomically
+- [x] Action creates generation_jobs record
+- [x] Action adds job to queue
+- [x] Action returns generation job ID
+- [x] Action rejects duplicate submissions
+- [x] Action enforces authentication
+
+**Status: COMPLETED** - Implemented in `packages/features/video-generation/src/server/actions/generate-video-action.ts`
 
 ---
 

@@ -370,14 +370,14 @@ graph TD
 | FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S | FILM-401 |
 | FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | ✅ DONE | M | - |
 | FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | ✅ DONE | L | FILM-403 |
-| FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | DRAFT | L | FILM-401, FILM-404 |
-| FILM-406 | [batch-generate-action](./phase-4-video-generation/server/FILM-406-batch-generate-action.md) | DRAFT | M | FILM-405 |
+| FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | ✅ DONE | L | FILM-401, FILM-404 |
+| FILM-406 | [batch-generate-action](./phase-4-video-generation/server/FILM-406-batch-generate-action.md) | ✅ DONE | M | FILM-405 |
 | FILM-407 | [kling-webhook](./phase-4-video-generation/webhooks/FILM-407-kling-webhook.md) | ✅ DONE | M | FILM-CC-02 |
 | FILM-408 | [poll-status-action](./phase-4-video-generation/server/FILM-408-poll-status-action.md) | DRAFT | S | FILM-405 |
 | FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | DRAFT | L | FILM-405 |
 | FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DRAFT | L | FILM-DS-01 |
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M | FILM-408 |
-| FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | DRAFT | M | FILM-405 |
+| FILM-412 | [cost-tracking](./phase-4-video-generation/lib/FILM-412-cost-tracking.md) | ✅ DONE | M | FILM-405 |
 
 ### Phase 5: Audio Generation (16 specs)
 
@@ -520,20 +520,20 @@ SPIKE-01 through SPIKE-05
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 7 | 0 | 0 | 0 | 2 |
 | 3. Episodes | 14 | 11 | 0 | 0 | 0 | 3 |
-| 4. Video Gen | 15 | 11 | 0 | 0 | 0 | 4 |
+| 4. Video Gen | 15 | 8 | 0 | 0 | 0 | 7 |
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 8 | 0 | 0 | 0 | 7 |
 | 8. Analytics | 10 | 9 | 0 | 0 | 0 | 1 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **76** | **0** | **0** | **0** | **54** |
+| **TOTAL** | **130** | **73** | **0** | **0** | **0** | **57** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 46 | 49% |
+| MVP Specs | 93 | 49 | 53% |
 | Post-MVP | 37 | 8 | 22% |
 
 ---
@@ -562,7 +562,7 @@ SPIKE-01 through SPIKE-05
 | FILM-201 | `packages/features/assets/src/server/asset-actions.ts` |
 | FILM-202 | `packages/features/assets/src/server/character-actions.ts` |
 | FILM-301 | `packages/features/episodes/src/server/actions.ts` ✅ |
-| FILM-405 | `packages/features/video-generation/src/server/generate-video.ts` |
+| FILM-405 | `packages/features/video-generation/src/server/actions/generate-video-action.ts` ✅ |
 | FILM-502 | `packages/features/audio-generation/src/server/voice-actions.ts` |
 
 ### Components
