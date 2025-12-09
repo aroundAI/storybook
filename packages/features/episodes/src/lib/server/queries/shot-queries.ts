@@ -70,9 +70,9 @@ export const getEpisodeShotsAction = enhanceAction(
         sceneNumber: shot.scene_number as number,
         shotNumber: shot.shot_number as number,
         sequenceNumber: shot.sequence_number as number,
-        description: shot.description as string,
+        description: shot.scene_description as string,
         prompt: shot.prompt as string | null,
-        durationSeconds: shot.duration as number,
+        durationSeconds: shot.duration_seconds as number,
         status: shot.status as
           | 'pending'
           | 'generating'
@@ -82,7 +82,7 @@ export const getEpisodeShotsAction = enhanceAction(
         videoUrl: shot.video_url as string | null,
         thumbnailUrl: shot.thumbnail_url as string | null,
         generationJobId: shot.generation_job_id as string | null,
-        metadata: shot.metadata as Record<string, unknown>,
+        metadata: shot.generation_metadata as Record<string, unknown>,
         createdAt: shot.created_at as string,
         updatedAt: shot.updated_at as string,
         deletedAt: shot.deleted_at as string | null,

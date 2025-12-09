@@ -63,12 +63,12 @@ export const createShotAction = enhanceAction(
         scene_number: data.sceneNumber,
         shot_number: data.shotNumber,
         sequence_number: nextSequenceNumber,
-        description: data.description,
+        scene_description: data.description,
         prompt: data.prompt,
-        duration: data.durationSeconds,
+        duration_seconds: data.durationSeconds,
         camera_direction: data.cameraDirection ?? null,
         status: 'pending',
-        metadata: data.metadata ?? {},
+        generation_metadata: data.metadata ?? {},
       })
       .select()
       .single();
@@ -140,12 +140,12 @@ export const batchCreateShotsAction = enhanceAction(
       scene_number: shot.sceneNumber,
       shot_number: shot.shotNumber,
       sequence_number: nextSequenceNumber + index,
-      description: shot.description,
+      scene_description: shot.description,
       prompt: shot.prompt,
-      duration: shot.durationSeconds,
+      duration_seconds: shot.durationSeconds,
       camera_direction: shot.cameraDirection ?? null,
       status: 'pending',
-      metadata: {
+      generation_metadata: {
         characters: shot.characters ?? [],
         ...shot.metadata,
       },
@@ -281,10 +281,11 @@ export const updateShotAction = enhanceAction(
       updated_at: new Date().toISOString(),
     };
 
-    if (data.description !== undefined) updates.description = data.description;
+    if (data.description !== undefined)
+      updates.scene_description = data.description;
     if (data.prompt !== undefined) updates.prompt = data.prompt;
     if (data.durationSeconds !== undefined) {
-      updates.duration = data.durationSeconds;
+      updates.duration_seconds = data.durationSeconds;
     }
     if (data.cameraDirection !== undefined) {
       updates.camera_direction = data.cameraDirection;
@@ -294,7 +295,8 @@ export const updateShotAction = enhanceAction(
     if (data.thumbnailUrl !== undefined) {
       updates.thumbnail_url = data.thumbnailUrl;
     }
-    if (data.metadata !== undefined) updates.metadata = data.metadata;
+    if (data.metadata !== undefined)
+      updates.generation_metadata = data.metadata;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: shot, error } = await (client as any)
