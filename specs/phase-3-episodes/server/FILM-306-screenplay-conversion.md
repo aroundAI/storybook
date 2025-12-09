@@ -316,14 +316,14 @@ function extractDialogueLines(screenplay: Screenplay, episodeId: string) {
 
 ## Acceptance Criteria
 
-- [ ] `convertToScreenplayAction` converts story to screenplay
-- [ ] Creates dialogue_lines records for all dialogue
-- [ ] Updates episode.screenplay_data
-- [ ] Updates episode status to 'storyboard'
-- [ ] Validates output with Zod schema
-- [ ] Handles optimistic locking
-- [ ] Completes within 30 seconds
-- [ ] Enforces authentication
+- [x] `convertToScreenplayAction` converts story to screenplay
+- [x] Creates dialogue_lines records for all dialogue
+- [x] Updates episode.screenplay_data
+- [x] Updates episode status to 'storyboard'
+- [x] Validates output with Zod schema
+- [x] Handles optimistic locking
+- [x] Completes within 30 seconds
+- [x] Enforces authentication
 
 ---
 

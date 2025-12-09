@@ -1252,6 +1252,9 @@ importers:
       '@kit/prettier-config':
         specifier: workspace:*
         version: link:../../../tooling/prettier
+      '@kit/prompt-engine':
+        specifier: workspace:*
+        version: link:../prompt-engine
       '@kit/shared':
         specifier: workspace:*
         version: link:../../shared

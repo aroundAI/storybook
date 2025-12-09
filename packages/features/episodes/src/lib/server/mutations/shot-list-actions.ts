@@ -35,29 +35,17 @@ function formatScreenplayForPrompt(screenplayData: ScreenplayData): string {
       const timeOfDay = scene.timeOfDay?.toUpperCase() ?? 'DAY';
       text += `INT./EXT. ${scene.location.toUpperCase()} - ${timeOfDay}\n\n`;
       text += `${scene.description}\n\n`;
-    }
-  }
 
-  if (screenplayData.dialogue) {
-    // Group dialogue by scene
-    const dialogueByScene = new Map<number, typeof screenplayData.dialogue>();
-    for (const d of screenplayData.dialogue) {
-      const existing = dialogueByScene.get(d.sceneNumber) ?? [];
-      existing.push(d);
-      dialogueByScene.set(d.sceneNumber, existing);
-    }
-
-    // Add dialogue after scene descriptions
-    for (const [sceneNumber, dialogues] of dialogueByScene) {
-      text += `\n--- Scene ${sceneNumber} Dialogue ---\n`;
-      for (const d of dialogues) {
-        text += `\n${d.characterName.toUpperCase()}\n`;
-        if (d.emotion) {
-          text += `(${d.emotion})\n`;
+      // Include dialogue from this scene
+      if (scene.dialogue && scene.dialogue.length > 0) {
+        for (const d of scene.dialogue) {
+          text += `${d.character.toUpperCase()}\n`;
+          if (d.parenthetical) {
+            text += `(${d.parenthetical})\n`;
+          }
+          text += `${d.text}\n\n`;
         }
-        text += `${d.text}\n`;
       }
-      text += '\n';
     }
   }
 

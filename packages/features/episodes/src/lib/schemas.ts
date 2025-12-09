@@ -181,3 +181,21 @@ export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
 // Shot CRUD schemas are in ./schemas/shot.schema.ts (FILM-303)
 // Shot list generation schemas are in ./schemas/shot-list.schema.ts (FILM-307)
 // Import directly from those files to avoid naming conflicts
+
+// ============================================================================
+// Screenplay Conversion Schemas (FILM-306)
+// ============================================================================
+
+/**
+ * Schema for converting episode story to screenplay format
+ * Used by convertToScreenplayAction
+ */
+export const ConvertToScreenplaySchema = z.object({
+  episodeId: z.string().uuid(),
+  targetSceneCount: z.number().int().min(3).max(15).optional(),
+  dialogueStyle: z.enum(['natural', 'stylized', 'minimal']).optional(),
+});
+
+export type ConvertToScreenplayInput = z.infer<
+  typeof ConvertToScreenplaySchema
+>;
