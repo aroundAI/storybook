@@ -1,7 +1,12 @@
 /**
  * Asset Types
- * Type definitions for asset management (FILM-201)
+ * Type definitions for asset management (FILM-201, FILM-202)
  */
+import type {
+  ClothingStyle,
+  PersonalityTraits,
+  PhysicalAttributes,
+} from './schemas/character.schema';
 
 /**
  * All supported asset types
@@ -133,6 +138,7 @@ export interface Voice extends Omit<Asset, 'type' | 'metadata'> {
 
 /**
  * Database row to Asset mapping helper type
+ * Note: deleted_at is optional as it may not exist in older database types
  */
 export interface AssetRow {
   id: string;
@@ -145,7 +151,7 @@ export interface AssetRow {
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
-  deleted_at: string | null;
+  deleted_at?: string | null;
 }
 
 /**
@@ -163,6 +169,100 @@ export function mapRowToAsset(row: AssetRow): Asset {
     metadata: row.metadata,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-    deletedAt: row.deleted_at,
+    deletedAt: row.deleted_at ?? null,
   };
+}
+
+// ============================================================================
+// Character Types (FILM-202)
+// ============================================================================
+
+/**
+ * Character with full details from character_details table
+ * Used for CharacterEditor and character display components
+ */
+export interface CharacterWithDetails extends Omit<Asset, 'type' | 'metadata'> {
+  type: 'character';
+  metadata: Record<string, unknown> | null;
+  // Character details (from character_details table)
+  physicalAttributes: PhysicalAttributes | null;
+  personality: string | null;
+  personalityTraits: PersonalityTraits | null;
+  clothingStyle: ClothingStyle | null;
+  backstory: string | null;
+  elementPrompt: string | null;
+  referenceImages: string[] | null;
+  voiceAssetId: string | null;
+}
+
+/**
+ * Database row type for character with joined details
+ */
+export interface CharacterDetailsRow {
+  physical_attributes: Record<string, unknown> | null;
+  personality: string | null;
+  element_prompt: string | null;
+  reference_images: string[] | null;
+  voice_asset_id: string | null;
+}
+
+export interface CharacterRow extends AssetRow {
+  character_details: CharacterDetailsRow | CharacterDetailsRow[] | null;
+}
+
+/**
+ * Response type for listCharacters with pagination
+ */
+export interface ListCharactersResponse {
+  characters: CharacterWithDetails[];
+  total: number;
+  hasMore: boolean;
+}
+
+/**
+ * Transform database row to CharacterWithDetails type
+ */
+export function mapRowToCharacterWithDetails(
+  row: CharacterRow,
+): CharacterWithDetails {
+  const baseAsset = mapRowToAsset(row);
+
+  // Handle both single object and array formats from Supabase
+  const details = Array.isArray(row.character_details)
+    ? row.character_details[0]
+    : row.character_details;
+
+  // Parse physical_attributes JSONB - it stores structured character data
+  const physicalAttrs = details?.physical_attributes as Record<
+    string,
+    unknown
+  > | null;
+
+  return {
+    ...baseAsset,
+    type: 'character',
+    physicalAttributes:
+      (physicalAttrs?.physicalAttributes as PhysicalAttributes | undefined) ??
+      null,
+    personality: details?.personality ?? null,
+    personalityTraits:
+      (physicalAttrs?.personalityTraits as PersonalityTraits | undefined) ??
+      null,
+    clothingStyle:
+      (physicalAttrs?.clothingStyle as ClothingStyle | undefined) ?? null,
+    backstory: (physicalAttrs?.backstory as string | undefined) ?? null,
+    elementPrompt: details?.element_prompt ?? null,
+    referenceImages: details?.reference_images ?? null,
+    voiceAssetId: details?.voice_asset_id ?? null,
+  };
+}
+
+/**
+ * Voice asset for voice selector dropdown
+ */
+export interface VoiceAssetOption {
+  id: string;
+  name: string;
+  fileUrl: string | null;
+  thumbnailUrl: string | null;
 }
