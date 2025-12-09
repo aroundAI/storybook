@@ -17,19 +17,22 @@
     "./mutations": "./src/lib/server/asset.mutations.ts",
     "./queries": "./src/lib/server/asset.queries.ts",
     "./lib": "./src/lib/index.ts",
-    "./schemas": "./src/lib/schemas/asset.schema.ts",
+    "./schemas": "./src/lib/schemas/index.ts",
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts",
     "./upload-validation": "./src/lib/upload-validation.ts",
-    "./upload": "./src/lib/upload/index.ts"
+    "./upload": "./src/lib/upload/index.ts",
+    "./character-schemas": "./src/lib/schemas/character.schema.ts",
+    "./character-types": "./src/lib/types/character.types.ts",
+    "./element-prompt": "./src/lib/element-prompt/index.ts",
+    "./character/schemas": "./src/lib/schemas/character.schema.ts",
+    "./character/server": "./src/lib/server/character.mutations.ts",
+    "./character/queries": "./src/lib/server/character.queries.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@kit/eslint-config": "workspace:*",
-    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@kit/ui": "workspace:*",
     "@types/node": "^24.5.0",
@@ -52,6 +55,12 @@
     }
   },
   "dependencies": {
+    "@kit/cache": "workspace:*",
+    "@kit/llm": "workspace:*",
+    "@kit/next": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "lucide-react": "^0.544.0",
     "sharp": "^0.33.5"
   }
 }
