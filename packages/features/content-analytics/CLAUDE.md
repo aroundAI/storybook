@@ -5,6 +5,7 @@ Provides analytics providers for fetching performance metrics from social media 
 ## Package Structure
 
 - `providers/youtube/` - YouTube Analytics API integration
+- `providers/instagram/` - Instagram Insights API integration
 - `lib/` - Shared utilities
 
 ## YouTube Analytics Provider
@@ -98,9 +99,84 @@ try {
 }
 ```
 
+## Instagram Insights Provider
+
+### Usage
+
+```typescript
+import {
+  InstagramInsightsProvider,
+  createInstagramInsightsProvider,
+} from '@kit/content-analytics/providers/instagram';
+
+// Create provider with access token and Instagram account ID
+const provider = createInstagramInsightsProvider(accessToken, instagramAccountId);
+
+// Fetch insights for a Reel or Video
+const insights = await provider.getMediaInsights({
+  mediaId: '17895695668004550',
+});
+
+// Result includes:
+// - totals: plays, reach, impressions, likes, comments, saves, shares, etc.
+// - reachBreakdown: follower vs non-follower reach (Reels only)
+// - audience: countries, cities, gender/age demographics
+
+// Get account overview metrics
+const accountInsights = await provider.getAccountInsights('week');
+// Returns: impressions, reach, profileViews, websiteClicks, followerCount
+```
+
+### Types
+
+```typescript
+import type {
+  InstagramInsightsInput,
+  InstagramInsightsResult,
+  InstagramTotals,
+  InstagramReachBreakdown,
+  InstagramAudienceData,
+  InstagramAccountInsights,
+} from '@kit/content-analytics/providers/instagram';
+```
+
+### Instagram API Requirements
+
+- Requires Instagram Professional account (Business or Creator)
+- Access token must have `instagram_basic` and `instagram_manage_insights` permissions
+- 90-day data retention limit for insights
+
+### Error Handling
+
+| Error | Behavior |
+|-------|----------|
+| `InstagramInsightsScopeError` | Thrown when connection is missing insights permissions - user must reconnect |
+| `OAuthException` | Token expired - trigger re-auth |
+| Media not found | Content deleted - throws error |
+| Missing data | Returns `undefined` for optional fields (reachBreakdown, audience) |
+
+### Handling Scope Errors
+
+```typescript
+import {
+  createInstagramInsightsProvider,
+  InstagramInsightsScopeError,
+} from '@kit/content-analytics/providers/instagram';
+
+try {
+  const insights = await provider.getMediaInsights({ mediaId: '...' });
+} catch (error) {
+  if (error instanceof InstagramInsightsScopeError) {
+    // Prompt user to reconnect their Instagram account
+    showReconnectDialog('Please reconnect your Instagram account to enable analytics.');
+  }
+  throw error;
+}
+```
+
 ## Dependencies
 
-- `googleapis` - Google API client library
+- `googleapis` - Google API client library (YouTube only)
 
 ## Testing
 
