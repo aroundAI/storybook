@@ -19,9 +19,6 @@ export {
 // Extended character types (FILM-202)
 export {
   type Character,
-  type PhysicalAttributes,
-  type PersonalityTraits,
-  type ClothingStyle,
   type ListCharactersResponse,
   type CharacterDetailsRow,
 } from './types/character.types';
@@ -58,13 +55,17 @@ export {
   GetCharacterSchema,
   UpdateCharacterSchema,
   ListCharactersSchema,
+  DeleteCharacterSchema,
+  CharacterFormSchema,
   type CreateCharacterInput,
   type GetCharacterInput,
   type UpdateCharacterInput,
   type ListCharactersInput,
-  type PhysicalAttributesInput,
-  type PersonalityTraitsInput,
-  type ClothingStyleInput,
+  type DeleteCharacterInput,
+  type CharacterFormData,
+  type PhysicalAttributes,
+  type PersonalityTraits,
+  type ClothingStyle,
 } from './schemas/character.schema';
 
 // Constants

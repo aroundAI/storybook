@@ -78,7 +78,7 @@ describe('Character Schemas', () => {
     });
 
     it('should reject feature strings that are too long', () => {
-      const longFeature = 'a'.repeat(250);
+      const longFeature = 'a'.repeat(150);
       expect(() =>
         PhysicalAttributesSchema.parse({
           distinctiveFeatures: [longFeature],
@@ -91,13 +91,10 @@ describe('Character Schemas', () => {
     it('should accept valid personality traits', () => {
       const valid = {
         traits: ['brave', 'intelligent', 'cautious'],
-        mannerisms: [
-          'pushes glasses up when thinking',
-          'taps pen when nervous',
-        ],
+        mannerisms: ['pushes glasses up', 'taps pen when nervous'],
         motivations: 'Wants to prove herself as a detective',
         fears: 'Losing her sister',
-        strengths: ['analytical thinking', 'attention to detail'],
+        strengths: ['analytical', 'attention to detail'],
         weaknesses: ['trust issues', 'workaholic'],
       };
       expect(() => PersonalityTraitsSchema.parse(valid)).not.toThrow();
@@ -145,7 +142,7 @@ describe('Character Schemas', () => {
 
     it('should reject invalid style enum', () => {
       expect(() =>
-        ClothingStyleSchema.parse({ style: 'futuristic' }),
+        ClothingStyleSchema.parse({ style: 'cyberpunk' }),
       ).toThrow();
     });
 
@@ -157,6 +154,8 @@ describe('Character Schemas', () => {
         'vintage',
         'fantasy',
         'modern',
+        'futuristic',
+        'period',
       ];
       styles.forEach((style) => {
         expect(() => ClothingStyleSchema.parse({ style })).not.toThrow();
@@ -201,15 +200,18 @@ describe('Character Schemas', () => {
           ethnicity: 'East Asian',
           build: 'athletic',
         },
-        personality: {
+        personality: 'Intelligent and cautious detective',
+        personalityTraits: {
           traits: ['intelligent', 'cautious'],
           motivations: 'Solve the case',
         },
-        clothing: {
+        clothingStyle: {
           defaultOutfit: 'Professional blazer and slacks',
           style: 'formal',
         },
         backstory: 'Once upon a time in a city far away...',
+        elementPrompt: 'A 28-year-old East Asian detective...',
+        referenceImages: ['https://example.com/ref1.png'],
       };
       expect(() => CreateCharacterSchema.parse(valid)).not.toThrow();
     });
@@ -253,7 +255,7 @@ describe('Character Schemas', () => {
     });
 
     it('should reject too long backstory', () => {
-      const longBackstory = 'a'.repeat(2500);
+      const longBackstory = 'a'.repeat(5500);
       expect(() =>
         CreateCharacterSchema.parse({
           projectId: '123e4567-e89b-12d3-a456-426614174000',
@@ -265,25 +267,25 @@ describe('Character Schemas', () => {
   });
 
   describe('UpdateCharacterSchema', () => {
-    it('should accept valid update with only characterId', () => {
+    it('should accept valid update with only assetId', () => {
       const valid = {
-        characterId: '123e4567-e89b-12d3-a456-426614174000',
+        assetId: '123e4567-e89b-12d3-a456-426614174000',
       };
       expect(() => UpdateCharacterSchema.parse(valid)).not.toThrow();
     });
 
     it('should accept partial updates', () => {
       const valid = {
-        characterId: '123e4567-e89b-12d3-a456-426614174000',
+        assetId: '123e4567-e89b-12d3-a456-426614174000',
         name: 'Updated Name',
-        description: null, // Can set to null
+        description: null,
       };
       expect(() => UpdateCharacterSchema.parse(valid)).not.toThrow();
     });
 
     it('should accept nullable fields', () => {
       const valid = {
-        characterId: '123e4567-e89b-12d3-a456-426614174000',
+        assetId: '123e4567-e89b-12d3-a456-426614174000',
         fileUrl: null,
         voiceAssetId: null,
         backstory: null,
@@ -291,9 +293,9 @@ describe('Character Schemas', () => {
       expect(() => UpdateCharacterSchema.parse(valid)).not.toThrow();
     });
 
-    it('should reject invalid characterId', () => {
+    it('should reject invalid assetId', () => {
       expect(() =>
-        UpdateCharacterSchema.parse({ characterId: 'invalid' }),
+        UpdateCharacterSchema.parse({ assetId: 'invalid' }),
       ).toThrow();
     });
   });
