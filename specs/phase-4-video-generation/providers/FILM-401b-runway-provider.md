@@ -322,24 +322,24 @@ interface RunwayStatusResponse {
 
 ## Acceptance Criteria
 
-- [ ] `generateVideo()` successfully submits to Runway API
-- [ ] `generateVideoWithImage()` works with reference image
-- [ ] `getStatus()` correctly polls job status
-- [ ] `estimateCost()` returns correct cost for model/duration
-- [ ] Provider registered in factory registry
-- [ ] Errors properly categorized (RATE_LIMITED, CREDIT_ERROR, etc.)
-- [ ] Webhook URL included in requests
+- [x] `generateVideo()` successfully submits to Runway API
+- [x] `generateVideoWithImage()` works with reference image
+- [x] `getStatus()` correctly polls job status
+- [x] `estimateCost()` returns correct cost for model/duration
+- [x] Provider registered in factory registry
+- [x] Errors properly categorized (RATE_LIMITED, CREDIT_ERROR, etc.)
+- [x] Webhook URL included in requests
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test text-to-video request formatting
-- [ ] Test image-to-video request formatting
-- [ ] Test status mapping
-- [ ] Test cost estimation
-- [ ] Test error handling (429, 402)
+- [x] Test text-to-video request formatting
+- [x] Test image-to-video request formatting
+- [x] Test status mapping
+- [x] Test cost estimation
+- [x] Test error handling (429, 402)
 
 ### Integration Tests
 - [ ] Test full generation lifecycle (requires API key)

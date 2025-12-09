@@ -1,5 +1,7 @@
 export * from './actions';
 export * from './queries';
+export * from './continuity-actions';
+export * from './story-actions';
 export * from './screenplay-actions';
 
 // Shot CRUD actions (FILM-303)

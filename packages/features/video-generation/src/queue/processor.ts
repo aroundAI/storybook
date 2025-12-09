@@ -141,7 +141,9 @@ export async function processVideoGenerationJob(
       duration: parseInt(duration, 10),
       aspectRatio,
       modelVersion: mode,
-      settings: referenceImageUrl ? { imageUrl: referenceImageUrl } : undefined,
+      settings: referenceImageUrl
+        ? { referenceImageUrl: referenceImageUrl }
+        : undefined,
     });
 
     // Step 5: Update generation job with provider job ID
