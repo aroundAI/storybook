@@ -594,17 +594,17 @@ export const updateGenerationSettingsAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Can select default video provider
-- [ ] Can select default quality level
-- [ ] Can select default aspect ratio
-- [ ] Can set monthly budget limit
-- [ ] Budget warning threshold configurable
-- [ ] Can limit concurrent jobs
-- [ ] Auto-retry toggle with max retries
-- [ ] Notification preferences saved
-- [ ] Settings persist across sessions
-- [ ] Form validates all inputs
-- [ ] Toast confirmation on save
+- [x] Can select default video provider
+- [x] Can select default quality level
+- [x] Can select default aspect ratio
+- [x] Can set monthly budget limit
+- [x] Budget warning threshold configurable
+- [x] Can limit concurrent jobs
+- [x] Auto-retry toggle with max retries
+- [x] Notification preferences saved
+- [x] Settings persist across sessions
+- [x] Form validates all inputs
+- [x] Toast confirmation on save
 
 ---
 

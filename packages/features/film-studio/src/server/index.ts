@@ -1,2 +1,5 @@
 // Export server actions here
-export {};
+export {
+  getGenerationSettings,
+  updateGenerationSettingsAction,
+} from './actions/settings-actions';
