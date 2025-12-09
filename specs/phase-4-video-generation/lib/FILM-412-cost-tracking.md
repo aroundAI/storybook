@@ -390,14 +390,16 @@ Budget tracking resets on the 1st of each month. Historical data preserved in ge
 
 ## Acceptance Criteria
 
-- [ ] `getBudgetStatus()` returns accurate budget info
-- [ ] `checkAndReserveBudget()` prevents overspending
-- [ ] `recordJobCost()` updates actual costs
-- [ ] `calculateVideoCost()` returns correct pricing
-- [ ] `getSpendingSummary()` shows spending breakdown
-- [ ] Budget warnings triggered at 80%
-- [ ] Budget blocks generation at 100%
-- [ ] Costs tracked per provider
+- [x] `getBudgetStatus()` returns accurate budget info
+- [x] `checkAndReserveBudget()` prevents overspending
+- [x] `recordJobCost()` updates actual costs
+- [x] `calculateVideoCost()` returns correct pricing
+- [x] `getSpendingSummary()` shows spending breakdown
+- [x] Budget warnings triggered at 80%
+- [x] Budget blocks generation at 100%
+- [x] Costs tracked per provider
+
+**Status: COMPLETED** - Implemented in `packages/features/video-generation/src/lib/cost-tracking/`
 
 ---
 

@@ -2,12 +2,15 @@
  * Video Generation Library
  *
  * Core utilities for video generation including rate limiting, job queuing,
- * and provider integrations.
+ * cost tracking, and provider integrations.
  */
 
 export * from './types';
 export * from './schemas';
 export * from './constants';
+
+// Cost Tracking
+export * from './cost-tracking';
 
 // Kling-specific types and schemas
 export * from './kling-types';

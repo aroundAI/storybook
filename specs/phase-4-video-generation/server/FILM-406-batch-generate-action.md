@@ -258,14 +258,16 @@ packages/features/video-generation/src/
 
 ## Acceptance Criteria
 
-- [ ] Action accepts up to 50 shot IDs
-- [ ] Action validates all shots exist
-- [ ] Action checks budget for entire batch
-- [ ] Action reserves budget atomically
-- [ ] Action creates jobs for all valid shots
-- [ ] Action returns detailed results per shot
-- [ ] Action handles partial failures gracefully
-- [ ] Action supports priority levels
+- [x] Action accepts up to 50 shot IDs
+- [x] Action validates all shots exist
+- [x] Action checks budget for entire batch
+- [x] Action reserves budget atomically
+- [x] Action creates jobs for all valid shots
+- [x] Action returns detailed results per shot
+- [x] Action handles partial failures gracefully
+- [x] Action supports priority levels
+
+**Status: COMPLETED** - Implemented in `packages/features/video-generation/src/server/actions/batch-generate-action.ts`
 
 ---
 
