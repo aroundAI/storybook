@@ -5,6 +5,8 @@
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-202 (character actions)
 **Blocks**: Phase 4 (Video Generation)
+**Status**: ✅ COMPLETED (2024-12-09)
+**PR**: feat/film-202-209-character-element-prompts
 
 ---
 
@@ -591,31 +593,50 @@ None (new feature)
 
 ### Functional
 
-- [ ] `generateElementPrompt` returns prompt for character
-- [ ] LLM generation uses GPT-4 or Claude Sonnet
-- [ ] System prompt includes Kling guidelines
-- [ ] Prompt focuses on visual attributes only
-- [ ] Prompt excludes personality traits
-- [ ] Prompt uses present tense and third person
-- [ ] Prompt length between 50-200 words
-- [ ] Template fallback works when LLM fails
-- [ ] Template fallback produces valid prompt
-- [ ] Validator detects subjective language
-- [ ] Validator detects personality traits
-- [ ] Validator checks word count
-- [ ] Batch generation processes multiple characters
-- [ ] Batch generation handles partial failures
-- [ ] Warnings logged for validation issues
+- [x] `generateElementPrompt` returns prompt for character
+- [x] LLM generation uses GPT-4 or Claude Sonnet (via @kit/llm)
+- [x] System prompt includes Kling guidelines
+- [x] Prompt focuses on visual attributes only
+- [x] Prompt excludes personality traits
+- [x] Prompt uses present tense and third person
+- [x] Prompt length between 50-200 words
+- [x] Template fallback works when LLM fails
+- [x] Template fallback produces valid prompt
+- [x] Validator detects subjective language
+- [x] Validator detects personality traits
+- [x] Validator checks word count
+- [x] Batch generation processes multiple characters
+- [x] Batch generation handles partial failures
+- [x] Warnings logged for validation issues
 
 ### Non-Functional
 
-- [ ] Prompt generation completes within 5 seconds
-- [ ] LLM failures fall back gracefully
-- [ ] Generated prompts cached for 24 hours
-- [ ] All generations logged for review
-- [ ] Batch generation runs in parallel
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] Prompt generation completes within 5 seconds
+- [x] LLM failures fall back gracefully
+- [x] Generated prompts cached for 24 hours (via @kit/cache)
+- [x] All generations logged for review (via @kit/shared/logger)
+- [x] Batch generation runs in parallel with concurrency control
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
+
+### Implementation Notes
+
+**Files Created:**
+- `packages/features/assets/src/lib/element-prompt/kling-guidelines.ts` - Kling AI best practices
+- `packages/features/assets/src/lib/element-prompt/prompt-validator.ts` - Validation logic
+- `packages/features/assets/src/lib/element-prompt/template-generator.ts` - Template fallback
+- `packages/features/assets/src/lib/element-prompt/llm-generator.ts` - LLM-based generation
+- `packages/features/assets/src/lib/element-prompt/cache.ts` - Redis caching
+- `packages/features/assets/src/lib/element-prompt/generate-element-prompt.ts` - Main orchestration
+- `packages/features/assets/src/lib/element-prompt/index.ts` - Module exports
+- `packages/features/assets/__tests__/prompt-validator.test.ts` - Validator tests (18 tests)
+- `packages/features/assets/__tests__/template-generator.test.ts` - Template tests (23 tests)
+
+**Additional Features:**
+- Added `source: 'cache'` to output interface for cache hits
+- Added `validation` field to output for detailed validation results
+- Implemented `invalidatePromptCache()` for cache invalidation on character updates
+- Implemented `getCachedPrompts()` for batch cache lookups
 
 ---
 
