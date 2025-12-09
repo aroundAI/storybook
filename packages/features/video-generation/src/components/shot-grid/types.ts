@@ -1,8 +1,9 @@
-import type { Shot as EpisodeShot } from '@kit/episodes/types';
+import type { Shot as EpisodeShot, ShotStatus } from '@kit/episodes/types';
 
 /**
  * Shot status for display purposes
- * Includes 'queued' which maps to 'pending' in the database when a job is queued
+ * Extends the base ShotStatus with 'queued' for UI display
+ * when a generation job is queued but not yet processing
  */
 export type ShotDisplayStatus =
   | 'pending'
@@ -10,6 +11,14 @@ export type ShotDisplayStatus =
   | 'generating'
   | 'completed'
   | 'failed';
+
+/**
+ * Maps the base ShotStatus to ShotDisplayStatus
+ * This ensures type safety when converting between the two types
+ */
+function mapStatusToDisplayStatus(status: ShotStatus): ShotDisplayStatus {
+  return status;
+}
 
 /**
  * Shot data as expected by the grid component
@@ -84,7 +93,7 @@ export function toShotGridShot(shot: EpisodeShot): ShotGridShot {
     description: shot.description,
     duration: shot.duration,
     aspectRatio: shot.generationSettings?.aspectRatio ?? '16:9',
-    status: shot.status as ShotDisplayStatus,
+    status: mapStatusToDisplayStatus(shot.status),
     videoUrl: shot.videoUrl,
     thumbnailUrl: shot.thumbnailUrl,
     progress: undefined,

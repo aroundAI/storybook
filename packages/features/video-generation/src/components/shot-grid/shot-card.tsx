@@ -73,7 +73,7 @@ export const ShotCard = memo(function ShotCard({
       aria-label={`Shot ${shot.sceneNumber}.${shot.shotNumber}: ${shot.prompt ?? shot.description}`}
       data-test="shot-card"
       className={cn(
-        'bg-card relative cursor-pointer rounded-lg border-2 p-2 transition-all',
+        'group bg-card relative cursor-pointer rounded-lg border-2 p-2 transition-all',
         isSelected
           ? 'border-primary ring-primary/20 shadow-lg ring-2'
           : 'border-border hover:border-muted-foreground/50 hover:shadow-md',

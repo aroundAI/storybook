@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import type { ShotGridShot } from './types';
 
@@ -16,6 +16,14 @@ export function useShotSelection({
   onSelectionChange,
 }: UseShotSelectionOptions) {
   const lastSelectedIdRef = useRef<string | null>(null);
+
+  // Sync the ref when selection is externally cleared
+  // This prevents stale refs when parent clears selection without using handleClearSelection
+  useEffect(() => {
+    if (selectedShotIds.length === 0) {
+      lastSelectedIdRef.current = null;
+    }
+  }, [selectedShotIds]);
 
   const handleShotClick = useCallback(
     (shotId: string, event: React.MouseEvent) => {
