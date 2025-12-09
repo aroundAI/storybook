@@ -12,6 +12,7 @@ import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { invalidatePromptCache } from '../element-prompt/cache';
 import {
   CreateCharacterSchema,
   GetCharacterSchema,
@@ -249,6 +250,10 @@ export const getCharacterAction = enhanceAction(
 
 /**
  * Updates character asset and details atomically
+ *
+ * Note: Uses optimistic update pattern. In rare cases of concurrent updates
+ * to the same character, the last write wins for JSONB fields (physical_attributes).
+ * For true atomic JSONB merges, consider using a PostgreSQL RPC function.
  */
 export const updateCharacterAction = enhanceAction(
   async (data): Promise<{ success: boolean; data: Character }> => {
@@ -264,7 +269,21 @@ export const updateCharacterAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Step 1: Update asset fields if provided
+    // Step 1: Fetch existing character_details upfront to minimize race window
+    // This is read once and used for all merge operations
+    const { data: existingCharacterDetails } = await client
+      .from('character_details')
+      .select('*')
+      .eq('asset_id', data.characterId)
+      .single();
+
+    const existingAttrs =
+      (existingCharacterDetails?.physical_attributes as Record<
+        string,
+        unknown
+      >) || {};
+
+    // Step 2: Update asset fields if provided
     const assetUpdates: Record<string, unknown> = {
       updated_at: new Date().toISOString(),
     };
@@ -290,7 +309,7 @@ export const updateCharacterAction = enhanceAction(
       throw new Error(`Failed to update character: ${assetError.message}`);
     }
 
-    // Step 2: Update character_details if any character-specific fields provided
+    // Step 3: Update character_details if any character-specific fields provided
     const detailsUpdates: Record<string, unknown> = {};
 
     if (data.voiceAssetId !== undefined) {
@@ -298,21 +317,12 @@ export const updateCharacterAction = enhanceAction(
     }
 
     // Handle physicalAttributes, clothing, and backstory
+    // Use pre-fetched existingAttrs to minimize race window
     if (
       data.physicalAttributes !== undefined ||
       data.clothing !== undefined ||
       data.backstory !== undefined
     ) {
-      // Need to merge with existing physical_attributes
-      const { data: existing } = await client
-        .from('character_details')
-        .select('physical_attributes')
-        .eq('asset_id', data.characterId)
-        .single();
-
-      const existingAttrs =
-        (existing?.physical_attributes as Record<string, unknown>) || {};
-
       detailsUpdates.physical_attributes = {
         ...existingAttrs,
         ...(data.physicalAttributes ?? {}),
@@ -355,17 +365,14 @@ export const updateCharacterAction = enhanceAction(
 
       details = updatedDetails;
     } else {
-      // Fetch existing details if no updates
-      const { data: existingDetails } = await client
-        .from('character_details')
-        .select('*')
-        .eq('asset_id', data.characterId)
-        .single();
-
-      details = existingDetails;
+      // Use pre-fetched details if no updates needed
+      details = existingCharacterDetails;
     }
 
     logger.info(ctx, 'Character updated successfully');
+
+    // Invalidate element prompt cache since character data changed
+    await invalidatePromptCache(data.characterId);
 
     // Revalidate asset pages
     revalidatePath('/home/[account]/projects/[id]', 'page');

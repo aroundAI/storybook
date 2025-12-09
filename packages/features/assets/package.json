@@ -29,13 +29,8 @@
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
-    "@kit/cache": "workspace:*",
     "@kit/eslint-config": "workspace:*",
-    "@kit/llm": "workspace:*",
-    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@kit/ui": "workspace:*",
     "@types/node": "^24.5.0",
@@ -58,6 +53,11 @@
     }
   },
   "dependencies": {
+    "@kit/cache": "workspace:*",
+    "@kit/llm": "workspace:*",
+    "@kit/next": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
     "sharp": "^0.33.5"
   }
 }
