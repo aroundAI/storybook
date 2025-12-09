@@ -177,3 +177,21 @@ export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
+
+// ============================================================================
+// Screenplay Conversion Schemas (FILM-306)
+// ============================================================================
+
+/**
+ * Schema for converting episode story to screenplay format
+ * Used by convertToScreenplayAction
+ */
+export const ConvertToScreenplaySchema = z.object({
+  episodeId: z.string().uuid(),
+  targetSceneCount: z.number().int().min(3).max(15).optional(),
+  dialogueStyle: z.enum(['natural', 'stylized', 'minimal']).optional(),
+});
+
+export type ConvertToScreenplayInput = z.infer<
+  typeof ConvertToScreenplaySchema
+>;
