@@ -22,8 +22,13 @@
     "./types": "./src/lib/types.ts",
     "./interaction-patterns": "./src/lib/interaction-patterns.ts"
   },
+  "dependencies": {
+    "@tanstack/react-query": "5.89.0",
+    "date-fns": "^4.1.0"
+  },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
+    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
