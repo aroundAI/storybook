@@ -37,13 +37,6 @@ import {
 import type { CharacterWithDetails, VoiceAssetOption } from '../../lib/types';
 import { CharacterEditorForm } from './CharacterEditorForm';
 
-/**
- * Character Editor (FILM-205)
- *
- * Main editor component for creating and editing characters.
- * Features: auto-save, draft restoration, unsaved changes warning.
- */
-
 interface CharacterEditorProps {
   /** Project ID for new characters */
   projectId: string;
@@ -124,10 +117,13 @@ export function CharacterEditor({
     ? `character-edit-${character.id}`
     : `character-create-${projectId}`;
 
+  // Watch form values for auto-save (reactive updates)
+  const formValues = form.watch();
+
   // Auto-save hook
   const { restore, clear, hasSavedData, save } = useAutoSave({
     storageKey,
-    data: form.getValues(),
+    data: formValues,
     interval: 30000, // 30 seconds
     enabled: !isPending,
   });
@@ -202,6 +198,11 @@ export function CharacterEditor({
         if (result.success && result.data) {
           // Clear auto-saved draft
           clear();
+
+          // Reset form after successful creation to allow creating another
+          if (mode === 'create') {
+            form.reset(getDefaultFormValues());
+          }
 
           toast.success(
             mode === 'edit'

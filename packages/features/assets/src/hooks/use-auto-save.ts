@@ -9,13 +9,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 
-/**
- * Auto-Save Hook (FILM-205)
- *
- * Hook for auto-saving form data to localStorage periodically.
- * Used by CharacterEditor to save drafts.
- */
-
 interface UseAutoSaveOptions<T> {
   /** Unique key for localStorage */
   storageKey: string;
@@ -61,11 +54,16 @@ export function useAutoSave<T>(
   const { storageKey, data, interval = 30000, enabled = true } = options;
   const lastSaveRef = useRef<number | null>(null);
   const dataRef = useRef<T>(data);
+  const enabledRef = useRef(enabled);
 
-  // Keep data ref updated
+  // Keep refs updated
   useEffect(() => {
     dataRef.current = data;
   }, [data]);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
 
   const getFullKey = useCallback(() => {
     return `auto-save:${storageKey}`;
@@ -153,15 +151,23 @@ export function useAutoSave<T>(
     };
   }, [enabled, interval, save]);
 
-  // Save on unmount if enabled
+  // Save on unmount if enabled (using refs to avoid stale closures)
   useEffect(() => {
+    const fullKey = `auto-save:${storageKey}`;
+    const metaKey = `auto-save:${storageKey}:meta`;
+
     return () => {
-      if (enabled && isBrowser()) {
-        save();
+      if (enabledRef.current && isBrowser()) {
+        try {
+          const timestamp = Date.now();
+          localStorage.setItem(fullKey, JSON.stringify(dataRef.current));
+          localStorage.setItem(metaKey, JSON.stringify({ timestamp }));
+        } catch (error) {
+          console.warn('Failed to auto-save on unmount:', error);
+        }
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [storageKey]);
 
   return {
     restore,
