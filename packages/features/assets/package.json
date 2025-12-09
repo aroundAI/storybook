@@ -17,11 +17,14 @@
     "./mutations": "./src/lib/server/asset.mutations.ts",
     "./queries": "./src/lib/server/asset.queries.ts",
     "./lib": "./src/lib/index.ts",
-    "./schemas": "./src/lib/schemas/asset.schema.ts",
+    "./schemas": "./src/lib/schemas/index.ts",
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts",
     "./upload-validation": "./src/lib/upload-validation.ts",
-    "./upload": "./src/lib/upload/index.ts"
+    "./upload": "./src/lib/upload/index.ts",
+    "./character/schemas": "./src/lib/schemas/character.schema.ts",
+    "./character/server": "./src/lib/server/character.mutations.ts",
+    "./character/queries": "./src/lib/server/character.queries.ts"
   },
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -52,6 +55,7 @@
     }
   },
   "dependencies": {
+    "lucide-react": "^0.544.0",
     "sharp": "^0.33.5"
   }
 }

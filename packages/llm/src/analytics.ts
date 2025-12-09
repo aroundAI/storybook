@@ -11,6 +11,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { LLMProvider } from './types';
 
 /**
+ * LLM Usage Analytics
+ *
+ * Simple helper to log LLM executions to database for cost monitoring
+ * and failure analysis.
+ */
+
+/**
  * LLM Usage Event for analytics tracking
  */
 export interface LLMUsageEvent {

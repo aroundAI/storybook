@@ -4,7 +4,6 @@
  * This module handles the translation between external provider statuses
  * and internal job statuses used in the database.
  */
-
 import type {
   HailuoWebhookPayload,
   KlingWebhookPayload,

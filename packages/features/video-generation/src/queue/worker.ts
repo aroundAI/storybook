@@ -2,17 +2,14 @@
 
 import { Worker } from 'bullmq';
 
-import { getWorkerConfig, QUEUE_NAME } from './config';
+import { QUEUE_NAME, getWorkerConfig } from './config';
 import {
   onJobCompleted,
   onJobFailed,
   onWorkerError,
   processVideoGenerationJob,
 } from './processor';
-import type {
-  VideoGenerationJobData,
-  VideoGenerationJobResult,
-} from './types';
+import type { VideoGenerationJobData, VideoGenerationJobResult } from './types';
 
 /**
  * Singleton worker instance
