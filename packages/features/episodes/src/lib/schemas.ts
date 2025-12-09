@@ -167,8 +167,12 @@ export const UpdateShotSchema = z.object({
 
 export type CreateEpisodeInput = z.infer<typeof CreateEpisodeSchema>;
 export type GetEpisodeInput = z.infer<typeof GetEpisodeSchema>;
-export type UpdateEpisodeStatusInput = z.infer<typeof UpdateEpisodeStatusSchema>;
-export type ListProjectEpisodesInput = z.infer<typeof ListProjectEpisodesSchema>;
+export type UpdateEpisodeStatusInput = z.infer<
+  typeof UpdateEpisodeStatusSchema
+>;
+export type ListProjectEpisodesInput = z.infer<
+  typeof ListProjectEpisodesSchema
+>;
 export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
