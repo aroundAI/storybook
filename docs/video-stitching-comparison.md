@@ -13,13 +13,13 @@ This document provides a comprehensive comparison of four video stitching approa
 
 ### Recommendation
 
-**Primary: Shotstack** for cloud rendering with Remotion as fallback for complex compositions.
+**Primary: FFmpeg** for local video stitching with Shotstack as cloud fallback.
 
 **Rationale:**
-- Fastest time-to-market with robust API
-- Excellent transition support matching our timeline schema
-- Predictable pricing at scale
-- Remotion provides flexibility for edge cases requiring custom compositions
+- 5-10x faster than cloud services (no upload/download latency)
+- Zero per-render cost (infrastructure only)
+- Full control over transitions and effects via filter_complex
+- Shotstack provides cloud fallback for complex compositions or high-volume bursts
 
 ---
 
@@ -250,51 +250,52 @@ Our unified timeline schema maps to each provider as follows:
 
 ## Recommendation Details
 
-### Primary Recommendation: Shotstack
+### Primary Recommendation: FFmpeg
 
 **Justification:**
-1. **Fastest integration** - REST API with excellent docs
-2. **Matches our needs** - Supports all required transitions and audio features
-3. **Proven at scale** - Established service with enterprise customers
-4. **Predictable costs** - Clear per-minute pricing
-5. **Webhook support** - Easy async processing integration
+1. **Fastest rendering** - 5-10x faster than cloud (no upload/download latency)
+2. **Zero per-render cost** - Only infrastructure costs (~$0.001/video)
+3. **Full control** - Complete control over transitions, audio mixing, quality
+4. **No rate limits** - Process as many videos as infrastructure allows
+5. **Offline capable** - Works without network dependency
 
-### Secondary Recommendation: Remotion (for complex cases)
+### Secondary Recommendation: Shotstack (for cloud fallback)
 
-**When to use Remotion instead:**
-- Custom animations beyond preset transitions
-- Complex text overlays with animations
-- Dynamic compositions based on content
-- Self-hosted rendering for compliance
+**When to use Shotstack instead:**
+- High-volume bursts exceeding local capacity
+- Need for instant scaling without infrastructure
+- Simple edits where development speed matters
+- Compliance requirements for cloud processing
 
 ### Fallback Strategy
 
 ```
 Primary Flow:
+Timeline → FFmpeg commands → Local worker → Store result
+
+Fallback (on FFmpeg failure or capacity overflow):
 Timeline → Shotstack API → Webhook → Store result
 
-Fallback (on Shotstack failure or for complex edits):
+Complex compositions (if needed):
 Timeline → Remotion Composition → AWS Lambda render → Store result
-
-Emergency fallback:
-Timeline → FFmpeg commands → Local worker → Store result
 ```
 
 ### Implementation Priority
 
-1. **Phase 1:** Shotstack integration (Days 1-3)
+1. **Phase 1:** FFmpeg integration (Days 1-5)
+   - Command builder with filter_complex
+   - Transition support via xfade
+   - Audio mixing pipeline
+   - Worker queue system
+
+2. **Phase 2:** Shotstack fallback (Days 6-8)
    - API client with retry logic
    - Webhook handler
-   - Status polling
-
-2. **Phase 2:** Remotion fallback (Days 4-7)
-   - React compositions
-   - Lambda rendering setup
    - Fallback routing logic
 
-3. **Phase 3:** FFmpeg emergency (Optional)
-   - Command generation complete
-   - Add worker process if needed
+3. **Phase 3:** Remotion (Optional, for complex cases)
+   - React compositions for custom animations
+   - Lambda rendering setup
 
 ---
 
