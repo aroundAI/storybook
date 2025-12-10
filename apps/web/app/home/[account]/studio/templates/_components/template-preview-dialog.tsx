@@ -1,12 +1,11 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useEffect, useTransition } from 'react';
 
 import { useRouter } from 'next/navigation';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 import type { SampleCharacter, SampleLocation } from '@kit/film-studio-schemas';
 import type { ProjectTemplate } from '@kit/film-studio/lib';
@@ -35,10 +34,7 @@ import { Separator } from '@kit/ui/separator';
 import { toast } from '@kit/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
-const CreateFromTemplateSchema = z.object({
-  projectName: z.string().min(1, 'Project name is required').max(255),
-  projectDescription: z.string().max(1000).optional(),
-});
+import { CreateFromTemplateSchema } from '../_lib/schemas/template.schema';
 
 interface TemplatePreviewDialogProps {
   template: ProjectTemplate | null;
@@ -63,6 +59,16 @@ export function TemplatePreviewDialog({
       projectDescription: '',
     },
   });
+
+  // Reset form when template changes or dialog opens/closes
+  useEffect(() => {
+    if (open && template) {
+      form.reset({
+        projectName: '',
+        projectDescription: '',
+      });
+    }
+  }, [open, template?.id, form]);
 
   if (!template) return null;
 

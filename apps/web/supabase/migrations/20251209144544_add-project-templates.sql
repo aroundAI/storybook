@@ -123,6 +123,8 @@ create policy "project_templates_delete" on public.project_templates for delete
 -- Function to increment usage count
 -- ==================================
 -- Called when creating a project from template
+-- SECURITY NOTE: Uses SECURITY DEFINER to bypass RLS for atomic update,
+-- but validates that user has read access to the template first.
 
 create or replace function public.increment_template_usage(template_id uuid)
 returns void
@@ -130,7 +132,30 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  template_record record;
 begin
+  -- First verify the template exists and user has read access
+  -- System templates are accessible to all, custom templates require account access
+  select id, is_system, account_id into template_record
+  from public.project_templates
+  where id = template_id
+    and deleted_at is null
+    and (
+      is_system = true
+      or account_id in (
+        select a.id from public.accounts a
+        where a.primary_owner_user_id = auth.uid()
+        or public.has_role_on_account(a.id)
+      )
+    );
+
+  -- If no record found, user doesn't have access or template doesn't exist
+  if template_record.id is null then
+    raise exception 'Template not found or access denied';
+  end if;
+
+  -- Now safe to increment the usage count
   update public.project_templates
   set usage_count = usage_count + 1,
       updated_at = now()

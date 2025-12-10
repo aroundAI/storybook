@@ -8,7 +8,6 @@ import { TemplateCategorySchema } from '@kit/film-studio-schemas';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
-import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type {
@@ -61,18 +60,17 @@ const SaveProjectAsTemplateSchema = z.object({
  * Get templates with optional filtering and pagination
  */
 export const getTemplatesAction = enhanceAction(
-  async (data): Promise<GetTemplatesResponse> => {
+  async (data, user): Promise<GetTemplatesResponse> => {
     const logger = await getLogger();
-    const ctx = { name: 'templates.get', category: data.category };
+    const ctx = {
+      name: 'templates.get',
+      category: data.category,
+      userId: user.id,
+    };
 
     logger.info(ctx, 'Fetching templates');
 
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
 
     const limit = data.limit ?? 50;
     const offset = data.offset ?? 0;
@@ -133,6 +131,7 @@ export const getTemplatesAction = enhanceAction(
   },
   {
     schema: GetTemplatesSchema,
+    auth: true,
   },
 );
 
@@ -140,18 +139,17 @@ export const getTemplatesAction = enhanceAction(
  * Get a single template by ID
  */
 export const getTemplateAction = enhanceAction(
-  async (data): Promise<ProjectTemplate> => {
+  async (data, user): Promise<ProjectTemplate> => {
     const logger = await getLogger();
-    const ctx = { name: 'templates.getOne', templateId: data.templateId };
+    const ctx = {
+      name: 'templates.getOne',
+      templateId: data.templateId,
+      userId: user.id,
+    };
 
     logger.info(ctx, 'Fetching template');
 
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: template, error } = await (client as any)
@@ -170,6 +168,7 @@ export const getTemplateAction = enhanceAction(
   },
   {
     schema: GetTemplateSchema,
+    auth: true,
   },
 );
 
@@ -177,18 +176,17 @@ export const getTemplateAction = enhanceAction(
  * Soft delete a custom template
  */
 export const deleteTemplateAction = enhanceAction(
-  async (data): Promise<{ success: boolean }> => {
+  async (data, user): Promise<{ success: boolean }> => {
     const logger = await getLogger();
-    const ctx = { name: 'templates.delete', templateId: data.templateId };
+    const ctx = {
+      name: 'templates.delete',
+      templateId: data.templateId,
+      userId: user.id,
+    };
 
     logger.info(ctx, 'Deleting template');
 
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (client as any)
@@ -211,28 +209,26 @@ export const deleteTemplateAction = enhanceAction(
   },
   {
     schema: DeleteTemplateSchema,
+    auth: true,
   },
 );
 
 /**
  * Create a new project from a template
+ * Uses server-side redirect after successful creation
  */
 export const createProjectFromTemplateAction = enhanceAction(
-  async (data): Promise<CreateProjectFromTemplateResponse> => {
+  async (data, user): Promise<CreateProjectFromTemplateResponse> => {
     const logger = await getLogger();
     const ctx = {
       name: 'templates.createProject',
       templateId: data.templateId,
+      userId: user.id,
     };
 
     logger.info(ctx, 'Creating project from template');
 
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
 
     // Get the template
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -333,14 +329,11 @@ export const createProjectFromTemplateAction = enhanceAction(
       }
     }
 
-    // Increment template usage count
+    // Increment template usage count atomically using the database function
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
-      .from('project_templates')
-      .update({
-        usage_count: templateRow.usage_count + 1,
-      })
-      .eq('id', data.templateId);
+    await (client as any).rpc('increment_template_usage', {
+      template_id: data.templateId,
+    });
 
     logger.info(
       {
@@ -353,7 +346,9 @@ export const createProjectFromTemplateAction = enhanceAction(
     );
 
     revalidatePath('/home/[account]/studio', 'page');
+    revalidatePath('/home/[account]/studio/templates', 'page');
 
+    // Return the response - client will handle redirect
     return {
       success: true,
       projectId: project.id,
@@ -366,6 +361,7 @@ export const createProjectFromTemplateAction = enhanceAction(
   },
   {
     schema: CreateProjectFromTemplateSchema,
+    auth: true,
   },
 );
 
@@ -373,21 +369,17 @@ export const createProjectFromTemplateAction = enhanceAction(
  * Save an existing project as a custom template
  */
 export const saveProjectAsTemplateAction = enhanceAction(
-  async (data): Promise<SaveProjectAsTemplateResponse> => {
+  async (data, user): Promise<SaveProjectAsTemplateResponse> => {
     const logger = await getLogger();
     const ctx = {
       name: 'templates.saveFromProject',
       projectId: data.projectId,
+      userId: user.id,
     };
 
     logger.info(ctx, 'Saving project as template');
 
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
-
-    if (authError || !user) {
-      throw new Error('Authentication required');
-    }
 
     // Get the project with its settings
     const { data: project, error: projectError } = await client
@@ -452,7 +444,7 @@ export const saveProjectAsTemplateAction = enhanceAction(
 
     // Create the template
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: template, error: templateError } = await (client as any)
+    const { data: templateResult, error: templateError } = await (client as any)
       .from('project_templates')
       .insert({
         account_id: data.accountId,
@@ -472,7 +464,7 @@ export const saveProjectAsTemplateAction = enhanceAction(
       throw new Error(`Failed to save template: ${templateError.message}`);
     }
 
-    const templateRow = template as ProjectTemplateRow;
+    const templateRow = templateResult as ProjectTemplateRow;
 
     logger.info(
       { ...ctx, templateId: templateRow.id },
@@ -488,5 +480,6 @@ export const saveProjectAsTemplateAction = enhanceAction(
   },
   {
     schema: SaveProjectAsTemplateSchema,
+    auth: true,
   },
 );
