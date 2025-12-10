@@ -15,6 +15,10 @@ import {
 } from '../../lib/schemas';
 import { createVideoProvider } from '../../providers/factory';
 
+// Note: These actions use type assertions because the internal type definitions
+// differ from the generated database types. The database schema will be aligned
+// in a future update. RLS policies enforce project-level authorization.
+
 // Caching thresholds (in milliseconds)
 const CACHE_FRESH_THRESHOLD = 60 * 1000; // 1 minute
 const CACHE_STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
@@ -222,11 +226,14 @@ export const pollVideoStatusAction = enhanceAction(
         'Video status polled and updated',
       );
 
-      // Revalidate if terminal state
+      // Revalidate and cleanup if terminal state
       if (
         providerStatus.status === 'completed' ||
-        providerStatus.status === 'failed'
+        providerStatus.status === 'failed' ||
+        providerStatus.status === 'cancelled'
       ) {
+        // Clean up rate limit tracking for completed jobs to prevent memory leak
+        lastPollTime.delete(data.generationJobId);
         revalidatePath('/home/[account]/projects/[id]', 'page');
       }
 

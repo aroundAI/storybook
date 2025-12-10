@@ -64,9 +64,17 @@ export type CancelVideoJobInput = z.infer<typeof CancelVideoJobSchema>;
 
 /**
  * Response schema for poll video status action per FILM-408 spec.
+ * Includes all terminal states: completed, failed, cancelled.
  */
 export const PollVideoStatusResponseSchema = z.object({
-  status: z.enum(['queued', 'processing', 'completed', 'failed']),
+  status: z.enum([
+    'queued',
+    'pending',
+    'processing',
+    'completed',
+    'failed',
+    'cancelled',
+  ]),
   progress: z.number().optional(),
   videoUrl: z.string().url().optional(),
   thumbnailUrl: z.string().url().optional(),

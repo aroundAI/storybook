@@ -12,6 +12,10 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { CancelVideoJobSchema } from '../../lib/schemas';
 import { createVideoProvider } from '../../providers/factory';
 
+// Note: These actions use type assertions because the internal type definitions
+// differ from the generated database types. The database schema will be aligned
+// in a future update. RLS policies enforce project-level authorization.
+
 /**
  * Cancel a video generation job.
  *
