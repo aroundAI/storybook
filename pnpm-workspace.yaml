@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/**
   - tooling/*
+  - '!**/poc/**'
 
 onlyBuiltDependencies:
   - '@tailwindcss/oxide'

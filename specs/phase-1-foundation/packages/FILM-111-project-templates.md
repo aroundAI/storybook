@@ -6,6 +6,8 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-110 (Project Extension), FILM-104 (Film Studio Package)
 - **Blocks:** None
+- **Status:** COMPLETED
+- **PR:** #58
 
 ---
 
@@ -623,14 +625,14 @@ export const saveAsTemplateAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Template library displays system and custom templates
-- [ ] Templates filterable by category (series, film, shorts, etc.)
-- [ ] Template preview shows settings, characters, locations
-- [ ] Creating project from template copies all configuration
-- [ ] Sample characters and locations created from template
-- [ ] Save existing project as custom template
-- [ ] Share templates within organization (is_public flag)
-- [ ] Usage count tracked per template
+- [x] Template library displays system and custom templates
+- [x] Templates filterable by category (series, film, shorts, etc.)
+- [x] Template preview shows settings, characters, locations
+- [x] Creating project from template copies all configuration
+- [x] Sample characters and locations created from template
+- [x] Save existing project as custom template
+- [x] Share templates within organization (is_public flag)
+- [x] Usage count tracked per template
 
 ---
 
@@ -650,10 +652,39 @@ export const saveAsTemplateAction = enhanceAction(
 
 ## Seed Data
 
-System templates to be created:
+System templates created:
 
-1. **Drama Series** - 10-episode drama with protagonist/antagonist structure
-2. **Comedy Shorts** - Quick 60-second comedy format for TikTok
-3. **Documentary** - Interview + B-roll documentary structure
-4. **Educational Series** - Lesson-based educational content
-5. **Action Film** - Feature-length action movie structure
+1. **YouTube Series Starter** - 16:9 format, optimized for YouTube with hook-first structure
+2. **Cinematic Short Film** - 21:9 cinematic format with 3-act structure
+3. **TikTok Viral Shorts** - 9:16 vertical format, fast-paced hook structure
+4. **Documentary Project** - Interview setup with B-roll organization
+5. **Educational Course** - Structured for learning objectives and knowledge retention
+
+---
+
+## Implementation Notes
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `apps/web/supabase/schemas/31-project-templates.sql` | Database schema with RLS policies |
+| `apps/web/supabase/migrations/20251209144544_add-project-templates.sql` | Migration with seed data |
+| `packages/features/film-studio-schemas/src/template.ts` | Zod schemas for template validation |
+| `packages/features/film-studio/src/lib/types/template.types.ts` | TypeScript types and mapper |
+| `packages/features/film-studio/src/server/template-actions.ts` | Server actions for template operations |
+| `apps/web/app/home/[account]/studio/templates/page.tsx` | Templates page route |
+| `apps/web/app/home/[account]/studio/templates/_components/template-library.tsx` | Main library component |
+| `apps/web/app/home/[account]/studio/templates/_components/template-card.tsx` | Template card component |
+| `apps/web/app/home/[account]/studio/templates/_components/template-preview-dialog.tsx` | Preview dialog |
+| `apps/web/app/home/[account]/studio/templates/_components/template-library-skeleton.tsx` | Loading skeleton |
+
+### Key Implementation Details
+
+- Database table `project_templates` with soft delete support via `deleted_at`
+- System templates have `is_system=true` and `account_id=NULL`
+- Custom templates belong to accounts and can be shared via `is_public` flag
+- RLS policies restrict access: system templates readable by all, custom templates by account members
+- Template data stored as JSONB including project settings, sample characters, locations, story structure
+- Server actions use type assertions for `project_templates` table (not in generated types until migration runs)
+- Usage count incremented atomically when creating project from template

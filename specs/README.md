@@ -148,7 +148,7 @@ specs/
 | FILM-204 | [asset-gallery](./phase-2-assets/components/FILM-204-asset-gallery.md) | DRAFT | M |
 | FILM-205 | [character-editor](./phase-2-assets/components/FILM-205-character-editor.md) | DRAFT | L |
 | FILM-206 | [voice-profile-editor](./phase-2-assets/components/FILM-206-voice-profile-editor.md) | DRAFT | M |
-| FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | DRAFT | S |
+| FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | ✅ DONE | S |
 
 ### Pages
 | Task ID | Spec | Status | Effort |
@@ -200,7 +200,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | DRAFT | L |
-| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S |
+| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | S |
 
 ### Library
 | Task ID | Spec | Status | Effort |
@@ -229,7 +229,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | DRAFT | L |
-| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DRAFT | L |
+| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DONE | L |
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M |
 
 ---
@@ -263,7 +263,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | SPIKE-01 | [kling-api-research](./spikes/SPIKE-01-kling-api-research.md) | DRAFT | S |
-| SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.md) | DRAFT | M |
+| SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.md) | DONE | M |
 | SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.md) | DRAFT | S |
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.md) | DRAFT | M |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.md) | DRAFT | M |
@@ -317,6 +317,7 @@ specs/
 | FILM-702 | [tiktok-provider](./phase-7-publishing/providers/FILM-702-tiktok-provider.md) | DRAFT | L |
 | FILM-703 | [instagram-provider](./phase-7-publishing/providers/FILM-703-instagram-provider.md) | DRAFT | M |
 | FILM-704 | [facebook-provider](./phase-7-publishing/providers/FILM-704-facebook-provider.md) | ✅ DONE | M |
+| FILM-714 | [twitter-provider](./phase-7-publishing/providers/FILM-714-twitter-provider.md) | ✅ DONE | M |
 
 ### OAuth
 | Task ID | Spec | Status | Effort |
@@ -369,7 +370,7 @@ specs/
 ### Components
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
-| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DRAFT | M |
+| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DONE | M |
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M |
 
 ### Settings

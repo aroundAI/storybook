@@ -13,17 +13,23 @@
   "exports": {
     "./oauth/youtube": "./src/oauth/youtube/index.ts",
     "./oauth/tiktok": "./src/oauth/tiktok/index.ts",
+    "./oauth/twitter": "./src/oauth/twitter/index.ts",
     "./oauth/meta": "./src/oauth/meta/index.ts",
+    "./oauth/linkedin": "./src/oauth/linkedin/index.ts",
     "./providers/youtube": "./src/providers/youtube/index.ts",
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
+    "./providers/twitter": "./src/providers/twitter/index.ts",
     "./providers/facebook": "./src/providers/facebook/index.ts",
     "./providers/instagram": "./src/providers/instagram/index.ts",
+    "./providers/linkedin": "./src/providers/linkedin/index.ts",
+    "./components/linkedin-composer": "./src/components/linkedin-composer.tsx",
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts"
   },
   "dependencies": {
     "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*"
+    "@kit/supabase": "workspace:*",
+    "@kit/ui": "workspace:*"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
@@ -33,7 +39,10 @@
     "@kit/tsconfig": "workspace:*",
     "@supabase/supabase-js": "2.57.4",
     "@types/node": "^24.5.0",
+    "@types/react": "19.1.13",
     "googleapis": "^148.0.0",
+    "lucide-react": "^0.544.0",
+    "react": "19.1.1",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",
     "zod": "^3.25.74"

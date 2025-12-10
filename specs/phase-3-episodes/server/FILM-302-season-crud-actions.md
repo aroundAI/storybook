@@ -3,6 +3,8 @@
 **Phase**: 3
 **Priority**: P0
 **Effort**: S (1-2 days)
+**Status**: ✅ Complete
+**Completed**: 2025-12-09
 **Dependencies**: FILM-101a (seasons table), FILM-301 (episode-crud-actions)
 **Blocks**: FILM-308, FILM-312
 
@@ -12,7 +14,9 @@
 
 The Season Management system provides server-side actions to organize episodes into seasons for TV series and serialized content. Seasons are optional containers that group related episodes, enabling users to structure long-form content with multiple seasons (e.g., "Season 1", "Season 2"). For standalone films or short-form content, episodes can exist without a season (season_id = NULL).
 
-Seasons belong to projects and have a simple structure with title, number, and description. The system must support soft deletes to preserve historical data and maintain referential integrity with episodes.
+Seasons belong to projects and have a simple structure with name, number, and description. The system must support soft deletes to preserve historical data and maintain referential integrity with episodes.
+
+> **Implementation Note**: The spec originally used `title` but the implementation uses `name` to match the existing database schema.
 
 ---
 
@@ -440,26 +444,26 @@ None (new feature)
 
 ### Functional
 
-- [ ] `createSeasonAction` successfully creates season with valid data
-- [ ] `createSeasonAction` auto-assigns season number if not provided
-- [ ] `createSeasonAction` prevents duplicate season numbers
-- [ ] `createSeasonAction` respects RLS (cannot create for inaccessible project)
-- [ ] `getProjectSeasonsAction` returns all non-deleted seasons
-- [ ] `getProjectSeasonsAction` includes accurate episode counts
-- [ ] `getProjectSeasonsAction` orders by season number
-- [ ] `updateSeasonAction` updates only provided fields
-- [ ] `updateSeasonAction` updates updated_at timestamp
-- [ ] `deleteSeasonAction` soft deletes season
-- [ ] `deleteSeasonAction` sets episodes' season_id to NULL
-- [ ] All actions enforce authentication
+- [x] `createSeasonAction` successfully creates season with valid data
+- [x] `createSeasonAction` auto-assigns season number if not provided
+- [x] `createSeasonAction` prevents duplicate season numbers
+- [x] `createSeasonAction` respects RLS (cannot create for inaccessible project)
+- [x] `getProjectSeasonsAction` returns all non-deleted seasons
+- [x] `getProjectSeasonsAction` includes accurate episode counts
+- [x] `getProjectSeasonsAction` orders by season number
+- [x] `updateSeasonAction` updates only provided fields
+- [x] `updateSeasonAction` updates updated_at timestamp
+- [x] `deleteSeasonAction` soft deletes season
+- [x] `deleteSeasonAction` sets episodes' season_id to NULL
+- [x] All actions enforce authentication
 
 ### Non-Functional
 
-- [ ] All actions complete within 2 seconds
-- [ ] All inputs validated with Zod schemas
-- [ ] All database errors properly caught and thrown
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] All actions complete within 2 seconds
+- [x] All inputs validated with Zod schemas
+- [x] All database errors properly caught and thrown
+- [x] TypeScript compiles without errors (season files)
+- [x] No ESLint warnings
 
 ---
 

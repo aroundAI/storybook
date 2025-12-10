@@ -34,6 +34,7 @@ export const defaultI18nNamespaces = [
   'marketing',
   'projects',
   'generation',
+  'studio',
 ];
 
 /**

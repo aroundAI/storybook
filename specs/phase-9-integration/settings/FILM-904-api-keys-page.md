@@ -566,21 +566,27 @@ async function validateKlingKey(apiKey: string): Promise<{ valid: boolean; error
 | CREATE | `apps/web/app/home/[account]/settings/api-keys/page.tsx` |
 | CREATE | `packages/features/film-studio/src/components/api-keys-settings.tsx` |
 | CREATE | `packages/features/film-studio/src/server/api-keys-actions.ts` |
+| CREATE | `packages/features/film-studio/src/schemas/api-keys.schema.ts` |
+| MODIFY | `packages/features/film-studio/src/server/index.ts` |
+| MODIFY | `packages/features/film-studio/src/components/index.ts` |
+| MODIFY | `packages/features/film-studio/package.json` |
+| MODIFY | `apps/web/package.json` |
+| MODIFY | `apps/web/public/locales/en/teams.json` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Lists all supported providers by category
-- [ ] Shows configured vs unconfigured status
-- [ ] Masked key display (••••••XXXX)
-- [ ] Add/Update key dialog
-- [ ] Test key validation before saving
-- [ ] Visual feedback for valid/invalid keys
-- [ ] Delete key option
-- [ ] Link to provider documentation
-- [ ] Keys encrypted at rest
-- [ ] BYOK keys used in priority over platform keys
+- [x] Lists all supported providers by category
+- [x] Shows configured vs unconfigured status
+- [x] Masked key display (••••••XXXX)
+- [x] Add/Update key dialog
+- [x] Test key validation before saving
+- [x] Visual feedback for valid/invalid keys
+- [x] Delete key option
+- [x] Link to provider documentation
+- [x] Keys encrypted at rest
+- [ ] BYOK keys used in priority over platform keys (requires provider integration)
 
 ---
 

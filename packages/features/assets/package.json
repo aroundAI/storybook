@@ -61,6 +61,7 @@
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "lucide-react": "^0.544.0",
+    "react-dropzone": "^14.3.8",
     "sharp": "^0.33.5"
   }
 }

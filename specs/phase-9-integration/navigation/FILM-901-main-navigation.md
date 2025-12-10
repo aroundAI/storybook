@@ -380,15 +380,15 @@ export function EpisodeTabs() {
 
 ## Acceptance Criteria
 
-- [ ] Studio appears in main app navigation
-- [ ] Account-level navigation shows all projects
-- [ ] Project-level navigation shows episodes, assets, analytics
-- [ ] Episode tabs switch between Story/Visual/Audio/Edit/Publish
-- [ ] Active state correctly highlights current route
-- [ ] Badge shows pending publish count
-- [ ] Back button returns to projects list
-- [ ] Sidebar collapsible on mobile
-- [ ] Keyboard navigation works throughout
+- [x] Studio appears in main app navigation
+- [x] Account-level navigation shows all projects
+- [x] Project-level navigation shows episodes, assets, analytics
+- [x] Episode tabs switch between Story/Visual/Audio/Edit/Publish
+- [x] Active state correctly highlights current route
+- [ ] Badge shows pending publish count (deferred to FILM-903)
+- [x] Back button returns to projects list
+- [x] Sidebar collapsible on mobile (via existing ResponsiveLayout)
+- [x] Keyboard navigation works throughout (via Radix primitives)
 
 ---
 

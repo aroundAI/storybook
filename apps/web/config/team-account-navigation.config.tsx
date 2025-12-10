@@ -1,5 +1,6 @@
 import {
   CreditCard,
+  Film,
   FolderKanban,
   LayoutDashboard,
   Settings,
@@ -27,6 +28,11 @@ const getRoutes = (account: string) => [
         label: 'common:routes.projects',
         path: createPath(pathsConfig.app.accountProjects, account),
         Icon: <FolderKanban className={iconClasses} />,
+      },
+      {
+        label: 'studio:routes.application',
+        path: `/home/${account}/studio`,
+        Icon: <Film className={iconClasses} />,
       },
     ],
   },

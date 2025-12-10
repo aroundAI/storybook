@@ -18,6 +18,10 @@
   "billing": {
     "pageTitle": "Billing"
   },
+  "apiKeys": {
+    "pageTitle": "API Keys",
+    "pageDescription": "Connect your own API keys to use your personal quotas for AI services."
+  },
   "yourTeams": "Your Teams ({{teamsCount}})",
   "createTeam": "Create a Team",
   "creatingTeam": "Creating Team...",
