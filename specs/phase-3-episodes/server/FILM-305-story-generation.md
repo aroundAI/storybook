@@ -1,5 +1,6 @@
 # FILM-305: Story Generation Server Actions
 
+**Status**: ✅ DONE
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)

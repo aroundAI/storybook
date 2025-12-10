@@ -1,5 +1,6 @@
 # FILM-303: Shot CRUD Server Actions
 
+**Status**: ✅ DONE
 **Phase**: 3
 **Priority**: P0
 **Effort**: M (3-5 days)

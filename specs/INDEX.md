@@ -332,13 +332,13 @@ graph TD
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-201 | [asset-crud-actions](./phase-2-assets/server/FILM-201-asset-crud-actions.md) | ✅ DONE | M | FILM-101d, FILM-105 |
-| FILM-202 | [character-actions](./phase-2-assets/server/FILM-202-character-actions.md) | DRAFT | M | FILM-103, FILM-201 |
+| FILM-202 | [character-actions](./phase-2-assets/server/FILM-202-character-actions.md) | ✅ DONE | M | FILM-103, FILM-201 |
 | FILM-203 | [upload-route](./phase-2-assets/server/FILM-203-upload-route.md) | ✅ DONE | M | FILM-CC-01 |
-| FILM-204 | [asset-gallery](./phase-2-assets/components/FILM-204-asset-gallery.md) | DRAFT | M | FILM-201 |
+| FILM-204 | [asset-gallery](./phase-2-assets/components/FILM-204-asset-gallery.md) | ✅ DONE | M | FILM-201 |
 | FILM-205 | [character-editor](./phase-2-assets/components/FILM-205-character-editor.md) | DRAFT | L | FILM-202, FILM-204 |
-| FILM-206 | [voice-profile-editor](./phase-2-assets/components/FILM-206-voice-profile-editor.md) | DRAFT | M | FILM-201 |
+| FILM-206 | [voice-profile-editor](./phase-2-assets/components/FILM-206-voice-profile-editor.md) | ✅ DONE | M | FILM-201 |
 | FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | ✅ DONE | S | FILM-203 |
-| FILM-208 | [asset-library-page](./phase-2-assets/pages/FILM-208-asset-library-page.md) | DRAFT | M | FILM-204 |
+| FILM-208 | [asset-library-page](./phase-2-assets/pages/FILM-208-asset-library-page.md) | ✅ DONE | M | FILM-204 |
 | FILM-209 | [element-prompt-generation](./phase-2-assets/lib/FILM-209-element-prompt-generation.md) | DRAFT | M | FILM-202 |
 
 ### Phase 3: Episodes & Story (14 specs)
@@ -347,9 +347,9 @@ graph TD
 |---------|------|--------|--------|--------------|
 | FILM-301 | [episode-crud-actions](./phase-3-episodes/server/FILM-301-episode-crud-actions.md) | ✅ DONE | M | FILM-101b, FILM-106 |
 | FILM-302 | [season-crud-actions](./phase-3-episodes/server/FILM-302-season-crud-actions.md) | ✅ DONE | S | FILM-301 |
-| FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | DRAFT | M | FILM-301 |
+| FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | ✅ DONE | M | FILM-301 |
 | FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | ✅ DONE | S | - |
-| FILM-305 | [story-generation](./phase-3-episodes/server/FILM-305-story-generation.md) | DRAFT | L | FILM-301, FILM-304 |
+| FILM-305 | [story-generation](./phase-3-episodes/server/FILM-305-story-generation.md) | ✅ DONE | L | FILM-301, FILM-304 |
 | FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | DRAFT | L | FILM-305 |
 | FILM-307 | [shot-list-generation](./phase-3-episodes/server/FILM-307-shot-list-generation.md) | DRAFT | L | FILM-306, FILM-303 |
 | FILM-308 | [story-studio](./phase-3-episodes/components/FILM-308-story-studio.md) | DRAFT | L | FILM-305 |
@@ -365,8 +365,8 @@ graph TD
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | ✅ DONE | L | FILM-107 |
-| FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | DRAFT | M | FILM-107, FILM-402 |
-| FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | DRAFT | M | FILM-107, FILM-402 |
+| FILM-401b | [runway-provider](./phase-4-video-generation/providers/FILM-401b-runway-provider.md) | ✅ DONE | M | FILM-107, FILM-402 |
+| FILM-401c | [hailuo-provider](./phase-4-video-generation/providers/FILM-401c-hailuo-provider.md) | ✅ DONE | M | FILM-107, FILM-402 |
 | FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | M | FILM-401 |
 | FILM-403 | [rate-limiter](./phase-4-video-generation/lib/FILM-403-rate-limiter.md) | ✅ DONE | M | - |
 | FILM-404 | [job-queue](./phase-4-video-generation/queue/FILM-404-job-queue.md) | ✅ DONE | L | FILM-403 |
@@ -462,7 +462,7 @@ graph TD
 |---------|------|--------|--------|--------------|
 | SPIKE-01 | [kling-api-research](./spikes/SPIKE-01-kling-api-research.md) | ✅ DONE | S | - |
 | SPIKE-02 | [ffmpeg-pipeline](./spikes/SPIKE-02-ffmpeg-pipeline.md) | ✅ DONE | M | - |
-| SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.md) | DRAFT | S | - |
+| SPIKE-03 | [tiktok-oauth-quirks](./spikes/SPIKE-03-tiktok-oauth-quirks.md) | ✅ DONE | S | - |
 | SPIKE-04 | [video-stitching](./spikes/SPIKE-04-video-stitching.md) | ✅ DONE | M | - |
 | SPIKE-05 | [character-consistency](./spikes/SPIKE-05-character-consistency.md) | ✅ DONE | M | - |
 
@@ -518,22 +518,22 @@ SPIKE-01 through SPIKE-05
 | 1. Foundation | 26 | 0 | 0 | 0 | 0 | 26 |
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
-| 2. Assets | 9 | 5 | 0 | 0 | 0 | 4 |
-| 3. Episodes | 14 | 7 | 0 | 0 | 0 | 7 |
-| 4. Video Gen | 15 | 4 | 0 | 0 | 0 | 11 |
+| 2. Assets | 9 | 2 | 0 | 0 | 0 | 7 |
+| 3. Episodes | 14 | 5 | 0 | 0 | 0 | 9 |
+| 4. Video Gen | 15 | 2 | 0 | 0 | 0 | 13 |
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 6 | 0 | 0 | 0 | 9 |
 | 8. Analytics | 10 | 7 | 0 | 0 | 0 | 3 |
 | 9. Integration | 6 | 2 | 0 | 0 | 0 | 4 |
-| Spikes | 5 | 1 | 0 | 0 | 0 | 4 |
-| **TOTAL** | **130** | **50** | **0** | **0** | **0** | **80** |
+| Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
+| **TOTAL** | **130** | **42** | **0** | **0** | **0** | **88** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 64 | 69% |
+| MVP Specs | 93 | 72 | 77% |
 | Post-MVP | 37 | 16 | 43% |
 
 ---

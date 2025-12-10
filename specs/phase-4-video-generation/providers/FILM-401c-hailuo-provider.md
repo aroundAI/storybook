@@ -4,6 +4,7 @@
 - **Phase:** 4 - Video Generation
 - **Priority:** P1 (Budget Provider)
 - **Effort:** M (4-8 hours)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-107 (@kit/video-generation package), FILM-402 (Provider Factory)
 - **Blocks:** None (alternative to Kling)
 
