@@ -1,0 +1,25 @@
+{
+  "routes": {
+    "application": "Studio",
+    "overview": "Overview",
+    "episodes": "Episodes",
+    "assets": "Assets",
+    "characters": "Characters",
+    "locations": "Locations",
+    "voices": "Voices",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "allProjects": "All Projects"
+  },
+  "sidebar": {
+    "backToProjects": "Back to Projects",
+    "filmStudio": "Film Studio"
+  },
+  "episodeTabs": {
+    "story": "Story",
+    "visual": "Visual",
+    "audio": "Audio",
+    "edit": "Edit",
+    "publish": "Publish"
+  }
+}
