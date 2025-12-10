@@ -210,7 +210,7 @@ export function buildConcatTimeline(
     transitionDuration?: number;
   } = {}
 ): ShotstackTimeline {
-  const { transitionType = 'fade', transitionDuration = 0.5 } = options;
+  const { transitionType = 'fade', transitionDuration: _transitionDuration = 0.5 } = options;
 
   const clips: ShotstackClip[] = videoUrls.map((url, index) => ({
     asset: {
