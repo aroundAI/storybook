@@ -24,3 +24,6 @@ export { VoiceSelector } from './voice-selector';
 export { VoiceCard, type VoiceOption } from './voice-card';
 export { VoiceSettings, type VoiceSettingsData } from './voice-settings';
 export { VoicePreview } from './voice-preview';
+
+// Image Uploader (FILM-207)
+export * from './image-uploader';
