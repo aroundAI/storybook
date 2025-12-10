@@ -1,4 +1,5 @@
-// Export server actions here
+// Export server actions
+export * from './template-actions';
 export * from './activity-actions';
 export * from './generation-actions';
 export * from './publish-actions';

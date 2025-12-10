@@ -23,15 +23,16 @@
     "./interaction-patterns": "./src/lib/interaction-patterns.ts"
   },
   "dependencies": {
+    "@kit/film-studio-schemas": "workspace:*",
+    "@kit/next": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
     "@tanstack/react-query": "5.89.0",
     "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
-    "@kit/next": "workspace:*",
     "@kit/prettier-config": "workspace:*",
-    "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*",
     "@kit/tsconfig": "workspace:*",
     "@kit/ui": "workspace:*",
     "@testing-library/react": "^16.3.0",
