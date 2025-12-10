@@ -1,0 +1,281 @@
+{
+  "$schema": "./timeline.json",
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "version": "1.0",
+  "duration": 60,
+  "tracks": [
+    {
+      "id": "video",
+      "type": "video",
+      "name": "Video",
+      "clips": [
+        {
+          "id": "clip-001",
+          "trackId": "video",
+          "assetId": "asset-001",
+          "assetUrl": "https://storage.example.com/videos/shot-001.mp4",
+          "name": "Shot 1 - Opening",
+          "startTime": 0,
+          "duration": 6,
+          "sourceStart": 0,
+          "sourceEnd": 6,
+          "volume": 1,
+          "thumbnailUrl": "https://storage.example.com/thumbnails/shot-001.jpg",
+          "isPlaceholder": false
+        },
+        {
+          "id": "clip-002",
+          "trackId": "video",
+          "assetId": "asset-002",
+          "assetUrl": "https://storage.example.com/videos/shot-002.mp4",
+          "name": "Shot 2 - Character intro",
+          "startTime": 5,
+          "duration": 8,
+          "sourceStart": 0,
+          "sourceEnd": 8,
+          "volume": 1,
+          "thumbnailUrl": "https://storage.example.com/thumbnails/shot-002.jpg",
+          "isPlaceholder": false
+        },
+        {
+          "id": "clip-003",
+          "trackId": "video",
+          "assetId": "asset-003",
+          "assetUrl": "https://storage.example.com/videos/shot-003.mp4",
+          "name": "Shot 3 - Dialogue",
+          "startTime": 12,
+          "duration": 10,
+          "sourceStart": 0,
+          "sourceEnd": 10,
+          "volume": 1,
+          "thumbnailUrl": "https://storage.example.com/thumbnails/shot-003.jpg",
+          "isPlaceholder": false
+        },
+        {
+          "id": "clip-004",
+          "trackId": "video",
+          "assetId": "asset-004",
+          "assetUrl": "https://storage.example.com/videos/shot-004.mp4",
+          "name": "Shot 4 - Action",
+          "startTime": 21,
+          "duration": 12,
+          "sourceStart": 0,
+          "sourceEnd": 12,
+          "volume": 1,
+          "thumbnailUrl": "https://storage.example.com/thumbnails/shot-004.jpg",
+          "isPlaceholder": false
+        },
+        {
+          "id": "clip-005",
+          "trackId": "video",
+          "assetId": "asset-005",
+          "assetUrl": "https://storage.example.com/videos/shot-005.mp4",
+          "name": "Shot 5 - Resolution",
+          "startTime": 32,
+          "duration": 8,
+          "sourceStart": 0,
+          "sourceEnd": 8,
+          "volume": 1,
+          "thumbnailUrl": "https://storage.example.com/thumbnails/shot-005.jpg",
+          "isPlaceholder": false
+        },
+        {
+          "id": "clip-006",
+          "trackId": "video",
+          "assetUrl": "https://storage.example.com/videos/shot-006.mp4",
+          "name": "Shot 6 - Outro",
+          "startTime": 39,
+          "duration": 6,
+          "sourceStart": 0,
+          "sourceEnd": 6,
+          "volume": 1,
+          "isPlaceholder": false
+        }
+      ],
+      "volume": 1,
+      "isMuted": false,
+      "isLocked": false,
+      "order": 0
+    },
+    {
+      "id": "dialogue",
+      "type": "dialogue",
+      "name": "Dialogue",
+      "clips": [
+        {
+          "id": "dialogue-001",
+          "trackId": "dialogue",
+          "assetUrl": "https://storage.example.com/audio/line-001.mp3",
+          "name": "Welcome to our story...",
+          "startTime": 1,
+          "duration": 3,
+          "volume": 1,
+          "fadeIn": 0.2,
+          "fadeOut": 0.2,
+          "isPlaceholder": false
+        },
+        {
+          "id": "dialogue-002",
+          "trackId": "dialogue",
+          "assetUrl": "https://storage.example.com/audio/line-002.mp3",
+          "name": "Let me introduce...",
+          "startTime": 6,
+          "duration": 4,
+          "volume": 1,
+          "fadeIn": 0.1,
+          "fadeOut": 0.1,
+          "isPlaceholder": false
+        },
+        {
+          "id": "dialogue-003",
+          "trackId": "dialogue",
+          "assetUrl": "https://storage.example.com/audio/line-003.mp3",
+          "name": "The adventure begins...",
+          "startTime": 13,
+          "duration": 5,
+          "volume": 1,
+          "isPlaceholder": false
+        },
+        {
+          "id": "dialogue-004",
+          "trackId": "dialogue",
+          "assetUrl": "https://storage.example.com/audio/line-004.mp3",
+          "name": "And so we conclude...",
+          "startTime": 40,
+          "duration": 4,
+          "volume": 1,
+          "fadeOut": 1,
+          "isPlaceholder": false
+        }
+      ],
+      "volume": 1,
+      "isMuted": false,
+      "isLocked": false,
+      "order": 1
+    },
+    {
+      "id": "music",
+      "type": "music",
+      "name": "Background Music",
+      "clips": [
+        {
+          "id": "music-001",
+          "trackId": "music",
+          "assetUrl": "https://storage.example.com/audio/background-theme.mp3",
+          "name": "Episode Theme",
+          "startTime": 0,
+          "duration": 45,
+          "sourceStart": 0,
+          "sourceEnd": 45,
+          "volume": 0.3,
+          "fadeIn": 2,
+          "fadeOut": 3,
+          "isPlaceholder": false
+        }
+      ],
+      "volume": 0.3,
+      "isMuted": false,
+      "isLocked": false,
+      "order": 2
+    },
+    {
+      "id": "sfx",
+      "type": "sfx",
+      "name": "Sound Effects",
+      "clips": [
+        {
+          "id": "sfx-001",
+          "trackId": "sfx",
+          "assetUrl": "https://storage.example.com/audio/whoosh.mp3",
+          "name": "Transition Whoosh",
+          "startTime": 5,
+          "duration": 0.5,
+          "volume": 0.8,
+          "isPlaceholder": false
+        },
+        {
+          "id": "sfx-002",
+          "trackId": "sfx",
+          "assetUrl": "https://storage.example.com/audio/impact.mp3",
+          "name": "Action Impact",
+          "startTime": 25,
+          "duration": 1,
+          "volume": 0.9,
+          "isPlaceholder": false
+        }
+      ],
+      "volume": 1,
+      "isMuted": false,
+      "isLocked": false,
+      "order": 3
+    }
+  ],
+  "transitions": [
+    {
+      "id": "trans-001",
+      "type": "crossfade",
+      "clipBeforeId": "clip-001",
+      "clipAfterId": "clip-002",
+      "duration": 1
+    },
+    {
+      "id": "trans-002",
+      "type": "fade",
+      "clipBeforeId": "clip-002",
+      "clipAfterId": "clip-003",
+      "duration": 0.5
+    },
+    {
+      "id": "trans-003",
+      "type": "wipe",
+      "clipBeforeId": "clip-003",
+      "clipAfterId": "clip-004",
+      "duration": 0.75,
+      "params": {
+        "direction": "left"
+      }
+    },
+    {
+      "id": "trans-004",
+      "type": "cut",
+      "clipBeforeId": "clip-004",
+      "clipAfterId": "clip-005",
+      "duration": 0
+    },
+    {
+      "id": "trans-005",
+      "type": "dissolve",
+      "clipBeforeId": "clip-005",
+      "clipAfterId": "clip-006",
+      "duration": 1.5
+    }
+  ],
+  "renderSettings": {
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "codec": "h264",
+    "audioCodec": "aac",
+    "format": "mp4",
+    "quality": "standard",
+    "audioBitrate": 192,
+    "sampleRate": 48000,
+    "includeAudio": true,
+    "crf": 23
+  },
+  "metadata": {
+    "episodeId": "episode-123",
+    "projectId": "project-456",
+    "accountId": "account-789",
+    "title": "Episode 1: The Beginning",
+    "description": "First episode of our animated series featuring character introductions and initial plot setup.",
+    "createdAt": "2025-01-15T10:00:00Z",
+    "updatedAt": "2025-01-15T14:30:00Z",
+    "custom": {
+      "genre": "animation",
+      "targetAudience": "general",
+      "season": 1,
+      "episodeNumber": 1
+    }
+  }
+}
