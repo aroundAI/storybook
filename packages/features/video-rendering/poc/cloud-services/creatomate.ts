@@ -121,7 +121,9 @@ export class CreatomateClient {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Creatomate render failed: ${response.status} - ${error}`);
+      throw new Error(
+        `Creatomate render failed: ${response.status} - ${error}`,
+      );
     }
 
     const data = (await response.json()) as CreatomateRenderResponse[];
@@ -131,7 +133,9 @@ export class CreatomateClient {
   /**
    * Render from template
    */
-  async renderTemplate(request: CreatomateTemplateRenderRequest): Promise<string> {
+  async renderTemplate(
+    request: CreatomateTemplateRenderRequest,
+  ): Promise<string> {
     const response = await fetch(`${this.baseUrl}/renders`, {
       method: 'POST',
       headers: {
@@ -143,7 +147,9 @@ export class CreatomateClient {
 
     if (!response.ok) {
       const error = await response.text();
-      throw new Error(`Creatomate render failed: ${response.status} - ${error}`);
+      throw new Error(
+        `Creatomate render failed: ${response.status} - ${error}`,
+      );
     }
 
     const data = (await response.json()) as CreatomateRenderResponse[];
@@ -172,7 +178,7 @@ export class CreatomateClient {
    */
   async waitForCompletion(
     renderId: string,
-    options: { maxWaitMs?: number; pollIntervalMs?: number } = {}
+    options: { maxWaitMs?: number; pollIntervalMs?: number } = {},
   ): Promise<string> {
     const { maxWaitMs = 300000, pollIntervalMs = 2000 } = options;
     const startTime = Date.now();
@@ -204,7 +210,7 @@ export function buildConcatSource(
     width?: number;
     height?: number;
     transitionDuration?: number;
-  } = {}
+  } = {},
 ): CreatomateSource {
   const { width = 1920, height = 1080, transitionDuration = 0.5 } = options;
 
@@ -265,7 +271,7 @@ export async function exampleUsage(): Promise<void> {
  */
 export function estimateCost(
   outputDurationSeconds: number,
-  resolution: '720p' | '1080p' | '4k'
+  resolution: '720p' | '1080p' | '4k',
 ): number {
   // Base render cost
   let cost = 0.08;

@@ -22,13 +22,12 @@
  *   DELETE /render/:id - Cancel a job
  *   GET /health       - Health check
  */
-
-import express, { Request, Response } from 'express';
 import cors from 'cors';
-import { v4 as uuidv4 } from 'uuid';
+import express, { Request, Response } from 'express';
 import ffmpeg from 'fluent-ffmpeg';
 import * as fs from 'fs';
 import * as path from 'path';
+import { v4 as uuidv4 } from 'uuid';
 
 // Types
 interface RenderJob {
@@ -57,7 +56,10 @@ interface RenderRequestBody {
 // Configuration
 const PORT = process.env.PORT || 3001;
 const TEMP_DIR = process.env.TEMP_DIR || '/tmp/video-rendering';
-const MAX_CONCURRENT_JOBS = parseInt(process.env.MAX_CONCURRENT_JOBS || '4', 10);
+const MAX_CONCURRENT_JOBS = parseInt(
+  process.env.MAX_CONCURRENT_JOBS || '4',
+  10,
+);
 
 // Ensure temp directory exists
 if (!fs.existsSync(TEMP_DIR)) {
@@ -80,8 +82,9 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
-    activeJobs: Array.from(jobs.values()).filter((j) => j.status === 'processing')
-      .length,
+    activeJobs: Array.from(jobs.values()).filter(
+      (j) => j.status === 'processing',
+    ).length,
     maxConcurrentJobs: MAX_CONCURRENT_JOBS,
   });
 });
@@ -100,7 +103,7 @@ app.post('/render', async (req: Request, res: Response) => {
 
   // Check concurrent job limit
   const activeJobs = Array.from(jobs.values()).filter(
-    (j) => j.status === 'processing'
+    (j) => j.status === 'processing',
   ).length;
   if (activeJobs >= MAX_CONCURRENT_JOBS) {
     res.status(429).json({
@@ -181,7 +184,9 @@ app.get('/progress/:id', (req: Request, res: Response) => {
   progressListeners.get(job.id)!.add(res);
 
   // Send initial state
-  res.write(`data: ${JSON.stringify({ status: job.status, progress: job.progress })}\n\n`);
+  res.write(
+    `data: ${JSON.stringify({ status: job.status, progress: job.progress })}\n\n`,
+  );
 
   // Cleanup on close
   req.on('close', () => {
@@ -201,7 +206,9 @@ app.delete('/render/:id', (req: Request, res: Response) => {
   }
 
   if (job.status !== 'processing' && job.status !== 'pending') {
-    res.status(400).json({ error: 'Job cannot be cancelled', status: job.status });
+    res
+      .status(400)
+      .json({ error: 'Job cannot be cancelled', status: job.status });
     return;
   }
 
@@ -248,7 +255,10 @@ app.get('/download/:id', (req: Request, res: Response) => {
 /**
  * Start the render process
  */
-async function startRender(job: RenderJob, request: RenderRequestBody): Promise<void> {
+async function startRender(
+  job: RenderJob,
+  request: RenderRequestBody,
+): Promise<void> {
   job.status = 'processing';
   notifyProgress(job);
 
@@ -261,7 +271,9 @@ async function startRender(job: RenderJob, request: RenderRequestBody): Promise<
     }
 
     // Build filter complex
-    const filterInputs = request.shots.map((_, i) => `[${i}:v][${i}:a]`).join('');
+    const filterInputs = request.shots
+      .map((_, i) => `[${i}:v][${i}:a]`)
+      .join('');
     const filterComplex = `${filterInputs}concat=n=${request.shots.length}:v=1:a=1[outv][outa]`;
 
     command.complexFilter(filterComplex);
@@ -303,7 +315,9 @@ async function startRender(job: RenderJob, request: RenderRequestBody): Promise<
       job.status = 'completed';
       job.progress = 100;
       notifyProgress(job);
-      console.log(`[Job ${job.id}] Completed in ${Date.now() - job.startTime}ms`);
+      console.log(
+        `[Job ${job.id}] Completed in ${Date.now() - job.startTime}ms`,
+      );
       resolve();
     });
 
@@ -347,21 +361,24 @@ function notifyProgress(job: RenderJob): void {
 /**
  * Cleanup old jobs periodically
  */
-setInterval(() => {
-  const maxAge = 60 * 60 * 1000; // 1 hour
-  const now = Date.now();
+setInterval(
+  () => {
+    const maxAge = 60 * 60 * 1000; // 1 hour
+    const now = Date.now();
 
-  for (const [id, job] of jobs) {
-    if (now - job.startTime > maxAge && job.status !== 'processing') {
-      // Delete output file
-      if (job.outputPath && fs.existsSync(job.outputPath)) {
-        fs.unlinkSync(job.outputPath);
+    for (const [id, job] of jobs) {
+      if (now - job.startTime > maxAge && job.status !== 'processing') {
+        // Delete output file
+        if (job.outputPath && fs.existsSync(job.outputPath)) {
+          fs.unlinkSync(job.outputPath);
+        }
+        jobs.delete(id);
+        console.log(`[Cleanup] Removed old job ${id}`);
       }
-      jobs.delete(id);
-      console.log(`[Cleanup] Removed old job ${id}`);
     }
-  }
-}, 5 * 60 * 1000); // Every 5 minutes
+  },
+  5 * 60 * 1000,
+); // Every 5 minutes
 
 // Start server
 app.listen(PORT, () => {
