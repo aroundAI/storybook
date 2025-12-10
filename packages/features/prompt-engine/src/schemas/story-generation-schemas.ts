@@ -274,3 +274,43 @@ export const ShotListGenerationOutputSchema = z.object({
 export type ShotListGenerationOutput = z.infer<
   typeof ShotListGenerationOutputSchema
 >;
+
+// ============================================================
+// Season Outline Generation Schemas (FILM-314)
+// ============================================================
+
+/**
+ * Arc position for episode in season structure
+ */
+export const ArcPositionSchema = z.enum([
+  'setup',
+  'rising',
+  'midpoint',
+  'climax',
+  'resolution',
+]);
+
+export type ArcPosition = z.infer<typeof ArcPositionSchema>;
+
+/**
+ * Single episode outline from season generation
+ */
+export const EpisodeOutlineSchema = z.object({
+  number: z.number().int().positive(),
+  title: z.string().min(1).max(255),
+  premise: z.string().min(10).max(500),
+  mainPlot: z.string().min(20).max(1000),
+  characterFocus: z.array(z.string()).optional(),
+  arcPosition: ArcPositionSchema,
+});
+
+export type EpisodeOutline = z.infer<typeof EpisodeOutlineSchema>;
+
+/**
+ * Season outline generation prompt output
+ */
+export const SeasonOutlineOutputSchema = z.object({
+  episodes: z.array(EpisodeOutlineSchema),
+});
+
+export type SeasonOutlineOutput = z.infer<typeof SeasonOutlineOutputSchema>;

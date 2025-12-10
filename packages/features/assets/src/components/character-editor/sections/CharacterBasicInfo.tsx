@@ -27,6 +27,12 @@ import type { CharacterFormData } from '../../../lib/schemas/character.schema';
  * Form fields for character name and description.
  */
 
+/**
+ * Character Basic Info Section (FILM-205)
+ *
+ * Form fields for character name and description.
+ */
+
 interface CharacterBasicInfoProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

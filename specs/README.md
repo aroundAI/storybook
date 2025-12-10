@@ -200,7 +200,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | FILM-401 | [kling-provider](./phase-4-video-generation/providers/FILM-401-kling-provider.md) | DRAFT | L |
-| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | DRAFT | S |
+| FILM-402 | [provider-factory](./phase-4-video-generation/providers/FILM-402-provider-factory.md) | ✅ DONE | S |
 
 ### Library
 | Task ID | Spec | Status | Effort |
@@ -229,7 +229,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | DRAFT | L |
-| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DRAFT | L |
+| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DONE | L |
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M |
 
 ---
