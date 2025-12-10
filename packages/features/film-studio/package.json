@@ -26,7 +26,9 @@
     "@kit/film-studio-schemas": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
-    "@kit/supabase": "workspace:*"
+    "@kit/supabase": "workspace:*",
+    "@tanstack/react-query": "5.89.0",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",

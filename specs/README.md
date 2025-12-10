@@ -370,7 +370,7 @@ specs/
 ### Components
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
-| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DRAFT | M |
+| FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DONE | M |
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M |
 
 ### Settings

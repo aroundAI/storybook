@@ -1330,6 +1330,12 @@ importers:
       '@kit/supabase':
         specifier: workspace:*
         version: link:../../supabase
+      '@tanstack/react-query':
+        specifier: 5.89.0
+        version: 5.89.0(react@19.1.1)
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*
