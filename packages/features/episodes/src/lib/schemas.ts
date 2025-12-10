@@ -203,6 +203,23 @@ export {
 // Shot list generation schemas are in ./schemas/shot-list.schema.ts (FILM-307)
 // Import directly from those files to avoid naming conflicts
 
+// Batch episode creation schemas (FILM-314)
+export {
+  ArcPositionSchema,
+  EpisodeOutlineSchema,
+  GenerateSeasonOutlineSchema,
+  BatchCreateEpisodesSchema,
+  RegenerateEpisodeOutlineSchema,
+  type ArcPosition,
+  type EpisodeOutline,
+  type GenerateSeasonOutlineInput,
+  type BatchCreateEpisodesInput,
+  type RegenerateEpisodeOutlineInput,
+  type GenerateSeasonOutlineResponse,
+  type BatchCreateEpisodesResponse,
+  type RegenerateEpisodeOutlineResponse,
+} from './schemas/batch-episode.schema';
+
 // ============================================================================
 // Screenplay Conversion Schemas (FILM-306)
 // ============================================================================

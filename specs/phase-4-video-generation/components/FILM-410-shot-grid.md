@@ -1,5 +1,9 @@
 # FILM-410: Shot Grid Component
 
+> **Status**: DONE
+> **Implemented**: December 2025
+> **Location**: `packages/features/video-generation/src/components/shot-grid/`
+
 **Phase**: 4
 **Priority**: P0
 **Effort**: L (5-6 days)
