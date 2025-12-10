@@ -5,6 +5,7 @@
 **Effort**: M (3-4 days)
 **Dependencies**: FILM-408 (poll-status-action)
 **Blocks**: None
+**Status**: Complete
 
 ---
 
@@ -204,9 +205,17 @@ export function GenerationProgress({ shots }: GenerationProgressProps) {
 ```
 packages/features/video-generation/src/
 ├── components/
-│   ├── GenerationProgress.tsx          # Progress component (CREATE THIS)
-│   └── __tests__/
-│       └── GenerationProgress.test.tsx
+│   ├── generation-progress/
+│   │   ├── index.ts                        # Barrel export
+│   │   ├── generation-progress.tsx         # Main component
+│   │   ├── generation-progress-item.tsx    # Individual shot progress
+│   │   └── types.ts                        # TypeScript interfaces
+│   └── index.ts                            # Updated with GenerationProgress export
+├── hooks/
+│   └── use-generation-status.ts            # React Query hook for polling
+└── server/
+    └── actions/
+        └── get-shot-generation-job-action.ts  # Lookup job ID for shot
 ```
 
 ### Polling Strategy
@@ -254,14 +263,14 @@ const estimatedTime = status.estimatedTimeRemaining || null;
 
 ## Acceptance Criteria
 
-- [ ] Component displays overall progress
-- [ ] Component shows individual job progress
-- [ ] Component polls status every 5 seconds
-- [ ] Component stops polling when complete
-- [ ] Component displays queue position
-- [ ] Component shows estimated time
-- [ ] Component handles errors gracefully
-- [ ] Component is accessible
+- [x] Component displays overall progress
+- [x] Component shows individual job progress
+- [x] Component polls status every 5 seconds
+- [x] Component stops polling when complete
+- [x] Component displays queue position
+- [x] Component shows estimated time
+- [x] Component handles errors gracefully
+- [x] Component is accessible
 
 ---
 
@@ -349,7 +358,7 @@ describe('GenerationProgress', () => {
 
 ## Future Enhancements
 
-1. **Cancel Button** - Allow canceling jobs
+1. ~~**Cancel Button** - Allow canceling jobs~~ (Implemented)
 2. **Detailed Timeline** - Show step-by-step progress
 3. **Notifications** - Browser notifications on completion
 4. **History** - View past generation jobs

@@ -1,2 +1,2 @@
 // Export React hooks for video generation
-export {};
+export { useGenerationStatus } from './use-generation-status';
