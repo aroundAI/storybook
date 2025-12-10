@@ -162,16 +162,11 @@ export const getProjectSeasonsAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch seasons with episode counts using aggregation
+    // Fetch seasons first
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: seasons, error } = await (client as any)
       .from('seasons')
-      .select(
-        `
-        *,
-        episodes:episodes(count)
-      `,
-      )
+      .select('*')
       .eq('project_id', data.projectId)
       .is('deleted_at', null)
       .order('number', { ascending: true });
@@ -181,12 +176,33 @@ export const getProjectSeasonsAction = enhanceAction(
       throw new Error('Failed to fetch seasons');
     }
 
-    // Transform response to include episode count
+    // Fetch episode counts separately, excluding soft-deleted episodes
+    const seasonIds = (seasons ?? []).map((s: Season) => s.id);
+    const episodeCounts: Record<string, number> = {};
+
+    if (seasonIds.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: counts, error: countError } = await (client as any)
+        .from('episodes')
+        .select('season_id')
+        .in('season_id', seasonIds)
+        .is('deleted_at', null);
+
+      if (!countError && counts) {
+        for (const episode of counts) {
+          if (episode.season_id) {
+            episodeCounts[episode.season_id] =
+              (episodeCounts[episode.season_id] ?? 0) + 1;
+          }
+        }
+      }
+    }
+
+    // Transform response to include episode count from our separate query
     const seasonsWithCount: SeasonWithEpisodeCount[] = (seasons ?? []).map(
-      (season: Season & { episodes?: Array<{ count: number }> }) => ({
+      (season: Season) => ({
         ...season,
-        episodeCount: season.episodes?.[0]?.count ?? 0,
-        episodes: undefined, // Remove nested episodes array
+        episodeCount: episodeCounts[season.id] ?? 0,
       }),
     );
 
@@ -362,7 +378,9 @@ export const deleteSeasonAction = enhanceAction(
         { ...ctx, error: episodesError },
         'Failed to update episodes season_id',
       );
-      // Don't throw - season is already soft-deleted, log and continue
+      throw new Error(
+        'Failed to unassign episodes from deleted season. Please try again.',
+      );
     }
 
     // Create audit log

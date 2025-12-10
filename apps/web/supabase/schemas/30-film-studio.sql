@@ -33,9 +33,13 @@ create table if not exists public.seasons (
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,
-  unique(project_id, number),
   check (number > 0)
 );
+
+-- Partial unique index to allow reusing season numbers after soft delete
+create unique index if not exists seasons_project_id_number_active_idx
+  on public.seasons(project_id, number)
+  where deleted_at is null;
 
 comment on table public.seasons is 'Seasons organize episodes for series-type projects';
 comment on column public.seasons.number is 'Sequential season number (1, 2, 3...)';
