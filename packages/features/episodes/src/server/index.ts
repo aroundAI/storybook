@@ -3,6 +3,7 @@ export * from './queries';
 export * from './continuity-actions';
 export * from './story-actions';
 export * from './screenplay-actions';
+export * from './batch-episode-actions';
 
 // Shot CRUD actions (FILM-303)
 export * from '../lib/server/mutations/shot-actions';

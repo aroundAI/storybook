@@ -1,0 +1,115 @@
+{
+  "slug": "season-outline",
+  "name": "Season Outline Generator",
+  "version": 1,
+  "category": "story-generation",
+  "description": "Generate episode outlines for an entire season with proper story structure. Creates 2-24 episode concepts following classic narrative arc.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+
+  "llm": {
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-20250514",
+    "max_tokens": 4000,
+    "temperature": 0.7,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Showrunner Role",
+      "content": "You are an expert TV showrunner and story architect. Your role is to create cohesive episode outlines that form a compelling season arc. Each episode should advance the overall narrative while being engaging on its own.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "structure",
+      "name": "Story Structure Guide",
+      "content": "Apply classic TV story structure based on episode position:\n\n**Setup (first 20% of episodes)**: Introduce world, characters, and initial conflict. Hook the audience.\n\n**Rising Action (next 30%)**: Escalate stakes, introduce complications, deepen character relationships.\n\n**Midpoint (middle episode)**: Major revelation or turning point that changes everything.\n\n**Climax Build (next 30%)**: Push toward confrontation, highest tension, characters make crucial choices.\n\n**Resolution (final 20%)**: Climax payoff and aftermath. Satisfy the narrative while leaving room for future stories.\n\nDistribute character focus across episodes so each main character gets spotlight moments.",
+      "layer_type": "context",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object. Ensure each episode has a unique title and premise.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+
+  "user_prompt": "Generate {{episode_count}} episode outlines for a season based on this premise:\n\n**Season Premise**: {{season_premise}}\n\n{{#if genre}}**Genre**: {{genre}}{{/if}}\n{{#if style}}**Style**: {{style}}{{/if}}\n\n{{#if characters}}**Characters**:\n{{characters}}{{/if}}\n\n{{#if locations}}**Locations**:\n{{locations}}{{/if}}\n\nStarting episode number: {{starting_number}}\n\nFor each episode, provide:\n1. **number**: Episode number (starting from {{starting_number}})\n2. **title**: A compelling, memorable title\n3. **premise**: One-sentence hook (what happens in this episode)\n4. **mainPlot**: 2-3 sentence plot summary\n5. **characterFocus**: Array of character names featured prominently\n6. **arcPosition**: Position in story arc (setup, rising, midpoint, climax, resolution)\n\nEnsure:\n- Each episode title is unique and evocative\n- Episodes build on each other narratively\n- Story structure matches arc positions\n- Character focus is distributed across the season\n- Each episode is visually compelling for video production\n\nReturn JSON matching this structure:\n```json\n{\n  \"episodes\": [\n    {\n      \"number\": 1,\n      \"title\": \"string\",\n      \"premise\": \"string\",\n      \"mainPlot\": \"string\",\n      \"characterFocus\": [\"string\"],\n      \"arcPosition\": \"setup|rising|midpoint|climax|resolution\"\n    }\n  ]\n}\n```",
+
+  "variables": {
+    "season_premise": {
+      "type": "text",
+      "required": true,
+      "description": "The overall premise or concept for the season"
+    },
+    "episode_count": {
+      "type": "number",
+      "required": true,
+      "description": "Number of episodes to generate (2-24)"
+    },
+    "starting_number": {
+      "type": "number",
+      "required": false,
+      "description": "Starting episode number. Defaults to 1"
+    },
+    "genre": {
+      "type": "text",
+      "required": false,
+      "description": "Genre of the series (e.g., sci-fi, drama, comedy)"
+    },
+    "style": {
+      "type": "text",
+      "required": false,
+      "description": "Visual or narrative style (e.g., noir, whimsical, gritty)"
+    },
+    "characters": {
+      "type": "text",
+      "required": false,
+      "description": "Formatted list of characters with descriptions"
+    },
+    "locations": {
+      "type": "text",
+      "required": false,
+      "description": "Formatted list of locations with descriptions"
+    }
+  },
+
+  "output": {
+    "type": "object",
+    "wrapper_key": "episodes",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ episodes: z.array(z.object({ number: z.number().int().positive(), title: z.string().min(1).max(255), premise: z.string().min(10).max(500), mainPlot: z.string().min(20).max(1000), characterFocus: z.array(z.string()).optional(), arcPosition: z.enum(['setup', 'rising', 'midpoint', 'climax', 'resolution']) })) })"
+    },
+    "schema_for_llm": "Return JSON: { \"episodes\": [{ \"number\": number, \"title\": \"string\", \"premise\": \"string\", \"mainPlot\": \"string\", \"characterFocus\": [\"string\"], \"arcPosition\": \"setup|rising|midpoint|climax|resolution\" }] }",
+    "example_output": {
+      "episodes": [
+        {
+          "number": 1,
+          "title": "The First Light",
+          "premise": "A mysterious signal from deep space awakens humanity to the reality that we are not alone.",
+          "mainPlot": "Dr. Sarah Chen, a radio astronomer, discovers a pattern in cosmic background radiation that defies natural explanation. As she races to decode the message before government agencies take over her research, she must confront her own skepticism about extraterrestrial intelligence.",
+          "characterFocus": ["Dr. Sarah Chen", "Director Williams"],
+          "arcPosition": "setup"
+        },
+        {
+          "number": 2,
+          "title": "Static",
+          "premise": "As the world learns about the signal, competing factions emerge with very different ideas about how to respond.",
+          "mainPlot": "The signal discovery leaks to the press, sparking global chaos. Sarah is thrust into the spotlight while her lab partner Marcus uncovers evidence that someone has known about this signal for decades. Trust becomes a precious commodity.",
+          "characterFocus": ["Marcus Webb", "Dr. Sarah Chen"],
+          "arcPosition": "setup"
+        }
+      ]
+    }
+  }
+}
