@@ -28,7 +28,10 @@ export function StudioDashboard({
 }: StudioDashboardProps) {
   const [hiddenWidgets, setHiddenWidgets] = useState<Set<WidgetId>>(new Set());
 
-  // Load hidden widgets from localStorage on mount
+  // useEffect justified: Required for client-side localStorage hydration.
+  // localStorage is only available in the browser, so we need to read
+  // stored widget preferences after the component mounts on the client.
+  // This avoids hydration mismatch between server and client rendering.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);

@@ -18,17 +18,17 @@ function TikTokIcon({ className }: { className?: string }) {
   );
 }
 
-const PLATFORM_ICONS: Record<
-  Platform,
-  React.ComponentType<{ className?: string }>
-> = {
+const PLATFORM_ICONS = {
   youtube: Youtube,
   tiktok: TikTokIcon,
   instagram: Instagram,
   facebook: Facebook,
   twitter: Twitter,
   linkedin: Linkedin,
-};
+} as const satisfies Record<
+  Platform,
+  React.ComponentType<{ className?: string }>
+>;
 
 interface ScheduledPublishesWidgetProps {
   accountId: string;

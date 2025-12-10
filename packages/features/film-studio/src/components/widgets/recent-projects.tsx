@@ -31,13 +31,36 @@ export function RecentProjectsWidget({
   const { data: projects, isLoading } = useQuery({
     queryKey: ['recent-projects', accountId],
     queryFn: async () => {
-      // For now, we'll fetch from projects directly
-      // This could be moved to a server action if needed
-      const response = await fetch(
-        `/api/projects?accountId=${accountId}&limit=5`,
-      );
-      if (!response.ok) return [];
-      return response.json() as Promise<RecentProject[]>;
+      // Client-side fetch with timeout and error handling
+      // Note: Could be moved to a server action for better data fetching patterns
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch(
+          `/api/projects?accountId=${accountId}&limit=5`,
+          { signal: controller.signal },
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.error(
+            'Failed to fetch projects:',
+            response.status,
+            response.statusText,
+          );
+          return [];
+        }
+
+        return (await response.json()) as RecentProject[];
+      } catch (error) {
+        // Handle abort and network errors gracefully
+        if (error instanceof Error && error.name !== 'AbortError') {
+          console.error('Error fetching recent projects:', error);
+        }
+        return [];
+      }
     },
     staleTime: 60000, // 1 minute
   });

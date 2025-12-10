@@ -1,5 +1,7 @@
 'use server';
 
+import 'server-only';
+
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -16,119 +18,23 @@ export interface QuickStats {
 }
 
 /**
- * Get quick stats (7-day summary) for an account
+ * Safely extracts a nested property from Supabase join data
  */
-export const getQuickStatsAction = enhanceAction(
-  async (data) => {
-    const client = getSupabaseServerClient();
-
-    const now = new Date();
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-
-    // Get current period analytics (last 7 days)
-    const { data: currentAnalytics } = await client
-      .from('content_analytics')
-      .select(
-        `
-        views,
-        likes,
-        comments,
-        shares,
-        subscribers_gained,
-        publishes!inner(
-          episodes!inner(
-            projects!inner(account_id)
-          )
-        )
-      `,
-      )
-      .gte('snapshot_date', sevenDaysAgo.toISOString().split('T')[0])
-      .lte('snapshot_date', now.toISOString().split('T')[0]);
-
-    // Get previous period analytics (7-14 days ago)
-    const { data: previousAnalytics } = await client
-      .from('content_analytics')
-      .select(
-        `
-        views,
-        likes,
-        comments,
-        shares,
-        subscribers_gained,
-        publishes!inner(
-          episodes!inner(
-            projects!inner(account_id)
-          )
-        )
-      `,
-      )
-      .gte('snapshot_date', fourteenDaysAgo.toISOString().split('T')[0])
-      .lt('snapshot_date', sevenDaysAgo.toISOString().split('T')[0]);
-
-    // Get published content count for last 7 days
-    const { data: publishedContent } = await client
-      .from('publishes')
-      .select(
-        `
-        id,
-        episodes!inner(
-          projects!inner(account_id)
-        )
-      `,
-      )
-      .eq('status', 'published')
-      .gte('published_at', sevenDaysAgo.toISOString());
-
-    // Filter by account and aggregate current period
-    const currentFiltered = filterByAccount(currentAnalytics, data.accountId);
-    const previousFiltered = filterByAccount(previousAnalytics, data.accountId);
-    const publishedFiltered = filterPublishesByAccount(
-      publishedContent,
-      data.accountId,
-    );
-
-    const currentStats = aggregateStats(currentFiltered);
-    const previousStats = aggregateStats(previousFiltered);
-
-    // Calculate changes
-    const viewsChange = calculateChange(
-      currentStats.views,
-      previousStats.views,
-    );
-    const followersChange = calculateChange(
-      currentStats.subscribers,
-      previousStats.subscribers,
-    );
-
-    // Calculate engagement rates
-    const currentEngagement = calculateEngagementRate(
-      currentStats.likes + currentStats.comments + currentStats.shares,
-      currentStats.views,
-    );
-    const previousEngagement = calculateEngagementRate(
-      previousStats.likes + previousStats.comments + previousStats.shares,
-      previousStats.views,
-    );
-    const engagementChange = calculateChange(
-      currentEngagement,
-      previousEngagement,
-    );
-
-    return {
-      views: currentStats.views,
-      viewsChange,
-      followers: currentStats.subscribers,
-      followersChange,
-      engagementRate: currentEngagement,
-      engagementChange,
-      publishedCount: publishedFiltered.length,
-    };
-  },
-  {
-    schema: GetQuickStatsSchema,
-  },
-);
+function safeGetNestedProperty<T>(
+  obj: unknown,
+  path: string[],
+  defaultValue: T,
+): T {
+  let current: unknown = obj;
+  for (const key of path) {
+    if (current && typeof current === 'object' && key in current) {
+      current = (current as Record<string, unknown>)[key];
+    } else {
+      return defaultValue;
+    }
+  }
+  return current as T;
+}
 
 interface AnalyticsRow {
   views: number;
@@ -136,19 +42,159 @@ interface AnalyticsRow {
   comments: number;
   shares: number;
   subscribers_gained: number;
-  publishes: {
-    episodes: {
-      projects: { account_id: string };
-    };
-  };
+  publishes: unknown;
 }
 
 interface PublishRow {
   id: string;
-  episodes: {
-    projects: { account_id: string };
-  };
+  episodes: unknown;
 }
+
+/**
+ * Get quick stats (7-day summary) for an account
+ */
+export const getQuickStatsAction = enhanceAction(
+  async (data) => {
+    try {
+      const client = getSupabaseServerClient();
+
+      const now = new Date();
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const fourteenDaysAgo = new Date(
+        now.getTime() - 14 * 24 * 60 * 60 * 1000,
+      );
+
+      // Get current period analytics (last 7 days)
+      const { data: currentAnalytics, error: currentError } = await client
+        .from('content_analytics')
+        .select(
+          `
+          views,
+          likes,
+          comments,
+          shares,
+          subscribers_gained,
+          publishes!inner(
+            episodes!inner(
+              projects!inner(account_id)
+            )
+          )
+        `,
+        )
+        .gte('snapshot_date', sevenDaysAgo.toISOString().split('T')[0])
+        .lte('snapshot_date', now.toISOString().split('T')[0]);
+
+      if (currentError) {
+        throw new Error(
+          `Failed to fetch current analytics: ${currentError.message}`,
+        );
+      }
+
+      // Get previous period analytics (7-14 days ago)
+      const { data: previousAnalytics, error: previousError } = await client
+        .from('content_analytics')
+        .select(
+          `
+          views,
+          likes,
+          comments,
+          shares,
+          subscribers_gained,
+          publishes!inner(
+            episodes!inner(
+              projects!inner(account_id)
+            )
+          )
+        `,
+        )
+        .gte('snapshot_date', fourteenDaysAgo.toISOString().split('T')[0])
+        .lt('snapshot_date', sevenDaysAgo.toISOString().split('T')[0]);
+
+      if (previousError) {
+        throw new Error(
+          `Failed to fetch previous analytics: ${previousError.message}`,
+        );
+      }
+
+      // Get published content count for last 7 days
+      const { data: publishedContent, error: publishedError } = await client
+        .from('publishes')
+        .select(
+          `
+          id,
+          episodes!inner(
+            projects!inner(account_id)
+          )
+        `,
+        )
+        .eq('status', 'published')
+        .gte('published_at', sevenDaysAgo.toISOString());
+
+      if (publishedError) {
+        throw new Error(
+          `Failed to fetch published content: ${publishedError.message}`,
+        );
+      }
+
+      // Filter by account and aggregate current period
+      const currentFiltered = filterByAccount(
+        currentAnalytics as AnalyticsRow[] | null,
+        data.accountId,
+      );
+      const previousFiltered = filterByAccount(
+        previousAnalytics as AnalyticsRow[] | null,
+        data.accountId,
+      );
+      const publishedFiltered = filterPublishesByAccount(
+        publishedContent as PublishRow[] | null,
+        data.accountId,
+      );
+
+      const currentStats = aggregateStats(currentFiltered);
+      const previousStats = aggregateStats(previousFiltered);
+
+      // Calculate changes
+      const viewsChange = calculateChange(
+        currentStats.views,
+        previousStats.views,
+      );
+      const followersChange = calculateChange(
+        currentStats.subscribers,
+        previousStats.subscribers,
+      );
+
+      // Calculate engagement rates
+      const currentEngagement = calculateEngagementRate(
+        currentStats.likes + currentStats.comments + currentStats.shares,
+        currentStats.views,
+      );
+      const previousEngagement = calculateEngagementRate(
+        previousStats.likes + previousStats.comments + previousStats.shares,
+        previousStats.views,
+      );
+      const engagementChange = calculateChange(
+        currentEngagement,
+        previousEngagement,
+      );
+
+      return {
+        views: currentStats.views,
+        viewsChange,
+        followers: currentStats.subscribers,
+        followersChange,
+        engagementRate: currentEngagement,
+        engagementChange,
+        publishedCount: publishedFiltered.length,
+      };
+    } catch (error) {
+      console.error('Error fetching quick stats:', error);
+      throw error;
+    }
+  },
+  {
+    schema: GetQuickStatsSchema,
+  },
+);
 
 function filterByAccount(
   data: AnalyticsRow[] | null,
@@ -156,10 +202,12 @@ function filterByAccount(
 ): AnalyticsRow[] {
   if (!data) return [];
   return data.filter((row) => {
-    const projects = row.publishes?.episodes?.projects as
-      | { account_id: string }
-      | undefined;
-    return projects?.account_id === accountId;
+    const rowAccountId = safeGetNestedProperty<string>(
+      row.publishes,
+      ['episodes', 'projects', 'account_id'],
+      '',
+    );
+    return rowAccountId === accountId;
   });
 }
 
@@ -169,10 +217,12 @@ function filterPublishesByAccount(
 ): PublishRow[] {
   if (!data) return [];
   return data.filter((row) => {
-    const projects = row.episodes?.projects as
-      | { account_id: string }
-      | undefined;
-    return projects?.account_id === accountId;
+    const rowAccountId = safeGetNestedProperty<string>(
+      row.episodes,
+      ['projects', 'account_id'],
+      '',
+    );
+    return rowAccountId === accountId;
   });
 }
 

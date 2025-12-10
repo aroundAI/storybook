@@ -18,17 +18,17 @@ import type { Activity, ActivityType } from '../../server/activity-actions';
 import { getRecentActivityAction } from '../../server/activity-actions';
 import { Widget } from '../dashboard-widgets';
 
-const ACTIVITY_ICONS: Record<
-  ActivityType,
-  React.ComponentType<{ className?: string }>
-> = {
+const ACTIVITY_ICONS = {
   episode_created: Clapperboard,
   video_generated: Video,
   audio_generated: Music,
   published: Share2,
   generation_completed: CheckCircle,
   generation_failed: XCircle,
-};
+} as const satisfies Record<
+  ActivityType,
+  React.ComponentType<{ className?: string }>
+>;
 
 interface RecentActivityWidgetProps {
   accountId: string;
