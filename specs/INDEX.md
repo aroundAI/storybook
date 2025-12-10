@@ -373,7 +373,7 @@ graph TD
 | FILM-405 | [generate-video-action](./phase-4-video-generation/server/FILM-405-generate-video-action.md) | ✅ DONE | L | FILM-401, FILM-404 |
 | FILM-406 | [batch-generate-action](./phase-4-video-generation/server/FILM-406-batch-generate-action.md) | ✅ DONE | M | FILM-405 |
 | FILM-407 | [kling-webhook](./phase-4-video-generation/webhooks/FILM-407-kling-webhook.md) | ✅ DONE | M | FILM-CC-02 |
-| FILM-408 | [poll-status-action](./phase-4-video-generation/server/FILM-408-poll-status-action.md) | DRAFT | S | FILM-405 |
+| FILM-408 | [poll-status-action](./phase-4-video-generation/server/FILM-408-poll-status-action.md) | ✅ DONE | S | FILM-405 |
 | FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | DRAFT | L | FILM-405 |
 | FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DRAFT | L | FILM-DS-01 |
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M | FILM-408 |
@@ -520,20 +520,20 @@ SPIKE-01 through SPIKE-05
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 7 | 0 | 0 | 0 | 2 |
 | 3. Episodes | 14 | 10 | 0 | 0 | 0 | 4 |
-| 4. Video Gen | 15 | 8 | 0 | 0 | 0 | 7 |
+| 4. Video Gen | 15 | 7 | 0 | 0 | 0 | 8 |
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 8 | 0 | 0 | 0 | 7 |
 | 8. Analytics | 10 | 9 | 0 | 0 | 0 | 1 |
 | 9. Integration | 6 | 6 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 3 | 0 | 0 | 0 | 2 |
-| **TOTAL** | **130** | **72** | **0** | **0** | **0** | **58** |
+| **TOTAL** | **130** | **70** | **0** | **0** | **0** | **60** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 50 | 54% |
+| MVP Specs | 93 | 52 | 56% |
 | Post-MVP | 37 | 8 | 22% |
 
 ---
