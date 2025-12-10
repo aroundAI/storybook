@@ -6,6 +6,8 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-108 (Audio Generation Package), FILM-501 (ElevenLabs), FILM-509 (Suno)
 - **Blocks:** All audio generation actions
+- **Status:** ✅ Complete
+- **Completed:** 2025-12-10
 
 ---
 
@@ -569,33 +571,33 @@ async function hasProviderApiKey(
 
 ## Acceptance Criteria
 
-- [ ] `createVoiceProvider()` returns configured provider instance
-- [ ] `createMusicProvider()` returns configured provider instance
-- [ ] Factory uses cached instance on subsequent calls
-- [ ] Factory loads BYOK keys when available
-- [ ] Factory falls back to platform keys
-- [ ] `getVoiceProviderMetadata()` returns correct metadata
-- [ ] `getMusicProviderMetadata()` returns correct metadata
-- [ ] `getAvailableVoiceProviders()` returns only configured providers
-- [ ] `getAvailableMusicProviders()` returns only configured providers
-- [ ] `clearAudioProviderCache()` invalidates cached instances
-- [ ] `registerVoiceProvider()` allows adding new providers at runtime
-- [ ] `registerMusicProvider()` allows adding new providers at runtime
+- [x] `createVoiceProvider()` returns configured provider instance
+- [x] `createMusicProvider()` returns configured provider instance
+- [x] Factory uses cached instance on subsequent calls
+- [x] Factory loads BYOK keys when available
+- [x] Factory falls back to platform keys
+- [x] `getVoiceProviderMetadata()` returns correct metadata
+- [x] `getMusicProviderMetadata()` returns correct metadata
+- [x] `getAvailableVoiceProviders()` returns only configured providers
+- [x] `getAvailableMusicProviders()` returns only configured providers
+- [x] `clearAudioProviderCache()` invalidates cached instances
+- [x] `registerVoiceProvider()` allows adding new providers at runtime
+- [x] `registerMusicProvider()` allows adding new providers at runtime
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test voice provider creation with valid config
-- [ ] Test music provider creation with valid config
-- [ ] Test cache behavior (same instance returned)
-- [ ] Test BYOK key loading
-- [ ] Test platform key fallback
-- [ ] Test error when no key available
-- [ ] Test metadata accessor functions
-- [ ] Test availability check functions
-- [ ] Test cache clearing
+- [x] Test voice provider creation with valid config
+- [x] Test music provider creation with valid config
+- [x] Test cache behavior (same instance returned)
+- [x] Test BYOK key loading (mocked)
+- [x] Test platform key fallback
+- [x] Test error when no key available
+- [x] Test metadata accessor functions
+- [x] Test availability check functions
+- [x] Test cache clearing
 
 ### Integration Tests
 - [ ] Test with real Supabase connection
