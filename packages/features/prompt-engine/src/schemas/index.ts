@@ -51,4 +51,11 @@ export {
   type ShotListMetadata,
   type ShotList,
   type ShotListGenerationOutput,
+  // Season Outline Generation (FILM-314)
+  ArcPositionSchema,
+  EpisodeOutlineSchema,
+  SeasonOutlineOutputSchema,
+  type ArcPosition,
+  type EpisodeOutline,
+  type SeasonOutlineOutput,
 } from './story-generation-schemas';

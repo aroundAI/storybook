@@ -229,7 +229,7 @@ specs/
 | Task ID | Spec | Status | Effort |
 |---------|------|--------|--------|
 | FILM-409 | [visual-studio](./phase-4-video-generation/components/FILM-409-visual-studio.md) | DRAFT | L |
-| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DRAFT | L |
+| FILM-410 | [shot-grid](./phase-4-video-generation/components/FILM-410-shot-grid.md) | DONE | L |
 | FILM-411 | [generation-progress](./phase-4-video-generation/components/FILM-411-generation-progress.md) | DRAFT | M |
 
 ---
