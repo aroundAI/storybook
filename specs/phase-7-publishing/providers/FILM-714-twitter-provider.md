@@ -6,6 +6,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-708 (Publish Hub), OAuth Infrastructure
 - **Blocks:** None
+- **Status:** ✅ DONE
 
 ---
 
