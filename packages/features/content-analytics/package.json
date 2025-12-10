@@ -12,7 +12,9 @@
   },
   "exports": {
     "./providers/youtube": "./src/providers/youtube/index.ts",
-    "./providers/youtube/types": "./src/providers/youtube/types.ts"
+    "./providers/youtube/types": "./src/providers/youtube/types.ts",
+    "./providers/instagram": "./src/providers/instagram/index.ts",
+    "./providers/instagram/types": "./src/providers/instagram/types.ts"
   },
   "dependencies": {
     "googleapis": "^148.0.0"
