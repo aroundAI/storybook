@@ -304,24 +304,24 @@ export class InstagramInsightsProvider {
 
 ## Acceptance Criteria
 
-- [ ] Fetches Reel plays, reach, impressions
-- [ ] Fetches engagement (likes, comments, saves, shares)
-- [ ] Fetches reach breakdown (follower vs non-follower)
-- [ ] Fetches profile visits and follows from content
-- [ ] Fetches audience demographics
-- [ ] Handles different media types
-- [ ] Normalizes to common format
+- [x] Fetches Reel plays, reach, impressions
+- [x] Fetches engagement (likes, comments, saves, shares)
+- [x] Fetches reach breakdown (follower vs non-follower)
+- [x] Fetches profile visits and follows from content
+- [x] Fetches audience demographics
+- [x] Handles different media types
+- [x] Normalizes to common format
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test metrics parsing
-- [ ] Test breakdown parsing
+- [x] Test metrics parsing
+- [x] Test breakdown parsing
 
 ### Integration Tests
-- [ ] Test with mocked Graph API
+- [x] Test with mocked Graph API
 
 ---
 

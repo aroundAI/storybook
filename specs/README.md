@@ -148,7 +148,7 @@ specs/
 | FILM-204 | [asset-gallery](./phase-2-assets/components/FILM-204-asset-gallery.md) | DRAFT | M |
 | FILM-205 | [character-editor](./phase-2-assets/components/FILM-205-character-editor.md) | DRAFT | L |
 | FILM-206 | [voice-profile-editor](./phase-2-assets/components/FILM-206-voice-profile-editor.md) | DRAFT | M |
-| FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | DRAFT | S |
+| FILM-207 | [image-uploader](./phase-2-assets/components/FILM-207-image-uploader.md) | ✅ DONE | S |
 
 ### Pages
 | Task ID | Spec | Status | Effort |
