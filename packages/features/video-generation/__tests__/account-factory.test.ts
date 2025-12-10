@@ -1,27 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  NoAPIKeyError,
+  ProviderNotFoundError,
   clearAccountProviderCache,
   createAccountVideoProvider,
   getAllProviderMetadata,
   getAvailableProviders,
   getProviderMetadata,
   isProviderAvailable,
-  NoAPIKeyError,
-  ProviderNotFoundError,
 } from '../src/providers';
+// Import mocked functions for manipulation
+import {
+  hasProviderApiKey,
+  loadProviderConfig,
+} from '../src/providers/config-loader';
 
 // Mock the config-loader module
 vi.mock('../src/providers/config-loader', () => ({
   loadProviderConfig: vi.fn(),
   hasProviderApiKey: vi.fn(),
 }));
-
-// Import mocked functions for manipulation
-import {
-  hasProviderApiKey,
-  loadProviderConfig,
-} from '../src/providers/config-loader';
 
 const mockedLoadProviderConfig = vi.mocked(loadProviderConfig);
 const mockedHasProviderApiKey = vi.mocked(hasProviderApiKey);
@@ -202,7 +201,9 @@ describe('Account-Based Provider Factory', () => {
         webhookUrl: 'https://app.example.com/api/generation/webhooks/kling',
       });
 
-      mockedLoadProviderConfig.mockImplementation(async () => createMockConfig());
+      mockedLoadProviderConfig.mockImplementation(async () =>
+        createMockConfig(),
+      );
 
       // Create cached providers for two accounts
       const provider123First = await createAccountVideoProvider({

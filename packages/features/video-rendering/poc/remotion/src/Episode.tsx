@@ -4,18 +4,18 @@
  * Sample Remotion component for rendering an episode from shots.
  * This demonstrates how Remotion can be used for video composition.
  */
-
 import React from 'react';
+
 import {
   AbsoluteFill,
-  Sequence,
-  useCurrentFrame,
-  useVideoConfig,
-  Video,
   Audio,
+  Easing,
+  Sequence,
+  Video,
   interpolate,
   spring,
-  Easing,
+  useCurrentFrame,
+  useVideoConfig,
 } from 'remotion';
 
 /**
@@ -86,10 +86,7 @@ export const Episode: React.FC<EpisodeProps> = ({
             from={shot.startFrame + offset}
             durationInFrames={shot.durationInFrames}
           >
-            <ShotWithTransition
-              shot={shot}
-              isFirst={index === 0}
-            />
+            <ShotWithTransition shot={shot} isFirst={index === 0} />
           </Sequence>
         );
       })}
@@ -115,7 +112,7 @@ const TitleCard: React.FC<{ title: string }> = ({ title }) => {
     frame,
     [0, fps * 0.5, fps * 2.5, fps * 3],
     [0, 1, 1, 0],
-    { extrapolateRight: 'clamp' }
+    { extrapolateRight: 'clamp' },
   );
 
   const scale = spring({
@@ -168,22 +165,14 @@ const ShotWithTransition: React.FC<{
 
   if (!isFirst && transitionType !== 'none') {
     if (transitionType === 'fade') {
-      opacity = interpolate(
-        frame,
-        [0, transitionDuration],
-        [0, 1],
-        { extrapolateRight: 'clamp' }
-      );
+      opacity = interpolate(frame, [0, transitionDuration], [0, 1], {
+        extrapolateRight: 'clamp',
+      });
     } else if (transitionType === 'slide') {
-      translateX = interpolate(
-        frame,
-        [0, transitionDuration],
-        [100, 0],
-        {
-          extrapolateRight: 'clamp',
-          easing: Easing.out(Easing.cubic),
-        }
-      );
+      translateX = interpolate(frame, [0, transitionDuration], [100, 0], {
+        extrapolateRight: 'clamp',
+        easing: Easing.out(Easing.cubic),
+      });
     }
   }
 
@@ -217,12 +206,9 @@ export const CrossfadeTransition: React.FC<{
 }> = ({ fromUrl, toUrl, durationInFrames }) => {
   const frame = useCurrentFrame();
 
-  const opacity = interpolate(
-    frame,
-    [0, durationInFrames],
-    [0, 1],
-    { extrapolateRight: 'clamp' }
-  );
+  const opacity = interpolate(frame, [0, durationInFrames], [0, 1], {
+    extrapolateRight: 'clamp',
+  });
 
   return (
     <AbsoluteFill>

@@ -60,14 +60,14 @@ interface MuxConfig {
  */
 export async function uploadToMux(
   videoUrl: string,
-  config: MuxConfig
+  config: MuxConfig,
 ): Promise<{
   assetId: string;
   playbackId: string;
   streamUrl: string;
 }> {
   const auth = Buffer.from(`${config.tokenId}:${config.tokenSecret}`).toString(
-    'base64'
+    'base64',
   );
 
   // Create asset from URL
@@ -121,7 +121,7 @@ export async function uploadToMux(
 export function estimateMuxCost(
   durationMinutes: number,
   estimatedViewsPerMonth: number,
-  storageTB: number = 0.01
+  storageTB: number = 0.01,
 ): {
   encoding: number;
   delivery: number;

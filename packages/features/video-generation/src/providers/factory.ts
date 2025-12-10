@@ -7,9 +7,9 @@ import { KlingProvider } from './kling';
 import { LumaProvider } from './luma';
 import {
   createProviderFromRegistry,
+  getRegisteredProviderNames,
   getAllProviderMetadata as getRegistryMetadata,
   getProviderMetadata as getRegistryProviderMetadata,
-  getRegisteredProviderNames,
   isProviderRegistered,
 } from './registry';
 import { RunwayProvider } from './runway';
@@ -142,7 +142,8 @@ export async function createAccountVideoProvider(
   const { accountId, webhookBaseUrl } = options;
 
   // Determine which provider to use
-  const providerName = options.provider ?? (await getDefaultProvider(accountId));
+  const providerName =
+    options.provider ?? (await getDefaultProvider(accountId));
 
   // Validate provider exists in registry
   if (!isProviderRegistered(providerName)) {

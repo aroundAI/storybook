@@ -157,7 +157,9 @@ export class ShotstackClient {
   /**
    * Get render status
    */
-  async getStatus(renderId: string): Promise<ShotstackStatusResponse['response']> {
+  async getStatus(
+    renderId: string,
+  ): Promise<ShotstackStatusResponse['response']> {
     const response = await fetch(`${this.baseUrl}/render/${renderId}`, {
       headers: {
         'x-api-key': this.apiKey,
@@ -177,7 +179,7 @@ export class ShotstackClient {
    */
   async waitForCompletion(
     renderId: string,
-    options: { maxWaitMs?: number; pollIntervalMs?: number } = {}
+    options: { maxWaitMs?: number; pollIntervalMs?: number } = {},
   ): Promise<string> {
     const { maxWaitMs = 300000, pollIntervalMs = 3000 } = options; // 5 min max, 3s poll
     const startTime = Date.now();
@@ -208,9 +210,12 @@ export function buildConcatTimeline(
   options: {
     transitionType?: string;
     transitionDuration?: number;
-  } = {}
+  } = {},
 ): ShotstackTimeline {
-  const { transitionType = 'fade', transitionDuration: _transitionDuration = 0.5 } = options;
+  const {
+    transitionType = 'fade',
+    transitionDuration: _transitionDuration = 0.5,
+  } = options;
 
   const clips: ShotstackClip[] = videoUrls.map((url, index) => ({
     asset: {
@@ -247,7 +252,7 @@ export async function exampleUsage(): Promise<void> {
       'https://example.com/video2.mp4',
       'https://example.com/video3.mp4',
     ],
-    { transitionType: 'fade', transitionDuration: 0.5 }
+    { transitionType: 'fade', transitionDuration: 0.5 },
   );
 
   const renderId = await client.render({
@@ -269,7 +274,7 @@ export async function exampleUsage(): Promise<void> {
  */
 export function estimateCost(
   outputDurationSeconds: number,
-  resolution: '720p' | '1080p' | '4k'
+  resolution: '720p' | '1080p' | '4k',
 ): number {
   // Base render cost
   let cost = 0.1;

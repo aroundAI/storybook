@@ -18,10 +18,7 @@ export class ProviderNotFoundError extends Error {
 export class ProviderConfigurationError extends Error {
   readonly code = 'PROVIDER_CONFIGURATION_ERROR' as const;
 
-  constructor(
-    providerName: VideoProviderName,
-    reason: string,
-  ) {
+  constructor(providerName: VideoProviderName, reason: string) {
     super(`Provider configuration error (${providerName}): ${reason}`);
     this.name = 'ProviderConfigurationError';
   }

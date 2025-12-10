@@ -1,5 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// Import mocked functions
+import { decrypt } from '@kit/shared/crypto';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+// Import the module under test
+import {
+  hasProviderApiKey,
+  loadProviderConfig,
+} from '../src/providers/config-loader';
 import { NoAPIKeyError } from '../src/providers/errors';
 
 // Mock dependencies before importing the module under test
@@ -10,16 +19,6 @@ vi.mock('@kit/shared/crypto', () => ({
 vi.mock('@kit/supabase/server-client', () => ({
   getSupabaseServerClient: vi.fn(),
 }));
-
-// Import mocked functions
-import { decrypt } from '@kit/shared/crypto';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-// Import the module under test
-import {
-  hasProviderApiKey,
-  loadProviderConfig,
-} from '../src/providers/config-loader';
 
 const mockedDecrypt = vi.mocked(decrypt);
 const mockedGetSupabaseServerClient = vi.mocked(getSupabaseServerClient);

@@ -3,9 +3,10 @@
  *
  * Entry point for Remotion compositions.
  */
-
 import React from 'react';
+
 import { Composition } from 'remotion';
+
 import { Episode } from './Episode';
 
 /**
