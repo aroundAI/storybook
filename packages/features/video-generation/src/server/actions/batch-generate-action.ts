@@ -2,8 +2,9 @@
 
 import 'server-only';
 
-import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+
+import { randomUUID } from 'crypto';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -15,10 +16,7 @@ import {
 } from '../../lib/cost-tracking';
 import type { VideoProvider } from '../../lib/types';
 import { addVideoGenerationJob } from '../../queue';
-import {
-  BatchGenerateVideosActionSchema,
-  PRIORITY_MAP,
-} from './schemas';
+import { BatchGenerateVideosActionSchema, PRIORITY_MAP } from './schemas';
 import type {
   BatchGenerateResponse,
   BatchGenerateResult,
@@ -138,8 +136,12 @@ export const batchGenerateVideosAction = enhanceAction(
     }
 
     // Check budget for entire batch
-    const accountId = (shots[0] as ShotWithEpisode).episodes.projects.account_id;
-    const budgetCheck = await checkAndReserveBudget(accountId, totalEstimatedCost);
+    const accountId = (shots[0] as ShotWithEpisode).episodes.projects
+      .account_id;
+    const budgetCheck = await checkAndReserveBudget(
+      accountId,
+      totalEstimatedCost,
+    );
 
     if (!budgetCheck.allowed) {
       logger.warn(
@@ -153,7 +155,8 @@ export const batchGenerateVideosAction = enhanceAction(
     }
 
     // Get priority from schema
-    const priority = PRIORITY_MAP[data.priority as BatchPriority] || PRIORITY_MAP.normal;
+    const priority =
+      PRIORITY_MAP[data.priority as BatchPriority] || PRIORITY_MAP.normal;
 
     logger.info(
       { ...ctx, accountId, totalEstimatedCost, priority },

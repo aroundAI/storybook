@@ -5,7 +5,6 @@
  * Note: These schemas are for the refactored actions with queue integration.
  * The original schemas in lib/schemas.ts are kept for backwards compatibility.
  */
-
 import { z } from 'zod';
 
 /**
@@ -19,7 +18,9 @@ export const GenerateVideoActionSchema = z.object({
   referenceImageUrl: z.string().url().optional(),
 });
 
-export type GenerateVideoActionInput = z.infer<typeof GenerateVideoActionSchema>;
+export type GenerateVideoActionInput = z.infer<
+  typeof GenerateVideoActionSchema
+>;
 
 /**
  * Response from generate video action
@@ -43,7 +44,9 @@ export const BatchGenerateVideosActionSchema = z.object({
   priority: z.enum(['high', 'normal', 'low']).optional().default('normal'),
 });
 
-export type BatchGenerateVideosActionInput = z.infer<typeof BatchGenerateVideosActionSchema>;
+export type BatchGenerateVideosActionInput = z.infer<
+  typeof BatchGenerateVideosActionSchema
+>;
 
 /**
  * Result for a single shot in batch generation
