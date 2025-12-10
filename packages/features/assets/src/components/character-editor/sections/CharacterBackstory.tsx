@@ -32,6 +32,12 @@ import type { CharacterFormData } from '../../../lib/schemas/character.schema';
  * Form fields for character backstory and element prompt.
  */
 
+/**
+ * Character Backstory Section (FILM-205)
+ *
+ * Form fields for character backstory and element prompt.
+ */
+
 interface CharacterBackstoryProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

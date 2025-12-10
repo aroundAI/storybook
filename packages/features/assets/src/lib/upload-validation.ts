@@ -206,7 +206,7 @@ async function verifyMagicBytes(
  */
 export function sanitizeFilename(filename: string): string {
   // Remove path traversal attempts
-  const basename = filename.split(/[\\/]/).pop() ?? 'file';
+  const basename = filename.split(/[\\/]/).pop() || 'file';
 
   // Replace unsafe characters
   const sanitized = basename
@@ -222,7 +222,8 @@ export function sanitizeFilename(filename: string): string {
     return `${name}.${ext}`;
   }
 
-  return sanitized;
+  // Return 'file' if sanitized result is empty
+  return sanitized || 'file';
 }
 
 /**

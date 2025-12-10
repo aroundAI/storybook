@@ -38,6 +38,12 @@ import type { CharacterFormData } from '../../../lib/schemas/character.schema';
  * Form fields for character physical appearance.
  */
 
+/**
+ * Character Physical Attributes Section (FILM-205)
+ *
+ * Form fields for character physical appearance.
+ */
+
 interface CharacterPhysicalAttributesProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;
