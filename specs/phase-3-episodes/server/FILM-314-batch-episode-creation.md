@@ -500,22 +500,30 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
 
 | Action | Path |
 |--------|------|
-| CREATE | `packages/features/episodes/src/components/batch-episode-creator.tsx` |
+| CREATE | `packages/features/episodes/src/lib/schemas/batch-episode.schema.ts` |
 | CREATE | `packages/features/episodes/src/server/batch-episode-actions.ts` |
-| MODIFY | `packages/features/episodes/src/components/episode-list.tsx` |
+| CREATE | `packages/features/episodes/src/components/batch-episode-creator/batch-episode-creator.tsx` |
+| CREATE | `packages/features/episodes/src/components/batch-episode-creator/episode-preview-dialog.tsx` |
+| CREATE | `packages/features/episodes/src/components/batch-episode-creator/index.ts` |
+| CREATE | `packages/features/prompt-engine/src/prompts/story-generation/season-outline.json` |
+| MODIFY | `packages/features/episodes/src/lib/schemas.ts` |
+| MODIFY | `packages/features/episodes/src/server/index.ts` |
+| MODIFY | `packages/features/episodes/src/components/index.ts` |
+| MODIFY | `packages/features/prompt-engine/src/schemas/story-generation-schemas.ts` |
+| MODIFY | `packages/features/prompt-engine/src/schemas/index.ts` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Create 2-24 episodes in one batch
-- [ ] Season premise guides episode generation
-- [ ] Episodes follow classic story structure (setup → rising → climax → resolution)
-- [ ] Character focus distributed across episodes
-- [ ] Preview/edit outlines before creating
-- [ ] Reorder episodes in preview
-- [ ] Delete unwanted outlines before creation
-- [ ] Regenerate individual episode outline with context
+- [x] Create 2-24 episodes in one batch
+- [x] Season premise guides episode generation
+- [x] Episodes follow classic story structure (setup → rising → climax → resolution)
+- [x] Character focus distributed across episodes
+- [x] Preview/edit outlines before creating
+- [x] Reorder episodes in preview
+- [x] Delete unwanted outlines before creation
+- [x] Regenerate individual episode outline with context
 
 ---
 
