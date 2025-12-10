@@ -1,0 +1,23 @@
+{
+  "name": "remotion-poc",
+  "version": "1.0.0",
+  "description": "Remotion video rendering POC",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render Episode out/episode.mp4",
+    "render": "remotion render Episode out/episode.mp4 --props='{\"shots\": []}'",
+    "lambda:deploy": "remotion lambda functions deploy",
+    "lambda:render": "remotion lambda render"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/player": "^4.0.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.13",
+    "typescript": "^5.9.2"
+  }
+}

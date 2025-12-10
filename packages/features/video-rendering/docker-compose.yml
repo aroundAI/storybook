@@ -1,0 +1,82 @@
+# Video Rendering Service - Docker Compose
+#
+# Development and testing configuration for the FFmpeg rendering service.
+#
+# Usage:
+#   docker-compose up -d          # Start the service
+#   docker-compose logs -f        # View logs
+#   docker-compose down           # Stop the service
+#
+# Test render:
+#   curl -X POST http://localhost:3001/render \
+#     -H "Content-Type: application/json" \
+#     -d '{"shots": [{"url": "https://example.com/video1.mp4", "duration": 5}]}'
+
+version: '3.8'
+
+services:
+  ffmpeg-renderer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: video-rendering
+    ports:
+      - "3001:3001"
+    volumes:
+      # Mount directories for persistence
+      - ./renders:/tmp/renders
+      - ./uploads:/tmp/uploads
+      # Mount source for development (optional)
+      # - ./src:/app/src:ro
+    environment:
+      - NODE_ENV=development
+      - FFMPEG_PATH=/usr/bin/ffmpeg
+      - FFPROBE_PATH=/usr/bin/ffprobe
+      - TEMP_DIR=/tmp/renders
+      - MAX_CONCURRENT_JOBS=4
+      - PORT=3001
+      # Enable verbose logging in development
+      - DEBUG=ffmpeg:*
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          # Limit CPU and memory to prevent runaway processes
+          cpus: '4'
+          memory: 8G
+        reservations:
+          # Reserve minimum resources
+          cpus: '1'
+          memory: 2G
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "100m"
+        max-file: "3"
+
+  # Optional: Redis for job queue (if using BullMQ)
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: video-rendering-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+# volumes:
+#   redis-data:
+
+networks:
+  default:
+    name: video-rendering-network
