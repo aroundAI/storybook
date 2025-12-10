@@ -137,10 +137,14 @@ export class TwitterProvider {
     formData.append('command', 'APPEND');
     formData.append('media_id', mediaId);
     formData.append('segment_index', String(segmentIndex));
-    formData.append(
-      'media',
-      new Blob([chunk.buffer as ArrayBuffer], { type: 'video/mp4' }),
-    );
+    // Slice the underlying buffer to get only this chunk's bytes
+    // subarray() creates a view with an offset, so chunk.buffer would include
+    // bytes outside the chunk - we must slice to get the correct range
+    const chunkBuffer = chunk.buffer.slice(
+      chunk.byteOffset,
+      chunk.byteOffset + chunk.byteLength,
+    ) as ArrayBuffer;
+    formData.append('media', new Blob([chunkBuffer], { type: 'video/mp4' }));
 
     const response = await fetch(TWITTER_UPLOAD_API, {
       method: 'POST',
@@ -184,12 +188,14 @@ export class TwitterProvider {
 
   /**
    * Waits for video processing to complete using STATUS command
+   * Uses elapsed time for timeout to ensure predictable behavior regardless
+   * of Twitter's check_after_secs values
    */
   private async waitForProcessing(mediaId: string): Promise<void> {
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes max (5 seconds per attempt)
+    const maxWaitTimeMs = 5 * 60 * 1000; // 5 minutes max
+    const startTime = Date.now();
 
-    while (attempts < maxAttempts) {
+    while (Date.now() - startTime < maxWaitTimeMs) {
       const params = new URLSearchParams({
         command: 'STATUS',
         media_id: mediaId,
@@ -230,10 +236,9 @@ export class TwitterProvider {
       // Wait for the check_after_secs or default to 5 seconds
       const waitTime = (processingInfo.check_after_secs || 5) * 1000;
       await new Promise((resolve) => setTimeout(resolve, waitTime));
-      attempts++;
     }
 
-    throw new Error('Video processing timeout');
+    throw new Error('Video processing timeout after 5 minutes');
   }
 
   /**

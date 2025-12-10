@@ -111,6 +111,18 @@ export async function GET(request: NextRequest) {
     }),
   });
 
+  // Check HTTP status before parsing JSON to handle non-JSON error responses
+  if (!tokenResponse.ok) {
+    const errorText = await tokenResponse.text();
+    logger.error(
+      { ...ctx, status: tokenResponse.status, error: errorText },
+      'Token exchange HTTP error',
+    );
+    return NextResponse.redirect(
+      `${appUrl}/settings/platforms?error=${encodeURIComponent(`token_exchange_failed: ${tokenResponse.status}`)}`,
+    );
+  }
+
   const tokens = await tokenResponse.json();
 
   if (tokens.error || !tokens.access_token) {
@@ -137,6 +149,18 @@ export async function GET(request: NextRequest) {
       },
     },
   );
+
+  // Check HTTP status before parsing JSON
+  if (!userInfoResponse.ok) {
+    const errorText = await userInfoResponse.text();
+    logger.error(
+      { ...ctx, status: userInfoResponse.status, error: errorText },
+      'User info HTTP error',
+    );
+    return NextResponse.redirect(
+      `${appUrl}/settings/platforms?error=user_info_failed`,
+    );
+  }
 
   const userInfo = await userInfoResponse.json();
   const twitterUser = userInfo.data;
