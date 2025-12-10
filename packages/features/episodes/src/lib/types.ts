@@ -3,6 +3,46 @@
  */
 export type StudioTab = 'ideation' | 'story' | 'screenplay' | 'shot-list';
 
+// ============================================================================
+// Season Types (FILM-302)
+// ============================================================================
+
+/**
+ * Season entity with all fields from database
+ */
+export interface Season {
+  id: string;
+  project_id: string;
+  number: number;
+  name: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
+/**
+ * Season with episode count for list views
+ */
+export interface SeasonWithEpisodeCount extends Season {
+  episodeCount: number;
+}
+
+/**
+ * Response for fetching project seasons
+ */
+export interface GetProjectSeasonsResponse {
+  seasons: SeasonWithEpisodeCount[];
+}
+
+/**
+ * Response for deleting a season
+ */
+export interface DeleteSeasonResponse {
+  success: boolean;
+  seasonId: string;
+}
+
 /**
  * Episode status type matching database CHECK constraint
  * Workflow: draft → story → storyboard → generating → editing → ready → published
