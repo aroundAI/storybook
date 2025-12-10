@@ -141,9 +141,7 @@ describe('Character Schemas', () => {
     });
 
     it('should reject invalid style enum', () => {
-      expect(() =>
-        ClothingStyleSchema.parse({ style: 'cyberpunk' }),
-      ).toThrow();
+      expect(() => ClothingStyleSchema.parse({ style: 'cyberpunk' })).toThrow();
     });
 
     it('should accept valid style enums', () => {
