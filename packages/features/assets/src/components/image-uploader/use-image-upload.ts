@@ -9,10 +9,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 
-import {
-  UPLOAD_CONSTRAINTS,
-  validateUpload,
-} from '@kit/assets/upload-validation';
+import { validateUpload } from '@kit/assets/upload-validation';
 
 import type {
   ImageInfo,
@@ -31,26 +28,13 @@ import type {
  * Uses XMLHttpRequest for upload progress events.
  */
 
-const DEFAULT_ACCEPTED_TYPES = [
-  'image/jpeg',
-  'image/png',
-  'image/webp',
-] as const;
-
 /**
  * Hook for uploading images with progress tracking
  */
 export function useImageUpload(
   options: UseImageUploadOptions,
 ): UseImageUploadReturn {
-  const {
-    projectId,
-    assetType,
-    assetId,
-    maxSize = UPLOAD_CONSTRAINTS.image.maxSize,
-    acceptedTypes = [...DEFAULT_ACCEPTED_TYPES],
-    onUploadComplete,
-  } = options;
+  const { projectId, assetType, assetId, onUploadComplete } = options;
 
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState<UploadProgress>({
@@ -65,10 +49,15 @@ export function useImageUpload(
 
   /**
    * Validate a file before upload
+   *
+   * Delegates to validateUpload utility which handles:
+   * - File size validation
+   * - MIME type validation
+   * - File extension validation
+   * - Magic bytes verification
    */
   const validate = useCallback(
     async (file: File): Promise<{ valid: boolean; error?: UploadError }> => {
-      // Use existing validation utility for magic bytes, MIME type, size
       const result = await validateUpload(file, 'image');
 
       if (!result.valid) {
@@ -82,33 +71,9 @@ export function useImageUpload(
         };
       }
 
-      // Additional client-side checks for custom constraints
-      if (file.size > maxSize) {
-        const maxSizeMB = Math.round(maxSize / (1024 * 1024));
-        return {
-          valid: false,
-          error: {
-            code: 'FILE_TOO_LARGE',
-            message: `File size exceeds ${maxSizeMB}MB limit`,
-            details: { maxSize, actualSize: file.size },
-          },
-        };
-      }
-
-      if (!acceptedTypes.includes(file.type)) {
-        return {
-          valid: false,
-          error: {
-            code: 'INVALID_TYPE',
-            message: `File type "${file.type}" is not accepted. Allowed: ${acceptedTypes.join(', ')}`,
-            details: { acceptedTypes, actualType: file.type },
-          },
-        };
-      }
-
       return { valid: true };
     },
-    [maxSize, acceptedTypes],
+    [],
   );
 
   /**
@@ -186,12 +151,21 @@ export function useImageUpload(
           } else {
             // Handle HTTP errors
             try {
-              const errorResponse = JSON.parse(xhr.responseText);
+              const errorResponse = JSON.parse(xhr.responseText) as Record<
+                string,
+                unknown
+              > | null;
               setState('error');
               setError({
-                code: errorResponse.code ?? 'UPLOAD_FAILED',
-                message: errorResponse.error ?? 'Upload failed',
-                details: errorResponse.details,
+                code:
+                  typeof errorResponse?.code === 'string'
+                    ? errorResponse.code
+                    : 'UPLOAD_FAILED',
+                message:
+                  typeof errorResponse?.error === 'string'
+                    ? errorResponse.error
+                    : 'Upload failed',
+                details: errorResponse?.details as Record<string, unknown>,
               });
             } catch {
               setState('error');
