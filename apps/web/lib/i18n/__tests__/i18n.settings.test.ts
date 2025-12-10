@@ -332,7 +332,7 @@ describe('i18n.settings', () => {
     it('should have correct length', async () => {
       const { defaultI18nNamespaces } = await importSettings();
 
-      expect(defaultI18nNamespaces).toHaveLength(8);
+      expect(defaultI18nNamespaces).toHaveLength(9);
     });
 
     it('should be an array', async () => {

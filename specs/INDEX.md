@@ -453,7 +453,7 @@ graph TD
 | FILM-902 | [dashboard-widgets](./phase-9-integration/components/FILM-902-dashboard-widgets.md) | DRAFT | M | - |
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.md) | DRAFT | M | - |
-| FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | DRAFT | M | - |
+| FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | ✅ DONE | M | - |
 | FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | DRAFT | M | FILM-706 |
 
 ### Spikes (5 specs)
@@ -525,15 +525,15 @@ SPIKE-01 through SPIKE-05
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 8 | 0 | 0 | 0 | 7 |
 | 8. Analytics | 10 | 8 | 0 | 0 | 0 | 2 |
-| 9. Integration | 6 | 5 | 0 | 0 | 0 | 1 |
+| 9. Integration | 6 | 4 | 0 | 0 | 0 | 2 |
 | Spikes | 5 | 2 | 0 | 0 | 0 | 3 |
-| **TOTAL** | **130** | **65** | **0** | **0** | **0** | **65** |
+| **TOTAL** | **130** | **64** | **0** | **0** | **0** | **66** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 55 | 59% |
+| MVP Specs | 93 | 56 | 60% |
 | Post-MVP | 37 | 9 | 24% |
 
 ---
