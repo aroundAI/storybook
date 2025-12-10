@@ -7,7 +7,11 @@
 export * from './schemas';
 export { generateVideoAction } from './generate-video-action';
 export { batchGenerateVideosAction } from './batch-generate-action';
+export { pollVideoStatusAction } from './poll-status-action';
+export { cancelVideoJobAction } from './cancel-action';
+
+// Backward compatibility re-exports (deprecated)
 export {
-  pollVideoStatusAction,
-  cancelVideoJobAction,
+  pollVideoStatusAction as legacyPollVideoStatusAction,
+  cancelVideoJobAction as legacyCancelVideoJobAction,
 } from './poll-cancel-actions';
