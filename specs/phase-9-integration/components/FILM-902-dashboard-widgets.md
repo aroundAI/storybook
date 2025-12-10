@@ -486,15 +486,15 @@ export function StudioDashboard({ accountId }: StudioDashboardProps) {
 
 ## Acceptance Criteria
 
-- [ ] Dashboard shows all widgets in responsive grid
-- [ ] Recent Activity updates every 30 seconds
-- [ ] Generation Queue updates every 5 seconds
-- [ ] Scheduled Publishes shows upcoming content
-- [ ] Quick Stats shows 7-day trends
-- [ ] Widgets can be hidden via dropdown menu
-- [ ] Links navigate to full sections
-- [ ] Loading states for all widgets
-- [ ] Empty states when no data
+- [x] Dashboard shows all widgets in responsive grid
+- [x] Recent Activity updates every 30 seconds
+- [x] Generation Queue updates every 5 seconds
+- [x] Scheduled Publishes shows upcoming content
+- [x] Quick Stats shows 7-day trends
+- [x] Widgets can be hidden via dropdown menu
+- [x] Links navigate to full sections
+- [x] Loading states for all widgets
+- [x] Empty states when no data
 
 ---
 
