@@ -37,9 +37,21 @@ export const BatchGenerateVideoSchema = z.object({
   provider: VideoProviderSchema,
 });
 
-export const PollVideoStatusSchema = z.object({
-  jobId: z.string().uuid(),
-});
+/**
+ * Schema for poll video status action.
+ * Accepts both generationJobId (spec-compliant) and jobId (backward compat).
+ */
+export const PollVideoStatusSchema = z
+  .object({
+    generationJobId: z.string().uuid().optional(),
+    jobId: z.string().uuid().optional(),
+  })
+  .refine((data) => data.generationJobId || data.jobId, {
+    message: 'Either generationJobId or jobId is required',
+  })
+  .transform((data) => ({
+    generationJobId: data.generationJobId ?? data.jobId!,
+  }));
 
 export const CancelVideoJobSchema = z.object({
   jobId: z.string().uuid(),
@@ -49,3 +61,21 @@ export type GenerateVideoInput = z.infer<typeof GenerateVideoSchema>;
 export type BatchGenerateVideoInput = z.infer<typeof BatchGenerateVideoSchema>;
 export type PollVideoStatusInput = z.infer<typeof PollVideoStatusSchema>;
 export type CancelVideoJobInput = z.infer<typeof CancelVideoJobSchema>;
+
+/**
+ * Response schema for poll video status action per FILM-408 spec.
+ */
+export const PollVideoStatusResponseSchema = z.object({
+  status: z.enum(['queued', 'processing', 'completed', 'failed']),
+  progress: z.number().optional(),
+  videoUrl: z.string().url().optional(),
+  thumbnailUrl: z.string().url().optional(),
+  errorMessage: z.string().optional(),
+  estimatedTimeRemaining: z.number().optional(),
+  queuePosition: z.number().optional(),
+  lastUpdated: z.string(),
+});
+
+export type PollVideoStatusResponse = z.infer<
+  typeof PollVideoStatusResponseSchema
+>;
