@@ -52,12 +52,21 @@ export const getApiKeysAction = enhanceAction(
     // Decrypt keys to get last 4 chars (async)
     const results: ApiKeyInfo[] = [];
     for (const key of keys ?? []) {
-      const decryptedKey = await decrypt(key.encrypted_key);
-      results.push({
-        provider: key.provider as ApiKeyInfo['provider'],
-        lastFourChars: decryptedKey.slice(-4),
-        isActive: key.is_active,
-      });
+      try {
+        const decryptedKey = await decrypt(key.encrypted_key);
+        results.push({
+          provider: key.provider as ApiKeyInfo['provider'],
+          lastFourChars: decryptedKey.slice(-4),
+          isActive: key.is_active,
+        });
+      } catch {
+        // If decryption fails, still include the key but indicate it's corrupted
+        results.push({
+          provider: key.provider as ApiKeyInfo['provider'],
+          lastFourChars: '****',
+          isActive: false,
+        });
+      }
     }
 
     return results;

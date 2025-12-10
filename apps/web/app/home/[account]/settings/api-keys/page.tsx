@@ -4,6 +4,7 @@ import { PageBody } from '@kit/ui/page';
 import { Trans } from '@kit/ui/trans';
 
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
+import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { TeamAccountLayoutPageHeader } from '../../_components/team-account-layout-page-header';
 
@@ -50,4 +51,4 @@ async function ApiKeysPage(props: ApiKeysPageProps) {
   );
 }
 
-export default ApiKeysPage;
+export default withI18n(ApiKeysPage);
