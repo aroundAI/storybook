@@ -2,8 +2,9 @@
 
 import 'server-only';
 
-import { randomUUID } from 'crypto';
 import { revalidatePath } from 'next/cache';
+
+import { randomUUID } from 'crypto';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -99,7 +100,10 @@ export const generateVideoAction = enhanceAction(
     const estimatedCostCents = calculateVideoCost(provider, duration, mode);
 
     // Check and reserve budget
-    const budgetCheck = await checkAndReserveBudget(accountId, estimatedCostCents);
+    const budgetCheck = await checkAndReserveBudget(
+      accountId,
+      estimatedCostCents,
+    );
 
     if (!budgetCheck.allowed) {
       logger.warn(
@@ -138,7 +142,10 @@ export const generateVideoAction = enhanceAction(
       });
 
     if (jobError) {
-      logger.error({ ...ctx, error: jobError }, 'Failed to create generation job');
+      logger.error(
+        { ...ctx, error: jobError },
+        'Failed to create generation job',
+      );
       throw jobError;
     }
 

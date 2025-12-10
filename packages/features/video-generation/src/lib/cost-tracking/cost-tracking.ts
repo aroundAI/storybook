@@ -34,7 +34,9 @@ function getStartOfMonth(): Date {
  * Queries the account's monthly budget setting and calculates current spending
  * and reservations from generation_jobs table.
  */
-export async function getBudgetStatus(accountId: string): Promise<BudgetStatus> {
+export async function getBudgetStatus(
+  accountId: string,
+): Promise<BudgetStatus> {
   const client = getSupabaseServerClient();
 
   // Get account budget settings from public_data
@@ -46,7 +48,8 @@ export async function getBudgetStatus(accountId: string): Promise<BudgetStatus> 
 
   const publicData = account?.public_data as Record<string, unknown> | null;
   const monthlyBudgetCents =
-    (publicData?.monthlyVideoBudgetCents as number) || DEFAULT_MONTHLY_BUDGET_CENTS;
+    (publicData?.monthlyVideoBudgetCents as number) ||
+    DEFAULT_MONTHLY_BUDGET_CENTS;
 
   const startOfMonth = getStartOfMonth();
 
@@ -284,7 +287,8 @@ export async function setMonthlyBudget(
     .eq('id', accountId)
     .single();
 
-  const currentPublicData = (account?.public_data as Record<string, unknown>) || {};
+  const currentPublicData =
+    (account?.public_data as Record<string, unknown>) || {};
 
   await client
     .from('accounts')
