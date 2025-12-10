@@ -767,14 +767,11 @@ create policy "assets_delete" on public.assets for delete
 -- ==================================
 -- Generation Jobs RLS Policies
 -- ==================================
+-- Uses has_account_access() helper function for cleaner, reusable authorization
 
 create policy "generation_jobs_read" on public.generation_jobs for select
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "generation_jobs_create" on public.generation_jobs for insert
@@ -789,11 +786,7 @@ create policy "generation_jobs_create" on public.generation_jobs for insert
 
 create policy "generation_jobs_update" on public.generation_jobs for update
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 -- No delete policy for generation_jobs - jobs should not be deleted
@@ -801,127 +794,80 @@ create policy "generation_jobs_update" on public.generation_jobs for update
 -- ==================================
 -- Platform Connections RLS Policies
 -- ==================================
+-- Uses has_account_access() helper function for cleaner, reusable authorization
 
 create policy "platform_connections_read" on public.platform_connections for select
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "platform_connections_create" on public.platform_connections for insert
   to authenticated with check (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "platform_connections_update" on public.platform_connections for update
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "platform_connections_delete" on public.platform_connections for delete
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 -- ==================================
 -- Shared Resources RLS Policies
 -- ==================================
+-- Uses has_account_access() helper function for cleaner, reusable authorization
 
 create policy "shared_resources_read" on public.shared_resources for select
   to authenticated using (
-    -- User can access their account's resources
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
-    -- Or system resources (is_system = true)
+    public.has_account_access(account_id)
     or is_system = true
   );
 
 create policy "shared_resources_create" on public.shared_resources for insert
   to authenticated with check (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
     and is_system = false
   );
 
 create policy "shared_resources_update" on public.shared_resources for update
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
     and is_system = false
   );
 
 create policy "shared_resources_delete" on public.shared_resources for delete
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
     and is_system = false
   );
 
 -- ==================================
 -- External API Keys RLS Policies
 -- ==================================
+-- Uses has_account_access() helper function for cleaner, reusable authorization
 
 create policy "external_api_keys_read" on public.external_api_keys for select
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "external_api_keys_create" on public.external_api_keys for insert
   to authenticated with check (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "external_api_keys_update" on public.external_api_keys for update
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 create policy "external_api_keys_delete" on public.external_api_keys for delete
   to authenticated using (
-    account_id in (
-      select a.id from public.accounts a
-      where a.primary_owner_user_id = auth.uid()
-      or public.has_role_on_account(a.id)
-    )
+    public.has_account_access(account_id)
   );
 
 -- ==================================
@@ -1316,3 +1262,112 @@ create policy "content_analytics_update" on public.content_analytics for update
   );
 
 -- No delete policy for content_analytics - historical data should not be deleted
+
+-- ==================================
+-- Section: Account RLS Helper Functions (FILM-102c)
+-- ==================================
+-- Utility functions for account-scoped authorization checks
+-- All functions include explicit authentication validation per CLAUDE.md guidelines
+
+-- Function to check if current user owns an account
+-- Returns TRUE if the account belongs to the current authenticated user
+create or replace function public.user_owns_account(p_account_id uuid)
+returns boolean
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+begin
+    -- CRITICAL: Validate authentication first
+    if auth.uid() is null then
+        return false;
+    end if;
+
+    -- Validate input parameter
+    if p_account_id is null then
+        return false;
+    end if;
+
+    return exists (
+        select 1
+        from public.accounts a
+        where a.id = p_account_id
+        and a.primary_owner_user_id = auth.uid()
+    );
+end;
+$$;
+
+comment on function public.user_owns_account(uuid) is
+  'Returns TRUE if the current authenticated user is the primary owner of the specified account. Returns FALSE if not authenticated or account_id is null.';
+
+grant execute on function public.user_owns_account(uuid) to authenticated;
+
+-- Function to get current user's personal account_id
+create or replace function public.get_current_account_id()
+returns uuid
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+declare
+    v_account_id uuid;
+begin
+    -- CRITICAL: Validate authentication first
+    if auth.uid() is null then
+        return null;
+    end if;
+
+    select a.id into v_account_id
+    from public.accounts a
+    where a.primary_owner_user_id = auth.uid()
+    and a.is_personal_account = true
+    limit 1;
+
+    return v_account_id;
+end;
+$$;
+
+comment on function public.get_current_account_id() is
+  'Returns the personal account ID for the current authenticated user. Returns NULL if not authenticated.';
+
+grant execute on function public.get_current_account_id() to authenticated;
+
+-- Function to check account access (ownership OR team membership)
+-- This is the main helper used by RLS policies for account-scoped tables
+create or replace function public.has_account_access(p_account_id uuid)
+returns boolean
+language plpgsql
+security definer
+stable
+set search_path = ''
+as $$
+begin
+    -- CRITICAL: Validate authentication first
+    if auth.uid() is null then
+        return false;
+    end if;
+
+    -- Validate input parameter
+    if p_account_id is null then
+        return false;
+    end if;
+
+    -- Check if user is owner OR has a role on the account
+    return exists (
+        select 1
+        from public.accounts a
+        where a.id = p_account_id
+        and (
+            a.primary_owner_user_id = auth.uid()
+            or public.has_role_on_account(a.id)
+        )
+    );
+end;
+$$;
+
+comment on function public.has_account_access(uuid) is
+  'Returns TRUE if the current user has access to the account (either as owner or team member). Returns FALSE if not authenticated or account_id is null.';
+
+grant execute on function public.has_account_access(uuid) to authenticated;
