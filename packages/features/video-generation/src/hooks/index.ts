@@ -1,2 +1,8 @@
 // Export React hooks for video generation
-export {};
+export {
+  shotsQueryKeys,
+  useInvalidateShots,
+  useShotsQuery,
+} from './use-shots-query';
+
+export { useShotsRealtime } from './use-shots-realtime';

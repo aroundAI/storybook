@@ -1764,6 +1764,9 @@ importers:
       '@supabase/supabase-js':
         specifier: 2.57.4
         version: 2.57.4
+      '@tanstack/react-query':
+        specifier: 5.89.0
+        version: 5.89.0(react@19.1.1)
       '@types/node':
         specifier: ^24.5.0
         version: 24.5.0
