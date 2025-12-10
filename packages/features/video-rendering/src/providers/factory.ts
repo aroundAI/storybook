@@ -1,123 +1,100 @@
 /**
- * Video Render Provider Factory
+ * Render Provider Factory
  *
- * Creates and manages video render provider instances.
+ * Creates and caches render provider instances.
+ * Following the same pattern as @kit/video-generation factory.
  */
-
-import type { RenderProvider, ProviderConfig } from '../lib/types';
+import type {
+  CreatomateProviderConfig,
+  FFmpegProviderConfig,
+  ProviderConfig,
+  RemotionProviderConfig,
+  RenderCapabilities,
+  RenderProviderType,
+  ShotstackProviderConfig,
+} from '../types/render-job';
 import type { VideoRenderProvider } from './base';
-import { FFmpegLocalProvider } from './ffmpeg-local';
 
-/**
- * Provider instance cache
- */
+// Provider instance cache
 const providerCache = new Map<string, VideoRenderProvider>();
 
 /**
- * Create a cache key for provider configuration
+ * Generate a cache key from provider config
  */
-function getCacheKey(provider: RenderProvider, config: ProviderConfig): string {
-  return `${provider}:${JSON.stringify(config)}`;
+function getCacheKey(config: ProviderConfig): string {
+  const { provider, ...rest } = config;
+  return `${provider}:${JSON.stringify(rest)}`;
 }
 
 /**
- * Create a video render provider instance
+ * Create a render provider instance
  *
- * @param provider - The provider type to create
  * @param config - Provider configuration
- * @returns The provider instance
+ * @returns Render provider instance
+ *
+ * @example
+ * ```typescript
+ * const provider = await createRenderProvider({
+ *   provider: 'ffmpeg',
+ *   ffmpegPath: '/usr/bin/ffmpeg',
+ * });
+ *
+ * const result = await provider.render({ timeline });
+ * ```
  */
-export function createVideoRenderProvider(
-  provider: RenderProvider,
-  config: ProviderConfig = {}
-): VideoRenderProvider {
-  const cacheKey = getCacheKey(provider, config);
+export async function createRenderProvider(
+  config: ProviderConfig,
+): Promise<VideoRenderProvider> {
+  const cacheKey = getCacheKey(config);
 
-  // Return cached instance if available
+  // Return cached instance if exists
   const cached = providerCache.get(cacheKey);
   if (cached) {
     return cached;
   }
 
-  // Create new instance
-  let instance: VideoRenderProvider;
+  // Create new instance based on provider type
+  let provider: VideoRenderProvider;
 
-  switch (provider) {
-    case 'ffmpeg-local':
-      instance = new FFmpegLocalProvider(config);
+  switch (config.provider) {
+    case 'ffmpeg': {
+      const { FFmpegRenderProvider } = await import('../ffmpeg');
+      provider = new FFmpegRenderProvider(config as FFmpegProviderConfig);
       break;
+    }
 
-    case 'ffmpeg-docker':
-      // Docker provider would connect to a Docker container running FFmpeg
-      // For now, fall back to local (intentional fallback for POC)
-      instance = new FFmpegLocalProvider(config);
+    case 'remotion': {
+      const { RemotionRenderProvider } = await import('../remotion');
+      provider = new RemotionRenderProvider(config as RemotionProviderConfig);
       break;
+    }
 
-    case 'remotion':
-      // Remotion provider would use the Remotion API
-      throw new Error('Remotion provider not yet implemented - see poc/remotion for sample');
+    case 'shotstack': {
+      const { ShotstackRenderProvider } = await import('../cloud/shotstack');
+      provider = new ShotstackRenderProvider(config as ShotstackProviderConfig);
+      break;
+    }
 
-    case 'shotstack':
-      // Shotstack cloud rendering
-      throw new Error('Shotstack provider not yet implemented - see poc/cloud-services/shotstack.ts');
+    case 'creatomate': {
+      const { CreatomateRenderProvider } = await import('../cloud/creatomate');
+      provider = new CreatomateRenderProvider(
+        config as CreatomateProviderConfig,
+      );
+      break;
+    }
 
-    case 'creatomate':
-      // Creatomate cloud rendering
-      throw new Error('Creatomate provider not yet implemented - see poc/cloud-services/creatomate.ts');
-
-    case 'mux':
-      // Mux doesn't support video composition
-      throw new Error('Mux does not support video composition/stitching');
-
-    default:
-      throw new Error(`Unknown provider: ${provider}`);
+    default: {
+      const exhaustiveCheck: never = config;
+      throw new Error(
+        `Unknown provider: ${(exhaustiveCheck as ProviderConfig).provider}`,
+      );
+    }
   }
 
-  // Cache and return
-  providerCache.set(cacheKey, instance);
-  return instance;
-}
+  // Cache the instance
+  providerCache.set(cacheKey, provider);
 
-/**
- * Valid render providers for type validation
- */
-const VALID_PROVIDERS: RenderProvider[] = [
-  'ffmpeg-local',
-  'ffmpeg-docker',
-  'remotion',
-  'shotstack',
-  'creatomate',
-  'mux',
-];
-
-/**
- * Validate if a string is a valid RenderProvider
- */
-function isValidProvider(provider: string): provider is RenderProvider {
-  return VALID_PROVIDERS.includes(provider as RenderProvider);
-}
-
-/**
- * Get a provider from environment configuration
- */
-export function createProviderFromEnv(): VideoRenderProvider {
-  const providerFromEnv = process.env.VIDEO_RENDER_PROVIDER || 'ffmpeg-local';
-  const provider: RenderProvider = isValidProvider(providerFromEnv)
-    ? providerFromEnv
-    : 'ffmpeg-local';
-
-  const config: ProviderConfig = {
-    ffmpegPath: process.env.FFMPEG_PATH,
-    ffprobePath: process.env.FFPROBE_PATH,
-    tempDir: process.env.VIDEO_RENDER_TEMP_DIR,
-    maxConcurrency: process.env.VIDEO_RENDER_MAX_CONCURRENCY
-      ? parseInt(process.env.VIDEO_RENDER_MAX_CONCURRENCY, 10)
-      : undefined,
-    apiKey: process.env.VIDEO_RENDER_API_KEY,
-    baseUrl: process.env.VIDEO_RENDER_BASE_URL,
-  };
-
-  return createVideoRenderProvider(provider, config);
+  return provider;
 }
 
 /**
@@ -128,47 +105,147 @@ export function clearProviderCache(): void {
 }
 
 /**
+ * Remove a specific provider from cache
+ */
+export function removeProviderFromCache(config: ProviderConfig): boolean {
+  const cacheKey = getCacheKey(config);
+  return providerCache.delete(cacheKey);
+}
+
+/**
+ * Get provider capabilities without creating an instance
+ */
+export function getProviderCapabilities(
+  provider: RenderProviderType,
+): RenderCapabilities {
+  return PROVIDER_CAPABILITIES[provider];
+}
+
+/**
+ * Provider capabilities registry
+ */
+export const PROVIDER_CAPABILITIES: Record<
+  RenderProviderType,
+  RenderCapabilities
+> = {
+  ffmpeg: {
+    name: 'ffmpeg',
+    supportedTransitions: [
+      'cut',
+      'fade',
+      'crossfade',
+      'wipe',
+      'dissolve',
+      'slide',
+    ],
+    maxDuration: 3600, // 1 hour
+    supportedFormats: ['mp4', 'webm', 'mov', 'mkv'],
+    supportedCodecs: ['h264', 'h265', 'vp9', 'prores'],
+    maxWidth: 7680,
+    maxHeight: 4320,
+    supportsPreview: false,
+    supportsStreaming: true,
+    isLocal: true,
+    typicalRenderSpeed: 0.5, // 2x realtime on average hardware
+  },
+
+  remotion: {
+    name: 'remotion',
+    supportedTransitions: ['cut', 'fade', 'crossfade', 'wipe', 'dissolve'],
+    maxDuration: 1800, // 30 minutes
+    supportedFormats: ['mp4', 'webm'],
+    supportedCodecs: ['h264', 'vp9'],
+    maxWidth: 3840,
+    maxHeight: 2160,
+    supportsPreview: true,
+    supportsStreaming: false,
+    isLocal: false, // Uses Lambda by default
+    typicalRenderSpeed: 0.3, // Faster with Lambda parallelization
+  },
+
+  shotstack: {
+    name: 'shotstack',
+    supportedTransitions: ['cut', 'fade', 'crossfade', 'wipe', 'dissolve'],
+    maxDuration: 600, // 10 minutes
+    supportedFormats: ['mp4', 'webm', 'mov'],
+    supportedCodecs: ['h264', 'h265'],
+    maxWidth: 3840,
+    maxHeight: 2160,
+    supportsPreview: true,
+    supportsStreaming: false,
+    isLocal: false,
+    typicalRenderSpeed: 0.2, // Cloud rendering is faster
+  },
+
+  creatomate: {
+    name: 'creatomate',
+    supportedTransitions: ['cut', 'fade', 'crossfade', 'wipe', 'dissolve'],
+    maxDuration: 600, // 10 minutes
+    supportedFormats: ['mp4', 'webm'],
+    supportedCodecs: ['h264'],
+    maxWidth: 3840,
+    maxHeight: 2160,
+    supportsPreview: true,
+    supportsStreaming: false,
+    isLocal: false,
+    typicalRenderSpeed: 0.25,
+  },
+};
+
+/**
  * Get all available providers
  */
-export function getAvailableProviders(): RenderProvider[] {
-  return ['ffmpeg-local', 'ffmpeg-docker', 'remotion', 'shotstack', 'creatomate'];
+export function getAvailableProviders(): RenderProviderType[] {
+  return ['ffmpeg', 'remotion', 'shotstack', 'creatomate'];
 }
 
 /**
- * Check if a provider is implemented
+ * Check if a provider is available based on environment
  */
-export function isProviderImplemented(provider: RenderProvider): boolean {
-  const implemented: RenderProvider[] = ['ffmpeg-local'];
-  return implemented.includes(provider);
+export function isProviderAvailable(provider: RenderProviderType): boolean {
+  switch (provider) {
+    case 'ffmpeg':
+      // FFmpeg requires local binary
+      return true; // Assume available for PoC
+    case 'remotion':
+      // Remotion requires npm packages
+      return true;
+    case 'shotstack':
+      return !!process.env.SHOTSTACK_API_KEY;
+    case 'creatomate':
+      return !!process.env.CREATOMATE_API_KEY;
+    default:
+      return false;
+  }
 }
 
 /**
- * Get provider recommendation based on requirements
+ * Get recommended provider based on requirements
  */
-export function recommendProvider(requirements: {
-  needsLowLatency?: boolean;
-  needsHighQuality?: boolean;
-  needsLowCost?: boolean;
-  needsNoInfrastructure?: boolean;
-}): RenderProvider {
-  const { needsLowLatency, needsHighQuality, needsLowCost, needsNoInfrastructure } =
-    requirements;
+export function getRecommendedProvider(requirements: {
+  duration: number;
+  needsPreview?: boolean;
+  preferLocal?: boolean;
+  maxCostCents?: number;
+}): RenderProviderType {
+  const { duration, needsPreview, preferLocal, maxCostCents } = requirements;
 
-  // If no infrastructure management desired, use cloud
-  if (needsNoInfrastructure) {
-    return needsLowCost ? 'creatomate' : 'shotstack';
+  // If preview is needed and duration is short, use cloud
+  if (needsPreview && duration <= 60) {
+    if (isProviderAvailable('shotstack')) return 'shotstack';
+    if (isProviderAvailable('creatomate')) return 'creatomate';
   }
 
-  // If low cost is priority, use self-hosted
-  if (needsLowCost) {
-    return 'ffmpeg-local';
+  // If local is preferred or cost is a concern
+  if (preferLocal || (maxCostCents !== undefined && maxCostCents < 50)) {
+    return 'ffmpeg';
   }
 
-  // If high quality with easy development, use Remotion
-  if (needsHighQuality && !needsLowLatency) {
-    return 'remotion';
+  // For long videos, FFmpeg is more reliable
+  if (duration > 300) {
+    return 'ffmpeg';
   }
 
-  // Default to FFmpeg local for best performance/cost ratio
-  return 'ffmpeg-local';
+  // Default to FFmpeg for now (most flexible)
+  return 'ffmpeg';
 }

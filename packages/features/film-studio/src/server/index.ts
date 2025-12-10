@@ -1,2 +1,2 @@
-// Export server actions here
-export {};
+// Export server actions
+export * from './template-actions';
