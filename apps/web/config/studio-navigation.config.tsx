@@ -120,8 +120,14 @@ export function getStudioNavigationConfig(params: {
 
   return NavigationConfigSchema.parse({
     routes,
-    style: process.env.NEXT_PUBLIC_TEAM_NAVIGATION_STYLE,
-    sidebarCollapsed: process.env.NEXT_PUBLIC_TEAM_SIDEBAR_COLLAPSED,
-    sidebarCollapsedStyle: process.env.NEXT_PUBLIC_SIDEBAR_COLLAPSIBLE_STYLE,
+    ...(process.env.NEXT_PUBLIC_TEAM_NAVIGATION_STYLE && {
+      style: process.env.NEXT_PUBLIC_TEAM_NAVIGATION_STYLE,
+    }),
+    ...(process.env.NEXT_PUBLIC_TEAM_SIDEBAR_COLLAPSED && {
+      sidebarCollapsed: process.env.NEXT_PUBLIC_TEAM_SIDEBAR_COLLAPSED,
+    }),
+    ...(process.env.NEXT_PUBLIC_SIDEBAR_COLLAPSIBLE_STYLE && {
+      sidebarCollapsedStyle: process.env.NEXT_PUBLIC_SIDEBAR_COLLAPSIBLE_STYLE,
+    }),
   });
 }

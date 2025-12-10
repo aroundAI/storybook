@@ -8,6 +8,8 @@ import { BookOpen, Music, Scissors, Share2, Video } from 'lucide-react';
 import { Trans } from '@kit/ui/trans';
 import { cn } from '@kit/ui/utils';
 
+const iconClasses = 'h-4 w-4';
+
 const EPISODE_TABS = [
   { labelKey: 'studio:episodeTabs.story', segment: 'story', icon: BookOpen },
   { labelKey: 'studio:episodeTabs.visual', segment: 'visual', icon: Video },
@@ -58,7 +60,7 @@ export function EpisodeTabs() {
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className={iconClasses} />
               <Trans i18nKey={tab.labelKey} />
             </Link>
           );
