@@ -3,7 +3,6 @@
  *
  * Type definitions for budget management and cost tracking in video generation.
  */
-
 import type { VideoProvider } from '../types';
 
 /**
