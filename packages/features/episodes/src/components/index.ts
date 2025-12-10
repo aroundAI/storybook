@@ -26,3 +26,7 @@ export { SceneNavigation } from './screenplay-viewer/scene-navigation';
 // Shot List Editor (FILM-311)
 export { ShotListEditor } from './shot-list-editor/shot-list-editor';
 export { ShotRow } from './shot-list-editor/shot-row';
+
+// Batch Episode Creator (FILM-314)
+export { BatchEpisodeCreator } from './batch-episode-creator/batch-episode-creator';
+export { EpisodePreviewDialog } from './batch-episode-creator/episode-preview-dialog';

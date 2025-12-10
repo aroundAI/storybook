@@ -6,3 +6,4 @@ export * from './episode';
 export * from './shot';
 export * from './video';
 export * from './audio';
+export * from './template';
