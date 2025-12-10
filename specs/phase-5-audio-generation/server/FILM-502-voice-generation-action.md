@@ -3,8 +3,25 @@
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
+**Status**: ✅ DONE
 **Dependencies**: FILM-501 (ElevenLabs provider), FILM-502b (Audio provider factory)
 **Blocks**: FILM-503, FILM-505, FILM-506
+
+## Implementation
+
+**Files Created:**
+- `packages/features/audio-generation/src/lib/schemas/voice-action.schema.ts` - Zod schemas and types
+- `packages/features/audio-generation/src/server/voice-actions.ts` - Server actions
+- `packages/features/audio-generation/src/server/voice-queries.ts` - Helper queries
+
+**Actions Implemented:**
+- `generateDialogueVoiceAction` - Generate voice for dialogue lines
+- `generateVoiceFromTextAction` - Generate voice from raw text (previews)
+
+**Notes:**
+- Uses direct ElevenLabs provider instantiation (factory pattern deferred to FILM-502b)
+- Budget checking deferred (accounts table doesn't have budget columns yet)
+- Cost tracking via `generation_jobs` table
 
 ---
 
