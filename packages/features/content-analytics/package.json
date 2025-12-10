@@ -16,10 +16,15 @@
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
     "./providers/tiktok/types": "./src/providers/tiktok/types.ts",
     "./providers/instagram": "./src/providers/instagram/index.ts",
-    "./providers/instagram/types": "./src/providers/instagram/types.ts"
+    "./providers/instagram/types": "./src/providers/instagram/types.ts",
+    "./components": "./src/components/metric-cards.tsx",
+    "./types": "./src/types.ts",
+    "./lib/format": "./src/lib/format.ts"
   },
   "dependencies": {
-    "googleapis": "^148.0.0"
+    "@kit/ui": "workspace:*",
+    "googleapis": "^148.0.0",
+    "lucide-react": "^0.544.0"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
