@@ -237,3 +237,15 @@ export const ConvertToScreenplaySchema = z.object({
 export type ConvertToScreenplayInput = z.infer<
   typeof ConvertToScreenplaySchema
 >;
+
+// Season CRUD schemas (FILM-302)
+export {
+  CreateSeasonSchema,
+  GetProjectSeasonsSchema,
+  UpdateSeasonSchema,
+  DeleteSeasonSchema,
+  type CreateSeasonInput,
+  type GetProjectSeasonsInput,
+  type UpdateSeasonInput,
+  type DeleteSeasonInput,
+} from './schemas/season.schema';
