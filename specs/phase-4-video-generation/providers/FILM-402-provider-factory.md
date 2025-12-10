@@ -1,8 +1,9 @@
 # FILM-402: Video Provider Factory
 
+**Status**: ✅ DONE
 **Phase**: 4
 **Priority**: P0
-**Effort**: S (1-2 days)
+**Effort**: M (4-8 hours)
 **Dependencies**: FILM-401 (kling-provider)
 **Blocks**: FILM-405 (generate-video-action)
 

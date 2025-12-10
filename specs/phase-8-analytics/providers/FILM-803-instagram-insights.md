@@ -4,6 +4,7 @@
 - **Phase:** 8 - Analytics
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
+- **Status:** DONE
 - **Dependencies:** FILM-707 (Meta OAuth)
 - **Blocks:** FILM-804 (Analytics Sync), FILM-805 (Analytics Dashboard)
 

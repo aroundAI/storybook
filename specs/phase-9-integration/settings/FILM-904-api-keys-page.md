@@ -4,6 +4,7 @@
 - **Phase:** 9 - Integration
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
+- **Status:** DONE
 - **Dependencies:** FILM-101n (external_api_keys table)
 - **Blocks:** FILM-401 (Kling Provider), FILM-501 (ElevenLabs Provider)
 
