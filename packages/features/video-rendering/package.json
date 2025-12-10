@@ -1,0 +1,44 @@
+{
+  "name": "@kit/video-rendering",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Video rendering and stitching package evaluating FFmpeg, Remotion, Shotstack, and Creatomate approaches",
+  "scripts": {
+    "clean": "git clean -xdf .turbo node_modules",
+    "format": "prettier --check \"**/*.{ts,tsx}\"",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts",
+    "./types": "./src/types/index.ts",
+    "./providers": "./src/providers/index.ts",
+    "./ffmpeg": "./src/ffmpeg/index.ts",
+    "./remotion": "./src/remotion/index.ts",
+    "./cloud/shotstack": "./src/cloud/shotstack/index.ts",
+    "./cloud/creatomate": "./src/cloud/creatomate/index.ts"
+  },
+  "devDependencies": {
+    "@kit/eslint-config": "workspace:*",
+    "@kit/prettier-config": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/tsconfig": "workspace:*",
+    "@types/node": "^24.5.0",
+    "@types/react": "19.1.13",
+    "react": "19.1.1",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "zod": "^3.25.74"
+  },
+  "prettier": "@kit/prettier-config",
+  "typesVersions": {
+    "*": {
+      "*": [
+        "src/*"
+      ]
+    }
+  }
+}
