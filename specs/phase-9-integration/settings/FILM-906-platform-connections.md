@@ -518,16 +518,16 @@ function determineStatus(connection: any): 'active' | 'expired' | 'error' {
 
 ## Acceptance Criteria
 
-- [ ] Lists all supported platforms (YouTube, TikTok, Instagram, Facebook)
-- [ ] Shows connected accounts per platform
-- [ ] Displays account name, profile picture, status
-- [ ] Connect button initiates OAuth flow
-- [ ] Refresh button updates token
-- [ ] Disconnect shows confirmation dialog
-- [ ] Status badges show active/expired/error
-- [ ] Error message displayed when relevant
-- [ ] Multiple accounts supported where applicable
-- [ ] Permissions shown per platform
+- [x] Lists all supported platforms (YouTube, TikTok, Instagram, Facebook)
+- [x] Shows connected accounts per platform
+- [x] Displays account name, profile picture, status
+- [x] Connect button initiates OAuth flow
+- [x] Refresh button updates token
+- [x] Disconnect shows confirmation dialog
+- [x] Status badges show active/expired/error
+- [x] Error message displayed when relevant
+- [x] Multiple accounts supported where applicable
+- [x] Permissions shown per platform
 
 ---
 

@@ -23,13 +23,18 @@
     "./providers/instagram": "./src/providers/instagram/index.ts",
     "./providers/linkedin": "./src/providers/linkedin/index.ts",
     "./components/linkedin-composer": "./src/components/linkedin-composer.tsx",
+    "./components/platform-connections": "./src/components/platform-connections.tsx",
+    "./server/connection-actions": "./src/server/connection-actions.ts",
+    "./types": "./src/types.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts"
   },
   "dependencies": {
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
-    "@kit/ui": "workspace:*"
+    "@kit/ui": "workspace:*",
+    "@tanstack/react-query": "5.89.0",
+    "date-fns": "^4.1.0"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
