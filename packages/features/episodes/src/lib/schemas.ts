@@ -203,6 +203,23 @@ export {
 // Shot list generation schemas are in ./schemas/shot-list.schema.ts (FILM-307)
 // Import directly from those files to avoid naming conflicts
 
+// Batch episode creation schemas (FILM-314)
+export {
+  ArcPositionSchema,
+  EpisodeOutlineSchema,
+  GenerateSeasonOutlineSchema,
+  BatchCreateEpisodesSchema,
+  RegenerateEpisodeOutlineSchema,
+  type ArcPosition,
+  type EpisodeOutline,
+  type GenerateSeasonOutlineInput,
+  type BatchCreateEpisodesInput,
+  type RegenerateEpisodeOutlineInput,
+  type GenerateSeasonOutlineResponse,
+  type BatchCreateEpisodesResponse,
+  type RegenerateEpisodeOutlineResponse,
+} from './schemas/batch-episode.schema';
+
 // ============================================================================
 // Screenplay Conversion Schemas (FILM-306)
 // ============================================================================
@@ -220,3 +237,15 @@ export const ConvertToScreenplaySchema = z.object({
 export type ConvertToScreenplayInput = z.infer<
   typeof ConvertToScreenplaySchema
 >;
+
+// Season CRUD schemas (FILM-302)
+export {
+  CreateSeasonSchema,
+  GetProjectSeasonsSchema,
+  UpdateSeasonSchema,
+  DeleteSeasonSchema,
+  type CreateSeasonInput,
+  type GetProjectSeasonsInput,
+  type UpdateSeasonInput,
+  type DeleteSeasonInput,
+} from './schemas/season.schema';
