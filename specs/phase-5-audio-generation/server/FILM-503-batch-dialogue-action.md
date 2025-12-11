@@ -3,8 +3,91 @@
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
+**Status**: ✅ DONE
 **Dependencies**: FILM-502 (voice-generation-action)
 **Blocks**: FILM-505, FILM-506
+
+## Implementation
+
+**Completed**: 2024-12-11
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `apps/web/supabase/migrations/20251211110552_add-batch-generation-jobs.sql` | Migration for batch_generation_jobs table with indexes and RLS policies |
+| `packages/features/audio-generation/src/lib/schemas/batch.schema.ts` | Zod schemas and TypeScript interfaces for batch operations |
+| `packages/features/audio-generation/src/server/batch-actions.ts` | Server actions (batchGenerateDialogueAction, getBatchStatusAction, retryFailedDialogueAction, cancelBatchAction) |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `packages/features/audio-generation/src/lib/schemas/index.ts` | Added barrel export for batch.schema |
+| `packages/features/audio-generation/src/server/index.ts` | Added export for batch-actions |
+
+### Actions Implemented
+
+#### `batchGenerateDialogueAction`
+
+Orchestrates batch voice generation for all dialogue lines in an episode:
+
+1. Validates user authentication via `requireUser`
+2. Fetches episode with account context
+3. Fetches all dialogue lines for episode
+4. Filters lines to process (pending/failed unless overwriteExisting)
+5. Builds voice assignments from user input or character voice profiles
+6. Validates all characters have voice assignments
+7. Estimates total cost and checks account budget
+8. Creates batch_generation_jobs record for tracking
+9. Starts background processing with concurrency limit
+10. Returns batch job ID immediately for status polling
+
+#### `getBatchStatusAction`
+
+Returns comprehensive status of a batch job:
+- Progress (total, completed, failed, pending, percentage)
+- Cost (estimated vs actual)
+- All errors with dialogue line IDs
+- Timestamps (started, completed)
+- Estimated completion time (calculated from current processing rate)
+
+#### `retryFailedDialogueAction`
+
+Retries only failed dialogue lines from a previous batch:
+1. Fetches batch job and validates failed_lines > 0
+2. Gets all dialogue_lines with status='failed' for episode
+3. Resets batch job status and error list
+4. Restarts background processing for failed lines only
+
+#### `cancelBatchAction`
+
+Cancels a running batch job:
+1. Validates job is not already completed/cancelled
+2. Sets status to 'cancelled' (processing loop checks this)
+3. Already-processed lines retain their audio
+
+### Database Migration
+
+Created `batch_generation_jobs` table with:
+- `id`, `episode_id`, `account_id` (with foreign keys)
+- `status` (queued, processing, completed, failed, cancelled)
+- `total_lines`, `completed_lines`, `failed_lines`
+- `estimated_cost`, `actual_cost` (in cents)
+- `voice_assignments` (JSONB - character to voice mapping)
+- `errors` (JSONB array - failed lines with error messages)
+- `started_at`, `completed_at`, `created_at`, `updated_at`
+- Indexes for efficient queries
+- RLS policies for account-based access control
+
+### Key Implementation Details
+
+- Uses `generateDialogueVoiceAction` (FILM-502) for individual line processing
+- Background processing via `Promise.allSettled` for concurrent execution
+- Concurrency limit configurable (default 5, max 10)
+- Progress updates after each batch of concurrent requests
+- Cancellation checked before each batch iteration
+- Type assertions for film studio tables (not in generated types yet)
 
 ---
 
@@ -779,35 +862,35 @@ None (new feature)
 
 ### Functional
 
-- [ ] `batchGenerateDialogueAction` creates batch job for valid episode
-- [ ] `batchGenerateDialogueAction` processes all dialogue lines
-- [ ] `batchGenerateDialogueAction` respects concurrency limit
-- [ ] `batchGenerateDialogueAction` estimates cost accurately
-- [ ] `batchGenerateDialogueAction` checks budget before starting
-- [ ] `batchGenerateDialogueAction` assigns voices to all characters
-- [ ] `batchGenerateDialogueAction` uses voice profiles when available
-- [ ] `batchGenerateDialogueAction` supports manual voice assignments
-- [ ] `batchGenerateDialogueAction` returns batch job ID immediately
-- [ ] `getBatchStatusAction` returns accurate progress
-- [ ] `getBatchStatusAction` calculates percentage correctly
-- [ ] `getBatchStatusAction` estimates completion time
-- [ ] `getBatchStatusAction` includes all errors
-- [ ] `retryFailedDialogueAction` retries only failed lines
-- [ ] `retryFailedDialogueAction` resets error state
-- [ ] `cancelBatchAction` stops processing
-- [ ] `cancelBatchAction` marks job as cancelled
-- [ ] Batch processing continues on individual failures
-- [ ] Batch processing respects overwriteExisting flag
-- [ ] All actions enforce authentication
+- [x] `batchGenerateDialogueAction` creates batch job for valid episode
+- [x] `batchGenerateDialogueAction` processes all dialogue lines
+- [x] `batchGenerateDialogueAction` respects concurrency limit
+- [x] `batchGenerateDialogueAction` estimates cost accurately
+- [x] `batchGenerateDialogueAction` checks budget before starting
+- [x] `batchGenerateDialogueAction` assigns voices to all characters
+- [x] `batchGenerateDialogueAction` uses voice profiles when available
+- [x] `batchGenerateDialogueAction` supports manual voice assignments
+- [x] `batchGenerateDialogueAction` returns batch job ID immediately
+- [x] `getBatchStatusAction` returns accurate progress
+- [x] `getBatchStatusAction` calculates percentage correctly
+- [x] `getBatchStatusAction` estimates completion time
+- [x] `getBatchStatusAction` includes all errors
+- [x] `retryFailedDialogueAction` retries only failed lines
+- [x] `retryFailedDialogueAction` resets error state
+- [x] `cancelBatchAction` stops processing
+- [x] `cancelBatchAction` marks job as cancelled
+- [x] Batch processing continues on individual failures
+- [x] Batch processing respects overwriteExisting flag
+- [x] All actions enforce authentication
 
 ### Non-Functional
 
-- [ ] Batch processing completes within reasonable time (10 min for 100 lines)
-- [ ] Progress updates are atomic
-- [ ] Batch job is resumable after server restart
-- [ ] All errors logged with context
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] Batch processing completes within reasonable time (10 min for 100 lines)
+- [x] Progress updates are atomic
+- [ ] Batch job is resumable after server restart (deferred - requires queue system)
+- [x] All errors logged with context
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 
