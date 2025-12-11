@@ -826,7 +826,7 @@ export function EpisodeWorkspace({ episode, projectId }: Props) {
           </StudioTabsList>
 
           <TabsContent value="story" className="h-full">
-            <StoryStudio episode={episode} projectId={projectId} />
+            <StoryStudio episodeId={episode.id} />
           </TabsContent>
 
           <TabsContent value="visual" className="h-full">
@@ -3188,11 +3188,10 @@ import { ShotListEditor } from './shot-list-editor';
 import { PipelineProgress } from './pipeline-progress';
 
 interface StoryStudioProps {
-  episode: Episode;
-  projectId: string;
+  episodeId: string;
 }
 
-export function StoryStudio({ episode, projectId }: StoryStudioProps) {
+export function StoryStudio({ episodeId }: StoryStudioProps) {
   const [activeStep, setActiveStep] = useState<'ideation' | 'story' | 'screenplay' | 'shots'>('ideation');
 
   return (
