@@ -123,6 +123,47 @@ export const AudioJobStatusSchema = z.enum([
   'failed',
 ]);
 
+// Voice cloning consent schema
+export const VoiceCloneConsentSchema = z.object({
+  consenterName: z.string().min(1, 'Name is required'),
+  consenterEmail: z.string().email().optional().or(z.literal('')),
+  consentType: z.enum(['self', 'other_authorized']),
+  consentText: z
+    .string()
+    .min(50, 'Consent text must be at least 50 characters'),
+  consentSignature: z.string().optional(),
+});
+
+// Start voice clone action schema
+export const StartVoiceCloneSchema = z.object({
+  assetId: z.string().uuid(),
+  voiceName: z.string().min(1).max(100),
+  description: z.string().max(500).optional(),
+  samples: z
+    .array(z.string().url())
+    .min(1, 'At least one sample required')
+    .max(25, 'Maximum 25 samples allowed'),
+  consent: VoiceCloneConsentSchema,
+});
+
+// Delete voice clone schema
+export const DeleteVoiceCloneSchema = z.object({
+  assetId: z.string().uuid(),
+});
+
+// Check clone status schema
+export const CheckCloneStatusSchema = z.object({
+  assetId: z.string().uuid(),
+});
+
+// Clone status enum schema
+export const CloneStatusSchema = z.enum([
+  'pending',
+  'training',
+  'ready',
+  'failed',
+]);
+
 // Infer types from schemas
 export type VoiceProviderNameType = z.infer<typeof VoiceProviderNameSchema>;
 export type MusicProviderNameType = z.infer<typeof MusicProviderNameSchema>;
@@ -145,3 +186,10 @@ export type CancelMusicGenerationSchemaType = z.infer<
 >;
 export type GetVoicesSchemaType = z.infer<typeof GetVoicesSchema>;
 export type CloneVoiceSchemaType = z.infer<typeof CloneVoiceSchema>;
+export type VoiceCloneConsentSchemaType = z.infer<
+  typeof VoiceCloneConsentSchema
+>;
+export type StartVoiceCloneSchemaType = z.infer<typeof StartVoiceCloneSchema>;
+export type DeleteVoiceCloneSchemaType = z.infer<typeof DeleteVoiceCloneSchema>;
+export type CheckCloneStatusSchemaType = z.infer<typeof CheckCloneStatusSchema>;
+export type CloneStatusType = z.infer<typeof CloneStatusSchema>;
