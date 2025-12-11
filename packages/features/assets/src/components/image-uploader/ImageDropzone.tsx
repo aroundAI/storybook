@@ -30,6 +30,12 @@ import { cn } from '@kit/ui/utils';
  * Drag-and-drop zone for image uploads with visual feedback.
  */
 
+/**
+ * ImageDropzone Component (FILM-207)
+ *
+ * Drag-and-drop zone for image uploads with visual feedback.
+ */
+
 interface ImageDropzoneProps {
   /** Callback when a file is dropped */
   onFileDrop: (file: File) => void;
