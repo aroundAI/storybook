@@ -4,8 +4,11 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Dependencies:** FILM-601 (Timeline Editor), FILM-602 (Track Layer)
+- **Status:** 🔲 Not Started
+- **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-602 (Track Layer) ⚠️
 - **Blocks:** None
+
+> **Note:** FILM-601 Timeline Editor is complete. Clip Editor can now be implemented.
 
 ---
 
