@@ -13,6 +13,8 @@ export const ListVoicesSchema = z.object({
   age: z.string().optional(),
   accent: z.string().optional(),
   search: z.string().optional(),
+  // Optional: projectId to enable BYOK (Bring Your Own Key) support
+  projectId: z.string().uuid().optional(),
 });
 
 export type ListVoicesSchemaType = z.infer<typeof ListVoicesSchema>;

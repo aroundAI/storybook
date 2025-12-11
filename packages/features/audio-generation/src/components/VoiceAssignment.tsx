@@ -102,15 +102,17 @@ export function VoiceAssignmentPanel({
     (c) => c.id === selectedCharacterId,
   );
 
-  // Fetch available voices
+  // Fetch available voices (with projectId for BYOK support)
   const { data: voicesData, isLoading: voicesLoading } = useQuery({
     queryKey: [
       'voices',
+      projectId,
       filters.language !== 'all' ? filters.language : undefined,
       filters.gender !== 'all' ? filters.gender : undefined,
     ],
     queryFn: () =>
       listVoicesAction({
+        projectId,
         language: filters.language !== 'all' ? filters.language : undefined,
         gender:
           filters.gender !== 'all'

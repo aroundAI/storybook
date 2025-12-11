@@ -5,6 +5,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 
 import { enhanceAction } from '@kit/next/actions';
+import { decrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -33,12 +34,10 @@ import {
 } from '../lib/schemas/voice-profile.schema';
 import { ElevenLabsProvider } from '../providers/elevenlabs';
 
-// Note: These actions use type assertions because the film studio tables
-// (voice_profiles, character_details, assets) are not yet in the generated
-// database types. The database schema will be aligned in a future update.
-
 /**
- * Database response types for type-safe access
+ * Database response types for type-safe access.
+ * These types represent the shape of data returned from film studio tables
+ * that are not yet in the generated database types.
  */
 interface CharacterDetailsResponse {
   asset_id: string;
@@ -60,6 +59,191 @@ interface AssetResponse {
   account_id: string;
 }
 
+interface ProjectResponse {
+  account_id: string;
+}
+
+/**
+ * Helper to get ElevenLabs API key for an account.
+ * Tries BYOK (Bring Your Own Key) first, then falls back to platform key.
+ */
+async function getElevenLabsApiKey(accountId?: string): Promise<string> {
+  const client = getSupabaseServerClient();
+
+  // Try BYOK first if accountId is provided
+  if (accountId) {
+    const { data: userKey } = await client
+      .from('external_api_keys')
+      .select('encrypted_key')
+      .eq('account_id', accountId)
+      .eq('provider', 'elevenlabs')
+      .eq('is_active', true)
+      .single();
+
+    if (userKey?.encrypted_key) {
+      return decrypt(userKey.encrypted_key);
+    }
+  }
+
+  // Fall back to platform key
+  const platformKey = process.env.ELEVENLABS_API_KEY;
+  if (!platformKey) {
+    throw new Error(
+      'No ElevenLabs API key configured. Please add your API key in Settings > API Keys.',
+    );
+  }
+  return platformKey;
+}
+
+/**
+ * Type-safe query helpers for film studio tables.
+ * These wrap Supabase queries with proper typing until the database types are generated.
+ *
+ * Note: These helpers use type assertions internally because the film studio tables
+ * (voice_profiles, character_details, assets) are not yet in the generated database types.
+ * This centralizes the type assertions in one place rather than spreading them across actions.
+ */
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const filmStudioQueries = {
+  async getCharacterDetails(
+    client: any,
+    assetId: string,
+    _select: string = 'asset_id, voice_asset_id',
+  ): Promise<{
+    data: CharacterDetailsResponse | null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client
+      .from('character_details')
+      .select('asset_id, voice_asset_id')
+      .eq('asset_id', assetId)
+      .single();
+  },
+
+  async getCharacterDetailsList(
+    client: any,
+    assetIds: string[],
+    _select: string = 'asset_id, gender, age',
+  ): Promise<{
+    data: CharacterDetailsResponse[] | null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client
+      .from('character_details')
+      .select('asset_id, gender, age')
+      .in('asset_id', assetIds);
+  },
+
+  async updateCharacterDetails(
+    client: any,
+    assetId: string,
+    data: Partial<{ voice_asset_id: string | null }>,
+  ): Promise<{
+    data: null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client
+      .from('character_details')
+      .update(data)
+      .eq('asset_id', assetId);
+  },
+
+  async getVoiceProfile(
+    client: any,
+    assetId: string,
+  ): Promise<{
+    data: VoiceProfileDbResponse | null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client
+      .from('voice_profiles')
+      .select('asset_id, provider, provider_voice_id, settings')
+      .eq('asset_id', assetId)
+      .single();
+  },
+
+  async updateVoiceProfile(
+    client: any,
+    assetId: string,
+    data: {
+      provider?: string;
+      provider_voice_id?: string;
+      settings?: Record<string, unknown>;
+      updated_at?: string;
+    },
+  ): Promise<{
+    data: null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client.from('voice_profiles').update(data).eq('asset_id', assetId);
+  },
+
+  async insertVoiceProfile(
+    client: any,
+    data: {
+      asset_id: string;
+      provider: string;
+      provider_voice_id: string;
+      settings: Record<string, unknown>;
+    },
+  ): Promise<{
+    data: null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client.from('voice_profiles').insert(data);
+  },
+
+  async getAsset(
+    client: any,
+    assetId: string,
+    type?: string,
+  ): Promise<{
+    data: AssetResponse | null;
+    error: { code: string; message: string } | null;
+  }> {
+    let query = client
+      .from('assets')
+      .select('id, project_id, account_id')
+      .eq('id', assetId);
+
+    if (type) {
+      query = query.eq('type', type);
+    }
+
+    return query.single();
+  },
+
+  async insertAsset(
+    client: any,
+    data: {
+      project_id: string;
+      account_id: string;
+      type: string;
+      name: string;
+    },
+  ): Promise<{
+    data: { id: string } | null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client.from('assets').insert(data).select('id').single();
+  },
+
+  async getProject(
+    client: any,
+    projectId: string,
+  ): Promise<{
+    data: ProjectResponse | null;
+    error: { code: string; message: string } | null;
+  }> {
+    return client
+      .from('projects')
+      .select('account_id')
+      .eq('id', projectId)
+      .single();
+  },
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 /**
  * List available voices from ElevenLabs with optional filters
  */
@@ -78,12 +262,18 @@ export const listVoicesAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Get API key from environment
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      logger.error(ctx, 'Missing ELEVENLABS_API_KEY');
-      throw new Error('Voice service not configured');
+    // Get account ID from project if provided (for BYOK support)
+    let accountId: string | undefined;
+    if (data.projectId) {
+      const { data: project } = await filmStudioQueries.getProject(
+        client,
+        data.projectId,
+      );
+      accountId = project?.account_id;
     }
+
+    // Get API key with BYOK support
+    const apiKey = await getElevenLabsApiKey(accountId);
 
     // Create provider and fetch voices
     const provider = new ElevenLabsProvider({
@@ -157,54 +347,49 @@ export const getVoiceProfileAction = enhanceAction(
     }
 
     // Get character details to find voice_asset_id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: charDetails, error: charError } = await (client as any)
-      .from('character_details')
-      .select('asset_id, voice_asset_id')
-      .eq('asset_id', data.characterAssetId)
-      .single();
+    const { data: charDetails, error: charError } =
+      await filmStudioQueries.getCharacterDetails(
+        client,
+        data.characterAssetId,
+      );
 
     if (charError || !charDetails) {
       logger.info(ctx, 'No character details found');
       return null;
     }
 
-    const details = charDetails as CharacterDetailsResponse;
-    if (!details.voice_asset_id) {
+    if (!charDetails.voice_asset_id) {
       logger.info(ctx, 'Character has no voice assigned');
       return null;
     }
 
     // Get voice profile
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: voiceProfile, error: profileError } = await (client as any)
-      .from('voice_profiles')
-      .select('asset_id, provider, provider_voice_id, settings')
-      .eq('asset_id', details.voice_asset_id)
-      .single();
+    const { data: voiceProfile, error: profileError } =
+      await filmStudioQueries.getVoiceProfile(
+        client,
+        charDetails.voice_asset_id,
+      );
 
     if (profileError || !voiceProfile) {
       logger.info(ctx, 'No voice profile found for voice asset');
       return null;
     }
 
-    const profile = voiceProfile as VoiceProfileDbResponse;
-
     logger.info(ctx, 'Voice profile fetched successfully');
 
     return {
-      assetId: profile.asset_id,
-      provider: profile.provider,
-      providerVoiceId: profile.provider_voice_id,
-      settings: profile.settings
+      assetId: voiceProfile.asset_id,
+      provider: voiceProfile.provider,
+      providerVoiceId: voiceProfile.provider_voice_id,
+      settings: voiceProfile.settings
         ? {
-            stability: profile.settings.stability as number | undefined,
-            similarityBoost: profile.settings.similarityBoost as
+            stability: voiceProfile.settings.stability as number | undefined,
+            similarityBoost: voiceProfile.settings.similarityBoost as
               | number
               | undefined,
-            style: profile.settings.style as number | undefined,
-            speed: profile.settings.speed as number | undefined,
-            useSpeakerBoost: profile.settings.useSpeakerBoost as
+            style: voiceProfile.settings.style as number | undefined,
+            speed: voiceProfile.settings.speed as number | undefined,
+            useSpeakerBoost: voiceProfile.settings.useSpeakerBoost as
               | boolean
               | undefined,
           }
@@ -241,31 +426,26 @@ export const saveVoiceProfileAction = enhanceAction(
     }
 
     // Get the character asset to verify access and get project_id/account_id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: charAsset, error: assetError } = await (client as any)
-      .from('assets')
-      .select('id, project_id, account_id')
-      .eq('id', data.characterAssetId)
-      .eq('type', 'character')
-      .single();
+    const { data: charAsset, error: assetError } =
+      await filmStudioQueries.getAsset(
+        client,
+        data.characterAssetId,
+        'character',
+      );
 
     if (assetError || !charAsset) {
       logger.error({ ...ctx, error: assetError }, 'Character asset not found');
       throw new Error('Character not found');
     }
 
-    const asset = charAsset as AssetResponse;
-
     // Check if character already has a voice asset
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: existingDetails } = await (client as any)
-      .from('character_details')
-      .select('voice_asset_id')
-      .eq('asset_id', data.characterAssetId)
-      .single();
+    const { data: existingDetails } =
+      await filmStudioQueries.getCharacterDetails(
+        client,
+        data.characterAssetId,
+      );
 
-    const existingVoiceAssetId = (existingDetails as CharacterDetailsResponse)
-      ?.voice_asset_id;
+    const existingVoiceAssetId = existingDetails?.voice_asset_id;
 
     let voiceAssetId: string;
 
@@ -273,16 +453,16 @@ export const saveVoiceProfileAction = enhanceAction(
       // Update existing voice profile
       voiceAssetId = existingVoiceAssetId;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (client as any)
-        .from('voice_profiles')
-        .update({
+      const { error: updateError } = await filmStudioQueries.updateVoiceProfile(
+        client,
+        voiceAssetId,
+        {
           provider: data.provider,
           provider_voice_id: data.providerVoiceId,
           settings: data.settings ?? DEFAULT_VOICE_SETTINGS,
           updated_at: new Date().toISOString(),
-        })
-        .eq('asset_id', voiceAssetId);
+        },
+      );
 
       if (updateError) {
         logger.error(
@@ -293,17 +473,13 @@ export const saveVoiceProfileAction = enhanceAction(
       }
     } else {
       // Create new voice asset
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: newAsset, error: createAssetError } = await (client as any)
-        .from('assets')
-        .insert({
-          project_id: asset.project_id,
-          account_id: asset.account_id,
+      const { data: newAsset, error: createAssetError } =
+        await filmStudioQueries.insertAsset(client, {
+          project_id: charAsset.project_id,
+          account_id: charAsset.account_id,
           type: 'voice',
-          name: `Voice for character`,
-        })
-        .select('id')
-        .single();
+          name: 'Voice for character',
+        });
 
       if (createAssetError || !newAsset) {
         logger.error(
@@ -313,13 +489,11 @@ export const saveVoiceProfileAction = enhanceAction(
         throw new Error('Failed to create voice asset');
       }
 
-      voiceAssetId = (newAsset as { id: string }).id;
+      voiceAssetId = newAsset.id;
 
       // Create voice profile
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: profileError } = await (client as any)
-        .from('voice_profiles')
-        .insert({
+      const { error: profileError } =
+        await filmStudioQueries.insertVoiceProfile(client, {
           asset_id: voiceAssetId,
           provider: data.provider,
           provider_voice_id: data.providerVoiceId,
@@ -335,11 +509,12 @@ export const saveVoiceProfileAction = enhanceAction(
       }
 
       // Update character_details with voice_asset_id
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: linkError } = await (client as any)
-        .from('character_details')
-        .update({ voice_asset_id: voiceAssetId })
-        .eq('asset_id', data.characterAssetId);
+      const { error: linkError } =
+        await filmStudioQueries.updateCharacterDetails(
+          client,
+          data.characterAssetId,
+          { voice_asset_id: voiceAssetId },
+        );
 
       if (linkError) {
         logger.error(
@@ -386,30 +561,29 @@ export const deleteVoiceProfileAction = enhanceAction(
     }
 
     // Get character details to find voice_asset_id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: charDetails, error: charError } = await (client as any)
-      .from('character_details')
-      .select('voice_asset_id')
-      .eq('asset_id', data.characterAssetId)
-      .single();
+    const { data: charDetails, error: charError } =
+      await filmStudioQueries.getCharacterDetails(
+        client,
+        data.characterAssetId,
+      );
 
     if (charError || !charDetails) {
       logger.warn(ctx, 'Character details not found');
       throw new Error('Character not found');
     }
 
-    const details = charDetails as CharacterDetailsResponse;
-    if (!details.voice_asset_id) {
+    if (!charDetails.voice_asset_id) {
       logger.info(ctx, 'Character has no voice to delete');
       return { success: true };
     }
 
     // Clear voice_asset_id from character_details
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: unlinkError } = await (client as any)
-      .from('character_details')
-      .update({ voice_asset_id: null })
-      .eq('asset_id', data.characterAssetId);
+    const { error: unlinkError } =
+      await filmStudioQueries.updateCharacterDetails(
+        client,
+        data.characterAssetId,
+        { voice_asset_id: null },
+      );
 
     if (unlinkError) {
       logger.error(
@@ -530,19 +704,19 @@ export const autoAssignVoicesAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch all available voices
-    const voicesResult = await listVoicesAction({});
+    // Fetch all available voices (with BYOK support via projectId)
+    const voicesResult = await listVoicesAction({ projectId: data.projectId });
 
     if (!voicesResult.voices.length) {
       throw new Error('No voices available for auto-assignment');
     }
 
     // Get character details for all characters
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: charDetailsList, error: charError } = await (client as any)
-      .from('character_details')
-      .select('asset_id, gender, age')
-      .in('asset_id', data.characterAssetIds);
+    const { data: charDetailsList, error: charError } =
+      await filmStudioQueries.getCharacterDetailsList(
+        client,
+        data.characterAssetIds,
+      );
 
     if (charError) {
       logger.error({ ...ctx, error: charError }, 'Failed to fetch characters');
@@ -550,8 +724,7 @@ export const autoAssignVoicesAction = enhanceAction(
     }
 
     const charDetailsMap = new Map<string, CharacterDetailsResponse>();
-    for (const detail of (charDetailsList as CharacterDetailsResponse[]) ||
-      []) {
+    for (const detail of charDetailsList || []) {
       charDetailsMap.set(detail.asset_id, detail);
     }
 
