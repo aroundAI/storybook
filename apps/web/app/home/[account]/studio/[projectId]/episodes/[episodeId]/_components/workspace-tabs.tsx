@@ -16,7 +16,6 @@ type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit';
 
 interface WorkspaceTabsProps {
   episode: EpisodeWithShots;
-  projectId: string;
   defaultTab?: WorkspaceTab;
 }
 
@@ -132,7 +131,6 @@ function LockedTabContent({ tabId }: { tabId: WorkspaceTab }) {
 
 export function WorkspaceTabs({
   episode,
-  projectId,
   defaultTab = 'story',
 }: WorkspaceTabsProps) {
   const router = useRouter();

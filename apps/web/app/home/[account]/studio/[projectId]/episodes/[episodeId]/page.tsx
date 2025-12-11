@@ -188,11 +188,7 @@ async function EpisodeWorkspacePage({
       />
 
       {/* Main Workspace Tabs */}
-      <WorkspaceTabs
-        episode={episode}
-        projectId={projectId}
-        defaultTab={defaultTab}
-      />
+      <WorkspaceTabs episode={episode} defaultTab={defaultTab} />
     </div>
   );
 }
