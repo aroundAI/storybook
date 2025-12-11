@@ -17,3 +17,6 @@ export {
   type VoiceCloningEditorProps,
   type VoiceProfile,
 } from './VoiceCloningEditor';
+
+// Dialogue list component (FILM-506)
+export { DialogueList, type DialogueListProps } from './DialogueList';
