@@ -1238,12 +1238,18 @@ importers:
       '@kit/ui':
         specifier: workspace:*
         version: link:../../ui
+      date-fns:
+        specifier: ^4.1.0
+        version: 4.1.0
       googleapis:
         specifier: ^148.0.0
         version: 148.0.0
       lucide-react:
         specifier: ^0.544.0
         version: 0.544.0(react@19.1.1)
+      recharts:
+        specifier: 2.15.3
+        version: 2.15.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
