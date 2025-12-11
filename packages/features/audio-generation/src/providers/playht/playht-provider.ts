@@ -243,14 +243,16 @@ export class PlayHTProvider extends BaseVoiceGenerationProvider {
         if (file instanceof File) {
           formData.append('sample_file', file);
         } else if (file) {
-          // Buffer
+          // Buffer - convert to Uint8Array for Blob compatibility
           const uint8Array = new Uint8Array(file);
           const blob = new Blob([uint8Array], { type: 'audio/mpeg' });
           formData.append('sample_file', blob, `sample_${i}.mp3`);
         }
       }
 
-      const response = await fetch(
+      // Use makeRequestWithRetry for consistent retry logic and error handling
+      // Note: Don't set Content-Type header - let browser set it with boundary for FormData
+      const data = await this.makeRequestWithRetry<PlayHTCloneResponse>(
         `${this.baseUrl}${PLAYHT_PROVIDER.API.ENDPOINTS.CLONE_INSTANT}`,
         {
           method: 'POST',
@@ -261,13 +263,6 @@ export class PlayHTProvider extends BaseVoiceGenerationProvider {
           body: formData,
         },
       );
-
-      if (!response.ok) {
-        const errorText = await this.parseErrorResponse(response);
-        throw new Error(`Voice cloning failed: ${errorText}`);
-      }
-
-      const data: PlayHTCloneResponse = await response.json();
 
       return {
         voiceId: data.id,
