@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { Copy, Download, Loader2, MoreVertical, Trash2 } from 'lucide-react';
 
-import { deleteEpisodeAction } from '@kit/episodes/server';
+import { deleteEpisodeAction } from '@kit/episodes/server/actions';
 import {
   AlertDialog,
   AlertDialogAction,

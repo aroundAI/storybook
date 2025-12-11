@@ -297,6 +297,6 @@ function interpolateVariables(
  * Clear the prompt directories cache
  * Useful when prompts are added at runtime
  */
-export function clearPromptCache(): void {
+export async function clearPromptCache(): Promise<void> {
   promptDirectoriesCache = null;
 }
