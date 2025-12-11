@@ -587,6 +587,7 @@ SPIKE-01 through SPIKE-05
 | FILM-208 | `apps/web/app/home/[account]/studio/[projectId]/assets/page.tsx` |
 | FILM-312 | `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/page.tsx` |
 | FILM-904 | `apps/web/app/home/[account]/settings/api-keys/page.tsx` |
+| FILM-906 | `apps/web/app/home/[account]/settings/platforms/page.tsx` ✅ |
 
 ---
 
