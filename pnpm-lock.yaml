@@ -1214,9 +1214,27 @@ importers:
 
   packages/features/content-analytics:
     dependencies:
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../next
+      '@kit/publishing':
+        specifier: workspace:*
+        version: link:../publishing
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
       googleapis:
         specifier: ^148.0.0
         version: 148.0.0
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: ^3.25.74
+        version: 3.25.76
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*

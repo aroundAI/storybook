@@ -16,10 +16,18 @@
     "./providers/tiktok": "./src/providers/tiktok/index.ts",
     "./providers/tiktok/types": "./src/providers/tiktok/types.ts",
     "./providers/instagram": "./src/providers/instagram/index.ts",
-    "./providers/instagram/types": "./src/providers/instagram/types.ts"
+    "./providers/instagram/types": "./src/providers/instagram/types.ts",
+    "./server": "./src/server/index.ts",
+    "./server/types": "./src/server/types.ts"
   },
   "dependencies": {
-    "googleapis": "^148.0.0"
+    "@kit/next": "workspace:*",
+    "@kit/publishing": "workspace:*",
+    "@kit/shared": "workspace:*",
+    "@kit/supabase": "workspace:*",
+    "googleapis": "^148.0.0",
+    "server-only": "^0.0.1",
+    "zod": "^3.25.74"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
