@@ -25,9 +25,11 @@ import {
 } from '../lib/schemas/voice-action.schema';
 import { ElevenLabsProvider } from '../providers/elevenlabs';
 import {
+  checkAccountBudget,
   estimateVoiceCost,
   getVoiceIdForCharacter,
   getVoiceSettings,
+  incrementAccountUsage,
 } from './voice-queries';
 
 // Note: These actions use type assertions because the film studio tables
@@ -172,7 +174,20 @@ export const generateDialogueVoiceAction = enhanceAction(
     // 5. Estimate cost
     const estimatedCost = estimateVoiceCost(dialogueData.text.length);
 
-    // 6. Get API key from environment
+    // 6. Check account budget
+    const hasBudget = await checkAccountBudget(
+      client,
+      accountId,
+      estimatedCost,
+    );
+    if (!hasBudget) {
+      logger.warn({ ...ctx, estimatedCost, accountId }, 'Account over budget');
+      throw new Error(
+        'Monthly budget exceeded. Please upgrade your plan or wait until next month.',
+      );
+    }
+
+    // 8. Get API key from environment
     const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
       logger.error(ctx, 'Missing ELEVENLABS_API_KEY');
@@ -181,7 +196,7 @@ export const generateDialogueVoiceAction = enhanceAction(
       );
     }
 
-    // 7. Update status to 'generating'
+    // 9. Update status to 'generating'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: statusError } = await (client as any)
       .from('dialogue_lines')
@@ -241,7 +256,7 @@ export const generateDialogueVoiceAction = enhanceAction(
     const jobData = job as GenerationJobResponse;
 
     try {
-      // 8. Create provider and generate audio
+      // 10. Create provider and generate audio
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 60000,
@@ -255,12 +270,12 @@ export const generateDialogueVoiceAction = enhanceAction(
         outputFormat: 'mp3',
       });
 
-      // 9. Validate audioBuffer exists before upload
+      // 11. Validate audioBuffer exists before upload
       if (!result.audioBuffer) {
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 10. Upload to Supabase Storage
+      // 12. Upload to Supabase Storage
       const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}.mp3`;
 
       const { error: uploadError } = await adminClient.storage
@@ -274,12 +289,12 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw new Error(`Failed to upload audio: ${uploadError.message}`);
       }
 
-      // 11. Get public URL
+      // 13. Get public URL
       const { data: urlData } = adminClient.storage
         .from('audio')
         .getPublicUrl(audioPath);
 
-      // 12. Prepare metadata
+      // 14. Prepare metadata
       const metadata: VoiceGenerationMetadata = {
         provider: 'elevenlabs',
         voiceId,
@@ -295,7 +310,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         characterCount: dialogueData.text.length,
       };
 
-      // 13. Update dialogue line with audio URL and metadata
+      // 15. Update dialogue line with audio URL and metadata
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (client as any)
         .from('dialogue_lines')
@@ -310,13 +325,14 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw updateError;
       }
 
-      // 14. Update generation job as completed
+      // 16. Update generation job as completed
+      const actualCost = result.cost ?? estimatedCost;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (client as any)
         .from('generation_jobs')
         .update({
           status: 'completed',
-          cost_cents: result.cost ?? estimatedCost,
+          cost_cents: actualCost,
           output_data: {
             audioUrl: urlData.publicUrl,
             duration: result.duration,
@@ -324,6 +340,9 @@ export const generateDialogueVoiceAction = enhanceAction(
           completed_at: new Date().toISOString(),
         })
         .eq('id', jobData.id);
+
+      // 17. Increment account usage for cost tracking
+      await incrementAccountUsage(client, accountId, actualCost);
 
       logger.info(
         { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
@@ -336,7 +355,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         dialogueLineId: data.dialogueLineId,
         audioUrl: urlData.publicUrl,
         duration: result.duration,
-        cost: result.cost ?? estimatedCost,
+        cost: actualCost,
         status: 'completed',
       };
     } catch (error) {
@@ -467,7 +486,20 @@ export const generateVoiceFromTextAction = enhanceAction(
     // 3. Estimate cost
     const estimatedCost = estimateVoiceCost(data.text.length);
 
-    // 4. Create generation job record for tracking
+    // 4. Check account budget
+    const hasBudget = await checkAccountBudget(
+      client,
+      accountId,
+      estimatedCost,
+    );
+    if (!hasBudget) {
+      logger.warn({ ...ctx, estimatedCost, accountId }, 'Account over budget');
+      throw new Error(
+        'Monthly budget exceeded. Please upgrade your plan or wait until next month.',
+      );
+    }
+
+    // 5. Create generation job record for tracking
     const idempotencyKey = `voice-text-${user.id}-${Date.now()}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -503,7 +535,7 @@ export const generateVoiceFromTextAction = enhanceAction(
     const jobData = job as GenerationJobResponse;
 
     try {
-      // 5. Create provider and generate audio
+      // 6. Create provider and generate audio
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 60000,
@@ -517,12 +549,12 @@ export const generateVoiceFromTextAction = enhanceAction(
         outputFormat: 'mp3',
       });
 
-      // 6. Validate audioBuffer exists before upload
+      // 7. Validate audioBuffer exists before upload
       if (!result.audioBuffer) {
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 7. Upload to temporary storage location
+      // 8. Upload to temporary storage location
       const tempPath = `temp/${user.id}/${Date.now()}.mp3`;
 
       const { error: uploadError } = await adminClient.storage
@@ -535,18 +567,19 @@ export const generateVoiceFromTextAction = enhanceAction(
         throw new Error(`Failed to upload audio: ${uploadError.message}`);
       }
 
-      // 8. Get public URL
+      // 9. Get public URL
       const { data: urlData } = adminClient.storage
         .from('audio')
         .getPublicUrl(tempPath);
 
-      // 9. Update generation job as completed
+      // 10. Update generation job as completed
+      const actualCost = result.cost ?? estimatedCost;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (client as any)
         .from('generation_jobs')
         .update({
           status: 'completed',
-          cost_cents: result.cost ?? estimatedCost,
+          cost_cents: actualCost,
           output_data: {
             audioUrl: urlData.publicUrl,
             duration: result.duration,
@@ -554,6 +587,9 @@ export const generateVoiceFromTextAction = enhanceAction(
           completed_at: new Date().toISOString(),
         })
         .eq('id', jobData.id);
+
+      // 11. Increment account usage for cost tracking
+      await incrementAccountUsage(client, accountId, actualCost);
 
       logger.info(
         { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
@@ -563,7 +599,7 @@ export const generateVoiceFromTextAction = enhanceAction(
       return {
         audioUrl: urlData.publicUrl,
         duration: result.duration,
-        cost: result.cost ?? estimatedCost,
+        cost: actualCost,
         format: result.format,
       };
     } catch (error) {

@@ -138,3 +138,51 @@ export async function getVoiceSettings(
 export function estimateVoiceCost(textLength: number): number {
   return Math.ceil((textLength / 1000) * ELEVENLABS.COST_PER_1000_CHARS);
 }
+
+/**
+ * Check if account has sufficient budget for generation
+ * @returns true if generation can proceed, false if over budget
+ */
+export async function checkAccountBudget(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  accountId: string,
+  estimatedCostCents: number,
+): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client as any).rpc('check_account_budget', {
+    p_account_id: accountId,
+    p_estimated_cost_cents: estimatedCostCents,
+  });
+
+  if (error) {
+    // If the function doesn't exist or there's an error, allow the generation
+    // This provides graceful degradation for accounts without budget limits
+    console.warn('Budget check failed, allowing generation:', error.message);
+    return true;
+  }
+
+  return data === true;
+}
+
+/**
+ * Increment account usage after successful generation
+ */
+export async function incrementAccountUsage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client: any,
+  accountId: string,
+  amountCents: number,
+): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (client as any).rpc('increment_account_usage', {
+    p_account_id: accountId,
+    p_amount_cents: amountCents,
+  });
+
+  if (error) {
+    // Log the error but don't fail the generation
+    // Cost tracking is important but shouldn't block user operations
+    console.error('Failed to increment account usage:', error.message);
+  }
+}

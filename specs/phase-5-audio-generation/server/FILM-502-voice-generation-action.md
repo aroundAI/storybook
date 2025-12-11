@@ -38,16 +38,18 @@ Generates voice audio for an existing dialogue line with full workflow:
 3. Checks if audio already exists (respects `overwriteExisting` flag)
 4. Gets voice ID from params or character's voice profile via `getVoiceIdForCharacter`
 5. Gets voice settings from profile or defaults via `getVoiceSettings`
-6. Estimates cost via `estimateVoiceCost` (stored in metadata, no budget check in v1)
-7. Updates dialogue status to 'generating'
-8. Creates `generation_jobs` record for tracking
-9. If job creation fails, reverts status to 'pending' and throws
-10. Calls `ElevenLabsProvider.generateVoice()`
-11. Validates `audioBuffer` exists before upload
-12. Uploads to Supabase Storage: `dialogue/{episode_id}/{dialogue_line_id}.mp3`
-13. Updates `dialogue_lines` with `audio_url`, `status`, `generation_metadata`
-14. Updates `generation_jobs` as completed with actual cost
-15. Returns `GenerateDialogueVoiceResult`
+6. Estimates cost via `estimateVoiceCost`
+7. Checks account budget via `checkAccountBudget` RPC, throws if over budget
+8. Updates dialogue status to 'generating'
+9. Creates `generation_jobs` record for tracking
+10. If job creation fails, reverts status to 'pending' and throws
+11. Calls `ElevenLabsProvider.generateVoice()`
+12. Validates `audioBuffer` exists before upload
+13. Uploads to Supabase Storage: `dialogue/{episode_id}/{dialogue_line_id}.mp3`
+14. Updates `dialogue_lines` with `audio_url`, `status`, `generation_metadata`
+15. Updates `generation_jobs` as completed with actual cost
+16. Increments account usage via `incrementAccountUsage` RPC
+17. Returns `GenerateDialogueVoiceResult`
 
 **Error Handling**: On failure, updates both `dialogue_lines.status` to 'failed' with error in metadata, and `generation_jobs.status` to 'failed'. Returns failure result instead of throwing (allows UI to handle gracefully).
 
@@ -57,13 +59,15 @@ Generates voice audio from raw text for previews (not linked to dialogue line):
 
 1. Validates user authentication
 2. Fetches episode to get account context
-3. Estimates cost
-4. Creates `generation_jobs` record for tracking
-5. Calls `ElevenLabsProvider.generateVoice()`
-6. Validates `audioBuffer` exists before upload
-7. Uploads to temp storage: `temp/{user_id}/{timestamp}.mp3`
-8. Updates `generation_jobs` as completed
-9. Returns `GenerateVoiceFromTextResult`
+3. Estimates cost via `estimateVoiceCost`
+4. Checks account budget via `checkAccountBudget` RPC, throws if over budget
+5. Creates `generation_jobs` record for tracking
+6. Calls `ElevenLabsProvider.generateVoice()`
+7. Validates `audioBuffer` exists before upload
+8. Uploads to temp storage: `temp/{user_id}/{timestamp}.mp3`
+9. Updates `generation_jobs` as completed
+10. Increments account usage via `incrementAccountUsage` RPC
+11. Returns `GenerateVoiceFromTextResult`
 
 **Error Handling**: Throws errors (no persistent state to update). Updates job status to 'failed' before throwing.
 
@@ -96,6 +100,8 @@ Generates voice audio from raw text for previews (not linked to dialogue line):
 | `getVoiceIdForCharacter(client, characterAssetId)` | Queries `character_details` → `voice_profiles` to get provider voice ID |
 | `getVoiceSettings(client, characterAssetId)` | Returns voice settings from profile or defaults |
 | `estimateVoiceCost(textLength)` | Returns cost in cents: `Math.ceil((textLength / 1000) * 30)` |
+| `checkAccountBudget(client, accountId, estimatedCostCents)` | Calls `check_account_budget` RPC, returns true if budget available |
+| `incrementAccountUsage(client, accountId, amountCents)` | Calls `increment_account_usage` RPC to track costs |
 
 ### Default Voice Settings
 
@@ -113,16 +119,27 @@ Generates voice audio from raw text for previews (not linked to dialogue line):
 
 | Feature | Reason | Future Ticket |
 |---------|--------|---------------|
-| Budget checking | `accounts` table doesn't have `monthly_budget_cents`, `current_usage_cents` columns | TBD |
 | Provider factory | FILM-502b still in DRAFT status | FILM-502b |
 | BYOK support | Depends on provider factory for key selection | FILM-502b |
-| `increment_account_usage` RPC | RPC function doesn't exist yet | TBD |
+
+### Database Migration Added
+
+Migration `20251211090557_add-account-budget-tracking.sql` adds:
+- `monthly_budget_cents` column to `accounts` (nullable, NULL = unlimited)
+- `current_usage_cents` column to `accounts` (default 0)
+- `check_account_budget(p_account_id, p_estimated_cost_cents)` RPC function
+- `increment_account_usage(p_account_id, p_amount_cents)` RPC function
+- `reset_monthly_usage()` RPC function for cron-based monthly resets
 
 ### Cost Tracking
 
-Cost is tracked via `generation_jobs` table:
-- `estimated_cost_cents`: Set when job created
-- `cost_cents`: Updated when job completed with actual cost from provider
+Cost is tracked via:
+1. **`generation_jobs` table**:
+   - `estimated_cost_cents`: Set when job created
+   - `cost_cents`: Updated when job completed with actual cost from provider
+2. **`accounts` table**:
+   - `current_usage_cents`: Incremented after each successful generation
+   - `monthly_budget_cents`: Optional budget limit (NULL = unlimited)
 
 ---
 
@@ -161,10 +178,10 @@ This action serves as the bridge between the UI components and the voice generat
 
 3. **Cost Tracking**
    - Estimate cost before generation
-   - ~~Check account budget before proceeding~~ (Deferred - no budget columns)
+   - Check account budget before proceeding via `check_account_budget` RPC
    - Record actual cost in generation_metadata
-   - ~~Update account usage statistics~~ (Deferred - no RPC function)
-   - ~~Block if budget exceeded~~ (Deferred)
+   - Update account usage statistics via `increment_account_usage` RPC
+   - Block if budget exceeded (returns error message)
 
 4. **Error Handling**
    - Retry transient failures (max 3 retries)
@@ -781,8 +798,9 @@ pending → generating → completed
 - [x] `generateDialogueVoiceAction` stores generation metadata (cost, duration, settings)
 - [x] `generateDialogueVoiceAction` retrieves voice settings from character's voice profile
 - [x] `generateDialogueVoiceAction` uses default voice settings if no profile exists
-- [ ] ~~`generateDialogueVoiceAction` checks budget before generation~~ (Deferred)
-- [ ] ~~`generateDialogueVoiceAction` throws error if budget exceeded~~ (Deferred)
+- [x] `generateDialogueVoiceAction` checks budget before generation via RPC
+- [x] `generateDialogueVoiceAction` throws error if budget exceeded
+- [x] `generateDialogueVoiceAction` increments account usage after successful generation
 - [x] `generateDialogueVoiceAction` records cost in generation_jobs table
 - [x] `generateDialogueVoiceAction` sets status to 'failed' on error
 - [x] `generateDialogueVoiceAction` stores error message in metadata on failure
@@ -791,6 +809,8 @@ pending → generating → completed
 - [x] `generateVoiceFromTextAction` generates audio for raw text
 - [x] `generateVoiceFromTextAction` uploads to temp storage (`temp/{user_id}/{timestamp}.mp3`)
 - [x] `generateVoiceFromTextAction` records cost in generation_jobs
+- [x] `generateVoiceFromTextAction` checks budget before generation via RPC
+- [x] `generateVoiceFromTextAction` increments account usage after successful generation
 - [x] Both actions enforce authentication via `requireUser`
 - [x] Both actions validate audioBuffer before upload
 - [x] Both actions enforce RLS policies (via Supabase client)
