@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -29,7 +29,7 @@ interface UseShotsRealtimeOptions {
   episodeId: string;
   /** Whether to enable the subscription (default: true) */
   enabled?: boolean;
-  /** Callback when a shot is updated */
+  /** Callback when a shot is updated (should be memoized with useCallback) */
   onShotUpdate?: (shot: ShotRealtimePayload) => void;
   /** Whether to show toast notifications (default: true) */
   showNotifications?: boolean;
@@ -51,6 +51,20 @@ export function useShotsRealtime({
 }: UseShotsRealtimeOptions) {
   const supabase = useSupabase();
   const queryClient = useQueryClient();
+
+  // Use refs to avoid recreating the channel when callbacks change
+  // This prevents memory leaks from multiple subscriptions
+  const onShotUpdateRef = useRef(onShotUpdate);
+  const showNotificationsRef = useRef(showNotifications);
+
+  // Keep refs in sync with latest values
+  useEffect(() => {
+    onShotUpdateRef.current = onShotUpdate;
+  }, [onShotUpdate]);
+
+  useEffect(() => {
+    showNotificationsRef.current = showNotifications;
+  }, [showNotifications]);
 
   useEffect(() => {
     if (!enabled || !episodeId) return;
@@ -75,7 +89,7 @@ export function useShotsRealtime({
           const newData = payload.new as ShotRealtimePayload | undefined;
           const oldData = payload.old as ShotRealtimePayload | undefined;
 
-          if (newData && showNotifications) {
+          if (newData && showNotificationsRef.current) {
             // Only show notification if status changed
             if (oldData?.status !== newData.status) {
               const shotLabel = `Shot ${newData.sequence_number ?? newData.shot_number}`;
@@ -97,9 +111,9 @@ export function useShotsRealtime({
             }
           }
 
-          // Call optional callback
+          // Call optional callback via ref
           if (newData) {
-            onShotUpdate?.(newData);
+            onShotUpdateRef.current?.(newData);
           }
         },
       )
@@ -108,12 +122,5 @@ export function useShotsRealtime({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [
-    episodeId,
-    enabled,
-    supabase,
-    queryClient,
-    onShotUpdate,
-    showNotifications,
-  ]);
+  }, [episodeId, enabled, supabase, queryClient]);
 }

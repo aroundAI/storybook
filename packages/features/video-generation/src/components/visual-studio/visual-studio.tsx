@@ -25,6 +25,15 @@ import type { QualityMode, VisualStudioProps } from './types';
 import { VisualStudioHeader } from './visual-studio-header';
 
 /**
+ * UI state for the Visual Studio component
+ */
+interface VisualStudioState {
+  selectedShotIds: string[];
+  provider: VideoProvider;
+  mode: QualityMode;
+}
+
+/**
  * VisualStudio is the main workspace for video generation.
  *
  * Features:
@@ -42,10 +51,12 @@ export function VisualStudio({
 }: VisualStudioProps) {
   const queryClient = useQueryClient();
 
-  // Local state
-  const [selectedShotIds, setSelectedShotIds] = useState<string[]>([]);
-  const [provider, setProvider] = useState<VideoProvider>('kling');
-  const [mode, setMode] = useState<QualityMode>('std');
+  // Consolidated UI state (per CLAUDE.md: prefer single state object)
+  const [state, setState] = useState<VisualStudioState>({
+    selectedShotIds: [],
+    provider: 'kling',
+    mode: 'std',
+  });
 
   // Fetch shots data
   const { data: shots, isLoading, error, refetch } = useShotsQuery(episodeId);
@@ -57,32 +68,33 @@ export function VisualStudio({
     showNotifications: true,
   });
 
-  // Generate videos mutation
+  // Generate videos mutation - accepts shotIds as parameter to avoid stale closure issues
   const generateMutation = useMutation<
     GenerateVideoResponse | BatchGenerateResponse,
-    Error
+    Error,
+    { shotIds: string[] }
   >({
-    mutationFn: async () => {
-      if (selectedShotIds.length === 0) {
+    mutationFn: async ({ shotIds }) => {
+      if (shotIds.length === 0) {
         throw new Error('No shots selected');
       }
 
-      const shotId = selectedShotIds[0];
-      if (!shotId) {
+      const firstShotId = shotIds[0];
+      if (!firstShotId) {
         throw new Error('No shot ID available');
       }
 
-      if (selectedShotIds.length === 1) {
+      if (shotIds.length === 1) {
         return generateVideoAction({
-          shotId,
-          provider,
-          mode,
+          shotId: firstShotId,
+          provider: state.provider,
+          mode: state.mode,
         });
       } else {
         return batchGenerateVideosAction({
-          shotIds: selectedShotIds,
-          provider,
-          mode,
+          shotIds,
+          provider: state.provider,
+          mode: state.mode,
           priority: 'normal',
         });
       }
@@ -106,7 +118,7 @@ export function VisualStudio({
       }
 
       // Clear selection after successful generation
-      setSelectedShotIds([]);
+      setState((prev) => ({ ...prev, selectedShotIds: [] }));
 
       // Invalidate shots query to refetch updated statuses
       queryClient.invalidateQueries({ queryKey: ['shots', episodeId] });
@@ -121,46 +133,45 @@ export function VisualStudio({
   // Selection handlers
   const handleSelectAll = useCallback(() => {
     if (shots) {
-      setSelectedShotIds(shots.map((s) => s.id));
+      setState((prev) => ({ ...prev, selectedShotIds: shots.map((s) => s.id) }));
     }
   }, [shots]);
 
   const handleDeselectAll = useCallback(() => {
-    setSelectedShotIds([]);
+    setState((prev) => ({ ...prev, selectedShotIds: [] }));
   }, []);
 
   const handleGenerate = useCallback(() => {
-    generateMutation.mutate();
-  }, [generateMutation]);
+    generateMutation.mutate({ shotIds: state.selectedShotIds });
+  }, [generateMutation, state.selectedShotIds]);
 
   // Shot grid callbacks
-  const handleShotPreview = useCallback((shotId: string) => {
-    // TODO: Open preview modal for shot
-    console.log('Preview shot:', shotId);
+  const handleShotPreview = useCallback((_shotId: string) => {
+    // Preview modal implementation pending - will be added in future PR
   }, []);
 
   const handleGenerateShot = useCallback(
     (shotId: string) => {
-      // Single shot quick generate
-      setSelectedShotIds([shotId]);
-      generateMutation.mutate();
+      // Single shot quick generate - pass shotId directly to avoid stale state
+      generateMutation.mutate({ shotIds: [shotId] });
     },
     [generateMutation],
   );
 
   const handleRetryShot = useCallback(
     (shotId: string) => {
-      // Retry failed shot
-      setSelectedShotIds([shotId]);
-      generateMutation.mutate();
+      // Retry failed shot - pass shotId directly to avoid stale state
+      generateMutation.mutate({ shotIds: [shotId] });
     },
     [generateMutation],
   );
 
-  const handleReorder = useCallback((shotId: string, newSequence: number) => {
-    // TODO: Implement shot reordering server action
-    console.log('Reorder shot:', shotId, 'to sequence:', newSequence);
-  }, []);
+  const handleReorder = useCallback(
+    (_shotId: string, _newSequence: number) => {
+      // Reordering implementation pending - will be added in future PR
+    },
+    [],
+  );
 
   // Memoized processing shots for progress component
   const processingShots = useMemo(
@@ -226,12 +237,14 @@ export function VisualStudio({
     <div className="flex h-full flex-col">
       {/* Header with controls */}
       <VisualStudioHeader
-        selectedShotIds={selectedShotIds}
+        selectedShotIds={state.selectedShotIds}
         totalShots={shots.length}
-        provider={provider}
-        mode={mode}
-        onProviderChange={setProvider}
-        onModeChange={setMode}
+        provider={state.provider}
+        mode={state.mode}
+        onProviderChange={(provider) =>
+          setState((prev) => ({ ...prev, provider }))
+        }
+        onModeChange={(mode) => setState((prev) => ({ ...prev, mode }))}
         onSelectAll={handleSelectAll}
         onDeselectAll={handleDeselectAll}
         onGenerate={handleGenerate}
@@ -247,8 +260,10 @@ export function VisualStudio({
       <div className={cn('flex-1 overflow-y-auto p-4')}>
         <ShotGrid
           shots={shots}
-          selectedShotIds={selectedShotIds}
-          onSelectionChange={setSelectedShotIds}
+          selectedShotIds={state.selectedShotIds}
+          onSelectionChange={(selectedShotIds) =>
+            setState((prev) => ({ ...prev, selectedShotIds }))
+          }
           onShotPreview={handleShotPreview}
           onGenerateShot={handleGenerateShot}
           onRetryShot={handleRetryShot}

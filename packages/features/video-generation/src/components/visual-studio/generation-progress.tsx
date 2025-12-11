@@ -21,6 +21,7 @@ import {
 import { Progress } from '@kit/ui/progress';
 import { cn } from '@kit/ui/utils';
 
+import { pollVideoStatusAction } from '../../server/actions';
 import type { ShotGridShot } from '../shot-grid/types';
 import type { GenerationProgressProps } from './types';
 
@@ -145,30 +146,54 @@ export function GenerationProgress({
     [shots],
   );
 
-  // Poll status for each processing shot
+  // Poll status for each processing shot that has a generation job ID
   const statusQueries = useQueries({
     queries: processingShots.map((shot) => ({
       queryKey: ['shot-status', episodeId, shot.id],
       queryFn: async () => {
-        // We need the generation job ID - if not available, return null
-        // The shot should have a generationJobId when status is queued/generating
-        // For now, we'll query the generation_jobs table via the shot
-        // This will be handled by a server action that fetches the job for the shot
-        try {
-          // Note: pollVideoStatusAction expects a generationJobId
-          // For shots without direct job ID access, we'll use a fallback approach
-          // The real-time subscription will provide updates, so this polling
-          // is mainly for progress percentage
+        // If no generation job ID, return current status from shot data
+        if (!shot.generationJobId) {
           return {
             shotId: shot.id,
             status: shot.status === 'generating' ? 'processing' : 'queued',
             progress: shot.progress ?? 0,
+            errorMessage: shot.errorMessage,
+          };
+        }
+
+        try {
+          // Poll actual job status via server action
+          const result = await pollVideoStatusAction({
+            generationJobId: shot.generationJobId,
+          });
+
+          // Map the polling result status to our display status
+          const displayStatus =
+            result.status === 'processing'
+              ? 'processing'
+              : result.status === 'queued'
+                ? 'queued'
+                : result.status === 'completed'
+                  ? 'completed'
+                  : result.status === 'failed'
+                    ? 'failed'
+                    : 'queued';
+
+          return {
+            shotId: shot.id,
+            status: displayStatus,
+            progress: result.progress ?? 0,
+            errorMessage: result.errorMessage,
+            estimatedTimeRemaining: undefined, // Not provided by current API
+            queuePosition: undefined, // Not provided by current API
           };
         } catch {
+          // Fall back to shot data on error
           return {
             shotId: shot.id,
             status: shot.status === 'generating' ? 'processing' : 'queued',
-            progress: 0,
+            progress: shot.progress ?? 0,
+            errorMessage: shot.errorMessage,
           };
         }
       },

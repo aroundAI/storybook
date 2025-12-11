@@ -56,6 +56,7 @@ function transformDatabaseShot(dbShot: DatabaseShot): ShotGridShot {
     status: displayStatus,
     videoUrl: dbShot.video_url,
     thumbnailUrl: dbShot.thumbnail_url,
+    generationJobId: dbShot.generation_job_id,
     progress: undefined,
     errorMessage: undefined,
   };
