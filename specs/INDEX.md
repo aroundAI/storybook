@@ -396,7 +396,7 @@ graph TD
 | FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | DRAFT | M | FILM-108, FILM-502b |
 | FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.md) | ✅ DONE | L | FILM-501 |
-| FILM-511 | [lip-sync](./phase-5-audio-generation/lib/FILM-511-lip-sync.md) | DRAFT | L | FILM-502 |
+| FILM-511 | [lip-sync](./phase-5-audio-generation/providers/FILM-511-lip-sync.md) | ✅ DONE | L | FILM-502 |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/server/FILM-512-multi-language-dubbing.md) | DRAFT | L | FILM-502, FILM-510 |
 
 ### Phase 6: Edit Suite (6 specs)
@@ -521,19 +521,19 @@ SPIKE-01 through SPIKE-05
 | 2. Assets | 9 | 2 | 0 | 0 | 0 | 7 |
 | 3. Episodes | 14 | 4 | 0 | 0 | 0 | 10 |
 | 4. Video Gen | 15 | 2 | 0 | 0 | 0 | 13 |
-| 5. Audio Gen | 16 | 11 | 0 | 0 | 0 | 5 |
+| 5. Audio Gen | 16 | 10 | 0 | 0 | 0 | 6 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 6 | 0 | 0 | 0 | 9 |
 | 8. Analytics | 10 | 7 | 0 | 0 | 0 | 3 |
 | 9. Integration | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **130** | **41** | **0** | **0** | **0** | **89** |
+| **TOTAL** | **130** | **40** | **0** | **0** | **0** | **90** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 73 | 78% |
+| MVP Specs | 93 | 74 | 80% |
 | Post-MVP | 37 | 16 | 43% |
 
 ---
