@@ -6,6 +6,8 @@
 - **Effort:** S (2-4 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard)
 - **Blocks:** None
+- **Status:** ✅ Complete
+- **PR:** https://github.com/aroundAI/storybook/pull/78
 
 ---
 
@@ -33,11 +35,32 @@ Metric Cards display key performance indicators (KPIs) at a glance. They show cu
 
 'use client';
 
+import {
+  Clock,
+  DollarSign,
+  Eye,
+  Heart,
+  Info,
+  MessageCircle,
+  Minus,
+  Share2,
+  TrendingDown,
+  TrendingUp,
+  UserPlus,
+} from 'lucide-react';
+
 import { Card, CardContent } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@kit/ui/tooltip';
-import { TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
-import { formatNumber, formatDuration, formatCurrency, formatPercent } from '../lib/format';
+
+import {
+  calculateChange,
+  formatCurrency,
+  formatDuration,
+  formatNumber,
+  formatPercent,
+} from '../lib/format';
+import type { AnalyticsTotals } from '../types';
 
 interface MetricCardsProps {
   data: AnalyticsTotals | null;
@@ -131,7 +154,7 @@ export function MetricCards({ data, previousData, isLoading }: MetricCardsProps)
   );
 }
 
-interface MetricConfig {
+export interface MetricConfig {
   key: string;
   label: string;
   value: number;
@@ -141,33 +164,47 @@ interface MetricConfig {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-function MetricCard({ metric }: { metric: MetricConfig }) {
-  const { label, value, previousValue, formatter, description, icon: Icon } = metric;
+export function MetricCard({ metric }: { metric: MetricConfig }) {
+  const {
+    label,
+    value,
+    previousValue,
+    formatter,
+    description,
+    icon: Icon,
+  } = metric;
 
   const change = calculateChange(value, previousValue);
-  const TrendIcon = change.direction === 'up' ? TrendingUp
-    : change.direction === 'down' ? TrendingDown
-    : Minus;
+  const TrendIcon =
+    change.direction === 'up'
+      ? TrendingUp
+      : change.direction === 'down'
+        ? TrendingDown
+        : Minus;
 
-  const trendColor = change.direction === 'up'
-    ? 'text-green-600'
-    : change.direction === 'down'
-    ? 'text-red-600'
-    : 'text-muted-foreground';
+  const trendColor =
+    change.direction === 'up'
+      ? 'text-green-600'
+      : change.direction === 'down'
+        ? 'text-red-600'
+        : 'text-muted-foreground';
 
   return (
     <Card>
-      <CardContent className="pt-4 pb-3 px-4">
-        <div className="flex items-start justify-between mb-2">
+      <CardContent className="px-4 pb-3 pt-4">
+        <div className="mb-2 flex items-start justify-between">
           <div className="flex items-center gap-1.5">
-            <Icon className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-medium text-muted-foreground">
+            <Icon className="text-muted-foreground h-4 w-4" />
+            <span className="text-muted-foreground text-sm font-medium">
               {label}
             </span>
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="text-muted-foreground hover:text-foreground">
+              <button
+                className="text-muted-foreground hover:text-foreground"
+                aria-label={`Info about ${label}`}
+              >
                 <Info className="h-3.5 w-3.5" />
               </button>
             </TooltipTrigger>
@@ -181,7 +218,10 @@ function MetricCard({ metric }: { metric: MetricConfig }) {
           <span className="text-2xl font-bold tabular-nums">
             {formatter(value)}
           </span>
-          <div className={`flex items-center gap-0.5 text-sm ${trendColor}`}>
+          <div
+            className={`flex items-center gap-0.5 text-sm ${trendColor}`}
+            aria-label={`${change.direction === 'up' ? 'Increased' : change.direction === 'down' ? 'Decreased' : 'No change'} by ${formatPercent(Math.abs(change.percentage))}`}
+          >
             <TrendIcon className="h-3.5 w-3.5" />
             <span>{formatPercent(Math.abs(change.percentage))}</span>
           </div>
@@ -191,36 +231,15 @@ function MetricCard({ metric }: { metric: MetricConfig }) {
   );
 }
 
-function MetricCardSkeleton() {
+export function MetricCardSkeleton() {
   return (
     <Card>
-      <CardContent className="pt-4 pb-3 px-4 space-y-2">
+      <CardContent className="space-y-2 px-4 pb-3 pt-4">
         <Skeleton className="h-4 w-16" />
         <Skeleton className="h-8 w-24" />
       </CardContent>
     </Card>
   );
-}
-
-interface ChangeResult {
-  percentage: number;
-  direction: 'up' | 'down' | 'neutral';
-}
-
-function calculateChange(current: number, previous: number): ChangeResult {
-  if (previous === 0) {
-    return {
-      percentage: current > 0 ? 100 : 0,
-      direction: current > 0 ? 'up' : 'neutral',
-    };
-  }
-
-  const percentage = ((current - previous) / previous) * 100;
-
-  return {
-    percentage,
-    direction: percentage > 1 ? 'up' : percentage < -1 ? 'down' : 'neutral',
-  };
 }
 ```
 
@@ -231,24 +250,33 @@ function calculateChange(current: number, previous: number): ChangeResult {
 
 /**
  * Formats large numbers with abbreviations (1.2K, 3.4M, etc.)
+ * Handles both positive and negative values.
  */
 export function formatNumber(value: number): string {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1)}B`;
+  const absValue = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+
+  if (absValue >= 1_000_000_000) {
+    return `${sign}${(absValue / 1_000_000_000).toFixed(1)}B`;
   }
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
+  if (absValue >= 1_000_000) {
+    return `${sign}${(absValue / 1_000_000).toFixed(1)}M`;
   }
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`;
+  if (absValue >= 1_000) {
+    return `${sign}${(absValue / 1_000).toFixed(1)}K`;
   }
   return value.toLocaleString();
 }
 
 /**
- * Formats seconds into human-readable duration
+ * Formats seconds into human-readable duration.
+ * Returns "0m" for zero or negative values.
  */
 export function formatDuration(seconds: number): string {
+  if (seconds <= 0) {
+    return '0m';
+  }
+
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
@@ -262,7 +290,7 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
- * Formats cents to currency string
+ * Formats dollars to currency string
  */
 export function formatCurrency(dollars: number): string {
   return new Intl.NumberFormat('en-US', {
@@ -279,6 +307,33 @@ export function formatCurrency(dollars: number): string {
 export function formatPercent(value: number): string {
   const formatted = Math.abs(value).toFixed(1);
   return `${formatted}%`;
+}
+
+export interface ChangeResult {
+  percentage: number;
+  direction: 'up' | 'down' | 'neutral';
+}
+
+/**
+ * Calculates percentage change between current and previous values
+ */
+export function calculateChange(
+  current: number,
+  previous: number,
+): ChangeResult {
+  if (previous === 0) {
+    return {
+      percentage: current > 0 ? 100 : 0,
+      direction: current > 0 ? 'up' : 'neutral',
+    };
+  }
+
+  const percentage = ((current - previous) / previous) * 100;
+
+  return {
+    percentage,
+    direction: percentage > 1 ? 'up' : percentage < -1 ? 'down' : 'neutral',
+  };
 }
 ```
 
@@ -329,37 +384,96 @@ export interface AnalyticsTotals {
 }
 ```
 
+### Barrel Export
+
+```typescript
+// packages/features/content-analytics/src/components/index.ts
+
+export {
+  CompactMetric,
+  MetricCard,
+  MetricCards,
+  MetricCardSkeleton,
+} from './metric-cards';
+
+export type { MetricConfig } from './metric-cards';
+```
+
+### Package Exports
+
+```json
+// packages/features/content-analytics/package.json (exports section)
+{
+  "exports": {
+    "./providers/youtube": "./src/providers/youtube/index.ts",
+    "./providers/youtube/types": "./src/providers/youtube/types.ts",
+    "./providers/tiktok": "./src/providers/tiktok/index.ts",
+    "./providers/tiktok/types": "./src/providers/tiktok/types.ts",
+    "./providers/instagram": "./src/providers/instagram/index.ts",
+    "./providers/instagram/types": "./src/providers/instagram/types.ts",
+    "./components": "./src/components/index.ts",
+    "./types": "./src/types.ts",
+    "./lib/format": "./src/lib/format.ts"
+  }
+}
+```
+
 ### File Changes
 
 | Action | Path |
 |--------|------|
 | CREATE | `packages/features/content-analytics/src/components/metric-cards.tsx` |
+| CREATE | `packages/features/content-analytics/src/components/index.ts` |
 | CREATE | `packages/features/content-analytics/src/lib/format.ts` |
+| CREATE | `packages/features/content-analytics/src/lib/__tests__/format.test.ts` |
+| CREATE | `packages/features/content-analytics/src/components/__tests__/metric-cards.test.tsx` |
 | CREATE | `packages/features/content-analytics/src/types.ts` |
+| UPDATE | `packages/features/content-analytics/package.json` |
+| UPDATE | `packages/features/content-analytics/vitest.config.ts` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Displays 7 key metrics in responsive grid
-- [ ] Shows formatted values (K, M, B abbreviations)
-- [ ] Shows percentage change from previous period
-- [ ] Shows trend indicator (up/down/neutral)
-- [ ] Correct color coding (green up, red down)
-- [ ] Tooltip explains each metric
-- [ ] Loading skeleton during data fetch
-- [ ] Watch time formatted as duration
-- [ ] Revenue formatted as currency
-- [ ] Tabular numbers for alignment
+- [x] Displays 7 key metrics in responsive grid
+- [x] Shows formatted values (K, M, B abbreviations)
+- [x] Shows percentage change from previous period
+- [x] Shows trend indicator (up/down/neutral)
+- [x] Correct color coding (green up, red down)
+- [x] Tooltip explains each metric
+- [x] Loading skeleton during data fetch
+- [x] Watch time formatted as duration
+- [x] Revenue formatted as currency
+- [x] Tabular numbers for alignment
 
 ---
 
 ## Test Plan
 
-### Unit Tests
-- [ ] Test `formatNumber` with various magnitudes
-- [ ] Test `formatDuration` edge cases
-- [ ] Test `calculateChange` with zero, positive, negative
+### Unit Tests (21 tests in `lib/__tests__/format.test.ts`)
+- [x] Test `formatNumber` with various magnitudes (billions, millions, thousands, small)
+- [x] Test `formatNumber` with negative values
+- [x] Test `formatDuration` edge cases (hours+minutes, minutes only, very large)
+- [x] Test `formatDuration` with zero and negative values
+- [x] Test `formatCurrency` formatting
+- [x] Test `formatPercent` with positive/negative values
+- [x] Test `calculateChange` with zero, positive, negative
+- [x] Test `calculateChange` edge case (0 to 100 = -100% decrease)
+
+### Component Tests (13 tests in `components/__tests__/metric-cards.test.tsx`)
+- [x] MetricCards renders 7 skeleton cards when loading
+- [x] MetricCards renders 7 metric cards when not loading
+- [x] MetricCards displays formatted values
+- [x] MetricCards displays metric labels
+- [x] MetricCards handles null data gracefully
+- [x] MetricCardSkeleton renders skeleton elements
+- [x] MetricCardSkeleton is wrapped in a card
+- [x] CompactMetric displays label and value
+- [x] CompactMetric displays positive change with + prefix
+- [x] CompactMetric displays negative change without + prefix
+- [x] CompactMetric hides change when undefined
+- [x] CompactMetric applies green color for positive change
+- [x] CompactMetric applies red color for negative change
 
 ### Visual Tests
 - [ ] Responsive layout at all breakpoints
