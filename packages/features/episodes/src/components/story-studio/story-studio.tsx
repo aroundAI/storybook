@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useTransition } from 'react';
 
 import {
   BookOpen,
@@ -11,6 +11,8 @@ import {
   Lock,
 } from 'lucide-react';
 
+import type { StoryIdea } from '@kit/prompt-engine/schemas';
+import { Button } from '@kit/ui/button';
 import {
   Card,
   CardContent,
@@ -18,12 +20,20 @@ import {
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
+import { toast } from '@kit/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
 import { useUrlTabState } from '../../hooks/use-url-tab-state';
 import type { Episode, EpisodeWithShots, StudioTab } from '../../lib/types';
+import {
+  convertToScreenplayAction,
+  generateFullStoryAction,
+} from '../../server';
+import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
+import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
+import { StoryIdeation } from '../story-ideation/story-ideation';
 import { PipelineProgress } from './pipeline-progress';
 import { StoryStudioContext } from './story-studio-context';
 
@@ -121,8 +131,16 @@ function LockedTabContent({ tabId }: { tabId: StudioTab }) {
   );
 }
 
-function StoryTabPlaceholder({ episode }: { episode: EpisodeWithShots }) {
+/**
+ * Story tab content - displays the generated story and provides
+ * a button to convert it to screenplay
+ */
+function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
+  const [isPending, startTransition] = useTransition();
   const storyData = episode.storyData;
+
+  // Get refetch from context
+  const { refetchEpisode } = useStoryStudioContext();
 
   if (!storyData?.fullStory) {
     return (
@@ -137,11 +155,46 @@ function StoryTabPlaceholder({ episode }: { episode: EpisodeWithShots }) {
     );
   }
 
+  const handleConvertToScreenplay = () => {
+    startTransition(async () => {
+      try {
+        const result = await convertToScreenplayAction({
+          episodeId: episode.id,
+        });
+
+        if (result.success) {
+          toast.success(
+            `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
+          );
+          refetchEpisode();
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to convert to screenplay',
+        );
+      }
+    });
+  };
+
   return (
     <Card className="mt-4">
       <CardHeader>
-        <CardTitle>{storyData.title ?? 'Story'}</CardTitle>
-        <CardDescription>Generated story for this episode</CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{storyData.title ?? 'Story'}</CardTitle>
+            <CardDescription>Generated story for this episode</CardDescription>
+          </div>
+          {!episode.screenplayData?.scenes?.length && (
+            <Button onClick={handleConvertToScreenplay} disabled={isPending}>
+              {isPending ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : null}
+              Convert to Screenplay
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -152,91 +205,12 @@ function StoryTabPlaceholder({ episode }: { episode: EpisodeWithShots }) {
   );
 }
 
-function ScreenplayPlaceholder({ episode }: { episode: EpisodeWithShots }) {
-  const screenplayData = episode.screenplayData;
+// Re-export context hook for use in child components
+import { useStoryStudioContext } from './story-studio-context';
 
-  if (!screenplayData?.scenes?.length) {
-    return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Screenplay</CardTitle>
-          <CardDescription>
-            Approve the story to generate a screenplay
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Screenplay</CardTitle>
-        <CardDescription>{screenplayData.scenes.length} scenes</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          Screenplay viewer coming soon (FILM-310)
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ShotListPlaceholder({ episode }: { episode: EpisodeWithShots }) {
-  const shotList = episode.shotList;
-
-  if (!shotList?.shots?.length) {
-    return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Shot List</CardTitle>
-          <CardDescription>
-            Approve the screenplay to generate a shot list
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Shot List</CardTitle>
-        <CardDescription>{shotList.shots.length} shots</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          Shot list editor coming soon (FILM-311)
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function IdeationPlaceholder({ episodeId }: { episodeId: string }) {
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Story Ideation</CardTitle>
-        <CardDescription>
-          Enter your premise and generate story ideas
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          Story ideation form coming soon (FILM-309)
-        </p>
-        <p className="text-muted-foreground mt-2 text-xs">
-          Episode ID: {episodeId}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function StoryStudio({ episodeId }: StoryStudioProps) {
+export function StoryStudio({ episodeId, projectId: _projectId }: StoryStudioProps) {
   const [activeTab, setActiveTab] = useUrlTabState('ideation');
+  const [isGeneratingStory, startStoryTransition] = useTransition();
   const {
     data: episode,
     isLoading,
@@ -246,7 +220,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
   const tabUnlockState = useMemo(() => getTabUnlockState(episode), [episode]);
   const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
-  const isGenerating = episode?.status === 'generating';
+  const isGenerating = episode?.status === 'generating' || isGeneratingStory;
 
   const handleTabChange = (tab: string) => {
     const studioTab = tab as StudioTab;
@@ -254,6 +228,44 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
     if (tabUnlockState[studioTab]) {
       setActiveTab(studioTab);
     }
+  };
+
+  /**
+   * Handle when user selects a story idea from StoryIdeation
+   * This triggers full story generation and advances to story tab
+   */
+  const handleIdeaSelected = (idea: StoryIdea) => {
+    if (!episode) return;
+
+    startStoryTransition(async () => {
+      try {
+        const result = await generateFullStoryAction({
+          episodeId: episode.id,
+          version: episode.version,
+          title: idea.title,
+          logline: idea.logline,
+          targetDuration: 300, // 5 minutes default
+          style: idea.visualPotential,
+        });
+
+        if (result.success) {
+          toast.success('Story generated successfully!');
+          await refetch();
+          setActiveTab('story');
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Failed to generate story',
+        );
+      }
+    });
+  };
+
+  /**
+   * Handle screenplay approval - advance to shot-list tab
+   */
+  const handleScreenplayApproved = () => {
+    setActiveTab('shot-list');
   };
 
   if (isLoading) {
@@ -317,7 +329,13 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="ideation">
             {tabUnlockState.ideation ? (
-              <IdeationPlaceholder episodeId={episodeId} />
+              <div className="mt-4">
+                <StoryIdeation
+                  episodeId={episodeId}
+                  onComplete={handleIdeaSelected}
+                  isGenerating={isGeneratingStory}
+                />
+              </div>
             ) : (
               <LockedTabContent tabId="ideation" />
             )}
@@ -325,7 +343,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="story">
             {tabUnlockState.story ? (
-              <StoryTabPlaceholder episode={episode} />
+              <StoryTabContent episode={episode} />
             ) : (
               <LockedTabContent tabId="story" />
             )}
@@ -333,7 +351,12 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="screenplay">
             {tabUnlockState.screenplay ? (
-              <ScreenplayPlaceholder episode={episode} />
+              <div className="mt-4">
+                <ScreenplayViewer
+                  episode={episode}
+                  onApprove={handleScreenplayApproved}
+                />
+              </div>
             ) : (
               <LockedTabContent tabId="screenplay" />
             )}
@@ -341,7 +364,9 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="shot-list">
             {tabUnlockState['shot-list'] ? (
-              <ShotListPlaceholder episode={episode} />
+              <div className="mt-4">
+                <ShotListEditor episode={episode} />
+              </div>
             ) : (
               <LockedTabContent tabId="shot-list" />
             )}
