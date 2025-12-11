@@ -21,53 +21,11 @@ import type {
   ShotListData,
   StoryData,
 } from '../../types';
+import {
+  formatScreenplayForPrompt,
+  formatStoryForPrompt,
+} from '../../utils/format-for-prompt';
 import { batchCreateShotsAction } from './shot-actions';
-
-/**
- * Formats screenplay data for the LLM prompt
- */
-function formatScreenplayForPrompt(screenplayData: ScreenplayData): string {
-  let text = '';
-
-  if (screenplayData.scenes) {
-    for (const scene of screenplayData.scenes) {
-      // Scene heading
-      const timeOfDay = scene.timeOfDay?.toUpperCase() ?? 'DAY';
-      text += `INT./EXT. ${scene.location.toUpperCase()} - ${timeOfDay}\n\n`;
-      text += `${scene.description}\n\n`;
-
-      // Include dialogue from this scene
-      if (scene.dialogue && scene.dialogue.length > 0) {
-        for (const d of scene.dialogue) {
-          text += `${d.character.toUpperCase()}\n`;
-          if (d.parenthetical) {
-            text += `(${d.parenthetical})\n`;
-          }
-          text += `${d.text}\n\n`;
-        }
-      }
-    }
-  }
-
-  return text.trim();
-}
-
-/**
- * Formats story data for the LLM prompt (fallback when no screenplay)
- */
-function formatStoryForPrompt(storyData: StoryData): string {
-  let text = '';
-
-  if (storyData.premise) {
-    text += `PREMISE:\n${storyData.premise}\n\n`;
-  }
-
-  if (storyData.fullStory) {
-    text += `STORY:\n${storyData.fullStory}\n`;
-  }
-
-  return text.trim();
-}
 
 /**
  * Generates a shot list from an episode's screenplay or story using LLM

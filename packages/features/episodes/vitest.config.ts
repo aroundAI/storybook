@@ -20,7 +20,6 @@ export default defineConfig({
         '**/*.test.ts',
         '**/*.test.tsx',
         '**/*.config.ts',
-        'src/components/**',
       ],
     },
   },
