@@ -4,19 +4,21 @@ import { useCallback, useMemo } from 'react';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
-import { BookOpen, Film, Lock, Music, Scissors } from 'lucide-react';
+import { BookOpen, Film, Lock, Music, Scissors, Share2 } from 'lucide-react';
 
 import { StoryStudio } from '@kit/episodes/components';
 import type { EpisodeWithShots } from '@kit/episodes/types';
+import { PublishHub } from '@kit/publishing/components';
 import { Card, CardContent } from '@kit/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 
-type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit';
+type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit' | 'publish';
 
 interface WorkspaceTabsProps {
   episode: EpisodeWithShots;
   projectId: string;
+  accountSlug: string;
   defaultTab?: WorkspaceTab;
 }
 
@@ -50,6 +52,12 @@ const WORKSPACE_TABS: Array<{
     icon: Scissors,
     description: 'Timeline editing',
   },
+  {
+    id: 'publish',
+    label: 'Publish Hub',
+    icon: Share2,
+    description: 'Multi-platform publishing',
+  },
 ];
 
 function getTabUnlockState(
@@ -60,11 +68,15 @@ function getTabUnlockState(
     visuals: episode.status !== 'draft', // Unlocked when status !== 'draft'
     audio: episode.shotList !== null, // Unlocked when shotList exists
     edit: ['editing', 'ready', 'published'].includes(episode.status), // Unlocked for editing/ready/published
+    publish: ['ready', 'published'].includes(episode.status), // Unlocked when ready or published
   };
 }
 
 function isValidWorkspaceTab(tab: string | null): tab is WorkspaceTab {
-  return tab !== null && ['story', 'visuals', 'audio', 'edit'].includes(tab);
+  return (
+    tab !== null &&
+    ['story', 'visuals', 'audio', 'edit', 'publish'].includes(tab)
+  );
 }
 
 function ComingSoonPlaceholder({
@@ -113,6 +125,11 @@ function LockedTabContent({ tabId }: { tabId: WorkspaceTab }) {
         title: 'Edit Suite Locked',
         description: 'Generate visuals and audio to unlock the timeline editor',
       },
+      publish: {
+        title: 'Publish Hub Locked',
+        description:
+          'Complete video editing to unlock multi-platform publishing',
+      },
     };
 
   const { title, description } = tabInfo[tabId];
@@ -133,6 +150,7 @@ function LockedTabContent({ tabId }: { tabId: WorkspaceTab }) {
 export function WorkspaceTabs({
   episode,
   projectId,
+  accountSlug,
   defaultTab = 'story',
 }: WorkspaceTabsProps) {
   const router = useRouter();
@@ -160,7 +178,7 @@ export function WorkspaceTabs({
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-4">
+      <TabsList className="grid w-full grid-cols-5">
         {WORKSPACE_TABS.map((tab) => {
           const isUnlocked = tabUnlockState[tab.id];
           const TabIcon = tab.icon;
@@ -220,6 +238,23 @@ export function WorkspaceTabs({
           />
         ) : (
           <LockedTabContent tabId="edit" />
+        )}
+      </TabsContent>
+
+      <TabsContent value="publish">
+        {tabUnlockState.publish ? (
+          <PublishHub
+            episodeId={episode.id}
+            projectId={projectId}
+            accountSlug={accountSlug}
+            videoUrl={episode.finalVideoUrl ?? ''}
+            thumbnailUrl={episode.thumbnailUrl ?? undefined}
+            defaultTitle={episode.title}
+            defaultDescription={episode.description ?? ''}
+            duration={episode.durationSeconds ?? 0}
+          />
+        ) : (
+          <LockedTabContent tabId="publish" />
         )}
       </TabsContent>
     </Tabs>
