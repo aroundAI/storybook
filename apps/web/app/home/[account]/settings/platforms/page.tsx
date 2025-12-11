@@ -4,6 +4,7 @@ import { PageBody } from '@kit/ui/page';
 import { Trans } from '@kit/ui/trans';
 
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
+import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { TeamAccountLayoutPageHeader } from '../../_components/team-account-layout-page-header';
 import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.loader';
@@ -35,16 +36,7 @@ async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
       />
 
       <PageBody>
-        <div className="flex max-w-2xl flex-1 flex-col space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold">
-              <Trans i18nKey="platforms:pageTitle" />
-            </h1>
-            <p className="text-muted-foreground">
-              <Trans i18nKey="platforms:pageDescription" />
-            </p>
-          </div>
-
+        <div className="flex max-w-2xl flex-1 flex-col">
           <PlatformConnections accountSlug={slug} accountId={accountId} />
         </div>
       </PageBody>
@@ -52,4 +44,4 @@ async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
   );
 }
 
-export default PlatformConnectionsPage;
+export default withI18n(PlatformConnectionsPage);

@@ -40,9 +40,9 @@ export const getConnectionsAction = enhanceAction(
         accountName: conn.platform_account_name ?? 'Unknown Account',
         profileImageUrl:
           conn.metadata && typeof conn.metadata === 'object'
-            ? (conn.metadata as Record<string, unknown>).profile_image_url as
+            ? ((conn.metadata as Record<string, unknown>).profile_image_url as
                 | string
-                | undefined
+                | undefined)
             : undefined,
         status: determineStatus(conn),
         errorMessage:

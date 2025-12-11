@@ -38,6 +38,7 @@ import {
   CardTitle,
 } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
+import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
 import {
@@ -230,7 +231,7 @@ function PlatformCard({
           </div>
         )}
 
-        <div className="border-t mt-4 pt-4">
+        <div className="mt-4 border-t pt-4">
           <p className="text-muted-foreground text-xs">
             <strong>
               <Trans
@@ -266,6 +267,10 @@ function ConnectionRow({
       queryClient.invalidateQueries({
         queryKey: ['platform-connections', accountId],
       });
+      toast.success('Token refreshed successfully');
+    },
+    onError: () => {
+      toast.error('Failed to refresh token. Please try reconnecting.');
     },
   });
 
@@ -280,6 +285,10 @@ function ConnectionRow({
         queryKey: ['platform-connections', accountId],
       });
       setShowDisconnect(false);
+      toast.success('Account disconnected');
+    },
+    onError: () => {
+      toast.error('Failed to disconnect account. Please try again.');
     },
   });
 
@@ -317,9 +326,7 @@ function ConnectionRow({
             <Button
               variant="outline"
               size="sm"
-              onClick={() =>
-                initiateOAuth(platform.id, connection.accountSlug)
-              }
+              onClick={() => initiateOAuth(platform.id, connection.accountSlug)}
             >
               <RefreshCw className="mr-1 h-4 w-4" />
               <Trans i18nKey="platforms:reconnect" defaults="Reconnect" />
@@ -399,13 +406,15 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
       icon: CheckCircle,
       label: 'Connected',
       i18nKey: 'platforms:status.connected',
-      className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+      className:
+        'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
     },
     expired: {
       icon: Clock,
       label: 'Expired',
       i18nKey: 'platforms:status.expired',
-      className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+      className:
+        'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
     },
     error: {
       icon: AlertCircle,
@@ -444,5 +453,5 @@ function initiateOAuth(platform: PlatformType, accountSlug: string) {
   // Map platform to API route
   const routePlatform =
     platform === 'instagram' || platform === 'facebook' ? 'meta' : platform;
-  window.location.href = `/api/platforms/connect/${routePlatform}?account=${accountSlug}`;
+  window.location.href = `/api/platforms/connect/${routePlatform}?account=${encodeURIComponent(accountSlug)}`;
 }
