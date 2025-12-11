@@ -81,8 +81,8 @@ export interface NormalizedAnalytics {
   watch_time_seconds: number;
   subscribers_gained: number;
   revenue_cents: number;
-  retention_data: object | null;
-  raw_data: object;
+  retention_data: Record<string, unknown> | null;
+  raw_data: Record<string, unknown>;
 }
 
 /**

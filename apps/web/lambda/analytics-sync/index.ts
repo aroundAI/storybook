@@ -5,7 +5,12 @@
  * Triggered by AWS EventBridge on an hourly schedule.
  */
 
-interface SyncResult {
+/**
+ * Sync job result from the API endpoint.
+ * This interface mirrors SyncJobResult from @kit/content-analytics/server/types
+ * but is defined locally since Lambda handlers cannot import from workspace packages.
+ */
+interface SyncJobResult {
   success: boolean;
   totalProcessed?: number;
   successful?: number;
@@ -22,7 +27,7 @@ interface SyncResult {
 /**
  * Lambda handler for analytics sync cron job
  */
-export async function handler(): Promise<SyncResult> {
+export async function handler(): Promise<SyncJobResult> {
   const apiUrl = process.env.API_URL;
   const cronSecret = process.env.CRON_SECRET;
 
@@ -65,7 +70,7 @@ export async function handler(): Promise<SyncResult> {
       };
     }
 
-    const result = (await response.json()) as SyncResult;
+    const result = (await response.json()) as SyncJobResult;
 
     console.log('Analytics sync completed:', JSON.stringify(result));
 

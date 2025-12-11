@@ -483,8 +483,9 @@ function normalizeAnalytics(
         watch_time_seconds: (data.totals.estimatedMinutesWatched ?? 0) * 60,
         subscribers_gained: data.totals.subscribersGained ?? 0,
         revenue_cents: Math.round((data.totals.estimatedRevenue ?? 0) * 100),
-        retention_data: data.retention ?? null,
-        raw_data: data as unknown as object,
+        retention_data:
+          (data.retention as unknown as Record<string, unknown>) ?? null,
+        raw_data: data as unknown as Record<string, unknown>,
       };
     }
     case 'tiktok': {
@@ -500,7 +501,7 @@ function normalizeAnalytics(
         subscribers_gained: 0, // TikTok doesn't provide per-video follower gains
         revenue_cents: 0, // TikTok doesn't expose revenue
         retention_data: null,
-        raw_data: data as unknown as object,
+        raw_data: data as unknown as Record<string, unknown>,
       };
     }
     case 'instagram': {
@@ -516,7 +517,7 @@ function normalizeAnalytics(
         subscribers_gained: data.totals.follows ?? 0,
         revenue_cents: 0,
         retention_data: null,
-        raw_data: data as unknown as object,
+        raw_data: data as unknown as Record<string, unknown>,
       };
     }
     default:
@@ -531,10 +532,14 @@ async function upsertContentAnalytics(
   client: Client,
   data: NormalizedAnalytics,
 ): Promise<void> {
-  await client.from('content_analytics').upsert(data, {
+  const { error } = await client.from('content_analytics').upsert(data, {
     onConflict: 'publish_id,snapshot_date',
     ignoreDuplicates: false,
   });
+
+  if (error) {
+    throw new Error(`Failed to upsert analytics: ${error.message}`);
+  }
 }
 
 /**
@@ -546,11 +551,15 @@ async function updatePublishSyncMetadata(
   syncData: Partial<NonNullable<PublishMetadata['sync']>>,
 ): Promise<void> {
   // First get existing metadata
-  const { data: existing } = await client
+  const { data: existing, error: selectError } = await client
     .from('publishes')
     .select('metadata')
     .eq('id', publishId)
     .single();
+
+  if (selectError) {
+    throw new Error(`Failed to fetch publish metadata: ${selectError.message}`);
+  }
 
   const currentMetadata = (existing?.metadata ?? {}) as PublishMetadata;
 
@@ -563,10 +572,16 @@ async function updatePublishSyncMetadata(
     },
   };
 
-  await client
+  const { error: updateError } = await client
     .from('publishes')
     .update({ metadata: updatedMetadata })
     .eq('id', publishId);
+
+  if (updateError) {
+    throw new Error(
+      `Failed to update publish metadata: ${updateError.message}`,
+    );
+  }
 }
 
 /**
