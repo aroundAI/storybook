@@ -30,6 +30,47 @@ import {
   getVoiceSettings,
 } from './voice-queries';
 
+// Note: These actions use type assertions because the film studio tables
+// (dialogue_lines, episodes, generation_jobs) are not yet in the generated
+// database types. The database schema will be aligned in a future update.
+// RLS policies enforce project-level authorization.
+// See: packages/features/audio-generation/src/server/actions.ts for similar pattern.
+
+/**
+ * Film studio database response types for type-safe access to nested data
+ */
+interface DialogueLineResponse {
+  id: string;
+  episode_id: string;
+  text: string;
+  character_asset_id: string | null;
+  audio_url: string | null;
+  status: string;
+  episodes: {
+    id: string;
+    project_id: string;
+    projects: {
+      id: string;
+      account_id: string;
+    };
+  };
+}
+
+interface EpisodeResponse {
+  id: string;
+  project_id: string;
+  projects: {
+    account_id: string;
+  };
+}
+
+interface GenerationJobResponse {
+  id: string;
+  account_id: string;
+  project_id: string;
+  status: string;
+}
+
 /**
  * Generate voice audio for a dialogue line
  *
@@ -93,9 +134,11 @@ export const generateDialogueVoiceAction = enhanceAction(
       throw new Error('Dialogue line not found');
     }
 
-    const accountId = dialogueLine.episodes?.projects?.account_id;
-    const projectId = dialogueLine.episodes?.project_id;
-    const episodeId = dialogueLine.episode_id;
+    // Type-safe access to nested response data
+    const dialogueData = dialogueLine as DialogueLineResponse;
+    const accountId = dialogueData.episodes?.projects?.account_id;
+    const projectId = dialogueData.episodes?.project_id;
+    const episodeId = dialogueData.episode_id;
 
     if (!accountId || !projectId) {
       logger.error(ctx, 'Could not determine account for dialogue line');
@@ -104,7 +147,7 @@ export const generateDialogueVoiceAction = enhanceAction(
 
     // 2. Check if already generated (unless overwrite requested)
     const overwriteExisting = data.overwriteExisting ?? false;
-    if (dialogueLine.audio_url && !overwriteExisting) {
+    if (dialogueData.audio_url && !overwriteExisting) {
       throw new Error(
         'Audio already generated. Set overwriteExisting=true to regenerate.',
       );
@@ -113,7 +156,7 @@ export const generateDialogueVoiceAction = enhanceAction(
     // 3. Get voice ID from params or character's voice profile
     const voiceId =
       data.voiceId ??
-      (await getVoiceIdForCharacter(client, dialogueLine.character_asset_id));
+      (await getVoiceIdForCharacter(client, dialogueData.character_asset_id));
 
     if (!voiceId) {
       throw new Error(
@@ -124,10 +167,10 @@ export const generateDialogueVoiceAction = enhanceAction(
     // 4. Get voice settings from profile or use defaults
     const voiceSettings =
       data.settings ??
-      (await getVoiceSettings(client, dialogueLine.character_asset_id));
+      (await getVoiceSettings(client, dialogueData.character_asset_id));
 
     // 5. Estimate cost
-    const estimatedCost = estimateVoiceCost(dialogueLine.text.length);
+    const estimatedCost = estimateVoiceCost(dialogueData.text.length);
 
     // 6. Get API key from environment
     const apiKey = process.env.ELEVENLABS_API_KEY;
@@ -140,10 +183,18 @@ export const generateDialogueVoiceAction = enhanceAction(
 
     // 7. Update status to 'generating'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
+    const { error: statusError } = await (client as any)
       .from('dialogue_lines')
       .update({ status: 'generating' })
       .eq('id', data.dialogueLineId);
+
+    if (statusError) {
+      logger.error(
+        { ...ctx, error: statusError },
+        'Failed to update dialogue status',
+      );
+      throw new Error('Failed to update dialogue status');
+    }
 
     // Create generation job record
     const idempotencyKey = `voice-${data.dialogueLineId}-${uuidv4()}`;
@@ -160,7 +211,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         provider: 'elevenlabs',
         status: 'processing',
         input_data: {
-          text: dialogueLine.text,
+          text: dialogueData.text,
           voiceId,
           settings: voiceSettings,
         },
@@ -173,9 +224,21 @@ export const generateDialogueVoiceAction = enhanceAction(
       .select()
       .single();
 
+    // If job creation fails, revert status and throw
     if (jobError) {
       logger.error({ ...ctx, error: jobError }, 'Failed to create job record');
+
+      // Revert status to pending since job creation failed
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('dialogue_lines')
+        .update({ status: 'pending' })
+        .eq('id', data.dialogueLineId);
+
+      throw new Error('Failed to create generation job record');
     }
+
+    const jobData = job as GenerationJobResponse;
 
     try {
       // 8. Create provider and generate audio
@@ -186,18 +249,23 @@ export const generateDialogueVoiceAction = enhanceAction(
       });
 
       const result = await provider.generateVoice({
-        text: dialogueLine.text,
+        text: dialogueData.text,
         voiceId,
         settings: voiceSettings,
         outputFormat: 'mp3',
       });
 
-      // 9. Upload to Supabase Storage
+      // 9. Validate audioBuffer exists before upload
+      if (!result.audioBuffer) {
+        throw new Error('Voice generation did not return audio data');
+      }
+
+      // 10. Upload to Supabase Storage
       const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}.mp3`;
 
       const { error: uploadError } = await adminClient.storage
         .from('audio')
-        .upload(audioPath, result.audioBuffer!, {
+        .upload(audioPath, result.audioBuffer, {
           contentType: 'audio/mpeg',
           upsert: overwriteExisting,
         });
@@ -206,12 +274,12 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw new Error(`Failed to upload audio: ${uploadError.message}`);
       }
 
-      // 10. Get public URL
+      // 11. Get public URL
       const { data: urlData } = adminClient.storage
         .from('audio')
         .getPublicUrl(audioPath);
 
-      // 11. Prepare metadata
+      // 12. Prepare metadata
       const metadata: VoiceGenerationMetadata = {
         provider: 'elevenlabs',
         voiceId,
@@ -224,10 +292,10 @@ export const generateDialogueVoiceAction = enhanceAction(
         costCents: result.cost ?? estimatedCost,
         durationSeconds: result.duration,
         generatedAt: new Date().toISOString(),
-        characterCount: dialogueLine.text.length,
+        characterCount: dialogueData.text.length,
       };
 
-      // 12. Update dialogue line with audio URL and metadata
+      // 13. Update dialogue line with audio URL and metadata
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: updateError } = await (client as any)
         .from('dialogue_lines')
@@ -242,22 +310,20 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw updateError;
       }
 
-      // 13. Update generation job as completed
-      if (job) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
-          .from('generation_jobs')
-          .update({
-            status: 'completed',
-            cost_cents: result.cost ?? estimatedCost,
-            output_data: {
-              audioUrl: urlData.publicUrl,
-              duration: result.duration,
-            },
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', job.id);
-      }
+      // 14. Update generation job as completed
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('generation_jobs')
+        .update({
+          status: 'completed',
+          cost_cents: result.cost ?? estimatedCost,
+          output_data: {
+            audioUrl: urlData.publicUrl,
+            duration: result.duration,
+          },
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', jobData.id);
 
       logger.info(
         { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
@@ -290,7 +356,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         costCents: 0,
         durationSeconds: 0,
         generatedAt: new Date().toISOString(),
-        characterCount: dialogueLine.text.length,
+        characterCount: dialogueData.text.length,
         error: errorMessage,
       };
 
@@ -304,21 +370,20 @@ export const generateDialogueVoiceAction = enhanceAction(
         .eq('id', data.dialogueLineId);
 
       // Update generation job as failed
-      if (job) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
-          .from('generation_jobs')
-          .update({
-            status: 'failed',
-            error_message: errorMessage,
-            error_code: 'GENERATION_FAILED',
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', job.id);
-      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('generation_jobs')
+        .update({
+          status: 'failed',
+          error_message: errorMessage,
+          error_code: 'GENERATION_FAILED',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', jobData.id);
 
       logger.error({ ...ctx, error }, 'Dialogue voice generation failed');
 
+      // Return failure result instead of throwing for consistent error handling
       return {
         dialogueLineId: data.dialogueLineId,
         audioUrl: '',
@@ -340,6 +405,10 @@ export const generateDialogueVoiceAction = enhanceAction(
  * This action generates voice audio from provided text without
  * linking to a dialogue line. Useful for voice previews and testing.
  * Audio is stored in a temporary location.
+ *
+ * Note: Unlike generateDialogueVoiceAction, this action throws on error
+ * since there's no persistent state to track failure. Callers should
+ * handle errors appropriately.
  */
 export const generateVoiceFromTextAction = enhanceAction(
   async (
@@ -376,8 +445,10 @@ export const generateVoiceFromTextAction = enhanceAction(
       throw new Error('Episode not found');
     }
 
-    const accountId = episode.projects?.account_id;
-    const projectId = episode.project_id;
+    // Type-safe access to nested response data
+    const episodeData = episode as EpisodeResponse;
+    const accountId = episodeData.projects?.account_id;
+    const projectId = episodeData.project_id;
 
     if (!accountId) {
       logger.error(ctx, 'Could not determine account for episode');
@@ -400,7 +471,7 @@ export const generateVoiceFromTextAction = enhanceAction(
     const idempotencyKey = `voice-text-${user.id}-${Date.now()}`;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: job } = await (client as any)
+    const { data: job, error: jobError } = await (client as any)
       .from('generation_jobs')
       .insert({
         account_id: accountId,
@@ -424,6 +495,13 @@ export const generateVoiceFromTextAction = enhanceAction(
       .select()
       .single();
 
+    if (jobError) {
+      logger.error({ ...ctx, error: jobError }, 'Failed to create job record');
+      throw new Error('Failed to create generation job record');
+    }
+
+    const jobData = job as GenerationJobResponse;
+
     try {
       // 5. Create provider and generate audio
       const provider = new ElevenLabsProvider({
@@ -439,12 +517,17 @@ export const generateVoiceFromTextAction = enhanceAction(
         outputFormat: 'mp3',
       });
 
-      // 6. Upload to temporary storage location
+      // 6. Validate audioBuffer exists before upload
+      if (!result.audioBuffer) {
+        throw new Error('Voice generation did not return audio data');
+      }
+
+      // 7. Upload to temporary storage location
       const tempPath = `temp/${user.id}/${Date.now()}.mp3`;
 
       const { error: uploadError } = await adminClient.storage
         .from('audio')
-        .upload(tempPath, result.audioBuffer!, {
+        .upload(tempPath, result.audioBuffer, {
           contentType: 'audio/mpeg',
         });
 
@@ -452,27 +535,25 @@ export const generateVoiceFromTextAction = enhanceAction(
         throw new Error(`Failed to upload audio: ${uploadError.message}`);
       }
 
-      // 7. Get public URL
+      // 8. Get public URL
       const { data: urlData } = adminClient.storage
         .from('audio')
         .getPublicUrl(tempPath);
 
-      // 8. Update generation job as completed
-      if (job) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
-          .from('generation_jobs')
-          .update({
-            status: 'completed',
-            cost_cents: result.cost ?? estimatedCost,
-            output_data: {
-              audioUrl: urlData.publicUrl,
-              duration: result.duration,
-            },
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', job.id);
-      }
+      // 9. Update generation job as completed
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('generation_jobs')
+        .update({
+          status: 'completed',
+          cost_cents: result.cost ?? estimatedCost,
+          output_data: {
+            audioUrl: urlData.publicUrl,
+            duration: result.duration,
+          },
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', jobData.id);
 
       logger.info(
         { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
@@ -490,20 +571,20 @@ export const generateVoiceFromTextAction = enhanceAction(
         error instanceof Error ? error.message : 'Unknown error';
 
       // Update generation job as failed
-      if (job) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
-          .from('generation_jobs')
-          .update({
-            status: 'failed',
-            error_message: errorMessage,
-            error_code: 'GENERATION_FAILED',
-            completed_at: new Date().toISOString(),
-          })
-          .eq('id', job.id);
-      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('generation_jobs')
+        .update({
+          status: 'failed',
+          error_message: errorMessage,
+          error_code: 'GENERATION_FAILED',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', jobData.id);
 
       logger.error({ ...ctx, error }, 'Text-to-voice generation failed');
+
+      // Throw error for preview action - no persistent state to track
       throw error;
     }
   },
