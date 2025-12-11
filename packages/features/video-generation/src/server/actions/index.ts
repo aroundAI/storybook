@@ -9,6 +9,7 @@ export { generateVideoAction } from './generate-video-action';
 export { batchGenerateVideosAction } from './batch-generate-action';
 export { pollVideoStatusAction } from './poll-status-action';
 export { cancelVideoJobAction } from './cancel-action';
+export { getShotGenerationJobAction } from './get-shot-generation-job-action';
 
 // Backward compatibility re-exports (deprecated)
 export {

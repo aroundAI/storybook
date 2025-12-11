@@ -350,7 +350,7 @@ graph TD
 | FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | ✅ DONE | M | FILM-301 |
 | FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | ✅ DONE | S | - |
 | FILM-305 | [story-generation](./phase-3-episodes/server/FILM-305-story-generation.md) | ✅ DONE | L | FILM-301, FILM-304 |
-| FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | DRAFT | L | FILM-305 |
+| FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | ✅ DONE | L | FILM-305 |
 | FILM-307 | [shot-list-generation](./phase-3-episodes/server/FILM-307-shot-list-generation.md) | DRAFT | L | FILM-306, FILM-303 |
 | FILM-308 | [story-studio](./phase-3-episodes/components/FILM-308-story-studio.md) | DRAFT | L | FILM-305 |
 | FILM-309 | [story-ideation](./phase-3-episodes/components/FILM-309-story-ideation.md) | DRAFT | M | FILM-308 |
@@ -519,7 +519,7 @@ SPIKE-01 through SPIKE-05
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 2 | 0 | 0 | 0 | 7 |
-| 3. Episodes | 14 | 5 | 0 | 0 | 0 | 9 |
+| 3. Episodes | 14 | 4 | 0 | 0 | 0 | 10 |
 | 4. Video Gen | 15 | 2 | 0 | 0 | 0 | 13 |
 | 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
@@ -533,7 +533,7 @@ SPIKE-01 through SPIKE-05
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 72 | 77% |
+| MVP Specs | 93 | 73 | 78% |
 | Post-MVP | 37 | 16 | 43% |
 
 ---
