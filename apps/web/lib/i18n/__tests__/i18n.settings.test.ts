@@ -322,6 +322,7 @@ describe('i18n.settings', () => {
         'marketing',
         'projects',
         'studio',
+        'platforms',
       ];
 
       expectedNamespaces.forEach((ns) => {
@@ -332,7 +333,7 @@ describe('i18n.settings', () => {
     it('should have correct length', async () => {
       const { defaultI18nNamespaces } = await importSettings();
 
-      expect(defaultI18nNamespaces).toHaveLength(9);
+      expect(defaultI18nNamespaces).toHaveLength(10);
     });
 
     it('should be an array', async () => {
