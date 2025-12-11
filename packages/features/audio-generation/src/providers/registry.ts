@@ -1,4 +1,4 @@
-import { ELEVENLABS, PLAYHT, SUNO } from '../lib/constants';
+import { ELEVENLABS, PLAYHT, SUNO, UDIO } from '../lib/constants';
 import type {
   MusicProviderConfig,
   MusicProviderMetadata,
@@ -11,6 +11,7 @@ import type { MusicGenerationProvider, VoiceGenerationProvider } from './base';
 import { ElevenLabsProvider } from './elevenlabs';
 import { PlayHTProvider } from './playht';
 import { SunoProvider } from './suno';
+import { UdioProvider } from './udio';
 
 /**
  * Voice provider registry entry containing metadata and factory function
@@ -106,8 +107,23 @@ MUSIC_PROVIDER_REGISTRY.set('suno', {
   },
   factory: (config: MusicProviderConfig) => new SunoProvider(config),
 });
+
+// Register Udio provider
+MUSIC_PROVIDER_REGISTRY.set('udio', {
+  metadata: {
+    name: 'udio',
+    displayName: 'Udio',
+    description: 'High-quality AI music with vocals and extensions',
+    maxDuration: UDIO.MAX_DURATION,
+    supportsVocals: true,
+    supportsInstrumental: true,
+    supportedGenres: [...UDIO.SUPPORTED_GENRES],
+    costPerGeneration: UDIO.COST_PER_GENERATION,
+  },
+  factory: (config: MusicProviderConfig) => new UdioProvider(config),
+});
+
 // Additional music providers will be added when implemented:
-// - Udio
 // - Mubert
 // - Beatoven
 

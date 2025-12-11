@@ -101,190 +101,91 @@ export interface GenerateShotListResponse {
 
 ### Server Actions
 
+**Implementation File**: `packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts`
+
+The actual implementation uses `executeLLM` from `@kit/prompt-engine/server` which provides:
+- Automatic prompt template loading from JSON files
+- Built-in cost tracking and analytics logging
+- Structured logging via `@kit/shared/logger`
+
+Key implementation details:
+- Uses `requireUser()` for authentication
+- Supports both `screenplay_data` and `story_data` as input (fallback)
+- Uses `ShotListGenerationOutputSchema.parse()` for Zod validation
+- Calls `batchCreateShotsAction` to create shot records
+- Updates `episode.shot_list` with optimistic locking via `version` check
+- Revalidates Next.js cache after successful generation
+
 ```typescript
-'use server';
-
-import { enhanceAction } from '@kit/next/actions';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { executePrompt, calculateLLMCost } from '@kit/llm';
-import { ShotListGenerationOutputSchema } from '@kit/prompt-engine/schemas';
-import { GenerateShotListSchema } from '../schemas/shot-list.schema';
-import { batchCreateShotsAction } from './shot-actions';
-
+// Simplified example - see actual implementation for full details
 export const generateShotListAction = enhanceAction(
-  async (data, user) => {
-    const client = getSupabaseServerClient();
-    const startTime = Date.now();
+  async (data): Promise<GenerateShotListResponse> => {
+    // 1. Authenticate user
+    const { data: user } = await requireUser(client);
 
-    // Fetch episode with screenplay_data
-    const { data: episode, error: episodeError } = await client
+    // 2. Fetch episode with screenplay_data or story_data
+    const { data: episode } = await client
       .from('episodes')
-      .select('id, project_id, screenplay_data, status, version')
+      .select('id, project_id, screenplay_data, story_data, status, version')
       .eq('id', data.episodeId)
-      .is('deleted_at', null)
       .single();
 
-    if (episodeError || !episode) {
-      throw new Error('Episode not found');
-    }
+    // 3. Format input for LLM (supports both screenplay and story fallback)
+    const screenplayText = episode.screenplay_data
+      ? formatScreenplayForPrompt(episode.screenplay_data)
+      : formatStoryForPrompt(episode.story_data);
 
-    if (!episode.screenplay_data) {
-      throw new Error('Episode must have screenplay generated first');
-    }
-
-    if (episode.status !== 'storyboard') {
-      throw new Error(`Invalid episode status: ${episode.status}. Expected 'storyboard'`);
-    }
-
-    // Prepare screenplay text
-    const screenplayText = formatScreenplayForPrompt(episode.screenplay_data);
-
-    const variables = {
-      screenplay: episode.screenplay_data,
-      screenplayText,
-      shotDurationMin: data.shotDurationMin,
-      shotDurationMax: data.shotDurationMax,
-      videoProvider: data.videoProvider,
-    };
-
-    // Execute LLM prompt
-    const result = await executePrompt('shot-list-generation', variables, {
-      provider: data.provider ?? 'anthropic',
-      model: data.model,
-      timeout: 40000, // 40 second timeout (longer for complex screenplays)
-    });
-
-    // Validate output
-    const validated = ShotListGenerationOutputSchema.parse(result);
-
-    // Calculate cost
-    const costCents = calculateLLMCost({
-      provider: result.metadata.provider,
-      model: result.metadata.model,
-      inputTokens: result.metadata.inputTokens,
-      outputTokens: result.metadata.outputTokens,
-    });
-
-    // Prepare shot list data
-    const shotListData = {
-      shots: validated.shotList.shots,
-      generatedAt: new Date().toISOString(),
-      approvedAt: null,
-      totalEstimatedDuration: validated.shotList.metadata.totalDuration,
-      generatedBy: {
-        model: result.metadata.model,
-        provider: result.metadata.provider,
-        costCents,
+    // 4. Execute LLM via prompt-engine
+    const llmResult = await executeLLM<{ shotList: unknown }>({
+      templateSlug: 'shot-list-generation',
+      variables: {
+        screenplay_text: screenplayText,
+        shot_duration_min: data.shotDurationMin,
+        shot_duration_max: data.shotDurationMax,
+        video_provider: data.videoProvider,
       },
-      metadata: validated.shotList.metadata,
-    };
+      context: { name: 'shot-list.generate', accountId, userId: user.id },
+    });
 
-    // Create shots using batchCreateShotsAction
-    const shotsToCreate = validated.shotList.shots.map(shot => ({
-      sceneNumber: shot.sceneNumber,
-      shotNumber: shot.shotNumber,
-      description: shot.description,
-      prompt: shot.prompt,
-      durationSeconds: shot.duration,
-      cameraDirection: shot.cameraDirection,
-      characters: shot.characters,
-    }));
+    // 5. Validate output with Zod
+    const validated = ShotListGenerationOutputSchema.parse(llmResult.data);
 
-    const { shots: createdShots } = await batchCreateShotsAction(
-      { episodeId: data.episodeId, shots: shotsToCreate },
-      user
-    );
-
-    // Update episode with shot_list metadata
-    const { data: updatedEpisode, error: updateError } = await client
-      .from('episodes')
-      .update({
-        shot_list: shotListData,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.episodeId)
-      .eq('version', episode.version)
-      .select()
-      .single();
-
-    if (updateError) {
-      throw new Error(`Failed to update episode: ${updateError.message}`);
-    }
-
-    if (!updatedEpisode) {
-      throw new Error('Episode was modified by another user');
-    }
-
-    const duration = Date.now() - startTime;
-
-    console.log('[Shot List Generation]', {
-      userId: user.id,
+    // 6. Create shots via batchCreateShotsAction
+    const batchResult = await batchCreateShotsAction({
       episodeId: data.episodeId,
-      projectId: episode.project_id,
-      provider: result.metadata.provider,
-      model: result.metadata.model,
-      costCents,
-      duration,
-      shotCount: validated.shotList.shots.length,
-      totalDuration: validated.shotList.metadata.totalDuration,
+      shots: shotsToCreate,
     });
 
-    return {
-      shots: validated.shotList.shots,
-      shotsCreated: createdShots.length,
-      episode: {
-        id: updatedEpisode.id,
-        status: updatedEpisode.status,
-        version: updatedEpisode.version,
-      },
-      metadata: {
-        provider: result.metadata.provider,
-        model: result.metadata.model,
-        costCents,
-        tokensUsed: result.metadata.inputTokens + result.metadata.outputTokens,
-        generatedAt: shotListData.generatedAt,
-        totalShots: validated.shotList.metadata.totalShots,
-        totalDuration: validated.shotList.metadata.totalDuration,
-      },
-    };
-  },
-  { schema: GenerateShotListSchema, auth: true }
-);
+    // 7. Update episode.shot_list with optimistic locking
+    await client
+      .from('episodes')
+      .update({ shot_list: shotListData })
+      .eq('id', data.episodeId)
+      .eq('version', episode.version);  // Optimistic lock
 
-function formatScreenplayForPrompt(screenplayData: any): string {
-  let text = '';
-  for (const scene of screenplayData.scenes) {
-    text += `${scene.heading}\n\n`;
-    text += `${scene.description}\n\n`;
-    for (const dialogue of scene.dialogue) {
-      text += `${dialogue.character}\n`;
-      if (dialogue.parenthetical) {
-        text += `(${dialogue.parenthetical})\n`;
-      }
-      text += `${dialogue.text}\n\n`;
-    }
-    text += `\n`;
-  }
-  return text;
-}
+    return { success: true, shots, metadata, ... };
+  },
+  { schema: GenerateShotListSchema }
+);
 ```
 
 ---
 
 ## File Changes
 
-### New Files
+### Implemented Files
 
-1. **packages/features/episodes/src/lib/schemas/shot-list.schema.ts**
-2. **packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts**
-3. **packages/features/episodes/src/types/shot-list.types.ts**
+1. **packages/features/episodes/src/lib/schemas/shot-list.schema.ts** - Zod schemas for input validation and LLM output
+2. **packages/features/episodes/src/lib/server/mutations/shot-list-actions.ts** - `generateShotListAction` server action
+3. **packages/features/episodes/src/lib/types.ts** - Contains `ShotListData`, `GenerateShotListResponse` types
+4. **packages/features/prompt-engine/src/prompts/story-generation/shot-list-generation.json** - LLM prompt template
 
 ---
 
 ## Acceptance Criteria
 
 **Status**: ✅ Complete (2025-12-08)
-**Implementation**: PR #TBD
+**Implementation**: Verified 2025-12-11
 
 - [x] `generateShotListAction` generates shots from screenplay
 - [x] Creates shot records via batchCreateShotsAction
