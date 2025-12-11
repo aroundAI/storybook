@@ -4,6 +4,7 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** XL (3-5 days)
+- **Status:** ✅ Complete
 - **Dependencies:** FILM-409 (Visual Studio), FILM-505 (Audio Studio), FILM-DS-03 (Interaction Patterns)
 - **Blocks:** FILM-602 (Track Layer), FILM-603 (Clip Editor), FILM-604 (Auto-Stitch)
 
@@ -339,28 +340,36 @@ export function timelineReducer(state: TimelineState, action: TimelineAction): T
 
 | Action | Path |
 |--------|------|
-| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-editor.tsx` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/types.ts` |
 | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-reducer.ts` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-context.tsx` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-editor.tsx` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/preview-player.tsx` |
 | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-header.tsx` |
 | CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-ruler.tsx` |
 | CREATE | `packages/features/episodes/src/components/timeline-editor/playhead.tsx` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/types.ts` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/track-layer.tsx` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/clip-item.tsx` |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/waveform-display.tsx` |
 | CREATE | `packages/features/episodes/src/components/timeline-editor/index.ts` |
+| MODIFY | `packages/features/episodes/src/components/index.ts` |
+| MODIFY | `packages/features/episodes/package.json` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Timeline displays all tracks with clips
-- [ ] Playhead scrubs with mouse and keyboard
-- [ ] Clips can be dragged to reposition
-- [ ] Clips can be resized from edges
-- [ ] Snap-to-grid works for alignment
-- [ ] Zoom in/out changes time scale
-- [ ] Space bar toggles play/pause
-- [ ] Undo/redo works for all operations
-- [ ] Selection highlights clips visually
-- [ ] Multi-select with Shift+Click
+- [x] Timeline displays all tracks with clips
+- [x] Playhead scrubs with mouse and keyboard
+- [x] Clips can be dragged to reposition
+- [x] Clips can be resized from edges
+- [x] Snap-to-grid works for alignment (10px threshold, frame-based)
+- [x] Zoom in/out changes time scale (10-500 px/sec)
+- [x] Space bar toggles play/pause
+- [x] Undo/redo works for all operations
+- [x] Selection highlights clips visually
+- [x] Multi-select with Shift+Click
+- [x] Video preview syncs with playhead during playback and scrubbing
 
 ---
 
