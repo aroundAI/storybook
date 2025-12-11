@@ -17,3 +17,19 @@ export {
   type VoiceCloningEditorProps,
   type VoiceProfile,
 } from './VoiceCloningEditor';
+
+// Voice assignment components (FILM-507)
+export {
+  VoiceAssignmentPanel,
+  type VoiceAssignmentProps,
+  type CharacterAsset,
+} from './VoiceAssignment';
+export {
+  VoiceSelector,
+  type VoiceSelectorProps,
+  type VoiceOption,
+} from './VoiceSelector';
+export {
+  VoiceSettingsPanel,
+  type VoiceSettingsPanelProps,
+} from './VoiceSettings';
