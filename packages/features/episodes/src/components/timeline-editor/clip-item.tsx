@@ -3,7 +3,7 @@
 /**
  * Clip Item - Individual clip card with drag/resize handles
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Lock } from 'lucide-react';
 
@@ -57,6 +57,40 @@ export function ClipItem({
   const [dragState, setDragState] = useState<DragState | null>(null);
   const clipRef = useRef<HTMLDivElement>(null);
 
+  // Refs for latest values to avoid stale closures in event handlers
+  const clipRef_data = useRef(clip);
+  const stateRef = useRef(state);
+  const pixelsPerFrameRef = useRef(pixelsPerFrame);
+
+  // Keep refs in sync with latest props/state
+  // useEffect is required here to sync refs with latest values for use in
+  // document-level event handlers that would otherwise capture stale closures
+  useEffect(() => {
+    clipRef_data.current = clip;
+    stateRef.current = state;
+    pixelsPerFrameRef.current = pixelsPerFrame;
+  });
+
+  // Track active drag event handlers for cleanup on unmount
+  const dragHandlersRef = useRef<{
+    move: ((e: MouseEvent) => void) | null;
+    up: (() => void) | null;
+  }>({ move: null, up: null });
+
+  // Cleanup event listeners on unmount to prevent memory leaks
+  // useEffect is required here to clean up document-level event listeners
+  // if the component unmounts during an active drag operation
+  useEffect(() => {
+    return () => {
+      if (dragHandlersRef.current.move) {
+        document.removeEventListener('mousemove', dragHandlersRef.current.move);
+      }
+      if (dragHandlersRef.current.up) {
+        document.removeEventListener('mouseup', dragHandlersRef.current.up);
+      }
+    };
+  }, []);
+
   // Calculate dimensions
   const left = clip.startFrame * pixelsPerFrame;
   const width = clip.durationFrames * pixelsPerFrame;
@@ -88,11 +122,16 @@ export function ClipItem({
 
       if (isLocked) return;
 
+      // Capture initial values at drag start for delta calculations
+      const initialStartFrame = clip.startFrame;
+      const initialDurationFrames = clip.durationFrames;
+      const initialClientX = e.clientX;
+
       setDragState({
         type,
-        startX: e.clientX,
-        startFrame: clip.startFrame,
-        startDuration: clip.durationFrames,
+        startX: initialClientX,
+        startFrame: initialStartFrame,
+        startDuration: initialDurationFrames,
       });
 
       dispatch({
@@ -107,67 +146,73 @@ export function ClipItem({
       });
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        const deltaX = moveEvent.clientX - e.clientX;
-        const deltaFrames = Math.round(deltaX / pixelsPerFrame);
+        // Use refs to get latest values, avoiding stale closures
+        const currentState = stateRef.current;
+        const currentPixelsPerFrame = pixelsPerFrameRef.current;
+        const currentClip = clipRef_data.current;
+
+        const deltaX = moveEvent.clientX - initialClientX;
+        const deltaFrames = Math.round(deltaX / currentPixelsPerFrame);
 
         if (type === 'move') {
-          // Moving the clip
-          let newStartFrame = clip.startFrame + deltaFrames;
+          // Moving the clip - use initial value + delta for smooth dragging
+          let newStartFrame = initialStartFrame + deltaFrames;
 
           // Apply snapping if enabled
-          if (state.snapEnabled) {
+          if (currentState.snapEnabled) {
             newStartFrame = snapToGrid(
               newStartFrame,
-              state.fps, // Snap to 1-second intervals
-              SNAP_THRESHOLD_PX / pixelsPerFrame,
+              currentState.fps, // Snap to 1-second intervals
+              SNAP_THRESHOLD_PX / currentPixelsPerFrame,
             );
           }
 
           dispatch({
             type: 'MOVE_CLIP',
-            clipId: clip.id,
+            clipId: currentClip.id,
             newStartFrame: Math.max(0, newStartFrame),
           });
         } else if (type === 'resize-left') {
           // Resizing from left edge
-          let newStartFrame = clip.startFrame + deltaFrames;
-          let newDuration = clip.durationFrames - deltaFrames;
+          let newStartFrame = initialStartFrame + deltaFrames;
+          let newDuration = initialDurationFrames - deltaFrames;
 
           // Apply snapping
-          if (state.snapEnabled) {
+          if (currentState.snapEnabled) {
             newStartFrame = snapToGrid(
               newStartFrame,
-              state.fps,
-              SNAP_THRESHOLD_PX / pixelsPerFrame,
+              currentState.fps,
+              SNAP_THRESHOLD_PX / currentPixelsPerFrame,
             );
-            newDuration = clip.startFrame + clip.durationFrames - newStartFrame;
+            newDuration =
+              initialStartFrame + initialDurationFrames - newStartFrame;
           }
 
           // Ensure minimum duration of 1 frame
           if (newDuration < 1) {
             newDuration = 1;
-            newStartFrame = clip.startFrame + clip.durationFrames - 1;
+            newStartFrame = initialStartFrame + initialDurationFrames - 1;
           }
 
           dispatch({
             type: 'RESIZE_CLIP',
-            clipId: clip.id,
+            clipId: currentClip.id,
             newStartFrame: Math.max(0, newStartFrame),
             newDurationFrames: newDuration,
           });
         } else {
           // Resizing from right edge
-          let newDuration = clip.durationFrames + deltaFrames;
+          let newDuration = initialDurationFrames + deltaFrames;
 
           // Apply snapping to end position
-          if (state.snapEnabled) {
-            const endFrame = clip.startFrame + newDuration;
+          if (currentState.snapEnabled) {
+            const endFrame = initialStartFrame + newDuration;
             const snappedEnd = snapToGrid(
               endFrame,
-              state.fps,
-              SNAP_THRESHOLD_PX / pixelsPerFrame,
+              currentState.fps,
+              SNAP_THRESHOLD_PX / currentPixelsPerFrame,
             );
-            newDuration = snappedEnd - clip.startFrame;
+            newDuration = snappedEnd - initialStartFrame;
           }
 
           // Ensure minimum duration of 1 frame
@@ -175,8 +220,8 @@ export function ClipItem({
 
           dispatch({
             type: 'RESIZE_CLIP',
-            clipId: clip.id,
-            newStartFrame: clip.startFrame,
+            clipId: currentClip.id,
+            newStartFrame: initialStartFrame,
             newDurationFrames: newDuration,
           });
         }
@@ -187,12 +232,17 @@ export function ClipItem({
         dispatch({ type: 'END_DRAG' });
         document.removeEventListener('mousemove', handleMouseMove);
         document.removeEventListener('mouseup', handleMouseUp);
+        // Clear refs for cleanup tracking
+        dragHandlersRef.current = { move: null, up: null };
       };
+
+      // Store handlers for cleanup on unmount
+      dragHandlersRef.current = { move: handleMouseMove, up: handleMouseUp };
 
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     },
-    [clip, isLocked, pixelsPerFrame, state.snapEnabled, state.fps, dispatch],
+    [clip.id, clip.startFrame, clip.durationFrames, isLocked, dispatch],
   );
 
   // Determine if clip has audio waveform

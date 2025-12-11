@@ -331,9 +331,10 @@ export function timelineReducer(
 
     // Undo/Redo actions
     case 'UNDO': {
-      if (state.historyIndex <= 0) return state;
+      // Cannot undo if no history or already at the beginning
+      if (state.history.length === 0 || state.historyIndex < 0) return state;
 
-      const prevEntry = state.history[state.historyIndex - 1];
+      const prevEntry = state.history[state.historyIndex];
       if (!prevEntry) return state;
 
       return {
@@ -407,14 +408,9 @@ export function createInitialState(fps: number = 30): TimelineState {
     clips: [],
   }));
 
-  // Create initial history entry
-  const initialHistory: TimelineHistoryEntry = {
-    timestamp: Date.now(),
-    action: 'INITIAL',
-    tracks: JSON.parse(JSON.stringify(tracks)) as TimelineTrack[],
-    playheadFrame: 0,
-  };
-
+  // Start with empty history - initial state is not part of undo stack
+  // This ensures the first undo after a user action reverts to the state
+  // before that action, not to an empty initial state
   return {
     tracks,
     playheadFrame: 0,
@@ -428,8 +424,8 @@ export function createInitialState(fps: number = 30): TimelineState {
     selectedTrackId: null,
     inPoint: null,
     outPoint: null,
-    history: [initialHistory],
-    historyIndex: 0,
+    history: [],
+    historyIndex: -1,
     snapEnabled: true,
     isDragging: false,
     draggedClipId: null,

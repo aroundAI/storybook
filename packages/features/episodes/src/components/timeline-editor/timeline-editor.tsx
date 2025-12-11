@@ -57,14 +57,19 @@ export function TimelineEditor({
   const animationFrameRef = useRef<number | null>(null);
   const lastTimeRef = useRef<number>(0);
 
-  // Load initial data
+  // Load initial data into reducer state
+  // useEffect is required here to sync external prop (initialData) with internal
+  // reducer state on mount and when initialData changes
   useEffect(() => {
     if (initialData) {
       dispatch({ type: 'LOAD_TIMELINE', data: initialData });
     }
   }, [initialData]);
 
-  // Playback animation loop
+  // Playback animation loop using requestAnimationFrame
+  // useEffect is required here because requestAnimationFrame is a browser API
+  // that schedules callbacks outside React's render cycle, requiring manual
+  // setup and cleanup
   useEffect(() => {
     if (!state.isPlaying) {
       if (animationFrameRef.current) {
@@ -102,7 +107,9 @@ export function TimelineEditor({
     };
   }, [state.isPlaying, state.fps]);
 
-  // Notify parent of playback state changes
+  // Notify parent of playback state changes via callback prop
+  // useEffect is required here to synchronize internal state changes with
+  // parent component through the callback prop
   useEffect(() => {
     onPlaybackStateChange?.(state.isPlaying, state.playheadFrame);
   }, [state.isPlaying, state.playheadFrame, onPlaybackStateChange]);

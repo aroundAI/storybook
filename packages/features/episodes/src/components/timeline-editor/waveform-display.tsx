@@ -37,6 +37,9 @@ export function WaveformDisplay({
 }: WaveformDisplayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Draw waveform on canvas when data or dimensions change
+  // useEffect is required here because canvas drawing is an imperative DOM
+  // operation that cannot be performed during React's declarative render phase
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || data.length === 0 || width <= 0 || height <= 0) return;

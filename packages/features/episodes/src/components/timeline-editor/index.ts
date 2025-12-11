@@ -6,6 +6,8 @@
 
 export { TimelineEditor } from './timeline-editor';
 export { useTimelineContext } from './timeline-context';
+
+// Export types
 export type {
   TimelineEditorProps,
   TimelineData,
@@ -14,6 +16,7 @@ export type {
   TimelineState,
   TimelineAction,
   ClipType,
-  ZOOM_LEVELS,
-  DEFAULT_TRACKS,
 } from './types';
+
+// Export constants (these are runtime values, not types)
+export { ZOOM_LEVELS, DEFAULT_TRACKS } from './types';

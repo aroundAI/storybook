@@ -41,11 +41,15 @@ export function PreviewPlayer({
 }: PreviewPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastSeekRef = useRef<number>(-1);
+  const isSeekingRef = useRef<boolean>(false);
+  const pendingSeekRef = useRef<number | null>(null);
 
   // Calculate time within clip
   const clipTime = clip ? (currentFrame - clip.startFrame) / fps : 0;
 
-  // Sync video with playhead
+  // Sync video with playhead - avoids race conditions by tracking seek state
+  // useEffect is required here to perform imperative video.currentTime manipulation
+  // which is a DOM side effect that cannot be done during render
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !clip?.videoUrl) return;
@@ -55,13 +59,46 @@ export function PreviewPlayer({
 
     // Only seek if we've moved significantly (more than half a frame)
     const timeDiff = Math.abs(video.currentTime - targetTime);
-    if (timeDiff > 0.5 / fps && lastSeekRef.current !== currentFrame) {
-      video.currentTime = targetTime;
+    const needsSeek =
+      timeDiff > 0.5 / fps && lastSeekRef.current !== currentFrame;
+
+    if (!needsSeek) return;
+
+    // If a seek is already in progress, queue this one
+    if (isSeekingRef.current) {
+      pendingSeekRef.current = targetTime;
       lastSeekRef.current = currentFrame;
+      return;
     }
+
+    // Perform the seek
+    isSeekingRef.current = true;
+    video.currentTime = targetTime;
+    lastSeekRef.current = currentFrame;
+
+    // Handle seek completion
+    const handleSeeked = () => {
+      isSeekingRef.current = false;
+
+      // If there's a pending seek, perform it
+      if (pendingSeekRef.current !== null) {
+        const pendingTime = pendingSeekRef.current;
+        pendingSeekRef.current = null;
+        isSeekingRef.current = true;
+        video.currentTime = pendingTime;
+      }
+    };
+
+    video.addEventListener('seeked', handleSeeked, { once: true });
+
+    return () => {
+      video.removeEventListener('seeked', handleSeeked);
+    };
   }, [clip?.videoUrl, clipTime, currentFrame, fps]);
 
   // Handle play/pause
+  // useEffect is required here to call imperative video.play() and video.pause()
+  // methods which are DOM side effects that cannot be performed during render
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !clip?.videoUrl) return;
