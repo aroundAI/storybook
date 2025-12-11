@@ -4,12 +4,12 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Status:** ⚠️ Partially Complete (core implemented in FILM-601)
+- **Status:** ✅ DONE (implemented with FILM-601)
 - **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-DS-02 (Design Tokens)
 - **Blocks:** FILM-604 (Auto-Stitch)
 
 > **Note:** Core TrackLayer and ClipItem components were implemented as part of FILM-601.
-> Remaining work: Track header controls (volume slider), drag-and-drop asset receiving.
+> Files: `packages/features/episodes/src/components/timeline-editor/track-layer.tsx`, `clip-item.tsx`
 
 ---
 
