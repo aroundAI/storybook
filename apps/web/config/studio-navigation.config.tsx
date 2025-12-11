@@ -1,11 +1,9 @@
 import {
-  BarChart3,
   Clapperboard,
   Film,
   FolderOpen,
   MapPin,
   Music,
-  Settings,
   Users,
 } from 'lucide-react';
 

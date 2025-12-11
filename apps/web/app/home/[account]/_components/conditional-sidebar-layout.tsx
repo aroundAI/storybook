@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 
 import { Page, PageMobileNavigation, PageNavigation } from '@kit/ui/page';
+import type { JWTUserData } from '@kit/supabase/types';
 
 import { AppLogo } from '~/components/app-logo';
 
@@ -12,8 +13,11 @@ import { TeamAccountLayoutSidebar } from './team-account-layout-sidebar';
 interface ConditionalSidebarLayoutProps {
     children: React.ReactNode;
     account: string;
-    accounts: Array<{ label: string | null; value: string | null; image: string | null }>;
-    user: any; // Using any to match JWTUserData from loadTeamWorkspace
+    accounts: Array<{
+        label: string | null;
+        value: string | null;
+    }>;
+    user: JWTUserData;
     accountId: string;
 }
 

@@ -15,7 +15,6 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 // local imports
 import { ConditionalSidebarLayout } from './_components/conditional-sidebar-layout';
 import { TeamAccountLayoutMobileNavigation } from './_components/team-account-layout-mobile-navigation';
-import { TeamAccountLayoutSidebar } from './_components/team-account-layout-sidebar';
 import { TeamAccountNavigationMenu } from './_components/team-account-navigation-menu';
 import { loadTeamWorkspace } from './_lib/server/team-account-workspace.loader';
 
