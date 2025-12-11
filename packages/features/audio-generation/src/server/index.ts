@@ -3,6 +3,7 @@ export * from './queries';
 export * from './voice-actions';
 export * from './voice-queries';
 export * from './voice-clone-actions';
+export * from './voice-profile-actions';
 export * from './batch-actions';
 export * from './dialogue-queries';
 export * from './dubbing-actions';
