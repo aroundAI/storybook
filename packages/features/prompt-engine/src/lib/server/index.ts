@@ -1,9 +1,11 @@
-export {
-  loadAndRenderPrompt,
+loadAndRenderPrompt,
   clearPromptCache,
-  type PromptOutputConfig,
-  type RenderedPrompt,
 } from './prompt-loader';
+
+export type {
+  PromptOutputConfig,
+  RenderedPrompt,
+} from '../types';
 
 export {
   executeLLM,
