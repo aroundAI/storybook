@@ -199,6 +199,7 @@ export const UDIO = {
   RATE_LIMITS: {
     REQUESTS_PER_MINUTE: 10,
     CONCURRENT_REQUESTS: 3,
+    DAILY_LIMIT: 100,
     TIMEOUT: 180000, // 3 minutes
   },
 } as const;

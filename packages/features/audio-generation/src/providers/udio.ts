@@ -222,7 +222,7 @@ export class UdioProvider extends BaseMusicGenerationProvider {
       return {
         jobId: response.task_id,
         status: this.mapStatus(response.status),
-        estimatedTime: 30, // Extensions are faster
+        estimatedTime: UDIO.EXTENSION_DURATION,
         cost: UDIO.COST_PER_EXTENSION,
       };
     } catch (error) {
@@ -232,11 +232,21 @@ export class UdioProvider extends BaseMusicGenerationProvider {
 
   /**
    * Generate variations of an existing song (Udio-specific feature)
+   * @param songId - The ID of the song to create variations from
+   * @param count - Number of variations to generate (1-10, default 3)
    */
   async getVariations(
     songId: string,
     count: number = 3,
   ): Promise<MusicGenerationResponse[]> {
+    if (!songId || songId.trim().length === 0) {
+      throw new Error('songId is required');
+    }
+
+    if (count < 1 || count > 10) {
+      throw new Error('count must be between 1 and 10');
+    }
+
     try {
       const response = await this.makeRequestWithRetry<{
         variations: UdioTaskResponse[];
@@ -262,10 +272,16 @@ export class UdioProvider extends BaseMusicGenerationProvider {
 
   /**
    * Cancel a generation in progress (Udio-specific feature)
+   * @param taskId - The ID of the task to cancel
+   * @throws Error if taskId is empty or cancellation fails
    */
   async cancelGeneration(taskId: string): Promise<void> {
+    if (!taskId || taskId.trim().length === 0) {
+      throw new Error('taskId is required');
+    }
+
     try {
-      await this.makeRequestWithRetry<{ success: boolean }>(
+      const response = await this.makeRequestWithRetry<{ success: boolean }>(
         `${this.baseUrl}/tasks/${taskId}/cancel`,
         {
           method: 'POST',
@@ -274,6 +290,10 @@ export class UdioProvider extends BaseMusicGenerationProvider {
           },
         },
       );
+
+      if (!response.success) {
+        throw new Error(`Failed to cancel generation task: ${taskId}`);
+      }
     } catch (error) {
       throw this.handleError(error, 'cancelGeneration');
     }
@@ -301,7 +321,7 @@ export class UdioProvider extends BaseMusicGenerationProvider {
     return {
       requestsPerMinute: UDIO.RATE_LIMITS.REQUESTS_PER_MINUTE,
       concurrentRequests: UDIO.RATE_LIMITS.CONCURRENT_REQUESTS,
-      dailyLimit: 100, // Approximate
+      dailyLimit: UDIO.RATE_LIMITS.DAILY_LIMIT,
     };
   }
 

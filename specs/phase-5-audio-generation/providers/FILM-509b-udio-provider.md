@@ -380,17 +380,17 @@ interface UdioStatusResponse {
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test prompt validation (min/max length)
-- [ ] Test duration validation
-- [ ] Test style schema validation
-- [ ] Test status mapping
-- [ ] Test cost estimation
+- [x] Test prompt validation (min/max length)
+- [x] Test duration validation
+- [x] Test style schema validation
+- [x] Test status mapping
+- [x] Test cost estimation
 
 ### Integration Tests
-- [ ] Test full generation flow with mock API
-- [ ] Test extension flow
-- [ ] Test variation generation
-- [ ] Test webhook callback handling
+- [x] Test full generation flow with mock API
+- [x] Test extension flow
+- [x] Test variation generation
+- [ ] Test webhook callback handling (N/A - no webhooks in current implementation)
 
 ---
 
