@@ -575,6 +575,17 @@ See **TESTING-PROGRESS.md** for detailed list of remaining tests.
 - ✅ `packages/branding/__tests__/color-utils.test.ts` (41 tests)
 - ✅ `packages/next/__tests__/enhance-action.test.ts` (21 tests)
 
+## Feature Specifications
+
+Feature implementations must adhere to the specifications in the `specs/` folder:
+
+- **Before implementing a feature**: Check if a spec exists in `specs/` for the feature (e.g., `specs/phase-5-audio-generation/providers/FILM-510-voice-cloning.md`)
+- **During implementation**: Follow the database schema, API design, and component structure defined in the spec
+- **After implementation**: Update the spec file to mark acceptance criteria as complete and change status to `✅ DONE`
+- **Spec index**: See `specs/INDEX.md` for a complete list of all specifications and their status
+
+When a spec exists for a feature, treat it as the source of truth for requirements, database schema design, and acceptance criteria.
+
 ## Typescript
 
 - Write clean, clear, well-designed, explicit TypeScript

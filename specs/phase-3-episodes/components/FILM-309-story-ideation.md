@@ -73,9 +73,8 @@ const FormSchema = z.object({
 });
 
 interface StoryIdeationProps {
-  episodeId: string;
-  projectId: string;
   onComplete: (selectedIdea: StoryIdea) => void;
+  isGenerating?: boolean;
 }
 
 interface StoryIdea {
@@ -86,7 +85,7 @@ interface StoryIdea {
   visualPotential: string;
 }
 
-export function StoryIdeation({ episodeId, projectId, onComplete }: StoryIdeationProps) {
+export function StoryIdeation({ onComplete, isGenerating = false }: StoryIdeationProps) {
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
 
@@ -257,8 +256,8 @@ export function StoryIdeation({ episodeId, projectId, onComplete }: StoryIdeatio
               <Button variant="outline" onClick={() => setSelectedIdea(null)}>
                 Clear Selection
               </Button>
-              <Button onClick={handleContinue}>
-                Continue with Selected Idea
+              <Button onClick={handleContinue} disabled={isGenerating}>
+                {isGenerating ? 'Generating Story...' : 'Continue with Selected Idea'}
               </Button>
             </div>
           )}

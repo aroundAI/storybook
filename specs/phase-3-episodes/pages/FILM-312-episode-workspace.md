@@ -161,10 +161,7 @@ export default async function EpisodeWorkspacePage({
 
         <TabsContent value="story" className="space-y-4">
           <Suspense fallback={<StoryStudioSkeleton />}>
-            <StoryStudio
-              episodeId={episode.id}
-              projectId={params.projectId}
-            />
+            <StoryStudio episodeId={episode.id} />
           </Suspense>
         </TabsContent>
 
