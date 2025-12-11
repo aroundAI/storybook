@@ -26,6 +26,10 @@
     "./providers/instagram": "./src/providers/instagram/index.ts",
     "./providers/linkedin": "./src/providers/linkedin/index.ts",
     "./components/linkedin-composer": "./src/components/linkedin-composer.tsx",
+    "./components/upload-only-mode": "./src/components/upload-only-mode.tsx",
+    "./server/upload-only": "./src/server/upload-only-actions.ts",
+    "./lib/export-package-types": "./src/lib/export-package-types.ts",
+    "./lib/schemas/upload-only": "./src/lib/schemas/upload-only.schema.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts"
   },
