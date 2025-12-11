@@ -6,12 +6,99 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-705-707 (OAuth flows)
 - **Blocks:** FILM-708 (Publish Hub)
+- **Status:** ✅ COMPLETE
+- **PR:** [#74](https://github.com/aroundAI/storybook/pull/74)
+- **Commits:** `79201ef`, `d041997`
 
 ---
 
 ## Context
 
 The Platform Connections page allows users to manage their connected social media accounts for publishing. Users can connect multiple accounts per platform, view connection status, refresh tokens, and disconnect accounts.
+
+---
+
+## Implementation Summary
+
+### Files Created
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `apps/web/app/home/[account]/settings/platforms/page.tsx` | 47 | Server component with `withI18n`, `TeamAccountLayoutPageHeader`, `loadTeamWorkspace` |
+| `packages/features/publishing/src/components/platform-connections.tsx` | 457 | Client component with React Query, TikTok SVG icon, loading skeletons, toast notifications |
+| `packages/features/publishing/src/server/connection-actions.ts` | 175 | Server actions: `getConnectionsAction`, `disconnectPlatformAction`, `refreshConnectionAction` |
+| `packages/features/publishing/src/types.ts` | 43 | TypeScript interfaces: `PlatformType`, `ConnectionStatus`, `PlatformConnection`, `PlatformConfig` |
+| `apps/web/public/locales/en/platforms.json` | 19 | i18n translations for all UI strings |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `packages/features/publishing/package.json` | Added exports for `components/platform-connections`, `server/connection-actions`, `types`; Added dependencies `@tanstack/react-query`, `date-fns` |
+| `apps/web/config/paths.config.ts` | Added `accountPlatforms` path |
+| `apps/web/config/team-account-navigation.config.tsx` | Added "Platforms" nav item with `Share2` icon |
+| `apps/web/lib/i18n/i18n.settings.ts` | Added `'platforms'` to `defaultI18nNamespaces` |
+| `apps/web/public/locales/en/common.json` | Added `platforms` route label |
+
+### Implementation Differences from Spec
+
+| Spec | Implementation | Reason |
+|------|----------------|--------|
+| `withI18n` from `@kit/i18n/server` | `withI18n` from `~/lib/i18n/with-i18n` | Local path matches existing codebase patterns |
+| Static metadata export | `generateMetadata` with i18n | Dynamic i18n-aware title generation |
+| Direct page layout | `TeamAccountLayoutPageHeader` + `PageBody` | Matches existing settings page patterns (FILM-904, FILM-905) |
+| `getConnectionsAction` uses `user.accountId` | Accepts `accountId` as parameter | Component passes accountId explicitly for proper cache key |
+| `disconnectPlatformAction({ connectionId })` | `disconnectPlatformAction({ connectionId, platform })` | Routes to platform-specific disconnect handlers (YouTube, TikTok, Meta) |
+| Basic status badges | Dark mode support with explicit dark: classes | Better accessibility in both themes |
+| No loading state | `Skeleton` loading cards during data fetch | Better UX during initial load |
+| No error handling on mutations | `toast.success/error` notifications | User feedback on success/failure |
+| No URL encoding | `encodeURIComponent(accountSlug)` | URL safety for OAuth redirects |
+| lucide-react TikTok icon | Custom `TikTokIcon` SVG component | lucide-react doesn't include TikTok icon |
+
+### Component Architecture
+
+```
+PlatformConnections (main component)
+├── useQuery: ['platform-connections', accountId]
+├── PLATFORMS config array (YouTube, TikTok, Instagram, Facebook)
+└── PlatformCard (per platform)
+    ├── Platform icon + metadata
+    ├── Connect button → initiateOAuth()
+    ├── Empty state when no connections
+    └── ConnectionRow (per connection)
+        ├── Avatar with profile image
+        ├── ConnectionStatusBadge (active/expired/error)
+        ├── formatDistanceToNow for "Connected X ago"
+        ├── Refresh button (active only) → refreshMutation
+        ├── Reconnect button (expired only) → initiateOAuth()
+        ├── Disconnect button → AlertDialog → disconnectMutation
+        └── Error alert (when status === 'error')
+```
+
+### Server Action Flow
+
+```
+getConnectionsAction
+├── Input: { accountId: string }
+├── Query: platform_connections WHERE account_id = accountId
+├── Transform: DB rows → PlatformConnection interface
+└── Output: PlatformConnection[]
+
+disconnectPlatformAction
+├── Input: { connectionId, platform }
+├── Switch on platform:
+│   ├── youtube → disconnectYouTubeAction (revokes at Google)
+│   ├── tiktok → disconnectTikTokAction (revokes at TikTok)
+│   ├── instagram/facebook → disconnectMetaAction (revokes at Meta)
+│   └── twitter/linkedin → deleteConnection (DB delete only)
+└── Output: { success: true }
+
+refreshConnectionAction
+├── Input: { connectionId }
+├── Call: ensureValidToken(connectionId)
+│   └── Uses platform-specific refresh logic from token-refresh.ts
+└── Output: { success: true } or throws on failure
+```
 
 ---
 
@@ -518,29 +605,41 @@ function determineStatus(connection: any): 'active' | 'expired' | 'error' {
 
 ## Acceptance Criteria
 
-- [ ] Lists all supported platforms (YouTube, TikTok, Instagram, Facebook)
-- [ ] Shows connected accounts per platform
-- [ ] Displays account name, profile picture, status
-- [ ] Connect button initiates OAuth flow
-- [ ] Refresh button updates token
-- [ ] Disconnect shows confirmation dialog
-- [ ] Status badges show active/expired/error
-- [ ] Error message displayed when relevant
-- [ ] Multiple accounts supported where applicable
-- [ ] Permissions shown per platform
+- [x] Lists all supported platforms (YouTube, TikTok, Instagram, Facebook)
+- [x] Shows connected accounts per platform
+- [x] Displays account name, profile picture, status
+- [x] Connect button initiates OAuth flow
+- [x] Refresh button updates token
+- [x] Disconnect shows confirmation dialog
+- [x] Status badges show active/expired/error
+- [x] Error message displayed when relevant
+- [x] Multiple accounts supported where applicable
+- [x] Permissions shown per platform
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test status determination logic
-- [ ] Test connection mapping
+- [ ] Test status determination logic (`determineStatus` function)
+- [ ] Test connection mapping (DB → PlatformConnection interface)
+- [ ] Test schema validation for server actions
 
 ### Integration Tests
-- [ ] Test OAuth initiation redirect
-- [ ] Test disconnect flow
-- [ ] Test refresh token mutation
+- [ ] Test OAuth initiation redirect (initiateOAuth function)
+- [ ] Test disconnect flow (confirmation dialog → mutation → invalidate query)
+- [ ] Test refresh token mutation (calls ensureValidToken)
+
+### Manual Testing Checklist
+- [x] Page loads at `/home/[account]/settings/platforms`
+- [x] All 4 platforms displayed (YouTube, TikTok, Instagram, Facebook)
+- [x] Connect button redirects to OAuth flow
+- [x] Loading skeleton shown during data fetch
+- [x] Connected accounts show name, avatar, status badge
+- [x] Refresh button spins during mutation
+- [x] Disconnect shows confirmation dialog
+- [x] Toast notifications on success/error
+- [x] Dark mode styling works correctly
 
 ---
 

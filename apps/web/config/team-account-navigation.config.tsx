@@ -4,6 +4,7 @@ import {
   FolderKanban,
   LayoutDashboard,
   Settings,
+  Share2,
   Users,
 } from 'lucide-react';
 
@@ -44,6 +45,11 @@ const getRoutes = (account: string) => [
         label: 'common:routes.settings',
         path: createPath(pathsConfig.app.accountSettings, account),
         Icon: <Settings className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.platforms',
+        path: createPath(pathsConfig.app.accountPlatforms, account),
+        Icon: <Share2 className={iconClasses} />,
       },
       {
         label: 'common:routes.members',

@@ -133,7 +133,10 @@ export function VisualStudio({
   // Selection handlers
   const handleSelectAll = useCallback(() => {
     if (shots) {
-      setState((prev) => ({ ...prev, selectedShotIds: shots.map((s) => s.id) }));
+      setState((prev) => ({
+        ...prev,
+        selectedShotIds: shots.map((s) => s.id),
+      }));
     }
   }, [shots]);
 
@@ -166,12 +169,9 @@ export function VisualStudio({
     [generateMutation],
   );
 
-  const handleReorder = useCallback(
-    (_shotId: string, _newSequence: number) => {
-      // Reordering implementation pending - will be added in future PR
-    },
-    [],
-  );
+  const handleReorder = useCallback((_shotId: string, _newSequence: number) => {
+    // Reordering implementation pending - will be added in future PR
+  }, []);
 
   // Memoized processing shots for progress component
   const processingShots = useMemo(
