@@ -11,6 +11,7 @@ import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Card, CardContent } from '@kit/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
+import { VisualStudio } from '@kit/video-generation/components';
 
 type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit';
 
@@ -189,11 +190,7 @@ export function WorkspaceTabs({
 
       <TabsContent value="visuals">
         {tabUnlockState.visuals ? (
-          <ComingSoonPlaceholder
-            title="Visual Studio"
-            description="Generate video content for each shot in your screenplay using AI video generation."
-            phase={4}
-          />
+          <VisualStudio episodeId={episode.id} projectId={projectId} />
         ) : (
           <LockedTabContent tabId="visuals" />
         )}
