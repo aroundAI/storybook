@@ -6,8 +6,26 @@
 **Dependencies**: FILM-405 (generate-video-action)
 **Blocks**: None
 **Status**: ✅ Complete
-**Completed**: 2025-12-10
-**PR**: feat/FILM-409-visual-studio
+**Completed**: 2025-12-11
+**PR**: [#76](https://github.com/aroundAI/storybook/pull/76)
+
+## Implementation Notes
+
+### Files Created
+- `packages/features/video-generation/src/components/visual-studio/visual-studio.tsx`
+- `packages/features/video-generation/src/components/visual-studio/visual-studio-header.tsx`
+- `packages/features/video-generation/src/components/visual-studio/generation-progress.tsx`
+- `packages/features/video-generation/src/components/visual-studio/types.ts`
+- `packages/features/video-generation/src/components/visual-studio/index.ts`
+- `packages/features/video-generation/src/hooks/use-shots-query.ts`
+- `packages/features/video-generation/src/hooks/use-shots-realtime.ts`
+
+### Key Implementation Decisions
+1. **State Management**: Used consolidated `VisualStudioState` object per CLAUDE.md (line 599)
+2. **Race Condition Prevention**: Mutation accepts `shotIds` as parameter to avoid stale closure
+3. **Memory Leak Prevention**: `useShotsRealtime` uses refs for callbacks to prevent channel recreation
+4. **Provider Support**: Added Hailuo as 4th provider beyond spec (Kling, Runway, Luma, Hailuo)
+5. **Reuse**: Leverages existing `ShotGrid` component (FILM-410) for grid display
 
 ---
 
@@ -305,13 +323,21 @@ supabase
 ## Acceptance Criteria
 
 - [x] Component displays all shots in grid
+  - ✅ Uses `ShotGrid` component with `useShotsQuery` hook (lines 62, 261-272)
 - [x] Component supports shot selection
+  - ✅ Multi-select via `state.selectedShotIds` with Select All/Deselect All (lines 134-142)
 - [x] Component triggers video generation
+  - ✅ `generateMutation` calls `generateVideoAction`/`batchGenerateVideosAction` (lines 72-131)
 - [x] Component shows real-time status updates
+  - ✅ `useShotsRealtime` hook subscribes to Supabase Realtime (lines 65-69)
 - [x] Component displays progress for generating shots
+  - ✅ `GenerationProgress` component shown when processing shots exist (lines 255-257)
 - [x] Component handles errors gracefully
+  - ✅ Error state with retry button (lines 200-215), toast on mutation error (lines 126-130)
 - [x] Component is keyboard accessible
+  - ✅ All buttons have aria-labels, uses semantic HTML via @kit/ui components
 - [x] Component works on mobile (responsive)
+  - ✅ Uses flex layouts, responsive gap/padding in header (visual-studio-header.tsx)
 
 ---
 
