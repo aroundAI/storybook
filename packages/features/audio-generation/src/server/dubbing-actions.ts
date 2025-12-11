@@ -410,6 +410,9 @@ export const generateDubbedAudioAction = enhanceAction(
     logger.info(ctx, 'Starting dubbed audio generation');
 
     const client = getSupabaseServerClient();
+    // Admin client is required for storage uploads because the 'audio' bucket
+    // has restrictive RLS policies. Authorization is validated via RLS-protected
+    // database queries (getDubbedVersionWithContext) which verify project membership.
     const adminClient = getSupabaseServerAdminClient();
     const { data: user, error: authError } = await requireUser(client);
 
@@ -569,11 +572,12 @@ export const generateDubbedAudioAction = enhanceAction(
         }),
       );
 
-      results.forEach((result, idx) => {
-        if (result.status === 'fulfilled') {
+      for (let idx = 0; idx < results.length; idx++) {
+        const result = results[idx];
+        if (result && result.status === 'fulfilled') {
           generatedCount++;
           actualCost += result.value;
-        } else {
+        } else if (result && result.status === 'rejected') {
           failedCount++;
           const line = batch[idx];
           logger.error(
@@ -581,16 +585,23 @@ export const generateDubbedAudioAction = enhanceAction(
             'Audio generation failed',
           );
 
-          // Mark line as failed
+          // Mark line as failed - await to ensure status is properly tracked
           if (line) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            void (client as any)
+            const { error: updateError } = await (client as any)
               .from('dubbed_dialogue_lines')
               .update({ status: 'failed' })
               .eq('id', line.id);
+
+            if (updateError) {
+              logger.error(
+                { ...ctx, lineId: line.id, error: updateError },
+                'Failed to update line status to failed',
+              );
+            }
           }
         }
-      });
+      }
     }
 
     // 8. Update version status

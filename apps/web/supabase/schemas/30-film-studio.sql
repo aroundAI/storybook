@@ -1430,6 +1430,7 @@ create table if not exists public.dubbed_dialogue_lines (
   status varchar(50) default 'pending' not null,
   generation_metadata jsonb,
   created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone default now() not null,
   check (status in ('pending', 'translated', 'generating', 'voiced', 'failed')),
   check (timing_adjustment >= 0.5 and timing_adjustment <= 2.0),
   unique(dubbed_version_id, original_dialogue_id)
@@ -1440,11 +1441,17 @@ comment on column public.dubbed_dialogue_lines.translated_text is 'LLM-translate
 comment on column public.dubbed_dialogue_lines.timing_adjustment is 'Speed multiplier for timing sync (1.0 = normal)';
 comment on column public.dubbed_dialogue_lines.status is 'Line status: pending, translated, generating, voiced, failed';
 comment on column public.dubbed_dialogue_lines.generation_metadata is 'Voice generation metadata (provider, cost, etc.)';
+comment on column public.dubbed_dialogue_lines.updated_at is 'Last modification timestamp';
 
 -- Indexes for dubbed_dialogue_lines
 create index if not exists idx_dubbed_dialogue_version on public.dubbed_dialogue_lines(dubbed_version_id);
 create index if not exists idx_dubbed_dialogue_original on public.dubbed_dialogue_lines(original_dialogue_id);
 create index if not exists idx_dubbed_dialogue_status on public.dubbed_dialogue_lines(status);
+
+-- Timestamps trigger for dubbed_dialogue_lines
+create trigger dubbed_dialogue_lines_set_timestamps
+before insert or update on public.dubbed_dialogue_lines
+for each row execute function public.trigger_set_timestamps();
 
 -- ==================================
 -- Dubbed Versions RLS Policies
