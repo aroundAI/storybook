@@ -6,3 +6,5 @@ export {
 } from './use-shots-query';
 
 export { useShotsRealtime } from './use-shots-realtime';
+
+export { useGenerationStatus } from './use-generation-status';

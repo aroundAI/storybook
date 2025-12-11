@@ -13,6 +13,7 @@
 
 ### Files Created
 - `packages/features/video-generation/src/components/visual-studio/generation-progress.tsx`
+- `packages/features/video-generation/src/components/generation-progress/` (standalone variant)
 
 ### Key Implementation Decisions
 1. **Polling via generationJobId**: Uses `shot.generationJobId` to call `pollVideoStatusAction` directly
@@ -63,15 +64,29 @@ The Generation Progress component displays real-time progress for video generati
 ### Component Props
 
 ```typescript
-interface GenerationProgressProps {
-  shots: Shot[];
+interface GenerationProgressShot {
+  id: string;
+  sequenceNumber: number;
+  sceneNumber: number;
+  shotNumber: number;
+  status: 'queued' | 'generating' | 'completed' | 'failed';
+  prompt: string | null;
+  generationJobId?: string;
 }
 
-interface Shot {
-  id: string;
-  sequence_number: number;
-  status: 'queued' | 'generating' | 'completed' | 'failed';
-  prompt: string;
+interface GenerationProgressProps {
+  shots: GenerationProgressShot[];
+  onCancel?: (shotId: string) => void;
+  onComplete?: (shotId: string, videoUrl?: string) => void;
+  defaultCollapsed?: boolean;
+  className?: string;
+}
+
+interface GenerationProgressItemProps {
+  shot: GenerationProgressShot;
+  status: PollVideoStatusResponse | null;
+  isLoading: boolean;
+  onCancel?: () => void;
 }
 ```
 
@@ -219,19 +234,33 @@ export function GenerationProgress({ shots }: GenerationProgressProps) {
 ```
 packages/features/video-generation/src/
 ├── components/
-│   ├── GenerationProgress.tsx          # Progress component (CREATE THIS)
-│   └── __tests__/
-│       └── GenerationProgress.test.tsx
+│   ├── generation-progress/
+│   │   ├── index.ts                        # Barrel export
+│   │   ├── generation-progress.tsx         # Main component
+│   │   ├── generation-progress-item.tsx    # Individual shot progress
+│   │   └── types.ts                        # TypeScript interfaces
+│   └── index.ts                            # Updated with GenerationProgress export
+├── hooks/
+│   └── use-generation-status.ts            # React Query hook for polling
+└── server/
+    └── actions/
+        └── get-shot-generation-job-action.ts  # Lookup job ID for shot
 ```
 
 ### Polling Strategy
 
 ```typescript
-// React Query polling configuration
+// React Query polling configuration - stops on all terminal states
 {
-  refetchInterval: (data) => {
-    if (data?.status === 'completed' || data?.status === 'failed') {
-      return false; // Stop polling
+  refetchInterval: (query) => {
+    const data = query.state.data;
+    // Stop polling when job reaches a terminal state
+    if (
+      data?.status === 'completed' ||
+      data?.status === 'failed' ||
+      data?.status === 'cancelled'
+    ) {
+      return false;
     }
     return 5000; // Poll every 5 seconds
   },
@@ -258,33 +287,43 @@ const estimatedTime = status.estimatedTimeRemaining || null;
 
 ### New Files
 
-1. **packages/features/video-generation/src/components/GenerationProgress.tsx**
-2. **packages/features/video-generation/src/components/__tests__/GenerationProgress.test.tsx**
+1. **packages/features/video-generation/src/components/generation-progress/generation-progress.tsx** - Main collapsible component
+2. **packages/features/video-generation/src/components/generation-progress/generation-progress-item.tsx** - Individual shot progress display
+3. **packages/features/video-generation/src/components/generation-progress/types.ts** - TypeScript interfaces
+4. **packages/features/video-generation/src/components/generation-progress/index.ts** - Barrel export
+5. **packages/features/video-generation/src/hooks/use-generation-status.ts** - React Query hook with parallel polling
+6. **packages/features/video-generation/src/server/actions/get-shot-generation-job-action.ts** - Server action to lookup job ID
 
 ### Modified Files
 
-1. **packages/features/video-generation/src/components/index.ts** - Export component
+1. **packages/features/video-generation/src/components/index.ts** - Added GenerationProgress exports
+2. **packages/features/video-generation/src/hooks/index.ts** - Added useGenerationStatus export
+3. **packages/features/video-generation/src/server/actions/index.ts** - Added getShotGenerationJobAction export
+4. **packages/features/video-generation/package.json** - Added @tanstack/react-query dependency
 
 ---
 
 ## Acceptance Criteria
 
 - [x] Component displays overall progress
-  - ✅ `overallProgress` calculated from completed/total (lines 218-225), shown in Progress bar (line 255)
+  - ✅ `overallProgress` calculated from completed/total, shown in Progress bar
 - [x] Component shows individual job progress
-  - ✅ `ShotProgressItem` component renders each shot with status (lines 63-123, 261-282)
+  - ✅ `ShotProgressItem` component renders each shot with status
 - [x] Component polls status every 5 seconds
-  - ✅ `refetchInterval: 5000` in useQueries config (line 212)
-- [x] Component stops polling when complete
-  - ✅ Returns `false` when status is 'completed' or 'failed' (lines 207-210)
+  - ✅ `refetchInterval: 5000` in useQueries config
+- [x] Component stops polling when complete (including cancelled state)
+  - ✅ Returns `false` when status is 'completed', 'failed', or 'cancelled'
 - [x] Component displays queue position
-  - ✅ UI supports queue position display (lines 104-108), data pending API enhancement
+  - ✅ UI supports queue position display, data pending API enhancement
 - [x] Component shows estimated time
-  - ✅ UI supports estimated time display (lines 97-99), data pending API enhancement
+  - ✅ UI supports estimated time display, data pending API enhancement
 - [x] Component handles errors gracefully
-  - ✅ Try/catch in queryFn falls back to shot data on error (lines 190-198)
+  - ✅ Try/catch in queryFn falls back to shot data on error
 - [x] Component is accessible
-  - ✅ Uses semantic @kit/ui components, status icons have labels (lines 83-88)
+  - ✅ Uses semantic @kit/ui components, status icons have labels
+- [x] Cancel button integrated with cancelVideoJobAction
+- [x] Collapsible design for compact view
+- [x] Completion notifications via onComplete callback (with deduplication)
 
 ---
 
@@ -372,10 +411,36 @@ describe('GenerationProgress', () => {
 
 ## Future Enhancements
 
-1. **Cancel Button** - Allow canceling jobs
-2. **Detailed Timeline** - Show step-by-step progress
-3. **Notifications** - Browser notifications on completion
-4. **History** - View past generation jobs
+1. ~~**Cancel Button** - Allow canceling jobs~~ (Implemented)
+2. ~~**Completion Callbacks** - Notify parent on job completion~~ (Implemented)
+3. **Detailed Timeline** - Show step-by-step progress
+4. **Notifications** - Browser notifications on completion
+5. **History** - View past generation jobs
+
+---
+
+## Implementation Notes
+
+### Key Design Decisions
+
+1. **useEffect for completion notifications**: Side effects (calling onComplete) are handled in useEffect rather than during render to avoid React anti-patterns and duplicate notifications.
+
+2. **Ref-based deduplication**: A `useRef<Set<string>>` tracks which shots have been notified to prevent duplicate onComplete callbacks.
+
+3. **Terminal state handling**: Polling stops on all terminal states: `completed`, `failed`, and `cancelled`.
+
+4. **Server action for job lookup**: Created `getShotGenerationJobAction` to encapsulate the database query for finding job IDs, rather than querying directly in the component.
+
+5. **Collapsible via Radix UI**: Uses `@kit/ui/collapsible` for accessible expand/collapse behavior.
+
+### UI Components Used
+
+- `@kit/ui/progress` - Progress bars
+- `@kit/ui/card` - Card container (Card, CardHeader, CardContent, CardTitle)
+- `@kit/ui/badge` - Status badges with variants
+- `@kit/ui/button` - Cancel and collapse buttons
+- `@kit/ui/collapsible` - Collapsible sections
+- `lucide-react` - Icons (Loader2, Check, X, Clock, AlertCircle, ChevronUp, ChevronDown)
 
 ---
 
@@ -385,3 +450,5 @@ describe('GenerationProgress', () => {
 - **React Query Polling**: https://tanstack.com/query/latest/docs/guides/polling
 - **@kit/ui Progress**: Internal UI component
 - **Constitution**: Section 8 (Accessibility)
+- **PR #72**: https://github.com/aroundAI/storybook/pull/72
+- **PR #76**: https://github.com/aroundAI/storybook/pull/76

@@ -11,7 +11,17 @@ export {
   type ShotGridShot,
 } from './shot-grid';
 
-// Visual Studio Component
+// Generation Progress Component (standalone)
+export {
+  GenerationProgress as GenerationProgressStandalone,
+  GenerationProgressItem,
+  type GenerationProgressItemProps,
+  type GenerationProgressProps as GenerationProgressStandaloneProps,
+  type GenerationProgressShot,
+  type ShotGenerationStatus,
+} from './generation-progress';
+
+// Visual Studio Component (includes embedded GenerationProgress)
 export {
   GenerationProgress,
   PROVIDER_OPTIONS,
