@@ -11,6 +11,9 @@
     "test:coverage": "vitest --coverage"
   },
   "exports": {
+    "./components": "./src/components/index.ts",
+    "./server": "./src/server/index.ts",
+    "./types": "./src/types.ts",
     "./oauth/youtube": "./src/oauth/youtube/index.ts",
     "./oauth/tiktok": "./src/oauth/tiktok/index.ts",
     "./oauth/twitter": "./src/oauth/twitter/index.ts",
@@ -25,11 +28,11 @@
     "./components/linkedin-composer": "./src/components/linkedin-composer.tsx",
     "./components/platform-connections": "./src/components/platform-connections.tsx",
     "./server/connection-actions": "./src/server/connection-actions.ts",
-    "./types": "./src/types.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts"
   },
   "dependencies": {
+    "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",
@@ -38,7 +41,6 @@
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",
-    "@kit/next": "workspace:*",
     "@kit/notifications": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/tsconfig": "workspace:*",
@@ -47,6 +49,7 @@
     "@types/react": "19.1.13",
     "googleapis": "^148.0.0",
     "lucide-react": "^0.544.0",
+    "next": "15.5.3",
     "react": "19.1.1",
     "typescript": "^5.9.2",
     "vitest": "^3.2.4",

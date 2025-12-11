@@ -4,6 +4,7 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** XL (3-5 days)
+- **Status:** ✅ Complete
 - **Dependencies:** FILM-409 (Visual Studio), FILM-505 (Audio Studio), FILM-DS-03 (Interaction Patterns)
 - **Blocks:** FILM-602 (Track Layer), FILM-603 (Clip Editor), FILM-604 (Auto-Stitch)
 
@@ -20,361 +21,241 @@ The Timeline Editor is the core component of the Edit Suite, allowing users to a
 ### Requirements
 
 1. **Multi-track Timeline**: Support video, dialogue, music, SFX, and ambient tracks
-2. **Playhead Scrubbing**: Frame-accurate seeking with keyboard and mouse
+2. **Playhead Scrubbing**: Frame-accurate seeking with keyboard and mouse (30fps default)
 3. **Clip Manipulation**: Drag to move, resize from edges, snap to grid
-4. **Zoom Control**: Zoom in/out with smooth transitions
-5. **Real-time Preview**: Sync playback across all tracks
-6. **Undo/Redo**: Full history for all editing operations
-7. **Keyboard Shortcuts**: Professional editing shortcuts
+4. **Zoom Control**: Zoom in/out with smooth transitions (10-500 px/sec)
+5. **Real-time Preview**: Sync playback across all tracks with video preview pane
+6. **Undo/Redo**: Full history for all editing operations (max 50 entries)
+7. **Keyboard Shortcuts**: Professional editing shortcuts via `useTimelineKeyboard` hook
 
 ### Component Architecture
 
 ```
 TimelineEditor
+├── PreviewPlayer (video preview synced with playhead)
 ├── TimelineHeader
-│   ├── ZoomControls
-│   ├── TimecodeDisplay
-│   └── PlaybackControls
+│   ├── PlaybackControls (play/pause, skip)
+│   ├── TimecodeDisplay (MM:SS:FF format)
+│   ├── ZoomControls (slider + buttons)
+│   ├── SnapToggle
+│   └── UndoRedo buttons
+├── TrackLabels (mute/solo/lock toggles)
 ├── TimelineRuler
-│   ├── TimeMarkers
-│   └── PlayheadMarker
+│   ├── TimeMarkers (zoom-responsive)
+│   └── InPoint/OutPoint markers
 ├── TrackContainer
 │   ├── TrackLayer (video)
 │   ├── TrackLayer (dialogue)
 │   ├── TrackLayer (music)
 │   ├── TrackLayer (sfx)
 │   └── TrackLayer (ambient)
-├── PlayheadLine
+│       └── ClipItem (with WaveformDisplay for audio)
+├── Playhead (draggable)
 └── TimelineFooter
     └── DurationDisplay
 ```
 
-### Interface Definitions
+### Interface Definitions (Implemented)
 
 ```typescript
 // packages/features/episodes/src/components/timeline-editor/types.ts
 
-export interface TimelineState {
-  duration: number;           // Total duration in seconds
-  currentTime: number;        // Playhead position in seconds
-  zoom: number;               // Pixels per second (e.g., 50 = 50px/sec)
-  scrollX: number;            // Horizontal scroll position
-  isPlaying: boolean;
-  inPoint: number | null;     // Loop start
-  outPoint: number | null;    // Loop end
-  selectedClipIds: Set<string>;
-}
+export type ClipType = 'video' | 'dialogue' | 'music' | 'sfx' | 'ambient';
 
-export interface Track {
+export interface TimelineClip {
   id: string;
-  type: 'video' | 'dialogue' | 'music' | 'sfx' | 'ambient';
+  trackType: ClipType;
   name: string;
-  clips: Clip[];
-  isMuted: boolean;
-  isLocked: boolean;
-  volume: number;            // 0-1
-}
-
-export interface Clip {
-  id: string;
-  trackId: string;
-  assetId?: string;          // Reference to asset
-  name: string;
-  startTime: number;         // Position on timeline (seconds)
-  duration: number;          // Clip length (seconds)
-  sourceStart?: number;      // Offset in source file
-  sourceEnd?: number;
+  startFrame: number;        // Frame-based positioning (not seconds)
+  durationFrames: number;    // Frame-based duration
   thumbnailUrl?: string;
-  waveformData?: number[];   // For audio tracks
+  videoUrl?: string;
+  waveformData?: number[];
+  shotId?: string;
 }
 
-export interface TimelineAction {
-  type: 'MOVE_CLIP' | 'RESIZE_CLIP' | 'ADD_CLIP' | 'DELETE_CLIP' | 'SPLIT_CLIP';
-  clipId: string;
-  payload: unknown;
-  previousState: unknown;    // For undo
-}
-```
-
-### Component Implementation
-
-```typescript
-// packages/features/episodes/src/components/timeline-editor/timeline-editor.tsx
-
-'use client';
-
-import { useReducer, useRef, useCallback, useEffect } from 'react';
-import { useHotkeys } from 'react-hotkeys-hook';
-import { TimelineHeader } from './timeline-header';
-import { TimelineRuler } from './timeline-ruler';
-import { TrackLayer } from './track-layer';
-import { Playhead } from './playhead';
-import { timelineReducer, initialState } from './timeline-reducer';
-
-interface TimelineEditorProps {
-  episodeId: string;
-  tracks: Track[];
-  onSave: (tracks: Track[]) => Promise<void>;
+export interface TimelineTrack {
+  id: string;
+  type: ClipType;
+  name: string;
+  clips: TimelineClip[];
+  isMuted: boolean;
+  isSolo: boolean;
+  isLocked: boolean;
+  height: number;
 }
 
-export function TimelineEditor({ episodeId, tracks, onSave }: TimelineEditorProps) {
-  const [state, dispatch] = useReducer(timelineReducer, {
-    ...initialState,
-    tracks,
-  });
-
-  const containerRef = useRef<HTMLDivElement>(null);
-  const playbackRef = useRef<{ video: HTMLVideoElement | null }>({ video: null });
-
-  // Calculate timeline width based on zoom and duration
-  const timelineWidth = state.duration * state.zoom;
-
-  // Keyboard shortcuts
-  useHotkeys('space', (e) => {
-    e.preventDefault();
-    dispatch({ type: 'TOGGLE_PLAYBACK' });
-  });
-
-  useHotkeys('left', () => dispatch({ type: 'SEEK', time: state.currentTime - 1/30 }));
-  useHotkeys('right', () => dispatch({ type: 'SEEK', time: state.currentTime + 1/30 }));
-  useHotkeys('shift+left', () => dispatch({ type: 'SEEK', time: state.currentTime - 1 }));
-  useHotkeys('shift+right', () => dispatch({ type: 'SEEK', time: state.currentTime + 1 }));
-  useHotkeys('[', () => dispatch({ type: 'SET_IN_POINT', time: state.currentTime }));
-  useHotkeys(']', () => dispatch({ type: 'SET_OUT_POINT', time: state.currentTime }));
-  useHotkeys('home', () => dispatch({ type: 'SEEK', time: 0 }));
-  useHotkeys('end', () => dispatch({ type: 'SEEK', time: state.duration }));
-  useHotkeys('mod+z', () => dispatch({ type: 'UNDO' }));
-  useHotkeys('mod+shift+z', () => dispatch({ type: 'REDO' }));
-  useHotkeys('delete', () => dispatch({ type: 'DELETE_SELECTED' }));
-  useHotkeys('=', () => dispatch({ type: 'ZOOM_IN' }));
-  useHotkeys('-', () => dispatch({ type: 'ZOOM_OUT' }));
-
-  // Playback sync
-  useEffect(() => {
-    if (!state.isPlaying) return;
-
-    const interval = setInterval(() => {
-      dispatch({ type: 'TICK' });
-    }, 1000 / 30); // 30fps update
-
-    return () => clearInterval(interval);
-  }, [state.isPlaying]);
-
-  // Handle clip drag
-  const handleClipMove = useCallback((clipId: string, newStartTime: number) => {
-    dispatch({
-      type: 'MOVE_CLIP',
-      clipId,
-      startTime: snapToGrid(newStartTime, state.snapEnabled),
-    });
-  }, [state.snapEnabled]);
-
-  // Handle clip resize
-  const handleClipResize = useCallback((
-    clipId: string,
-    edge: 'left' | 'right',
-    delta: number
-  ) => {
-    dispatch({
-      type: 'RESIZE_CLIP',
-      clipId,
-      edge,
-      delta: snapToGrid(delta, state.snapEnabled),
-    });
-  }, [state.snapEnabled]);
-
-  return (
-    <div
-      ref={containerRef}
-      className="flex flex-col h-full bg-background border rounded-lg overflow-hidden"
-      role="application"
-      aria-label="Timeline editor"
-    >
-      {/* Header with controls */}
-      <TimelineHeader
-        currentTime={state.currentTime}
-        duration={state.duration}
-        isPlaying={state.isPlaying}
-        zoom={state.zoom}
-        onPlay={() => dispatch({ type: 'PLAY' })}
-        onPause={() => dispatch({ type: 'PAUSE' })}
-        onSeek={(time) => dispatch({ type: 'SEEK', time })}
-        onZoomChange={(zoom) => dispatch({ type: 'SET_ZOOM', zoom })}
-      />
-
-      {/* Timeline area */}
-      <div className="flex-1 overflow-auto relative">
-        {/* Time ruler */}
-        <TimelineRuler
-          duration={state.duration}
-          zoom={state.zoom}
-          currentTime={state.currentTime}
-        />
-
-        {/* Tracks */}
-        <div className="relative" style={{ width: timelineWidth }}>
-          {state.tracks.map((track) => (
-            <TrackLayer
-              key={track.id}
-              track={track}
-              zoom={state.zoom}
-              selectedClipIds={state.selectedClipIds}
-              onClipSelect={(clipId) => dispatch({ type: 'SELECT_CLIP', clipId })}
-              onClipMove={handleClipMove}
-              onClipResize={handleClipResize}
-              onClipDoubleClick={(clipId) => dispatch({ type: 'OPEN_CLIP_EDITOR', clipId })}
-            />
-          ))}
-
-          {/* Playhead */}
-          <Playhead
-            currentTime={state.currentTime}
-            zoom={state.zoom}
-            height="100%"
-            onDrag={(time) => dispatch({ type: 'SEEK', time })}
-          />
-        </div>
-      </div>
-    </div>
-  );
+export interface TimelineState {
+  tracks: TimelineTrack[];
+  playheadFrame: number;     // Frame-based (not seconds)
+  isPlaying: boolean;
+  totalFrames: number;
+  fps: number;
+  zoom: number;              // Pixels per second
+  scrollX: number;
+  scrollY: number;
+  selectedClipIds: Set<string>;
+  selectedTrackId: string | null;
+  inPoint: number | null;    // Frame number
+  outPoint: number | null;   // Frame number
+  history: TimelineHistoryEntry[];
+  historyIndex: number;      // -1 when no history
+  snapEnabled: boolean;
+  isDragging: boolean;
+  draggedClipId: string | null;
+  resizeEdge: 'left' | 'right' | null;
 }
 
-// Snap to grid helper
-function snapToGrid(time: number, enabled: boolean): number {
-  if (!enabled) return time;
-  const gridSize = 1 / 30; // Snap to frames at 30fps
-  return Math.round(time / gridSize) * gridSize;
+export interface TimelineData {
+  tracks: TimelineTrack[];
+  totalFrames: number;
+  fps: number;
+  inPoint: number | null;
+  outPoint: number | null;
+  version: number;
 }
-```
 
-### State Reducer
-
-```typescript
-// packages/features/episodes/src/components/timeline-editor/timeline-reducer.ts
-
-type TimelineAction =
+// 21 action types implemented
+export type TimelineAction =
+  | { type: 'SET_PLAYHEAD'; frame: number }
   | { type: 'PLAY' }
   | { type: 'PAUSE' }
   | { type: 'TOGGLE_PLAYBACK' }
-  | { type: 'SEEK'; time: number }
   | { type: 'TICK' }
   | { type: 'SET_ZOOM'; zoom: number }
   | { type: 'ZOOM_IN' }
   | { type: 'ZOOM_OUT' }
-  | { type: 'SET_IN_POINT'; time: number }
-  | { type: 'SET_OUT_POINT'; time: number }
+  | { type: 'SET_SCROLL'; x: number; y: number }
   | { type: 'SELECT_CLIP'; clipId: string; additive?: boolean }
+  | { type: 'SELECT_CLIPS'; clipIds: string[] }
   | { type: 'DESELECT_ALL' }
-  | { type: 'MOVE_CLIP'; clipId: string; startTime: number }
-  | { type: 'RESIZE_CLIP'; clipId: string; edge: 'left' | 'right'; delta: number }
+  | { type: 'MOVE_CLIP'; clipId: string; newStartFrame: number; newTrackId?: string }
+  | { type: 'RESIZE_CLIP'; clipId: string; newStartFrame: number; newDurationFrames: number }
+  | { type: 'DELETE_CLIPS'; clipIds: string[] }
   | { type: 'DELETE_SELECTED' }
+  | { type: 'ADD_CLIP'; trackId: string; clip: Omit<TimelineClip, 'id'> }
+  | { type: 'SET_IN_POINT'; frame: number | null }
+  | { type: 'SET_OUT_POINT'; frame: number | null }
+  | { type: 'TOGGLE_TRACK_MUTE'; trackId: string }
+  | { type: 'TOGGLE_TRACK_SOLO'; trackId: string }
+  | { type: 'TOGGLE_TRACK_LOCK'; trackId: string }
+  | { type: 'TOGGLE_SNAP' }
   | { type: 'UNDO' }
-  | { type: 'REDO' };
+  | { type: 'REDO' }
+  | { type: 'LOAD_TIMELINE'; data: TimelineData }
+  | { type: 'START_DRAG'; clipId: string; resizeEdge?: 'left' | 'right' }
+  | { type: 'END_DRAG' };
 
-export function timelineReducer(state: TimelineState, action: TimelineAction): TimelineState {
-  switch (action.type) {
-    case 'PLAY':
-      return { ...state, isPlaying: true };
+export const ZOOM_LEVELS = {
+  MIN: 10,
+  MAX: 500,
+  DEFAULT: 50,
+  STEPS: [10, 25, 50, 100, 200, 500],
+} as const;
 
-    case 'PAUSE':
-      return { ...state, isPlaying: false };
-
-    case 'TOGGLE_PLAYBACK':
-      return { ...state, isPlaying: !state.isPlaying };
-
-    case 'SEEK':
-      return {
-        ...state,
-        currentTime: Math.max(0, Math.min(action.time, state.duration)),
-      };
-
-    case 'TICK':
-      const nextTime = state.currentTime + 1/30;
-      if (state.outPoint && nextTime >= state.outPoint) {
-        return { ...state, currentTime: state.inPoint || 0 };
-      }
-      if (nextTime >= state.duration) {
-        return { ...state, currentTime: 0, isPlaying: false };
-      }
-      return { ...state, currentTime: nextTime };
-
-    case 'ZOOM_IN':
-      return { ...state, zoom: Math.min(state.zoom * 1.5, 500) };
-
-    case 'ZOOM_OUT':
-      return { ...state, zoom: Math.max(state.zoom / 1.5, 10) };
-
-    case 'SET_ZOOM':
-      return { ...state, zoom: action.zoom };
-
-    case 'SELECT_CLIP':
-      const newSelected = action.additive
-        ? new Set([...state.selectedClipIds, action.clipId])
-        : new Set([action.clipId]);
-      return { ...state, selectedClipIds: newSelected };
-
-    case 'MOVE_CLIP':
-      return {
-        ...state,
-        tracks: state.tracks.map(track => ({
-          ...track,
-          clips: track.clips.map(clip =>
-            clip.id === action.clipId
-              ? { ...clip, startTime: action.startTime }
-              : clip
-          ),
-        })),
-        history: [...state.history, createHistoryEntry(state, action)],
-      };
-
-    // ... more cases
-
-    default:
-      return state;
-  }
-}
+export const DEFAULT_TRACKS: Omit<TimelineTrack, 'id' | 'clips'>[] = [
+  { type: 'video', name: 'Video', isMuted: false, isSolo: false, isLocked: false, height: 80 },
+  { type: 'dialogue', name: 'Dialogue', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  { type: 'music', name: 'Music', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  { type: 'sfx', name: 'SFX', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  { type: 'ambient', name: 'Ambient', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+];
 ```
 
-### File Changes
+### File Changes (Implemented)
 
-| Action | Path |
-|--------|------|
-| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-editor.tsx` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-reducer.ts` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-header.tsx` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-ruler.tsx` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/playhead.tsx` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/types.ts` |
-| CREATE | `packages/features/episodes/src/components/timeline-editor/index.ts` |
+| Action | Path | LOC |
+|--------|------|-----|
+| CREATE | `packages/features/episodes/src/components/timeline-editor/types.ts` | ~280 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-reducer.ts` | ~435 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-context.tsx` | ~55 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-editor.tsx` | ~325 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/preview-player.tsx` | ~185 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-header.tsx` | ~210 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/timeline-ruler.tsx` | ~175 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/playhead.tsx` | ~130 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/track-layer.tsx` | ~75 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/clip-item.tsx` | ~340 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/waveform-display.tsx` | ~90 |
+| CREATE | `packages/features/episodes/src/components/timeline-editor/index.ts` | ~25 |
+| MODIFY | `packages/features/episodes/src/components/index.ts` | +10 |
+| MODIFY | `packages/features/episodes/package.json` | +1 (added @kit/film-studio dependency) |
+
+**Total:** ~2,335 lines of code
+
+---
+
+## Implementation Details
+
+### Key Technical Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Time units | Frame-based (not seconds) | More accurate for video editing at 30fps |
+| State management | useReducer + Context | Complex state with undo/redo history |
+| Keyboard shortcuts | `useTimelineKeyboard` from @kit/film-studio | Reuse existing hook with full shortcut support |
+| Drag/resize | Custom with refs for stale closure prevention | Smooth dragging with latest state values |
+| Video sync | Track seeking state to prevent race conditions | Queue seeks during active seek operations |
+| Waveform rendering | Canvas API | Better performance for dense audio data |
+| Design tokens | `timelineTrackTokens` from @kit/film-studio | Consistent track colors across components |
+| Snapping | `snapToGrid` from @kit/film-studio | 10px threshold, frame-based snapping |
+
+### Dependencies Used
+
+From `@kit/film-studio`:
+- `useTimelineKeyboard` hook - keyboard shortcuts
+- `timelineTrackTokens` - track colors (video: blue, dialogue: green, music: purple, sfx: amber, ambient: slate)
+- `SNAP_THRESHOLD_PX` constant (10px)
+- `snapToGrid` utility function
+- `TrackType` type
+
+From `@kit/ui`:
+- Button, Card, Slider, ScrollArea components
+- `cn` utility for className merging
+
+### Bug Fixes Applied
+
+1. **Type export error** - Fixed ZOOM_LEVELS and DEFAULT_TRACKS being incorrectly exported as types
+2. **History management** - Fixed initial state in undo stack causing first undo to revert to empty state
+3. **Stale closure** - Added refs to access latest values in document event handlers during drag
+4. **Race condition** - Track seeking state to prevent video stuttering during fast scrubbing
+5. **Memory leak** - Added useEffect cleanup for document event listeners on component unmount
+6. **useEffect justification** - Added comments explaining why each useEffect is necessary
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Timeline displays all tracks with clips
-- [ ] Playhead scrubs with mouse and keyboard
-- [ ] Clips can be dragged to reposition
-- [ ] Clips can be resized from edges
-- [ ] Snap-to-grid works for alignment
-- [ ] Zoom in/out changes time scale
-- [ ] Space bar toggles play/pause
-- [ ] Undo/redo works for all operations
-- [ ] Selection highlights clips visually
-- [ ] Multi-select with Shift+Click
+- [x] Timeline displays all 5 track types with clips
+- [x] Playhead scrubs with mouse and keyboard
+- [x] Clips can be dragged to reposition
+- [x] Clips can be resized from edges
+- [x] Snap-to-grid works for alignment (10px threshold, frame-based)
+- [x] Zoom in/out changes time scale (10-500 px/sec)
+- [x] Space bar toggles play/pause
+- [x] Undo/redo works for all operations (history starts empty, max 50 entries)
+- [x] Selection highlights clips visually (ring-2 ring-white)
+- [x] Multi-select with Shift+Click
+- [x] Video preview syncs with playhead during playback and scrubbing
+- [x] Track mute/solo/lock toggles functional
+- [x] In/out point markers for loop playback
+- [x] Timecode display in MM:SS:FF format
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test timeline reducer for all action types
-- [ ] Test snap-to-grid calculation
-- [ ] Test clip overlap detection
+- [ ] Test timeline reducer for all 21 action types
+- [ ] Test snap-to-grid calculation with frame-based snapping
+- [ ] Test history management (push, undo, redo, max size)
+- [ ] Test formatTimecode helper function
 
 ### Integration Tests
-- [ ] Test drag-and-drop with mouse events
-- [ ] Test keyboard navigation
-- [ ] Test undo/redo stack
+- [ ] Test drag-and-drop with mouse events and stale closure prevention
+- [ ] Test keyboard navigation via useTimelineKeyboard
+- [ ] Test undo/redo stack with correct history indexing
+- [ ] Test video sync with seek state tracking
 
 ### E2E Tests
 - [ ] Test full editing workflow
@@ -383,14 +264,26 @@ export function timelineReducer(state: TimelineState, action: TimelineAction): T
 
 ## Performance Considerations
 
-- Virtualize clips outside viewport
-- Throttle playhead updates during drag
-- Debounce save operations
-- Use Web Workers for waveform rendering
+- [x] Use requestAnimationFrame for playback (not setInterval)
+- [x] Canvas-based waveform rendering for performance
+- [x] Refs for latest values to avoid stale closures
+- [x] Seek state tracking to prevent overlapping video seeks
+- [ ] Virtualize clips outside viewport (future optimization)
+- [ ] Debounce save operations (future optimization)
 
 ---
 
 ## Open Questions
 
-- [ ] Should we support multiple clip selection? **Yes**
+- [x] Should we support multiple clip selection? **Yes - implemented with Shift+Click**
+- [x] Should we include video preview? **Yes - PreviewPlayer component added**
 - [ ] Should we add markers/bookmarks? (post-MVP)
+- [ ] Should we add clip splitting? (post-MVP)
+
+---
+
+## Related PRs
+
+- PR #79: Initial implementation
+- Commit ff533c9: feat(episodes): implement timeline editor component (FILM-601)
+- Commit 8a5b533: fix(episodes): address code review issues for timeline editor
