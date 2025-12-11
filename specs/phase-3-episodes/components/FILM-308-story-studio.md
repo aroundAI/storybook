@@ -71,7 +71,6 @@ import { Loader2, CheckCircle, Circle } from 'lucide-react';
 
 interface StoryStudioProps {
   episodeId: string;
-  projectId: string;
 }
 
 interface EpisodeData {
@@ -86,7 +85,7 @@ interface EpisodeData {
 
 type PipelineStep = 'ideation' | 'story' | 'screenplay' | 'shot-list';
 
-export function StoryStudio({ episodeId, projectId }: StoryStudioProps) {
+export function StoryStudio({ episodeId }: StoryStudioProps) {
   const [activeTab, setActiveTab] = useState<PipelineStep>('ideation');
   const queryClient = useQueryClient();
 
@@ -176,9 +175,11 @@ export function StoryStudio({ episodeId, projectId }: StoryStudioProps) {
 
         <TabsContent value="ideation">
           <StoryIdeation
-            episodeId={episodeId}
-            projectId={projectId}
-            onComplete={() => handleTabChange('story')}
+            onComplete={(selectedIdea) => {
+              // Parent handles story generation with selected idea
+              handleTabChange('story');
+            }}
+            isGenerating={false}
           />
         </TabsContent>
 
