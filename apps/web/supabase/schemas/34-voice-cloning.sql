@@ -1,5 +1,5 @@
--- Migration: Add voice cloning support
--- FILM-510: Voice Cloning with ElevenLabs API
+-- Schema: Voice Cloning (FILM-510)
+-- Voice cloning support with ElevenLabs API integration
 
 -- Extend voice_profiles table with cloning columns
 ALTER TABLE public.voice_profiles ADD COLUMN IF NOT EXISTS clone_status VARCHAR(50);
