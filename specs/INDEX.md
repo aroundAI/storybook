@@ -406,7 +406,7 @@ graph TD
 | FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.md) | DRAFT | XL | FILM-DS-03 |
 | FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.md) | DRAFT | L | FILM-601 |
 | FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.md) | DRAFT | L | FILM-601 |
-| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | DRAFT | L | FILM-601 |
+| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | ✅ DONE | L | FILM-601 |
 | FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.md) | DRAFT | L | FILM-601 |
 | FILM-606 | [transitions-library](./phase-6-edit-suite/lib/FILM-606-transitions-library.md) | DRAFT | M | FILM-601 |
 
