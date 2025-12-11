@@ -454,7 +454,7 @@ graph TD
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.md) | ✅ DONE | M | FILM-101n |
 | FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | ✅ DONE | M | - |
-| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | DRAFT | M | FILM-706 |
+| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | ✅ DONE | M | FILM-706 |
 
 ### Spikes (5 specs)
 
@@ -525,7 +525,7 @@ SPIKE-01 through SPIKE-05
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 6 | 0 | 0 | 0 | 9 |
 | 8. Analytics | 10 | 7 | 0 | 0 | 0 | 3 |
-| 9. Integration | 6 | 2 | 0 | 0 | 0 | 4 |
+| 9. Integration | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
 | **TOTAL** | **130** | **41** | **0** | **0** | **0** | **89** |
 
@@ -587,6 +587,7 @@ SPIKE-01 through SPIKE-05
 | FILM-208 | `apps/web/app/home/[account]/studio/[projectId]/assets/page.tsx` |
 | FILM-312 | `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/page.tsx` |
 | FILM-904 | `apps/web/app/home/[account]/settings/api-keys/page.tsx` |
+| FILM-906 | `apps/web/app/home/[account]/settings/platforms/page.tsx` ✅ |
 
 ---
 
