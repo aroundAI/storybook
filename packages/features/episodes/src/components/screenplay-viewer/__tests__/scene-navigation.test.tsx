@@ -186,9 +186,9 @@ describe('SceneNavigation', () => {
       );
 
       const buttons = screen.getAllByTestId('nav-button');
-      expect(buttons[0].className).not.toContain('bg-accent');
-      expect(buttons[1].className).toContain('bg-accent');
-      expect(buttons[2].className).not.toContain('bg-accent');
+      expect(buttons[0]?.className).not.toContain('bg-accent');
+      expect(buttons[1]?.className).toContain('bg-accent');
+      expect(buttons[2]?.className).not.toContain('bg-accent');
     });
 
     it('should update highlight when activeSceneNumber changes', () => {
@@ -201,7 +201,7 @@ describe('SceneNavigation', () => {
       );
 
       let buttons = screen.getAllByTestId('nav-button');
-      expect(buttons[0].className).toContain('bg-accent');
+      expect(buttons[0]?.className).toContain('bg-accent');
 
       rerender(
         <SceneNavigation
@@ -212,8 +212,8 @@ describe('SceneNavigation', () => {
       );
 
       buttons = screen.getAllByTestId('nav-button');
-      expect(buttons[0].className).not.toContain('bg-accent');
-      expect(buttons[2].className).toContain('bg-accent');
+      expect(buttons[0]?.className).not.toContain('bg-accent');
+      expect(buttons[2]?.className).toContain('bg-accent');
     });
   });
 
@@ -228,7 +228,9 @@ describe('SceneNavigation', () => {
       );
 
       const buttons = screen.getAllByTestId('nav-button');
-      fireEvent.click(buttons[1]);
+      const secondButton = buttons[1];
+      expect(secondButton).toBeDefined();
+      fireEvent.click(secondButton!);
 
       expect(mockOnSceneSelect).toHaveBeenCalledTimes(1);
       expect(mockOnSceneSelect).toHaveBeenCalledWith(2);
@@ -244,11 +246,15 @@ describe('SceneNavigation', () => {
       );
 
       const buttons = screen.getAllByTestId('nav-button');
+      const firstButton = buttons[0];
+      const thirdButton = buttons[2];
+      expect(firstButton).toBeDefined();
+      expect(thirdButton).toBeDefined();
 
-      fireEvent.click(buttons[0]);
+      fireEvent.click(firstButton!);
       expect(mockOnSceneSelect).toHaveBeenLastCalledWith(1);
 
-      fireEvent.click(buttons[2]);
+      fireEvent.click(thirdButton!);
       expect(mockOnSceneSelect).toHaveBeenLastCalledWith(3);
 
       expect(mockOnSceneSelect).toHaveBeenCalledTimes(2);
@@ -271,9 +277,12 @@ describe('SceneNavigation', () => {
 
   describe('Single Scene', () => {
     it('should render single scene correctly', () => {
+      const firstScene = mockScenes[0];
+      expect(firstScene).toBeDefined();
+
       render(
         <SceneNavigation
-          scenes={[mockScenes[0]]}
+          scenes={[firstScene!]}
           activeSceneNumber={1}
           onSceneSelect={mockOnSceneSelect}
         />,
