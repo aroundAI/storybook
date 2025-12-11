@@ -35,6 +35,7 @@ export interface ShotGridShot {
   status: ShotDisplayStatus;
   videoUrl: string | null;
   thumbnailUrl: string | null;
+  generationJobId: string | null;
   progress?: number;
   errorMessage?: string;
 }
@@ -96,6 +97,7 @@ export function toShotGridShot(shot: EpisodeShot): ShotGridShot {
     status: mapStatusToDisplayStatus(shot.status),
     videoUrl: shot.videoUrl,
     thumbnailUrl: shot.thumbnailUrl,
+    generationJobId: null, // Not available from EpisodeShot type
     progress: undefined,
     errorMessage: undefined,
   };

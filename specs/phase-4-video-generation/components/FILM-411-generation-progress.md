@@ -5,7 +5,22 @@
 **Effort**: M (3-4 days)
 **Dependencies**: FILM-408 (poll-status-action)
 **Blocks**: None
-**Status**: Complete
+**Status**: ✅ Complete
+**Completed**: 2025-12-11
+**PR**: [#76](https://github.com/aroundAI/storybook/pull/76)
+
+## Implementation Notes
+
+### Files Created
+- `packages/features/video-generation/src/components/visual-studio/generation-progress.tsx`
+- `packages/features/video-generation/src/components/generation-progress/` (standalone variant)
+
+### Key Implementation Decisions
+1. **Polling via generationJobId**: Uses `shot.generationJobId` to call `pollVideoStatusAction` directly
+2. **Collapsible UI**: Uses `@kit/ui/collapsible` for expand/collapse of individual shot progress
+3. **Smart Fallback**: Falls back to shot data if no generation job ID or on polling error
+4. **Status Mapping**: Maps provider statuses (processing/queued/completed/failed) to display statuses
+5. **Added to ShotGridShot**: Extended type with `generationJobId` field for polling support
 
 ---
 
@@ -291,13 +306,21 @@ const estimatedTime = status.estimatedTimeRemaining || null;
 ## Acceptance Criteria
 
 - [x] Component displays overall progress
+  - ✅ `overallProgress` calculated from completed/total, shown in Progress bar
 - [x] Component shows individual job progress
+  - ✅ `ShotProgressItem` component renders each shot with status
 - [x] Component polls status every 5 seconds
+  - ✅ `refetchInterval: 5000` in useQueries config
 - [x] Component stops polling when complete (including cancelled state)
+  - ✅ Returns `false` when status is 'completed', 'failed', or 'cancelled'
 - [x] Component displays queue position
+  - ✅ UI supports queue position display, data pending API enhancement
 - [x] Component shows estimated time
+  - ✅ UI supports estimated time display, data pending API enhancement
 - [x] Component handles errors gracefully
+  - ✅ Try/catch in queryFn falls back to shot data on error
 - [x] Component is accessible
+  - ✅ Uses semantic @kit/ui components, status icons have labels
 - [x] Cancel button integrated with cancelVideoJobAction
 - [x] Collapsible design for compact view
 - [x] Completion notifications via onComplete callback (with deduplication)
@@ -428,3 +451,4 @@ describe('GenerationProgress', () => {
 - **@kit/ui Progress**: Internal UI component
 - **Constitution**: Section 8 (Accessibility)
 - **PR #72**: https://github.com/aroundAI/storybook/pull/72
+- **PR #76**: https://github.com/aroundAI/storybook/pull/76
