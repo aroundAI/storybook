@@ -586,6 +586,36 @@ export default $config({
       }),
     });
 
+    // Analytics Sync Cron - Syncs YouTube, TikTok, Instagram analytics hourly
+    // Uses EventBridge to trigger a Lambda that calls the analytics sync API endpoint
+    const analyticsSyncCron = new sst.aws.Cron("AnalyticsSyncCron", {
+      job: {
+        handler: "apps/web/lambda/analytics-sync/index.handler",
+        timeout: "5 minutes",
+        memory: "512 MB",
+        architecture: "arm64",
+        link: [web],
+        environment: {
+          API_URL: web.url,
+          CRON_SECRET: process.env.CRON_SECRET || '',
+        },
+        transform: {
+          function: {
+            kmsKeyArn: kmsKey.arn,
+          },
+        },
+        permissions: [
+          {
+            actions: ["kms:Decrypt"],
+            resources: [kmsKey.arn],
+          },
+        ],
+      },
+      schedule: "rate(1 hour)",
+    });
+
+    console.log(`✓ Analytics sync cron configured (hourly)`);
+
     // SNS Topic for CloudWatch Alarm Notifications (optional)
     // Configure email subscription via ALARM_EMAIL environment variable
     let alarmTopic: aws.sns.Topic | undefined;

@@ -1,0 +1,19 @@
+{
+  "pageTitle": "Platform Connections",
+  "pageDescription": "Connect your social media accounts to publish content directly.",
+  "connect": "Connect",
+  "connectAnother": "Connect Another",
+  "disconnect": "Disconnect",
+  "reconnect": "Reconnect",
+  "noAccountsConnected": "No {{platform}} accounts connected",
+  "connectToStart": "Connect an account to start publishing",
+  "connectedTimeAgo": "Connected {{time}}",
+  "permissionsRequested": "Permissions requested:",
+  "disconnectTitle": "Disconnect {{platform}}?",
+  "disconnectDescription": "This will remove access to {{accountName}}. You won't be able to publish to this account until you reconnect.",
+  "status": {
+    "connected": "Connected",
+    "expired": "Expired",
+    "error": "Error"
+  }
+}

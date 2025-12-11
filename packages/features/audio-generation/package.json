@@ -25,9 +25,11 @@
     "./webhooks": "./src/webhooks/index.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
+    "react-hook-form": "^7.62.0",
     "uuid": "^11.1.0"
   },
   "devDependencies": {

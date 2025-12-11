@@ -48,6 +48,7 @@
     "@kit/branding": "workspace:*",
     "@kit/cache": "workspace:*",
     "@kit/cms": "workspace:*",
+    "@kit/content-analytics": "workspace:*",
     "@kit/database-webhooks": "workspace:*",
     "@kit/email-templates": "workspace:*",
     "@kit/episodes": "workspace:*",

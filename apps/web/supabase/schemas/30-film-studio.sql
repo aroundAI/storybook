@@ -486,7 +486,7 @@ create index if not exists idx_voice_profiles_settings on public.voice_profiles 
 create table if not exists public.publishes (
   id uuid primary key default extensions.uuid_generate_v4(),
   episode_id uuid not null references public.episodes(id) on delete cascade,
-  platform_connection_id uuid not null references public.platform_connections(id) on delete cascade,
+  platform_connection_id uuid references public.platform_connections(id) on delete cascade,
   platform varchar(50) not null,
   content_type varchar(50) default 'full' not null,
   platform_content_id varchar(255),

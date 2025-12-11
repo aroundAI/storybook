@@ -350,7 +350,7 @@ graph TD
 | FILM-303 | [shot-crud-actions](./phase-3-episodes/server/FILM-303-shot-crud-actions.md) | ✅ DONE | M | FILM-301 |
 | FILM-304 | [prompt-templates](./phase-3-episodes/prompts/FILM-304-prompt-templates.md) | ✅ DONE | S | - |
 | FILM-305 | [story-generation](./phase-3-episodes/server/FILM-305-story-generation.md) | ✅ DONE | L | FILM-301, FILM-304 |
-| FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | DRAFT | L | FILM-305 |
+| FILM-306 | [screenplay-conversion](./phase-3-episodes/server/FILM-306-screenplay-conversion.md) | ✅ DONE | L | FILM-305 |
 | FILM-307 | [shot-list-generation](./phase-3-episodes/server/FILM-307-shot-list-generation.md) | DRAFT | L | FILM-306, FILM-303 |
 | FILM-308 | [story-studio](./phase-3-episodes/components/FILM-308-story-studio.md) | DRAFT | L | FILM-305 |
 | FILM-309 | [story-ideation](./phase-3-episodes/components/FILM-309-story-ideation.md) | DRAFT | M | FILM-308 |
@@ -385,7 +385,7 @@ graph TD
 |---------|------|--------|--------|--------------|
 | FILM-501 | [elevenlabs-provider](./phase-5-audio-generation/providers/FILM-501-elevenlabs-provider.md) | ✅ DONE | M | FILM-108 |
 | FILM-501b | [playht-provider](./phase-5-audio-generation/providers/FILM-501b-playht-provider.md) | DRAFT | M | FILM-108, FILM-502b |
-| FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.md) | DRAFT | M | FILM-501 |
+| FILM-502 | [voice-generation-action](./phase-5-audio-generation/server/FILM-502-voice-generation-action.md) | ✅ DONE | M | FILM-501 |
 | FILM-502b | [audio-provider-factory](./phase-5-audio-generation/providers/FILM-502b-audio-provider-factory.md) | DRAFT | M | FILM-501, FILM-509 |
 | FILM-503 | [batch-dialogue-action](./phase-5-audio-generation/server/FILM-503-batch-dialogue-action.md) | DRAFT | M | FILM-502 |
 | FILM-504 | [music-generation-action](./phase-5-audio-generation/server/FILM-504-music-generation-action.md) | ✅ DONE | M | FILM-509 |
@@ -395,7 +395,7 @@ graph TD
 | FILM-508 | [audio-player](./phase-5-audio-generation/components/FILM-508-audio-player.md) | ✅ DONE | M | - |
 | FILM-509 | [suno-provider](./phase-5-audio-generation/providers/FILM-509-suno-provider.md) | ✅ DONE | M | FILM-108 |
 | FILM-509b | [udio-provider](./phase-5-audio-generation/providers/FILM-509b-udio-provider.md) | DRAFT | M | FILM-108, FILM-502b |
-| FILM-510 | [voice-cloning](./phase-5-audio-generation/server/FILM-510-voice-cloning.md) | DRAFT | L | FILM-501 |
+| FILM-510 | [voice-cloning](./phase-5-audio-generation/providers/FILM-510-voice-cloning.md) | ✅ DONE | L | FILM-501 |
 | FILM-511 | [lip-sync](./phase-5-audio-generation/lib/FILM-511-lip-sync.md) | DRAFT | L | FILM-502 |
 | FILM-512 | [multi-language-dubbing](./phase-5-audio-generation/server/FILM-512-multi-language-dubbing.md) | DRAFT | L | FILM-502, FILM-510 |
 
@@ -454,7 +454,7 @@ graph TD
 | FILM-903 | [generation-status-panel](./phase-9-integration/components/FILM-903-generation-status-panel.md) | DRAFT | M | FILM-411 |
 | FILM-904 | [api-keys-page](./phase-9-integration/settings/FILM-904-api-keys-page.md) | ✅ DONE | M | FILM-101n |
 | FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | ✅ DONE | M | - |
-| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | DRAFT | M | FILM-706 |
+| FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | ✅ DONE | M | FILM-706 |
 
 ### Spikes (5 specs)
 
@@ -519,21 +519,21 @@ SPIKE-01 through SPIKE-05
 | Cross-Cutting | 3 | 0 | 0 | 0 | 0 | 3 |
 | Design System | 5 | 0 | 0 | 0 | 0 | 5 |
 | 2. Assets | 9 | 2 | 0 | 0 | 0 | 7 |
-| 3. Episodes | 14 | 5 | 0 | 0 | 0 | 9 |
+| 3. Episodes | 14 | 4 | 0 | 0 | 0 | 10 |
 | 4. Video Gen | 15 | 2 | 0 | 0 | 0 | 13 |
-| 5. Audio Gen | 16 | 12 | 0 | 0 | 0 | 4 |
+| 5. Audio Gen | 16 | 11 | 0 | 0 | 0 | 5 |
 | 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
 | 7. Publishing | 15 | 6 | 0 | 0 | 0 | 9 |
 | 8. Analytics | 10 | 7 | 0 | 0 | 0 | 3 |
-| 9. Integration | 6 | 2 | 0 | 0 | 0 | 4 |
+| 9. Integration | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **130** | **42** | **0** | **0** | **0** | **88** |
+| **TOTAL** | **130** | **41** | **0** | **0** | **0** | **89** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
-| MVP Specs | 93 | 72 | 77% |
+| MVP Specs | 93 | 73 | 78% |
 | Post-MVP | 37 | 16 | 43% |
 
 ---
@@ -563,7 +563,7 @@ SPIKE-01 through SPIKE-05
 | FILM-202 | `packages/features/assets/src/server/character-actions.ts` |
 | FILM-301 | `packages/features/episodes/src/server/actions.ts` ✅ |
 | FILM-405 | `packages/features/video-generation/src/server/actions/generate-video-action.ts` ✅ |
-| FILM-502 | `packages/features/audio-generation/src/server/voice-actions.ts` |
+| FILM-502 | `packages/features/audio-generation/src/server/voice-actions.ts` ✅ |
 
 ### Components
 | Spec | File Path |
@@ -587,6 +587,7 @@ SPIKE-01 through SPIKE-05
 | FILM-208 | `apps/web/app/home/[account]/studio/[projectId]/assets/page.tsx` |
 | FILM-312 | `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/page.tsx` |
 | FILM-904 | `apps/web/app/home/[account]/settings/api-keys/page.tsx` |
+| FILM-906 | `apps/web/app/home/[account]/settings/platforms/page.tsx` ✅ |
 
 ---
 
