@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@kit/film-studio": "workspace:*",
+    "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*"
   },
   "devDependencies": {

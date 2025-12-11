@@ -78,6 +78,7 @@
     "./slider": "./src/shadcn/slider.tsx",
     "./table": "./src/shadcn/table.tsx",
     "./tabs": "./src/shadcn/tabs.tsx",
+    "./toggle-group": "./src/shadcn/toggle-group.tsx",
     "./tooltip": "./src/shadcn/tooltip.tsx",
     "./sonner": "./src/shadcn/sonner.tsx",
     "./heading": "./src/shadcn/heading.tsx",

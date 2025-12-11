@@ -15,6 +15,22 @@ import type { TrackType } from '@kit/film-studio/design-tokens';
 export type ClipType = 'video' | 'dialogue' | 'music' | 'sfx' | 'ambient';
 
 /**
+ * Metadata for clip effects and adjustments
+ */
+export interface ClipMetadata {
+  /** Playback speed multiplier (0.5 - 2.0, default 1.0) */
+  speed?: number;
+  /** Volume level (0 - 1.5, default 1.0) - audio tracks only */
+  volume?: number;
+  /** Fade in duration in seconds (0 - 3.0) - audio tracks only */
+  fadeInSeconds?: number;
+  /** Fade out duration in seconds (0 - 3.0) - audio tracks only */
+  fadeOutSeconds?: number;
+  /** Pitch adjustment in semitones (-12 to +12) - audio tracks only */
+  pitchSemitones?: number;
+}
+
+/**
  * Individual clip on a timeline track
  */
 export interface TimelineClip {
@@ -40,6 +56,16 @@ export interface TimelineClip {
   waveformData?: number[];
   /** Whether clip is locked from editing */
   isLocked: boolean;
+  /** Original source duration in frames (full asset duration) */
+  sourceDurationFrames?: number;
+  /** In-point within source (start of trimmed region) in frames */
+  sourceStartFrame?: number;
+  /** Out-point within source (end of trimmed region) in frames */
+  sourceEndFrame?: number;
+  /** User notes for this clip */
+  notes?: string;
+  /** Clip-specific metadata for effects and adjustments */
+  metadata?: ClipMetadata;
 }
 
 /**
@@ -124,6 +150,8 @@ export interface TimelineState {
   draggedClipId: string | null;
   /** Edge being resized (null if moving) */
   resizeEdge: 'left' | 'right' | null;
+  /** ID of clip currently being edited in clip editor (null if editor closed) */
+  editingClipId: string | null;
 }
 
 // ============================================================================
@@ -168,7 +196,10 @@ export type TimelineAction =
   | { type: 'REDO' }
   | { type: 'LOAD_TIMELINE'; data: TimelineData }
   | { type: 'START_DRAG'; clipId: string; resizeEdge?: 'left' | 'right' }
-  | { type: 'END_DRAG' };
+  | { type: 'END_DRAG' }
+  | { type: 'UPDATE_CLIP'; clipId: string; updates: Partial<TimelineClip> }
+  | { type: 'OPEN_CLIP_EDITOR'; clipId: string }
+  | { type: 'CLOSE_CLIP_EDITOR' };
 
 // ============================================================================
 // Props and Data Types

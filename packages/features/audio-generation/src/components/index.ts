@@ -22,7 +22,7 @@ export {
 export {
   VoiceAssignmentPanel,
   type VoiceAssignmentProps,
-  type CharacterAsset,
+  type VoiceAssignmentCharacter,
 } from './VoiceAssignment';
 export {
   VoiceSelector,
@@ -33,3 +33,6 @@ export {
   VoiceSettingsPanel,
   type VoiceSettingsPanelProps,
 } from './VoiceSettings';
+
+// Dialogue list component (FILM-506)
+export { DialogueList, type DialogueListProps } from './DialogueList';

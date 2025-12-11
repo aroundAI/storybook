@@ -52,9 +52,9 @@ import { VoiceSelector } from './VoiceSelector';
 import { VoiceSettingsPanel } from './VoiceSettings';
 
 /**
- * Character asset interface
+ * Character with voice assignment info
  */
-export interface CharacterAsset {
+export interface VoiceAssignmentCharacter {
   id: string;
   name: string;
   thumbnailUrl?: string | null;
@@ -62,7 +62,7 @@ export interface CharacterAsset {
 }
 
 export interface VoiceAssignmentProps {
-  characters: CharacterAsset[];
+  characters: VoiceAssignmentCharacter[];
   projectId: string;
   episodeId?: string;
 }
