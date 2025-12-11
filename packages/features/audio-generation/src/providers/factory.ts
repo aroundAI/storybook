@@ -64,6 +64,8 @@ function hashConfig(config: VoiceProviderConfig | MusicProviderConfig): string {
   return JSON.stringify({
     apiKey: config.apiKey,
     baseUrl: config.baseUrl,
+    // Include userId for voice providers (e.g., PlayHT requires userId)
+    userId: 'userId' in config ? config.userId : undefined,
   });
 }
 

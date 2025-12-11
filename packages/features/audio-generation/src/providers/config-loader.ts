@@ -51,13 +51,18 @@ export async function loadVoiceProviderConfig(
   const client = getSupabaseServerClient();
 
   // Try to get user's BYOK key first
-  const { data: userKey } = await client
+  const { data: userKey, error } = await client
     .from('external_api_keys')
     .select('encrypted_key')
     .eq('account_id', accountId)
     .eq('provider', providerName)
     .eq('is_active', true)
     .single();
+
+  // PGRST116 = "no rows found" which is expected when no BYOK key exists
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to load voice provider config: ${error.message}`);
+  }
 
   let apiKey: string;
   let userId: string | undefined;
@@ -108,13 +113,18 @@ export async function loadMusicProviderConfig(
   const client = getSupabaseServerClient();
 
   // Try to get user's BYOK key first
-  const { data: userKey } = await client
+  const { data: userKey, error } = await client
     .from('external_api_keys')
     .select('encrypted_key')
     .eq('account_id', accountId)
     .eq('provider', providerName)
     .eq('is_active', true)
     .single();
+
+  // PGRST116 = "no rows found" which is expected when no BYOK key exists
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to load music provider config: ${error.message}`);
+  }
 
   let apiKey: string;
 
@@ -152,13 +162,18 @@ export async function hasVoiceProviderApiKey(
   const client = getSupabaseServerClient();
 
   // Check for BYOK key
-  const { data: userKey } = await client
+  const { data: userKey, error } = await client
     .from('external_api_keys')
     .select('id')
     .eq('account_id', accountId)
     .eq('provider', providerName)
     .eq('is_active', true)
     .single();
+
+  // PGRST116 = "no rows found" which is expected when no BYOK key exists
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to check voice provider API key: ${error.message}`);
+  }
 
   if (userKey) {
     return true;
@@ -183,13 +198,18 @@ export async function hasMusicProviderApiKey(
   const client = getSupabaseServerClient();
 
   // Check for BYOK key
-  const { data: userKey } = await client
+  const { data: userKey, error } = await client
     .from('external_api_keys')
     .select('id')
     .eq('account_id', accountId)
     .eq('provider', providerName)
     .eq('is_active', true)
     .single();
+
+  // PGRST116 = "no rows found" which is expected when no BYOK key exists
+  if (error && error.code !== 'PGRST116') {
+    throw new Error(`Failed to check music provider API key: ${error.message}`);
+  }
 
   if (userKey) {
     return true;
