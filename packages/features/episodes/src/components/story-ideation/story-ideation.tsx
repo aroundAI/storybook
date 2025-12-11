@@ -50,6 +50,7 @@ import { IdeaCard } from './idea-card';
 
 interface StoryIdeationProps {
   onComplete: (selectedIdea: StoryIdea) => void;
+  isGenerating?: boolean;
 }
 
 const GENRE_OPTIONS = [
@@ -78,7 +79,10 @@ const AUDIENCE_OPTIONS = [
   { value: 'all-ages', label: 'All Ages' },
 ];
 
-export function StoryIdeation({ onComplete }: StoryIdeationProps) {
+export function StoryIdeation({
+  onComplete,
+  isGenerating = false,
+}: StoryIdeationProps) {
   const [isPending, startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
@@ -332,9 +336,18 @@ export function StoryIdeation({ onComplete }: StoryIdeationProps) {
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Generated Story Ideas</h3>
             {selectedIdea && (
-              <Button onClick={handleContinue}>
-                Continue with Selected
-                <ArrowRight className="ml-2 h-4 w-4" />
+              <Button onClick={handleContinue} disabled={isGenerating}>
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating Story...
+                  </>
+                ) : (
+                  <>
+                    Continue with Selected
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             )}
           </div>
