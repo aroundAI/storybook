@@ -19,12 +19,17 @@ export default defineConfig({
   resolve: {
     alias: {
       'server-only': path.resolve(__dirname, 'src/__mocks__/server-only.ts'),
-      // UI component aliases for component testing
-      '@kit/ui': path.resolve(__dirname, '../../../packages/ui/src'),
-      '@kit/ui/button': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/shadcn/button.tsx',
-      ),
+      // UI component mock aliases for component testing
+      // These use mock implementations instead of real shadcn components
+      // to avoid complex dependency chains (class-variance-authority, tailwind-merge, etc.)
+      '@kit/ui/badge': path.resolve(__dirname, 'src/__mocks__/@kit/ui/badge.tsx'),
+      '@kit/ui/button': path.resolve(__dirname, 'src/__mocks__/@kit/ui/button.tsx'),
+      '@kit/ui/checkbox': path.resolve(__dirname, 'src/__mocks__/@kit/ui/checkbox.tsx'),
+      '@kit/ui/input': path.resolve(__dirname, 'src/__mocks__/@kit/ui/input.tsx'),
+      '@kit/ui/select': path.resolve(__dirname, 'src/__mocks__/@kit/ui/select.tsx'),
+      '@kit/ui/sonner': path.resolve(__dirname, 'src/__mocks__/@kit/ui/sonner.ts'),
+      '@kit/ui/utils': path.resolve(__dirname, 'src/__mocks__/@kit/ui/utils.ts'),
+      // Keep original aliases for slider and spinner (used by AudioPlayer tests)
       '@kit/ui/slider': path.resolve(
         __dirname,
         '../../../packages/ui/src/shadcn/slider.tsx',
@@ -32,31 +37,6 @@ export default defineConfig({
       '@kit/ui/spinner': path.resolve(
         __dirname,
         '../../../packages/ui/src/makerkit/spinner.tsx',
-      ),
-      '@kit/ui/utils': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/lib/utils/index.ts',
-      ),
-      // Additional aliases for DialogueList component (FILM-506)
-      '@kit/ui/badge': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/shadcn/badge.tsx',
-      ),
-      '@kit/ui/checkbox': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/shadcn/checkbox.tsx',
-      ),
-      '@kit/ui/input': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/shadcn/input.tsx',
-      ),
-      '@kit/ui/select': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/shadcn/select.tsx',
-      ),
-      '@kit/ui/sonner': path.resolve(
-        __dirname,
-        '../../../packages/ui/src/shadcn/sonner.tsx',
       ),
     },
   },

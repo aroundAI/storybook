@@ -58,6 +58,17 @@ export interface DialogueListProps {
 type SortOption = 'sequence' | 'status' | 'character';
 type StatusFilter = 'all' | 'pending' | 'generating' | 'completed' | 'failed';
 
+/** Special value for narrator filter */
+const NARRATOR_FILTER_VALUE = '__narrator__';
+
+interface DialogueListUIState {
+  selectedLines: Set<string>;
+  searchText: string;
+  filterCharacter: string;
+  filterStatus: StatusFilter;
+  sortBy: SortOption;
+}
+
 /**
  * Get character name from ID
  */
@@ -125,15 +136,44 @@ export function DialogueList({
   playingLineId,
   className,
 }: DialogueListProps) {
-  // State
-  const [selectedLines, setSelectedLines] = useState<Set<string>>(new Set());
-  const [searchText, setSearchText] = useState('');
-  const [filterCharacter, setFilterCharacter] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<StatusFilter>('all');
-  const [sortBy, setSortBy] = useState<SortOption>('sequence');
+  // Consolidated UI state to follow CLAUDE.md guidelines
+  const [uiState, setUIState] = useState<DialogueListUIState>({
+    selectedLines: new Set(),
+    searchText: '',
+    filterCharacter: 'all',
+    filterStatus: 'all',
+    sortBy: 'sequence',
+  });
   const [isPending, startTransition] = useTransition();
 
   const queryClient = useQueryClient();
+
+  // Destructure for easier access
+  const { selectedLines, searchText, filterCharacter, filterStatus, sortBy } = uiState;
+
+  // State update helpers
+  const setSelectedLines = useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+    setUIState((prev) => ({
+      ...prev,
+      selectedLines: typeof updater === 'function' ? updater(prev.selectedLines) : updater,
+    }));
+  }, []);
+
+  const setSearchText = useCallback((value: string) => {
+    setUIState((prev) => ({ ...prev, searchText: value }));
+  }, []);
+
+  const setFilterCharacter = useCallback((value: string) => {
+    setUIState((prev) => ({ ...prev, filterCharacter: value }));
+  }, []);
+
+  const setFilterStatus = useCallback((value: StatusFilter) => {
+    setUIState((prev) => ({ ...prev, filterStatus: value }));
+  }, []);
+
+  const setSortBy = useCallback((value: SortOption) => {
+    setUIState((prev) => ({ ...prev, sortBy: value }));
+  }, []);
 
   // Regenerate single line mutation
   const regenerateMutation = useMutation({
@@ -207,7 +247,12 @@ export function DialogueList({
 
     // Apply character filter
     if (filterCharacter !== 'all') {
-      result = result.filter((line) => line.characterAssetId === filterCharacter);
+      if (filterCharacter === NARRATOR_FILTER_VALUE) {
+        // Filter for narrator lines (null characterAssetId)
+        result = result.filter((line) => line.characterAssetId === null);
+      } else {
+        result = result.filter((line) => line.characterAssetId === filterCharacter);
+      }
     }
 
     // Apply status filter
@@ -246,7 +291,7 @@ export function DialogueList({
         setSelectedLines(new Set());
       }
     },
-    [filteredLines],
+    [filteredLines, setSelectedLines],
   );
 
   const handleSelectLine = useCallback((lineId: string, checked: boolean) => {
@@ -259,7 +304,7 @@ export function DialogueList({
       }
       return next;
     });
-  }, []);
+  }, [setSelectedLines]);
 
   // Audio handlers
   const handlePlayPause = useCallback(
@@ -274,13 +319,29 @@ export function DialogueList({
   );
 
   // Download handler
-  const handleDownload = useCallback((audioUrl: string, lineId: string) => {
-    const link = document.createElement('a');
-    link.href = audioUrl;
-    link.download = `dialogue-${lineId}.mp3`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = useCallback(async (audioUrl: string, lineId: string) => {
+    try {
+      // Fetch the audio file to ensure it exists
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
+        throw new Error('Failed to fetch audio file');
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `dialogue-${lineId}.mp3`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL
+      URL.revokeObjectURL(blobUrl);
+    } catch {
+      toast.error('Failed to download audio file');
+    }
   }, []);
 
   // Regenerate handler
@@ -370,6 +431,7 @@ export function DialogueList({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Characters</SelectItem>
+            <SelectItem value={NARRATOR_FILTER_VALUE}>Narrator</SelectItem>
             {characters.map((char) => (
               <SelectItem key={char.id} value={char.id}>
                 {char.name}
@@ -416,10 +478,9 @@ export function DialogueList({
         {/* Table header */}
         <div className="bg-muted/50 flex items-center gap-4 border-b px-4 py-3">
           <Checkbox
-            checked={isSelectAllChecked}
+            checked={isSelectAllIndeterminate ? 'indeterminate' : isSelectAllChecked}
             onCheckedChange={handleSelectAll}
             aria-label="Select all dialogue lines"
-            className={cn(isSelectAllIndeterminate && 'opacity-50')}
             data-test="select-all-checkbox"
           />
           <span className="text-muted-foreground w-12 text-sm font-medium">#</span>
