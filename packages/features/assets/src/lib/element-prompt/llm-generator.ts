@@ -85,10 +85,11 @@ ${characterContext}`,
         'LLM generation failed',
       );
     } else {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
+      // Preserve full error object for debugging (stack traces, etc.)
+      const errorObj =
+        error instanceof Error ? error : new Error(String(error));
       logger.error(
-        { ...ctx, error: errorMessage },
+        { ...ctx, error: errorObj },
         'Unexpected error in LLM generation',
       );
     }
