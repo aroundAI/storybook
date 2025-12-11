@@ -84,14 +84,25 @@ const CONTENT_ID_PATTERNS: Record<Platform, RegExp> = {
 
 /**
  * Extract platform-specific content ID from URL
+ * @returns The extracted content ID, or null if the URL format is not recognized
  */
 export function extractContentId(
   url: string,
   platform: Platform,
+  logger?: { warn: (ctx: Record<string, unknown>, msg: string) => void },
 ): string | null {
   const pattern = CONTENT_ID_PATTERNS[platform];
   const match = url.match(pattern);
-  return match ? (match[1] ?? null) : null;
+  const contentId = match?.[1] ?? null;
+
+  if (!contentId && logger) {
+    logger.warn(
+      { url, platform },
+      'Could not extract content ID from URL. Analytics tracking may be limited.',
+    );
+  }
+
+  return contentId;
 }
 
 /**
@@ -210,8 +221,8 @@ export const generateExportPackageAction = enhanceAction(
       }>
     )?.find((p) => p.platform === platform);
 
-    // Prepare metadata
-    const title = existingPublish?.title ?? episode.title;
+    // Prepare metadata with fallback for title
+    const title = existingPublish?.title ?? episode.title ?? 'untitled-video';
     const description = formatDescriptionForPlatform(
       existingPublish?.description ?? episode.description ?? '',
       platform,
@@ -277,7 +288,7 @@ export const markAsExternallyUploadedAction = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Extract platform content ID from URL if possible
-    const platformContentId = extractContentId(platformUrl, platform);
+    const platformContentId = extractContentId(platformUrl, platform, logger);
 
     // Check for existing publish record
     const { data: existingPublish } = await client
@@ -314,9 +325,9 @@ export const markAsExternallyUploadedAction = enhanceAction(
 
       publishId = updated.id;
     } else {
-      // Create new record (platform_connection_id is null for external uploads)
-      // Note: platform_connection_id is nullable after migration 20251210164448
-      // TypeScript types will be updated after running supabase gen types
+      // Create new record for external upload (no OAuth connection required)
+      // Migration 20251210164448 makes platform_connection_id nullable for external uploads
+      // TODO: Remove type override after running `pnpm supabase:web:typegen` to regenerate types
       const { data: created, error: createError } = await client
         .from('publishes')
         .insert({
@@ -324,11 +335,13 @@ export const markAsExternallyUploadedAction = enhanceAction(
           platform,
           platform_url: platformUrl,
           platform_content_id: platformContentId,
-          status: 'published' as const,
+          // Type override: platform_connection_id is nullable after migration 20251210164448
+          // The generated types still show it as required until typegen is run
+          platform_connection_id: null as unknown as string,
+          status: 'published',
           published_at: new Date().toISOString(),
           metadata: { upload_method: 'external' },
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        } as any)
+        })
         .select('id')
         .single();
 

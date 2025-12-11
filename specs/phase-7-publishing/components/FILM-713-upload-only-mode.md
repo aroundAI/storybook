@@ -556,9 +556,9 @@ function extractContentId(url: string, platform: string): string | null {
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test content ID extraction from URLs
-- [ ] Test filename sanitization
-- [ ] Test description formatting per platform
+- [x] Test content ID extraction from URLs
+- [x] Test filename sanitization
+- [x] Test description formatting per platform
 
 ### Integration Tests
 - [ ] Test export package generation
