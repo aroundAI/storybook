@@ -406,7 +406,7 @@ graph TD
 | FILM-601 | [timeline-editor](./phase-6-edit-suite/components/FILM-601-timeline-editor.md) | ✅ DONE | XL | FILM-DS-03 |
 | FILM-602 | [track-layer](./phase-6-edit-suite/components/FILM-602-track-layer.md) | ✅ DONE | L | FILM-601 |
 | FILM-603 | [clip-editor](./phase-6-edit-suite/components/FILM-603-clip-editor.md) | DRAFT | L | FILM-601 |
-| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | DRAFT | L | FILM-601 |
+| FILM-604 | [auto-stitch](./phase-6-edit-suite/lib/FILM-604-auto-stitch.md) | ✅ DONE | L | FILM-601 |
 | FILM-605 | [auto-captions](./phase-6-edit-suite/components/FILM-605-auto-captions.md) | DRAFT | L | FILM-601 |
 | FILM-606 | [transitions-library](./phase-6-edit-suite/lib/FILM-606-transitions-library.md) | ✅ DONE | M | FILM-601 |
 
@@ -522,12 +522,12 @@ SPIKE-01 through SPIKE-05
 | 3. Episodes | 14 | 0 | 0 | 0 | 0 | 14 |
 | 4. Video Gen | 15 | 0 | 0 | 0 | 0 | 15 |
 | 5. Audio Gen | 16 | 5 | 0 | 0 | 0 | 11 |
-| 6. Edit Suite | 6 | 3 | 0 | 0 | 0 | 3 |
+| 6. Edit Suite | 6 | 2 | 0 | 0 | 0 | 4 |
 | 7. Publishing | 15 | 0 | 0 | 0 | 0 | 15 |
 | 8. Analytics | 10 | 5 | 0 | 0 | 0 | 5 |
 | 9. Integration | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **130** | **14** | **0** | **0** | **0** | **116** |
+| **TOTAL** | **130** | **13** | **0** | **0** | **0** | **117** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

@@ -1302,6 +1302,9 @@ importers:
       '@kit/film-studio':
         specifier: workspace:*
         version: link:../film-studio
+      '@kit/projects':
+        specifier: workspace:*
+        version: link:../projects
       '@kit/prompt-engine':
         specifier: workspace:*
         version: link:../prompt-engine
