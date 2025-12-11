@@ -56,6 +56,13 @@ import { isAssetInUse } from './asset.queries';
  */
 
 /**
+ * Character Server Actions (FILM-202)
+ *
+ * Server actions for creating, updating, and deleting characters with atomic operations.
+ * Characters require both an asset record and a character_details record.
+ */
+
+/**
  * Create a new character with atomic insert into assets + character_details
  *
  * Transaction pattern:
