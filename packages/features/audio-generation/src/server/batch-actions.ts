@@ -119,6 +119,18 @@ async function buildVoiceAssignments(
 }
 
 /**
+ * Options for background batch processing
+ */
+interface ProcessBatchOptions {
+  /** Initial completed count (for retry scenarios) */
+  initialCompleted?: number;
+  /** Initial cost (for retry scenarios) */
+  initialCost?: number;
+  /** Previous errors to preserve (for retry scenarios) */
+  previousErrors?: BatchError[];
+}
+
+/**
  * Process batch in background (non-blocking)
  * Note: In production, this should be moved to a queue system (BullMQ, Inngest, etc.)
  */
@@ -127,6 +139,7 @@ async function processBatchInBackground(
   dialogueLines: DialogueLineForBatch[],
   voiceAssignments: Record<string, VoiceAssignment>,
   concurrency: number,
+  options: ProcessBatchOptions = {},
 ): Promise<void> {
   const logger = await getLogger();
   const ctx = {
@@ -150,10 +163,11 @@ async function processBatchInBackground(
     })
     .eq('id', batchJobId);
 
-  let completed = 0;
+  // Initialize counters - preserve previous progress for retries
+  let completed = options.initialCompleted ?? 0;
   let failed = 0;
-  let actualCost = 0;
-  const errors: BatchError[] = [];
+  let actualCost = options.initialCost ?? 0;
+  const errors: BatchError[] = [...(options.previousErrors ?? [])];
 
   // Process in batches with concurrency limit
   for (let i = 0; i < dialogueLines.length; i += concurrency) {
@@ -612,25 +626,29 @@ export const retryFailedDialogueAction = enhanceAction(
       'Found failed lines to retry',
     );
 
-    // 3. Reset job status for retry
+    // 3. Reset job status for retry (preserve completed_lines and actual_cost)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client as any)
       .from('batch_generation_jobs')
       .update({
         status: 'processing',
-        failed_lines: 0,
-        errors: [],
         started_at: new Date().toISOString(),
         completed_at: null,
       })
       .eq('id', data.batchJobId);
 
     // 4. Start background processing for failed lines
+    // Pass existing progress to preserve it during retry
     void processBatchInBackground(
       jobData.id,
       linesToRetry,
       jobData.voice_assignments,
       5, // Default concurrency for retries
+      {
+        initialCompleted: jobData.completed_lines,
+        initialCost: jobData.actual_cost,
+        previousErrors: jobData.errors,
+      },
     );
 
     return {
