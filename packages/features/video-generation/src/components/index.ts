@@ -10,3 +10,13 @@ export {
   type ShotGridProps,
   type ShotGridShot,
 } from './shot-grid';
+
+// Generation Progress Component
+export {
+  GenerationProgress,
+  GenerationProgressItem,
+  type GenerationProgressItemProps,
+  type GenerationProgressProps,
+  type GenerationProgressShot,
+  type ShotGenerationStatus,
+} from './generation-progress';
