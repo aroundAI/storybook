@@ -1093,6 +1093,9 @@ importers:
 
   packages/features/audio-generation:
     dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.2.2
+        version: 5.2.2(react-hook-form@7.62.0(react@19.1.1))
       '@kit/next':
         specifier: workspace:*
         version: link:../../next
@@ -1102,13 +1105,13 @@ importers:
       '@kit/supabase':
         specifier: workspace:*
         version: link:../../supabase
+      react-hook-form:
+        specifier: ^7.62.0
+        version: 7.62.0(react@19.1.1)
       uuid:
         specifier: ^11.1.0
         version: 11.1.0
     devDependencies:
-      '@hookform/resolvers':
-        specifier: ^5.2.2
-        version: 5.2.2(react-hook-form@7.62.0(react@19.1.1))
       '@kit/eslint-config':
         specifier: workspace:*
         version: link:../../../tooling/eslint
@@ -1145,9 +1148,6 @@ importers:
       react:
         specifier: 19.1.1
         version: 19.1.1
-      react-hook-form:
-        specifier: ^7.62.0
-        version: 7.62.0(react@19.1.1)
       typescript:
         specifier: ^5.9.2
         version: 5.9.2
