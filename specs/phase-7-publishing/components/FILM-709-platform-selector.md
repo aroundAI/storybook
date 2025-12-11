@@ -4,6 +4,7 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** S (2-4 hours)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-705-707 (OAuth)
 - **Blocks:** FILM-708 (Publish Hub)
 

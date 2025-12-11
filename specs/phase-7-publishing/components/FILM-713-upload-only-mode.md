@@ -4,9 +4,9 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P2 (Future Enhancement)
 - **Effort:** S (2-4 hours)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-708 (Publish Hub), FILM-705-707 (OAuth Flows)
 - **Blocks:** None
-- **Status:** Implemented
 
 ---
 
