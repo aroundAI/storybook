@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { canPerformProjectAction } from '@kit/projects/queries';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -123,6 +124,20 @@ export const autoStitchAction = enhanceAction(
 
       if (!episode) {
         throw new Error('Episode not found');
+      }
+
+      // Verify user has permission to edit this project (defense-in-depth)
+      const canEdit = await canPerformProjectAction(
+        episode.project_id,
+        'project.edit',
+      );
+
+      if (!canEdit) {
+        logger.warn(
+          { ...ctx, projectId: episode.project_id },
+          'Unauthorized auto-stitch attempt - insufficient project permissions',
+        );
+        throw new Error('Insufficient permissions to modify this episode');
       }
 
       // Run auto-stitch algorithm

@@ -522,12 +522,12 @@ SPIKE-01 through SPIKE-05
 | 3. Episodes | 14 | 4 | 0 | 0 | 0 | 10 |
 | 4. Video Gen | 15 | 2 | 0 | 0 | 0 | 13 |
 | 5. Audio Gen | 16 | 11 | 0 | 0 | 0 | 5 |
-| 6. Edit Suite | 6 | 6 | 0 | 0 | 0 | 0 |
+| 6. Edit Suite | 6 | 5 | 0 | 0 | 0 | 1 |
 | 7. Publishing | 15 | 6 | 0 | 0 | 0 | 9 |
 | 8. Analytics | 10 | 7 | 0 | 0 | 0 | 3 |
 | 9. Integration | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **130** | **41** | **0** | **0** | **0** | **89** |
+| **TOTAL** | **130** | **40** | **0** | **0** | **0** | **90** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

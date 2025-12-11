@@ -4,6 +4,8 @@
  * Automatically arranges generated shots, dialogue, music, and SFX into a timeline.
  * Eliminates manual clip placement for common workflows while allowing customization.
  */
+import 'server-only';
+
 import type {
   ClipType,
   TimelineClip,
@@ -203,6 +205,9 @@ const DEFAULT_OPTIONS: Required<AutoStitchOptions> = {
  * Convert seconds to frames
  */
 export function secondsToFrames(seconds: number, fps: number): number {
+  if (fps <= 0) {
+    throw new Error(`Invalid FPS value: ${fps}. FPS must be greater than 0.`);
+  }
   return Math.round(seconds * fps);
 }
 
@@ -210,6 +215,9 @@ export function secondsToFrames(seconds: number, fps: number): number {
  * Convert frames to seconds
  */
 export function framesToSeconds(frames: number, fps: number): number {
+  if (fps <= 0) {
+    throw new Error(`Invalid FPS value: ${fps}. FPS must be greater than 0.`);
+  }
   return frames / fps;
 }
 

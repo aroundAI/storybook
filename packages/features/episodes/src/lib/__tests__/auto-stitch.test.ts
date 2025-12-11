@@ -81,6 +81,14 @@ describe('Helper Functions', () => {
       expect(secondsToFrames(0.51, 30)).toBe(15);
       expect(secondsToFrames(0.49, 30)).toBe(15);
     });
+
+    it('should throw error for zero fps', () => {
+      expect(() => secondsToFrames(1, 0)).toThrow('Invalid FPS value: 0');
+    });
+
+    it('should throw error for negative fps', () => {
+      expect(() => secondsToFrames(1, -30)).toThrow('Invalid FPS value: -30');
+    });
   });
 
   describe('framesToSeconds', () => {
@@ -93,6 +101,14 @@ describe('Helper Functions', () => {
     it('should convert frames to seconds at 24fps', () => {
       expect(framesToSeconds(24, 24)).toBe(1);
       expect(framesToSeconds(120, 24)).toBe(5);
+    });
+
+    it('should throw error for zero fps', () => {
+      expect(() => framesToSeconds(30, 0)).toThrow('Invalid FPS value: 0');
+    });
+
+    it('should throw error for negative fps', () => {
+      expect(() => framesToSeconds(30, -24)).toThrow('Invalid FPS value: -24');
     });
   });
 });
