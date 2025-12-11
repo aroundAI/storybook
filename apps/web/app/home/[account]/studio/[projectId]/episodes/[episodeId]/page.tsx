@@ -29,7 +29,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { EpisodeHeader } from './_components/episode-header';
 import { WorkspaceTabs } from './_components/workspace-tabs';
 
-type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit';
+type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit' | 'publish';
 
 interface EpisodeWorkspacePageProps {
   params: Promise<{
@@ -69,7 +69,8 @@ export async function generateMetadata({
 
 function isValidWorkspaceTab(tab: string | undefined): tab is WorkspaceTab {
   return (
-    tab !== undefined && ['story', 'visuals', 'audio', 'edit'].includes(tab)
+    tab !== undefined &&
+    ['story', 'visuals', 'audio', 'edit', 'publish'].includes(tab)
   );
 }
 
@@ -96,7 +97,11 @@ async function EpisodeWorkspacePage({
       .eq('project_id', projectId)
       .is('deleted_at', null)
       .single(),
-    client.from('projects').select('name').eq('id', projectId).single(),
+    client
+      .from('projects')
+      .select('name, account_id')
+      .eq('id', projectId)
+      .single(),
   ]);
 
   const { data: episodeData, error: episodeError } = episodeResult;
@@ -191,6 +196,8 @@ async function EpisodeWorkspacePage({
       <WorkspaceTabs
         episode={episode}
         projectId={projectId}
+        accountSlug={account}
+        accountId={project?.account_id ?? ''}
         defaultTab={defaultTab}
       />
     </div>
