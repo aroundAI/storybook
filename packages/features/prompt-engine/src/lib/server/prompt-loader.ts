@@ -12,9 +12,6 @@ import type {
   RenderedPrompt,
 } from '../types';
 
-// Re-export types for convenience
-export type { PromptOutputConfig, RenderedPrompt };
-
 /**
  * Cache for discovered prompt directories to avoid repeated filesystem scans
  */
