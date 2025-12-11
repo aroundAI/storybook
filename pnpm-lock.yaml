@@ -193,6 +193,9 @@ importers:
       '@kit/cms':
         specifier: workspace:*
         version: link:../../packages/cms/core
+      '@kit/content-analytics':
+        specifier: workspace:*
+        version: link:../../packages/features/content-analytics
       '@kit/database-webhooks':
         specifier: workspace:*
         version: link:../../packages/database-webhooks
@@ -1220,6 +1223,18 @@ importers:
 
   packages/features/content-analytics:
     dependencies:
+      '@kit/next':
+        specifier: workspace:*
+        version: link:../../next
+      '@kit/publishing':
+        specifier: workspace:*
+        version: link:../publishing
+      '@kit/shared':
+        specifier: workspace:*
+        version: link:../../shared
+      '@kit/supabase':
+        specifier: workspace:*
+        version: link:../../supabase
       '@kit/ui':
         specifier: workspace:*
         version: link:../../ui
@@ -1229,6 +1244,12 @@ importers:
       lucide-react:
         specifier: ^0.544.0
         version: 0.544.0(react@19.1.1)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: ^3.25.74
+        version: 3.25.76
     devDependencies:
       '@kit/eslint-config':
         specifier: workspace:*
