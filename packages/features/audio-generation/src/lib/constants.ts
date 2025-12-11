@@ -174,9 +174,16 @@ export const SUNO = {
 
 // Udio specific constants
 export const UDIO = {
-  BASE_URL: 'https://api.udio.com',
-  MAX_DURATION: 240, // 4 minutes
-  COST_PER_GENERATION: 50, // cents ($0.50)
+  BASE_URL: 'https://api.udio.com/v1',
+  MAX_DURATION: 120, // 2 minutes (shorter than Suno)
+  MIN_DURATION: 15,
+  SUPPORTED_DURATIONS: [15, 30, 60, 120],
+  MAX_PROMPT_LENGTH: 500,
+  COST_PER_GENERATION: 40, // cents ($0.40)
+  COST_PER_EXTENSION: 20, // cents ($0.20)
+  MAX_EXTENSIONS_PER_SONG: 5,
+  EXTENSION_DURATION: 30, // seconds per extension
+  TYPICAL_PROCESSING_TIME: 60, // seconds
   SUPPORTED_GENRES: [
     'pop',
     'rock',
@@ -189,6 +196,11 @@ export const UDIO = {
     'metal',
     'country',
   ],
+  RATE_LIMITS: {
+    REQUESTS_PER_MINUTE: 10,
+    CONCURRENT_REQUESTS: 3,
+    TIMEOUT: 180000, // 3 minutes
+  },
 } as const;
 
 // Provider display names

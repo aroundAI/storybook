@@ -6,6 +6,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-108 (Audio Generation Package), FILM-502b (Audio Provider Factory)
 - **Blocks:** None (alternative to Suno)
+- **Status:** ✅ DONE
 
 ---
 
@@ -365,14 +366,14 @@ interface UdioStatusResponse {
 
 ## Acceptance Criteria
 
-- [ ] `generateMusic()` successfully submits to Udio API
-- [ ] `extendSong()` extends existing generations
-- [ ] `getStatus()` correctly polls and maps status
-- [ ] `getVariations()` generates song variations
-- [ ] `cancelGeneration()` cancels in-progress tasks
-- [ ] `estimateCost()` returns accurate estimates
-- [ ] Provider registered in music factory registry
-- [ ] Error handling for rate limits, auth, credits
+- [x] `generateMusic()` successfully submits to Udio API
+- [x] `extendSong()` extends existing generations
+- [x] `getStatus()` correctly polls and maps status
+- [x] `getVariations()` generates song variations
+- [x] `cancelGeneration()` cancels in-progress tasks
+- [x] `estimateCost()` returns accurate estimates
+- [x] Provider registered in music factory registry
+- [x] Error handling for rate limits, auth, credits
 
 ---
 
