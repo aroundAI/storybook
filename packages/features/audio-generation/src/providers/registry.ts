@@ -1,4 +1,4 @@
-import { ELEVENLABS, SUNO } from '../lib/constants';
+import { ELEVENLABS, PLAYHT, SUNO } from '../lib/constants';
 import type {
   MusicProviderConfig,
   MusicProviderMetadata,
@@ -9,6 +9,7 @@ import type {
 } from '../lib/types';
 import type { MusicGenerationProvider, VoiceGenerationProvider } from './base';
 import { ElevenLabsProvider } from './elevenlabs';
+import { PlayHTProvider } from './playht';
 import { SunoProvider } from './suno';
 
 /**
@@ -56,8 +57,29 @@ VOICE_PROVIDER_REGISTRY.set('elevenlabs', {
   },
   factory: (config: VoiceProviderConfig) => new ElevenLabsProvider(config),
 });
+
+// Register PlayHT provider
+VOICE_PROVIDER_REGISTRY.set('playht', {
+  metadata: {
+    name: 'playht',
+    displayName: 'PlayHT',
+    description:
+      'Cost-effective AI voice generation with instant voice cloning',
+    supportedLanguages: [...PLAYHT.SUPPORTED_LANGUAGES],
+    voiceCount: 600,
+    supportsCloning: true,
+    supportsStreaming: true,
+    costPer1000Chars: PLAYHT.COST_PER_1000_CHARS,
+    features: {
+      stability: false,
+      similarity: false,
+      style: false,
+      speed: true,
+    },
+  },
+  factory: (config: VoiceProviderConfig) => new PlayHTProvider(config),
+});
 // Additional voice providers will be added when implemented:
-// - PlayHT
 // - Deepgram
 // - Azure
 // - Google
