@@ -16,6 +16,7 @@ interface ConditionalSidebarLayoutProps {
     accounts: Array<{
         label: string | null;
         value: string | null;
+        image: string | null;
     }>;
     user: JWTUserData;
     accountId: string;
