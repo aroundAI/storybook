@@ -5,6 +5,7 @@
 **Effort**: M (3-4 days)
 **Dependencies**: FILM-408 (poll-status-action)
 **Blocks**: None
+**Status**: Complete
 
 ---
 
@@ -48,15 +49,29 @@ The Generation Progress component displays real-time progress for video generati
 ### Component Props
 
 ```typescript
-interface GenerationProgressProps {
-  shots: Shot[];
+interface GenerationProgressShot {
+  id: string;
+  sequenceNumber: number;
+  sceneNumber: number;
+  shotNumber: number;
+  status: 'queued' | 'generating' | 'completed' | 'failed';
+  prompt: string | null;
+  generationJobId?: string;
 }
 
-interface Shot {
-  id: string;
-  sequence_number: number;
-  status: 'queued' | 'generating' | 'completed' | 'failed';
-  prompt: string;
+interface GenerationProgressProps {
+  shots: GenerationProgressShot[];
+  onCancel?: (shotId: string) => void;
+  onComplete?: (shotId: string, videoUrl?: string) => void;
+  defaultCollapsed?: boolean;
+  className?: string;
+}
+
+interface GenerationProgressItemProps {
+  shot: GenerationProgressShot;
+  status: PollVideoStatusResponse | null;
+  isLoading: boolean;
+  onCancel?: () => void;
 }
 ```
 
@@ -204,19 +219,33 @@ export function GenerationProgress({ shots }: GenerationProgressProps) {
 ```
 packages/features/video-generation/src/
 ├── components/
-│   ├── GenerationProgress.tsx          # Progress component (CREATE THIS)
-│   └── __tests__/
-│       └── GenerationProgress.test.tsx
+│   ├── generation-progress/
+│   │   ├── index.ts                        # Barrel export
+│   │   ├── generation-progress.tsx         # Main component
+│   │   ├── generation-progress-item.tsx    # Individual shot progress
+│   │   └── types.ts                        # TypeScript interfaces
+│   └── index.ts                            # Updated with GenerationProgress export
+├── hooks/
+│   └── use-generation-status.ts            # React Query hook for polling
+└── server/
+    └── actions/
+        └── get-shot-generation-job-action.ts  # Lookup job ID for shot
 ```
 
 ### Polling Strategy
 
 ```typescript
-// React Query polling configuration
+// React Query polling configuration - stops on all terminal states
 {
-  refetchInterval: (data) => {
-    if (data?.status === 'completed' || data?.status === 'failed') {
-      return false; // Stop polling
+  refetchInterval: (query) => {
+    const data = query.state.data;
+    // Stop polling when job reaches a terminal state
+    if (
+      data?.status === 'completed' ||
+      data?.status === 'failed' ||
+      data?.status === 'cancelled'
+    ) {
+      return false;
     }
     return 5000; // Poll every 5 seconds
   },
@@ -243,25 +272,35 @@ const estimatedTime = status.estimatedTimeRemaining || null;
 
 ### New Files
 
-1. **packages/features/video-generation/src/components/GenerationProgress.tsx**
-2. **packages/features/video-generation/src/components/__tests__/GenerationProgress.test.tsx**
+1. **packages/features/video-generation/src/components/generation-progress/generation-progress.tsx** - Main collapsible component
+2. **packages/features/video-generation/src/components/generation-progress/generation-progress-item.tsx** - Individual shot progress display
+3. **packages/features/video-generation/src/components/generation-progress/types.ts** - TypeScript interfaces
+4. **packages/features/video-generation/src/components/generation-progress/index.ts** - Barrel export
+5. **packages/features/video-generation/src/hooks/use-generation-status.ts** - React Query hook with parallel polling
+6. **packages/features/video-generation/src/server/actions/get-shot-generation-job-action.ts** - Server action to lookup job ID
 
 ### Modified Files
 
-1. **packages/features/video-generation/src/components/index.ts** - Export component
+1. **packages/features/video-generation/src/components/index.ts** - Added GenerationProgress exports
+2. **packages/features/video-generation/src/hooks/index.ts** - Added useGenerationStatus export
+3. **packages/features/video-generation/src/server/actions/index.ts** - Added getShotGenerationJobAction export
+4. **packages/features/video-generation/package.json** - Added @tanstack/react-query dependency
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Component displays overall progress
-- [ ] Component shows individual job progress
-- [ ] Component polls status every 5 seconds
-- [ ] Component stops polling when complete
-- [ ] Component displays queue position
-- [ ] Component shows estimated time
-- [ ] Component handles errors gracefully
-- [ ] Component is accessible
+- [x] Component displays overall progress
+- [x] Component shows individual job progress
+- [x] Component polls status every 5 seconds
+- [x] Component stops polling when complete (including cancelled state)
+- [x] Component displays queue position
+- [x] Component shows estimated time
+- [x] Component handles errors gracefully
+- [x] Component is accessible
+- [x] Cancel button integrated with cancelVideoJobAction
+- [x] Collapsible design for compact view
+- [x] Completion notifications via onComplete callback (with deduplication)
 
 ---
 
@@ -349,10 +388,36 @@ describe('GenerationProgress', () => {
 
 ## Future Enhancements
 
-1. **Cancel Button** - Allow canceling jobs
-2. **Detailed Timeline** - Show step-by-step progress
-3. **Notifications** - Browser notifications on completion
-4. **History** - View past generation jobs
+1. ~~**Cancel Button** - Allow canceling jobs~~ (Implemented)
+2. ~~**Completion Callbacks** - Notify parent on job completion~~ (Implemented)
+3. **Detailed Timeline** - Show step-by-step progress
+4. **Notifications** - Browser notifications on completion
+5. **History** - View past generation jobs
+
+---
+
+## Implementation Notes
+
+### Key Design Decisions
+
+1. **useEffect for completion notifications**: Side effects (calling onComplete) are handled in useEffect rather than during render to avoid React anti-patterns and duplicate notifications.
+
+2. **Ref-based deduplication**: A `useRef<Set<string>>` tracks which shots have been notified to prevent duplicate onComplete callbacks.
+
+3. **Terminal state handling**: Polling stops on all terminal states: `completed`, `failed`, and `cancelled`.
+
+4. **Server action for job lookup**: Created `getShotGenerationJobAction` to encapsulate the database query for finding job IDs, rather than querying directly in the component.
+
+5. **Collapsible via Radix UI**: Uses `@kit/ui/collapsible` for accessible expand/collapse behavior.
+
+### UI Components Used
+
+- `@kit/ui/progress` - Progress bars
+- `@kit/ui/card` - Card container (Card, CardHeader, CardContent, CardTitle)
+- `@kit/ui/badge` - Status badges with variants
+- `@kit/ui/button` - Cancel and collapse buttons
+- `@kit/ui/collapsible` - Collapsible sections
+- `lucide-react` - Icons (Loader2, Check, X, Clock, AlertCircle, ChevronUp, ChevronDown)
 
 ---
 
@@ -362,3 +427,4 @@ describe('GenerationProgress', () => {
 - **React Query Polling**: https://tanstack.com/query/latest/docs/guides/polling
 - **@kit/ui Progress**: Internal UI component
 - **Constitution**: Section 8 (Accessibility)
+- **PR #72**: https://github.com/aroundAI/storybook/pull/72

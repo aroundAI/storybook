@@ -6,6 +6,51 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-108 (Audio Generation Package), FILM-501 (ElevenLabs), FILM-509 (Suno)
 - **Blocks:** All audio generation actions
+- **Status:** ✅ Complete
+- **Completed:** 2025-12-10
+- **PR:** https://github.com/aroundAI/storybook/pull/73
+- **Commits:** `dbdde76` (initial implementation), `8749dbd` (code review fixes)
+
+## Implementation Summary
+
+### Files Created
+| File | Lines | Description |
+|------|-------|-------------|
+| `packages/features/audio-generation/src/providers/errors.ts` | 56 | Custom error classes: `VoiceProviderNotFoundError`, `MusicProviderNotFoundError`, `ProviderConfigurationError`, `NoAPIKeyError` |
+| `packages/features/audio-generation/src/providers/registry.ts` | 150+ | Provider registries with metadata and factory functions for ElevenLabs (voice) and Suno (music) |
+| `packages/features/audio-generation/src/providers/config-loader.ts` | 221 | BYOK key loading with Supabase, platform key fallback, error handling |
+| `packages/features/audio-generation/src/providers/factory.ts` | 460 | Two-tier factory (basic + account-based), caching with config hash, availability checks |
+| `packages/features/audio-generation/__tests__/factory.test.ts` | 510 | 40 unit tests for factory, registry, and cache |
+| `packages/features/audio-generation/__tests__/config-loader.test.ts` | 571 | 30 unit tests for config-loader functions |
+
+### Files Modified
+| File | Changes |
+|------|---------|
+| `packages/features/audio-generation/src/providers/index.ts` | Added exports for `errors`, `registry`, `factory` modules |
+
+### Key Implementation Details
+
+#### Two-Tier Factory Pattern
+- **Basic Factory** (`createVoiceProvider`, `createMusicProvider`): Synchronous, config-based, for queue processors
+- **Account Factory** (`createAccountVoiceProvider`, `createAccountMusicProvider`): Async, database-driven with BYOK support
+
+#### Caching Strategy
+- Config hash includes `apiKey`, `baseUrl`, and `userId` (for PlayHT)
+- Cache invalidates when config hash changes (detects API key rotation)
+- Account-based cache uses `${accountId}:${providerName}` keys
+
+#### Error Handling (Fixed in code review)
+- Supabase `.single()` queries check for error field
+- `PGRST116` (no rows found) is expected when no BYOK key exists
+- Real database errors are thrown with descriptive messages
+
+#### Registered Providers
+- **Voice:** ElevenLabs (other providers like PlayHT, Deepgram, Azure, Google can be added when implemented)
+- **Music:** Suno (other providers like Udio, Mubert, Beatoven can be added when implemented)
+
+### Test Coverage
+- **70 total tests** (40 in factory.test.ts, 30 in config-loader.test.ts)
+- Registry functions, factory creation, caching, error classes, metadata, availability, config loading
 
 ---
 
@@ -569,37 +614,56 @@ async function hasProviderApiKey(
 
 ## Acceptance Criteria
 
-- [ ] `createVoiceProvider()` returns configured provider instance
-- [ ] `createMusicProvider()` returns configured provider instance
-- [ ] Factory uses cached instance on subsequent calls
-- [ ] Factory loads BYOK keys when available
-- [ ] Factory falls back to platform keys
-- [ ] `getVoiceProviderMetadata()` returns correct metadata
-- [ ] `getMusicProviderMetadata()` returns correct metadata
-- [ ] `getAvailableVoiceProviders()` returns only configured providers
-- [ ] `getAvailableMusicProviders()` returns only configured providers
-- [ ] `clearAudioProviderCache()` invalidates cached instances
-- [ ] `registerVoiceProvider()` allows adding new providers at runtime
-- [ ] `registerMusicProvider()` allows adding new providers at runtime
+- [x] `createVoiceProvider()` returns configured provider instance
+- [x] `createMusicProvider()` returns configured provider instance
+- [x] Factory uses cached instance on subsequent calls
+- [x] Factory loads BYOK keys when available
+- [x] Factory falls back to platform keys
+- [x] `getVoiceProviderMetadata()` returns correct metadata
+- [x] `getMusicProviderMetadata()` returns correct metadata
+- [x] `getAvailableVoiceProviders()` returns only configured providers
+- [x] `getAvailableMusicProviders()` returns only configured providers
+- [x] `clearAudioProviderCache()` invalidates cached instances
+- [x] `registerVoiceProvider()` allows adding new providers at runtime
+- [x] `registerMusicProvider()` allows adding new providers at runtime
 
 ---
 
 ## Test Plan
 
-### Unit Tests
-- [ ] Test voice provider creation with valid config
-- [ ] Test music provider creation with valid config
-- [ ] Test cache behavior (same instance returned)
-- [ ] Test BYOK key loading
-- [ ] Test platform key fallback
-- [ ] Test error when no key available
-- [ ] Test metadata accessor functions
-- [ ] Test availability check functions
-- [ ] Test cache clearing
+### Unit Tests (70 tests total - ALL PASSING)
+
+#### factory.test.ts (40 tests)
+- [x] Test voice provider creation with valid config
+- [x] Test music provider creation with valid config
+- [x] Test cache behavior (same instance returned)
+- [x] Test BYOK key loading (mocked)
+- [x] Test platform key fallback
+- [x] Test error when no key available
+- [x] Test metadata accessor functions
+- [x] Test availability check functions
+- [x] Test cache clearing
+- [x] Test provider registration (extensibility)
+- [x] Test error class properties
+
+#### config-loader.test.ts (30 tests) - Added in code review fix
+- [x] Test loadVoiceProviderConfig BYOK key loading
+- [x] Test loadVoiceProviderConfig platform key fallback
+- [x] Test loadVoiceProviderConfig PlayHT userId handling
+- [x] Test loadVoiceProviderConfig database error handling
+- [x] Test loadMusicProviderConfig BYOK key loading
+- [x] Test loadMusicProviderConfig platform key fallback
+- [x] Test loadMusicProviderConfig database error handling
+- [x] Test hasVoiceProviderApiKey BYOK detection
+- [x] Test hasVoiceProviderApiKey platform key detection
+- [x] Test hasVoiceProviderApiKey database error handling
+- [x] Test hasMusicProviderApiKey BYOK detection
+- [x] Test hasMusicProviderApiKey platform key detection
+- [x] Test hasMusicProviderApiKey database error handling
 
 ### Integration Tests
-- [ ] Test with real Supabase connection
-- [ ] Test provider switching per account
+- [ ] Test with real Supabase connection (future work)
+- [ ] Test provider switching per account (future work)
 
 ---
 

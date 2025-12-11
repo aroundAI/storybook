@@ -638,6 +638,12 @@ None (new feature)
 - Implemented `invalidatePromptCache()` for cache invalidation on character updates
 - Implemented `getCachedPrompts()` for batch cache lookups
 
+**Post-Implementation Fixes (PR #69 - fix/film-209-typecheck):**
+- Fixed TypeScript error in `llm-generator.ts` where `error` in catch block was of type `unknown`
+- Updated error handling to preserve full Error object (including stack traces) for debugging
+- Error handling now wraps non-Error objects in `new Error()` instead of extracting only the message string
+- All 157 tests pass, TypeScript compiles without errors
+
 ---
 
 ## Test Plan
