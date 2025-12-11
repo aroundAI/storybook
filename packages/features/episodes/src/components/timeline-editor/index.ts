@@ -6,6 +6,8 @@
 
 export { TimelineEditor } from './timeline-editor';
 export { useTimelineContext } from './timeline-context';
+export { ClipEditor } from './clip-editor';
+export { DualRangeSlider } from './dual-range-slider';
 
 // Export types
 export type {
@@ -16,6 +18,7 @@ export type {
   TimelineState,
   TimelineAction,
   ClipType,
+  ClipMetadata,
 } from './types';
 
 // Export constants (these are runtime values, not types)
