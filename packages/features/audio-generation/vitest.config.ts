@@ -37,6 +37,27 @@ export default defineConfig({
         __dirname,
         '../../../packages/ui/src/lib/utils/index.ts',
       ),
+      // Additional aliases for DialogueList component (FILM-506)
+      '@kit/ui/badge': path.resolve(
+        __dirname,
+        '../../../packages/ui/src/shadcn/badge.tsx',
+      ),
+      '@kit/ui/checkbox': path.resolve(
+        __dirname,
+        '../../../packages/ui/src/shadcn/checkbox.tsx',
+      ),
+      '@kit/ui/input': path.resolve(
+        __dirname,
+        '../../../packages/ui/src/shadcn/input.tsx',
+      ),
+      '@kit/ui/select': path.resolve(
+        __dirname,
+        '../../../packages/ui/src/shadcn/select.tsx',
+      ),
+      '@kit/ui/sonner': path.resolve(
+        __dirname,
+        '../../../packages/ui/src/shadcn/sonner.tsx',
+      ),
     },
   },
   test: {
