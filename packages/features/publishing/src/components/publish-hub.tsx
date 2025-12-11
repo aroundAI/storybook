@@ -33,8 +33,9 @@ import { ShortsClipper } from './shorts-clipper';
 
 export function PublishHub({
   episodeId,
-  projectId,
+  projectId: _projectId,
   accountSlug,
+  accountId,
   videoUrl,
   thumbnailUrl,
   defaultTitle,
@@ -54,24 +55,9 @@ export function PublishHub({
     isLoading: loadingConnections,
     error: connectionsError,
   } = useQuery({
-    queryKey: ['platform-connections', projectId],
-    queryFn: async () => {
-      // Get account ID from project
-      // For now, we pass accountId through the action
-      // In production, we'd fetch this server-side
-      const response = await fetch(`/api/projects/${projectId}/account`).catch(
-        () => null,
-      );
-      const data = response ? await response.json().catch(() => ({})) : {};
-      const accountId = data.accountId;
-
-      if (!accountId) {
-        // Fallback: use projectId as accountId (common pattern in this codebase)
-        return getConnectedPlatformsAction({ accountId: projectId });
-      }
-
-      return getConnectedPlatformsAction({ accountId });
-    },
+    queryKey: ['platform-connections', accountId],
+    queryFn: () => getConnectedPlatformsAction({ accountId }),
+    enabled: !!accountId,
   });
 
   // Initialize platform configs from connections

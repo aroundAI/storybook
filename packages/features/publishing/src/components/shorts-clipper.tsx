@@ -160,6 +160,22 @@ export function ShortsClipper({
     [generateMutation],
   );
 
+  // Early return if no video URL is available
+  if (!videoUrl) {
+    return (
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-16">
+          <Scissors className="text-muted-foreground mb-4 h-12 w-12" />
+          <h3 className="mb-2 text-lg font-semibold">Video Not Available</h3>
+          <p className="text-muted-foreground max-w-sm text-center text-sm">
+            The episode video must be finalized before you can create shorts and
+            clips.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-3">
       {/* Video Preview */}

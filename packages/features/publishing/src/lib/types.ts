@@ -31,6 +31,7 @@ export interface PublishHubProps {
   episodeId: string;
   projectId: string;
   accountSlug: string;
+  accountId: string;
   videoUrl: string;
   thumbnailUrl?: string;
   defaultTitle: string;

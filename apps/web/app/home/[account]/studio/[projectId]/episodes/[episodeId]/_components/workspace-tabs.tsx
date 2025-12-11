@@ -19,6 +19,7 @@ interface WorkspaceTabsProps {
   episode: EpisodeWithShots;
   projectId: string;
   accountSlug: string;
+  accountId: string;
   defaultTab?: WorkspaceTab;
 }
 
@@ -151,6 +152,7 @@ export function WorkspaceTabs({
   episode,
   projectId,
   accountSlug,
+  accountId,
   defaultTab = 'story',
 }: WorkspaceTabsProps) {
   const router = useRouter();
@@ -247,6 +249,7 @@ export function WorkspaceTabs({
             episodeId={episode.id}
             projectId={projectId}
             accountSlug={accountSlug}
+            accountId={accountId}
             videoUrl={episode.finalVideoUrl ?? ''}
             thumbnailUrl={episode.thumbnailUrl ?? undefined}
             defaultTitle={episode.title}

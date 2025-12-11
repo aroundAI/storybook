@@ -97,7 +97,11 @@ async function EpisodeWorkspacePage({
       .eq('project_id', projectId)
       .is('deleted_at', null)
       .single(),
-    client.from('projects').select('name').eq('id', projectId).single(),
+    client
+      .from('projects')
+      .select('name, account_id')
+      .eq('id', projectId)
+      .single(),
   ]);
 
   const { data: episodeData, error: episodeError } = episodeResult;
@@ -193,6 +197,7 @@ async function EpisodeWorkspacePage({
         episode={episode}
         projectId={projectId}
         accountSlug={account}
+        accountId={project?.account_id ?? ''}
         defaultTab={defaultTab}
       />
     </div>
