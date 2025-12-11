@@ -49,7 +49,6 @@ import { generateStoryIdeasAction } from '../../server/story-actions';
 import { IdeaCard } from './idea-card';
 
 interface StoryIdeationProps {
-  episodeId: string;
   onComplete: (selectedIdea: StoryIdea) => void;
   isGenerating?: boolean;
 }
@@ -81,7 +80,6 @@ const AUDIENCE_OPTIONS = [
 ];
 
 export function StoryIdeation({
-  episodeId: _episodeId,
   onComplete,
   isGenerating = false,
 }: StoryIdeationProps) {

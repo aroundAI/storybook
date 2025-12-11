@@ -181,7 +181,7 @@ export function WorkspaceTabs({
 
       <TabsContent value="story">
         {tabUnlockState.story ? (
-          <StoryStudio episodeId={episode.id} projectId={projectId} />
+          <StoryStudio episodeId={episode.id} />
         ) : (
           <LockedTabContent tabId="story" />
         )}

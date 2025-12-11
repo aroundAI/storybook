@@ -35,11 +35,13 @@ import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
 import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
 import { StoryIdeation } from '../story-ideation/story-ideation';
 import { PipelineProgress } from './pipeline-progress';
-import { StoryStudioContext } from './story-studio-context';
+import {
+  StoryStudioContext,
+  useStoryStudioContext,
+} from './story-studio-context';
 
 interface StoryStudioProps {
   episodeId: string;
-  projectId: string;
 }
 
 const STUDIO_TABS: Array<{
@@ -166,7 +168,7 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
           toast.success(
             `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
           );
-          refetchEpisode();
+          await refetchEpisode();
         }
       } catch (error) {
         toast.error(
@@ -205,10 +207,7 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
   );
 }
 
-// Re-export context hook for use in child components
-import { useStoryStudioContext } from './story-studio-context';
-
-export function StoryStudio({ episodeId, projectId: _projectId }: StoryStudioProps) {
+export function StoryStudio({ episodeId }: StoryStudioProps) {
   const [activeTab, setActiveTab] = useUrlTabState('ideation');
   const [isGeneratingStory, startStoryTransition] = useTransition();
   const {
@@ -331,7 +330,6 @@ export function StoryStudio({ episodeId, projectId: _projectId }: StoryStudioPro
             {tabUnlockState.ideation ? (
               <div className="mt-4">
                 <StoryIdeation
-                  episodeId={episodeId}
                   onComplete={handleIdeaSelected}
                   isGenerating={isGeneratingStory}
                 />
