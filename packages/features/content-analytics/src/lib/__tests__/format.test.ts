@@ -6,7 +6,7 @@ import {
   formatDuration,
   formatNumber,
   formatPercent,
-} from '../../lib/format';
+} from '../format';
 
 describe('formatNumber', () => {
   it('should format billions with B suffix', () => {
@@ -33,6 +33,13 @@ describe('formatNumber', () => {
     expect(formatNumber(100)).toBe('100');
     expect(formatNumber(999)).toBe('999');
   });
+
+  it('should handle negative numbers', () => {
+    expect(formatNumber(-1_500)).toBe('-1.5K');
+    expect(formatNumber(-1_000_000)).toBe('-1.0M');
+    expect(formatNumber(-2_500_000_000)).toBe('-2.5B');
+    expect(formatNumber(-500)).toBe('-500');
+  });
 });
 
 describe('formatDuration', () => {
@@ -53,6 +60,11 @@ describe('formatDuration', () => {
   it('should use K suffix for very large durations', () => {
     expect(formatDuration(3_600_000)).toBe('1.0Kh');
     expect(formatDuration(3_600_000 * 2.5)).toBe('2.5Kh');
+  });
+
+  it('should return 0m for negative or zero values', () => {
+    expect(formatDuration(-100)).toBe('0m');
+    expect(formatDuration(-3600)).toBe('0m');
   });
 });
 
@@ -125,5 +137,11 @@ describe('calculateChange', () => {
     expect(calculateChange(150, 100).percentage).toBe(50);
     expect(calculateChange(50, 100).percentage).toBe(-50);
     expect(calculateChange(200, 100).percentage).toBe(100);
+  });
+
+  it('should handle going from value to zero (-100% decrease)', () => {
+    const result = calculateChange(0, 100);
+    expect(result.direction).toBe('down');
+    expect(result.percentage).toBe(-100);
   });
 });

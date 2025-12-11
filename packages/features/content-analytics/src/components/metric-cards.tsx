@@ -123,7 +123,7 @@ export function MetricCards({
   );
 }
 
-interface MetricConfig {
+export interface MetricConfig {
   key: string;
   label: string;
   value: number;
@@ -133,7 +133,7 @@ interface MetricConfig {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-function MetricCard({ metric }: { metric: MetricConfig }) {
+export function MetricCard({ metric }: { metric: MetricConfig }) {
   const {
     label,
     value,
@@ -200,7 +200,7 @@ function MetricCard({ metric }: { metric: MetricConfig }) {
   );
 }
 
-function MetricCardSkeleton() {
+export function MetricCardSkeleton() {
   return (
     <Card>
       <CardContent className="space-y-2 px-4 pb-3 pt-4">

@@ -4,24 +4,33 @@
 
 /**
  * Formats large numbers with abbreviations (1.2K, 3.4M, etc.)
+ * Handles both positive and negative values.
  */
 export function formatNumber(value: number): string {
-  if (value >= 1_000_000_000) {
-    return `${(value / 1_000_000_000).toFixed(1)}B`;
+  const absValue = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+
+  if (absValue >= 1_000_000_000) {
+    return `${sign}${(absValue / 1_000_000_000).toFixed(1)}B`;
   }
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
+  if (absValue >= 1_000_000) {
+    return `${sign}${(absValue / 1_000_000).toFixed(1)}M`;
   }
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`;
+  if (absValue >= 1_000) {
+    return `${sign}${(absValue / 1_000).toFixed(1)}K`;
   }
   return value.toLocaleString();
 }
 
 /**
- * Formats seconds into human-readable duration
+ * Formats seconds into human-readable duration.
+ * Returns "0m" for zero or negative values.
  */
 export function formatDuration(seconds: number): string {
+  if (seconds <= 0) {
+    return '0m';
+  }
+
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
 
@@ -35,7 +44,7 @@ export function formatDuration(seconds: number): string {
 }
 
 /**
- * Formats cents to currency string
+ * Formats dollars to currency string
  */
 export function formatCurrency(dollars: number): string {
   return new Intl.NumberFormat('en-US', {
