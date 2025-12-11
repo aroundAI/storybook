@@ -1,6 +1,13 @@
 'use client';
 
-import { memo, useCallback, useState, useTransition } from 'react';
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
 
 import { ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 
@@ -75,20 +82,22 @@ export const GenerationProgress = memo(function GenerationProgress({
     [invalidate, onCancel],
   );
 
-  // Notify on completion
-  const handleComplete = useCallback(
-    (shotId: string, videoUrl?: string) => {
-      onComplete?.(shotId, videoUrl);
-    },
-    [onComplete],
-  );
+  // Track which shots have already been notified of completion
+  const notifiedCompletionsRef = useRef<Set<string>>(new Set());
 
-  // Check for completed jobs and notify
-  statuses.forEach((s) => {
-    if (s.status?.status === 'completed' && s.status.videoUrl) {
-      handleComplete(s.shotId, s.status.videoUrl);
-    }
-  });
+  // Notify on completion - use useEffect to avoid side effects during render
+  useEffect(() => {
+    statuses.forEach((s) => {
+      if (
+        s.status?.status === 'completed' &&
+        s.status.videoUrl &&
+        !notifiedCompletionsRef.current.has(s.shotId)
+      ) {
+        notifiedCompletionsRef.current.add(s.shotId);
+        onComplete?.(s.shotId, s.status.videoUrl);
+      }
+    });
+  }, [statuses, onComplete]);
 
   // Don't render if no active jobs
   if (totalCount === 0) {

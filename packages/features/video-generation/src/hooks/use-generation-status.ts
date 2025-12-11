@@ -46,8 +46,12 @@ export function useGenerationStatus(shots: GenerationProgressShot[]): {
       },
       refetchInterval: (query: { state: { data: unknown } }) => {
         const data = query.state.data as { status?: string } | null;
-        // Stop polling when completed or failed
-        if (data?.status === 'completed' || data?.status === 'failed') {
+        // Stop polling when job reaches a terminal state
+        if (
+          data?.status === 'completed' ||
+          data?.status === 'failed' ||
+          data?.status === 'cancelled'
+        ) {
           return false;
         }
         return POLL_INTERVAL;

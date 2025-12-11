@@ -25,6 +25,8 @@ export const getShotGenerationJobAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    // Type assertion required: The Supabase client's generated types don't include
+    // the generation_jobs table yet. RLS policies enforce authorization at the DB level.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error } = await (client as any)
       .from('generation_jobs')
