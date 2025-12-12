@@ -42,7 +42,12 @@ vi.mock('@kit/ui/button', () => ({
     variant?: string;
     size?: string;
   }) => (
-    <button data-testid="button" data-variant={variant} data-size={size} onClick={onClick}>
+    <button
+      data-testid="button"
+      data-variant={variant}
+      data-size={size}
+      onClick={onClick}
+    >
       {children}
     </button>
   ),

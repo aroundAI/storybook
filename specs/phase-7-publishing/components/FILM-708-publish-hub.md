@@ -4,6 +4,7 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-701-704 (Platform Providers), FILM-705-707 (OAuth), FILM-312 (Episode Workspace)
 - **Blocks:** None
 

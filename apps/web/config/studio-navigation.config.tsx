@@ -1,11 +1,9 @@
 import {
-  BarChart3,
   Clapperboard,
   Film,
   FolderOpen,
   MapPin,
   Music,
-  Settings,
   Users,
 } from 'lucide-react';
 
@@ -43,39 +41,40 @@ function getProjectRoutes(accountSlug: string, projectId: string) {
           children: [
             {
               label: 'studio:routes.characters',
-              path: `${basePath}/assets/characters`,
+              path: `${basePath}/assets?tab=character`,
               Icon: <Users className={iconClasses} />,
             },
             {
               label: 'studio:routes.locations',
-              path: `${basePath}/assets/locations`,
+              path: `${basePath}/assets?tab=location`,
               Icon: <MapPin className={iconClasses} />,
             },
             {
               label: 'studio:routes.voices',
-              path: `${basePath}/assets/voices`,
+              path: `${basePath}/assets?tab=voice`,
               Icon: <Music className={iconClasses} />,
             },
           ],
         },
       ],
     },
-    {
-      label: 'studio:routes.settings',
-      collapsible: false,
-      children: [
-        {
-          label: 'studio:routes.analytics',
-          path: `${basePath}/analytics`,
-          Icon: <BarChart3 className={iconClasses} />,
-        },
-        {
-          label: 'studio:routes.settings',
-          path: `${basePath}/settings`,
-          Icon: <Settings className={iconClasses} />,
-        },
-      ],
-    },
+    // TODO: Add Analytics and Settings pages
+    // {
+    //   label: 'studio:routes.settings',
+    //   collapsible: false,
+    //   children: [
+    //     {
+    //       label: 'studio:routes.analytics',
+    //       path: `${basePath}/analytics`,
+    //       Icon: <BarChart3 className={iconClasses} />,
+    //     },
+    //     {
+    //       label: 'studio:routes.settings',
+    //       path: `${basePath}/settings`,
+    //       Icon: <Settings className={iconClasses} />,
+    //     },
+    //   ],
+    // },
   ];
 }
 

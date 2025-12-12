@@ -1,6 +1,9 @@
 -- Migration: Add voice cloning support
 -- FILM-510: Voice Cloning with ElevenLabs API
 
+-- Enable moddatetime extension for updated_at triggers
+CREATE EXTENSION IF NOT EXISTS moddatetime SCHEMA extensions;
+
 -- Extend voice_profiles table with cloning columns
 ALTER TABLE public.voice_profiles ADD COLUMN IF NOT EXISTS clone_status VARCHAR(50);
 ALTER TABLE public.voice_profiles ADD COLUMN IF NOT EXISTS clone_samples TEXT[];

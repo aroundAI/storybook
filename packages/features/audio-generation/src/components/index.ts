@@ -17,3 +17,22 @@ export {
   type VoiceCloningEditorProps,
   type VoiceProfile,
 } from './VoiceCloningEditor';
+
+// Voice assignment components (FILM-507)
+export {
+  VoiceAssignmentPanel,
+  type VoiceAssignmentProps,
+  type VoiceAssignmentCharacter,
+} from './VoiceAssignment';
+export {
+  VoiceSelector,
+  type VoiceSelectorProps,
+  type VoiceOption,
+} from './VoiceSelector';
+export {
+  VoiceSettingsPanel,
+  type VoiceSettingsPanelProps,
+} from './VoiceSettings';
+
+// Dialogue list component (FILM-506)
+export { DialogueList, type DialogueListProps } from './DialogueList';

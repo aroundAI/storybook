@@ -89,6 +89,17 @@ export const GEMINI_PRICING: Record<string, ModelPricing> = {
 };
 
 /**
+ * DeepSeek pricing
+ * Source: https://api.deepseek.com
+ */
+export const DEEPSEEK_PRICING: Record<string, ModelPricing> = {
+  // DeepSeek Chat (V3)
+  'deepseek-chat': { prompt: 0.14, completion: 0.28 },
+  // DeepSeek Coder (V2)
+  'deepseek-coder': { prompt: 0.14, completion: 0.28 },
+};
+
+/**
  * Local provider pricing (OpenAI-compatible local API)
  * Source: Local development - no cost
  */
@@ -107,7 +118,7 @@ export const LOCAL_PRICING: Record<string, ModelPricing> = {
  * @returns Pricing information or default fallback
  */
 export function getModelPricing(
-  provider: 'openai' | 'anthropic' | 'gemini' | 'local',
+  provider: 'openai' | 'anthropic' | 'gemini' | 'local' | 'deepseek',
   model: string,
 ): ModelPricing {
   switch (provider) {
@@ -120,11 +131,13 @@ export function getModelPricing(
       );
     case 'gemini':
       return GEMINI_PRICING[model] ?? GEMINI_PRICING['gemini-1.5-flash']!;
+    case 'deepseek':
+      return DEEPSEEK_PRICING[model] ?? DEEPSEEK_PRICING['deepseek-chat']!;
     case 'local':
       return LOCAL_PRICING[model] ?? LOCAL_PRICING['claude-sonnet-4-5']!;
     default:
       // Fallback to cheapest option
-      return { prompt: 0.15, completion: 0.6 };
+      return { prompt: 0.14, completion: 0.28 };
   }
 }
 
