@@ -21,7 +21,7 @@ export {
 // Lip sync components (FILM-511)
 export {
   LipSyncEditor,
-  type DialogueLine,
+  type LipSyncDialogueLine,
   type LipSyncEditorProps,
 } from './LipSyncEditor';
 

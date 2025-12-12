@@ -44,7 +44,7 @@ import {
 } from '../server/lip-sync-actions';
 import type { GetLipSyncJobResult } from '../server/lip-sync-actions';
 
-export interface DialogueLine {
+export interface LipSyncDialogueLine {
   id: string;
   text: string;
   audioUrl: string | null;
@@ -54,7 +54,7 @@ export interface DialogueLine {
 export interface LipSyncEditorProps {
   shotId: string;
   videoUrl: string;
-  dialogueLines: DialogueLine[];
+  dialogueLines: LipSyncDialogueLine[];
   onSuccess?: () => void;
   className?: string;
 }
