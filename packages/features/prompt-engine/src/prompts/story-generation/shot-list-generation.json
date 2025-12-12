@@ -5,17 +5,15 @@
   "category": "story-generation",
   "description": "Generate a shot-by-shot breakdown from screenplay. Creates individual shots optimized for AI video generation with camera directions and detailed prompts.",
   "exported_at": "2025-01-01T00:00:00.000Z",
-
   "llm": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-20250514",
-    "max_tokens": 4000,
+    "provider": "deepseek",
+    "model": "deepseek-chat",
+    "max_tokens": 8000,
     "temperature": 0.5,
     "response_format": {
       "type": "json_object"
     }
   },
-
   "system_prompts": [
     {
       "slug": "role",
@@ -42,9 +40,7 @@
       "order": 3
     }
   ],
-
   "user_prompt": "Create a detailed shot list from this screenplay:\n\n**Screenplay**:\n{{screenplay_text}}\n\n**Constraints**:\n- Video Provider: {{video_provider}}\n- Shot Duration: {{shot_duration_min}}-{{shot_duration_max}} seconds per shot\n- Provider Limitations: Static or simple camera movements only\n\n**Shot List Requirements**:\n\n1. **Shot Breakdown**:\n   - Each scene should be 3-8 shots\n   - Balance wide, medium, and close-up shots\n   - Include establishing shots for new locations\n   - Use variety in shot types and angles\n\n2. **Shot Descriptions**:\n   - Describe exactly what camera captures\n   - Include subject, action, environment\n   - Specify lighting and mood\n   - Note foreground/background elements\n\n3. **Camera Directions** (choose from):\n   - static: No camera movement\n   - pan_left / pan_right: Horizontal rotation\n   - tilt_up / tilt_down: Vertical rotation\n   - zoom_in / zoom_out: Change focal length\n   - dolly_in / dolly_out: Move toward/away from subject\n\n4. **AI Video Prompts**:\n   - Write prompts optimized for {{video_provider}}\n   - Focus on visual elements, not dialogue\n   - Include style, lighting, mood\n   - Avoid complex actions or impossible physics\n   - Be specific about subject appearance and environment\n\n5. **Example Prompt Format**:\n   \"A young woman with curly brown hair sits at a wooden table in a cozy coffee shop, warm afternoon light streaming through large windows, she looks up with a surprised expression, indie film aesthetic, 35mm film look\"\n\n**Shot List Structure**:\n\nFor each shot, provide:\n- Scene number (from screenplay)\n- Shot number within scene\n- Shot type (wide/medium/close-up/extreme-close-up)\n- Camera direction\n- Shot description (what we see)\n- Action description (what happens)\n- AI video prompt (optimized for generation)\n- Characters in frame\n- Duration in seconds\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"shotList\": {\n    \"shots\": [\n      {\n        \"sequenceNumber\": 1,\n        \"sceneNumber\": 1,\n        \"shotNumber\": 1,\n        \"shotType\": \"wide|medium|close-up|extreme-close-up|over-shoulder|pov\",\n        \"cameraDirection\": \"static|pan_left|pan_right|tilt_up|tilt_down|zoom_in|zoom_out|dolly_in|dolly_out\",\n        \"description\": \"string\",\n        \"action\": \"string\",\n        \"prompt\": \"string\",\n        \"characters\": [\"string\"],\n        \"duration\": number,\n        \"metadata\": {\n          \"location\": \"string\",\n          \"timeOfDay\": \"day|night|dawn|dusk\",\n          \"mood\": \"string\",\n          \"lighting\": \"string\"\n        }\n      }\n    ],\n    \"metadata\": {\n      \"totalShots\": number,\n      \"totalDuration\": number,\n      \"shotTypes\": {\n        \"wide\": number,\n        \"medium\": number,\n        \"closeUp\": number\n      },\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
-
   "variables": {
     "screenplay_text": {
       "type": "text",
@@ -67,7 +63,6 @@
       "description": "Target video provider (kling, runway, luma). Defaults to 'kling'"
     }
   },
-
   "output": {
     "type": "object",
     "schema": {
@@ -105,7 +100,9 @@
             "description": "Maya floats toward the main console, her back to camera, Earth reflected in the window.",
             "action": "A woman in a flight suit floats gracefully toward the console, checking readings.",
             "prompt": "Medium shot of woman astronaut in blue flight suit floating toward control console, back to camera, Earth visible through window reflection, zero gravity movement, soft ambient lighting, cinematic composition, 35mm film look",
-            "characters": ["Maya Chen"],
+            "characters": [
+              "Maya Chen"
+            ],
             "duration": 6,
             "metadata": {
               "location": "observation deck",
@@ -123,8 +120,14 @@
             "medium": 12,
             "closeUp": 6
           },
-          "locations": ["observation deck", "control room", "sleeping quarters"],
-          "characters": ["Maya Chen"]
+          "locations": [
+            "observation deck",
+            "control room",
+            "sleeping quarters"
+          ],
+          "characters": [
+            "Maya Chen"
+          ]
         }
       }
     }

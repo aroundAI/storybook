@@ -73,7 +73,9 @@ function getTabUnlockState(
     'ready',
     'published',
   ].includes(episode.status);
-  const shotListUnlocked = episode.shotList !== null;
+  const shotListUnlocked =
+    episode.shotList !== null ||
+    (episode.screenplayData?.scenes?.length ?? 0) > 0;
 
   return {
     ideation: true,

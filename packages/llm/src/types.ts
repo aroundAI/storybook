@@ -11,7 +11,7 @@
 /**
  * Supported LLM providers
  */
-export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'local';
+export type LLMProvider = 'openai' | 'anthropic' | 'gemini' | 'local' | 'deepseek';
 
 /**
  * Message role in chat conversation

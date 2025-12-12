@@ -6,10 +6,8 @@ export {
 export type {
   PromptOutputConfig,
   RenderedPrompt,
+  LLMExecutionConfig,
+  LLMExecutionResult,
 } from '../types';
 
-export {
-  executeLLM,
-  type LLMExecutionConfig,
-  type LLMExecutionResult,
-} from './llm-executor';
+export { executeLLM } from './llm-executor';

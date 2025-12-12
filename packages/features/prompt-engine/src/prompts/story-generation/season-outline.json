@@ -5,17 +5,15 @@
   "category": "story-generation",
   "description": "Generate episode outlines for an entire season with proper story structure. Creates 2-24 episode concepts following classic narrative arc.",
   "exported_at": "2025-01-01T00:00:00.000Z",
-
   "llm": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-20250514",
+    "provider": "deepseek",
+    "model": "deepseek-chat",
     "max_tokens": 4000,
     "temperature": 0.7,
     "response_format": {
       "type": "json_object"
     }
   },
-
   "system_prompts": [
     {
       "slug": "role",
@@ -42,9 +40,7 @@
       "order": 3
     }
   ],
-
   "user_prompt": "Generate {{episode_count}} episode outlines for a season based on this premise:\n\n**Season Premise**: {{season_premise}}\n\n{{#if genre}}**Genre**: {{genre}}{{/if}}\n{{#if style}}**Style**: {{style}}{{/if}}\n\n{{#if characters}}**Characters**:\n{{characters}}{{/if}}\n\n{{#if locations}}**Locations**:\n{{locations}}{{/if}}\n\nStarting episode number: {{starting_number}}\n\nFor each episode, provide:\n1. **number**: Episode number (starting from {{starting_number}})\n2. **title**: A compelling, memorable title\n3. **premise**: One-sentence hook (what happens in this episode)\n4. **mainPlot**: 2-3 sentence plot summary\n5. **characterFocus**: Array of character names featured prominently\n6. **arcPosition**: Position in story arc (setup, rising, midpoint, climax, resolution)\n\nEnsure:\n- Each episode title is unique and evocative\n- Episodes build on each other narratively\n- Story structure matches arc positions\n- Character focus is distributed across the season\n- Each episode is visually compelling for video production\n\nReturn JSON matching this structure:\n```json\n{\n  \"episodes\": [\n    {\n      \"number\": 1,\n      \"title\": \"string\",\n      \"premise\": \"string\",\n      \"mainPlot\": \"string\",\n      \"characterFocus\": [\"string\"],\n      \"arcPosition\": \"setup|rising|midpoint|climax|resolution\"\n    }\n  ]\n}\n```",
-
   "variables": {
     "season_premise": {
       "type": "text",
@@ -82,7 +78,6 @@
       "description": "Formatted list of locations with descriptions"
     }
   },
-
   "output": {
     "type": "object",
     "wrapper_key": "episodes",
@@ -98,7 +93,10 @@
           "title": "The First Light",
           "premise": "A mysterious signal from deep space awakens humanity to the reality that we are not alone.",
           "mainPlot": "Dr. Sarah Chen, a radio astronomer, discovers a pattern in cosmic background radiation that defies natural explanation. As she races to decode the message before government agencies take over her research, she must confront her own skepticism about extraterrestrial intelligence.",
-          "characterFocus": ["Dr. Sarah Chen", "Director Williams"],
+          "characterFocus": [
+            "Dr. Sarah Chen",
+            "Director Williams"
+          ],
           "arcPosition": "setup"
         },
         {
@@ -106,7 +104,10 @@
           "title": "Static",
           "premise": "As the world learns about the signal, competing factions emerge with very different ideas about how to respond.",
           "mainPlot": "The signal discovery leaks to the press, sparking global chaos. Sarah is thrust into the spotlight while her lab partner Marcus uncovers evidence that someone has known about this signal for decades. Trust becomes a precious commodity.",
-          "characterFocus": ["Marcus Webb", "Dr. Sarah Chen"],
+          "characterFocus": [
+            "Marcus Webb",
+            "Dr. Sarah Chen"
+          ],
           "arcPosition": "setup"
         }
       ]

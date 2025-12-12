@@ -5,17 +5,15 @@
   "category": "story-generation",
   "description": "Convert a story into screenplay format with scenes and dialogue. Creates professional screenplay with clear scene headings, action lines, and natural dialogue.",
   "exported_at": "2025-01-01T00:00:00.000Z",
-
   "llm": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-20250514",
+    "provider": "deepseek",
+    "model": "deepseek-chat",
     "max_tokens": 4000,
     "temperature": 0.6,
     "response_format": {
       "type": "json_object"
     }
   },
-
   "system_prompts": [
     {
       "slug": "role",
@@ -34,9 +32,7 @@
       "order": 2
     }
   ],
-
   "user_prompt": "Convert this story into a screenplay:\n\n**Story**:\n{{story}}\n\n**Guidelines**:\n\n1. **Scene Structure**:\n   - Target {{target_scene_count}} scenes\n   - Each scene should be 30-60 seconds of screen time\n   - Use standard scene headings: INT/EXT. LOCATION - TIME OF DAY\n   - Include clear action lines describing what we see\n\n2. **Dialogue**:\n   - Style: {{style}}\n   - Keep dialogue natural and purposeful\n   - Use dialogue to advance story and reveal character\n   - Include parentheticals for emotion/action only when necessary\n   - Avoid on-the-nose dialogue\n\n3. **Action Lines**:\n   - Write in present tense\n   - Be concise and visual\n   - Focus on what camera can capture\n   - Break up long paragraphs for readability\n\n4. **Scene Types**:\n   - Vary scene locations for visual interest\n   - Balance dialogue-heavy and action-heavy scenes\n   - Include establishing shots where needed\n\n5. **Character Names**:\n   - CAPITALIZE character names in action lines (first appearance)\n   - Character names in dialogue are always capitalized\n\n**Screenplay Format Example**:\n\nINT. COFFEE SHOP - DAY\n\nJAKE (30s, disheveled) stares at his laptop screen, fingers frozen over the keyboard.\n\n                    SARAH (O.S.)\n            Jake?\n\nJake looks up. SARAH (20s, confident) stands at his table with two coffees.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"day|night|dawn|dusk\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"estimatedDuration\": number\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": number,\n      \"estimatedDuration\": number,\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
-
   "variables": {
     "story": {
       "type": "text",
@@ -54,7 +50,6 @@
       "description": "Dialogue style (natural, stylized, minimal). Defaults to 'natural'"
     }
   },
-
   "output": {
     "type": "object",
     "schema": {
@@ -89,8 +84,15 @@
         "metadata": {
           "totalScenes": 8,
           "estimatedDuration": 300,
-          "locations": ["observation deck", "control room", "sleeping quarters"],
-          "characters": ["Maya Chen", "Houston Control"]
+          "locations": [
+            "observation deck",
+            "control room",
+            "sleeping quarters"
+          ],
+          "characters": [
+            "Maya Chen",
+            "Houston Control"
+          ]
         }
       }
     }
