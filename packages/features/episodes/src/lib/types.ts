@@ -210,6 +210,12 @@ export interface Episode {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  projectMetadata?: {
+    videoStyle?: string;
+    targetAudience?: string;
+    description?: string;
+    [key: string]: unknown;
+  };
 }
 
 /**

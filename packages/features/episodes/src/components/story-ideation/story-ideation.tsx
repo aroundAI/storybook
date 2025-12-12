@@ -30,13 +30,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@kit/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@kit/ui/select';
 import { Slider } from '@kit/ui/slider';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
@@ -51,37 +44,17 @@ import { IdeaCard } from './idea-card';
 interface StoryIdeationProps {
   onComplete: (selectedIdea: StoryIdea) => void;
   isGenerating?: boolean;
+  projectGenre?: string;
+  projectStyle?: string;
+  projectAudience?: string;
 }
-
-const GENRE_OPTIONS = [
-  { value: 'sci-fi', label: 'Science Fiction' },
-  { value: 'fantasy', label: 'Fantasy' },
-  { value: 'drama', label: 'Drama' },
-  { value: 'comedy', label: 'Comedy' },
-  { value: 'thriller', label: 'Thriller' },
-  { value: 'horror', label: 'Horror' },
-  { value: 'romance', label: 'Romance' },
-  { value: 'documentary', label: 'Documentary' },
-];
-
-const STYLE_OPTIONS = [
-  { value: 'cinematic', label: 'Cinematic' },
-  { value: 'documentary', label: 'Documentary' },
-  { value: 'animated', label: 'Animated' },
-  { value: 'abstract', label: 'Abstract' },
-  { value: 'minimalist', label: 'Minimalist' },
-];
-
-const AUDIENCE_OPTIONS = [
-  { value: 'children', label: 'Children' },
-  { value: 'teens', label: 'Teens' },
-  { value: 'adults', label: 'Adults' },
-  { value: 'all-ages', label: 'All Ages' },
-];
 
 export function StoryIdeation({
   onComplete,
   isGenerating = false,
+  projectGenre = 'general',
+  projectStyle = 'balanced',
+  projectAudience = 'general',
 }: StoryIdeationProps) {
   const [isPending, startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
@@ -92,9 +65,6 @@ export function StoryIdeation({
     resolver: zodResolver(GenerateStoryIdeasSchema),
     defaultValues: {
       premise: '',
-      genre: undefined,
-      targetAudience: undefined,
-      style: undefined,
       numberOfIdeas: 3,
     },
   });
@@ -105,7 +75,12 @@ export function StoryIdeation({
   const onSubmit = form.handleSubmit((data: GenerateStoryIdeasInput) => {
     startTransition(async () => {
       try {
-        const result = await generateStoryIdeasAction(data);
+        const result = await generateStoryIdeasAction({
+          ...data,
+          genre: projectGenre,
+          style: projectStyle,
+          targetAudience: projectAudience,
+        });
 
         if (result.success) {
           setIdeas(result.data.ideas);
@@ -145,7 +120,7 @@ export function StoryIdeation({
             <CardTitle>Story Ideation</CardTitle>
           </div>
           <CardDescription>
-            Enter your story premise and configure generation settings
+            Enter your story premise. Generation settings are inherited from your project.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -184,92 +159,6 @@ export function StoryIdeation({
                   </FormItem>
                 )}
               />
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <FormField
-                  control={form.control}
-                  name="genre"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Genre</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select genre" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {GENRE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="style"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Visual Style</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select style" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {STYLE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="targetAudience"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Target Audience</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select audience" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {AUDIENCE_OPTIONS.map((option) => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
 
               <FormField
                 control={form.control}

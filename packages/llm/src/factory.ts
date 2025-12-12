@@ -8,6 +8,7 @@ import { AnthropicClient } from './providers/anthropic';
 import { GeminiClient } from './providers/gemini';
 import { LocalClient } from './providers/local';
 import { OpenAIClient } from './providers/openai';
+import { DeepSeekClient } from './providers/deepseek';
 import type { LLMClient, LLMConfig, LLMProvider } from './types';
 import { LLMError } from './types';
 
@@ -53,6 +54,9 @@ export function loadConfigFromEnv(): LLMConfig {
       case 'local':
         // Local provider doesn't need an API key
         apiKey = 'not-needed';
+        break;
+      case 'deepseek':
+        apiKey = process.env.DEEPSEEK_API_KEY;
         break;
     }
   }
@@ -108,6 +112,8 @@ function getDefaultModel(provider: LLMProvider): string {
       return 'gemini-1.5-flash'; // Fast and cost-effective
     case 'local':
       return 'claude-sonnet-4-5'; // Latest local Claude model
+    case 'deepseek':
+      return 'deepseek-chat';
     default:
       throw new LLMError(
         `Unknown provider: ${provider}`,
@@ -180,6 +186,9 @@ export function createLLMClient(config?: LLMConfig): LLMClient {
       break;
     case 'local':
       client = new LocalClient(finalConfig);
+      break;
+    case 'deepseek':
+      client = new DeepSeekClient(finalConfig);
       break;
     default:
       throw new LLMError(

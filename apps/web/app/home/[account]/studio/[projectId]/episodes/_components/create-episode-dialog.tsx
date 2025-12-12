@@ -9,7 +9,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { CreateEpisodeSchema } from '@kit/episodes/schemas';
-import { createEpisodeAction } from '@kit/episodes/server';
+import { createEpisodeAction } from '@kit/episodes/server/actions';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,

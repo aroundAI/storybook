@@ -14,6 +14,7 @@
     ".": "./src/index.ts",
     "./components": "./src/components/index.ts",
     "./server": "./src/server/index.ts",
+    "./server/actions": "./src/server/actions.ts",
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",
     "./types": "./src/lib/types.ts",

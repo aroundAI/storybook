@@ -27,10 +27,8 @@ import { cn } from '@kit/ui/utils';
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
 import { useUrlTabState } from '../../hooks/use-url-tab-state';
 import type { Episode, EpisodeWithShots, StudioTab } from '../../lib/types';
-import {
-  convertToScreenplayAction,
-  generateFullStoryAction,
-} from '../../server';
+import { generateFullStoryAction } from '../../server/story-actions';
+import { convertToScreenplayAction } from '../../server/screenplay-actions';
 import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
 import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
 import { StoryIdeation } from '../story-ideation/story-ideation';
@@ -49,11 +47,11 @@ const STUDIO_TABS: Array<{
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'ideation', label: 'Ideation', icon: Lightbulb },
-  { id: 'story', label: 'Story', icon: BookOpen },
-  { id: 'screenplay', label: 'Screenplay', icon: Film },
-  { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
-];
+    { id: 'ideation', label: 'Ideation', icon: Lightbulb },
+    { id: 'story', label: 'Story', icon: BookOpen },
+    { id: 'screenplay', label: 'Screenplay', icon: Film },
+    { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
+  ];
 
 function getTabUnlockState(
   episode: Episode | undefined,
@@ -75,7 +73,9 @@ function getTabUnlockState(
     'ready',
     'published',
   ].includes(episode.status);
-  const shotListUnlocked = episode.shotList !== null;
+  const shotListUnlocked =
+    episode.shotList !== null ||
+    (episode.screenplayData?.scenes?.length ?? 0) > 0;
 
   return {
     ideation: true,
@@ -332,6 +332,11 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
                 <StoryIdeation
                   onComplete={handleIdeaSelected}
                   isGenerating={isGeneratingStory}
+                  projectGenre={
+                    (episode?.projectMetadata?.genre as string) ?? 'general'
+                  }
+                  projectStyle={episode?.projectMetadata?.videoStyle}
+                  projectAudience={episode?.projectMetadata?.targetAudience}
                 />
               </div>
             ) : (

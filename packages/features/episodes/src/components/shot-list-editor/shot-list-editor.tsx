@@ -17,7 +17,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Filter, ListOrdered, Play, Search } from 'lucide-react';
+import { Filter, ListOrdered, Loader2, Play, Search } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -47,7 +47,8 @@ import {
 } from '@kit/ui/table';
 
 import type { EpisodeWithShots, Shot, ShotStatus } from '../../lib/types';
-import { reorderShotsAction } from '../../server';
+import { reorderShotsAction } from '../../lib/server/mutations/shot-actions';
+import { generateShotListAction } from '../../lib/server/mutations/shot-list-actions';
 import { useStoryStudioContext } from '../story-studio/story-studio-context';
 import { ShotRow } from './shot-row';
 
@@ -208,6 +209,38 @@ export function ShotListEditor({
     return { total, pending, generating, completed, failed, totalDuration };
   }, [shots]);
 
+  // Handle generating shot list (first time)
+  const handleGenerateShotList = () => {
+    // Only allow generation if we have a screenplay
+    if (!episode.screenplayData?.scenes?.length) {
+      toast.error('Screenplay required to generate shot list');
+      return;
+    }
+
+    startReorderTransition(async () => {
+      try {
+        const result = await generateShotListAction({
+          episodeId: episode.id,
+          // Defaults
+          shotDurationMin: 3,
+          shotDurationMax: 8,
+          videoProvider: 'kling',
+        });
+
+        if (result.success) {
+          toast.success(`Generated ${result.shotsCreated} shots`);
+          refetchEpisode();
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate shot list',
+        );
+      }
+    });
+  };
+
   if (shots.length === 0) {
     return (
       <Card className="mt-4">
@@ -221,11 +254,32 @@ export function ShotListEditor({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="py-8 text-center">
-            <ListOrdered className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
-            <p className="text-muted-foreground">No shots generated yet</p>
-            <p className="text-muted-foreground mt-2 text-sm">
-              Shot list generation will be available in FILM-307
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <ListOrdered className="text-muted-foreground mb-4 h-12 w-12" />
+            <h3 className="mb-2 text-lg font-semibold">
+              Ready to Generate Shot List
+            </h3>
+            <p className="text-muted-foreground mb-6 max-w-md text-sm">
+              We&apos;ll analyze your screenplay and break it down into individual
+              shots optimized for AI video generation. Each shot will have a detailed
+              visual prompt.
+            </p>
+
+            <Button onClick={handleGenerateShotList} disabled={_isReordering}>
+              {_isReordering ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Generating Shots...
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  Generate Shot List
+                </>
+              )}
+            </Button>
+            <p className="text-muted-foreground mt-4 text-xs">
+              Estimated duration: ~45 seconds
             </p>
           </div>
         </CardContent>
@@ -343,38 +397,38 @@ export function ShotListEditor({
 
         {/* Shot Table */}
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-10">
-                  <Checkbox
-                    checked={allSelected}
-                    ref={(el) => {
-                      if (el) {
-                        (el as unknown as HTMLInputElement).indeterminate =
-                          someSelected;
-                      }
-                    }}
-                    onCheckedChange={handleSelectAll}
-                    aria-label="Select all"
-                  />
-                </TableHead>
-                <TableHead className="w-10"></TableHead>
-                <TableHead className="w-16">#</TableHead>
-                <TableHead className="w-24">Status</TableHead>
-                <TableHead className="w-20">Duration</TableHead>
-                <TableHead>Prompt</TableHead>
-                <TableHead className="w-24">Angle</TableHead>
-                <TableHead className="w-24">Movement</TableHead>
-                <TableHead className="w-24">Preview</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) {
+                          (el as unknown as HTMLInputElement).indeterminate =
+                            someSelected;
+                        }
+                      }}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all"
+                    />
+                  </TableHead>
+                  <TableHead className="w-10"></TableHead>
+                  <TableHead className="w-16">#</TableHead>
+                  <TableHead className="w-24">Status</TableHead>
+                  <TableHead className="w-20">Duration</TableHead>
+                  <TableHead>Prompt</TableHead>
+                  <TableHead className="w-24">Angle</TableHead>
+                  <TableHead className="w-24">Movement</TableHead>
+                  <TableHead className="w-24">Preview</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 <SortableContext
                   items={filteredShots.map((s) => s.id)}
                   strategy={verticalListSortingStrategy}
@@ -391,9 +445,9 @@ export function ShotListEditor({
                     />
                   ))}
                 </SortableContext>
-              </DndContext>
-            </TableBody>
-          </Table>
+              </TableBody>
+            </Table>
+          </DndContext>
         </div>
 
         {filteredShots.length === 0 && (

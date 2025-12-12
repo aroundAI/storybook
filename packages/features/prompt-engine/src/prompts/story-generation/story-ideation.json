@@ -5,17 +5,15 @@
   "category": "story-generation",
   "description": "Generate multiple story ideas from a premise. Creates diverse, creative story concepts suitable for short-form video content.",
   "exported_at": "2025-01-01T00:00:00.000Z",
-
   "llm": {
-    "provider": "anthropic",
-    "model": "claude-sonnet-4-20250514",
+    "provider": "deepseek",
+    "model": "deepseek-chat",
     "max_tokens": 2000,
     "temperature": 0.8,
     "response_format": {
       "type": "json_object"
     }
   },
-
   "system_prompts": [
     {
       "slug": "role",
@@ -34,9 +32,7 @@
       "order": 2
     }
   ],
-
   "user_prompt": "Generate {{number_of_ideas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{target_audience}}\n- Style: {{style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5. **Visual Potential**: Why this story works well for video\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\"\n    }\n  ]\n}\n```",
-
   "variables": {
     "premise": {
       "type": "text",
@@ -64,7 +60,6 @@
       "description": "Number of story ideas to generate. Defaults to 3"
     }
   },
-
   "output": {
     "type": "object",
     "schema": {
@@ -77,7 +72,11 @@
         {
           "title": "The Last Signal",
           "logline": "A lonely astronaut discovers a message from Earth that changes everything she thought she knew about her mission.",
-          "themes": ["isolation", "hope", "identity"],
+          "themes": [
+            "isolation",
+            "hope",
+            "identity"
+          ],
           "hook": "The twist reveals the message was sent from the future, creating a paradox the protagonist must resolve.",
           "visualPotential": "Stunning space visuals, intimate spacecraft interiors, emotional close-ups of the astronaut's reactions."
         }

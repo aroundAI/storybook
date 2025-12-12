@@ -10,8 +10,7 @@ import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client'
 import type { LLMExecutionConfig, LLMExecutionResult } from '../types';
 import { loadAndRenderPrompt } from './prompt-loader';
 
-// Re-export types for convenience
-export type { LLMExecutionConfig, LLMExecutionResult };
+
 
 /**
  * Retry helper for network-related LLM failures
@@ -241,8 +240,8 @@ export async function executeLLM<T = unknown>(
   );
 
   // Define variables outside try block for catch block access
-  let provider: LLMProvider | string = 'local';
-  let model = 'claude-sonnet-4-5';
+  let provider: LLMProvider | string = 'deepseek';
+  let model = 'deepseek-chat';
   const startTime = Date.now();
 
   try {

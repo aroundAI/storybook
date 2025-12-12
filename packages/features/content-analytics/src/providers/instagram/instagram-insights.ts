@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 import type {
   InstagramAccountInsights,
@@ -21,7 +21,7 @@ export class InstagramInsightsScopeError extends Error {
   constructor() {
     super(
       'Instagram Insights access denied. Your Instagram connection may be missing the required insights permissions. ' +
-        'Please disconnect and reconnect your Instagram account to grant the required analytics permissions.',
+      'Please disconnect and reconnect your Instagram account to grant the required analytics permissions.',
     );
     this.name = 'InstagramInsightsScopeError';
   }
@@ -62,7 +62,7 @@ export class InstagramInsightsProvider {
   constructor(
     private accessToken: string,
     private instagramAccountId: string,
-  ) {}
+  ) { }
 
   /**
    * Fetches insights for a media item (Reel or Video)
@@ -103,22 +103,22 @@ export class InstagramInsightsProvider {
       const metricsForType =
         mediaType === 'REELS'
           ? [
-              'plays',
-              'reach',
-              'total_interactions',
-              'likes',
-              'comments',
-              'saved',
-              'shares',
-            ]
+            'plays',
+            'reach',
+            'total_interactions',
+            'likes',
+            'comments',
+            'saved',
+            'shares',
+          ]
           : [
-              'reach',
-              'impressions',
-              'total_interactions',
-              'likes',
-              'comments',
-              'saved',
-            ];
+            'reach',
+            'impressions',
+            'total_interactions',
+            'likes',
+            'comments',
+            'saved',
+          ];
 
       // Fetch insights, reach breakdown, and audience in parallel
       const [insightsData, reachBreakdown, audience] = await Promise.all([
@@ -164,10 +164,10 @@ export class InstagramInsightsProvider {
   ): Promise<InsightsDataItem[]> {
     const response = await fetch(
       `${GRAPH_API_BASE}/${mediaId}/insights?` +
-        new URLSearchParams({
-          metric: metrics.join(','),
-          access_token: this.accessToken,
-        }),
+      new URLSearchParams({
+        metric: metrics.join(','),
+        access_token: this.accessToken,
+      }),
     );
 
     if (!response.ok) {
@@ -196,11 +196,11 @@ export class InstagramInsightsProvider {
     try {
       const response = await fetch(
         `${GRAPH_API_BASE}/${mediaId}/insights?` +
-          new URLSearchParams({
-            metric: 'reach',
-            breakdown: 'follow_type',
-            access_token: this.accessToken,
-          }),
+        new URLSearchParams({
+          metric: 'reach',
+          breakdown: 'follow_type',
+          access_token: this.accessToken,
+        }),
       );
 
       if (!response.ok) {
@@ -254,13 +254,13 @@ export class InstagramInsightsProvider {
     try {
       const response = await fetch(
         `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
-          new URLSearchParams({
-            metric: 'follower_demographics',
-            period: 'lifetime',
-            metric_type: 'total_value',
-            breakdown: 'country,city,age,gender',
-            access_token: this.accessToken,
-          }),
+        new URLSearchParams({
+          metric: 'follower_demographics',
+          period: 'lifetime',
+          metric_type: 'total_value',
+          breakdown: 'country,city,age,gender',
+          access_token: this.accessToken,
+        }),
       );
 
       if (!response.ok) {
@@ -301,13 +301,13 @@ export class InstagramInsightsProvider {
       const [metricsResponse, accountResponse] = await Promise.all([
         fetch(
           `${GRAPH_API_BASE}/${this.instagramAccountId}/insights?` +
-            new URLSearchParams({
-              metric: 'impressions,reach,profile_views,website_clicks',
-              period: 'day',
-              since: since.toString(),
-              until: now.toString(),
-              access_token: this.accessToken,
-            }),
+          new URLSearchParams({
+            metric: 'impressions,reach,profile_views,website_clicks',
+            period: 'day',
+            since: since.toString(),
+            until: now.toString(),
+            access_token: this.accessToken,
+          }),
         ),
         fetch(
           `${GRAPH_API_BASE}/${this.instagramAccountId}?fields=followers_count&access_token=${this.accessToken}`,
