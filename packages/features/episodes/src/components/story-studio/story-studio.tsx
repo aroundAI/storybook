@@ -330,6 +330,11 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
                 <StoryIdeation
                   onComplete={handleIdeaSelected}
                   isGenerating={isGeneratingStory}
+                  projectGenre={
+                    (episode?.projectMetadata?.genre as string) ?? 'general'
+                  }
+                  projectStyle={episode?.projectMetadata?.videoStyle}
+                  projectAudience={episode?.projectMetadata?.targetAudience}
                 />
               </div>
             ) : (
