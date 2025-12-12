@@ -1,4 +1,5 @@
-loadAndRenderPrompt,
+export {
+  loadAndRenderPrompt,
   clearPromptCache,
 } from './prompt-loader';
 
