@@ -54,7 +54,13 @@ vi.mock('@kit/ui/button', () => ({
 }));
 
 vi.mock('@kit/ui/card', () => ({
-  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  Card: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => (
     <div data-testid="card" className={className}>
       {children}
     </div>
@@ -87,7 +93,9 @@ vi.mock('@kit/ui/form', () => ({
     render,
     name,
   }: {
-    render: (props: { field: { value: string; onChange: () => void } }) => React.ReactNode;
+    render: (props: {
+      field: { value: string; onChange: () => void };
+    }) => React.ReactNode;
     name: string;
   }) => (
     <div data-testid={`form-field-${name}`}>
@@ -164,7 +172,12 @@ vi.mock('@kit/ui/textarea', () => ({
     placeholder?: string;
     className?: string;
   }) => (
-    <textarea data-testid="textarea" placeholder={placeholder} className={className} {...props} />
+    <textarea
+      data-testid="textarea"
+      placeholder={placeholder}
+      className={className}
+      {...props}
+    />
   ),
 }));
 
@@ -241,7 +254,9 @@ describe('StoryIdeation', () => {
     render(<StoryIdeation {...defaultProps} />);
 
     expect(
-      screen.getByText('Enter your story premise and configure generation settings'),
+      screen.getByText(
+        'Enter your story premise and configure generation settings',
+      ),
     ).toBeDefined();
   });
 
@@ -270,7 +285,9 @@ describe('StoryIdeation Form Validation', () => {
     render(<StoryIdeation onComplete={vi.fn()} />);
 
     const buttons = screen.getAllByTestId('button');
-    const submitButton = buttons.find((btn) => btn.getAttribute('type') === 'submit');
+    const submitButton = buttons.find(
+      (btn) => btn.getAttribute('type') === 'submit',
+    );
     expect(submitButton).toBeDefined();
   });
 });

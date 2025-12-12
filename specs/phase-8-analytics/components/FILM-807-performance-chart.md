@@ -6,6 +6,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard)
 - **Blocks:** None
+- **Status:** ✅ DONE
 
 ---
 
@@ -420,16 +421,16 @@ export interface DailyMetric {
 
 ## Acceptance Criteria
 
-- [ ] Renders time series chart with daily data points
-- [ ] Supports line, area, and stacked area chart types
-- [ ] Metric selector switches between views/likes/comments/shares
-- [ ] Platform breakdown shows colored lines per platform
-- [ ] Aggregate view shows combined metrics
-- [ ] Hover tooltip shows date and values
-- [ ] Export chart as PNG
-- [ ] Responsive on mobile screens
-- [ ] Legend clickable to hide/show series
-- [ ] Y-axis uses abbreviated numbers (K, M)
+- [x] Renders time series chart with daily data points
+- [x] Supports line, area, and stacked area chart types
+- [x] Metric selector switches between views/likes/comments/shares
+- [x] Platform breakdown shows colored lines per platform
+- [x] Aggregate view shows combined metrics
+- [x] Hover tooltip shows date and values
+- [x] Export chart as PNG
+- [x] Responsive on mobile screens
+- [x] Legend clickable to hide/show series
+- [x] Y-axis uses abbreviated numbers (K, M)
 
 ---
 

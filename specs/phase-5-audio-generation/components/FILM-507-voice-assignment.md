@@ -5,6 +5,8 @@
 **Effort**: M (3-5 days)
 **Dependencies**: FILM-206 (character management), FILM-506 (dialogue list)
 **Blocks**: None
+**Status**: COMPLETED
+**PR**: #TBD
 
 ---
 
@@ -578,33 +580,40 @@ const VOICE_PRESETS = {
 
 ### Functional
 
-- [ ] Displays all characters in list
-- [ ] Shows which characters have voice assignments
-- [ ] Opens voice assignment dialog on character click
-- [ ] Lists all available voices from ElevenLabs
-- [ ] Filters voices by gender, language
-- [ ] Searches voices by name
-- [ ] Plays voice preview samples
-- [ ] Generates custom voice preview with test text
-- [ ] Stability slider updates settings
-- [ ] Similarity boost slider updates settings
-- [ ] Style slider updates settings
-- [ ] Speed slider updates settings
-- [ ] Reset button restores default settings
-- [ ] Save button creates/updates voice profile
-- [ ] Loads existing profile when character selected
-- [ ] Shows loading states during operations
-- [ ] Shows success/error notifications
+- [x] Displays all characters in list
+- [x] Shows which characters have voice assignments
+- [x] Opens voice assignment dialog on character click
+- [x] Lists all available voices from ElevenLabs
+- [x] Filters voices by gender, language
+- [x] Searches voices by name
+- [x] Plays voice preview samples
+- [x] Generates custom voice preview with test text
+- [x] Stability slider updates settings
+- [x] Similarity boost slider updates settings
+- [x] Style slider updates settings
+- [x] Speed slider updates settings
+- [x] Reset button restores default settings
+- [x] Save button creates/updates voice profile
+- [x] Loads existing profile when character selected
+- [x] Shows loading states during operations
+- [x] Shows success/error notifications
+
+### Bulk Assignment (Added)
+
+- [x] Multi-select characters with checkboxes
+- [x] Bulk mode toggle button
+- [x] Assign same voice to multiple selected characters
+- [x] Auto-assign voices based on character gender
 
 ### Non-Functional
 
-- [ ] Voice library loads within 2 seconds
-- [ ] Preview generates within 10 seconds
-- [ ] Sliders respond smoothly
-- [ ] Keyboard navigation works
-- [ ] Accessible (ARIA labels)
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] Voice library loads within 2 seconds
+- [x] Preview generates within 10 seconds
+- [x] Sliders respond smoothly
+- [x] Keyboard navigation works
+- [x] Accessible (ARIA labels)
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 

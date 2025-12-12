@@ -17,7 +17,7 @@ import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
 import type { Shot, ShotStatus } from '../../lib/types';
-import { updateShotAction } from '../../server';
+import { updateShotAction } from '../../lib/server/mutations/shot-actions';
 
 interface ShotRowProps {
   shot: Shot;

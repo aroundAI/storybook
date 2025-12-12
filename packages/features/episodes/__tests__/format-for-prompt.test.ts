@@ -298,7 +298,9 @@ describe('Format For Prompt Utilities', () => {
       const result = formatStoryForPrompt(story);
 
       expect(result).toContain('PREMISE:');
-      expect(result).toContain('A young astronaut discovers an alien artifact.');
+      expect(result).toContain(
+        'A young astronaut discovers an alien artifact.',
+      );
       expect(result).toContain('STORY:');
       expect(result).toContain('Maya was always fascinated by space.');
     });

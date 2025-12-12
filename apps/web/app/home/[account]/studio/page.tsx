@@ -1,18 +1,15 @@
+import { Suspense } from 'react';
+
 import Link from 'next/link';
 
 import { Plus } from 'lucide-react';
 
+import { ProjectsList } from '@kit/projects/components/projects-list';
 import { Button } from '@kit/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@kit/ui/card';
 import { Heading } from '@kit/ui/heading';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
+import { loadTeamWorkspace } from '../_lib/server/team-account-workspace.loader';
 
 export const metadata = {
   title: 'Film Studio | Create AI-Generated Videos',
@@ -26,6 +23,10 @@ interface PageProps {
 
 async function FilmStudioPage({ params }: PageProps) {
   const { account } = await params;
+
+  // Load the team workspace to get the account UUID
+  const workspace = await loadTeamWorkspace(account);
+  const accountId = workspace.account.id;
 
   return (
     <div className="container mx-auto py-8">
@@ -45,27 +46,12 @@ async function FilmStudioPage({ params }: PageProps) {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-dashed">
-          <CardHeader>
-            <CardTitle className="text-muted-foreground flex items-center gap-2">
-              <Plus className="h-5 w-5" />
-              Create Your First Project
-            </CardTitle>
-            <CardDescription>
-              Get started by creating a new Film Studio project with custom
-              settings for video and audio generation.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button variant="outline" asChild>
-              <Link href={`/home/${account}/studio/projects/new`}>
-                Get Started
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <Suspense fallback={<div>Loading projects...</div>}>
+        <ProjectsList
+          accountId={accountId}
+          basePath={`/home/${account}/studio`}
+        />
+      </Suspense>
     </div>
   );
 }

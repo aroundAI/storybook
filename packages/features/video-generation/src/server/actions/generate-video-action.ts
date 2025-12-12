@@ -97,7 +97,7 @@ export const generateVideoAction = enhanceAction(
     );
 
     // Calculate estimated cost
-    const estimatedCostCents = calculateVideoCost(provider, duration, mode);
+    const estimatedCostCents = await calculateVideoCost(provider, duration, mode);
 
     // Check and reserve budget
     const budgetCheck = await checkAndReserveBudget(

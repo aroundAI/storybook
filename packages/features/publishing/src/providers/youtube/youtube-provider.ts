@@ -1,5 +1,3 @@
-'use server';
-
 import { createReadStream, promises as fsPromises } from 'fs';
 import { google } from 'googleapis';
 import { Readable } from 'stream';

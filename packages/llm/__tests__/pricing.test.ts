@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   ANTHROPIC_PRICING,
+  DEEPSEEK_PRICING,
   GEMINI_PRICING,
   LOCAL_PRICING,
   type ModelPricing,
@@ -249,10 +250,30 @@ describe('LLM Pricing', () => {
       });
     });
 
+    describe('Deepseek provider', () => {
+      it('should return correct pricing for known model', () => {
+        const pricing = getModelPricing('deepseek', 'deepseek-chat');
+        expect(pricing).toEqual({ prompt: 0.14, completion: 0.28 });
+      });
+
+      it('should return deepseek-chat pricing for unknown model', () => {
+        const pricing = getModelPricing('deepseek', 'unknown-model');
+        expect(pricing).toEqual({ prompt: 0.14, completion: 0.28 });
+      });
+
+      it('should handle all documented Deepseek models', () => {
+        const models = Object.keys(DEEPSEEK_PRICING);
+        models.forEach((model) => {
+          const pricing = getModelPricing('deepseek', model);
+          expect(pricing).toEqual(DEEPSEEK_PRICING[model]);
+        });
+      });
+    });
+
     describe('Unknown provider', () => {
       it('should return fallback pricing for unknown provider', () => {
         const pricing = getModelPricing('unknown' as any, 'any-model');
-        expect(pricing).toEqual({ prompt: 0.15, completion: 0.6 });
+        expect(pricing).toEqual({ prompt: 0.14, completion: 0.28 });
       });
     });
   });

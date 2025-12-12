@@ -42,6 +42,12 @@ import { cn } from '@kit/ui/utils';
  * Displays uploaded image with remove and zoom actions.
  */
 
+/**
+ * ImagePreview Component (FILM-207)
+ *
+ * Displays uploaded image with remove and zoom actions.
+ */
+
 interface ImagePreviewProps {
   /** Full-size image URL */
   imageUrl: string;
