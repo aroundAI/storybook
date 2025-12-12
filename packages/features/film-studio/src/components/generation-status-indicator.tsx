@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { forwardRef, useState } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle, Loader2 } from 'lucide-react';
@@ -40,37 +40,36 @@ export function GenerationStatusIndicator({
     status?.jobs.filter((j) => j.status === 'queued').length || 0;
   const hasActivity = activeCount > 0 || queuedCount > 0;
 
-  if (compact) {
-    return (
-      <CompactIndicator
-        activeCount={activeCount}
-        queuedCount={queuedCount}
-        onClick={() => setOpen(true)}
-      />
-    );
-  }
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="sm" className="relative">
-          {hasActivity ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="ml-2">{activeCount} generating</span>
-              {queuedCount > 0 && (
-                <Badge variant="secondary" className="ml-2 text-xs">
-                  +{queuedCount}
-                </Badge>
-              )}
-            </>
-          ) : (
-            <>
-              <CheckCircle className="text-muted-foreground h-4 w-4" />
-              <span className="text-muted-foreground ml-2">No active jobs</span>
-            </>
-          )}
-        </Button>
+        {compact ? (
+          <CompactIndicator
+            activeCount={activeCount}
+            queuedCount={queuedCount}
+          />
+        ) : (
+          <Button variant="ghost" size="sm" className="relative">
+            {hasActivity ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="ml-2">{activeCount} generating</span>
+                {queuedCount > 0 && (
+                  <Badge variant="secondary" className="ml-2 text-xs">
+                    +{queuedCount}
+                  </Badge>
+                )}
+              </>
+            ) : (
+              <>
+                <CheckCircle className="text-muted-foreground h-4 w-4" />
+                <span className="text-muted-foreground ml-2">
+                  No active jobs
+                </span>
+              </>
+            )}
+          </Button>
+        )}
       </PopoverTrigger>
       <PopoverContent className="w-96 p-0" align="end">
         <GenerationStatusPanel
@@ -82,36 +81,40 @@ export function GenerationStatusIndicator({
   );
 }
 
-function CompactIndicator({
-  activeCount,
-  queuedCount,
-  onClick,
-}: {
+interface CompactIndicatorProps {
   activeCount: number;
   queuedCount: number;
-  onClick: () => void;
-}) {
-  const total = activeCount + queuedCount;
-
-  if (total === 0) {
-    return (
-      <div className="text-muted-foreground flex items-center gap-2 text-sm">
-        <CheckCircle className="h-4 w-4" />
-        <span>All complete</span>
-      </div>
-    );
-  }
-
-  return (
-    <button
-      onClick={onClick}
-      className="hover:bg-accent flex w-full items-center gap-2 rounded-md p-2 text-sm"
-    >
-      <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-      <span>
-        {activeCount} generating
-        {queuedCount > 0 && `, ${queuedCount} queued`}
-      </span>
-    </button>
-  );
 }
+
+const CompactIndicator = forwardRef<HTMLButtonElement, CompactIndicatorProps>(
+  function CompactIndicator({ activeCount, queuedCount, ...props }, ref) {
+    const total = activeCount + queuedCount;
+
+    if (total === 0) {
+      return (
+        <button
+          ref={ref}
+          {...props}
+          className="text-muted-foreground flex items-center gap-2 text-sm"
+        >
+          <CheckCircle className="h-4 w-4" />
+          <span>All complete</span>
+        </button>
+      );
+    }
+
+    return (
+      <button
+        ref={ref}
+        {...props}
+        className="hover:bg-accent flex w-full items-center gap-2 rounded-md p-2 text-sm"
+      >
+        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+        <span>
+          {activeCount} generating
+          {queuedCount > 0 && `, ${queuedCount} queued`}
+        </span>
+      </button>
+    );
+  },
+);
