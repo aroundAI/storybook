@@ -188,14 +188,14 @@ create table if not exists public.generation_jobs (
   started_at timestamp with time zone,
   completed_at timestamp with time zone,
   created_at timestamp with time zone default now() not null,
-  check (job_type in ('video', 'voice', 'music', 'sfx', 'story', 'screenplay', 'shot_list')),
+  check (job_type in ('video', 'voice', 'music', 'sfx', 'story', 'screenplay', 'shot_list', 'transcription', 'translation')),
   check (status in ('queued', 'processing', 'completed', 'failed', 'cancelled', 'dead_letter')),
   check (retry_count <= max_retries)
 );
 
 comment on table public.generation_jobs is 'Tracks all AI generation requests with retry logic';
 comment on column public.generation_jobs.idempotency_key is 'Unique key to prevent duplicate submissions';
-comment on column public.generation_jobs.job_type is 'Type: video, voice, music, sfx, story, screenplay, shot_list';
+comment on column public.generation_jobs.job_type is 'Type: video, voice, music, sfx, story, screenplay, shot_list, transcription, translation';
 comment on column public.generation_jobs.status is 'Status: queued, processing, completed, failed, cancelled, dead_letter';
 comment on column public.generation_jobs.retry_count is 'Current retry attempt number';
 comment on column public.generation_jobs.next_retry_at is 'When to retry (exponential backoff)';

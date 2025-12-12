@@ -6,3 +6,6 @@ export * from './dashboard-widgets';
 export * from './widgets';
 export * from './studio-dashboard';
 export { ApiKeysSettings } from './api-keys-settings';
+
+// Caption editor components (FILM-605)
+export * from './caption-editor';
