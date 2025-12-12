@@ -260,7 +260,7 @@ export function ShotListEditor({
               Ready to Generate Shot List
             </h3>
             <p className="text-muted-foreground mb-6 max-w-md text-sm">
-              We'll analyze your screenplay and break it down into individual
+              We&apos;ll analyze your screenplay and break it down into individual
               shots optimized for AI video generation. Each shot will have a detailed
               visual prompt.
             </p>

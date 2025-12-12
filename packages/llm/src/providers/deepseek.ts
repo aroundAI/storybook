@@ -180,7 +180,7 @@ export class DeepSeekClient implements LLMClient {
         try {
             const pricing = getModelPricing('deepseek', this.config.model);
             return calculateTokenCost(promptTokens, completionTokens, pricing);
-        } catch (e) {
+        } catch {
             // Fallback pricing for DeepSeek V3 if not in registry
             // Input: $0.14 / 1M tokens
             // Output: $0.28 / 1M tokens

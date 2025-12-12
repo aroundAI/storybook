@@ -7,7 +7,6 @@ import { fileURLToPath } from 'url';
 import { getLogger } from '@kit/shared/logger';
 
 import type {
-  PromptOutputConfig,
   PromptTemplate,
   RenderedPrompt,
 } from '../types';
