@@ -21,7 +21,11 @@
     "./server/types": "./src/server/types.ts",
     "./components": "./src/components/index.ts",
     "./types": "./src/types.ts",
-    "./lib/format": "./src/lib/format.ts"
+    "./lib/format": "./src/lib/format.ts",
+    "./lib/report-types": "./src/lib/report-types.ts",
+    "./lib/schemas/report": "./src/lib/schemas/report.schema.ts",
+    "./lib/csv-generator": "./src/lib/csv-generator.ts",
+    "./lib/pdf-generator": "./src/lib/pdf-generator.tsx"
   },
   "dependencies": {
     "@kit/next": "workspace:*",
@@ -29,6 +33,8 @@
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",
+    "@react-pdf/renderer": "^4.1.5",
+    "date-fns": "^4.1.0",
     "googleapis": "^148.0.0",
     "lucide-react": "^0.544.0",
     "server-only": "^0.0.1",

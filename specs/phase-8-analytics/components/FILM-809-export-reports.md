@@ -6,6 +6,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard), FILM-804 (Analytics Sync)
 - **Blocks:** None
+- **Status:** ✅ DONE
 
 ---
 
@@ -510,14 +511,14 @@ async function generatePDF(analytics: any[], config: ReportConfig): Promise<Buff
 
 ## Acceptance Criteria
 
-- [ ] Generate PDF reports with charts and branding
-- [ ] Generate CSV exports with raw data
-- [ ] Date range presets (7 days, 30 days, month, quarter, custom)
-- [ ] Select specific metrics to include
-- [ ] Filter by platform
-- [ ] Download generated reports
-- [ ] View report history
-- [ ] Schedule recurring reports (weekly/monthly)
+- [x] Generate PDF reports with charts and branding
+- [x] Generate CSV exports with raw data
+- [x] Date range presets (7 days, 30 days, month, quarter, custom)
+- [x] Select specific metrics to include
+- [x] Filter by platform
+- [x] Download generated reports
+- [ ] View report history (deferred - using temporary signed URLs instead)
+- [x] Schedule recurring reports (weekly/monthly)
 
 ---
 
