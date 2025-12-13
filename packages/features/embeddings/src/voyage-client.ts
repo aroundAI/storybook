@@ -51,7 +51,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
     }
 
     const data: VoyageEmbeddingResponse = await response.json();
-    return data.embeddings[0];
+    return data.embeddings[0] ?? [];
 }
 
 /**
@@ -82,7 +82,7 @@ export async function generateQueryEmbedding(query: string): Promise<number[]> {
     }
 
     const data: VoyageEmbeddingResponse = await response.json();
-    return data.embeddings[0];
+    return data.embeddings[0] ?? [];
 }
 
 /**
@@ -111,7 +111,7 @@ export async function indexEpisode(
         ]);
 
         // Upsert embeddings into database
-        const { error } = await supabase.from('episode_embeddings').upsert({
+        const { error } = await (supabase as any).from('episode_embeddings').upsert({
             episode_id: episodeId,
             premise_embedding: premiseEmb,
             story_embedding: storyEmb,
@@ -163,7 +163,7 @@ export async function searchSimilarEpisodes(params: {
     try {
         const queryEmbedding = await generateQueryEmbedding(params.query);
 
-        const { data, error } = await supabase.rpc('search_similar_episodes', {
+        const { data, error } = await (supabase as any).rpc('search_similar_episodes', {
             query_embedding: queryEmbedding,
             target_season_id: params.seasonId,
             exclude_episode_id: params.excludeId,
@@ -176,7 +176,7 @@ export async function searchSimilarEpisodes(params: {
             return [];
         }
 
-        return data ?? [];
+        return (data as any) ?? [];
     } catch (error) {
         console.error('[Voyage] Error in semantic search:', error);
         return [];
@@ -213,7 +213,7 @@ export async function searchRelevantCharacters(params: {
     try {
         const queryEmbedding = await generateQueryEmbedding(params.query);
 
-        const { data, error } = await supabase.rpc('search_relevant_characters', {
+        const { data, error } = await (supabase as any).rpc('search_relevant_characters', {
             query_embedding: queryEmbedding,
             target_project_id: params.projectId,
             exclude_character_ids: params.excludeIds,
@@ -226,7 +226,7 @@ export async function searchRelevantCharacters(params: {
             return [];
         }
 
-        return data ?? [];
+        return (data as any) ?? [];
     } catch (error) {
         console.error('[Voyage] Error in character discovery:', error);
         return [];

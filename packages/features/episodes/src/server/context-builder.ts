@@ -117,7 +117,7 @@ export async function buildEpisodeContext(
     // 5. Fetch previous episodes (semantic or sequential)
     let previousEpisodes: EpisodeContext['previousEpisodes'] = [];
 
-    if (useSemanticSearch && process.env.VOYAGE_API_KEY) {
+    if (useSemanticSearch && process.env.VOYAGE_API_KEY && episode.season_id) {
         try {
             // Use semantic search to find thematically relevant episodes
             const { searchSimilarEpisodes } = await import(

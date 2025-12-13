@@ -70,7 +70,7 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
 
             // Remove markdown code fences if present
             const codeBlockMatch = jsonString.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
-            if (codeBlockMatch) {
+            if (codeBlockMatch && codeBlockMatch[1]) {
                 jsonString = codeBlockMatch[1].trim();
             }
 

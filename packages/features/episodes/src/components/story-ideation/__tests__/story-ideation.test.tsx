@@ -199,6 +199,7 @@ vi.mock('../idea-card', () => ({
 
 describe('StoryIdeation', () => {
   const defaultProps = {
+    episodeId: 'test-episode-id',
     onComplete: vi.fn(),
     isGenerating: false,
   };
@@ -266,7 +267,7 @@ describe('StoryIdeation', () => {
 
 describe('StoryIdeation Form Validation', () => {
   it('should have a submit button', () => {
-    render(<StoryIdeation onComplete={vi.fn()} />);
+    render(<StoryIdeation onComplete={vi.fn()} episodeId="test-episode-id" />);
 
     const buttons = screen.getAllByTestId('button');
     const submitButton = buttons.find(
