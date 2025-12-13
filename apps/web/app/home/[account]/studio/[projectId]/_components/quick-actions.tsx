@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 
-import { BarChart3, Clapperboard, MapPin, Plus, Users } from 'lucide-react';
+import { BarChart3, Clapperboard, MapPin, Users } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 
@@ -50,7 +50,7 @@ export function QuickActions({ baseUrl }: QuickActionsProps) {
                         asChild
                     >
                         <Link href={action.href}>
-                            <Plus className="mr-1 h-3.5 w-3.5" />
+                            <Icon className="mr-1 h-3.5 w-3.5" />
                             {action.label}
                         </Link>
                     </Button>

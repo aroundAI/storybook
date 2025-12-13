@@ -1,7 +1,5 @@
 'use client';
 
-import Link from 'next/link';
-
 import { ScrollArea } from '@kit/ui/scroll-area';
 import { SidebarNavigation } from '@kit/ui/shadcn-sidebar';
 

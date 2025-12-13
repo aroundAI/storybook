@@ -1,6 +1,6 @@
 'use client';
 
-import { BarChart3, Eye, Sparkles, TrendingUp } from 'lucide-react';
+import { Eye, Sparkles, TrendingUp } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
