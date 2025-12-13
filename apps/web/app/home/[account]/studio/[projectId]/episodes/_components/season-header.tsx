@@ -1,11 +1,15 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { Eye, Sparkles, TrendingUp } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Progress } from '@kit/ui/progress';
 
+interface SeasonAnalyticsSummary {
+    totalViews: number;
+    avgEngagementRate: number;
+}
 
 interface SeasonHeaderProps {
     seasonNumber: number;
@@ -13,7 +17,15 @@ interface SeasonHeaderProps {
     totalEpisodes: number;
     completedEpisodes: number;
     inProgressEpisodes: number;
+    analytics?: SeasonAnalyticsSummary | null;
     onGenerateSeason?: () => void;
+}
+
+// Format large numbers
+function formatNumber(num: number): string {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
 }
 
 export function SeasonHeader({
@@ -22,10 +34,12 @@ export function SeasonHeader({
     totalEpisodes,
     completedEpisodes,
     inProgressEpisodes,
+    analytics,
     onGenerateSeason,
 }: SeasonHeaderProps) {
-    const progressPercent = (completedEpisodes / totalEpisodes) * 100;
+    const progressPercent = totalEpisodes > 0 ? (completedEpisodes / totalEpisodes) * 100 : 0;
     const hasIncompleteEpisodes = completedEpisodes < totalEpisodes;
+    const hasAnalytics = analytics && analytics.totalViews > 0;
 
     return (
         <div className="relative overflow-hidden rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-background p-8">
@@ -86,17 +100,45 @@ export function SeasonHeader({
                     </div>
                 </div>
 
-                {/* Right: Action */}
-                {hasIncompleteEpisodes && onGenerateSeason && (
-                    <Button
-                        onClick={onGenerateSeason}
-                        size="lg"
-                        className="shrink-0 gap-2 bg-indigo-600 hover:bg-indigo-700"
-                    >
-                        <Sparkles className="h-4 w-4" />
-                        Generate Remaining Episodes
-                    </Button>
-                )}
+                {/* Right: Analytics Summary + Action */}
+                <div className="flex flex-col items-end gap-4">
+                    {/* Analytics Summary */}
+                    {hasAnalytics && (
+                        <div className="flex items-center gap-6 rounded-lg border border-border/50 bg-background/50 px-4 py-3">
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                                    <Eye className="h-4 w-4 text-blue-500" />
+                                </div>
+                                <div>
+                                    <p className="text-lg font-bold">{formatNumber(analytics.totalViews)}</p>
+                                    <p className="text-xs text-muted-foreground">Views</p>
+                                </div>
+                            </div>
+                            <div className="h-8 w-px bg-border" />
+                            <div className="flex items-center gap-2">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
+                                    <TrendingUp className="h-4 w-4 text-green-500" />
+                                </div>
+                                <div>
+                                    <p className="text-lg font-bold">{analytics.avgEngagementRate.toFixed(1)}%</p>
+                                    <p className="text-xs text-muted-foreground">Engagement</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Action Button */}
+                    {hasIncompleteEpisodes && onGenerateSeason && (
+                        <Button
+                            onClick={onGenerateSeason}
+                            size="lg"
+                            className="shrink-0 gap-2 bg-indigo-600 hover:bg-indigo-700"
+                        >
+                            <Sparkles className="h-4 w-4" />
+                            Generate Remaining Episodes
+                        </Button>
+                    )}
+                </div>
             </div>
         </div>
     );

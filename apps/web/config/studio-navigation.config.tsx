@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   Clapperboard,
   Film,
   FolderOpen,
@@ -56,25 +57,13 @@ function getProjectRoutes(accountSlug: string, projectId: string) {
             },
           ],
         },
+        {
+          label: 'studio:routes.analytics',
+          path: `${basePath}/analytics`,
+          Icon: <BarChart3 className={iconClasses} />,
+        },
       ],
     },
-    // TODO: Add Analytics and Settings pages
-    // {
-    //   label: 'studio:routes.settings',
-    //   collapsible: false,
-    //   children: [
-    //     {
-    //       label: 'studio:routes.analytics',
-    //       path: `${basePath}/analytics`,
-    //       Icon: <BarChart3 className={iconClasses} />,
-    //     },
-    //     {
-    //       label: 'studio:routes.settings',
-    //       path: `${basePath}/settings`,
-    //       Icon: <Settings className={iconClasses} />,
-    //     },
-    //   ],
-    // },
   ];
 }
 
