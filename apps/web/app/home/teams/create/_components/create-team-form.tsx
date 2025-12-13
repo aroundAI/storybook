@@ -2,8 +2,6 @@
 
 import { useState } from 'react';
 
-import { useRouter } from 'next/navigation';
-
 import { Users } from 'lucide-react';
 
 import { CreateTeamAccountDialog } from '@kit/team-accounts/components';
@@ -12,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/
 
 export function CreateTeamPrompt() {
     const [isDialogOpen, setIsDialogOpen] = useState(true);
-    const router = useRouter();
 
     return (
         <>
