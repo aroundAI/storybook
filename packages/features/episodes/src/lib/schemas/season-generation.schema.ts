@@ -7,6 +7,8 @@ export const AnalyzeSeasonSchema = z.object({
 
 export const GenerateSeasonEpisodesSchema = z.object({
     projectId: z.string().uuid(),
+    // Season name for the new season
+    seasonName: z.string().optional(),
     // Refined premise from step 2
     premise: z.string().optional(),
     // Validated list of characters to create

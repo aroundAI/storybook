@@ -219,7 +219,42 @@ export const generateSeasonEpisodesAction = enhanceAction(
         const finalCharacterMap = { ...data.characterMappings, ...createdCharacterIds };
         const finalLocationMap = { ...data.locationMappings, ...createdLocationIds };
 
-        // 4. Create Episodes
+        // 4. Create Season Record
+        let seasonId: string | null = null;
+
+        // Get the next season number
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: existingSeasons } = await (client as any)
+            .from('seasons')
+            .select('number')
+            .eq('project_id', data.projectId)
+            .order('number', { ascending: false })
+            .limit(1);
+
+        const nextSeasonNumber = (existingSeasons?.[0]?.number ?? 0) + 1;
+
+        // Create the season
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: insertedSeason, error: seasonError } = await (client as any)
+            .from('seasons')
+            .insert({
+                project_id: data.projectId,
+                number: nextSeasonNumber,
+                name: data.seasonName || `Season ${nextSeasonNumber}`,
+                description: data.premise || null,
+            })
+            .select()
+            .single();
+
+        if (seasonError) {
+            logger.error({ ...ctx, error: seasonError }, 'Failed to create season');
+            throw new Error('Failed to create season');
+        }
+
+        seasonId = insertedSeason.id;
+        logger.info({ ...ctx, seasonId, seasonNumber: nextSeasonNumber }, 'Season created');
+
+        // 5. Create Episodes (linked to season)
         const episodesToInsert = data.episodes.map((ep) => {
             const characterIds = ep.characterNames
                 ?.map(name => finalCharacterMap[name])
@@ -231,6 +266,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
             return {
                 project_id: data.projectId,
+                season_id: seasonId, // Link to the newly created season
                 number: ep.number,
                 title: ep.title,
                 description: ep.description,
@@ -248,7 +284,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
 
         if (episodesToInsert.length === 0) {
-            return { success: true, count: 0 };
+            return { success: true, count: 0, seasonId };
         }
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -269,6 +305,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
         return {
             success: true,
+            seasonId,
             count: episodesToInsert.length,
             createdCharacters: Object.keys(createdCharacterIds).length,
             createdLocations: Object.keys(createdLocationIds).length
