@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { ensureValidToken } from '../lib/token-refresh';
 
@@ -37,7 +37,7 @@ interface ExpiringConnection {
 export async function refreshExpiringTokens(): Promise<RefreshJobResult> {
   const logger = await getLogger();
   const ctx = { name: 'token-refresh.job' };
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
   const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
 
   // Find active connections expiring soon using untyped query
@@ -161,7 +161,7 @@ function sleep(ms: number): Promise<void> {
 export async function cleanupExpiredOAuthStates(): Promise<number> {
   const logger = await getLogger();
   const ctx = { name: 'token-refresh.cleanup' };
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
 
   // Note: Type assertion needed until database types are regenerated
   const { data, error } = (await client.rpc(
@@ -213,7 +213,7 @@ export async function checkAccountConnections(accountId: string): Promise<
     }
   >
 > {
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
   const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
 
   // Use untyped query until platform_connections table exists in schema
