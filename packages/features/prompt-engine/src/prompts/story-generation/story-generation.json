@@ -88,11 +88,6 @@
       "type": "text",
       "required": false,
       "description": "Visual style. Defaults to 'balanced'"
-    },
-    "style": {
-      "type": "text",
-      "required": false,
-      "description": "Storytelling style. Defaults to 'balanced'"
     }
   },
   "output": {
