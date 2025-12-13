@@ -30,7 +30,7 @@ import {
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { Input } from '@kit/ui/input';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@kit/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@kit/ui/tooltip';
 import { cn } from '@kit/ui/utils';
 
 interface Project {
@@ -74,39 +74,41 @@ export function ProjectSwitcher({
     return (
         <div className="flex h-14 items-center border-b px-3">
             <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                className={cn(
-                                    'flex w-full items-center justify-between gap-2 px-2',
-                                    'hover:bg-muted/50 transition-colors',
-                                )}
-                            >
-                                <div className="flex items-center gap-2 overflow-hidden">
-                                    <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
-                                        <FolderOpen className="h-4 w-4 text-primary" />
-                                    </div>
-                                    <span className="truncate font-semibold text-sm">
-                                        {truncatedName}
-                                    </span>
-                                </div>
-                                <ChevronDown
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    variant="ghost"
                                     className={cn(
-                                        'h-4 w-4 text-muted-foreground transition-transform',
-                                        isOpen && 'rotate-180',
+                                        'flex w-full items-center justify-between gap-2 px-2',
+                                        'hover:bg-muted/50 transition-colors',
                                     )}
-                                />
-                            </Button>
-                        </DropdownMenuTrigger>
-                    </TooltipTrigger>
-                    {isLongName && (
-                        <TooltipContent side="right">
-                            <p>{currentProject.name}</p>
-                        </TooltipContent>
-                    )}
-                </Tooltip>
+                                >
+                                    <div className="flex items-center gap-2 overflow-hidden">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+                                            <FolderOpen className="h-4 w-4 text-primary" />
+                                        </div>
+                                        <span className="truncate font-semibold text-sm">
+                                            {truncatedName}
+                                        </span>
+                                    </div>
+                                    <ChevronDown
+                                        className={cn(
+                                            'h-4 w-4 text-muted-foreground transition-transform',
+                                            isOpen && 'rotate-180',
+                                        )}
+                                    />
+                                </Button>
+                            </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        {isLongName && (
+                            <TooltipContent side="right">
+                                <p>{currentProject.name}</p>
+                            </TooltipContent>
+                        )}
+                    </Tooltip>
+                </TooltipProvider>
 
                 <DropdownMenuContent
                     className="w-64"
