@@ -6,7 +6,7 @@ import { ArrowRight, Check, Circle, MoreHorizontal } from 'lucide-react';
 
 import type { Episode } from '@kit/episodes/types';
 import { Card, CardContent, CardHeader } from '@kit/ui/card';
-import { cn } from '@kit/ui/utils';
+
 
 interface EpisodeCardProps {
   episode: Episode;

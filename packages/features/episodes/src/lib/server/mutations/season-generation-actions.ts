@@ -4,7 +4,7 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
-import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
+
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -45,6 +45,7 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
         }
 
         const llm = createLLMClient({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             provider: renderedPrompt.llmConfig.provider as any,
             model: renderedPrompt.llmConfig.model,
             apiKey,
@@ -59,6 +60,7 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
 
         try {
             const response = await llm.createChatCompletion({
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 messages: messages as any,
             });
             const content = response.message.content;
@@ -178,6 +180,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
                 throw new Error('Failed to create characters');
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             insertedAssets?.forEach((asset: any) => {
                 createdCharacterIds[asset.name] = asset.id;
             });
@@ -206,6 +209,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
                 throw new Error('Failed to create locations');
             }
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             insertedLocations?.forEach((asset: any) => {
                 createdLocationIds[asset.name] = asset.id;
             });
@@ -247,7 +251,8 @@ export const generateSeasonEpisodesAction = enhanceAction(
             return { success: true, count: 0 };
         }
 
-        const { error: episodeError } = await (client as any) // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: episodeError } = await (client as any)
             .from('episodes')
             .insert(episodesToInsert);
 

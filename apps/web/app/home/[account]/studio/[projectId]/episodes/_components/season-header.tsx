@@ -5,7 +5,7 @@ import { Sparkles } from 'lucide-react';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Progress } from '@kit/ui/progress';
-import { cn } from '@kit/ui/utils';
+
 
 interface SeasonHeaderProps {
     seasonNumber: number;

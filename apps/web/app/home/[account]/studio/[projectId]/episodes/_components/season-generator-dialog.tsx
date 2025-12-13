@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from '@kit/ui/sonner';
 
 import { useAssets } from '@kit/assets/hooks';
-import { AnalyzeSeasonSchema, GenerateSeasonEpisodesSchema } from '@kit/episodes/schemas';
+import { AnalyzeSeasonSchema } from '@kit/episodes/schemas';
 import { analyzeSeasonRoadmapAction, generateSeasonEpisodesAction } from '@kit/episodes/server/season-generation';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -31,7 +31,7 @@ import {
     FormMessage,
 } from '@kit/ui/form';
 import { Label } from '@kit/ui/label';
-import { Input } from '@kit/ui/input';
+
 import { ScrollArea } from '@kit/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { Separator } from '@kit/ui/separator';
@@ -111,7 +111,7 @@ export function SeasonGeneratorDialog({ projectId }: SeasonGeneratorDialogProps)
                 } else {
                     toast.error('Failed to analyze roadmap');
                 }
-            } catch (e) {
+            } catch {
                 toast.error('An error occurred during analysis');
             }
         });
@@ -177,7 +177,7 @@ export function SeasonGeneratorDialog({ projectId }: SeasonGeneratorDialogProps)
                 } else {
                     toast.error('Failed to generate season');
                 }
-            } catch (e) {
+            } catch {
                 toast.error('Failed to generate season');
             }
         });

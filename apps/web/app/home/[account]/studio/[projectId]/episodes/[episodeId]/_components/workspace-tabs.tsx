@@ -18,7 +18,6 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { Tabs, TabsContent } from '@kit/ui/tabs';
-import { cn } from '@kit/ui/utils';
 import { VisualStudio } from '@kit/video-generation/components';
 
 type WorkspaceTab = 'story' | 'visuals' | 'audio' | 'edit' | 'publish';

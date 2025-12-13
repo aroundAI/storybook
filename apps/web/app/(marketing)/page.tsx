@@ -73,7 +73,7 @@ function Home() {
             heading={
               <>
                 <b className="font-medium tracking-tighter dark:text-white">
-                  Your Virtual Writer's Room
+                  Your Virtual Writer&apos;s Room
                 </b>
                 .{' '}
                 <span className="text-muted-foreground font-normal tracking-tighter">

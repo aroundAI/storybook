@@ -137,7 +137,7 @@ export async function buildEpisodeContext(
                 title: ep.title,
                 summary: ep.story_summary,
             }));
-        } catch (error) {
+        } catch {
             console.warn('[Context Builder] Semantic search failed, falling back to sequential');
             previousEpisodes = await fetchSequentialEpisodes(
                 episode.season_id,

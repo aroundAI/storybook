@@ -40,12 +40,15 @@ export async function GET(request: Request) {
             duration_ms: duration,
             context,
         });
-    } catch (error: any) {
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const stack = error instanceof Error ? error.stack : undefined;
+
         return NextResponse.json(
             {
                 success: false,
-                error: error.message,
-                stack: error.stack,
+                error: message,
+                stack: stack,
             },
             { status: 500 },
         );

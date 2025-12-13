@@ -98,6 +98,7 @@ export function AssetGallery({
 
     // Helper to check role
     const hasRole = (a: Asset, roles: string[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const role = (a.metadata as any)?.role;
       return role && roles.some(r => role.includes(r));
     };
@@ -109,6 +110,8 @@ export function AssetGallery({
     const mainCast = filteredAssets.filter(isMain);
     const supportingCast = filteredAssets.filter(isSupporting);
     const others = filteredAssets.filter(isOther);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hasCreatures = others.some((a) => (a.metadata as any)?.role === 'Creature');
 
     return (
       <div className="space-y-12">
@@ -154,7 +157,7 @@ export function AssetGallery({
         {others.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold tracking-tight text-muted-foreground pl-3 border-l-4 border-transparent">
-              {others.some((a) => (a.metadata as any)?.role === 'Creature') ? 'Creatures & Others' : 'Other Characters'}
+              {hasCreatures ? 'Creatures & Others' : 'Other Characters'}
             </h3>
             <AssetGrid>
               {others.map((asset) => (

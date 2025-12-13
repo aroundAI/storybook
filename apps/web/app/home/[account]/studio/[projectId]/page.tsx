@@ -59,7 +59,6 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   const [
     { count: characterCount },
     { count: locationCount },
-    { count: voiceCount },
     { count: episodeCount },
   ] = await Promise.all([
     client
@@ -74,12 +73,7 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       .eq('project_id', projectId)
       .eq('type', 'location')
       .is('deleted_at', null),
-    client
-      .from('assets')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', projectId)
-      .eq('type', 'voice')
-      .is('deleted_at', null),
+
     client
       .from('episodes')
       .select('*', { count: 'exact', head: true })
