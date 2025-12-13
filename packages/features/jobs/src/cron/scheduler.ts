@@ -144,7 +144,7 @@ export function startCronJobs(): void {
                 }
             },
             {
-                name: job.name,
+                scheduled: true,
                 timezone: process.env.TZ || 'UTC',
             },
         );
