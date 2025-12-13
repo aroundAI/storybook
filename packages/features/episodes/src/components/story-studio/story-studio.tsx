@@ -330,8 +330,12 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
             {tabUnlockState.ideation ? (
               <div className="mt-4">
                 <StoryIdeation
+                  episodeId={episode.id}
                   onComplete={handleIdeaSelected}
                   isGenerating={isGeneratingStory}
+                  initialPremise={episode?.storyData?.premise as string | undefined}
+                  characterIds={(episode?.metadata?.character_ids as string[]) ?? []}
+                  locationIds={(episode?.metadata?.location_ids as string[]) ?? []}
                   projectGenre={
                     (episode?.projectMetadata?.genre as string) ?? 'general'
                   }

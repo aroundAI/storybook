@@ -1,0 +1,35 @@
+{
+    "slug": "season-generation",
+    "name": "Season Generation",
+    "version": 1,
+    "category": "story",
+    "description": "Generate episode list from roadmap",
+    "llm": {
+        "provider": "deepseek",
+        "model": "deepseek-chat",
+        "max_tokens": 8000,
+        "temperature": 0.7,
+        "response_format": {
+            "type": "json_object"
+        }
+    },
+    "system_prompts": [
+        {
+            "slug": "tv-showrunner",
+            "name": "TV Showrunner Persona",
+            "content": "You are an expert TV showrunner assistant. Your task is to analyze a 'Production Roadmap' or 'Series Bible' and extract a list of episodes. CRITICAL: You must output ONLY valid JSON. No markdown, no explanations, no code fences. Just pure JSON.",
+            "layer_type": "persona",
+            "scope": "story",
+            "order": 0
+        }
+    ],
+    "user_prompt": "Please analyze the following Show Roadmap and extract the Series Bible details.\n\nROADMAP:\n{{roadmap}}\n\nInstructions:\n1. Analyze the roadmap to extract a cohesive Season Premise (Logline/Summary).\n2. Identify all detailed Characters mentioned, including their Role and a Description.\n3. Identify all key Locations mentioned, including a Description and Setting (e.g. 'Interior', 'Exterior', 'City', etc).\n4. Extract all Episodes, including Number, Title, Description, and lists of 'character_names' and 'location_names' appearing in that episode.\n\nCRITICAL RULES:\n- Output ONLY valid JSON\n- NO markdown code fences (no ```json)\n- NO explanatory text before or after the JSON\n- Ensure all strings are properly escaped\n- If the roadmap is very long, prioritize completeness over length - use all available tokens\n\nOutput JSON structure:\n{\n  \"premise\": \"string\",\n  \"characters\": [\n    { \"name\": \"string\", \"role\": \"string\", \"description\": \"string\" }\n  ],\n  \"locations\": [\n    { \"name\": \"string\", \"description\": \"string\", \"setting\": \"string\" }\n  ],\n  \"episodes\": [\n    { \"number\": number, \"title\": \"string\", \"description\": \"string\", \"character_names\": [\"string\"], \"location_names\": [\"string\"] }\n  ]\n}\n\nOutput ONLY the JSON object.",
+    "variables": {
+        "roadmap": {
+            "type": "string",
+            "required": true,
+            "description": "The production roadmap content"
+        }
+    },
+    "exported_at": "2025-01-01T00:00:00.000Z"
+}

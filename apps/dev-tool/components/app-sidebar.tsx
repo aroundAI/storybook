@@ -58,7 +58,7 @@ export function DevToolSidebar({
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <b className="p-1 font-mono text-xs font-semibold">Makerkit Dev Tool</b>
+        <b className="p-1 font-mono text-xs font-semibold">StoryBook Dev Tool</b>
       </SidebarHeader>
 
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">

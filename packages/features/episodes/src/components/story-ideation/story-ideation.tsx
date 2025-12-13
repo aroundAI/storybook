@@ -40,21 +40,30 @@ import {
 } from '../../lib/schemas';
 import { generateStoryIdeasAction } from '../../server/story-actions';
 import { IdeaCard } from './idea-card';
+import { TaggedAssetsDisplay } from './tagged-assets-display';
 
 interface StoryIdeationProps {
+  episodeId: string; // Required for context building
   onComplete: (selectedIdea: StoryIdea) => void;
   isGenerating?: boolean;
   projectGenre?: string;
   projectStyle?: string;
   projectAudience?: string;
+  initialPremise?: string;
+  characterIds?: string[];
+  locationIds?: string[];
 }
 
 export function StoryIdeation({
+  episodeId,
   onComplete,
   isGenerating = false,
   projectGenre = 'general',
   projectStyle = 'balanced',
   projectAudience = 'general',
+  initialPremise,
+  characterIds = [],
+  locationIds = [],
 }: StoryIdeationProps) {
   const [isPending, startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
@@ -64,7 +73,8 @@ export function StoryIdeation({
   const form = useForm({
     resolver: zodResolver(GenerateStoryIdeasSchema),
     defaultValues: {
-      premise: '',
+      episodeId,
+      premise: initialPremise || '',
       numberOfIdeas: 3,
     },
   });
@@ -75,12 +85,8 @@ export function StoryIdeation({
   const onSubmit = form.handleSubmit((data: GenerateStoryIdeasInput) => {
     startTransition(async () => {
       try {
-        const result = await generateStoryIdeasAction({
-          ...data,
-          genre: projectGenre,
-          style: projectStyle,
-          targetAudience: projectAudience,
-        });
+        // Context builder handles characters, locations, season, etc.
+        const result = await generateStoryIdeasAction(data);
 
         if (result.success) {
           setIdeas(result.data.ideas);
@@ -124,6 +130,14 @@ export function StoryIdeation({
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {/* Show tagged characters/locations if available */}
+          {(characterIds.length > 0 || locationIds.length > 0) && (
+            <TaggedAssetsDisplay
+              characterIds={characterIds}
+              locationIds={locationIds}
+            />
+          )}
+
           <Form {...form}>
             <form onSubmit={onSubmit} className="space-y-6">
               <FormField

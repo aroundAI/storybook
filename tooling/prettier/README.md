@@ -4,7 +4,7 @@
 
 ## Overview
 
-Shared Prettier configuration for consistent code formatting across the Makerkit monorepo. Ensures uniform code style for JavaScript, TypeScript, JSON, Markdown, and CSS files including Tailwind CSS class sorting.
+Shared Prettier configuration for consistent code formatting across the StoryBook monorepo. Ensures uniform code style for JavaScript, TypeScript, JSON, Markdown, and CSS files including Tailwind CSS class sorting.
 
 ## Purpose
 

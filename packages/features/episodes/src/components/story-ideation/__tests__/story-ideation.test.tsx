@@ -216,23 +216,7 @@ describe('StoryIdeation', () => {
     expect(screen.getByTestId('form-field-premise')).toBeDefined();
   });
 
-  it('should render genre select field', () => {
-    render(<StoryIdeation {...defaultProps} />);
 
-    expect(screen.getByTestId('form-field-genre')).toBeDefined();
-  });
-
-  it('should render style select field', () => {
-    render(<StoryIdeation {...defaultProps} />);
-
-    expect(screen.getByTestId('form-field-style')).toBeDefined();
-  });
-
-  it('should render target audience select field', () => {
-    render(<StoryIdeation {...defaultProps} />);
-
-    expect(screen.getByTestId('form-field-targetAudience')).toBeDefined();
-  });
 
   it('should render number of ideas slider', () => {
     render(<StoryIdeation {...defaultProps} />);
@@ -255,7 +239,7 @@ describe('StoryIdeation', () => {
 
     expect(
       screen.getByText(
-        'Enter your story premise and configure generation settings',
+        'Enter your story premise. Generation settings are inherited from your project.',
       ),
     ).toBeDefined();
   });

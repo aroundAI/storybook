@@ -4,13 +4,13 @@ import { writeFileSync } from 'node:fs';
 
 export function createSetupGenerator(plop: PlopTypes.NodePlopAPI) {
   plop.setGenerator('setup', {
-    description: 'Setup your Makerkit project',
+    description: 'Setup your StoryBook project',
     prompts: [
       {
         type: 'input',
         name: 'username',
         message:
-          'What is your GitHub username? Please make sure you enter the same username you used to activate your Makerkit license.',
+          'What is your GitHub username? Please make sure you enter the same username you used to activate your StoryBook license.',
       },
       {
         type: 'input',
