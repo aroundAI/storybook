@@ -16,7 +16,7 @@ import {
 
 import { Card, CardContent } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@kit/ui/tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@kit/ui/tooltip';
 
 import {
   calculateChange,
@@ -168,19 +168,21 @@ export function MetricCard({ metric }: { metric: MetricConfig }) {
               {label}
             </span>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                className="text-muted-foreground hover:text-foreground"
-                aria-label={`Info about ${label}`}
-              >
-                <Info className="h-3.5 w-3.5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p className="max-w-xs text-sm">{description}</p>
-            </TooltipContent>
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label={`Info about ${label}`}
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-sm">{description}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
 
         <div className="flex items-baseline justify-between">
