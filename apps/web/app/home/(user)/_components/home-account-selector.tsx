@@ -12,6 +12,7 @@ import pathsConfig from '~/config/paths.config';
 
 const features = {
   enableTeamCreation: featureFlagsConfig.enableTeamCreation,
+  enablePersonalAccounts: featureFlagsConfig.enablePersonalAccounts,
 };
 
 export function HomeAccountSelector(props: {
