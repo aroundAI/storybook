@@ -40,7 +40,7 @@ export function CreateAssetButton({
     setOpenDialog(type);
   };
 
-  const handleSuccess = (_assetId: string) => {
+  const handleSuccess = (_result: unknown) => {
     setOpenDialog(null);
     router.refresh(); // Refresh to show new asset
   };
