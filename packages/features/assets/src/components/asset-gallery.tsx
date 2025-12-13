@@ -4,13 +4,26 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@kit/ui/dialog';
+
+import { toast } from '@kit/ui/sonner';
+
 import { useAssets } from '../hooks/use-assets';
-import type { Asset } from '../lib/types';
+import { getCharacterAction } from '../lib/server/character.mutations';
+import type { Asset, CharacterWithDetails } from '../lib/types';
 import { AssetCard } from './asset-card';
 import { AssetGrid } from './asset-grid';
 import { AssetSearchBar } from './asset-search-bar';
 import { AssetTabs } from './asset-tabs';
+import { CharacterEditor } from './character-editor';
 import { EmptyAssetState } from './empty-asset-state';
+import { LocationEditor } from './location-editor';
+import { VoiceProfileEditor } from './voice-profile-editor';
 
 type TabType = 'character' | 'location' | 'voice';
 
@@ -36,6 +49,7 @@ export function AssetGallery({
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
   // Fetch assets for active tab
   const { assets, isLoading, deleteAsset, fetchAssets } = useAssets({
@@ -81,11 +95,38 @@ export function AssetGallery({
 
   // Handle edit
   const handleEdit = useCallback(
-    (asset: Asset) => {
+    async (asset: Asset) => {
+      // For characters, we need to fetch full details including joined tables
+      if (asset.type === 'character') {
+        const toastId = toast.loading('Loading character details...');
+        try {
+          const { data } = await getCharacterAction({ assetId: asset.id });
+          if (data) {
+            setEditingAsset(data);
+            toast.dismiss(toastId);
+          } else {
+            toast.error('Failed to load character details');
+            toast.dismiss(toastId);
+          }
+        } catch {
+          toast.error('Error loading character');
+          toast.dismiss(toastId);
+        }
+      } else {
+        // For other assets, metadata is already included
+        setEditingAsset(asset);
+      }
+
       onAssetSelect?.(asset);
     },
     [onAssetSelect],
   );
+
+  const handleEditSuccess = useCallback(() => {
+    setEditingAsset(null);
+    router.refresh();
+    void fetchAssets();
+  }, [router, fetchAssets]);
 
   // Handle create
   const handleCreate = useCallback(() => {
@@ -210,6 +251,52 @@ export function AssetGallery({
       ) : (
         <EmptyAssetState assetType={activeTab} onCreate={handleCreate} />
       )}
+
+      {/* Edit Dialogs */}
+      <Dialog
+        open={!!editingAsset}
+        onOpenChange={(open) => !open && setEditingAsset(null)}
+      >
+        <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Edit{' '}
+              {editingAsset?.type === 'voice'
+                ? 'Voice Profile'
+                : editingAsset?.type === 'location'
+                  ? 'Location'
+                  : 'Character'}
+            </DialogTitle>
+          </DialogHeader>
+
+          {editingAsset?.type === 'character' && (
+            <CharacterEditor
+              projectId={projectId}
+              character={editingAsset as CharacterWithDetails}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setEditingAsset(null)}
+            />
+          )}
+
+          {editingAsset?.type === 'location' && (
+            <LocationEditor
+              projectId={projectId}
+              location={editingAsset}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setEditingAsset(null)}
+            />
+          )}
+
+          {editingAsset?.type === 'voice' && (
+            <VoiceProfileEditor
+              projectId={projectId}
+              voiceProfile={editingAsset}
+              onSuccess={handleEditSuccess}
+              onCancel={() => setEditingAsset(null)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

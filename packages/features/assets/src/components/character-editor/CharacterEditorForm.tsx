@@ -73,7 +73,9 @@ export function CharacterEditorForm({
   form,
   disabled,
   voiceAssets = [],
-}: CharacterEditorFormProps) {
+  projectId,
+  assetId,
+}: CharacterEditorFormProps & { projectId: string; assetId?: string }) {
   return (
     <div className="space-y-6">
       {/* Basic Info - Always visible */}
@@ -85,7 +87,12 @@ export function CharacterEditorForm({
       {/* Image Upload - Always visible */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium">Reference Images</h3>
-        <CharacterImageUpload form={form} disabled={disabled} />
+        <CharacterImageUpload
+          form={form}
+          disabled={disabled}
+          projectId={projectId}
+          assetId={assetId}
+        />
       </div>
 
       {/* Collapsible Sections */}

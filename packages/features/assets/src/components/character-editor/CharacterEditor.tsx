@@ -249,8 +249,7 @@ export function CharacterEditor({
         }
       } catch (error) {
         toast.error(
-          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${
-            error instanceof Error ? error.message : 'Unknown error'
+          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${error instanceof Error ? error.message : 'Unknown error'
           }`,
         );
       }
@@ -305,6 +304,8 @@ export function CharacterEditor({
               form={form}
               disabled={isPending}
               voiceAssets={voiceAssets}
+              projectId={projectId}
+              assetId={character?.id}
             />
 
             {/* Form actions */}

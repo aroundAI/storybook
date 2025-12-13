@@ -143,12 +143,12 @@ export function AssetCard({ asset, onEdit, onDelete }: AssetCardProps) {
                 "relative overflow-hidden",
                 colors.lightBg,
                 isLandscape ? "h-32 md:h-auto md:w-1/3" : "h-32 w-full",
-                asset.thumbnailUrl ? "" : "flex items-center justify-center p-6"
+                asset.thumbnailUrl || asset.fileUrl ? "" : "flex items-center justify-center p-6"
               )}
             >
-              {asset.thumbnailUrl ? (
+              {asset.thumbnailUrl || asset.fileUrl ? (
                 <img
-                  src={asset.thumbnailUrl}
+                  src={asset.thumbnailUrl || asset.fileUrl || undefined}
                   alt={asset.name}
                   className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
