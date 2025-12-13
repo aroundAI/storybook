@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 
 import {
   BookOpen,
@@ -9,6 +9,8 @@ import {
   ListOrdered,
   Loader2,
   Lock,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
@@ -32,7 +34,7 @@ import { convertToScreenplayAction } from '../../server/screenplay-actions';
 import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
 import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
 import { StoryIdeation } from '../story-ideation/story-ideation';
-import { PipelineProgress } from './pipeline-progress';
+
 import {
   StoryStudioContext,
   useStoryStudioContext,
@@ -85,17 +87,7 @@ function getTabUnlockState(
   };
 }
 
-function calculateProgress(episode: Episode | undefined): number {
-  if (!episode) return 1;
 
-  let progress = 1;
-
-  if (episode.storyData?.fullStory) progress = 2;
-  if (episode.screenplayData?.scenes?.length) progress = 3;
-  if (episode.shotList?.shots?.length) progress = 4;
-
-  return progress;
-}
 
 function LockedTabContent({ tabId }: { tabId: StudioTab }) {
   const tabLabels: Record<StudioTab, { title: string; description: string }> = {
@@ -139,6 +131,7 @@ function LockedTabContent({ tabId }: { tabId: StudioTab }) {
  */
 function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
   const [isPending, startTransition] = useTransition();
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const storyData = episode.storyData;
 
   // Get refetch from context
@@ -180,30 +173,76 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
     });
   };
 
+  /* Helper to style ACT headers in raw text */
+  const formatStoryText = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      // ACT headers (e.g. ACT ONE, ACT 1, ACT I)
+      if (/^ACT\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|I|II|III|IV|V|VI|\d+)/i.test(line.trim())) {
+        return (
+          <span key={i} className="mt-8 mb-4 block text-center font-serif text-xl font-bold tracking-widest text-primary/80">
+            <br />
+            {line}
+            <br />
+          </span>
+        );
+      }
+      // Scene headers (e.g. INT. HOUSE - DAY) - Optional, but creates rhythm
+      if (/^(INT\.|EXT\.)/i.test(line.trim())) {
+        return (
+          <span key={i} className="mt-4 mb-2 block font-mono text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            {line}
+          </span>
+        );
+      }
+      return <span key={i} className="block min-h-[1.5em]">{line}</span>;
+    });
+  };
+
+
+
   return (
-    <Card className="mt-4">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>{storyData.title ?? 'Story'}</CardTitle>
-            <CardDescription>Generated story for this episode</CardDescription>
+    <div className={cn("transition-all duration-300", isReadingMode ? "fixed inset-0 z-50 overflow-y-auto bg-background p-8" : "mt-4")}>
+      <Card className={cn("transition-all", isReadingMode ? "mx-auto max-w-3xl border-none shadow-none" : "")}>
+        <CardHeader className={cn(isReadingMode ? "px-0" : "")}>
+          <div className="flex items-center justify-between">
+            <div className={cn("space-y-1", isReadingMode && "text-center w-full")}>
+              <CardTitle className={cn(isReadingMode ? "text-3xl font-serif" : "")}>
+                {storyData.title ?? 'Story'}
+              </CardTitle>
+              {!isReadingMode && <CardDescription>Generated story for this episode</CardDescription>}
+            </div>
+
+            <div className={cn("flex items-center gap-2", isReadingMode && "absolute right-8 top-8")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsReadingMode(!isReadingMode)}
+                title={isReadingMode ? "Exit Reading Mode" : "Enter Reading Mode"}
+              >
+                {isReadingMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
+
+              {!isReadingMode && !episode.screenplayData?.scenes?.length && (
+                <Button onClick={handleConvertToScreenplay} disabled={isPending} size="sm">
+                  {isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  To Screenplay
+                </Button>
+              )}
+            </div>
           </div>
-          {!episode.screenplayData?.scenes?.length && (
-            <Button onClick={handleConvertToScreenplay} disabled={isPending}>
-              {isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
-              Convert to Screenplay
-            </Button>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="whitespace-pre-wrap">{storyData.fullStory}</p>
-        </div>
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent className={cn(isReadingMode ? "px-0 pb-32" : "")}>
+          <div className={cn(
+            "prose dark:prose-invert max-w-none transition-all",
+            isReadingMode ? "prose-lg font-serif leading-loose" : "prose-base"
+          )}>
+            {formatStoryText(storyData.fullStory)}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
 
@@ -218,7 +257,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
   } = useEpisodeQuery(episodeId);
 
   const tabUnlockState = useMemo(() => getTabUnlockState(episode), [episode]);
-  const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
+  // const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
   const isGenerating = episode?.status === 'generating' || isGeneratingStory;
 
   const handleTabChange = (tab: string) => {
@@ -299,12 +338,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
       }}
     >
       <div className="space-y-6">
-        <PipelineProgress
-          currentStep={currentProgress}
-          totalSteps={4}
-          currentTab={activeTab}
-          isGenerating={isGenerating}
-        />
+
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-4">
@@ -330,8 +364,12 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
             {tabUnlockState.ideation ? (
               <div className="mt-4">
                 <StoryIdeation
+                  episodeId={episode.id}
                   onComplete={handleIdeaSelected}
                   isGenerating={isGeneratingStory}
+                  initialPremise={episode?.storyData?.premise as string | undefined}
+                  characterIds={(episode?.metadata?.character_ids as string[]) ?? []}
+                  locationIds={(episode?.metadata?.location_ids as string[]) ?? []}
                   projectGenre={
                     (episode?.projectMetadata?.genre as string) ?? 'general'
                   }

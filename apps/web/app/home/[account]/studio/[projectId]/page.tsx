@@ -1,21 +1,14 @@
 import type { Metadata } from 'next';
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowRight, FileText, User } from 'lucide-react';
-
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@kit/ui/card';
-import { PageBody, PageHeader } from '@kit/ui/page';
+import { PageBody } from '@kit/ui/page';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
+
+import { ActionCard } from './_components/action-card';
+import { ProjectBanner } from './_components/project-banner';
 
 interface StudioProjectPageProps {
   params: Promise<{
@@ -48,7 +41,7 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
 
   const { data: project, error } = await client
     .from('projects')
-    .select('id, name, description, created_at')
+    .select('id, name, description, metadata, created_at')
     .eq('id', projectId)
     .single();
 
@@ -56,11 +49,17 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
     notFound();
   }
 
+  // Extract metadata
+  const metadata = (project.metadata ?? {}) as {
+    genre?: string;
+    targetAudience?: string;
+  };
+
   // Fetch asset counts in parallel for better performance
   const [
     { count: characterCount },
     { count: locationCount },
-    { count: voiceCount },
+    { count: episodeCount },
   ] = await Promise.all([
     client
       .from('assets')
@@ -74,68 +73,137 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       .eq('project_id', projectId)
       .eq('type', 'location')
       .is('deleted_at', null),
+
     client
-      .from('assets')
+      .from('episodes')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', projectId)
-      .eq('type', 'voice')
       .is('deleted_at', null),
   ]);
 
   const baseUrl = `/home/${account}/studio/${projectId}`;
+  const hasCharacters = (characterCount ?? 0) > 0;
+  const hasLocations = (locationCount ?? 0) > 0;
+  const hasEpisodes = (episodeCount ?? 0) > 0;
 
   return (
     <>
-      <PageHeader
-        title={project.name}
-        description={project.description ?? 'Film Studio Project'}
-      />
+      {/* Branded Project Banner */}
+      <div className="px-8 pt-8">
+        <ProjectBanner
+          name={project.name}
+          description={project.description ?? ''}
+          genre={metadata.genre}
+          targetAudience={metadata.targetAudience}
+        />
+      </div>
 
       <PageBody>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Assets Card */}
-          <Link href={`${baseUrl}/assets`}>
-            <Card className="cursor-pointer transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <User className="text-primary h-8 w-8" />
-                  <ArrowRight className="text-muted-foreground h-5 w-5" />
-                </div>
-                <CardTitle>Assets</CardTitle>
-                <CardDescription>
-                  Characters, locations, and voice profiles
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-muted-foreground flex gap-4 text-sm">
-                  <span>{characterCount ?? 0} characters</span>
-                  <span>{locationCount ?? 0} locations</span>
-                  <span>{voiceCount ?? 0} voices</span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          {/* Characters Card */}
+          <ActionCard
+            title="Characters"
+            description="Create and manage your cast of characters with detailed profiles and personalities."
+            iconName="user"
+            href={hasCharacters ? `${baseUrl}/assets?type=character` : undefined}
+            isEmpty={!hasCharacters}
+            stats={
+              hasCharacters
+                ? [{ label: 'characters', value: characterCount ?? 0 }]
+                : undefined
+            }
+            primaryAction={
+              !hasCharacters
+                ? {
+                  label: 'Create First Character',
+                  href: `${baseUrl}/assets?create=character`,
+                }
+                : {
+                  label: 'Add Character',
+                  href: `${baseUrl}/assets?create=character`,
+                }
+            }
+            secondaryAction={
+              hasCharacters
+                ? {
+                  label: 'View All',
+                  href: `${baseUrl}/assets?type=character`,
+                }
+                : undefined
+            }
+            colorScheme="warm"
+          />
+
+          {/* Locations Card */}
+          <ActionCard
+            title="Locations"
+            description="Define the worlds and settings where your stories take place."
+            iconName="mapPin"
+            href={hasLocations ? `${baseUrl}/assets?type=location` : undefined}
+            isEmpty={!hasLocations}
+            stats={
+              hasLocations
+                ? [{ label: 'locations', value: locationCount ?? 0 }]
+                : undefined
+            }
+            primaryAction={
+              !hasLocations
+                ? {
+                  label: 'Create First Location',
+                  href: `${baseUrl}/assets?create=location`,
+                }
+                : {
+                  label: 'Add Location',
+                  href: `${baseUrl}/assets?create=location`,
+                }
+            }
+            secondaryAction={
+              hasLocations
+                ? {
+                  label: 'View All',
+                  href: `${baseUrl}/assets?type=location`,
+                }
+                : undefined
+            }
+            colorScheme="cool"
+          />
 
           {/* Episodes Card */}
-          <Link href={`${baseUrl}/episodes`}>
-            <Card className="cursor-pointer transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <FileText className="text-primary h-8 w-8" />
-                  <ArrowRight className="text-muted-foreground h-5 w-5" />
-                </div>
-                <CardTitle>Episodes</CardTitle>
-                <CardDescription>
-                  Stories, screenplays, and shot lists
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-muted-foreground text-sm">
-                  Coming soon...
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+          <ActionCard
+            title="Episodes"
+            description="Write stories, create screenplays, and generate shot lists for your video content."
+            iconName="fileText"
+            href={hasEpisodes ? `${baseUrl}/episodes` : undefined}
+            isEmpty={!hasEpisodes}
+            stats={
+              hasEpisodes
+                ? [{ label: 'episodes', value: episodeCount ?? 0 }]
+                : undefined
+            }
+            primaryAction={
+              !hasEpisodes
+                ? {
+                  label: 'Create First Episode',
+                  href: `${baseUrl}/episodes`,
+                }
+                : {
+                  label: 'New Episode',
+                  href: `${baseUrl}/episodes?create=true`,
+                }
+            }
+            secondaryAction={
+              hasEpisodes
+                ? {
+                  label: 'View All',
+                  href: `${baseUrl}/episodes`,
+                }
+                : {
+                  label: 'Generate Season',
+                  href: `${baseUrl}/episodes?generate=season`,
+                }
+            }
+            colorScheme="primary"
+          />
         </div>
       </PageBody>
     </>

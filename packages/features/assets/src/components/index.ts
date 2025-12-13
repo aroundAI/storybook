@@ -18,6 +18,9 @@ export { CharacterEditor } from './character-editor';
 export { CharacterEditorForm } from './character-editor/CharacterEditorForm';
 export * from './character-editor/sections';
 
+// Location Editor
+export { LocationEditor } from './location-editor';
+
 // Voice Profile Editor (FILM-206)
 export { VoiceProfileEditor } from './voice-profile-editor';
 export { VoiceSelector } from './voice-selector';

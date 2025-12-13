@@ -2,18 +2,11 @@
 
 import Link from 'next/link';
 
-import { ArrowRight, Calendar, Film } from 'lucide-react';
+import { ArrowRight, Check, Circle, MoreHorizontal } from 'lucide-react';
 
 import type { Episode } from '@kit/episodes/types';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@kit/ui/card';
+import { Card, CardContent, CardHeader } from '@kit/ui/card';
 
-import { StatusBadge } from './status-badge';
 
 interface EpisodeCardProps {
   episode: Episode;
@@ -21,34 +14,69 @@ interface EpisodeCardProps {
   projectId: string;
 }
 
+function getStageStatus(episode: Episode) {
+  return {
+    story: episode.storyData?.fullStory ? 'complete' : 'empty',
+    screenplay: episode.screenplayData?.scenes ? 'complete' : episode.storyData?.fullStory ? 'in-progress' : 'empty',
+    shots: episode.shotList?.shots ? 'complete' : episode.screenplayData?.scenes ? 'in-progress' : 'empty',
+  } as const;
+}
+
+function StatusIndicator({ status }: { status: 'complete' | 'in-progress' | 'empty' }) {
+  if (status === 'complete') {
+    return <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />;
+  }
+  if (status === 'in-progress') {
+    return <MoreHorizontal className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />;
+  }
+  return <Circle className="h-3.5 w-3.5 text-muted-foreground/30" />;
+}
+
 export function EpisodeCard({ episode, account, projectId }: EpisodeCardProps) {
   const href = `/home/${account}/studio/${projectId}/episodes/${episode.id}`;
+  const stages = getStageStatus(episode);
 
   return (
     <Link href={href}>
-      <Card className="cursor-pointer transition-shadow hover:shadow-lg">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="bg-primary/10 flex h-10 w-10 items-center justify-center rounded-lg">
-              <Film className="text-primary h-5 w-5" />
+      <Card className="group relative overflow-hidden border-l-4 border-indigo-500 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-50 transition-opacity group-hover:opacity-70" />
+
+        <CardHeader className="relative pb-3">
+          {/* Episode Number - Dominant */}
+          <div className="flex items-start justify-between">
+            <div className="text-indigo-500/20 dark:text-indigo-400/20 font-light text-[5rem] leading-none tracking-tighter">
+              {String(episode.number).padStart(2, '0')}
             </div>
-            <ArrowRight className="text-muted-foreground h-5 w-5" />
+            <ArrowRight className="text-muted-foreground mt-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
           </div>
-          <div className="flex items-center gap-2">
-            <CardTitle className="line-clamp-1">{episode.title}</CardTitle>
-            <StatusBadge status={episode.status} />
-          </div>
-          <CardDescription className="line-clamp-2">
-            {episode.description ?? `Episode ${episode.number}`}
-          </CardDescription>
+
+          {/* Title - Emphasized */}
+          <h3 className="text-foreground -mt-4 line-clamp-2 text-xl font-semibold leading-tight">
+            {episode.title}
+          </h3>
         </CardHeader>
-        <CardContent>
-          <div className="text-muted-foreground flex items-center gap-4 text-sm">
-            <span className="font-medium">Ep. {episode.number}</span>
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {new Date(episode.updatedAt).toLocaleDateString()}
-            </span>
+
+        <CardContent className="relative space-y-3 pt-0">
+          {/* Status Progress - Visual Dots */}
+          <div className="flex items-center gap-3 border-t border-border/50 pt-3">
+            <div className="flex items-center gap-1.5">
+              <StatusIndicator status={stages.story} />
+              <span className="text-muted-foreground text-xs">Story</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <StatusIndicator status={stages.screenplay} />
+              <span className="text-muted-foreground text-xs">Screenplay</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <StatusIndicator status={stages.shots} />
+              <span className="text-muted-foreground text-xs">Shots</span>
+            </div>
+          </div>
+
+          {/* Date - Footer */}
+          <div className="text-muted-foreground text-xs">
+            Updated {new Date(episode.updatedAt).toLocaleDateString()}
           </div>
         </CardContent>
       </Card>

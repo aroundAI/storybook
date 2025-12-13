@@ -11,7 +11,7 @@
  * We will revoke all default privileges from public schema on functions to prevent public access to them
  * -------------------------------------------------------
  */
--- Create a private Makerkit schema
+-- Create a private StoryBook schema
 create schema if not exists kit;
 
 create extension if not exists "unaccent" schema kit;

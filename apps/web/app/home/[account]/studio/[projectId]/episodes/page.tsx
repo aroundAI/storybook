@@ -20,6 +20,9 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { EpisodeCard } from './_components/episode-card';
+import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
+import { SeasonHeader } from './_components/season-header';
+
 
 interface EpisodesPageProps {
   params: Promise<{
@@ -87,12 +90,33 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
 
       <PageHeader
         title="Episodes"
-        description="Manage your project's episodes, stories, and screenplays"
+        description="Stories, screenplays, and shot lists for your video content"
       >
-        <CreateEpisodeDialog projectId={projectId} account={account} />
+        <div className="flex gap-2">
+          <SeasonGeneratorDialog projectId={projectId} />
+          <CreateEpisodeDialog projectId={projectId} account={account} />
+        </div>
       </PageHeader>
 
       <PageBody>
+        {/* Season Header - Dominant Element */}
+        {episodes && episodes.length > 0 && (
+          <div className="mb-8">
+            <SeasonHeader
+              seasonNumber={1}
+              seasonName="Mystery & Magic"
+              totalEpisodes={episodes.length}
+              completedEpisodes={
+                episodes.filter((ep) => ep.status === 'ready' || ep.status === 'published').length
+              }
+              inProgressEpisodes={
+                episodes.filter((ep) =>
+                  ['story', 'storyboard', 'generating', 'editing'].includes(ep.status),
+                ).length
+              }
+            />
+          </div>
+        )}
         {episodes && episodes.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {episodes.map((episode) => (

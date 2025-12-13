@@ -152,6 +152,13 @@ export const convertToScreenplayAction = enhanceAction(
       throw new Error('Unable to determine account for episode');
     }
 
+    // Build context for character/location names (Phase 4)
+    const { buildEpisodeContext } = await import('./context-builder');
+    const episodeContext = await buildEpisodeContext(data.episodeId);
+
+    const characterNames = episodeContext.characters.map((c) => c.name);
+    const locationNames = episodeContext.locations.map((l) => l.name);
+
     // Execute LLM prompt
     logger.info(ctx, 'Executing screenplay conversion LLM');
 
@@ -161,12 +168,17 @@ export const convertToScreenplayAction = enhanceAction(
         story: storyData.fullStory,
         target_scene_count: data.targetSceneCount ?? 8,
         style: data.dialogueStyle ?? 'natural',
+        character_names: characterNames.length > 0
+          ? characterNames.join(', ')
+          : '',
+        location_names: locationNames.length > 0
+          ? locationNames.join(', ')
+          : '',
       },
       context: {
         name: 'screenplay-conversion',
         accountId,
         userId: user.id,
-        episodeId: data.episodeId,
       },
     });
 
