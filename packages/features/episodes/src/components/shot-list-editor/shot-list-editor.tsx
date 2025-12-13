@@ -143,16 +143,7 @@ export function ShotListEditor({
     [episode.id, refetchEpisode],
   );
 
-  const handleSelectAll = useCallback(
-    (checked: boolean) => {
-      if (checked) {
-        setSelectedIds(new Set(filteredShots.map((s) => s.id)));
-      } else {
-        setSelectedIds(new Set());
-      }
-    },
-    [filteredShots],
-  );
+
 
   const handleSelectShot = useCallback((shotId: string, selected: boolean) => {
     setSelectedIds((prev) => {
@@ -192,8 +183,7 @@ export function ShotListEditor({
     toast.info(`Queued ${pendingShots.length} shots for generation`);
   }, [shots, onGenerateVideos]);
 
-  const allSelected =
-    filteredShots.length > 0 && selectedIds.size === filteredShots.length;
+
   // const someSelected =
   //   selectedIds.size > 0 && selectedIds.size < filteredShots.length;
 

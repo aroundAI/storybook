@@ -5,9 +5,7 @@ import { useState, useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowRight,
-  Lightbulb,
   Loader2,
-  RefreshCw,
   Sparkles,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -19,14 +17,13 @@ import { Button } from '@kit/ui/button';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
 import {
   Form,
   FormControl,
-  FormDescription,
+
   FormField,
   FormItem,
   FormLabel,
@@ -60,9 +57,9 @@ export function StoryIdeation({
   episodeId,
   onComplete,
   isGenerating = false,
-  projectGenre = 'general',
-  projectStyle = 'balanced',
-  projectAudience = 'general',
+  // projectGenre = 'general',
+  // projectStyle = 'balanced',
+  // projectAudience = 'general',
   initialPremise,
   characterIds = [],
   locationIds = [],

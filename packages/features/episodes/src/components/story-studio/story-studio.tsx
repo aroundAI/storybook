@@ -87,17 +87,7 @@ function getTabUnlockState(
   };
 }
 
-function calculateProgress(episode: Episode | undefined): number {
-  if (!episode) return 1;
 
-  let progress = 1;
-
-  if (episode.storyData?.fullStory) progress = 2;
-  if (episode.screenplayData?.scenes?.length) progress = 3;
-  if (episode.shotList?.shots?.length) progress = 4;
-
-  return progress;
-}
 
 function LockedTabContent({ tabId }: { tabId: StudioTab }) {
   const tabLabels: Record<StudioTab, { title: string; description: string }> = {
@@ -141,6 +131,7 @@ function LockedTabContent({ tabId }: { tabId: StudioTab }) {
  */
 function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
   const [isPending, startTransition] = useTransition();
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const storyData = episode.storyData;
 
   // Get refetch from context
@@ -207,7 +198,7 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
     });
   };
 
-  const [isReadingMode, setIsReadingMode] = useState(false);
+
 
   return (
     <div className={cn("transition-all duration-300", isReadingMode ? "fixed inset-0 z-50 overflow-y-auto bg-background p-8" : "mt-4")}>
@@ -266,7 +257,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
   } = useEpisodeQuery(episodeId);
 
   const tabUnlockState = useMemo(() => getTabUnlockState(episode), [episode]);
-  const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
+  // const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
   const isGenerating = episode?.status === 'generating' || isGeneratingStory;
 
   const handleTabChange = (tab: string) => {
