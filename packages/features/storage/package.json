@@ -1,0 +1,28 @@
+{
+    "name": "@kit/storage",
+    "version": "0.1.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./adapters/local": "./src/adapters/local.ts",
+        "./adapters/supabase": "./src/adapters/supabase.ts"
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "lint": "eslint .",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "mime-types": "^2.1.35",
+        "server-only": "^0.0.1"
+    },
+    "devDependencies": {
+        "@supabase/supabase-js": "2.57.4",
+        "@types/mime-types": "^2.1.4",
+        "@types/node": "^24.5.0",
+        "eslint": "^9.35.0",
+        "typescript": "^5.9.2"
+    }
+}
