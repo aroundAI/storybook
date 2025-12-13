@@ -5,10 +5,15 @@ import { notFound } from 'next/navigation';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody } from '@kit/ui/page';
 
+import { getProjectAnalytics } from '@kit/content-analytics/server';
+
 import { withI18n } from '~/lib/i18n/with-i18n';
 
-import { ActionCard } from './_components/action-card';
+import { AnalyticsPreview } from './_components/analytics-preview';
 import { ProjectBanner } from './_components/project-banner';
+import { QuickActions } from './_components/quick-actions';
+import { QuickStats } from './_components/quick-stats';
+import { RecentEpisodes } from './_components/recent-episodes';
 
 interface StudioProjectPageProps {
   params: Promise<{
@@ -39,28 +44,20 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   const { account, projectId } = await params;
   const client = getSupabaseServerClient();
 
-  const { data: project, error } = await client
-    .from('projects')
-    .select('id, name, description, metadata, created_at')
-    .eq('id', projectId)
-    .single();
-
-  if (error || !project) {
-    notFound();
-  }
-
-  // Extract metadata
-  const metadata = (project.metadata ?? {}) as {
-    genre?: string;
-    targetAudience?: string;
-  };
-
-  // Fetch asset counts in parallel for better performance
+  // Fetch project and counts in parallel
   const [
+    { data: project, error },
     { count: characterCount },
     { count: locationCount },
     { count: episodeCount },
+    { data: recentEpisodes },
+    analytics,
   ] = await Promise.all([
+    client
+      .from('projects')
+      .select('id, name, description, metadata, created_at')
+      .eq('id', projectId)
+      .single(),
     client
       .from('assets')
       .select('*', { count: 'exact', head: true })
@@ -73,22 +70,45 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       .eq('project_id', projectId)
       .eq('type', 'location')
       .is('deleted_at', null),
-
     client
       .from('episodes')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', projectId)
       .is('deleted_at', null),
+    // Fetch 3 most recent episodes
+    client
+      .from('episodes')
+      .select('id, title, number, updated_at')
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .order('updated_at', { ascending: false })
+      .limit(3),
+    // Fetch analytics
+    getProjectAnalytics(projectId).catch(() => null),
   ]);
 
+  if (error || !project) {
+    notFound();
+  }
+
+  // Extract metadata
+  const metadata = (project.metadata ?? {}) as {
+    genre?: string;
+    targetAudience?: string;
+  };
+
   const baseUrl = `/home/${account}/studio/${projectId}`;
-  const hasCharacters = (characterCount ?? 0) > 0;
-  const hasLocations = (locationCount ?? 0) > 0;
-  const hasEpisodes = (episodeCount ?? 0) > 0;
+
+  // Prepare analytics data for preview
+  const platformBreakdown = analytics?.platformTotals?.map((p) => ({
+    platform: p.platform,
+    views: p.views,
+    percentage: p.percentage,
+  })) ?? [];
 
   return (
     <>
-      {/* Branded Project Banner */}
+      {/* Project Banner */}
       <div className="px-8 pt-8">
         <ProjectBanner
           name={project.name}
@@ -99,111 +119,35 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       </div>
 
       <PageBody>
-        <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-          {/* Characters Card */}
-          <ActionCard
-            title="Characters"
-            description="Create and manage your cast of characters with detailed profiles and personalities."
-            iconName="user"
-            href={hasCharacters ? `${baseUrl}/assets?type=character` : undefined}
-            isEmpty={!hasCharacters}
-            stats={
-              hasCharacters
-                ? [{ label: 'characters', value: characterCount ?? 0 }]
-                : undefined
-            }
-            primaryAction={
-              !hasCharacters
-                ? {
-                  label: 'Create First Character',
-                  href: `${baseUrl}/assets?create=character`,
-                }
-                : {
-                  label: 'Add Character',
-                  href: `${baseUrl}/assets?create=character`,
-                }
-            }
-            secondaryAction={
-              hasCharacters
-                ? {
-                  label: 'View All',
-                  href: `${baseUrl}/assets?type=character`,
-                }
-                : undefined
-            }
-            colorScheme="warm"
+        <div className="space-y-6">
+          {/* Quick Stats Row */}
+          <QuickStats
+            episodeCount={episodeCount ?? 0}
+            characterCount={characterCount ?? 0}
+            locationCount={locationCount ?? 0}
           />
 
-          {/* Locations Card */}
-          <ActionCard
-            title="Locations"
-            description="Define the worlds and settings where your stories take place."
-            iconName="mapPin"
-            href={hasLocations ? `${baseUrl}/assets?type=location` : undefined}
-            isEmpty={!hasLocations}
-            stats={
-              hasLocations
-                ? [{ label: 'locations', value: locationCount ?? 0 }]
-                : undefined
-            }
-            primaryAction={
-              !hasLocations
-                ? {
-                  label: 'Create First Location',
-                  href: `${baseUrl}/assets?create=location`,
-                }
-                : {
-                  label: 'Add Location',
-                  href: `${baseUrl}/assets?create=location`,
-                }
-            }
-            secondaryAction={
-              hasLocations
-                ? {
-                  label: 'View All',
-                  href: `${baseUrl}/assets?type=location`,
-                }
-                : undefined
-            }
-            colorScheme="cool"
-          />
+          {/* Quick Actions Toolbar */}
+          <QuickActions baseUrl={baseUrl} />
 
-          {/* Episodes Card */}
-          <ActionCard
-            title="Episodes"
-            description="Write stories, create screenplays, and generate shot lists for your video content."
-            iconName="fileText"
-            href={hasEpisodes ? `${baseUrl}/episodes` : undefined}
-            isEmpty={!hasEpisodes}
-            stats={
-              hasEpisodes
-                ? [{ label: 'episodes', value: episodeCount ?? 0 }]
-                : undefined
-            }
-            primaryAction={
-              !hasEpisodes
-                ? {
-                  label: 'Create First Episode',
-                  href: `${baseUrl}/episodes`,
-                }
-                : {
-                  label: 'New Episode',
-                  href: `${baseUrl}/episodes?create=true`,
-                }
-            }
-            secondaryAction={
-              hasEpisodes
-                ? {
-                  label: 'View All',
-                  href: `${baseUrl}/episodes`,
-                }
-                : {
-                  label: 'Generate Season',
-                  href: `${baseUrl}/episodes?generate=season`,
-                }
-            }
-            colorScheme="primary"
-          />
+          {/* Two Column Layout: Analytics + Recent Episodes */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Analytics Preview - 1/3 width */}
+            <AnalyticsPreview
+              totalViews={analytics?.totalViews ?? 0}
+              engagementRate={analytics?.avgEngagementRate ?? 0}
+              platformBreakdown={platformBreakdown}
+              baseUrl={baseUrl}
+            />
+
+            {/* Recent Episodes - 2/3 width */}
+            <div className="lg:col-span-2">
+              <RecentEpisodes
+                episodes={recentEpisodes ?? []}
+                baseUrl={baseUrl}
+              />
+            </div>
+          </div>
         </div>
       </PageBody>
     </>

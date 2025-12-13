@@ -2,14 +2,12 @@
 
 import Link from 'next/link';
 
-import { ChevronLeft } from 'lucide-react';
-
 import { ScrollArea } from '@kit/ui/scroll-area';
 import { SidebarNavigation } from '@kit/ui/shadcn-sidebar';
-import { Trans } from '@kit/ui/trans';
-import { cn } from '@kit/ui/utils';
 
 import { getStudioNavigationConfig } from '~/config/studio-navigation.config';
+
+import { ProjectSwitcher } from './project-switcher';
 
 /**
  * Placeholder for GenerationStatusIndicator.
@@ -23,12 +21,15 @@ function GenerationStatusIndicatorStub({
   return null;
 }
 
+interface Project {
+  id: string;
+  name: string;
+}
+
 interface StudioSidebarProps {
-  project: {
-    id: string;
-    name: string;
-  };
+  project: Project;
   account: string;
+  recentProjects?: Array<{ id: string; name: string; updated_at?: string }>;
 }
 
 /**
@@ -37,8 +38,9 @@ interface StudioSidebarProps {
  *
  * @param project - The current project with id and name
  * @param account - The account slug for URL building
+ * @param recentProjects - Recent projects for the switcher dropdown
  */
-export function StudioSidebar({ project, account }: StudioSidebarProps) {
+export function StudioSidebar({ project, account, recentProjects = [] }: StudioSidebarProps) {
   const config = getStudioNavigationConfig({
     accountSlug: account,
     projectId: project.id,
@@ -46,22 +48,12 @@ export function StudioSidebar({ project, account }: StudioSidebarProps) {
 
   return (
     <aside className="bg-muted/10 flex w-64 flex-col border-r">
-      {/* Header with back navigation and project name */}
-      <div className="flex h-14 items-center justify-between border-b px-4">
-        <Link
-          href={`/home/${account}/studio`}
-          className={cn(
-            'text-muted-foreground hover:text-foreground',
-            'flex items-center gap-2 text-sm transition-colors',
-          )}
-        >
-          <ChevronLeft className="h-4 w-4" />
-          <Trans i18nKey="studio:sidebar.backToProjects" defaults="Back" />
-        </Link>
-        <span className="max-w-[120px] truncate font-medium">
-          {project.name}
-        </span>
-      </div>
+      {/* Project Switcher */}
+      <ProjectSwitcher
+        currentProject={project}
+        accountSlug={account}
+        recentProjects={recentProjects}
+      />
 
       {/* Navigation using config system */}
       <ScrollArea className="flex-1 py-4">
