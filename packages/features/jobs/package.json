@@ -20,13 +20,12 @@
         "@kit/content-analytics": "workspace:*",
         "@kit/publishing": "workspace:*",
         "bullmq": "^5.34.8",
+        "croner": "^9.1.0",
         "ioredis": "^5.4.2",
-        "node-cron": "^3.0.3",
         "server-only": "^0.0.1"
     },
     "devDependencies": {
         "@types/node": "^24.5.0",
-        "@types/node-cron": "^3.0.11",
         "eslint": "^9.35.0",
         "typescript": "^5.9.2",
         "vitest": "^3.2.4"

@@ -1,13 +1,13 @@
 /**
  * Cron Scheduler
  *
- * Manages scheduled jobs using node-cron.
+ * Manages scheduled jobs using croner (Turbopack-compatible cron library).
  * Runs tasks at specified intervals when the app is running.
  */
 
 import 'server-only';
 
-import cron, { type ScheduledTask } from 'node-cron';
+import { Cron } from 'croner';
 
 /**
  * Cron job definition
@@ -22,7 +22,7 @@ interface CronJob {
 /**
  * Active cron tasks
  */
-const activeTasks = new Map<string, ScheduledTask>();
+const activeTasks = new Map<string, Cron>();
 
 /**
  * Cron job status
@@ -115,43 +115,45 @@ export function startCronJobs(): void {
             continue;
         }
 
-        if (!cron.validate(job.schedule)) {
-            console.error(`[Cron] Invalid schedule for job "${job.name}": ${job.schedule}`);
-            continue;
+        try {
+            const task = new Cron(
+                job.schedule,
+                {
+                    name: job.name,
+                    timezone: process.env.TZ || 'UTC',
+                    catch: (error) => {
+                        console.error(`[Cron] Job "${job.name}" error:`, error);
+                    },
+                },
+                async () => {
+                    const status = jobStatus.get(job.name) || { running: false };
+
+                    if (status.running) {
+                        console.warn(`[Cron] Job "${job.name}" is already running, skipping`);
+                        return;
+                    }
+
+                    jobStatus.set(job.name, { ...status, running: true });
+
+                    try {
+                        await job.handler();
+                    } catch (error) {
+                        console.error(`[Cron] Job "${job.name}" failed:`, error);
+                    } finally {
+                        jobStatus.set(job.name, {
+                            running: false,
+                            lastRun: new Date(),
+                        });
+                    }
+                },
+            );
+
+            activeTasks.set(job.name, task);
+            jobStatus.set(job.name, { running: false });
+            console.log(`[Cron] Started job: ${job.name} (${job.schedule})`);
+        } catch (error) {
+            console.error(`[Cron] Failed to start job "${job.name}":`, error);
         }
-
-        const task = cron.schedule(
-            job.schedule,
-            async () => {
-                const status = jobStatus.get(job.name) || { running: false };
-
-                if (status.running) {
-                    console.warn(`[Cron] Job "${job.name}" is already running, skipping`);
-                    return;
-                }
-
-                jobStatus.set(job.name, { ...status, running: true });
-
-                try {
-                    await job.handler();
-                } catch (error) {
-                    console.error(`[Cron] Job "${job.name}" failed:`, error);
-                } finally {
-                    jobStatus.set(job.name, {
-                        running: false,
-                        lastRun: new Date(),
-                    });
-                }
-            },
-            {
-                scheduled: true,
-                timezone: process.env.TZ || 'UTC',
-            },
-        );
-
-        activeTasks.set(job.name, task);
-        jobStatus.set(job.name, { running: false });
-        console.log(`[Cron] Started job: ${job.name} (${job.schedule})`);
     }
 }
 
@@ -177,7 +179,7 @@ export function getCronStatus(): CronStatus[] {
 
     return jobs.map((job) => {
         const status = jobStatus.get(job.name);
-        const _task = activeTasks.get(job.name);
+        const task = activeTasks.get(job.name);
 
         return {
             name: job.name,
@@ -185,7 +187,7 @@ export function getCronStatus(): CronStatus[] {
             enabled: job.enabled,
             running: status?.running || false,
             lastRun: status?.lastRun,
-            // nextRun would require parsing the cron expression
+            nextRun: task?.nextRun() || undefined,
         };
     });
 }
