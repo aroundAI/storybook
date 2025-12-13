@@ -10,7 +10,14 @@ import { StoryStudio } from '@kit/episodes/components';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { PublishHub } from '@kit/publishing/components';
 import { Card, CardContent } from '@kit/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
+import { Tabs, TabsContent } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 import { VisualStudio } from '@kit/video-generation/components';
 
@@ -30,37 +37,37 @@ const WORKSPACE_TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
   description: string;
 }> = [
-  {
-    id: 'story',
-    label: 'Story Studio',
-    icon: BookOpen,
-    description: 'Create and refine your story',
-  },
-  {
-    id: 'visuals',
-    label: 'Visual Studio',
-    icon: Film,
-    description: 'Generate video content',
-  },
-  {
-    id: 'audio',
-    label: 'Audio Studio',
-    icon: Music,
-    description: 'Voice and music generation',
-  },
-  {
-    id: 'edit',
-    label: 'Edit Suite',
-    icon: Scissors,
-    description: 'Timeline editing',
-  },
-  {
-    id: 'publish',
-    label: 'Publish Hub',
-    icon: Share2,
-    description: 'Multi-platform publishing',
-  },
-];
+    {
+      id: 'story',
+      label: 'Story Studio',
+      icon: BookOpen,
+      description: 'Create and refine your story',
+    },
+    {
+      id: 'visuals',
+      label: 'Visual Studio',
+      icon: Film,
+      description: 'Generate video content',
+    },
+    {
+      id: 'audio',
+      label: 'Audio Studio',
+      icon: Music,
+      description: 'Voice and music generation',
+    },
+    {
+      id: 'edit',
+      label: 'Edit Suite',
+      icon: Scissors,
+      description: 'Timeline editing',
+    },
+    {
+      id: 'publish',
+      label: 'Publish Hub',
+      icon: Share2,
+      description: 'Multi-platform publishing',
+    },
+  ];
 
 function getTabUnlockState(
   episode: EpisodeWithShots,
@@ -110,29 +117,29 @@ function ComingSoonPlaceholder({
 
 function LockedTabContent({ tabId }: { tabId: WorkspaceTab }) {
   const tabInfo: Record<WorkspaceTab, { title: string; description: string }> =
-    {
-      story: {
-        title: 'Story Studio',
-        description: 'Start creating your story',
-      },
-      visuals: {
-        title: 'Visual Studio Locked',
-        description: 'Complete the story creation to unlock video generation',
-      },
-      audio: {
-        title: 'Audio Studio Locked',
-        description: 'Generate a shot list to unlock audio generation',
-      },
-      edit: {
-        title: 'Edit Suite Locked',
-        description: 'Generate visuals and audio to unlock the timeline editor',
-      },
-      publish: {
-        title: 'Publish Hub Locked',
-        description:
-          'Complete video editing to unlock multi-platform publishing',
-      },
-    };
+  {
+    story: {
+      title: 'Story Studio',
+      description: 'Start creating your story',
+    },
+    visuals: {
+      title: 'Visual Studio Locked',
+      description: 'Complete the story creation to unlock video generation',
+    },
+    audio: {
+      title: 'Audio Studio Locked',
+      description: 'Generate a shot list to unlock audio generation',
+    },
+    edit: {
+      title: 'Edit Suite Locked',
+      description: 'Generate visuals and audio to unlock the timeline editor',
+    },
+    publish: {
+      title: 'Publish Hub Locked',
+      description:
+        'Complete video editing to unlock multi-platform publishing',
+    },
+  };
 
   const { title, description } = tabInfo[tabId];
 
@@ -180,83 +187,109 @@ export function WorkspaceTabs({
   );
 
   return (
-    <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-5">
-        {WORKSPACE_TABS.map((tab) => {
-          const isUnlocked = tabUnlockState[tab.id];
-          const TabIcon = tab.icon;
+    <div className="space-y-6">
+      {/* Studio Switcher Header */}
+      <div className="flex items-center justify-between border-b pb-4">
+        <div>
+          {/* Left side reserved for page title or context if needed */}
+        </div>
 
-          return (
-            <TabsTrigger
-              key={tab.id}
-              value={tab.id}
-              disabled={!isUnlocked}
-              className={cn(!isUnlocked && 'cursor-not-allowed opacity-50')}
-            >
-              <TabIcon className="mr-2 h-4 w-4" />
-              {tab.label}
-            </TabsTrigger>
-          );
-        })}
-      </TabsList>
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground text-sm font-medium">Studio:</span>
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Studio" />
+            </SelectTrigger>
+            <SelectContent>
+              {WORKSPACE_TABS.map((tab) => {
+                const isUnlocked = tabUnlockState[tab.id];
+                const TabIcon = tab.icon;
 
-      <TabsContent value="story">
-        {tabUnlockState.story ? (
-          <StoryStudio episodeId={episode.id} />
-        ) : (
-          <LockedTabContent tabId="story" />
-        )}
-      </TabsContent>
+                return (
+                  <SelectItem
+                    key={tab.id}
+                    value={tab.id}
+                    disabled={!isUnlocked}
+                  >
+                    <div className="flex items-center gap-2">
+                      <TabIcon className="h-4 w-4" />
+                      <span>{tab.label}</span>
+                    </div>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      <TabsContent value="visuals">
-        {tabUnlockState.visuals ? (
-          <VisualStudio episodeId={episode.id} projectId={projectId} />
-        ) : (
-          <LockedTabContent tabId="visuals" />
-        )}
-      </TabsContent>
+      {/* Content Area */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        {/* Hidden TabsList to maintain accessibility if needed, or we rely on Select */}
+        {/* We generally don't need TabsList if we control value programmatically, 
+            but for a11y with Radix Tabs, it usually expects a list. 
+            However, since we use Select as the switcher, we can omit TabsList 
+            or keep it hidden/sr-only if strictly required by Radix (it's not strictly required for controlled mode).
+         */}
 
-      <TabsContent value="audio">
-        {tabUnlockState.audio ? (
-          <ComingSoonPlaceholder
-            title="Audio Studio"
-            description="Generate voice acting, sound effects, and background music for your episode."
-            phase={5}
-          />
-        ) : (
-          <LockedTabContent tabId="audio" />
-        )}
-      </TabsContent>
+        <TabsContent value="story" className="mt-0 focus-visible:outline-none">
+          {tabUnlockState.story ? (
+            <StoryStudio episodeId={episode.id} />
+          ) : (
+            <LockedTabContent tabId="story" />
+          )}
+        </TabsContent>
 
-      <TabsContent value="edit">
-        {tabUnlockState.edit ? (
-          <ComingSoonPlaceholder
-            title="Edit Suite"
-            description="Combine your video and audio clips in the timeline editor to create the final episode."
-            phase={6}
-          />
-        ) : (
-          <LockedTabContent tabId="edit" />
-        )}
-      </TabsContent>
+        <TabsContent value="visuals" className="mt-0 focus-visible:outline-none">
+          {tabUnlockState.visuals ? (
+            <VisualStudio episodeId={episode.id} projectId={projectId} />
+          ) : (
+            <LockedTabContent tabId="visuals" />
+          )}
+        </TabsContent>
 
-      <TabsContent value="publish">
-        {tabUnlockState.publish ? (
-          <PublishHub
-            episodeId={episode.id}
-            projectId={projectId}
-            accountSlug={accountSlug}
-            accountId={accountId}
-            videoUrl={episode.finalVideoUrl ?? ''}
-            thumbnailUrl={episode.thumbnailUrl ?? undefined}
-            defaultTitle={episode.title}
-            defaultDescription={episode.description ?? ''}
-            duration={episode.durationSeconds ?? 0}
-          />
-        ) : (
-          <LockedTabContent tabId="publish" />
-        )}
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="audio" className="mt-0 focus-visible:outline-none">
+          {tabUnlockState.audio ? (
+            <ComingSoonPlaceholder
+              title="Audio Studio"
+              description="Generate voice acting, sound effects, and background music for your episode."
+              phase={5}
+            />
+          ) : (
+            <LockedTabContent tabId="audio" />
+          )}
+        </TabsContent>
+
+        <TabsContent value="edit" className="mt-0 focus-visible:outline-none">
+          {tabUnlockState.edit ? (
+            <ComingSoonPlaceholder
+              title="Edit Suite"
+              description="Combine your video and audio clips in the timeline editor to create the final episode."
+              phase={6}
+            />
+          ) : (
+            <LockedTabContent tabId="edit" />
+          )}
+        </TabsContent>
+
+        <TabsContent value="publish" className="mt-0 focus-visible:outline-none">
+          {tabUnlockState.publish ? (
+            <PublishHub
+              episodeId={episode.id}
+              projectId={projectId}
+              accountSlug={accountSlug}
+              accountId={accountId}
+              videoUrl={episode.finalVideoUrl ?? ''}
+              thumbnailUrl={episode.thumbnailUrl ?? undefined}
+              defaultTitle={episode.title}
+              defaultDescription={episode.description ?? ''}
+              duration={episode.durationSeconds ?? 0}
+            />
+          ) : (
+            <LockedTabContent tabId="publish" />
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }

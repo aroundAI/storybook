@@ -194,8 +194,8 @@ export function ShotListEditor({
 
   const allSelected =
     filteredShots.length > 0 && selectedIds.size === filteredShots.length;
-  const someSelected =
-    selectedIds.size > 0 && selectedIds.size < filteredShots.length;
+  // const someSelected =
+  //   selectedIds.size > 0 && selectedIds.size < filteredShots.length;
 
   // Stats
   const stats = useMemo(() => {
@@ -396,57 +396,80 @@ export function ShotListEditor({
         </div>
 
         {/* Shot Table */}
-        <div className="rounded-md border">
+        <div className="space-y-8">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragEnd={handleDragEnd}
           >
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={allSelected}
-                      ref={(el) => {
-                        if (el) {
-                          (el as unknown as HTMLInputElement).indeterminate =
-                            someSelected;
-                        }
-                      }}
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all"
-                    />
-                  </TableHead>
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead className="w-16">#</TableHead>
-                  <TableHead className="w-24">Status</TableHead>
-                  <TableHead className="w-20">Duration</TableHead>
-                  <TableHead>Prompt</TableHead>
-                  <TableHead className="w-24">Angle</TableHead>
-                  <TableHead className="w-24">Movement</TableHead>
-                  <TableHead className="w-24">Preview</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <SortableContext
-                  items={filteredShots.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  {filteredShots.map((shot) => (
-                    <ShotRow
-                      key={shot.id}
-                      shot={shot}
-                      isSelected={selectedIds.has(shot.id)}
-                      onSelect={(selected) =>
-                        handleSelectShot(shot.id, selected)
-                      }
-                      onUpdate={refetchEpisode}
-                    />
-                  ))}
-                </SortableContext>
-              </TableBody>
-            </Table>
+            {Object.entries(
+              filteredShots.reduce((acc, shot) => {
+                const key = shot.sceneNumber;
+                if (!acc[key]) acc[key] = [];
+                acc[key].push(shot);
+                return acc;
+              }, {} as Record<number, Shot[]>)
+            ).map(([sceneNum, sceneShots]) => (
+              <div key={sceneNum} className="space-y-4">
+                <div className="flex items-center gap-2 px-2">
+                  <h3 className="text-sm font-semibold text-muted-foreground">SCENE {sceneNum}</h3>
+                  <div className="h-px flex-1 bg-border/50" />
+                  <Badge variant="outline" className="text-xs font-normal">
+                    {sceneShots.length} shots
+                  </Badge>
+                </div>
+
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-transparent">
+                        <TableHead className="w-10">
+                          <Checkbox
+                            // Scene-level select all could go here, or global
+                            // For now keeping simpler global select or individual
+                            checked={sceneShots.every(s => selectedIds.has(s.id))}
+                            onCheckedChange={(checked) => {
+                              const ids = new Set(selectedIds);
+                              sceneShots.forEach(s => {
+                                if (checked) ids.add(s.id);
+                                else ids.delete(s.id);
+                              });
+                              setSelectedIds(ids);
+                            }}
+                          />
+                        </TableHead>
+                        <TableHead className="w-10"></TableHead>
+                        <TableHead className="w-16">#</TableHead>
+                        <TableHead className="w-24">Status</TableHead>
+                        <TableHead className="w-20">Dur</TableHead>
+                        <TableHead>Visual Prompt</TableHead>
+                        <TableHead className="w-24">Angle</TableHead>
+                        <TableHead className="w-24">Move</TableHead>
+                        <TableHead className="w-24">Preview</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <SortableContext
+                        items={sceneShots.map((s) => s.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        {sceneShots.map((shot) => (
+                          <ShotRow
+                            key={shot.id}
+                            shot={shot}
+                            isSelected={selectedIds.has(shot.id)}
+                            onSelect={(selected) =>
+                              handleSelectShot(shot.id, selected)
+                            }
+                            onUpdate={refetchEpisode}
+                          />
+                        ))}
+                      </SortableContext>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            ))}
           </DndContext>
         </div>
 
