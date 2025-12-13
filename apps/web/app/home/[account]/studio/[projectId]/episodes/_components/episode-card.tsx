@@ -19,7 +19,7 @@ function getStageStatus(episode: Episode) {
     story: episode.storyData?.fullStory ? 'complete' : 'empty',
     screenplay: episode.screenplayData?.scenes ? 'complete' : episode.storyData?.fullStory ? 'in-progress' : 'empty',
     shots: episode.shotList?.shots ? 'complete' : episode.screenplayData?.scenes ? 'in-progress' : 'empty',
-  };
+  } as const;
 }
 
 function StatusIndicator({ status }: { status: 'complete' | 'in-progress' | 'empty' }) {
