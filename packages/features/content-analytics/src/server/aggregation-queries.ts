@@ -7,12 +7,7 @@
 
 import 'server-only';
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Client = SupabaseClient<any, any, any>;
 
 /**
  * Episode analytics summary

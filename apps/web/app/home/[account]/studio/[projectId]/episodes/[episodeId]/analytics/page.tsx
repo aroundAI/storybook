@@ -6,7 +6,6 @@
 
 import { Suspense } from 'react';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 import { Skeleton } from '@kit/ui/skeleton';
 

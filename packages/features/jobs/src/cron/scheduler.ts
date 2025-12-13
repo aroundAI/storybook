@@ -177,7 +177,7 @@ export function getCronStatus(): CronStatus[] {
 
     return jobs.map((job) => {
         const status = jobStatus.get(job.name);
-        const task = activeTasks.get(job.name);
+        const _task = activeTasks.get(job.name);
 
         return {
             name: job.name,

@@ -6,9 +6,6 @@
 
 import { Suspense } from 'react';
 
-import { ServerDataLoader } from '@makerkit/data-loader-supabase-nextjs';
-
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 import { Skeleton } from '@kit/ui/skeleton';
 
@@ -23,7 +20,7 @@ interface PageParams {
 }
 
 export default async function ProjectAnalyticsPage({ params }: PageParams) {
-    const { projectId, account } = await params;
+    const { projectId, account: _account } = await params;
 
     return (
         <>
