@@ -41,21 +41,32 @@ export interface ConvertToScreenplayResponse {
 
 /**
  * Extract dialogue lines from screenplay scenes and prepare for database insertion
+ * Matches character names to asset IDs for proper linking
  */
 function extractDialogueLines(
   screenplay: Screenplay,
   episodeId: string,
+  characters: Array<{ id: string; name: string }>,
 ): Array<{
   episode_id: string;
   scene_number: number;
+  character_asset_id: string | null;
   character_name: string;
   text: string;
   emotion: string | null;
   sequence_number: number;
 }> {
+  // Create case-insensitive lookup map for character name -> asset ID
+  const characterMap = new Map<string, string>();
+  for (const char of characters) {
+    // Normalize name to uppercase for matching
+    characterMap.set(char.name.toUpperCase(), char.id);
+  }
+
   const lines: Array<{
     episode_id: string;
     scene_number: number;
+    character_asset_id: string | null;
     character_name: string;
     text: string;
     emotion: string | null;
@@ -66,9 +77,14 @@ function extractDialogueLines(
 
   for (const scene of screenplay.scenes) {
     for (const dialogue of scene.dialogue) {
+      // Normalize dialogue character name for lookup
+      const normalizedName = dialogue.character.toUpperCase();
+      const characterAssetId = characterMap.get(normalizedName) ?? null;
+
       lines.push({
         episode_id: episodeId,
         scene_number: scene.number,
+        character_asset_id: characterAssetId,
         character_name: dialogue.character,
         text: dialogue.text,
         emotion: dialogue.parenthetical ?? null,
@@ -201,8 +217,12 @@ export const convertToScreenplayAction = enhanceAction(
       'Screenplay conversion completed',
     );
 
-    // Extract and insert dialogue lines
-    const dialogueLines = extractDialogueLines(screenplay, data.episodeId);
+    // Extract and insert dialogue lines with character asset ID mapping
+    const dialogueLines = extractDialogueLines(
+      screenplay,
+      data.episodeId,
+      episodeContext.characters,
+    );
 
     if (dialogueLines.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
