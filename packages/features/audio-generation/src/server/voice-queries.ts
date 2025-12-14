@@ -132,14 +132,6 @@ export async function getVoiceSettings(
 }
 
 /**
- * Estimate voice generation cost in cents
- * Based on ElevenLabs pricing: $0.30 per 1000 characters
- */
-export function estimateVoiceCost(textLength: number): number {
-  return Math.ceil((textLength / 1000) * ELEVENLABS.COST_PER_1000_CHARS);
-}
-
-/**
  * Check if account has sufficient budget for generation
  * @returns true if generation can proceed, false if over budget
  */
