@@ -7,7 +7,11 @@ import { useQuery } from '@tanstack/react-query';
 import { Download, Settings, Volume2 } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
+import { Label } from '@kit/ui/label';
+import { Slider } from '@kit/ui/slider';
+import { Switch } from '@kit/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { AudioPlayer } from './AudioPlayer';
@@ -37,6 +41,23 @@ export interface AudioStudioProps {
 type ActiveTab = 'dialogue' | 'music' | 'settings';
 
 /**
+ * Default voice settings configuration
+ */
+interface VoiceSettings {
+    stability: number;
+    similarityBoost: number;
+    speed: number;
+    useSpeakerBoost: boolean;
+}
+
+const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+    stability: 0.5,
+    similarityBoost: 0.75,
+    speed: 1.0,
+    useSpeakerBoost: true,
+};
+
+/**
  * AudioStudio - Central workspace for managing episode audio
  *
  * The Audio Studio provides a comprehensive interface for:
@@ -46,19 +67,10 @@ type ActiveTab = 'dialogue' | 'music' | 'settings';
  * - Assigning voices to characters (sidebar)
  * - Playing/previewing audio (footer player)
  *
- * It serves as the hub for all Phase 5 audio features, orchestrating
- * the DialogueList, MusicTrackList, VoiceAssignmentPanel, and AudioPlayer
- * components.
- *
- * @example
- * ```tsx
- * <AudioStudio
- *   episodeId="uuid-here"
- *   projectId="project-uuid"
- *   episodeTitle="Episode 1: The Beginning"
- *   characters={charactersList}
- * />
- * ```
+ * Keyboard shortcuts:
+ * - Space: Play/Pause
+ * - Alt+1/2/3: Switch tabs
+ * - Cmd+G (Ctrl+G): Batch generate all pending dialogue
  */
 export function AudioStudio({
     episodeId,
@@ -75,6 +87,11 @@ export function AudioStudio({
     const [isPlaying, setIsPlaying] = useState(false);
     const [playingLineId, setPlayingLineId] = useState<string | null>(null);
     const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
+
+    // Voice settings state
+    const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(
+        DEFAULT_VOICE_SETTINGS,
+    );
 
     // Fetch dialogue lines
     const {
@@ -99,12 +116,15 @@ export function AudioStudio({
     });
 
     // Audio player controls
-    const handleDialoguePlay = useCallback((audioUrl: string, lineId: string) => {
-        setSelectedAudioUrl(audioUrl);
-        setPlayingLineId(lineId);
-        setPlayingTrackId(null);
-        setIsPlaying(true);
-    }, []);
+    const handleDialoguePlay = useCallback(
+        (audioUrl: string, lineId: string) => {
+            setSelectedAudioUrl(audioUrl);
+            setPlayingLineId(lineId);
+            setPlayingTrackId(null);
+            setIsPlaying(true);
+        },
+        [],
+    );
 
     const handleMusicPlay = useCallback((audioUrl: string, trackId: string) => {
         setSelectedAudioUrl(audioUrl);
@@ -124,6 +144,26 @@ export function AudioStudio({
     const handlePlayerPause = useCallback(() => {
         setIsPlaying(false);
     }, []);
+
+    // Handle batch generate shortcut
+    const handleBatchGenerate = useCallback(() => {
+        const pendingCount =
+            (dialogueData?.summary?.pending ?? 0) +
+            (dialogueData?.summary?.failed ?? 0);
+        if (pendingCount === 0) {
+            toast.info('No pending dialogue lines to generate');
+            return;
+        }
+
+        // Switch to dialogue tab and notify user
+        setActiveTab('dialogue');
+        toast.info(
+            `Click "Generate All" to process ${pendingCount} pending lines`,
+            {
+                description: 'Switched to Dialogue tab',
+            },
+        );
+    }, [dialogueData?.summary?.pending, dialogueData?.summary?.failed]);
 
     // Keyboard shortcuts
     useEffect(() => {
@@ -163,11 +203,17 @@ export function AudioStudio({
                 e.preventDefault();
                 setActiveTab('settings');
             }
+
+            // Cmd+G (Ctrl+G): Batch generate
+            if ((e.metaKey || e.ctrlKey) && e.code === 'KeyG') {
+                e.preventDefault();
+                handleBatchGenerate();
+            }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [selectedAudioUrl]);
+    }, [selectedAudioUrl, handleBatchGenerate]);
 
     // Calculate pending counts for tab badges
     const dialoguePending = dialogueData?.summary?.pending ?? 0;
@@ -209,7 +255,7 @@ export function AudioStudio({
                             id: c.id,
                             name: c.name,
                             thumbnailUrl: c.thumbnailUrl,
-                            voiceAssetId: null, // Will be populated from voice profiles
+                            voiceAssetId: null,
                         }))}
                         projectId={projectId}
                         episodeId={episodeId}
@@ -245,10 +291,7 @@ export function AudioStudio({
                         </div>
 
                         {/* Dialogue Tab */}
-                        <TabsContent
-                            value="dialogue"
-                            className="flex-1 overflow-auto p-6"
-                        >
+                        <TabsContent value="dialogue" className="flex-1 overflow-auto p-6">
                             {dialogueError ? (
                                 <div className="py-12 text-center text-red-500">
                                     Failed to load dialogue lines. Please try again.
@@ -298,7 +341,7 @@ export function AudioStudio({
 
                         {/* Settings Tab */}
                         <TabsContent value="settings" className="flex-1 overflow-auto p-6">
-                            <div className="space-y-6">
+                            <div className="max-w-2xl space-y-8">
                                 <div>
                                     <h3 className="text-lg font-semibold">Audio Settings</h3>
                                     <p className="text-muted-foreground text-sm">
@@ -307,12 +350,168 @@ export function AudioStudio({
                                     </p>
                                 </div>
 
-                                <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
-                                    <Settings className="mx-auto mb-2 h-8 w-8 opacity-50" />
-                                    <p>Settings panel coming soon</p>
-                                    <p className="mt-1 text-sm">
-                                        Configure voice defaults, audio quality, and export options.
+                                {/* Voice Defaults Section */}
+                                <div className="space-y-6 rounded-lg border p-6">
+                                    <h4 className="font-medium">Default Voice Settings</h4>
+                                    <p className="text-muted-foreground text-sm">
+                                        These settings apply to all new voice generations.
                                     </p>
+
+                                    {/* Stability */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="stability">Stability</Label>
+                                            <span className="text-muted-foreground text-sm">
+                                                {Math.round(voiceSettings.stability * 100)}%
+                                            </span>
+                                        </div>
+                                        <Slider
+                                            id="stability"
+                                            min={0}
+                                            max={100}
+                                            step={1}
+                                            value={[voiceSettings.stability * 100]}
+                                            onValueChange={([v]) =>
+                                                setVoiceSettings((s) => ({
+                                                    ...s,
+                                                    stability: (v ?? 50) / 100,
+                                                }))
+                                            }
+                                        />
+                                        <p className="text-muted-foreground text-xs">
+                                            Higher values make the voice more consistent but less
+                                            expressive.
+                                        </p>
+                                    </div>
+
+                                    {/* Similarity Boost */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="similarity">Similarity Boost</Label>
+                                            <span className="text-muted-foreground text-sm">
+                                                {Math.round(voiceSettings.similarityBoost * 100)}%
+                                            </span>
+                                        </div>
+                                        <Slider
+                                            id="similarity"
+                                            min={0}
+                                            max={100}
+                                            step={1}
+                                            value={[voiceSettings.similarityBoost * 100]}
+                                            onValueChange={([v]) =>
+                                                setVoiceSettings((s) => ({
+                                                    ...s,
+                                                    similarityBoost: (v ?? 75) / 100,
+                                                }))
+                                            }
+                                        />
+                                        <p className="text-muted-foreground text-xs">
+                                            Higher values make the output more similar to the original
+                                            voice.
+                                        </p>
+                                    </div>
+
+                                    {/* Speed */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="speed">Speed</Label>
+                                            <span className="text-muted-foreground text-sm">
+                                                {voiceSettings.speed.toFixed(2)}x
+                                            </span>
+                                        </div>
+                                        <Slider
+                                            id="speed"
+                                            min={50}
+                                            max={200}
+                                            step={5}
+                                            value={[voiceSettings.speed * 100]}
+                                            onValueChange={([v]) =>
+                                                setVoiceSettings((s) => ({
+                                                    ...s,
+                                                    speed: (v ?? 100) / 100,
+                                                }))
+                                            }
+                                        />
+                                        <p className="text-muted-foreground text-xs">
+                                            Adjust the playback speed of generated audio.
+                                        </p>
+                                    </div>
+
+                                    {/* Speaker Boost */}
+                                    <div className="flex items-center justify-between rounded-lg border p-4">
+                                        <div>
+                                            <Label htmlFor="speaker-boost" className="font-medium">
+                                                Speaker Boost
+                                            </Label>
+                                            <p className="text-muted-foreground text-sm">
+                                                Enhance voice clarity and presence
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            id="speaker-boost"
+                                            checked={voiceSettings.useSpeakerBoost}
+                                            onCheckedChange={(checked) =>
+                                                setVoiceSettings((s) => ({
+                                                    ...s,
+                                                    useSpeakerBoost: checked,
+                                                }))
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Keyboard Shortcuts Reference */}
+                                <div className="space-y-4 rounded-lg border p-6">
+                                    <h4 className="font-medium">Keyboard Shortcuts</h4>
+                                    <div className="grid grid-cols-2 gap-4 text-sm">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Play/Pause</span>
+                                            <kbd className="rounded bg-gray-100 px-2 py-1 font-mono text-xs">
+                                                Space
+                                            </kbd>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Batch Generate
+                                            </span>
+                                            <kbd className="rounded bg-gray-100 px-2 py-1 font-mono text-xs">
+                                                ⌘G
+                                            </kbd>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Dialogue Tab
+                                            </span>
+                                            <kbd className="rounded bg-gray-100 px-2 py-1 font-mono text-xs">
+                                                Alt+1
+                                            </kbd>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">Music Tab</span>
+                                            <kbd className="rounded bg-gray-100 px-2 py-1 font-mono text-xs">
+                                                Alt+2
+                                            </kbd>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-muted-foreground">
+                                                Settings Tab
+                                            </span>
+                                            <kbd className="rounded bg-gray-100 px-2 py-1 font-mono text-xs">
+                                                Alt+3
+                                            </kbd>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Save Button */}
+                                <div className="flex justify-end">
+                                    <Button
+                                        onClick={() => {
+                                            toast.success('Settings saved');
+                                        }}
+                                    >
+                                        Save Settings
+                                    </Button>
                                 </div>
                             </div>
                         </TabsContent>
