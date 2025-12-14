@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Settings, Volume2 } from 'lucide-react';
 
-import { listCharactersAction } from '@kit/assets/server';
+import { listCharactersAction } from '@kit/assets/character/server';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Slider } from '@kit/ui/slider';
