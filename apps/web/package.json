@@ -41,6 +41,7 @@
     "@kit/admin": "workspace:*",
     "@kit/analytics": "workspace:*",
     "@kit/assets": "workspace:*",
+    "@kit/audio-generation": "workspace:*",
     "@kit/audit-logs": "workspace:*",
     "@kit/auth": "workspace:*",
     "@kit/billing": "workspace:*",

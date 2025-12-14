@@ -6,6 +6,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
 import { BookOpen, Film, Lock, Music, Scissors, Share2 } from 'lucide-react';
 
+import { AudioStudio } from '@kit/audio-generation';
 import { StoryStudio } from '@kit/episodes/components';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { PublishHub } from '@kit/publishing/components';
@@ -249,10 +250,10 @@ export function WorkspaceTabs({
 
         <TabsContent value="audio" className="mt-0 focus-visible:outline-none">
           {tabUnlockState.audio ? (
-            <ComingSoonPlaceholder
-              title="Audio Studio"
-              description="Generate voice acting, sound effects, and background music for your episode."
-              phase={5}
+            <AudioStudio
+              episodeId={episode.id}
+              projectId={projectId}
+              episodeTitle={episode.title}
             />
           ) : (
             <LockedTabContent tabId="audio" />
