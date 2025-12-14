@@ -38,8 +38,8 @@ import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
 import { generateMusicAction } from '../server/actions';
-import type { AudioTrack, AudioTrackStatus } from '../server/audio-track-queries';
 import { deleteAudioTrackAction } from '../server/audio-track-queries';
+import type { AudioTrack, AudioTrackStatus } from '../lib/schemas/audio-track.schema';
 
 /**
  * Props for the MusicTrackList component
