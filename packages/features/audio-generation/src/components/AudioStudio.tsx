@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, Settings, Volume2 } from 'lucide-react';
 
-import { listCharactersAction } from '@kit/assets/character/server';
 import { Button } from '@kit/ui/button';
 import { Label } from '@kit/ui/label';
 import { Slider } from '@kit/ui/slider';
@@ -21,7 +20,7 @@ import { MusicTrackList } from './MusicTrackList';
 import { VoiceAssignmentPanel } from './VoiceAssignment';
 import type { VoiceAssignmentCharacter } from './VoiceAssignment';
 import { getAudioTracksAction } from '../server/audio-track-queries';
-import { getDialogueLinesAction } from '../server/dialogue-queries';
+import { getDialogueLinesAction, getCharactersForEpisodeAction } from '../server/dialogue-queries';
 import type { CharacterAsset } from '../lib/types/dialogue.types';
 
 /**
@@ -117,23 +116,23 @@ export function AudioStudio({
         refetchInterval: 10000, // Poll every 10 seconds for music generation
     });
 
-    // Fetch characters for voice assignment
-    const { data: charactersData } = useQuery({
-        queryKey: ['characters', projectId],
-        queryFn: () => listCharactersAction({ projectId, limit: 100, offset: 0 }),
+    // Fetch episode characters (characters that have dialogue lines)
+    const { data: episodeCharacters } = useQuery({
+        queryKey: ['episode-characters', episodeId],
+        queryFn: () => getCharactersForEpisodeAction({ episodeId }),
         staleTime: 60000, // Cache for 1 minute
     });
 
     // Transform characters for VoiceAssignmentPanel
     const voiceAssignmentCharacters: VoiceAssignmentCharacter[] = useMemo(() => {
-        if (!charactersData?.data?.characters) return [];
-        return charactersData.data.characters.map((char) => ({
+        if (!episodeCharacters) return [];
+        return episodeCharacters.map((char) => ({
             id: char.id,
             name: char.name,
             thumbnailUrl: char.thumbnailUrl,
-            voiceAssetId: char.voiceAssetId,
+            voiceAssetId: null, // Will be populated if voice profile exists
         }));
-    }, [charactersData]);
+    }, [episodeCharacters]);
 
     // Audio player controls
     const handleDialoguePlay = useCallback(
@@ -322,7 +321,7 @@ export function AudioStudio({
                                 <DialogueList
                                     episodeId={episodeId}
                                     dialogueLines={dialogueData?.lines ?? []}
-                                    characters={characters}
+                                    characters={episodeCharacters ?? []}
                                     onPlay={handleDialoguePlay}
                                     onPause={handlePause}
                                     playingLineId={playingLineId}
