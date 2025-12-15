@@ -2,15 +2,13 @@
 
 /**
  * RecentEpisodes Component - Jump Back In Widget
- *
- * Table rows with 16:9 widescreen thumbnails, status badges, and proper borders.
- * Uses real Unsplash placeholders for high-fidelity look.
+ * Matches Google Stitch ActiveState-Overview design
  */
 
 import Link from 'next/link';
 
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowRight, Clapperboard, Film, Sparkles } from 'lucide-react';
+import { ArrowRight, Clapperboard, Film, Play, Sparkles } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader } from '@kit/ui/card';
@@ -23,6 +21,7 @@ interface Episode {
     updated_at: string;
     stage?: 'draft' | 'story' | 'screenplay' | 'shots' | 'visual' | 'audio' | 'complete';
     thumbnailUrl?: string;
+    seasonNumber?: number;
 }
 
 interface RecentEpisodesProps {
@@ -30,26 +29,32 @@ interface RecentEpisodesProps {
     baseUrl: string;
 }
 
-// Default Unsplash thumbnail for cinematic look (16:9 aspect)
-const DEFAULT_THUMBNAIL = 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=400&auto=format&fit=crop';
+// Gradient backgrounds for episodes without thumbnails
+const GRADIENTS = [
+    'from-indigo-400 to-purple-600',
+    'from-blue-400 to-cyan-500',
+    'from-pink-400 to-rose-500',
+    'from-emerald-400 to-teal-500',
+    'from-amber-400 to-orange-500',
+];
 
-// Status badge config
-const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-    draft: { label: 'Draft', className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-    story: { label: 'Story', className: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
-    screenplay: { label: 'Screenplay', className: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
-    shots: { label: 'Shot List', className: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
-    visual: { label: 'Rendering', className: 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20' },
-    audio: { label: 'Audio', className: 'bg-pink-500/10 text-pink-500 border-pink-500/20' },
-    complete: { label: 'Complete', className: 'bg-green-500/10 text-green-500 border-green-500/20' },
+// Status badge config with progress percentages
+const STATUS_CONFIG: Record<string, { label: string; className: string; color: string; progress: number }> = {
+    draft: { label: 'Draft', className: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800', color: 'bg-amber-400', progress: 15 },
+    story: { label: 'Story', className: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800', color: 'bg-amber-400', progress: 33 },
+    screenplay: { label: 'Screenplay', className: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 border border-purple-200 dark:border-purple-800', color: 'bg-purple-500', progress: 50 },
+    shots: { label: 'Shot List', className: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800', color: 'bg-blue-500', progress: 66 },
+    visual: { label: 'Review', className: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800', color: 'bg-indigo-500', progress: 75 },
+    audio: { label: 'Audio', className: 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-400 border border-pink-200 dark:border-pink-800', color: 'bg-pink-500', progress: 90 },
+    complete: { label: 'Complete', className: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800', color: 'bg-green-500', progress: 100 },
 };
 
 export function RecentEpisodes({ episodes, baseUrl }: RecentEpisodesProps) {
     // Empty state
     if (episodes.length === 0) {
         return (
-            <Card className="bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-white/5 shadow-sm">
-                <CardHeader className="pb-3">
+            <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm rounded-2xl">
+                <CardHeader className="pb-3 border-b border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-2">
                         <Clapperboard className="h-4 w-4 text-indigo-500" />
                         <span className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Jump Back In</span>
@@ -67,7 +72,7 @@ export function RecentEpisodes({ episodes, baseUrl }: RecentEpisodesProps) {
                         <p className="text-sm text-zinc-500 mb-4 max-w-xs">
                             Start your creative journey.
                         </p>
-                        <Button asChild className="bg-white text-zinc-900 hover:bg-zinc-200 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200">
+                        <Button asChild className="bg-zinc-900 hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100">
                             <Link href={`${baseUrl}/episodes`}>
                                 <Sparkles className="mr-2 h-4 w-4" />
                                 Create Episode
@@ -80,71 +85,84 @@ export function RecentEpisodes({ episodes, baseUrl }: RecentEpisodesProps) {
     }
 
     return (
-        <Card className="bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-white/5 shadow-sm">
-            <CardHeader className="pb-3">
+        <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm rounded-2xl">
+            <CardHeader className="pb-3 border-b border-zinc-200 dark:border-zinc-800">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <Clapperboard className="h-4 w-4 text-indigo-500" />
-                        <span className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Jump Back In</span>
+                        <span className="text-lg font-semibold text-zinc-900 dark:text-white">Jump Back In</span>
                     </div>
-                    <Button variant="ghost" size="sm" asChild className="text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
+                    <Button variant="ghost" size="sm" asChild className="text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium">
                         <Link href={`${baseUrl}/episodes`}>
                             View All
-                            <ArrowRight className="ml-1 h-3 w-3" />
+                            <ArrowRight className="ml-1 h-4 w-4" />
                         </Link>
                     </Button>
                 </div>
             </CardHeader>
-            <CardContent className="p-0">
-                {/* Table Rows */}
-                <div>
+            <CardContent className="p-2">
+                <div className="space-y-1">
                     {episodes.map((episode, index) => {
                         const stage = episode.stage ?? 'draft';
                         const statusConfig = STATUS_CONFIG[stage] ?? STATUS_CONFIG.draft!;
-                        const thumbnail = episode.thumbnailUrl || DEFAULT_THUMBNAIL;
+                        const gradient = GRADIENTS[index % GRADIENTS.length];
 
                         return (
                             <Link
                                 key={episode.id}
                                 href={`${baseUrl}/episodes/${episode.id}`}
-                                className={cn(
-                                    'flex items-center gap-4 p-3 transition',
-                                    'border-b border-zinc-100 dark:border-zinc-800/50',
-                                    'hover:bg-zinc-50 dark:hover:bg-white/5',
-                                    index === episodes.length - 1 && 'border-b-0'
-                                )}
+                                className="group flex items-center gap-4 p-3 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
                             >
-                                {/* Thumbnail - 16:9 widescreen (CRITICAL) */}
-                                <div className="w-24 aspect-video rounded bg-zinc-800 overflow-hidden border border-zinc-700 shrink-0">
-                                    <img
-                                        src={thumbnail}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                    />
+                                {/* Thumbnail with gradient and play overlay */}
+                                <div className={cn(
+                                    `w-24 h-16 rounded-lg bg-gradient-to-br ${gradient} flex-shrink-0 relative overflow-hidden shadow-sm`
+                                )}>
+                                    {episode.thumbnailUrl ? (
+                                        <img
+                                            src={episode.thumbnailUrl}
+                                            alt=""
+                                            className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                                        />
+                                    ) : (
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Film className="w-6 h-6 text-white/60" />
+                                        </div>
+                                    )}
+                                    {/* Play overlay on hover */}
+                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
+                                        <Play className="w-6 h-6 text-white fill-white drop-shadow-md" />
+                                    </div>
                                 </div>
 
                                 {/* Content */}
                                 <div className="flex-1 min-w-0">
-                                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
-                                        {episode.title || `Episode ${episode.number}`}
+                                    <div className="flex justify-between items-start mb-0.5">
+                                        <h3 className="font-semibold text-zinc-900 dark:text-white truncate">
+                                            {episode.title || `Episode ${episode.number}`}
+                                        </h3>
+                                        <span className="text-xs text-zinc-400 whitespace-nowrap ml-2">
+                                            {formatDistanceToNow(new Date(episode.updated_at), { addSuffix: false })}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                                        EP{String(episode.number).padStart(2, '0')} {episode.seasonNumber ? `• Season ${episode.seasonNumber}` : ''}
                                     </p>
-                                    <p className="text-xs text-zinc-500">
-                                        EP{String(episode.number).padStart(2, '0')}
-                                    </p>
+                                    {/* Status badge and progress bar */}
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            'text-[10px] font-bold uppercase px-2 py-0.5 rounded-full',
+                                            statusConfig.className
+                                        )}>
+                                            {statusConfig.label}
+                                        </span>
+                                        <div className="h-1 flex-1 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden max-w-[100px]">
+                                            <div
+                                                className={cn('h-full rounded-full transition-all', statusConfig.color)}
+                                                style={{ width: `${statusConfig.progress}%` }}
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
-
-                                {/* Status Badge */}
-                                <span className={cn(
-                                    'px-2 py-0.5 text-[10px] font-bold border rounded-full shrink-0',
-                                    statusConfig.className
-                                )}>
-                                    {statusConfig.label}
-                                </span>
-
-                                {/* Time */}
-                                <span className="text-xs text-zinc-400 shrink-0 w-20 text-right">
-                                    {formatDistanceToNow(new Date(episode.updated_at), { addSuffix: false })}
-                                </span>
                             </Link>
                         );
                     })}

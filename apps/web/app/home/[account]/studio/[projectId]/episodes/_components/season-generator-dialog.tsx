@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowRight, Check, Loader2, Plus, Users, MapPin } from 'lucide-react';
+import { ArrowRight, Check, Loader2, Plus, Sparkles, Users, MapPin } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { toast } from '@kit/ui/sonner';
 
@@ -36,6 +36,7 @@ import { ScrollArea } from '@kit/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { Separator } from '@kit/ui/separator';
 import { Textarea } from '@kit/ui/textarea';
+import { cn } from '@kit/ui/utils';
 
 interface SeasonGeneratorDialogProps {
     projectId: string;
@@ -186,40 +187,91 @@ export function SeasonGeneratorDialog({ projectId }: SeasonGeneratorDialogProps)
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800">
                     <Plus className="mr-2 h-4 w-4" />
                     Generate Season
                 </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[800px] h-[80vh] flex flex-col">
-                <DialogHeader>
-                    <DialogTitle>Generate Season</DialogTitle>
-                    <DialogDescription>
-                        {step === 'input' && "Analyze your roadmap to extract episodes and characters."}
-                        {step === 'analysis' && "Review extracted details and map characters."}
+            <DialogContent className="sm:max-w-[900px] h-[85vh] flex flex-col bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800">
+                {/* Step Indicator */}
+                <div className="absolute top-4 right-12 flex items-center gap-2">
+                    <div className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                        step === 'input'
+                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                    )}>
+                        <span className="w-5 h-5 rounded-full bg-purple-500 text-white flex items-center justify-center text-xs font-bold">1</span>
+                        Premise
+                    </div>
+                    <div className="w-4 h-0.5 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className={cn(
+                        "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
+                        step === 'analysis'
+                            ? "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500"
+                    )}>
+                        <span className={cn(
+                            "w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold",
+                            step === 'analysis' ? "bg-purple-500 text-white" : "bg-zinc-300 dark:bg-zinc-600 text-zinc-500"
+                        )}>2</span>
+                        Assets
+                    </div>
+                    <div className="w-4 h-0.5 bg-zinc-200 dark:bg-zinc-700" />
+                    <div className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-500">
+                        <span className="w-5 h-5 rounded-full bg-zinc-300 dark:bg-zinc-600 text-zinc-500 flex items-center justify-center text-xs font-bold">3</span>
+                        Generate
+                    </div>
+                </div>
+
+                <DialogHeader className="pb-4 border-b border-zinc-200 dark:border-zinc-800">
+                    <DialogTitle className="text-2xl font-bold text-zinc-900 dark:text-white flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                            <Sparkles className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        Generate Season
+                    </DialogTitle>
+                    <DialogDescription className="text-zinc-500 dark:text-zinc-400">
+                        {step === 'input' && "Paste your roadmap or series bible to analyze and extract episodes and characters."}
+                        {step === 'analysis' && "Review extracted details and map characters to existing or new assets."}
                         {step === 'generating' && "Generating assets and episodes..."}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-y-auto px-1 py-4">
+                <div className="flex-1 overflow-y-auto px-1 py-6">
                     {step === 'input' && (
                         <Form {...form}>
-                            <form id="analyze-form" onSubmit={form.handleSubmit(handleAnalyze)} className="space-y-4">
+                            <form id="analyze-form" onSubmit={form.handleSubmit(handleAnalyze)} className="space-y-6">
                                 <FormField
                                     control={form.control}
                                     name="roadmap"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Production Roadmap / Series Bible</FormLabel>
+                                            <div className="flex items-center justify-between mb-3">
+                                                <FormLabel className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
+                                                    <Sparkles className="w-4 h-4 text-purple-500" />
+                                                    Production Roadmap / Series Bible
+                                                </FormLabel>
+                                                <span className="text-xs font-medium text-zinc-500 bg-zinc-100 dark:bg-zinc-800 px-2 py-1 rounded">
+                                                    Markdown Supported
+                                                </span>
+                                            </div>
                                             <FormControl>
                                                 <Textarea
-                                                    placeholder="Paste your roadmap here..."
-                                                    className="min-h-[300px] font-mono text-sm"
+                                                    placeholder="# Detective Dante & Cece
+## Season 1 Production Roadmap
+---
+## 📋 Series Overview
+**Title:** Detective Dante & Cece
+**Format:** Animated children's series
+**Target Age:** 3+ years
+..."
+                                                    className="min-h-[350px] font-mono text-sm bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-none"
                                                     {...field}
                                                 />
                                             </FormControl>
-                                            <FormDescription>
-                                                Include episode summaries, character arcs, and key plot points.
+                                            <FormDescription className="text-zinc-500">
+                                                Include episode summaries, character arcs, and key plot points for best results.
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>

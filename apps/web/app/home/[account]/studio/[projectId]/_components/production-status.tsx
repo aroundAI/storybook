@@ -1,18 +1,16 @@
 'use client';
 
 /**
- * ProductionStatus Component - Production Health Widget
- *
- * "Meter" style thin progress bars (h-1.5) for a technical look.
- * Uses Zinc-900 cards with white/5 borders in dark mode.
+ * ProductionStatus Component - Health Widget with Donut Chart
+ * Matches Google Stitch ActiveState-Overview design
  */
 
 import Link from 'next/link';
 
-import { ArrowRight, FileText, Film, Sparkles } from 'lucide-react';
+import { Film, Heart, MoreHorizontal, Sparkles } from 'lucide-react';
 
+import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader } from '@kit/ui/card';
-import { cn } from '@kit/ui/utils';
 
 interface ProductionStatusProps {
     scriptsComplete: number;
@@ -22,38 +20,6 @@ interface ProductionStatusProps {
     baseUrl: string;
 }
 
-interface MeterRowProps {
-    label: string;
-    value: number;
-    total: number;
-    icon: React.ComponentType<{ className?: string }>;
-    fillColor: string;
-    iconColor: string;
-}
-
-function MeterRow({ label, value, total, icon: Icon, fillColor, iconColor }: MeterRowProps) {
-    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-
-    return (
-        <div className="space-y-2">
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Icon className={cn('h-4 w-4', iconColor)} />
-                    <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
-                </div>
-                <span className="text-sm font-bold text-zinc-900 dark:text-white">{percentage}%</span>
-            </div>
-            {/* Meter style - thin bar */}
-            <div className="w-full h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full">
-                <div
-                    className={cn('h-full rounded-full transition-all duration-500', fillColor)}
-                    style={{ width: `${percentage}%` }}
-                />
-            </div>
-        </div>
-    );
-}
-
 export function ProductionStatus({
     scriptsComplete,
     storyboardsComplete,
@@ -61,27 +27,46 @@ export function ProductionStatus({
     totalEpisodes,
     baseUrl,
 }: ProductionStatusProps) {
-    // Calculate overall progress
+    // Calculate percentages
+    const scriptPercent = totalEpisodes > 0 ? Math.round((scriptsComplete / totalEpisodes) * 100) : 0;
+    const storyboardPercent = totalEpisodes > 0 ? Math.round((storyboardsComplete / totalEpisodes) * 100) : 0;
+    const visualPercent = totalEpisodes > 0 ? Math.round((visualsComplete / totalEpisodes) * 100) : 0;
+
+    // Overall progress
     const totalComplete = scriptsComplete + storyboardsComplete + visualsComplete;
     const maxProgress = totalEpisodes * 3;
-    const overallPercentage = maxProgress > 0
-        ? Math.round((totalComplete / maxProgress) * 100)
-        : 0;
+    const overallPercentage = maxProgress > 0 ? Math.round((totalComplete / maxProgress) * 100) : 0;
+
+    // SVG donut chart calculations
+    const radius = 70;
+    const circumference = 2 * Math.PI * radius;
+
+    // Calculate segment lengths based on percentages of total
+    const scriptDash = (scriptPercent / 100) * circumference * 0.3; // Scale to fit
+    const storyboardDash = (storyboardPercent / 100) * circumference * 0.3;
+    const visualDash = (visualPercent / 100) * circumference * 0.3;
 
     // Empty state
     if (totalEpisodes === 0) {
         return (
-            <Card className="bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-white/5 shadow-sm">
-                <CardHeader className="pb-3">
+            <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm rounded-2xl">
+                <CardHeader className="pb-3 border-b border-zinc-200 dark:border-zinc-800">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-indigo-500" />
-                        <span className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Production Health</span>
+                        <Heart className="h-4 w-4 text-emerald-500" />
+                        <span className="text-sm font-semibold text-zinc-900 dark:text-white">Health</span>
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
                         <Film className="h-8 w-8 text-zinc-400 mb-3" />
                         <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">No episodes yet</p>
+                        <p className="text-xs text-zinc-500 mb-4">Create your first episode to track progress</p>
+                        <Button asChild size="sm" variant="outline">
+                            <Link href={`${baseUrl}/episodes`}>
+                                <Sparkles className="mr-2 h-3 w-3" />
+                                Get Started
+                            </Link>
+                        </Button>
                     </div>
                 </CardContent>
             </Card>
@@ -89,58 +74,113 @@ export function ProductionStatus({
     }
 
     return (
-        <Card className="bg-white dark:bg-[#18181B] border border-zinc-200 dark:border-white/5 shadow-sm">
-            <CardHeader className="pb-3">
+        <Card className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-sm h-full rounded-2xl">
+            <CardHeader className="pb-0 border-b border-zinc-200 dark:border-zinc-800 p-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-indigo-500" />
-                        <span className="text-sm font-semibold text-zinc-900 dark:text-white tracking-tight">Production Health</span>
+                        <Heart className="h-4 w-4 text-emerald-500" />
+                        <span className="text-lg font-semibold text-zinc-900 dark:text-white">Health</span>
                     </div>
-                    <div className="text-right">
-                        <span className="text-2xl font-bold text-indigo-500">{overallPercentage}%</span>
-                        <p className="text-[10px] uppercase text-zinc-500 font-bold tracking-wider">Overall</p>
-                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200">
+                        <MoreHorizontal className="h-4 w-4" />
+                    </Button>
                 </div>
             </CardHeader>
-            <CardContent className="space-y-4">
-                {/* Scripting - Amber */}
-                <MeterRow
-                    label="Scripting"
-                    value={scriptsComplete}
-                    total={totalEpisodes}
-                    icon={FileText}
-                    fillColor="bg-amber-500"
-                    iconColor="text-amber-500"
-                />
+            <CardContent className="p-4">
+                {/* Donut Chart */}
+                <div className="flex flex-col items-center justify-center mb-6">
+                    <div className="relative w-40 h-40">
+                        <svg className="w-full h-full transform -rotate-90">
+                            {/* Background circle */}
+                            <circle
+                                className="stroke-zinc-100 dark:stroke-zinc-800"
+                                cx="50%"
+                                cy="50%"
+                                r={radius}
+                                fill="transparent"
+                                strokeWidth="12"
+                            />
+                            {/* Scripting segment - Amber */}
+                            <circle
+                                className="stroke-amber-400"
+                                cx="50%"
+                                cy="50%"
+                                r={radius}
+                                fill="transparent"
+                                strokeWidth="12"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={circumference - scriptDash}
+                            />
+                            {/* Storyboards segment - Purple */}
+                            <circle
+                                className="stroke-purple-500"
+                                cx="50%"
+                                cy="50%"
+                                r={radius}
+                                fill="transparent"
+                                strokeWidth="12"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={circumference - storyboardDash}
+                                style={{
+                                    transform: `rotate(${(scriptDash / circumference) * 360}deg)`,
+                                    transformOrigin: '50% 50%'
+                                }}
+                            />
+                            {/* Animation segment - Indigo */}
+                            <circle
+                                className="stroke-indigo-500"
+                                cx="50%"
+                                cy="50%"
+                                r={radius}
+                                fill="transparent"
+                                strokeWidth="12"
+                                strokeLinecap="round"
+                                strokeDasharray={circumference}
+                                strokeDashoffset={circumference - visualDash}
+                                style={{
+                                    transform: `rotate(${((scriptDash + storyboardDash) / circumference) * 360}deg)`,
+                                    transformOrigin: '50% 50%'
+                                }}
+                            />
+                        </svg>
+                        {/* Center text */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <span className="text-3xl font-bold text-zinc-900 dark:text-white">
+                                {overallPercentage}%
+                            </span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                                Complete
+                            </span>
+                        </div>
+                    </div>
+                </div>
 
-                {/* Storyboards - Purple */}
-                <MeterRow
-                    label="Storyboards"
-                    value={storyboardsComplete}
-                    total={totalEpisodes}
-                    icon={Film}
-                    fillColor="bg-purple-500"
-                    iconColor="text-purple-500"
-                />
-
-                {/* Animation - Indigo */}
-                <MeterRow
-                    label="Animation"
-                    value={visualsComplete}
-                    total={totalEpisodes}
-                    icon={Sparkles}
-                    fillColor="bg-indigo-500"
-                    iconColor="text-indigo-500"
-                />
-
-                {/* Link */}
-                <Link
-                    href={`${baseUrl}/episodes`}
-                    className="flex items-center justify-center gap-1 text-xs text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors pt-3 border-t border-zinc-100 dark:border-white/5"
-                >
-                    View All Episodes
-                    <ArrowRight className="h-3 w-3" />
-                </Link>
+                {/* Legend */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                            <span className="text-zinc-600 dark:text-zinc-300">Scripting</span>
+                        </div>
+                        <span className="font-semibold text-zinc-900 dark:text-white">{scriptPercent}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+                            <span className="text-zinc-600 dark:text-zinc-300">Storyboards</span>
+                        </div>
+                        <span className="font-semibold text-zinc-900 dark:text-white">{storyboardPercent}%</span>
+                    </div>
+                    <div className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                            <span className="text-zinc-600 dark:text-zinc-300">Animation</span>
+                        </div>
+                        <span className="font-semibold text-zinc-900 dark:text-white">{visualPercent}%</span>
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );

@@ -1,15 +1,16 @@
 {
   "routes": {
     "application": "Studio",
+    "production": "PRODUCTION",
     "overview": "Overview",
     "episodes": "Episodes",
-    "assets": "Assets",
+    "assets": "ASSETS",
     "characters": "Characters",
     "locations": "Locations",
     "voices": "Voices",
     "analytics": "Analytics",
     "settings": "Settings",
-    "allProjects": "All Projects"
+    "allProjects": "Studio"
   },
   "sidebar": {
     "backToProjects": "Back to Projects",

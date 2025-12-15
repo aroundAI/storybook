@@ -1,10 +1,6 @@
 'use client';
 
-import { Eye, Sparkles, TrendingUp } from 'lucide-react';
-
-import { Badge } from '@kit/ui/badge';
-import { Button } from '@kit/ui/button';
-import { Progress } from '@kit/ui/progress';
+import { Sparkles } from 'lucide-react';
 
 interface SeasonAnalyticsSummary {
     totalViews: number;
@@ -21,123 +17,56 @@ interface SeasonHeaderProps {
     onGenerateSeason?: () => void;
 }
 
-// Format large numbers
-function formatNumber(num: number): string {
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-}
-
 export function SeasonHeader({
     seasonNumber,
     seasonName,
     totalEpisodes,
     completedEpisodes,
-    inProgressEpisodes,
-    analytics,
-    onGenerateSeason,
 }: SeasonHeaderProps) {
-    const progressPercent = totalEpisodes > 0 ? (completedEpisodes / totalEpisodes) * 100 : 0;
-    const hasIncompleteEpisodes = completedEpisodes < totalEpisodes;
-    const hasAnalytics = analytics && analytics.totalViews > 0;
+    const progressPercent = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
 
     return (
-        <div className="relative overflow-hidden rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-background p-8">
-            {/* Subtle pattern background */}
-            <div
-                className="absolute inset-0 opacity-[0.02]"
-                style={{
-                    backgroundImage: `radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)`,
-                    backgroundSize: '40px 40px',
-                }}
-            />
-
-            <div className="relative flex items-start justify-between gap-6">
-                {/* Left: Season Info */}
-                <div className="flex-1 space-y-4">
-                    {/* Season Title */}
+        <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+            {/* Header section with indigo tint */}
+            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 border-b border-indigo-100 dark:border-indigo-800/30">
+                <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border-2 border-indigo-500/30 bg-indigo-500/10">
-                            <Sparkles className="h-8 w-8 text-indigo-500" />
+                        {/* Icon */}
+                        <div className="w-12 h-12 rounded-lg bg-indigo-100 dark:bg-indigo-800 flex items-center justify-center text-indigo-600 dark:text-indigo-300">
+                            <Sparkles className="w-6 h-6" />
                         </div>
                         <div>
-                            <h2 className="text-4xl font-bold tracking-tight">
+                            <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-baseline gap-2">
                                 Season {seasonNumber}
                                 {seasonName && (
-                                    <span className="text-muted-foreground ml-2 text-2xl font-normal">
+                                    <span className="text-base font-normal text-zinc-500 dark:text-zinc-400">
                                         {seasonName}
                                     </span>
                                 )}
                             </h2>
-                            <div className="mt-2 flex items-center gap-3 text-sm">
-                                <span className="text-muted-foreground font-medium">
-                                    {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
-                                </span>
-                                <span className="text-muted-foreground">•</span>
-                                {completedEpisodes > 0 && (
-                                    <>
-                                        <Badge variant="secondary" className="bg-green-500/10 text-green-700 dark:bg-green-500/20 dark:text-green-300">
-                                            {completedEpisodes} Complete
-                                        </Badge>
-                                    </>
-                                )}
-                                {inProgressEpisodes > 0 && (
-                                    <Badge variant="secondary" className="bg-amber-500/10 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
-                                        {inProgressEpisodes} In Progress
-                                    </Badge>
-                                )}
+                            <div className="text-sm text-zinc-500 dark:text-zinc-400">
+                                {totalEpisodes} {totalEpisodes === 1 ? 'episode' : 'episodes'}
                             </div>
                         </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground font-medium">Season Progress</span>
-                            <span className="text-foreground font-semibold">{Math.round(progressPercent)}%</span>
-                        </div>
-                        <Progress value={progressPercent} className="h-2" />
+                    {/* Completion percentage */}
+                    <div className="text-right">
+                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                            {progressPercent}%
+                        </span>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide font-semibold">
+                            Complete
+                        </span>
                     </div>
                 </div>
 
-                {/* Right: Analytics Summary + Action */}
-                <div className="flex flex-col items-end gap-4">
-                    {/* Analytics Summary */}
-                    {hasAnalytics && (
-                        <div className="flex items-center gap-6 rounded-lg border border-border/50 bg-background/50 px-4 py-3">
-                            <div className="flex items-center gap-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                                    <Eye className="h-4 w-4 text-blue-500" />
-                                </div>
-                                <div>
-                                    <p className="text-lg font-bold">{formatNumber(analytics.totalViews)}</p>
-                                    <p className="text-xs text-muted-foreground">Views</p>
-                                </div>
-                            </div>
-                            <div className="h-8 w-px bg-border" />
-                            <div className="flex items-center gap-2">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-green-500/10">
-                                    <TrendingUp className="h-4 w-4 text-green-500" />
-                                </div>
-                                <div>
-                                    <p className="text-lg font-bold">{analytics.avgEngagementRate.toFixed(1)}%</p>
-                                    <p className="text-xs text-muted-foreground">Engagement</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Action Button */}
-                    {hasIncompleteEpisodes && onGenerateSeason && (
-                        <Button
-                            onClick={onGenerateSeason}
-                            size="lg"
-                            className="shrink-0 gap-2 bg-indigo-600 hover:bg-indigo-700"
-                        >
-                            <Sparkles className="h-4 w-4" />
-                            Generate Remaining Episodes
-                        </Button>
-                    )}
+                {/* Progress bar */}
+                <div className="w-full bg-indigo-200 dark:bg-indigo-900 rounded-full h-2 overflow-hidden">
+                    <div
+                        className="bg-indigo-500 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${progressPercent}%` }}
+                    />
                 </div>
             </div>
         </div>
