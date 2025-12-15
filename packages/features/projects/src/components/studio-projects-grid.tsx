@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Plus, Search } from 'lucide-react';
-import { formatDistanceToNow, isToday, isThisMonth, startOfMonth, isAfter } from 'date-fns';
+import { isToday, isThisMonth, startOfMonth, isAfter } from 'date-fns';
 
 import { Input } from '@kit/ui/input';
 import { cn } from '@kit/ui/utils';

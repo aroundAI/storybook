@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Film, Grid, List, Plus, Sparkles } from 'lucide-react';
+import { Film, Grid, List, Sparkles } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Trans } from '@kit/ui/trans';

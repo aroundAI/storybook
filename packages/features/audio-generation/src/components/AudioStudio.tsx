@@ -77,7 +77,7 @@ export function AudioStudio({
     episodeId,
     projectId,
     episodeTitle = 'Untitled Episode',
-    characters = [],
+    characters: _characters = [],
     className,
 }: AudioStudioProps) {
     // Tab state

@@ -1,5 +1,3 @@
-import { Trans } from '@kit/ui/trans';
-
 import { getAccountProjects } from '../lib/server/project.queries';
 import { ProjectsListClient } from './projects-list-client';
 

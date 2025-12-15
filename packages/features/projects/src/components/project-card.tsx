@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Film, Users, MapPin, Clock } from 'lucide-react';
+import { ArrowRight, Film, Users, MapPin } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import {

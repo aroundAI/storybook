@@ -2,7 +2,7 @@
 
 import 'server-only';
 
-import { DEFAULT_VOICE_SETTINGS, ELEVENLABS } from '../lib/constants';
+import { DEFAULT_VOICE_SETTINGS, ELEVENLABS as _ELEVENLABS } from '../lib/constants';
 import type { VoiceSettings } from '../lib/types';
 
 // Note: These queries use type assertions because the film studio tables
