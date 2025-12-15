@@ -190,41 +190,28 @@ export function StudioSidebar({
 
             <DropdownMenuSeparator />
 
-            {/* Current Project */}
-            <DropdownMenuItem className="flex items-center justify-between" disabled>
-              <span className="truncate font-medium">
-                {project.name}
-              </span>
-              <Check className="h-4 w-4 text-primary" />
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-
-            {/* All Projects */}
-            {filteredProjects.length > 0 ? (
-              <>
-                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                  All Projects
+            {/* All Projects List */}
+            <div className="max-h-[300px] overflow-y-auto">
+              {filteredProjects.length > 0 ? (
+                filteredProjects.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={() => p.id !== project.id && navigateToProject(p.id)}
+                    className={p.id === project.id ? 'bg-muted' : 'cursor-pointer'}
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <span className="truncate flex-1">{p.name}</span>
+                    {p.id === project.id && (
+                      <Check className="h-4 w-4 text-primary ml-2" />
+                    )}
+                  </DropdownMenuItem>
+                ))
+              ) : (
+                <div className="px-2 py-4 text-center text-sm text-muted-foreground">
+                  {search ? 'No projects found' : 'No projects'}
                 </div>
-                {filteredProjects
-                  .filter((p) => p.id !== project.id)
-                  .slice(0, 10)
-                  .map((p) => (
-                    <DropdownMenuItem
-                      key={p.id}
-                      onClick={() => navigateToProject(p.id)}
-                      className="cursor-pointer"
-                    >
-                      <FolderOpen className="mr-2 h-4 w-4 text-muted-foreground" />
-                      <span className="truncate">{p.name}</span>
-                    </DropdownMenuItem>
-                  ))}
-              </>
-            ) : search ? (
-              <div className="px-2 py-4 text-center text-sm text-muted-foreground">
-                No projects found
-              </div>
-            ) : null}
+              )}
+            </div>
 
             <DropdownMenuSeparator />
 

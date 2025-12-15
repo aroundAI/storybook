@@ -1,6 +1,6 @@
 'use client';
 
-import { Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronUp, Sparkles } from 'lucide-react';
 
 interface SeasonAnalyticsSummary {
     totalViews: number;
@@ -15,6 +15,8 @@ interface SeasonHeaderProps {
     inProgressEpisodes: number;
     analytics?: SeasonAnalyticsSummary | null;
     onGenerateSeason?: () => void;
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
 }
 
 export function SeasonHeader({
@@ -22,13 +24,19 @@ export function SeasonHeader({
     seasonName,
     totalEpisodes,
     completedEpisodes,
+    isCollapsed = false,
+    onToggleCollapse,
 }: SeasonHeaderProps) {
     const progressPercent = totalEpisodes > 0 ? Math.round((completedEpisodes / totalEpisodes) * 100) : 0;
 
     return (
         <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden">
-            {/* Header section with indigo tint */}
-            <div className="bg-indigo-50 dark:bg-indigo-900/20 p-6 border-b border-indigo-100 dark:border-indigo-800/30">
+            {/* Header section with indigo tint - clickable to toggle */}
+            <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="w-full bg-indigo-50 dark:bg-indigo-900/20 p-6 border-b border-indigo-100 dark:border-indigo-800/30 hover:bg-indigo-100/50 dark:hover:bg-indigo-900/30 transition-colors text-left cursor-pointer"
+            >
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                         {/* Icon */}
@@ -50,14 +58,25 @@ export function SeasonHeader({
                         </div>
                     </div>
 
-                    {/* Completion percentage */}
-                    <div className="text-right">
-                        <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                            {progressPercent}%
-                        </span>
-                        <span className="text-xs text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide font-semibold">
-                            Complete
-                        </span>
+                    <div className="flex items-center gap-4">
+                        {/* Completion percentage */}
+                        <div className="text-right">
+                            <span className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                                {progressPercent}%
+                            </span>
+                            <span className="text-xs text-zinc-500 dark:text-zinc-400 block uppercase tracking-wide font-semibold">
+                                Complete
+                            </span>
+                        </div>
+
+                        {/* Collapse/Expand toggle */}
+                        <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-800/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                            {isCollapsed ? (
+                                <ChevronDown className="w-5 h-5" />
+                            ) : (
+                                <ChevronUp className="w-5 h-5" />
+                            )}
+                        </div>
                     </div>
                 </div>
 
@@ -68,7 +87,7 @@ export function SeasonHeader({
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>
-            </div>
+            </button>
         </div>
     );
 }

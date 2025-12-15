@@ -18,6 +18,7 @@ import { PageBody, PageHeader } from '@kit/ui/page';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
+import { CollapsibleSeasonSection } from './_components/collapsible-season-section';
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { EpisodeListItem } from './_components/episode-list-item';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
@@ -167,43 +168,16 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             {hasSeasons ? (
               <>
                 {episodesBySeason.map(({ season, episodes: seasonEpisodes }) => (
-                  <div key={season.id}>
-                    <div className="mb-6">
-                      <SeasonHeader
-                        seasonNumber={season.number}
-                        seasonName={season.name ?? `Season ${season.number}`}
-                        totalEpisodes={seasonEpisodes.length}
-                        completedEpisodes={
-                          seasonEpisodes.filter(
-                            (ep) => ep.status === 'ready' || ep.status === 'published',
-                          ).length
-                        }
-                        inProgressEpisodes={
-                          seasonEpisodes.filter((ep) =>
-                            ['story', 'storyboard', 'generating', 'editing'].includes(
-                              ep.status,
-                            ),
-                          ).length
-                        }
-                        analytics={seasonAnalyticsMap[season.id] || null}
-                      />
-                    </div>
-                    {/* Timeline list */}
-                    <div className="p-6">
-                      <div className="space-y-0 relative">
-                        {seasonEpisodes.map((episode, index) => (
-                          <EpisodeListItem
-                            key={episode.id}
-                            episode={mapEpisode(episode)}
-                            account={account}
-                            projectId={projectId}
-                            isFirst={index === 0}
-                            isLast={index === seasonEpisodes.length - 1}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  <CollapsibleSeasonSection
+                    key={season.id}
+                    seasonId={season.id}
+                    seasonNumber={season.number}
+                    seasonName={season.name ?? `Season ${season.number}`}
+                    episodes={seasonEpisodes.map(mapEpisode)}
+                    account={account}
+                    projectId={projectId}
+                    analytics={seasonAnalyticsMap[season.id] || null}
+                  />
                 ))}
 
                 {/* Unassigned episodes (not in any season) */}
