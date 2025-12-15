@@ -55,10 +55,12 @@ export function generateBrandingStyles(): string {
 
 /**
  * Generate Google Fonts URL for dynamic font loading
+ * Includes branding fonts + cinema typography fonts
  */
 export function generateGoogleFontsLink(): string {
   const config = getBrandingConfig();
 
+  // Start with branding config fonts
   const fonts = [
     {
       name: config.typography.heading.font,
@@ -67,6 +69,19 @@ export function generateGoogleFontsLink(): string {
     {
       name: config.typography.body.font,
       weights: config.typography.body.weights,
+    },
+    // Cinema typography fonts
+    {
+      name: 'Courier Prime',
+      weights: [400, 700], // Regular and bold for screenplays
+    },
+    {
+      name: 'Merriweather',
+      weights: [400, 700], // Regular and bold for reading mode
+    },
+    {
+      name: 'JetBrains Mono',
+      weights: [400, 500], // Regular and medium for data/timecodes
     },
   ];
 

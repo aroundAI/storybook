@@ -2,7 +2,7 @@
  * -------------------------------------------------------
  * Section: Project Assets Storage Bucket
  * Creates storage bucket for project reference images
- * (character references, locations, voice avatars)
+ * (character references, locations, voice avatars, cover images)
  * -------------------------------------------------------
  */
 
@@ -13,7 +13,7 @@ values
   ('project-assets', 'project-assets', true);
 
 -- Helper function to extract project ID from storage path
--- Path format: {projectId}/{assetId}/{filename}
+-- Path format: {projectId}/{assetId}/{filename} or {projectId}/{filename}
 create
 or replace function kit.get_project_id_from_path (path text) returns uuid
 set
@@ -44,17 +44,18 @@ grant
 execute on function kit.get_project_id_from_path (text) to authenticated,
 service_role;
 
--- RLS policy for project-assets bucket: SELECT (public bucket allows read)
--- Since bucket is public, no policy needed for SELECT
+-- RLS policy for project-assets bucket: SELECT
+-- Authenticated users can read any project assets (bucket is public)
+create policy project_assets_select on storage.objects for select
+to authenticated
+using (bucket_id = 'project-assets');
 
 -- RLS policy for project-assets bucket: INSERT
--- User must have role on the project
+-- Authenticated users can insert to project-assets bucket
+-- Project-level access is validated at the application layer
 create policy project_assets_insert on storage.objects for insert
 to authenticated
-with check (
-  bucket_id = 'project-assets'
-  and public.has_role_on_project(kit.get_project_id_from_path(name))
-);
+with check (bucket_id = 'project-assets');
 
 -- RLS policy for project-assets bucket: UPDATE
 -- User must have role on the project
@@ -77,3 +78,4 @@ using (
   bucket_id = 'project-assets'
   and public.has_role_on_project(kit.get_project_id_from_path(name))
 );
+

@@ -82,34 +82,34 @@ function getCharacterName(
 }
 
 /**
- * Status badge component for dialogue line status
+ * Status badge component for dialogue line status - using semantic colors
  */
 function StatusBadge({ status }: { status: DialogueLine['status'] }) {
   switch (status) {
     case 'pending':
       return (
-        <Badge variant="secondary" className="gap-1">
+        <Badge className="gap-1 status-pending">
           <Clock className="h-3 w-3" />
           Pending
         </Badge>
       );
     case 'generating':
       return (
-        <Badge variant="info" className="gap-1">
+        <Badge className="gap-1 status-processing">
           <Loader2 className="h-3 w-3 animate-spin" />
           Generating
         </Badge>
       );
     case 'completed':
       return (
-        <Badge variant="success" className="gap-1">
+        <Badge className="gap-1 status-complete">
           <CheckCircle className="h-3 w-3" />
           Completed
         </Badge>
       );
     case 'failed':
       return (
-        <Badge variant="destructive" className="gap-1">
+        <Badge className="gap-1 status-error">
           <XCircle className="h-3 w-3" />
           Failed
         </Badge>
@@ -584,7 +584,7 @@ export function DialogueList({
                     data-test={`regenerate-button-${line.id}`}
                   >
                     {regenerateMutation.isPending &&
-                    regenerateMutation.variables === line.id ? (
+                      regenerateMutation.variables === line.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <RefreshCw className="h-4 w-4" />

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowLeft, Film } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 import type {
   EpisodeMetadata,
@@ -14,15 +14,15 @@ import type {
 } from '@kit/episodes/types';
 import { getSeasonAnalytics } from '@kit/content-analytics/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { Card, CardContent } from '@kit/ui/card';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
+import { CollapsibleSeasonSection } from './_components/collapsible-season-section';
 import { CreateEpisodeDialog } from './_components/create-episode-dialog';
-import { EpisodeCard } from './_components/episode-card';
+import { EpisodeListItem } from './_components/episode-list-item';
+import { EpisodesZeroState } from './_components/episodes-zero-state';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
-import { SeasonHeader } from './_components/season-header';
 
 interface EpisodesPageProps {
   params: Promise<{
@@ -167,38 +167,16 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             {hasSeasons ? (
               <>
                 {episodesBySeason.map(({ season, episodes: seasonEpisodes }) => (
-                  <div key={season.id}>
-                    <div className="mb-6">
-                      <SeasonHeader
-                        seasonNumber={season.number}
-                        seasonName={season.name ?? `Season ${season.number}`}
-                        totalEpisodes={seasonEpisodes.length}
-                        completedEpisodes={
-                          seasonEpisodes.filter(
-                            (ep) => ep.status === 'ready' || ep.status === 'published',
-                          ).length
-                        }
-                        inProgressEpisodes={
-                          seasonEpisodes.filter((ep) =>
-                            ['story', 'storyboard', 'generating', 'editing'].includes(
-                              ep.status,
-                            ),
-                          ).length
-                        }
-                        analytics={seasonAnalyticsMap[season.id] || null}
-                      />
-                    </div>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {seasonEpisodes.map((episode) => (
-                        <EpisodeCard
-                          key={episode.id}
-                          episode={mapEpisode(episode)}
-                          account={account}
-                          projectId={projectId}
-                        />
-                      ))}
-                    </div>
-                  </div>
+                  <CollapsibleSeasonSection
+                    key={season.id}
+                    seasonId={season.id}
+                    seasonNumber={season.number}
+                    seasonName={season.name ?? `Season ${season.number}`}
+                    episodes={seasonEpisodes.map(mapEpisode)}
+                    account={account}
+                    projectId={projectId}
+                    analytics={seasonAnalyticsMap[season.id] || null}
+                  />
                 ))}
 
                 {/* Unassigned episodes (not in any season) */}
@@ -212,47 +190,46 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                         Episodes not assigned to any season
                       </p>
                     </div>
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {unassignedEpisodes.map((episode) => (
-                        <EpisodeCard
-                          key={episode.id}
-                          episode={mapEpisode(episode)}
-                          account={account}
-                          projectId={projectId}
-                        />
-                      ))}
+                    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
+                      <div className="space-y-0 relative">
+                        {unassignedEpisodes.map((episode, index) => (
+                          <EpisodeListItem
+                            key={episode.id}
+                            episode={mapEpisode(episode)}
+                            account={account}
+                            projectId={projectId}
+                            isFirst={index === 0}
+                            isLast={index === unassignedEpisodes.length - 1}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
               </>
             ) : (
               /* No seasons - flat list of episodes */
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {episodes.map((episode) => (
-                  <EpisodeCard
-                    key={episode.id}
-                    episode={mapEpisode(episode)}
-                    account={account}
-                    projectId={projectId}
-                  />
-                ))}
+              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
+                <div className="space-y-0 relative">
+                  {episodes.map((episode, index) => (
+                    <EpisodeListItem
+                      key={episode.id}
+                      episode={mapEpisode(episode)}
+                      account={account}
+                      projectId={projectId}
+                      isFirst={index === 0}
+                      isLast={index === episodes.length - 1}
+                    />
+                  ))}
+                </div>
               </div>
             )}
           </div>
         ) : (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16">
-              <div className="bg-muted mb-4 flex h-16 w-16 items-center justify-center rounded-full">
-                <Film className="text-muted-foreground h-8 w-8" />
-              </div>
-              <h3 className="mb-2 text-lg font-semibold">No episodes yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-sm text-center text-sm">
-                Get started by creating your first episode. Each episode can
-                have its own story, screenplay, and video content.
-              </p>
-              <CreateEpisodeDialog projectId={projectId} account={account} />
-            </CardContent>
-          </Card>
+          <EpisodesZeroState
+            projectId={projectId}
+            account={account}
+          />
         )}
       </PageBody>
     </>

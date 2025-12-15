@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -43,7 +43,9 @@ import {
   PLATFORM_CONFIGS,
   getSmartDefaults,
 } from '../_lib/schema';
-import { createFilmProjectAndRedirect } from '../_lib/server/create-film-project.action';
+import { createFilmProject, updateProjectCoverImage } from '../_lib/server/create-film-project.action';
+import { CoverImageUpload } from './cover-image-upload';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 
 type FormData = z.infer<typeof CreateFilmProjectSchema>;
 
@@ -166,6 +168,7 @@ export function CreateFilmProjectForm({
   accountSlug,
 }: CreateFilmProjectFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const router = useRouter();
 
   const form = useForm({
@@ -215,11 +218,64 @@ export function CreateFilmProjectForm({
   const onSubmit = form.handleSubmit((data: FormData) => {
     startTransition(async () => {
       try {
-        await createFilmProjectAndRedirect(accountSlug, {
+        // 1. Create the project
+        const { projectId } = await createFilmProject(accountSlug, {
           name: data.name,
           description: data.description,
           settings: data.settings,
         });
+
+        // 2. Upload cover image if provided
+        if (coverFile) {
+          const client = getSupabaseBrowserClient();
+          const fileExt = coverFile.name.split('.').pop();
+          const filePath = `${projectId}/cover.${fileExt}`;
+
+          // Debug logging
+          console.log('[Cover Upload Debug] Starting upload:', {
+            bucket: 'project-assets',
+            filePath,
+            fileSize: coverFile.size,
+            fileType: coverFile.type,
+            projectId,
+          });
+
+          // Check auth status
+          const { data: { user: authUser } } = await client.auth.getUser();
+          console.log('[Cover Upload Debug] Auth status:', {
+            isLoggedIn: !!authUser,
+            userId: authUser?.id,
+          });
+
+          const { error: uploadError, data: uploadData } = await client.storage
+            .from('project-assets')
+            .upload(filePath, coverFile, {
+              cacheControl: '3600',
+              upsert: true,
+            });
+
+          console.log('[Cover Upload Debug] Upload result:', {
+            success: !uploadError,
+            error: uploadError,
+            data: uploadData,
+          });
+
+          if (uploadError) {
+            console.error('Cover image upload failed:', uploadError);
+            toast.error(`Cover upload failed: ${uploadError.message}`);
+          } else {
+            // Get public URL and update project
+            const { data: publicUrlData } = client.storage
+              .from('project-assets')
+              .getPublicUrl(filePath);
+
+            console.log('[Cover Upload Debug] Public URL:', publicUrlData.publicUrl);
+            await updateProjectCoverImage(projectId, publicUrlData.publicUrl);
+          }
+        }
+
+        // 3. Redirect to the new project
+        router.push(`/home/${accountSlug}/studio/${projectId}`);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : 'Failed to create project',
@@ -293,6 +349,18 @@ export function CreateFilmProjectForm({
                 </FormItem>
               )}
             />
+
+            <FormItem>
+              <FormLabel>Cover Image (Optional)</FormLabel>
+              <CoverImageUpload
+                value={coverFile}
+                onChange={setCoverFile}
+                disabled={isPending}
+              />
+              <FormDescription>
+                Upload a cover image to display in your project card.
+              </FormDescription>
+            </FormItem>
           </CardContent>
         </Card>
 
@@ -361,11 +429,10 @@ export function CreateFilmProjectForm({
                           type="button"
                           onClick={() => togglePlatform(platformKey)}
                           disabled={isPending}
-                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
-                            isSelected
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${isSelected
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                           data-test={`platform-${key}`}
                         >
                           <span className="font-medium">{config.label}</span>

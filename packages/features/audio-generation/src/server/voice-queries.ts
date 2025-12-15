@@ -2,7 +2,7 @@
 
 import 'server-only';
 
-import { DEFAULT_VOICE_SETTINGS, ELEVENLABS } from '../lib/constants';
+import { DEFAULT_VOICE_SETTINGS, ELEVENLABS as _ELEVENLABS } from '../lib/constants';
 import type { VoiceSettings } from '../lib/types';
 
 // Note: These queries use type assertions because the film studio tables
@@ -129,14 +129,6 @@ export async function getVoiceSettings(
     useSpeakerBoost:
       settings.useSpeakerBoost ?? DEFAULT_VOICE_SETTINGS.useSpeakerBoost,
   };
-}
-
-/**
- * Estimate voice generation cost in cents
- * Based on ElevenLabs pricing: $0.30 per 1000 characters
- */
-export function estimateVoiceCost(textLength: number): number {
-  return Math.ceil((textLength / 1000) * ELEVENLABS.COST_PER_1000_CHARS);
 }
 
 /**

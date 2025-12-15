@@ -5,7 +5,10 @@ import { useState, useTransition } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   ArrowRight,
+  ChevronDown,
+  ChevronUp,
   Loader2,
+  Settings2,
   Sparkles,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -15,15 +18,13 @@ import { cn } from '@kit/ui/utils';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { Button } from '@kit/ui/button';
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@kit/ui/card';
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@kit/ui/collapsible';
 import {
   Form,
   FormControl,
-
   FormField,
   FormItem,
   FormLabel,
@@ -42,7 +43,7 @@ import { IdeaCard } from './idea-card';
 import { TaggedAssetsDisplay } from './tagged-assets-display';
 
 interface StoryIdeationProps {
-  episodeId: string; // Required for context building
+  episodeId: string;
   onComplete: (selectedIdea: StoryIdea) => void;
   isGenerating?: boolean;
   projectGenre?: string;
@@ -53,13 +54,13 @@ interface StoryIdeationProps {
   locationIds?: string[];
 }
 
+/**
+ * StoryIdeation - Redesigned with sticky header and collapsible settings
+ */
 export function StoryIdeation({
   episodeId,
   onComplete,
   isGenerating = false,
-  // projectGenre = 'general',
-  // projectStyle = 'balanced',
-  // projectAudience = 'general',
   initialPremise,
   characterIds = [],
   locationIds = [],
@@ -68,6 +69,7 @@ export function StoryIdeation({
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const form = useForm({
     resolver: zodResolver(GenerateStoryIdeasSchema),
@@ -84,7 +86,6 @@ export function StoryIdeation({
   const onSubmit = form.handleSubmit((data: GenerateStoryIdeasInput) => {
     startTransition(async () => {
       try {
-        // Context builder handles characters, locations, season, etc.
         const result = await generateStoryIdeasAction(data);
 
         if (result.success) {
@@ -115,19 +116,117 @@ export function StoryIdeation({
     setHasGenerated(false);
   };
 
+  const numberOfIdeas = form.watch('numberOfIdeas');
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={onSubmit}>
-          <div className="flex flex-col gap-8 lg:flex-row">
-            {/* Main Content - Premise Editor */}
-            <div className="flex-1 space-y-6">
-              <div>
-                <h2 className="text-2xl font-semibold tracking-tight">Story Premise</h2>
-                <p className="text-muted-foreground mt-1">
-                  Draft the core concept of your story. What happens? Who is involved?
-                </p>
+          {/* Sticky Header with Generate Button */}
+          <div className="sticky top-0 z-10 -mx-4 px-4 py-3 glass border-b border-glass-border mb-6">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-xl font-semibold">Story Premise</h2>
+
+                {/* Settings Toggle */}
+                <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-1.5">
+                      <Settings2 className="h-4 w-4" />
+                      <span className="text-xs text-muted-foreground">{numberOfIdeas} variations</span>
+                      {settingsOpen ? (
+                        <ChevronUp className="h-3 w-3" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                </Collapsible>
               </div>
+
+              <div className="flex items-center gap-2">
+                {hasGenerated && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRegenerate}
+                    disabled={isPending}
+                  >
+                    Clear
+                  </Button>
+                )}
+
+                <Button
+                  type="submit"
+                  variant="generate"
+                  disabled={isPending || premiseLength < 10}
+                  className="gap-2"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      {hasGenerated ? 'Regenerate' : 'Generate Ideas'}
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* Collapsible Settings Panel */}
+            <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <CollapsibleContent className="pt-4">
+                <div className="flex items-center gap-8">
+                  <FormField
+                    control={form.control}
+                    name="numberOfIdeas"
+                    render={({ field }) => (
+                      <FormItem className="flex-1 max-w-xs">
+                        <div className="flex items-center justify-between mb-2">
+                          <FormLabel className="text-xs font-normal text-muted-foreground">
+                            Variations
+                          </FormLabel>
+                          <span className="text-sm font-medium">{field.value}</span>
+                        </div>
+                        <FormControl>
+                          <Slider
+                            min={1}
+                            max={5}
+                            step={1}
+                            value={[field.value ?? 3]}
+                            onValueChange={([value]) => field.onChange(value)}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  {(characterIds.length > 0 || locationIds.length > 0) && (
+                    <div className="space-y-1">
+                      <span className="text-xs font-normal text-muted-foreground">Context</span>
+                      <TaggedAssetsDisplay
+                        characterIds={characterIds}
+                        locationIds={locationIds}
+                      />
+                    </div>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
+
+          {/* Main Content Area - Full Width */}
+          <div className="space-y-8">
+            {/* Premise Editor */}
+            <div>
+              <p className="text-muted-foreground mb-4">
+                Draft the core concept of your story. What happens? Who is involved?
+              </p>
 
               <FormField
                 control={form.control}
@@ -137,18 +236,18 @@ export function StoryIdeation({
                     <FormControl>
                       <Textarea
                         placeholder="Once upon a time..."
-                        className="min-h-[200px] resize-none border-none bg-transparent p-0 text-xl leading-relaxed shadow-none focus-visible:ring-0 sm:text-2xl"
+                        className="min-h-[200px] resize-none border-none bg-transparent p-0 text-xl leading-relaxed shadow-none focus-visible:ring-0 sm:text-2xl reading-mode"
                         {...field}
                       />
                     </FormControl>
                     <div className="flex justify-end pt-2">
                       <span
                         className={cn(
-                          "text-xs font-medium",
+                          'text-xs font-medium mono-data',
                           premiseLength < 10
                             ? 'text-destructive'
                             : premiseLength > 450
-                              ? 'text-yellow-500'
+                              ? 'text-status-draft'
                               : 'text-muted-foreground/50'
                         )}
                       >
@@ -159,117 +258,42 @@ export function StoryIdeation({
                   </FormItem>
                 )}
               />
-
-              {/* Generated Ideas Section (Inline) */}
-              {ideas.length > 0 && (
-                <div className="mt-12 space-y-6 border-t pt-8">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Generated Options</h3>
-                    {selectedIdea && (
-                      <Button onClick={handleContinue} disabled={isGenerating}>
-                        {isGenerating ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Generating Story...
-                          </>
-                        ) : (
-                          <>
-                            Continue with Selected
-                            <ArrowRight className="ml-2 h-4 w-4" />
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    {ideas.map((idea, index) => (
-                      <IdeaCard
-                        key={index}
-                        idea={idea}
-                        isSelected={selectedIdea?.title === idea.title}
-                        onSelect={() => setSelectedIdea(idea)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
-            {/* Side Panel - Controls */}
-            <div className="w-full space-y-6 lg:w-80">
-              <Card className="bg-muted/30 border-none shadow-none">
-                <CardHeader>
-                  <CardTitle className="text-base">Generation Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <FormField
-                    control={form.control}
-                    name="numberOfIdeas"
-                    render={({ field }) => (
-                      <FormItem>
-                        <div className="flex items-center justify-between mb-2">
-                          <FormLabel className="text-xs font-normal text-muted-foreground">Variations</FormLabel>
-                          <span className="text-sm font-medium">{field.value}</span>
-                        </div>
-                        <FormControl>
-                          <Slider
-                            min={1}
-                            max={5}
-                            step={1}
-                            value={[field.value ?? 3]}
-                            onValueChange={([value]) => field.onChange(value)}
-                            className="[&_.span]:h-4 [&_.span]:w-4"
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-
-                  {(characterIds.length > 0 || locationIds.length > 0) && (
-                    <div className="space-y-2">
-                      <span className="text-xs font-normal text-muted-foreground">Context</span>
-                      <TaggedAssetsDisplay
-                        characterIds={characterIds}
-                        locationIds={locationIds}
-                      />
-                    </div>
-                  )}
-
-                  <div className="pt-4">
-                    <Button
-                      type="submit"
-                      className="w-full"
-                      disabled={isPending || premiseLength < 10}
-                    >
-                      {isPending ? (
+            {/* Generated Ideas Section */}
+            {ideas.length > 0 && (
+              <div className="space-y-6 border-t pt-8">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Generated Options</h3>
+                  {selectedIdea && (
+                    <Button onClick={handleContinue} disabled={isGenerating} variant="generate">
+                      {isGenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Generating...
+                          Generating Story...
                         </>
                       ) : (
                         <>
-                          <Sparkles className="mr-2 h-4 w-4" />
-                          {hasGenerated ? 'Regenerate' : 'Generate Ideas'}
+                          Continue with Selected
+                          <ArrowRight className="ml-2 h-4 w-4" />
                         </>
                       )}
                     </Button>
+                  )}
+                </div>
 
-                    {hasGenerated && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        className="mt-2 w-full text-muted-foreground"
-                        onClick={handleRegenerate}
-                        disabled={isPending}
-                      >
-                        Clear & Start Over
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {ideas.map((idea, index) => (
+                    <IdeaCard
+                      key={index}
+                      idea={idea}
+                      isSelected={selectedIdea?.title === idea.title}
+                      onSelect={() => setSelectedIdea(idea)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </form>
       </Form>

@@ -199,14 +199,13 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
   };
 
 
-
   return (
     <div className={cn("transition-all duration-300", isReadingMode ? "fixed inset-0 z-50 overflow-y-auto bg-background p-8" : "mt-4")}>
       <Card className={cn("transition-all", isReadingMode ? "mx-auto max-w-3xl border-none shadow-none" : "")}>
         <CardHeader className={cn(isReadingMode ? "px-0" : "")}>
           <div className="flex items-center justify-between">
             <div className={cn("space-y-1", isReadingMode && "text-center w-full")}>
-              <CardTitle className={cn(isReadingMode ? "text-3xl font-serif" : "")}>
+              <CardTitle className={cn(isReadingMode ? "text-3xl" : "", "font-serif")}>
                 {storyData.title ?? 'Story'}
               </CardTitle>
               {!isReadingMode && <CardDescription>Generated story for this episode</CardDescription>}
@@ -234,9 +233,12 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
           </div>
         </CardHeader>
         <CardContent className={cn(isReadingMode ? "px-0 pb-32" : "")}>
+          {/* Reading mode uses serif font with constrained width for optimal readability */}
           <div className={cn(
-            "prose dark:prose-invert max-w-none transition-all",
-            isReadingMode ? "prose-lg font-serif leading-loose" : "prose-base"
+            "prose dark:prose-invert transition-all",
+            isReadingMode
+              ? "reading-mode mx-auto"
+              : "prose-base max-w-none"
           )}>
             {formatStoryText(storyData.fullStory)}
           </div>

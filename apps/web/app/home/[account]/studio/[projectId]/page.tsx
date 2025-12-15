@@ -3,17 +3,12 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { PageBody } from '@kit/ui/page';
 
 import { getProjectAnalytics } from '@kit/content-analytics/server';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
-import { AnalyticsPreview } from './_components/analytics-preview';
-import { ProjectBanner } from './_components/project-banner';
-import { QuickActions } from './_components/quick-actions';
-import { QuickStats } from './_components/quick-stats';
-import { RecentEpisodes } from './_components/recent-episodes';
+import { OverviewContent } from './_components/overview-content';
 
 interface StudioProjectPageProps {
   params: Promise<{
@@ -44,13 +39,14 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   const { account, projectId } = await params;
   const client = getSupabaseServerClient();
 
-  // Fetch project and counts in parallel
+  // Fetch project, counts, and episode status data in parallel
   const [
     { data: project, error },
     { count: characterCount },
     { count: locationCount },
     { count: episodeCount },
     { data: recentEpisodes },
+    { data: episodeStatusData },
     analytics,
   ] = await Promise.all([
     client
@@ -75,14 +71,20 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       .select('*', { count: 'exact', head: true })
       .eq('project_id', projectId)
       .is('deleted_at', null),
-    // Fetch 3 most recent episodes
+    // Fetch 3 most recent episodes with status data
     client
       .from('episodes')
-      .select('id, title, number, updated_at')
+      .select('id, title, number, updated_at, story_data, screenplay_data, shot_list')
       .eq('project_id', projectId)
       .is('deleted_at', null)
       .order('updated_at', { ascending: false })
       .limit(3),
+    // Fetch all episodes for production status calculation
+    client
+      .from('episodes')
+      .select('id, story_data, screenplay_data, shot_list')
+      .eq('project_id', projectId)
+      .is('deleted_at', null),
     // Fetch analytics
     getProjectAnalytics(projectId).catch(() => null),
   ]);
@@ -95,63 +97,66 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   const metadata = (project.metadata ?? {}) as {
     genre?: string;
     targetAudience?: string;
+    format?: string;
+    coverImageUrl?: string;
   };
 
   const baseUrl = `/home/${account}/studio/${projectId}`;
 
-  // Prepare analytics data for preview
-  const platformBreakdown = analytics?.platformTotals?.map((p) => ({
-    platform: p.platform,
-    views: p.views,
-    percentage: p.percentage,
-  })) ?? [];
+  // Calculate production status from episode data
+  type StoryData = { fullStory?: string };
+  type ScreenplayData = { scenes?: unknown[] };
+  type ShotListData = { shots?: unknown[] };
+
+  const productionStatus = {
+    scriptsComplete: episodeStatusData?.filter(e => (e.story_data as StoryData | null)?.fullStory).length ?? 0,
+    storyboardsComplete: episodeStatusData?.filter(e => ((e.screenplay_data as ScreenplayData | null)?.scenes?.length ?? 0) > 0).length ?? 0,
+    visualsComplete: episodeStatusData?.filter(e => ((e.shot_list as ShotListData | null)?.shots?.length ?? 0) > 0).length ?? 0,
+    totalEpisodes: episodeCount ?? 0,
+  };
+
+  // Map recent episodes to include stage info
+  const mappedEpisodes = recentEpisodes?.map(ep => {
+    const storyData = ep.story_data as StoryData | null;
+    const screenplayData = ep.screenplay_data as ScreenplayData | null;
+    const shotListData = ep.shot_list as ShotListData | null;
+
+    let stage: 'draft' | 'story' | 'screenplay' | 'shots' = 'draft';
+    if ((shotListData?.shots?.length ?? 0) > 0) stage = 'shots';
+    else if ((screenplayData?.scenes?.length ?? 0) > 0) stage = 'screenplay';
+    else if (storyData?.fullStory) stage = 'story';
+
+    return {
+      id: ep.id,
+      title: ep.title,
+      number: ep.number,
+      updated_at: ep.updated_at,
+      stage,
+    };
+  }) ?? [];
 
   return (
-    <>
-      {/* Project Banner */}
-      <div className="px-8 pt-8">
-        <ProjectBanner
-          name={project.name}
-          description={project.description ?? ''}
-          genre={metadata.genre}
-          targetAudience={metadata.targetAudience}
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
+      <div className="max-w-7xl mx-auto p-8">
+        <OverviewContent
+          project={{
+            id: project.id,
+            name: project.name,
+            description: project.description,
+          }}
+          metadata={metadata}
+          episodeCount={episodeCount ?? 0}
+          characterCount={characterCount ?? 0}
+          locationCount={locationCount ?? 0}
+          recentEpisodes={mappedEpisodes}
+          productionStatus={productionStatus}
+          analytics={analytics}
+          baseUrl={baseUrl}
         />
       </div>
-
-      <PageBody>
-        <div className="space-y-6">
-          {/* Quick Stats Row */}
-          <QuickStats
-            episodeCount={episodeCount ?? 0}
-            characterCount={characterCount ?? 0}
-            locationCount={locationCount ?? 0}
-          />
-
-          {/* Quick Actions Toolbar */}
-          <QuickActions baseUrl={baseUrl} />
-
-          {/* Two Column Layout: Analytics + Recent Episodes */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            {/* Analytics Preview - 1/3 width */}
-            <AnalyticsPreview
-              totalViews={analytics?.totalViews ?? 0}
-              engagementRate={analytics?.avgEngagementRate ?? 0}
-              platformBreakdown={platformBreakdown}
-              baseUrl={baseUrl}
-            />
-
-            {/* Recent Episodes - 2/3 width */}
-            <div className="lg:col-span-2">
-              <RecentEpisodes
-                episodes={recentEpisodes ?? []}
-                baseUrl={baseUrl}
-              />
-            </div>
-          </div>
-        </div>
-      </PageBody>
-    </>
+    </div>
   );
 }
 
 export default withI18n(StudioProjectPage);
+

@@ -8,3 +8,4 @@ export * from './batch-actions';
 export * from './dialogue-queries';
 export * from './dubbing-actions';
 export * from './dubbing-queries';
+export * from './audio-track-queries';
