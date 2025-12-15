@@ -1,52 +1,153 @@
+'use client';
+
 import type { EpisodeStatus } from '@kit/episodes/types';
 import { Badge } from '@kit/ui/badge';
 import { cn } from '@kit/ui/utils';
+import { CheckCircle, Clock, Loader2, Pencil, Send, Sparkles, FileText } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: EpisodeStatus;
   className?: string;
+  showIcon?: boolean;
+  size?: 'sm' | 'md' | 'lg';
 }
 
+/**
+ * Status configuration with semantic colors and icons
+ * Uses the new status color tokens defined in shadcn-ui.css
+ */
 const STATUS_CONFIG: Record<
   EpisodeStatus,
-  { label: string; className: string }
+  {
+    label: string;
+    className: string;
+    icon: React.ComponentType<{ className?: string }>;
+  }
 > = {
   draft: {
     label: 'Draft',
-    className: 'bg-gray-500 hover:bg-gray-600',
+    className: 'status-pending',
+    icon: FileText,
   },
   story: {
     label: 'Story',
-    className: 'bg-blue-500 hover:bg-blue-600',
+    className: 'status-draft',
+    icon: Pencil,
   },
   storyboard: {
     label: 'Storyboard',
-    className: 'bg-purple-500 hover:bg-purple-600',
+    className: 'status-processing',
+    icon: Sparkles,
   },
   generating: {
     label: 'Generating',
-    className: 'bg-yellow-500 hover:bg-yellow-600',
+    className: 'status-processing',
+    icon: Loader2,
   },
   editing: {
     label: 'Editing',
-    className: 'bg-orange-500 hover:bg-orange-600',
+    className: 'status-draft',
+    icon: Pencil,
   },
   ready: {
     label: 'Ready',
-    className: 'bg-green-500 hover:bg-green-600',
+    className: 'status-complete',
+    icon: CheckCircle,
   },
   published: {
     label: 'Published',
-    className: 'bg-emerald-500 hover:bg-emerald-600',
+    className: 'status-complete',
+    icon: Send,
   },
 };
 
-export function StatusBadge({ status, className }: StatusBadgeProps) {
+const SIZE_CLASSES = {
+  sm: 'text-xs px-2 py-0.5',
+  md: 'text-xs px-2.5 py-0.5',
+  lg: 'text-sm px-3 py-1',
+};
+
+export function StatusBadge({
+  status,
+  className,
+  showIcon = true,
+  size = 'md',
+}: StatusBadgeProps) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG['draft'];
+  const IconComponent = config.icon;
+  const isAnimated = status === 'generating';
 
   return (
-    <Badge className={cn(config.className, 'text-white', className)}>
+    <Badge
+      className={cn(
+        config.className,
+        SIZE_CLASSES[size],
+        'font-medium inline-flex items-center gap-1.5 rounded-full border-0',
+        className
+      )}
+    >
+      {showIcon && (
+        <IconComponent
+          className={cn(
+            'h-3 w-3',
+            isAnimated && 'animate-spin'
+          )}
+        />
+      )}
       {config.label}
     </Badge>
+  );
+}
+
+/**
+ * Compact status indicator for list views - just a colored dot
+ */
+interface StatusDotProps {
+  status: 'complete' | 'in-progress' | 'empty' | 'error';
+  className?: string;
+  size?: 'sm' | 'md';
+}
+
+export function StatusDot({ status, className, size = 'md' }: StatusDotProps) {
+  const dotClasses = {
+    complete: 'bg-status-complete',
+    'in-progress': 'bg-status-processing animate-pulse',
+    empty: 'bg-muted-foreground/30',
+    error: 'bg-status-error',
+  };
+
+  const sizeClasses = {
+    sm: 'h-2 w-2',
+    md: 'h-2.5 w-2.5',
+  };
+
+  return (
+    <span
+      className={cn(
+        'rounded-full inline-block',
+        dotClasses[status],
+        sizeClasses[size],
+        className
+      )}
+      aria-label={status}
+    />
+  );
+}
+
+/**
+ * Stage status with label for episode cards
+ */
+interface StageIndicatorProps {
+  stage: string;
+  status: 'complete' | 'in-progress' | 'empty';
+  className?: string;
+}
+
+export function StageIndicator({ stage, status, className }: StageIndicatorProps) {
+  return (
+    <div className={cn('flex items-center gap-1.5', className)}>
+      <StatusDot status={status} size="sm" />
+      <span className="text-muted-foreground text-xs">{stage}</span>
+    </div>
   );
 }

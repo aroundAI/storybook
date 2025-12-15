@@ -109,8 +109,13 @@ export const ShotCard = memo(function ShotCard({
             sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
           />
         ) : (
-          <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-            No preview
+          /* Skeleton shimmer with prompt preview */
+          <div className="flex h-full flex-col items-center justify-center p-3 skeleton">
+            <div className="text-center">
+              <span className="text-xs text-muted-foreground/80 line-clamp-3">
+                {shot.prompt ?? shot.description ?? 'Awaiting generation...'}
+              </span>
+            </div>
           </div>
         )}
 

@@ -45,7 +45,7 @@ export function StudioSidebar({ project, account, recentProjects = [] }: StudioS
   });
 
   return (
-    <aside className="bg-muted/10 flex w-64 flex-col border-r">
+    <aside className="flex w-[280px] flex-col border-r bg-white dark:bg-[#18181B] border-zinc-200 dark:border-white/5">
       {/* Project Switcher */}
       <ProjectSwitcher
         currentProject={project}
