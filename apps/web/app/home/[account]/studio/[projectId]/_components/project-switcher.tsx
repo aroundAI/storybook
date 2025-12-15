@@ -23,7 +23,6 @@ import {
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { Input } from '@kit/ui/input';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@kit/ui/tooltip';
 import { cn } from '@kit/ui/utils';
 
 interface Project {

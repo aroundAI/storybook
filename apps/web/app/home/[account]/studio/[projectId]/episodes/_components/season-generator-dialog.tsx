@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef, useEffect } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Cloud, Eye, EyeOff, Loader2, MapPin, Pencil, Plus, Sparkles, Timer, Users } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronDown, Cloud, Eye, Loader2, MapPin, Pencil, Plus, Sparkles, Timer, Users } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import ReactMarkdown from 'react-markdown';
 import { toast } from '@kit/ui/sonner';
@@ -155,13 +155,13 @@ export function SeasonGeneratorDialog({ projectId }: SeasonGeneratorDialogProps)
     const [charMapping, setCharMapping] = useState<Record<string, string>>({});
     const [locMapping, setLocMapping] = useState<Record<string, string>>({});
 
-    const { assets: existingCharacters, fetchAssets: fetchCharacters, isLoading: isLoadingChars } = useAssets({
+    const { assets: existingCharacters, fetchAssets: fetchCharacters, isLoading: _isLoadingChars } = useAssets({
         projectId,
         type: 'character',
         limit: 100,
     });
 
-    const { assets: existingLocations, fetchAssets: fetchLocations, isLoading: isLoadingLocs } = useAssets({
+    const { assets: existingLocations, fetchAssets: fetchLocations, isLoading: _isLoadingLocs } = useAssets({
         projectId,
         type: 'location',
         limit: 100,
@@ -524,7 +524,7 @@ export function SeasonGeneratorDialog({ projectId }: SeasonGeneratorDialogProps)
                                     <div className="space-y-3">
                                         {analysis.characters.map((char, idx) => {
                                             const isExisting = charMapping[char.name] !== 'NEW';
-                                            const linkedAsset = existingCharacters.find(c => c.id === charMapping[char.name]);
+                                            const _linkedAsset = existingCharacters.find(c => c.id === charMapping[char.name]);
                                             return (
                                                 <div
                                                     key={idx}
@@ -606,7 +606,7 @@ export function SeasonGeneratorDialog({ projectId }: SeasonGeneratorDialogProps)
                                     <div className="space-y-3">
                                         {analysis.locations?.map((loc, idx) => {
                                             const isExisting = locMapping[loc.name] !== 'NEW';
-                                            const linkedAsset = existingLocations.find(l => l.id === locMapping[loc.name]);
+                                            const _linkedAsset = existingLocations.find(l => l.id === locMapping[loc.name]);
                                             return (
                                                 <div
                                                     key={idx}

@@ -3,7 +3,6 @@
 import type { StudioProjectSettings } from '@kit/film-studio-schemas/project';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 /**
  * Create Film Studio project and return project data for client-side redirect

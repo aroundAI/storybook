@@ -131,7 +131,7 @@ export function EpisodesZeroState({ projectId, account }: EpisodesZeroStateProps
                         </div>
                         <div className="text-5xl font-light text-zinc-200 dark:text-zinc-700 mb-4">01</div>
                         <h4 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-6 truncate">
-                            The Origami Lion's Request
+                            The Origami Lion&apos;s Request
                         </h4>
                         <div className="flex items-center gap-2 mb-4">
                             <span className="w-2 h-2 rounded-full bg-zinc-300" />
@@ -176,7 +176,7 @@ export function EpisodesZeroState({ projectId, account }: EpisodesZeroStateProps
                         </div>
                         <div className="text-5xl font-light text-zinc-200 dark:text-zinc-700 mb-4">03</div>
                         <h4 className="text-lg font-semibold text-zinc-800 dark:text-zinc-200 mb-6 truncate">
-                            Claybird's Droopy Wings
+                            Claybird&apos;s Droopy Wings
                         </h4>
                         <div className="flex items-center gap-2 mb-4">
                             <span className="w-2 h-2 rounded-full bg-zinc-300" />

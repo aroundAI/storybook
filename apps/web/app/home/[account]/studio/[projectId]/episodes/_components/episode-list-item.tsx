@@ -64,7 +64,7 @@ export function EpisodeListItem({
     episode,
     account,
     projectId,
-    isFirst = false,
+    isFirst: _isFirst = false,
     isLast = false,
 }: EpisodeListItemProps) {
     const href = `/home/${account}/studio/${projectId}/episodes/${episode.id}`;

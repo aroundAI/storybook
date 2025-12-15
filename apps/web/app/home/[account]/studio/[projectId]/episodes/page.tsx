@@ -23,7 +23,6 @@ import { CreateEpisodeDialog } from './_components/create-episode-dialog';
 import { EpisodeListItem } from './_components/episode-list-item';
 import { EpisodesZeroState } from './_components/episodes-zero-state';
 import { SeasonGeneratorDialog } from './_components/season-generator-dialog';
-import { SeasonHeader } from './_components/season-header';
 
 interface EpisodesPageProps {
   params: Promise<{

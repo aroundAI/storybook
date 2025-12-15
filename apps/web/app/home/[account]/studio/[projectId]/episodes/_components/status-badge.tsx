@@ -3,7 +3,7 @@
 import type { EpisodeStatus } from '@kit/episodes/types';
 import { Badge } from '@kit/ui/badge';
 import { cn } from '@kit/ui/utils';
-import { CheckCircle, Clock, Loader2, Pencil, Send, Sparkles, FileText } from 'lucide-react';
+import { CheckCircle, Loader2, Pencil, Send, Sparkles, FileText } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: EpisodeStatus;

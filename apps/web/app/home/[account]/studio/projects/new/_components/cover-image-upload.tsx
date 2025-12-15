@@ -19,7 +19,7 @@ interface CoverImageUploadProps {
  * Only handles file selection - upload happens with form submission
  */
 export function CoverImageUpload({
-    value,
+    value: _value,
     onChange,
     disabled,
 }: CoverImageUploadProps) {
