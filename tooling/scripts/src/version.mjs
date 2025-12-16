@@ -10,14 +10,14 @@ function runGitCommand(command) {
   }
 }
 
-function checkMakerkitVersion() {
+function checkStoryBookVersion() {
   // Fetch the latest changes from upstream without merging
   const fetchResult = runGitCommand('git fetch upstream');
 
   if (fetchResult === null) {
     console.info(
       '\x1b[33m%s\x1b[0m',
-      "⚠️ You have not setup 'upstream'. Please set up the upstream remote so you can update your Makerkit version.",
+      "⚠️ You have not setup 'upstream'. Please set up the upstream remote so you can update your StoryBook version.",
     );
 
     return;
@@ -41,15 +41,15 @@ function checkMakerkitVersion() {
     // error emoji: ❌
     console.log(
       '\x1b[31m%s\x1b[0m',
-      '❌  Your Makerkit version is outdated. Please update to the latest version.',
+      '❌  Your StoryBook version is outdated. Please update to the latest version.',
     );
   } else if (severity === 'warning') {
     console.log(
       '\x1b[33m%s\x1b[0m',
-      '⚠️  Your Makerkit version is outdated! Best to update to the latest version.',
+      '⚠️  Your StoryBook version is outdated! Best to update to the latest version.',
     );
   } else {
-    console.log('\x1b[32m%s\x1b[0m', '✅ Your Makerkit version is up to date!');
+    console.log('\x1b[32m%s\x1b[0m', '✅ Your StoryBook version is up to date!');
   }
 
   if (count > 0) {
@@ -89,5 +89,5 @@ function getSeveriyLevel(count) {
   };
 }
 
-checkMakerkitVersion();
+checkStoryBookVersion();
 checkPendingMigrations();

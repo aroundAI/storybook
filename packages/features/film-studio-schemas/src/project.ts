@@ -50,6 +50,8 @@ export const StudioProjectSettingsSchema = z.object({
   contentRating: z.enum(['G', 'PG', 'PG-13', 'R', 'NR']).optional(),
   language: z.string().default('en'),
   subtitlesEnabled: z.boolean().default(false),
+  // Cover image for project cards in studio view
+  coverImageUrl: z.string().url().optional(),
 });
 
 export type StudioProjectSettings = z.infer<typeof StudioProjectSettingsSchema>;

@@ -8,23 +8,23 @@ export async function loadEmailTemplate(id: string) {
   switch (id) {
     case 'account-delete-email':
       return renderAccountDeleteEmail({
-        productName: 'Makerkit',
+        productName: 'StoryBook',
         userDisplayName: 'Giancarlo',
       });
 
     case 'invite-email':
       return renderInviteEmail({
-        teamName: 'Makerkit',
+        teamName: 'StoryBook',
         teamLogo: '',
         inviter: 'Giancarlo',
         invitedUserEmail: 'test@makerkit.dev',
         link: 'https://makerkit.dev',
-        productName: 'Makerkit',
+        productName: 'StoryBook',
       });
 
     case 'otp-email':
       return renderOtpEmail({
-        productName: 'Makerkit',
+        productName: 'StoryBook',
         otp: '123456',
       });
 

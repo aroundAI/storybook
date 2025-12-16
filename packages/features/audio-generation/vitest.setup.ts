@@ -1,4 +1,7 @@
+import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+
+// UI components are mocked via vitest.config.ts aliases pointing to src/__mocks__/@kit/ui/*
 
 // Mock HTMLAudioElement
 class MockAudioElement {

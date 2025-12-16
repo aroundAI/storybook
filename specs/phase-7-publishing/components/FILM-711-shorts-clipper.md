@@ -4,6 +4,7 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-601 (Timeline Editor), FILM-604 (Auto-Stitch)
 - **Blocks:** FILM-708 (Publish Hub)
 

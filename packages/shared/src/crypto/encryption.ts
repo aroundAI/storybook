@@ -102,7 +102,7 @@ export async function decrypt(encryptedBase64: string): Promise<string> {
 /**
  * Checks if a value is encrypted (basic validation)
  */
-export function isEncrypted(value: string): boolean {
+export async function isEncrypted(value: string): Promise<boolean> {
   try {
     const decoded = Buffer.from(value, 'base64');
     // Minimum length: IV (12) + tag (16) + at least 1 byte of ciphertext

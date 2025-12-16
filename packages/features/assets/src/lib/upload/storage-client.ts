@@ -1,32 +1,13 @@
 import 'server-only';
 
-/**
- * Minimal Supabase client interface for storage operations
- * This avoids a direct dependency on @supabase/supabase-js
- */
-interface StorageClient {
-  storage: {
-    from: (bucket: string) => {
-      upload: (
-        path: string,
-        data: Buffer,
-        options?: {
-          contentType?: string;
-          cacheControl?: string;
-          upsert?: boolean;
-        },
-      ) => Promise<{ error: { message: string } | null }>;
-      getPublicUrl: (path: string) => { data: { publicUrl: string } };
-      remove: (
-        paths: string[],
-      ) => Promise<{ error: { message: string } | null }>;
-    };
-    getBucket: (name: string) => Promise<{
-      data: unknown;
-      error: unknown;
-    }>;
-  };
-}
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+import {
+  getStorageAdapter,
+  type StorageAdapter,
+  type UploadOptions as AdapterUploadOptions,
+  type UploadResult as AdapterUploadResult,
+} from '@kit/storage';
 
 /**
  * Storage bucket for project assets
@@ -36,22 +17,40 @@ export const PROJECT_ASSETS_BUCKET = 'project-assets';
 /**
  * Result of an upload operation
  */
-export interface UploadResult {
-  path: string;
-  url: string;
-}
+export type UploadResult = AdapterUploadResult;
 
 /**
  * Options for uploading a file
  */
-export interface UploadOptions {
-  contentType: string;
-  cacheControl?: string;
-  upsert?: boolean;
+export type UploadOptions = AdapterUploadOptions;
+
+/**
+ * Legacy Supabase client interface for backward compatibility
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type StorageClient = SupabaseClient<any, any, any>;
+
+/**
+ * Cache for storage adapter instance
+ */
+let cachedAdapter: StorageAdapter | null = null;
+
+/**
+ * Get the storage adapter (with caching)
+ */
+function getAdapter(client?: StorageClient): StorageAdapter {
+  if (cachedAdapter) {
+    return cachedAdapter;
+  }
+
+  cachedAdapter = getStorageAdapter(client);
+  return cachedAdapter;
 }
 
 /**
- * Upload a file to Supabase Storage
+ * Upload a file to storage
+ *
+ * Uses the configured storage adapter (local or Supabase based on STORAGE_PROVIDER)
  */
 export async function uploadToStorage(
   client: StorageClient,
@@ -60,19 +59,8 @@ export async function uploadToStorage(
   buffer: Buffer,
   options: UploadOptions,
 ): Promise<UploadResult> {
-  const { error } = await client.storage.from(bucket).upload(path, buffer, {
-    contentType: options.contentType,
-    cacheControl: options.cacheControl ?? '3600',
-    upsert: options.upsert ?? false,
-  });
-
-  if (error) {
-    throw new Error(`Storage upload failed: ${error.message}`);
-  }
-
-  const url = getPublicUrl(client, bucket, path);
-
-  return { path, url };
+  const adapter = getAdapter(client);
+  return adapter.upload(bucket, path, buffer, options);
 }
 
 /**
@@ -83,11 +71,8 @@ export function getPublicUrl(
   bucket: string,
   path: string,
 ): string {
-  const {
-    data: { publicUrl },
-  } = client.storage.from(bucket).getPublicUrl(path);
-
-  return publicUrl;
+  const adapter = getAdapter(client);
+  return adapter.getPublicUrl(bucket, path);
 }
 
 /**
@@ -98,20 +83,48 @@ export async function deleteFromStorage(
   bucket: string,
   path: string,
 ): Promise<void> {
-  const { error } = await client.storage.from(bucket).remove([path]);
+  const adapter = getAdapter(client);
+  return adapter.delete(bucket, path);
+}
 
-  if (error) {
-    throw new Error(`Storage delete failed: ${error.message}`);
-  }
+/**
+ * Check if a file exists in storage
+ */
+export async function existsInStorage(
+  client: StorageClient,
+  bucket: string,
+  path: string,
+): Promise<boolean> {
+  const adapter = getAdapter(client);
+  return adapter.exists(bucket, path);
+}
+
+/**
+ * Read a file from storage
+ */
+export async function readFromStorage(
+  client: StorageClient,
+  bucket: string,
+  path: string,
+): Promise<Buffer | null> {
+  const adapter = getAdapter(client);
+  return adapter.read(bucket, path);
 }
 
 /**
  * Check if a bucket exists (for initialization)
+ * Legacy function - kept for backward compatibility
  */
 export async function bucketExists(
   client: StorageClient,
   bucket: string,
 ): Promise<boolean> {
+  // For local storage, bucket always "exists" (directories are created on demand)
+  if (process.env.STORAGE_PROVIDER === 'local') {
+    return true;
+  }
+
+  // For Supabase, check using the client directly
   const { data, error } = await client.storage.getBucket(bucket);
 
   if (error) {
@@ -120,3 +133,4 @@ export async function bucketExists(
 
   return !!data;
 }
+

@@ -36,10 +36,10 @@ describe('Story Generation Prompt Templates', () => {
       expect(storyIdeation.variables.premise.required).toBe(true);
     });
 
-    it('should have optional genre, target_audience, style, and number_of_ideas variables', () => {
+    it('should have optional genre, target_audience, visual_style, and number_of_ideas variables', () => {
       expect(storyIdeation.variables.genre?.required).toBe(false);
       expect(storyIdeation.variables.target_audience?.required).toBe(false);
-      expect(storyIdeation.variables.style?.required).toBe(false);
+      expect(storyIdeation.variables.visual_style?.required).toBe(false);
       expect(storyIdeation.variables.number_of_ideas?.required).toBe(false);
     });
 
@@ -90,10 +90,9 @@ describe('Story Generation Prompt Templates', () => {
       expect(storyGeneration.variables.target_duration.required).toBe(true);
     });
 
-    it('should have optional characters, world_details, and style variables', () => {
+    it('should have optional characters and visual_style variables', () => {
       expect(storyGeneration.variables.characters?.required).toBe(false);
-      expect(storyGeneration.variables.world_details?.required).toBe(false);
-      expect(storyGeneration.variables.style?.required).toBe(false);
+      expect(storyGeneration.variables.visual_style?.required).toBe(false);
     });
 
     it('should have valid output schema that compiles', () => {

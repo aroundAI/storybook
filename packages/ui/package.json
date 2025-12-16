@@ -19,6 +19,7 @@
     "lucide-react": "^0.544.0",
     "radix-ui": "1.4.3",
     "react-dropzone": "^14.3.8",
+    "react-markdown": "^10.1.0",
     "react-top-loading-bar": "3.0.2",
     "recharts": "2.15.3",
     "tailwind-merge": "^3.3.1"
@@ -78,6 +79,7 @@
     "./slider": "./src/shadcn/slider.tsx",
     "./table": "./src/shadcn/table.tsx",
     "./tabs": "./src/shadcn/tabs.tsx",
+    "./toggle-group": "./src/shadcn/toggle-group.tsx",
     "./tooltip": "./src/shadcn/tooltip.tsx",
     "./sonner": "./src/shadcn/sonner.tsx",
     "./heading": "./src/shadcn/heading.tsx",

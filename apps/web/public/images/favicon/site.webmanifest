@@ -1,9 +1,8 @@
 {
-  "name": "AroundAIKit",
-  "short_name": "AroundAI",
+  "name": "StoryBook",
+  "short_name": "StoryBook",
   "theme_color": "#6366f1",
   "background_color": "#fff",
-  "display": "fullscreen",
   "orientation": "portrait",
   "scope": "/",
   "start_url": "/",

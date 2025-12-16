@@ -4,7 +4,7 @@
 
 ## Overview
 
-Shared TypeScript configuration for all packages in the Makerkit monorepo. Provides consistent TypeScript settings optimized for Next.js, React, and Node.js development.
+Shared TypeScript configuration for all packages in the StoryBook monorepo. Provides consistent TypeScript settings optimized for Next.js, React, and Node.js development.
 
 ## Purpose
 

@@ -3,7 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import {
   InstagramInsightsScopeError,
@@ -69,7 +69,7 @@ export async function runAnalyticsSyncJob(): Promise<SyncJobResult> {
   const ctx = { name: 'analytics-sync-cron' };
   const startTime = Date.now();
 
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
   const rateLimiter = getRateLimiter();
 
   const result: SyncJobResult = {
@@ -295,7 +295,7 @@ async function syncSinglePublish(
   ctx: { name: string },
 ): Promise<SyncResult> {
   const logger = await getLogger();
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
   const rateLimiter = getRateLimiter();
 
   try {
@@ -613,7 +613,7 @@ export async function syncSinglePublishById(
   publishId: string,
 ): Promise<SyncResult> {
   const ctx = { name: 'analytics-sync-manual' };
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
 
   // Fetch the publish
   const { data: publish, error } = await client

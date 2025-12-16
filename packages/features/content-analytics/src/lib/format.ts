@@ -1,6 +1,7 @@
 /**
  * Formatting utilities for metric display
  */
+import { format } from 'date-fns';
 
 /**
  * Formats large numbers with abbreviations (1.2K, 3.4M, etc.)
@@ -88,4 +89,13 @@ export function calculateChange(
     percentage,
     direction: percentage > 1 ? 'up' : percentage < -1 ? 'down' : 'neutral',
   };
+}
+
+/**
+ * Formats a date using date-fns format strings
+ * @param date - The date to format
+ * @param formatStr - The format string (e.g., 'MMM d', 'MMMM d, yyyy')
+ */
+export function formatDate(date: Date, formatStr: string): string {
+  return format(date, formatStr);
 }

@@ -1,15 +1,19 @@
 /*
-* shadcn-ui.css
-*
-* Update the below to customize your Shadcn UI CSS Colors.
-* Refer to https://ui.shadcn.com/themes for applying new colors.
-* NB: apply the hsl function to the colors copied from the theme.
+ * shadcn-ui.css
+ *
+ * Update the below to customize your Shadcn UI CSS Colors.
+ * Cinema dark mode is default - designed for creative professionals.
+ * Refer to https://ui.shadcn.com/themes for applying new colors.
  */
 
 @layer base {
-    :root {
+    /* Light mode (optional) */
+    :root.light, [data-theme="light"] {
         --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
         --font-heading: var(--font-sans);
+        --font-serif: 'Merriweather', 'Georgia', serif;
+        --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+        --font-screenplay: 'Courier Prime', 'Courier New', monospace;
 
         --background: var(--color-white);
         --foreground: var(--color-neutral-950);
@@ -41,6 +45,18 @@
 
         --radius: 0.5rem;
 
+        /* Status colors - Light mode */
+        --status-draft: oklch(78% 0.15 85);
+        --status-draft-foreground: oklch(35% 0.12 85);
+        --status-processing: oklch(60% 0.17 250);
+        --status-processing-foreground: var(--color-white);
+        --status-complete: oklch(72% 0.19 142);
+        --status-complete-foreground: oklch(25% 0.12 142);
+        --status-error: oklch(60% 0.22 25);
+        --status-error-foreground: var(--color-white);
+        --status-pending: oklch(75% 0.12 85);
+        --status-pending-foreground: oklch(35% 0.1 85);
+
         --chart-1: var(--color-orange-400);
         --chart-2: var(--color-teal-600);
         --chart-3: var(--color-green-800);
@@ -55,50 +71,148 @@
         --sidebar-accent-foreground: var(--color-neutral-950);
         --sidebar-border: var(--border);
         --sidebar-ring: var(--color-blue-500);
+
+        /* Glass effect */
+        --glass-background: rgba(255, 255, 255, 0.8);
+        --glass-border: rgba(0, 0, 0, 0.1);
     }
 
-    .dark {
-        --background: var(--color-neutral-900);
-        --foreground: var(--color-white);
+    /* Cinema Dark Mode - Default */
+    :root {
+        --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        --font-heading: var(--font-sans);
+        --font-serif: 'Merriweather', 'Georgia', serif;
+        --font-mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+        --font-screenplay: 'Courier Prime', 'Courier New', monospace;
 
-        --card: var(--color-neutral-900);
-        --card-foreground: var(--color-white);
+        /* Cinema dark background - true black for OLED and dark rooms */
+        --background: #0A0A0A;
+        --foreground: oklch(95% 0.005 250);
 
-        --popover: var(--color-neutral-900);
-        --popover-foreground: var(--color-white);
+        --card: #121212;
+        --card-foreground: oklch(95% 0.005 250);
 
-        --primary: var(--color-white);
-        --primary-foreground: var(--color-neutral-900);
+        --popover: #161616;
+        --popover-foreground: oklch(95% 0.005 250);
 
-        --secondary: var(--color-neutral-800);
-        --secondary-foreground: oklch(98.43% 0.0017 247.84);
+        /* Electric blue primary for that premium feel */
+        --primary: oklch(65% 0.22 250);
+        --primary-foreground: var(--color-white);
 
-        --muted: var(--color-neutral-800);
-        --muted-foreground: oklch(71.19% 0.0129 286.07);
+        --secondary: #1E1E1E;
+        --secondary-foreground: oklch(90% 0.01 250);
 
-        --accent: var(--color-neutral-800);
-        --accent-foreground: oklch(98.48% 0 0);
+        --muted: #1A1A1A;
+        --muted-foreground: oklch(65% 0.015 250);
 
-        --destructive: var(--color-red-700);
+        --accent: #1E1E1E;
+        --accent-foreground: oklch(95% 0 0);
+
+        --destructive: oklch(55% 0.22 25);
         --destructive-foreground: var(--color-white);
 
-        --border: var(--color-neutral-800);
-        --input: var(--color-neutral-700);
-        --ring: oklch(87.09% 0.0055 286.29);
+        --border: #2A2A2A;
+        --input: #252525;
+        --ring: oklch(65% 0.22 250);
 
-        --chart-1: var(--color-blue-600);
-        --chart-2: var(--color-emerald-400);
-        --chart-3: var(--color-orange-400);
-        --chart-4: var(--color-purple-500);
-        --chart-5: var(--color-pink-500);
+        --radius: 0.5rem;
 
-        --sidebar-background: var(--color-neutral-900);
-        --sidebar-foreground: var(--color-white);
-        --sidebar-primary: var(--color-blue-500);
+        /* Status colors - vibrant for dark mode */
+        --status-draft: oklch(78% 0.15 85);
+        --status-draft-foreground: oklch(20% 0.08 85);
+        --status-processing: oklch(65% 0.2 250);
+        --status-processing-foreground: oklch(98% 0.01 250);
+        --status-complete: oklch(75% 0.2 145);
+        --status-complete-foreground: oklch(20% 0.1 145);
+        --status-error: oklch(65% 0.25 25);
+        --status-error-foreground: var(--color-white);
+        --status-pending: oklch(70% 0.12 85);
+        --status-pending-foreground: oklch(20% 0.08 85);
+
+        --chart-1: oklch(65% 0.2 250);
+        --chart-2: oklch(70% 0.18 165);
+        --chart-3: oklch(70% 0.18 35);
+        --chart-4: oklch(65% 0.2 300);
+        --chart-5: oklch(70% 0.2 340);
+
+        --sidebar-background: #0D0D0D;
+        --sidebar-foreground: oklch(85% 0.01 250);
+        --sidebar-primary: oklch(65% 0.22 250);
         --sidebar-primary-foreground: var(--color-white);
-        --sidebar-accent: var(--color-neutral-800);
-        --sidebar-accent-foreground: var(--color-white);
+        --sidebar-accent: #1A1A1A;
+        --sidebar-accent-foreground: oklch(95% 0 0);
         --sidebar-border: var(--border);
-        --sidebar-ring: var(--color-blue-500);
+        --sidebar-ring: oklch(65% 0.22 250);
+
+        /* Glass effect for dark mode */
+        --glass-background: rgba(10, 10, 10, 0.85);
+        --glass-border: rgba(255, 255, 255, 0.08);
+
+        /* Generate button gradient */
+        --generate-gradient-from: oklch(60% 0.25 265);
+        --generate-gradient-to: oklch(55% 0.25 300);
+    }
+
+    /* Legacy dark class support */
+    .dark {
+        --background: #0A0A0A;
+        --foreground: oklch(95% 0.005 250);
+
+        --card: #121212;
+        --card-foreground: oklch(95% 0.005 250);
+
+        --popover: #161616;
+        --popover-foreground: oklch(95% 0.005 250);
+
+        --primary: oklch(65% 0.22 250);
+        --primary-foreground: var(--color-white);
+
+        --secondary: #1E1E1E;
+        --secondary-foreground: oklch(90% 0.01 250);
+
+        --muted: #1A1A1A;
+        --muted-foreground: oklch(65% 0.015 250);
+
+        --accent: #1E1E1E;
+        --accent-foreground: oklch(95% 0 0);
+
+        --destructive: oklch(55% 0.22 25);
+        --destructive-foreground: var(--color-white);
+
+        --border: #2A2A2A;
+        --input: #252525;
+        --ring: oklch(65% 0.22 250);
+
+        --status-draft: oklch(78% 0.15 85);
+        --status-draft-foreground: oklch(20% 0.08 85);
+        --status-processing: oklch(65% 0.2 250);
+        --status-processing-foreground: oklch(98% 0.01 250);
+        --status-complete: oklch(75% 0.2 145);
+        --status-complete-foreground: oklch(20% 0.1 145);
+        --status-error: oklch(65% 0.25 25);
+        --status-error-foreground: var(--color-white);
+        --status-pending: oklch(70% 0.12 85);
+        --status-pending-foreground: oklch(20% 0.08 85);
+
+        --chart-1: oklch(65% 0.2 250);
+        --chart-2: oklch(70% 0.18 165);
+        --chart-3: oklch(70% 0.18 35);
+        --chart-4: oklch(65% 0.2 300);
+        --chart-5: oklch(70% 0.2 340);
+
+        --sidebar-background: #0D0D0D;
+        --sidebar-foreground: oklch(85% 0.01 250);
+        --sidebar-primary: oklch(65% 0.22 250);
+        --sidebar-primary-foreground: var(--color-white);
+        --sidebar-accent: #1A1A1A;
+        --sidebar-accent-foreground: oklch(95% 0 0);
+        --sidebar-border: var(--border);
+        --sidebar-ring: oklch(65% 0.22 250);
+
+        --glass-background: rgba(10, 10, 10, 0.85);
+        --glass-border: rgba(255, 255, 255, 0.08);
+
+        --generate-gradient-from: oklch(60% 0.25 265);
+        --generate-gradient-to: oklch(55% 0.25 300);
     }
 }

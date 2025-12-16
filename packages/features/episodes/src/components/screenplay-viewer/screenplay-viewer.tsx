@@ -143,67 +143,67 @@ export function ScreenplayViewer({
   }
 
   return (
-    <Card className="mt-4">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Film className="h-5 w-5" />
-            <div>
-              <CardTitle>Screenplay</CardTitle>
-              <CardDescription>
-                {screenplay.metadata.totalScenes} scenes - ~
-                {Math.round(screenplay.metadata.estimatedDuration / 60)} min
-              </CardDescription>
-            </div>
+    <div className="mt-6 space-y-4">
+      <div className="flex items-center justify-between px-2">
+        <div className="flex items-center gap-2">
+          {/* Minimal Header */}
+          <div className="text-sm font-medium text-muted-foreground">
+            {screenplay.metadata.totalScenes} Scenes • ~{Math.round(screenplay.metadata.estimatedDuration / 60)} min
           </div>
-          <div className="flex gap-2">
-            {onRegenerate && (
-              <Button
-                variant="outline"
-                onClick={onRegenerate}
-                disabled={isPending}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Regenerate
-              </Button>
-            )}
-            <Button onClick={handleApprove} disabled={isPending}>
-              {isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              Approve & Continue
+        </div>
+        <div className="flex gap-2">
+          {onRegenerate && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onRegenerate}
+              disabled={isPending}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Regenerate
             </Button>
-          </div>
+          )}
+          <Button
+            onClick={handleApprove}
+            disabled={isPending}
+            variant="outline"
+            className="border-primary/20 hover:bg-primary/5 hover:text-primary"
+          >
+            {isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Check className="mr-2 h-4 w-4" />
+            )}
+            Approve Screenplay
+          </Button>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 lg:grid-cols-[200px_1fr]">
-          {/* Scene Navigation Sidebar */}
-          <div className="hidden lg:block">
-            <div className="mb-2 text-sm font-medium">Scenes</div>
-            <SceneNavigation
-              scenes={screenplay.scenes}
-              activeSceneNumber={activeSceneNumber}
-              onSceneSelect={scrollToScene}
-            />
-          </div>
+      </div>
 
-          {/* Main Screenplay Content */}
-          <ScrollArea className="h-[500px]">
-            <div ref={contentRef} className="space-y-6 pr-4">
-              {screenplay.scenes.map((scene) => (
-                <SceneContent
-                  key={scene.number}
-                  scene={scene}
-                  isActive={activeSceneNumber === scene.number}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+      <div className="grid gap-8 lg:grid-cols-[140px_1fr]">
+        {/* Scene Navigation Sidebar - Narrower & Quieter */}
+        <div className="hidden lg:block border-r border-border/40 pr-4">
+          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">Scene Index</div>
+          <SceneNavigation
+            scenes={screenplay.scenes}
+            activeSceneNumber={activeSceneNumber}
+            onSceneSelect={scrollToScene}
+          />
         </div>
-      </CardContent>
-    </Card>
+
+        {/* Main Screenplay Content */}
+        <ScrollArea className="h-[600px] pr-4">
+          <div ref={contentRef} className="space-y-8 pb-32">
+            {screenplay.scenes.map((scene) => (
+              <SceneContent
+                key={scene.number}
+                scene={scene}
+                isActive={activeSceneNumber === scene.number}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import { useTimelineKeyboard } from '@kit/film-studio/hooks';
 import { Card } from '@kit/ui/card';
 import { cn } from '@kit/ui/utils';
 
+import { ClipEditor } from './clip-editor';
 import { Playhead } from './playhead';
 import { PreviewPlayer } from './preview-player';
 import { TimelineContext } from './timeline-context';
@@ -18,7 +19,7 @@ import { TimelineHeader } from './timeline-header';
 import { createInitialState, timelineReducer } from './timeline-reducer';
 import { TimelineRuler } from './timeline-ruler';
 import { TrackLayer } from './track-layer';
-import type { TimelineData, TimelineEditorProps } from './types';
+import type { TimelineClip, TimelineData, TimelineEditorProps } from './types';
 
 // ============================================================================
 // Helpers
@@ -204,6 +205,38 @@ export function TimelineEditor({
     );
   }, [state.tracks, state.playheadFrame]);
 
+  // Get clip and track being edited
+  const editingClip = useMemo(() => {
+    if (!state.editingClipId) return null;
+
+    for (const track of state.tracks) {
+      const clip = track.clips.find((c) => c.id === state.editingClipId);
+      if (clip) {
+        return { clip, track };
+      }
+    }
+    return null;
+  }, [state.editingClipId, state.tracks]);
+
+  // Clip editor handlers
+  const handleClipEditorClose = useCallback(() => {
+    dispatch({ type: 'CLOSE_CLIP_EDITOR' });
+  }, []);
+
+  const handleClipEditorSave = useCallback(
+    (updates: Partial<TimelineClip>) => {
+      if (state.editingClipId) {
+        dispatch({
+          type: 'UPDATE_CLIP',
+          clipId: state.editingClipId,
+          updates,
+        });
+      }
+      dispatch({ type: 'CLOSE_CLIP_EDITOR' });
+    },
+    [state.editingClipId],
+  );
+
   return (
     <TimelineContext.Provider value={contextValue}>
       <Card
@@ -325,6 +358,18 @@ export function TimelineEditor({
           </span>
         </div>
       </Card>
+
+      {/* Clip Editor Modal */}
+      {editingClip && (
+        <ClipEditor
+          clip={editingClip.clip}
+          track={editingClip.track}
+          isOpen={state.editingClipId !== null}
+          fps={state.fps}
+          onClose={handleClipEditorClose}
+          onSave={handleClipEditorSave}
+        />
+      )}
     </TimelineContext.Provider>
   );
 }

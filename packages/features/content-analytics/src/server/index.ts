@@ -41,6 +41,16 @@ export {
   resetRateLimiter,
 } from './rate-limiter';
 
+// Aggregation queries
+export {
+  getEpisodeAnalytics,
+  getProjectAnalytics,
+  getSeasonAnalytics,
+  type EpisodeAnalytics,
+  type ProjectAnalytics,
+  type SeasonAnalytics,
+} from './aggregation-queries';
+
 // Types
 export type {
   NormalizedAnalytics,
@@ -54,3 +64,4 @@ export type {
   SyncSchedule,
   SyncStatusResponse,
 } from './types';
+

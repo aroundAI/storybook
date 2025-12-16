@@ -4,7 +4,7 @@
 
 ## Overview
 
-The `@kit/cms` package provides a provider-agnostic abstraction layer for Content Management Systems in the Makerkit framework. It offers a unified interface for working with different CMS providers like WordPress and Keystatic, allowing you to switch between providers without changing your application code.
+The `@kit/cms` package provides a provider-agnostic abstraction layer for Content Management Systems in the StoryBook framework. It offers a unified interface for working with different CMS providers like WordPress and Keystatic, allowing you to switch between providers without changing your application code.
 
 ## Purpose
 

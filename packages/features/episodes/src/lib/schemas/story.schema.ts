@@ -12,18 +12,13 @@ import { z } from 'zod';
 // ============================================================
 
 /**
- * Schema for generating story ideas from a premise
- * Uses the story-ideation prompt template
+ * Input for generating multiple story ideas from a premise
  */
 export const GenerateStoryIdeasSchema = z.object({
-  premise: z
-    .string()
-    .min(10, 'Premise must be at least 10 characters')
-    .max(500, 'Premise must be at most 500 characters'),
-  genre: z.string().optional(),
-  targetAudience: z.string().optional(),
-  style: z.string().optional(),
+  episodeId: z.string().uuid(), // Required for context building
+  premise: z.string().min(10).max(500),
   numberOfIdeas: z.number().int().min(1).max(5).default(3),
+  // genre, style, targetAudience now fetched from episode context via context builder
 });
 
 export type GenerateStoryIdeasInput = z.infer<typeof GenerateStoryIdeasSchema>;
