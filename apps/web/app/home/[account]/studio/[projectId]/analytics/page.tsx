@@ -1,14 +1,19 @@
 /**
  * Project Analytics Page
  *
- * Displays aggregated analytics for all content in a project.
+ * Displays aggregated analytics dashboard with tabs for all content in a project.
+ * Includes Overview, Content, Audience, and AI Insights tabs.
  */
 import { Suspense } from 'react';
 
-import { ProjectDashboard } from '@kit/content-analytics/components';
-import { getProjectAnalytics } from '@kit/content-analytics/server';
+import type { Metadata } from 'next';
+
+import {
+  AnalyticsDashboard,
+  AnalyticsDashboardSkeleton,
+} from '@kit/content-analytics/components';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
-import { Skeleton } from '@kit/ui/skeleton';
 
 interface PageParams {
   params: Promise<{
@@ -17,8 +22,26 @@ interface PageParams {
   }>;
 }
 
+export async function generateMetadata({
+  params,
+}: PageParams): Promise<Metadata> {
+  const { projectId } = await params;
+  const client = getSupabaseServerClient();
+
+  const { data: project } = await client
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .single();
+
+  return {
+    title: project?.name ? `${project.name} Analytics` : 'Analytics',
+    description: 'Track your content performance across all platforms.',
+  };
+}
+
 export default async function ProjectAnalyticsPage({ params }: PageParams) {
-  const { projectId, account: _account } = await params;
+  const { projectId, account } = await params;
 
   return (
     <>
@@ -27,47 +50,10 @@ export default async function ProjectAnalyticsPage({ params }: PageParams) {
         description="Track your content performance across all platforms."
       />
       <PageBody>
-        <Suspense fallback={<AnalyticsSkeleton />}>
-          <ProjectAnalyticsLoader projectId={projectId} />
+        <Suspense fallback={<AnalyticsDashboardSkeleton />}>
+          <AnalyticsDashboard projectId={projectId} accountSlug={account} />
         </Suspense>
       </PageBody>
     </>
-  );
-}
-
-async function ProjectAnalyticsLoader({ projectId }: { projectId: string }) {
-  const data = await getProjectAnalytics(projectId);
-
-  if (!data) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center">
-        <p className="text-muted-foreground">
-          No analytics data available yet.
-        </p>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Publish content and sync analytics to see performance metrics.
-        </p>
-      </div>
-    );
-  }
-
-  return <ProjectDashboard data={data} />;
-}
-
-function AnalyticsSkeleton() {
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-8 w-24" />
-      </div>
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-7">
-        {Array.from({ length: 7 }).map((_, i) => (
-          <Skeleton key={i} className="h-24" />
-        ))}
-      </div>
-      <Skeleton className="h-64" />
-      <Skeleton className="h-48" />
-    </div>
   );
 }

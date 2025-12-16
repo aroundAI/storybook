@@ -95,6 +95,9 @@ export interface ProjectAnalytics {
   platformTotals: {
     platform: string;
     views: number;
+    likes: number;
+    comments: number;
+    shares: number;
     percentage: number;
   }[];
 }
@@ -279,6 +282,7 @@ export async function getEpisodeAnalytics(
  */
 export async function getSeasonAnalytics(
   seasonId: string,
+  options?: { startDate?: Date; endDate?: Date },
 ): Promise<SeasonAnalytics | null> {
   const client = getSupabaseServerClient();
 
@@ -330,7 +334,11 @@ export async function getSeasonAnalytics(
   let totalEngagement = 0;
 
   for (const ep of episodes) {
-    const analytics = await getEpisodeAnalytics(ep.id);
+    const dateRange =
+      options?.startDate && options?.endDate
+        ? { start: options.startDate, end: options.endDate }
+        : undefined;
+    const analytics = await getEpisodeAnalytics(ep.id, dateRange);
     if (analytics) {
       const epData = {
         episodeId: ep.id,
@@ -394,6 +402,7 @@ export async function getSeasonAnalytics(
  */
 export async function getProjectAnalytics(
   projectId: string,
+  options?: { startDate?: Date; endDate?: Date },
 ): Promise<ProjectAnalytics | null> {
   const client = getSupabaseServerClient();
 
@@ -426,10 +435,13 @@ export async function getProjectAnalytics(
   let totalEngagement = 0;
   let contentCount = 0;
 
-  const platformTotals = new Map<string, number>();
+  const platformTotals = new Map<
+    string,
+    { views: number; likes: number; comments: number; shares: number }
+  >();
 
   for (const s of seasons || []) {
-    const analytics = await getSeasonAnalytics(s.id);
+    const analytics = await getSeasonAnalytics(s.id, options);
     if (analytics) {
       seasonAnalyticsList.push({
         seasonId: s.id,
@@ -461,35 +473,76 @@ export async function getProjectAnalytics(
 
   if (allPublishes) {
     const publishIds = allPublishes.map((p) => p.id);
-    const { data: analytics } = await client
+    let analyticsQuery = client
       .from('content_analytics')
-      .select('publish_id, views')
-      .in('publish_id', publishIds)
-      .order('snapshot_date', { ascending: false });
+      .select('publish_id, views, likes, comments, shares, snapshot_date')
+      .in('publish_id', publishIds);
+
+    // Filter by date range if specified
+    if (options?.startDate) {
+      analyticsQuery = analyticsQuery.gte(
+        'snapshot_date',
+        options.startDate.toISOString().split('T')[0],
+      );
+    }
+    if (options?.endDate) {
+      analyticsQuery = analyticsQuery.lte(
+        'snapshot_date',
+        options.endDate.toISOString().split('T')[0],
+      );
+    }
+
+    const { data: analytics } = await analyticsQuery.order('snapshot_date', {
+      ascending: false,
+    });
 
     if (analytics) {
-      const latestByPublish = new Map<string, number>();
+      const latestByPublish = new Map<
+        string,
+        { views: number; likes: number; comments: number; shares: number }
+      >();
       for (const a of analytics) {
         if (!latestByPublish.has(a.publish_id)) {
-          latestByPublish.set(a.publish_id, a.views || 0);
+          latestByPublish.set(a.publish_id, {
+            views: a.views || 0,
+            likes: a.likes || 0,
+            comments: a.comments || 0,
+            shares: a.shares || 0,
+          });
         }
       }
 
       for (const publish of allPublishes) {
-        const views = latestByPublish.get(publish.id) || 0;
-        platformTotals.set(
-          publish.platform,
-          (platformTotals.get(publish.platform) || 0) + views,
-        );
+        const stats = latestByPublish.get(publish.id) || {
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+        };
+        const current = platformTotals.get(publish.platform) || {
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+        };
+        platformTotals.set(publish.platform, {
+          views: current.views + stats.views,
+          likes: current.likes + stats.likes,
+          comments: current.comments + stats.comments,
+          shares: current.shares + stats.shares,
+        });
       }
     }
   }
 
   const platformTotalsList = Array.from(platformTotals.entries())
-    .map(([platform, views]) => ({
+    .map(([platform, stats]) => ({
       platform,
-      views,
-      percentage: totalViews > 0 ? (views / totalViews) * 100 : 0,
+      views: stats.views,
+      likes: stats.likes,
+      comments: stats.comments,
+      shares: stats.shares,
+      percentage: totalViews > 0 ? (stats.views / totalViews) * 100 : 0,
     }))
     .sort((a, b) => b.views - a.views);
 
@@ -509,4 +562,140 @@ export async function getProjectAnalytics(
     seasons: seasonAnalyticsList,
     platformTotals: platformTotalsList,
   };
+}
+
+/**
+ * Content list item for content table
+ */
+export interface ContentListItem {
+  publishId: string;
+  episodeId: string;
+  episodeTitle: string;
+  publishTitle: string;
+  platform: 'youtube' | 'tiktok' | 'instagram';
+  thumbnailUrl: string | null;
+  publishedAt: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  engagementRate: number;
+}
+
+/**
+ * Get list of all content for a project with analytics
+ */
+export async function getContentList(
+  projectId: string,
+  options?: {
+    platforms?: string[];
+    startDate?: Date;
+    endDate?: Date;
+  },
+): Promise<ContentListItem[]> {
+  const client = getSupabaseServerClient();
+
+  // Get all publishes for this project through episodes -> seasons
+  let query = client
+    .from('publishes')
+    .select(
+      `
+      id,
+      platform,
+      title,
+      published_at,
+      episodes!inner (
+        id,
+        title,
+        thumbnail_url,
+        seasons!inner (
+          project_id
+        )
+      )
+    `,
+    )
+    .eq('episodes.seasons.project_id', projectId)
+    .is('deleted_at', null)
+    .not('published_at', 'is', null);
+
+  // Filter by platforms if specified
+  if (options?.platforms && options.platforms.length > 0) {
+    query = query.in('platform', options.platforms);
+  }
+
+  // Filter by date range if specified
+  if (options?.startDate) {
+    query = query.gte('published_at', options.startDate.toISOString());
+  }
+  if (options?.endDate) {
+    query = query.lte('published_at', options.endDate.toISOString());
+  }
+
+  const { data: publishes, error } = await query.order('published_at', {
+    ascending: false,
+  });
+
+  if (error || !publishes || publishes.length === 0) {
+    return [];
+  }
+
+  // Get analytics for each publish
+  const publishIds = publishes.map((p) => p.id);
+  const { data: analytics } = await client
+    .from('content_analytics')
+    .select('publish_id, views, likes, comments, shares, snapshot_date')
+    .in('publish_id', publishIds)
+    .order('snapshot_date', { ascending: false });
+
+  // Get latest analytics per publish
+  const latestAnalytics = new Map<
+    string,
+    { views: number; likes: number; comments: number; shares: number }
+  >();
+  if (analytics) {
+    for (const a of analytics) {
+      if (!latestAnalytics.has(a.publish_id)) {
+        latestAnalytics.set(a.publish_id, {
+          views: a.views || 0,
+          likes: a.likes || 0,
+          comments: a.comments || 0,
+          shares: a.shares || 0,
+        });
+      }
+    }
+  }
+
+  // Build content list
+  return publishes.map((publish) => {
+    const episode = publish.episodes as unknown as {
+      id: string;
+      title: string;
+      thumbnail_url: string | null;
+    };
+    const stats = latestAnalytics.get(publish.id) || {
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+    };
+    const engagementRate =
+      stats.views > 0
+        ? ((stats.likes + stats.comments + stats.shares) / stats.views) * 100
+        : 0;
+
+    return {
+      publishId: publish.id,
+      episodeId: episode.id,
+      episodeTitle: episode.title,
+      publishTitle: publish.title || episode.title,
+      platform: publish.platform as 'youtube' | 'tiktok' | 'instagram',
+      thumbnailUrl: episode.thumbnail_url,
+      publishedAt: publish.published_at!,
+      views: stats.views,
+      likes: stats.likes,
+      comments: stats.comments,
+      shares: stats.shares,
+      engagementRate,
+    };
+  });
 }

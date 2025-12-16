@@ -438,12 +438,12 @@ graph TD
 | FILM-802 | [tiktok-analytics](./phase-8-analytics/providers/FILM-802-tiktok-analytics.md) | ✅ DONE | M | FILM-706 |
 | FILM-803 | [instagram-insights](./phase-8-analytics/providers/FILM-803-instagram-insights.md) | ✅ DONE | M | FILM-707 |
 | FILM-804 | [analytics-sync-cron](./phase-8-analytics/server/FILM-804-analytics-sync-cron.md) | ✅ DONE | M | FILM-801-803 |
-| FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | DRAFT | L | FILM-804 |
+| FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | ✅ DONE | L | FILM-804 |
 | FILM-806 | [metric-cards](./phase-8-analytics/components/FILM-806-metric-cards.md) | ✅ DONE | S | FILM-DS-02 |
-| FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | DRAFT | M | FILM-805 |
+| FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | ✅ DONE | M | FILM-805 |
 | FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | ✅ DONE | M | FILM-805 |
-| FILM-809 | [export-reports](./phase-8-analytics/lib/FILM-809-export-reports.md) | DRAFT | M | FILM-805 |
-| FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.md) | DRAFT | L | FILM-804, FILM-805 |
+| FILM-809 | [export-reports](./phase-8-analytics/lib/FILM-809-export-reports.md) | ✅ DONE | M | FILM-805 |
+| FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.md) | ✅ DONE | L | FILM-804, FILM-805 |
 
 ### Phase 9: Integration (6 specs)
 
@@ -524,17 +524,17 @@ SPIKE-01 through SPIKE-05
 | 5. Audio Gen | 16 | 4 | 0 | 0 | 0 | 12 |
 | 6. Edit Suite | 6 | 2 | 0 | 0 | 0 | 4 |
 | 7. Publishing | 15 | 0 | 0 | 0 | 0 | 15 |
-| 8. Analytics | 10 | 5 | 0 | 0 | 0 | 5 |
+| 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
 | 9. Integration | 6 | 1 | 0 | 0 | 0 | 5 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **130** | **12** | **0** | **0** | **0** | **118** |
+| **TOTAL** | **130** | **7** | **0** | **0** | **0** | **123** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
 | Scope | Total | Completed | % |
 |-------|-------|-----------|---|
 | MVP Specs | 93 | 89 | 96% |
-| Post-MVP | 37 | 29 | 78% |
+| Post-MVP | 37 | 34 | 92% |
 
 ---
 
