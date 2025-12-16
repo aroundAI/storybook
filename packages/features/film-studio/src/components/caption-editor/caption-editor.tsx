@@ -57,7 +57,9 @@ export function CaptionEditor({
   });
 
   // Fetch available languages
-  const { data: availableLanguages } = useQuery({
+  const { data: availableLanguages } = useQuery<
+    { code: string; name: string }[]
+  >({
     queryKey: ['caption-languages', episodeId],
     queryFn: () => getAvailableLanguagesAction({ episodeId }),
   });

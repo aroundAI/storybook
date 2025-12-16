@@ -70,14 +70,14 @@ interface DbCaption {
 // Type assertion helper for tables pending migration
 // TODO: Remove after applying 31-captions.sql migration and regenerating types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const captionTable = (client: ReturnType<typeof getSupabaseServerClient>) =>
+const captionTable = (client: any) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client.from('captions' as any) as any;
+  client.from('captions') as any;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const captionSegmentTable = (client: ReturnType<typeof getSupabaseServerClient>) =>
+const captionSegmentTable = (client: any) =>
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client.from('caption_segments' as any) as any;
+  client.from('caption_segments') as any;
 
 /**
  * Generate captions from dialogue audio using Whisper transcription
@@ -835,7 +835,7 @@ export const getAvailableLanguagesAction = enhanceAction(
       throw new Error('Failed to fetch available languages');
     }
 
-    return (captions ?? []).map((c) => ({
+    return (captions ?? []).map((c: { language: string; status: string }) => ({
       code: c.language,
       name: getLanguageName(c.language),
     }));
