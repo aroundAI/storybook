@@ -4,7 +4,7 @@
 
 ## Overview
 
-Collection of development and deployment scripts for the Makerkit monorepo. Provides automation for common tasks like database management, deployment, and development workflows.
+Collection of development and deployment scripts for the StoryBook monorepo. Provides automation for common tasks like database management, deployment, and development workflows.
 
 ## Purpose
 

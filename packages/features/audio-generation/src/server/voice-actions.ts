@@ -23,10 +23,10 @@ import {
   GenerateDialogueVoiceSchema,
   GenerateVoiceFromTextSchema,
 } from '../lib/schemas/voice-action.schema';
+import { estimateVoiceCost } from '../lib/voice-utils';
 import { ElevenLabsProvider } from '../providers/elevenlabs';
 import {
   checkAccountBudget,
-  estimateVoiceCost,
   getVoiceIdForCharacter,
   getVoiceSettings,
   incrementAccountUsage,

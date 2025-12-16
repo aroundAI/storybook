@@ -36,6 +36,7 @@ type Accounts = Array<{
 const features = {
   enableTeamAccounts: featureFlagsConfig.enableTeamAccounts,
   enableTeamCreation: featureFlagsConfig.enableTeamCreation,
+  enablePersonalAccounts: featureFlagsConfig.enablePersonalAccounts,
 };
 
 export const TeamAccountLayoutMobileNavigation = (

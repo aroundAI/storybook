@@ -1,5 +1,3 @@
-'use server';
-
 import { promises as fsPromises } from 'fs';
 
 import type {
@@ -22,7 +20,7 @@ const LINKEDIN_REST_VERSION = '202401';
  * Handles video uploads and post management using LinkedIn's Marketing API
  */
 export class LinkedInProvider {
-  constructor(private accessToken: string) {}
+  constructor(private accessToken: string) { }
 
   /**
    * Uploads a video to LinkedIn and creates a post

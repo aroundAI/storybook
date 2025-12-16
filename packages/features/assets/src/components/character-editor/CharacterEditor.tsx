@@ -65,6 +65,13 @@ import { CharacterEditorForm } from './CharacterEditorForm';
  * Features: auto-save, draft restoration, unsaved changes warning.
  */
 
+/**
+ * Character Editor (FILM-205)
+ *
+ * Main editor component for creating and editing characters.
+ * Features: auto-save, draft restoration, unsaved changes warning.
+ */
+
 interface CharacterEditorProps {
   /** Project ID for new characters */
   projectId: string;
@@ -242,8 +249,7 @@ export function CharacterEditor({
         }
       } catch (error) {
         toast.error(
-          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${
-            error instanceof Error ? error.message : 'Unknown error'
+          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${error instanceof Error ? error.message : 'Unknown error'
           }`,
         );
       }
@@ -298,6 +304,8 @@ export function CharacterEditor({
               form={form}
               disabled={isPending}
               voiceAssets={voiceAssets}
+              projectId={projectId}
+              assetId={character?.id}
             />
 
             {/* Form actions */}

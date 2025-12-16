@@ -3,8 +3,47 @@
 **Phase**: 5
 **Priority**: P0
 **Effort**: M (3-5 days)
+**Status**: ✅ DONE
 **Dependencies**: FILM-505 (Audio Studio)
 **Blocks**: None
+
+## Implementation
+
+**Completed**: 2024-12-11
+
+### Files Created
+
+| File | Description |
+|------|-------------|
+| `packages/features/audio-generation/src/lib/types/dialogue.types.ts` | TypeScript types for DialogueLine, CharacterAsset, and summary |
+| `packages/features/audio-generation/src/lib/schemas/dialogue.schema.ts` | Zod schemas for dialogue queries |
+| `packages/features/audio-generation/src/server/dialogue-queries.ts` | Server actions: getDialogueLinesAction, getCharactersForEpisodeAction |
+| `packages/features/audio-generation/src/components/DialogueList.tsx` | Main DialogueList component with filtering, sorting, batch operations |
+| `packages/features/audio-generation/__tests__/dialogue-list.test.tsx` | Unit tests for DialogueList component |
+
+### Files Modified
+
+| File | Changes |
+|------|---------|
+| `packages/features/audio-generation/src/lib/index.ts` | Added export for dialogue.types |
+| `packages/features/audio-generation/src/lib/schemas/index.ts` | Added export for dialogue.schema |
+| `packages/features/audio-generation/src/server/index.ts` | Added export for dialogue-queries |
+| `packages/features/audio-generation/src/components/index.ts` | Added export for DialogueList |
+| `packages/features/audio-generation/vitest.config.ts` | Added UI component aliases for testing |
+| `packages/features/audio-generation/package.json` | Added @tanstack/react-query dependency |
+
+### Features Implemented
+
+- Display dialogue lines with character, text, sequence number, and status
+- Status badges: pending (gray), generating (blue spinner), completed (green), failed (red)
+- Audio controls: play, pause, regenerate, download buttons
+- Filtering by search text, character, and status
+- Sorting by sequence number, status, or character
+- Multi-select with checkboxes and select-all
+- Batch generate for all pending lines
+- Toast notifications for success/error states
+- Error message display for failed lines
+- Responsive layout with proper ARIA labels
 
 ---
 
@@ -570,31 +609,31 @@ packages/features/audio-generation/src/
 
 ### Functional
 
-- [ ] Displays all dialogue lines
-- [ ] Shows character name for each line
-- [ ] Shows dialogue text
-- [ ] Shows audio status badge
-- [ ] Play button works for completed lines
-- [ ] Regenerate button works
-- [ ] Download button opens audio file
-- [ ] Search filters dialogue text
-- [ ] Character filter works
-- [ ] Status filter works
-- [ ] Sort by sequence number works
-- [ ] Select individual lines works
-- [ ] Select all works
-- [ ] Batch generate button triggers action
-- [ ] Shows loading states during generation
-- [ ] Shows error messages for failed lines
+- [x] Displays all dialogue lines
+- [x] Shows character name for each line
+- [x] Shows dialogue text
+- [x] Shows audio status badge
+- [x] Play button works for completed lines
+- [x] Regenerate button works
+- [x] Download button opens audio file
+- [x] Search filters dialogue text
+- [x] Character filter works
+- [x] Status filter works
+- [x] Sort by sequence number works
+- [x] Select individual lines works
+- [x] Select all works
+- [x] Batch generate button triggers action
+- [x] Shows loading states during generation
+- [x] Shows error messages for failed lines
 
 ### Non-Functional
 
-- [ ] Renders 100 lines within 1 second
-- [ ] Smooth scrolling
-- [ ] Keyboard navigation works
-- [ ] Accessible (ARIA labels, screen reader)
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] Renders 100 lines within 1 second
+- [x] Smooth scrolling
+- [x] Keyboard navigation works
+- [x] Accessible (ARIA labels, screen reader)
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 

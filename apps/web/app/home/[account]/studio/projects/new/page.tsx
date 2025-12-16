@@ -64,3 +64,4 @@ function FormSkeleton() {
 }
 
 export default withI18n(NewFilmProjectPage);
+

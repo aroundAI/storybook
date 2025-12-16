@@ -7,13 +7,9 @@ import { fileURLToPath } from 'url';
 import { getLogger } from '@kit/shared/logger';
 
 import type {
-  PromptOutputConfig,
   PromptTemplate,
   RenderedPrompt,
 } from '../types';
-
-// Re-export types for convenience
-export type { PromptOutputConfig, RenderedPrompt };
 
 /**
  * Cache for discovered prompt directories to avoid repeated filesystem scans
@@ -297,6 +293,6 @@ function interpolateVariables(
  * Clear the prompt directories cache
  * Useful when prompts are added at runtime
  */
-export function clearPromptCache(): void {
+export async function clearPromptCache(): Promise<void> {
   promptDirectoriesCache = null;
 }

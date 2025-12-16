@@ -96,13 +96,42 @@ export const generateStoryIdeasAction = enhanceAction(
 
     const accountId = accountMemberships?.[0]?.account_id ?? user.id;
 
+    // Build rich context for episode (Phase 1: Context Builder)
+    const {
+      buildEpisodeContext,
+      formatCharactersForPrompt,
+      formatLocationsForPrompt,
+    } = await import('./context-builder');
+
+    const episodeContext = await buildEpisodeContext(data.episodeId);
+
     // Prepare variables for prompt template (matching template variable names)
     const variables = {
-      premise: data.premise,
-      genre: data.genre ?? 'general',
-      target_audience: data.targetAudience ?? 'general',
-      style: data.style ?? 'balanced',
+      premise: episodeContext.premise,
       number_of_ideas: data.numberOfIdeas,
+
+      // Characters MUST appear in all ideas
+      characters: formatCharactersForPrompt(episodeContext.characters),
+
+      // Locations MUST be used
+      locations: formatLocationsForPrompt(episodeContext.locations),
+
+      // Season arc for thematic alignment
+      season_context: episodeContext.seasonPremise
+        ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
+        : '',
+
+      // Continuity constraints
+      previous_episodes:
+        episodeContext.previousEpisodes.length > 0
+          ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
+          : '',
+
+      // Project settings
+      genre: episodeContext.genre,
+      target_audience: episodeContext.targetAudience,
+      visual_style: episodeContext.visualStyle,
+      style: 'balanced', // Default style
     };
 
     logger.info(
@@ -217,23 +246,43 @@ export const generateFullStoryAction = enhanceAction(
       throw new Error('Project not found or access denied');
     }
 
-    // Format characters for prompt template
-    const charactersFormatted = data.characters?.length
-      ? `**Characters**:\n${data.characters.map((c) => `- ${c.name}: ${c.description}`).join('\n')}`
-      : '';
+    // Build rich context for episode (Phase 1: Context Builder)
+    const {
+      buildEpisodeContext,
+      formatCharactersForPrompt,
+      formatLocationsForPrompt,
+      formatPreviousEpisodesForPrompt,
+    } = await import('./context-builder');
 
-    // Format world details for prompt template
-    const worldDetailsFormatted = data.worldDetails
-      ? `**World/Setting**:\n${data.worldDetails}`
-      : '';
+    const episodeContext = await buildEpisodeContext(data.episodeId);
 
-    // Prepare variables for prompt template (matching template variable names)
+    // Prepare variables for prompt template
     const variables = {
       title: data.title,
       logline: data.logline,
+      premise: episodeContext.premise,
       target_duration: data.targetDuration,
-      characters: charactersFormatted,
-      world_details: worldDetailsFormatted,
+
+      // Rich character context
+      characters: formatCharactersForPrompt(episodeContext.characters),
+
+      // Rich location context
+      locations: formatLocationsForPrompt(episodeContext.locations),
+
+      // Season arc
+      season_context: episodeContext.seasonPremise
+        ? `This is Episode ${episodeContext.episodeNumber} of Season ${episodeContext.seasonNumber}. Season Premise: ${episodeContext.seasonPremise}`
+        : '',
+
+      // Continuity
+      previous_episodes: formatPreviousEpisodesForPrompt(
+        episodeContext.previousEpisodes,
+      ),
+
+      // Project settings
+      genre: episodeContext.genre,
+      target_audience: episodeContext.targetAudience,
+      visual_style: episodeContext.visualStyle,
       style: data.style ?? 'balanced',
     };
 

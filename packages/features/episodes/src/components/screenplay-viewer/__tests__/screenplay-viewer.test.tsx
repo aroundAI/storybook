@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import React from 'react';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -304,7 +305,9 @@ describe('ScreenplayViewer', () => {
         <ScreenplayViewer episode={mockEpisode} onApprove={mockOnApprove} />,
       );
 
-      const approveButton = screen.getByText(/Approve & Continue/).closest('button');
+      const approveButton = screen
+        .getByText(/Approve & Continue/)
+        .closest('button');
       fireEvent.click(approveButton!);
 
       // Note: Due to useTransition, onApprove is called asynchronously

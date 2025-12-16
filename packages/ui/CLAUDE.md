@@ -31,7 +31,7 @@ Import from `packages/ui/src/`:
 // Shadcn components
 import { Button } from '@kit/ui/button';
 import { Card } from '@kit/ui/card';
-// Makerkit components
+// StoryBook components
 import { If } from '@kit/ui/if';
 import { ProfileAvatar } from '@kit/ui/profile-avatar';
 import { toast } from '@kit/ui/sonner';

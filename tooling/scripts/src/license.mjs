@@ -58,7 +58,7 @@ async function checkLicense() {
     if (makerkitConfig.username) {
       searchParams.append('projectUsername', makerkitConfig.username);
     }
-  } catch {}
+  } catch { }
 
   const res = await fetch(`${endpoint}?${searchParams.toString()}`);
 
@@ -67,7 +67,7 @@ async function checkLicense() {
   } else {
     return Promise.reject(
       new Error(
-        `License check failed. Please set the git user name with the command 'git config user.username <username>'. The username needs to match the GitHub username in your Makerkit organization.`,
+        `License check failed. Please set the git user name with the command 'git config user.username <username>'. The username needs to match the GitHub username in your StoryBook organization.`,
       ),
     );
   }

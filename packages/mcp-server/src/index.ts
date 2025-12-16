@@ -13,7 +13,7 @@ import { registerScriptsTools } from './tools/scripts';
 async function main() {
   // Create server instance
   const server = new McpServer({
-    name: 'makerkit',
+    name: 'storybook', // Replaced makerkit
     version: '1.0.0',
   });
 
@@ -28,7 +28,7 @@ async function main() {
 
   await server.connect(transport);
 
-  console.error('Makerkit MCP Server running on stdio');
+  console.error('StoryBook MCP Server running on stdio');
 }
 
 main().catch((error) => {

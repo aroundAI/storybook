@@ -798,7 +798,7 @@ export const envVariables: EnvVariableModel[] = [
     name: 'EMAIL_SENDER',
     description: 'Default sender email address.',
     category: 'Email',
-    hint: `Ex. "Makerkit <admin@makerkit.dev>"`,
+    hint: `Ex. "StoryBook <admin@makerkit.dev>"`,
     required: true,
     type: 'string',
     validate: ({ value }) => {
@@ -812,7 +812,7 @@ export const envVariables: EnvVariableModel[] = [
     name: 'CONTACT_EMAIL',
     description: 'Email address for contact form submissions.',
     category: 'Email',
-    hint: `Ex. "Makerkit <admin@makerkit.dev>"`,
+    hint: `Ex. "StoryBook <admin@makerkit.dev>"`,
     required: true,
     type: 'email',
     validate: ({ value }) => {

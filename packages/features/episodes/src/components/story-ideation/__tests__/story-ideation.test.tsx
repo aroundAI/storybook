@@ -54,7 +54,13 @@ vi.mock('@kit/ui/button', () => ({
 }));
 
 vi.mock('@kit/ui/card', () => ({
-  Card: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  Card: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => (
     <div data-testid="card" className={className}>
       {children}
     </div>
@@ -87,7 +93,9 @@ vi.mock('@kit/ui/form', () => ({
     render,
     name,
   }: {
-    render: (props: { field: { value: string; onChange: () => void } }) => React.ReactNode;
+    render: (props: {
+      field: { value: string; onChange: () => void };
+    }) => React.ReactNode;
     name: string;
   }) => (
     <div data-testid={`form-field-${name}`}>
@@ -164,7 +172,12 @@ vi.mock('@kit/ui/textarea', () => ({
     placeholder?: string;
     className?: string;
   }) => (
-    <textarea data-testid="textarea" placeholder={placeholder} className={className} {...props} />
+    <textarea
+      data-testid="textarea"
+      placeholder={placeholder}
+      className={className}
+      {...props}
+    />
   ),
 }));
 
@@ -186,6 +199,7 @@ vi.mock('../idea-card', () => ({
 
 describe('StoryIdeation', () => {
   const defaultProps = {
+    episodeId: 'test-episode-id',
     onComplete: vi.fn(),
     isGenerating: false,
   };
@@ -203,23 +217,7 @@ describe('StoryIdeation', () => {
     expect(screen.getByTestId('form-field-premise')).toBeDefined();
   });
 
-  it('should render genre select field', () => {
-    render(<StoryIdeation {...defaultProps} />);
 
-    expect(screen.getByTestId('form-field-genre')).toBeDefined();
-  });
-
-  it('should render style select field', () => {
-    render(<StoryIdeation {...defaultProps} />);
-
-    expect(screen.getByTestId('form-field-style')).toBeDefined();
-  });
-
-  it('should render target audience select field', () => {
-    render(<StoryIdeation {...defaultProps} />);
-
-    expect(screen.getByTestId('form-field-targetAudience')).toBeDefined();
-  });
 
   it('should render number of ideas slider', () => {
     render(<StoryIdeation {...defaultProps} />);
@@ -241,7 +239,9 @@ describe('StoryIdeation', () => {
     render(<StoryIdeation {...defaultProps} />);
 
     expect(
-      screen.getByText('Enter your story premise and configure generation settings'),
+      screen.getByText(
+        'Enter your story premise. Generation settings are inherited from your project.',
+      ),
     ).toBeDefined();
   });
 
@@ -267,10 +267,12 @@ describe('StoryIdeation', () => {
 
 describe('StoryIdeation Form Validation', () => {
   it('should have a submit button', () => {
-    render(<StoryIdeation onComplete={vi.fn()} />);
+    render(<StoryIdeation onComplete={vi.fn()} episodeId="test-episode-id" />);
 
     const buttons = screen.getAllByTestId('button');
-    const submitButton = buttons.find((btn) => btn.getAttribute('type') === 'submit');
+    const submitButton = buttons.find(
+      (btn) => btn.getAttribute('type') === 'submit',
+    );
     expect(submitButton).toBeDefined();
   });
 });

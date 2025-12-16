@@ -2,7 +2,7 @@ import 'server-only';
 
 import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import type { PlatformConnection } from './database-types';
 
@@ -22,11 +22,11 @@ export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
-    | 'EXPIRED'
-    | 'REFRESH_FAILED'
-    | 'CONNECTION_INACTIVE'
-    | 'NOT_FOUND'
-    | 'NO_REFRESH_TOKEN';
+  | 'EXPIRED'
+  | 'REFRESH_FAILED'
+  | 'CONNECTION_INACTIVE'
+  | 'NOT_FOUND'
+  | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 
@@ -88,7 +88,7 @@ export async function ensureValidToken(
 async function doEnsureValidToken(
   connectionId: string,
 ): Promise<TokenValidationResult> {
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
 
   // 1. Fetch connection
   // Note: Type assertion needed until database types are regenerated
@@ -186,7 +186,7 @@ async function doEnsureValidToken(
  * Marks a connection as inactive
  */
 async function markConnectionInactive(connectionId: string): Promise<void> {
-  const client = getSupabaseServerClient();
+  const client = getSupabaseServerAdminClient();
   await client
     .from('platform_connections' as 'accounts')
     .update({
