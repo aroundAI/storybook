@@ -388,37 +388,51 @@ function generateVTT(segments: CaptionSegment[]): string {
 
 ### File Changes
 
-| Action | Path |
-|--------|------|
-| CREATE | `packages/features/film-studio/src/components/caption-editor.tsx` |
-| CREATE | `packages/features/film-studio/src/server/caption-actions.ts` |
-| CREATE | `packages/features/film-studio/src/lib/caption-utils.ts` |
-| MODIFY | `apps/web/supabase/schemas/30-film-studio.sql` |
-| MODIFY | `packages/features/film-studio/src/components/timeline-editor.tsx` |
+| Action | Path | Status |
+|--------|------|--------|
+| CREATE | `apps/web/supabase/schemas/31-captions.sql` | ✅ Complete |
+| MODIFY | `apps/web/supabase/schemas/30-film-studio.sql` | ✅ Complete (added 'transcription', 'translation' to job_type) |
+| CREATE | `packages/llm/src/transcription.ts` | ✅ Complete (WhisperTranscriptionService) |
+| CREATE | `packages/features/film-studio/src/lib/schemas/caption.schema.ts` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/lib/caption-utils.ts` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/server/caption-actions.ts` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/components/caption-editor/caption-editor.tsx` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/components/caption-editor/caption-segment-list.tsx` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/components/caption-editor/caption-style-selector.tsx` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/components/caption-editor/translate-dialog.tsx` | ✅ Complete |
+| CREATE | `packages/features/film-studio/src/components/caption-editor/index.ts` | ✅ Complete |
+| CREATE | `packages/features/film-studio/__tests__/caption-utils.test.ts` | ✅ Complete |
+| MODIFY | `packages/features/film-studio/src/components/index.ts` | ✅ Complete |
+| MODIFY | `packages/features/film-studio/src/lib/index.ts` | ✅ Complete |
+| MODIFY | `packages/features/film-studio/src/server/index.ts` | ✅ Complete |
+| MODIFY | `packages/llm/src/index.ts` | ✅ Complete |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Auto-generate captions from dialogue audio
-- [ ] Word-level timing data captured
-- [ ] 4 style presets available (standard, bold, minimal, animated)
-- [ ] Caption segments editable inline
-- [ ] Click segment to seek to timestamp
-- [ ] Export to SRT format
-- [ ] Export to VTT format
-- [ ] Multi-language support with translation option
-- [ ] Captions synchronized with video preview
+- [x] Auto-generate captions from dialogue audio (generateCaptionsAction with Whisper API)
+- [x] Word-level timing data captured (WhisperTranscriptionService returns word-level timing)
+- [x] 4 style presets available (standard, bold, minimal, animated)
+- [x] Caption segments editable inline (CaptionSegmentList with inline editing)
+- [x] Click segment to seek to timestamp (onSegmentClick callback)
+- [x] Export to SRT format (exportCaptionsAction with format: 'srt')
+- [x] Export to VTT format (exportCaptionsAction with format: 'vtt')
+- [x] Multi-language support with translation option (translateCaptionsAction with LLM translation)
+- [x] Captions synchronized with video preview (currentTime prop with auto-scroll)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test SRT format generation
-- [ ] Test VTT format generation
-- [ ] Test timestamp formatting functions
-- [ ] Test segment timing calculations
+- [x] Test SRT format generation (exportToSrt in caption-utils.test.ts)
+- [x] Test VTT format generation (exportToVtt in caption-utils.test.ts)
+- [x] Test timestamp formatting functions (formatSrtTime, formatVttTime, formatDisplayTime)
+- [x] Test segment timing calculations (parseSrtTime, parseVttTime, splitSegment)
+- [x] Test segment merging logic (mergeSegments)
+- [x] Test segment validation (validateSegments)
+- [x] Test SRT/VTT parsing (parseSrt, parseVtt)
 
 ### Integration Tests
 - [ ] Test full caption generation workflow

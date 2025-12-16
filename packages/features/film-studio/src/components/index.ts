@@ -8,3 +8,6 @@ export * from './studio-dashboard';
 export { ApiKeysSettings } from './api-keys-settings';
 export { GenerationStatusIndicator } from './generation-status-indicator';
 export { GenerationStatusPanel } from './generation-status-panel';
+
+// Caption editor components (FILM-605)
+export * from './caption-editor';

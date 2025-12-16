@@ -15,3 +15,6 @@ export {
   getGenerationSettings,
   updateGenerationSettingsAction,
 } from './actions/settings-actions';
+
+// Caption server actions (FILM-605)
+export * from './caption-actions';

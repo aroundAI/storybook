@@ -15,6 +15,18 @@ export {
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 export { calculateChanges, generateInsightsAction } from './insights-actions';
 
+// Revenue actions
+export {
+  addManualRevenueAction,
+  deleteManualRevenueAction,
+  generateRevenueReportAction,
+  getRevenueProjectionAction,
+  getRevenueSummaryAction,
+  getRevenueTimeSeriesAction,
+  getTopContentByRevenueAction,
+  syncRevenueFromPlatformAction,
+} from './revenue-actions';
+
 // Schedule utilities
 export {
   getIntervalHours,

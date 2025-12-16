@@ -19,42 +19,6 @@ import {
 import { Input } from '@kit/ui/input';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
 import { ImageUploader } from '../../image-uploader/ImageUploader';
 
 /**

@@ -1262,6 +1262,9 @@ importers:
 
   packages/features/content-analytics:
     dependencies:
+      '@hookform/resolvers':
+        specifier: ^5.2.2
+        version: 5.2.2(react-hook-form@7.62.0(react@19.1.1))
       '@kit/llm':
         specifier: workspace:*
         version: link:../../llm
@@ -1292,6 +1295,12 @@ importers:
       lucide-react:
         specifier: ^0.544.0
         version: 0.544.0(react@19.1.1)
+      react-day-picker:
+        specifier: ^9.10.0
+        version: 9.10.0(react@19.1.1)
+      react-hook-form:
+        specifier: ^7.62.0
+        version: 7.62.0(react@19.1.1)
       recharts:
         specifier: 2.15.3
         version: 2.15.3(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -1450,6 +1459,9 @@ importers:
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../film-studio-schemas
+      '@kit/llm':
+        specifier: workspace:*
+        version: link:../../llm
       '@kit/next':
         specifier: workspace:*
         version: link:../../next
@@ -1465,6 +1477,9 @@ importers:
       date-fns:
         specifier: ^4.1.0
         version: 4.1.0
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
     devDependencies:
       '@hookform/resolvers':
         specifier: ^5.2.2
@@ -1493,6 +1508,9 @@ importers:
       '@types/react-dom':
         specifier: 19.1.9
         version: 19.1.9(@types/react@19.1.13)
+      '@types/uuid':
+        specifier: ^10.0.0
+        version: 10.0.0
       jsdom:
         specifier: ^26.1.0
         version: 26.1.0

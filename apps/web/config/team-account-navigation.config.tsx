@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   CreditCard,
   Film,
   LayoutDashboard,
@@ -28,6 +29,11 @@ const getRoutes = (account: string) => [
         label: 'studio:routes.allProjects',
         path: `/home/${account}/studio`,
         Icon: <Film className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.analytics',
+        path: `/home/${account}/studio/analytics`,
+        Icon: <BarChart3 className={iconClasses} />,
       },
     ],
   },

@@ -18,6 +18,13 @@ export {
   type VoiceProfile,
 } from './VoiceCloningEditor';
 
+// Lip sync components (FILM-511)
+export {
+  LipSyncEditor,
+  type LipSyncDialogueLine,
+  type LipSyncEditorProps,
+} from './LipSyncEditor';
+
 // Voice assignment components (FILM-507)
 export {
   VoiceAssignmentPanel,
