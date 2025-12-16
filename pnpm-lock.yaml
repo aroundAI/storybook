@@ -220,6 +220,9 @@ importers:
       '@kit/jobs':
         specifier: workspace:*
         version: link:../../packages/features/jobs
+      '@kit/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@kit/mailers':
         specifier: workspace:*
         version: link:../../packages/mailers/core
