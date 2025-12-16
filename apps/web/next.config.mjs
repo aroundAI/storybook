@@ -21,6 +21,9 @@ const INTERNAL_PACKAGES = [
   '@kit/monitoring',
   '@kit/next',
   '@kit/notifications',
+  '@kit/llm',
+  '@kit/content-analytics',
+  '@kit/jobs',
 ];
 
 /** @type {import('next').NextConfig} */
