@@ -28,7 +28,6 @@ import type {
   AggregateAnalytics,
   AnalyticsTotals,
   DailyMetric,
-  PlatformBreakdown,
 } from '../types';
 import { AIInsights } from './ai-insights';
 import { AudienceAnalytics } from './audience-analytics';
@@ -103,8 +102,9 @@ export function AnalyticsDashboard({
   });
 
   // Filter data by selected platforms
-  const filteredPlatformTotals = projectData?.platformTotals?.filter(
-    (p: PlatformBreakdown) => selectedPlatforms.includes(p.platform),
+  // projectData.platformTotals has { platform, views, likes, comments, shares, percentage }
+  const filteredPlatformTotals = projectData?.platformTotals?.filter((p) =>
+    selectedPlatforms.includes(p.platform as Platform),
   );
 
   // Transform flat ProjectAnalytics into AnalyticsTotals format
@@ -124,11 +124,20 @@ export function AnalyticsDashboard({
     : null;
 
   // Build aggregate analytics object for AIInsights
+  // Map platformTotals to PlatformBreakdown format (platform needs to be union type)
+  const platformMetrics = filteredPlatformTotals?.map((p) => ({
+    platform: p.platform as 'youtube' | 'tiktok' | 'instagram',
+    views: p.views,
+    likes: p.likes,
+    comments: p.comments,
+    shares: p.shares,
+  }));
+
   const aggregateAnalytics: AggregateAnalytics | null = projectData
     ? {
         totals: totals!,
         previousPeriodTotals: undefined, // Not currently fetched
-        platformMetrics: filteredPlatformTotals,
+        platformMetrics,
         topContent: undefined, // Not currently fetched
         audience: undefined, // Not currently fetched
         contentCount: projectData.contentCount ?? 0,
@@ -252,7 +261,13 @@ export function AnalyticsDashboard({
 }
 
 interface PlatformBreakdownCardProps {
-  data: PlatformBreakdown[];
+  data: {
+    platform: string;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+  }[];
 }
 
 function PlatformBreakdownCard({ data }: PlatformBreakdownCardProps) {

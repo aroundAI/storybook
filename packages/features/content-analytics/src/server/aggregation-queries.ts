@@ -95,6 +95,9 @@ export interface ProjectAnalytics {
   platformTotals: {
     platform: string;
     views: number;
+    likes: number;
+    comments: number;
+    shares: number;
     percentage: number;
   }[];
 }
@@ -432,7 +435,10 @@ export async function getProjectAnalytics(
   let totalEngagement = 0;
   let contentCount = 0;
 
-  const platformTotals = new Map<string, number>();
+  const platformTotals = new Map<
+    string,
+    { views: number; likes: number; comments: number; shares: number }
+  >();
 
   for (const s of seasons || []) {
     const analytics = await getSeasonAnalytics(s.id, options);
@@ -469,7 +475,7 @@ export async function getProjectAnalytics(
     const publishIds = allPublishes.map((p) => p.id);
     let analyticsQuery = client
       .from('content_analytics')
-      .select('publish_id, views, snapshot_date')
+      .select('publish_id, views, likes, comments, shares, snapshot_date')
       .in('publish_id', publishIds);
 
     // Filter by date range if specified
@@ -491,28 +497,52 @@ export async function getProjectAnalytics(
     });
 
     if (analytics) {
-      const latestByPublish = new Map<string, number>();
+      const latestByPublish = new Map<
+        string,
+        { views: number; likes: number; comments: number; shares: number }
+      >();
       for (const a of analytics) {
         if (!latestByPublish.has(a.publish_id)) {
-          latestByPublish.set(a.publish_id, a.views || 0);
+          latestByPublish.set(a.publish_id, {
+            views: a.views || 0,
+            likes: a.likes || 0,
+            comments: a.comments || 0,
+            shares: a.shares || 0,
+          });
         }
       }
 
       for (const publish of allPublishes) {
-        const views = latestByPublish.get(publish.id) || 0;
-        platformTotals.set(
-          publish.platform,
-          (platformTotals.get(publish.platform) || 0) + views,
-        );
+        const stats = latestByPublish.get(publish.id) || {
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+        };
+        const current = platformTotals.get(publish.platform) || {
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+        };
+        platformTotals.set(publish.platform, {
+          views: current.views + stats.views,
+          likes: current.likes + stats.likes,
+          comments: current.comments + stats.comments,
+          shares: current.shares + stats.shares,
+        });
       }
     }
   }
 
   const platformTotalsList = Array.from(platformTotals.entries())
-    .map(([platform, views]) => ({
+    .map(([platform, stats]) => ({
       platform,
-      views,
-      percentage: totalViews > 0 ? (views / totalViews) * 100 : 0,
+      views: stats.views,
+      likes: stats.likes,
+      comments: stats.comments,
+      shares: stats.shares,
+      percentage: totalViews > 0 ? (stats.views / totalViews) * 100 : 0,
     }))
     .sort((a, b) => b.views - a.views);
 
