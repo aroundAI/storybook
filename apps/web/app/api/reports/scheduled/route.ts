@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 
+import type { SupabaseClient } from '@supabase/supabase-js';
+
 import {
   addDays,
   addMonths,
@@ -50,7 +52,8 @@ export const GET = enhanceRouteHandler(
     }
 
     const startTime = Date.now();
-    const adminClient = getSupabaseServerAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adminClient = getSupabaseServerAdminClient() as SupabaseClient<any>;
 
     try {
       const now = new Date();
@@ -146,7 +149,8 @@ export const GET = enhanceRouteHandler(
 
 async function processScheduledReport(
   report: Record<string, unknown>,
-  adminClient: ReturnType<typeof getSupabaseServerAdminClient>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  adminClient: SupabaseClient<any>,
   logger: Awaited<ReturnType<typeof getLogger>>,
 ) {
   const ctx = { name: 'process-scheduled-report', reportId: report.id };
@@ -205,12 +209,14 @@ async function processScheduledReport(
 
   const transformedData: AnalyticsDataRow[] = analyticsData.map((row) => ({
     snapshotDate: row.snapshot_date,
-    platform: (row.publishes as { platform: string }).platform,
+    platform: (row.publishes as unknown as { platform: string }).platform,
     contentTitle:
-      (row.publishes as { title: string | null }).title ||
-      (row.publishes as { episodes: { title: string } }).episodes.title,
-    projectName: (row.publishes as { episodes: { projects: { name: string } } })
-      .episodes.projects.name,
+      (row.publishes as unknown as { title: string | null }).title ||
+      (row.publishes as unknown as { episodes: { title: string } }).episodes
+        .title,
+    projectName: (
+      row.publishes as unknown as { episodes: { projects: { name: string } } }
+    ).episodes.projects.name,
     views: row.views,
     likes: row.likes,
     comments: row.comments,
