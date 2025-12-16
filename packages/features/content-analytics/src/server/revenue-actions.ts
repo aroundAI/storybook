@@ -23,36 +23,6 @@ import type {
   TopRevenueContent,
 } from '../lib/types/revenue';
 
-// Type for revenue_records table (not yet in generated types)
-// This will be properly typed once the migration is applied
-interface RevenueRecordRow {
-  id: string;
-  publish_id: string;
-  platform: string;
-  record_date: string;
-  revenue_cents: number;
-  currency: string;
-  source: 'api' | 'manual';
-  breakdown: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-  created_at: string;
-  updated_at: string;
-  publishes?: {
-    id: string;
-    episode_id: string;
-    platform: string;
-    thumbnail_url?: string;
-    episodes?: {
-      id: string;
-      title: string;
-      project_id: string;
-      projects?: {
-        account_id: string;
-      };
-    };
-  };
-}
-
 /**
  * Get revenue summary for an account within a date range.
  * Aggregates revenue by platform, content, and calculates trends.
@@ -63,9 +33,7 @@ export const getRevenueSummaryAction = enhanceAction(
     const { accountId, startDate, endDate } = data;
 
     // Get all revenue records in date range for the account
-    // Using type assertion as revenue_records table types aren't generated yet
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: records, error } = (await (client as any)
+    const { data: records, error } = await client
       .from('revenue_records')
       .select(
         `
@@ -94,10 +62,7 @@ export const getRevenueSummaryAction = enhanceAction(
       )
       .gte('record_date', startDate)
       .lte('record_date', endDate)
-      .eq('publishes.episodes.projects.account_id', accountId)) as {
-      data: RevenueRecordRow[] | null;
-      error: Error | null;
-    };
+      .eq('publishes.episodes.projects.account_id', accountId);
 
     if (error) throw error;
 
@@ -156,8 +121,7 @@ export const getRevenueSummaryAction = enhanceAction(
     const previousStartDate = new Date(startDateObj);
     previousStartDate.setDate(previousStartDate.getDate() - dayCount);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: previousRecords } = (await (client as any)
+    const { data: previousRecords } = await client
       .from('revenue_records')
       .select(
         `
@@ -173,9 +137,7 @@ export const getRevenueSummaryAction = enhanceAction(
       )
       .gte('record_date', previousStartDate.toISOString().split('T')[0])
       .lt('record_date', startDate)
-      .eq('publishes.episodes.projects.account_id', accountId)) as {
-      data: Array<{ revenue_cents: number }> | null;
-    };
+      .eq('publishes.episodes.projects.account_id', accountId);
 
     const previousTotal =
       previousRecords?.reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
@@ -225,8 +187,7 @@ export const addManualRevenueAction = enhanceAction(
       throw new Error('Publish not found or access denied');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: record, error } = (await (client as any)
+    const { data: record, error } = await client
       .from('revenue_records')
       .upsert(
         {
@@ -244,7 +205,7 @@ export const addManualRevenueAction = enhanceAction(
         },
       )
       .select()
-      .single()) as { data: RevenueRecordRow | null; error: Error | null };
+      .single();
 
     if (error) throw error;
     if (!record) throw new Error('Failed to create revenue record');
@@ -262,8 +223,8 @@ export const addManualRevenueAction = enhanceAction(
         | 'manual',
       date: record.record_date,
       revenueCents: record.revenue_cents,
-      currency: record.currency,
-      source: record.source,
+      currency: record.currency ?? 'USD',
+      source: record.source as 'api' | 'manual',
       breakdown: record.breakdown as Record<string, number> | undefined,
       metadata: record.metadata as Record<string, unknown> | undefined,
       createdAt: new Date(record.created_at),
@@ -284,13 +245,12 @@ export const deleteManualRevenueAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { publishId, date } = data;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = (await (client as any)
+    const { error } = await client
       .from('revenue_records')
       .delete()
       .eq('publish_id', publishId)
       .eq('record_date', date)
-      .eq('source', 'manual')) as { error: Error | null };
+      .eq('source', 'manual');
 
     if (error) throw error;
 
@@ -315,8 +275,7 @@ export const getRevenueProjectionAction = enhanceAction(
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: recentRecords } = (await (client as any)
+    const { data: recentRecords } = await client
       .from('revenue_records')
       .select(
         `
@@ -332,9 +291,7 @@ export const getRevenueProjectionAction = enhanceAction(
       `,
       )
       .gte('record_date', thirtyDaysAgo.toISOString().split('T')[0])
-      .eq('publishes.episodes.projects.account_id', accountId)) as {
-      data: Array<{ revenue_cents: number; record_date: string }> | null;
-    };
+      .eq('publishes.episodes.projects.account_id', accountId);
 
     const totalRecent =
       recentRecords?.reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
@@ -413,8 +370,7 @@ export const getRevenueTimeSeriesAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { accountId, startDate, endDate } = data;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: records, error } = (await (client as any)
+    const { data: records, error } = await client
       .from('revenue_records')
       .select(
         `
@@ -433,14 +389,7 @@ export const getRevenueTimeSeriesAction = enhanceAction(
       .gte('record_date', startDate)
       .lte('record_date', endDate)
       .eq('publishes.episodes.projects.account_id', accountId)
-      .order('record_date', { ascending: true })) as {
-      data: Array<{
-        record_date: string;
-        revenue_cents: number;
-        platform: string;
-      }> | null;
-      error: Error | null;
-    };
+      .order('record_date', { ascending: true });
 
     if (error) throw error;
 
@@ -482,8 +431,7 @@ export const getTopContentByRevenueAction = enhanceAction(
     const { accountId, startDate, endDate, limit } = data;
 
     // Get revenue records grouped by publish
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: records, error } = (await (client as any)
+    const { data: records, error } = await client
       .from('revenue_records')
       .select(
         `
@@ -508,10 +456,7 @@ export const getTopContentByRevenueAction = enhanceAction(
       )
       .gte('record_date', startDate)
       .lte('record_date', endDate)
-      .eq('publishes.episodes.projects.account_id', accountId)) as {
-      data: RevenueRecordRow[] | null;
-      error: Error | null;
-    };
+      .eq('publishes.episodes.projects.account_id', accountId);
 
     if (error) throw error;
 
@@ -620,31 +565,29 @@ export const generateRevenueReportAction = enhanceAction(
       }),
     );
 
-    // Create report record
-    interface RevenueReportRow {
-      id: string;
-      account_id: string;
-      period_type: string;
-      start_date: string;
-      end_date: string;
-      created_at: string;
-    }
+    // Create report record - cast to Json for JSONB columns
+    type Json =
+      | string
+      | number
+      | boolean
+      | null
+      | { [key: string]: Json | undefined }
+      | Json[];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: report, error } = (await (client as any)
+    const { data: report, error } = await client
       .from('revenue_reports')
       .insert({
         account_id: accountId,
         period_type: periodType,
         start_date: startDate,
         end_date: endDate,
-        summary_data: summary,
-        top_performers: topPerformers,
-        platform_breakdown: platformBreakdown,
+        summary_data: JSON.parse(JSON.stringify(summary)) as Json,
+        top_performers: JSON.parse(JSON.stringify(topPerformers)) as Json,
+        platform_breakdown: JSON.parse(JSON.stringify(platformBreakdown)) as Json,
         file_format: format,
       })
       .select()
-      .single()) as { data: RevenueReportRow | null; error: Error | null };
+      .single();
 
     if (error) throw error;
     if (!report) throw new Error('Failed to create revenue report');

@@ -650,6 +650,15 @@ export async function syncSinglePublishById(
     };
   }
 
+  if (!publish.platform_connection_id) {
+    return {
+      publishId,
+      success: false,
+      error: 'Publish has no platform connection',
+      errorType: 'not_found',
+    };
+  }
+
   const platform = publish.platform as SyncPlatform;
   if (!['youtube', 'tiktok', 'instagram'].includes(platform)) {
     return {
