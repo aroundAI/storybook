@@ -69,11 +69,33 @@ function calculateNextRunTime(frequency: 'weekly' | 'monthly'): Date {
   const now = new Date();
 
   if (frequency === 'weekly') {
-    const daysUntilMonday = (8 - now.getUTCDay()) % 7 || 7;
+    const currentDay = now.getUTCDay();
+    const currentHour = now.getUTCHours();
+
+    // If it's Monday before 8:00 UTC, schedule for today
+    if (currentDay === 1 && currentHour < 8) {
+      const today = new Date(now);
+      today.setUTCHours(8, 0, 0, 0);
+      return today;
+    }
+
+    // Otherwise, schedule for next Monday
+    const daysUntilMonday = (8 - currentDay) % 7 || 7;
     const nextMonday = addDays(now, daysUntilMonday);
     nextMonday.setUTCHours(8, 0, 0, 0);
     return nextMonday;
   } else {
+    const currentDay = now.getUTCDate();
+    const currentHour = now.getUTCHours();
+
+    // If it's the 1st before 8:00 UTC, schedule for today
+    if (currentDay === 1 && currentHour < 8) {
+      const today = new Date(now);
+      today.setUTCHours(8, 0, 0, 0);
+      return today;
+    }
+
+    // Otherwise, schedule for next month's 1st
     const nextMonth = addMonths(startOfMonth(now), 1);
     nextMonth.setUTCHours(8, 0, 0, 0);
     return nextMonth;
