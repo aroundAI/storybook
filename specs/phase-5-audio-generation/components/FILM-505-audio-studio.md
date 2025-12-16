@@ -420,31 +420,31 @@ if (batchStatus?.status === 'processing') {
 
 ### Functional
 
-- [ ] Audio Studio loads without errors
-- [ ] Episode title displays correctly
-- [ ] Character list displays in sidebar
-- [ ] Dialogue tab shows all dialogue lines
-- [ ] Music tab shows all music tracks
-- [ ] Settings tab displays configuration options
-- [ ] Tab navigation works correctly
-- [ ] Audio player appears when audio selected
-- [ ] Play/pause controls work
-- [ ] Batch generate button triggers batch action
-- [ ] Progress indicator updates in real-time
-- [ ] Success/error notifications display
-- [ ] Keyboard shortcuts work
-- [ ] Responsive layout on mobile/tablet
-- [ ] Real-time status updates via polling
+- [x] Audio Studio loads without errors
+- [x] Episode title displays correctly
+- [x] Character list displays in sidebar
+- [x] Dialogue tab shows all dialogue lines
+- [x] Music tab shows all music tracks
+- [x] Settings tab displays configuration options
+- [x] Tab navigation works correctly
+- [x] Audio player appears when audio selected
+- [x] Play/pause controls work
+- [x] Batch generate button triggers batch action
+- [x] Progress indicator updates in real-time
+- [x] Success/error notifications display
+- [x] Keyboard shortcuts work
+- [x] Responsive layout on mobile/tablet
+- [x] Real-time status updates via polling
 
 ### Non-Functional
 
-- [ ] Component loads within 1 second
-- [ ] Tab switching is instant (<100ms)
-- [ ] No UI freezing during operations
-- [ ] Smooth animations and transitions
-- [ ] Accessible (keyboard navigation, ARIA labels)
-- [ ] TypeScript compiles without errors
-- [ ] No ESLint warnings
+- [x] Component loads within 1 second
+- [x] Tab switching is instant (<100ms)
+- [x] No UI freezing during operations
+- [x] Smooth animations and transitions
+- [x] Accessible (keyboard navigation, ARIA labels)
+- [x] TypeScript compiles without errors
+- [x] No ESLint warnings
 
 ---
 
