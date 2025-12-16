@@ -107,8 +107,13 @@ export function exportToVtt(segments: CaptionSegment[]): string {
  * Parse SRT time string to seconds
  */
 export function parseSrtTime(timeStr: string): number {
-  const [time, msStr] = timeStr.split(',');
-  const [hrs, mins, secs] = time.split(':').map(Number);
+  const parts = timeStr.split(',');
+  const time = parts[0] ?? '00:00:00';
+  const msStr = parts[1] ?? '0';
+  const timeParts = time.split(':').map(Number);
+  const hrs = timeParts[0] ?? 0;
+  const mins = timeParts[1] ?? 0;
+  const secs = timeParts[2] ?? 0;
   const ms = parseInt(msStr, 10);
   return hrs * 3600 + mins * 60 + secs + ms / 1000;
 }
@@ -117,18 +122,23 @@ export function parseSrtTime(timeStr: string): number {
  * Parse VTT time string to seconds
  */
 export function parseVttTime(timeStr: string): number {
-  const [time, msStr] = timeStr.split('.');
-  const parts = time.split(':').map(Number);
+  const parts = timeStr.split('.');
+  const time = parts[0] ?? '00:00:00';
+  const msStr = parts[1] ?? '0';
+  const timeParts = time.split(':').map(Number);
 
   // VTT can have HH:MM:SS or MM:SS format
   let hrs = 0;
   let mins = 0;
   let secs = 0;
 
-  if (parts.length === 3) {
-    [hrs, mins, secs] = parts;
-  } else if (parts.length === 2) {
-    [mins, secs] = parts;
+  if (timeParts.length === 3) {
+    hrs = timeParts[0] ?? 0;
+    mins = timeParts[1] ?? 0;
+    secs = timeParts[2] ?? 0;
+  } else if (timeParts.length === 2) {
+    mins = timeParts[0] ?? 0;
+    secs = timeParts[1] ?? 0;
   }
 
   const ms = parseInt(msStr, 10);
@@ -146,14 +156,20 @@ export function parseSrt(content: string): CaptionSegment[] {
     const lines = block.split('\n');
     if (lines.length < 3) continue;
 
-    const seqNum = parseInt(lines[0], 10);
+    const firstLine = lines[0];
+    if (!firstLine) continue;
+
+    const seqNum = parseInt(firstLine, 10);
     if (isNaN(seqNum)) continue;
 
-    const timeMatch = lines[1].match(
+    const timeLine = lines[1];
+    if (!timeLine) continue;
+
+    const timeMatch = timeLine.match(
       /(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})/,
     );
 
-    if (!timeMatch) continue;
+    if (!timeMatch || !timeMatch[1] || !timeMatch[2]) continue;
 
     const text = lines.slice(2).join('\n').trim();
 
@@ -191,18 +207,24 @@ export function parseVtt(content: string): CaptionSegment[] {
     const timestampIndex = blockLines.findIndex((line) => line.includes('-->'));
     if (timestampIndex === -1) continue;
 
-    const timeMatch = blockLines[timestampIndex].match(
+    const timestampLine = blockLines[timestampIndex];
+    if (!timestampLine) continue;
+
+    const timeMatch = timestampLine.match(
       /(\d{2}:\d{2}:\d{2}\.\d{3}|\d{2}:\d{2}\.\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2}\.\d{3}|\d{2}:\d{2}\.\d{3})/,
     );
 
-    if (!timeMatch) continue;
+    if (!timeMatch || !timeMatch[1] || !timeMatch[2]) continue;
 
     // Get sequence number if available
     let seqNum = segments.length + 1;
     if (timestampIndex > 0) {
-      const potentialSeq = parseInt(blockLines[timestampIndex - 1], 10);
-      if (!isNaN(potentialSeq)) {
-        seqNum = potentialSeq;
+      const prevLine = blockLines[timestampIndex - 1];
+      if (prevLine) {
+        const potentialSeq = parseInt(prevLine, 10);
+        if (!isNaN(potentialSeq)) {
+          seqNum = potentialSeq;
+        }
       }
     }
 
@@ -240,11 +262,17 @@ export function mergeSegments(
   const sorted = [...segments].sort(
     (a, b) => a.sequenceNumber - b.sequenceNumber,
   );
+
+  const firstSegment = sorted[0];
+  if (!firstSegment) return [];
+
   const merged: CaptionSegment[] = [];
-  let current = { ...sorted[0] };
+  let current: CaptionSegment = { ...firstSegment };
 
   for (let i = 1; i < sorted.length; i++) {
     const next = sorted[i];
+    if (!next) continue;
+
     const gap = next.startTime - current.endTime;
     const combinedDuration = next.endTime - current.startTime;
 
@@ -360,7 +388,8 @@ export function calculateTotalDuration(segments: CaptionSegment[]): number {
   if (segments.length === 0) return 0;
 
   const sorted = [...segments].sort((a, b) => a.endTime - b.endTime);
-  return sorted[sorted.length - 1].endTime;
+  const lastSegment = sorted[sorted.length - 1];
+  return lastSegment?.endTime ?? 0;
 }
 
 /**
@@ -392,6 +421,7 @@ export function validateSegments(segments: CaptionSegment[]): {
 
   for (let i = 0; i < sorted.length; i++) {
     const segment = sorted[i];
+    if (!segment) continue;
 
     // Check for invalid timing
     if (segment.endTime <= segment.startTime) {
@@ -415,7 +445,7 @@ export function validateSegments(segments: CaptionSegment[]): {
     // Check for overlaps with next segment
     if (i < sorted.length - 1) {
       const next = sorted[i + 1];
-      if (segment.endTime > next.startTime) {
+      if (next && segment.endTime > next.startTime) {
         warnings.push(
           `Segments ${segment.sequenceNumber} and ${next.sequenceNumber} overlap`,
         );
