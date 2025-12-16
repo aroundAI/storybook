@@ -1,4 +1,5 @@
 import {
+  BarChart3,
   CreditCard,
   Film,
   FolderKanban,
@@ -34,6 +35,11 @@ const getRoutes = (account: string) => [
         label: 'studio:routes.application',
         path: `/home/${account}/studio`,
         Icon: <Film className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.analytics',
+        path: `/home/${account}/studio/analytics`,
+        Icon: <BarChart3 className={iconClasses} />,
       },
     ],
   },
