@@ -65,3 +65,12 @@ export type {
   SyncSchedule,
   SyncStatusResponse,
 } from './types';
+
+// Report generation actions
+export {
+  createScheduledReportAction,
+  deleteScheduledReportAction,
+  generateReportAction,
+  getScheduledReportsAction,
+  updateScheduledReportAction,
+} from './report-actions';

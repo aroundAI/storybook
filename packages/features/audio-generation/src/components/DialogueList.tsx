@@ -88,28 +88,28 @@ function StatusBadge({ status }: { status: DialogueLine['status'] }) {
   switch (status) {
     case 'pending':
       return (
-        <Badge className="gap-1 status-pending">
+        <Badge className="status-pending gap-1">
           <Clock className="h-3 w-3" />
           Pending
         </Badge>
       );
     case 'generating':
       return (
-        <Badge className="gap-1 status-processing">
+        <Badge className="status-processing gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
           Generating
         </Badge>
       );
     case 'completed':
       return (
-        <Badge className="gap-1 status-complete">
+        <Badge className="status-complete gap-1">
           <CheckCircle className="h-3 w-3" />
           Completed
         </Badge>
       );
     case 'failed':
       return (
-        <Badge className="gap-1 status-error">
+        <Badge className="status-error gap-1">
           <XCircle className="h-3 w-3" />
           Failed
         </Badge>
@@ -149,15 +149,20 @@ export function DialogueList({
   const queryClient = useQueryClient();
 
   // Destructure for easier access
-  const { selectedLines, searchText, filterCharacter, filterStatus, sortBy } = uiState;
+  const { selectedLines, searchText, filterCharacter, filterStatus, sortBy } =
+    uiState;
 
   // State update helpers
-  const setSelectedLines = useCallback((updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
-    setUIState((prev) => ({
-      ...prev,
-      selectedLines: typeof updater === 'function' ? updater(prev.selectedLines) : updater,
-    }));
-  }, []);
+  const setSelectedLines = useCallback(
+    (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      setUIState((prev) => ({
+        ...prev,
+        selectedLines:
+          typeof updater === 'function' ? updater(prev.selectedLines) : updater,
+      }));
+    },
+    [],
+  );
 
   const setSearchText = useCallback((value: string) => {
     setUIState((prev) => ({ ...prev, searchText: value }));
@@ -186,10 +191,14 @@ export function DialogueList({
         overwriteExisting: true,
       });
     },
-    onSuccess: (result: Awaited<ReturnType<typeof generateDialogueVoiceAction>>) => {
+    onSuccess: (
+      result: Awaited<ReturnType<typeof generateDialogueVoiceAction>>,
+    ) => {
       if (result.status === 'completed') {
         toast.success('Audio regenerated successfully');
-        queryClient.invalidateQueries({ queryKey: ['dialogue-lines', episodeId] });
+        queryClient.invalidateQueries({
+          queryKey: ['dialogue-lines', episodeId],
+        });
       } else {
         toast.error(result.error ?? 'Failed to regenerate audio');
       }
@@ -207,11 +216,15 @@ export function DialogueList({
         overwriteExisting: false,
       });
     },
-    onSuccess: (result: Awaited<ReturnType<typeof batchGenerateDialogueAction>>) => {
+    onSuccess: (
+      result: Awaited<ReturnType<typeof batchGenerateDialogueAction>>,
+    ) => {
       toast.success(
         `Batch generation started for ${result.totalLines} lines. Estimated cost: $${(result.estimatedCost / 100).toFixed(2)}`,
       );
-      queryClient.invalidateQueries({ queryKey: ['dialogue-lines', episodeId] });
+      queryClient.invalidateQueries({
+        queryKey: ['dialogue-lines', episodeId],
+      });
     },
     onError: (error: Error) => {
       toast.error(error.message ?? 'Failed to start batch generation');
@@ -251,7 +264,9 @@ export function DialogueList({
         // Filter for narrator lines (null characterAssetId)
         result = result.filter((line) => line.characterAssetId === null);
       } else {
-        result = result.filter((line) => line.characterAssetId === filterCharacter);
+        result = result.filter(
+          (line) => line.characterAssetId === filterCharacter,
+        );
       }
     }
 
@@ -266,7 +281,12 @@ export function DialogueList({
         case 'sequence':
           return a.sequenceNumber - b.sequenceNumber;
         case 'status': {
-          const statusOrder = { pending: 0, generating: 1, failed: 2, completed: 3 };
+          const statusOrder = {
+            pending: 0,
+            generating: 1,
+            failed: 2,
+            completed: 3,
+          };
           return statusOrder[a.status] - statusOrder[b.status];
         }
         case 'character': {
@@ -280,7 +300,14 @@ export function DialogueList({
     });
 
     return result;
-  }, [dialogueLines, searchText, filterCharacter, filterStatus, sortBy, characters]);
+  }, [
+    dialogueLines,
+    searchText,
+    filterCharacter,
+    filterStatus,
+    sortBy,
+    characters,
+  ]);
 
   // Selection handlers
   const handleSelectAll = useCallback(
@@ -294,17 +321,20 @@ export function DialogueList({
     [filteredLines, setSelectedLines],
   );
 
-  const handleSelectLine = useCallback((lineId: string, checked: boolean) => {
-    setSelectedLines((prev) => {
-      const next = new Set(prev);
-      if (checked) {
-        next.add(lineId);
-      } else {
-        next.delete(lineId);
-      }
-      return next;
-    });
-  }, [setSelectedLines]);
+  const handleSelectLine = useCallback(
+    (lineId: string, checked: boolean) => {
+      setSelectedLines((prev) => {
+        const next = new Set(prev);
+        if (checked) {
+          next.add(lineId);
+        } else {
+          next.delete(lineId);
+        }
+        return next;
+      });
+    },
+    [setSelectedLines],
+  );
 
   // Audio handlers
   const handlePlayPause = useCallback(
@@ -319,30 +349,33 @@ export function DialogueList({
   );
 
   // Download handler
-  const handleDownload = useCallback(async (audioUrl: string, lineId: string) => {
-    try {
-      // Fetch the audio file to ensure it exists
-      const response = await fetch(audioUrl);
-      if (!response.ok) {
-        throw new Error('Failed to fetch audio file');
+  const handleDownload = useCallback(
+    async (audioUrl: string, lineId: string) => {
+      try {
+        // Fetch the audio file to ensure it exists
+        const response = await fetch(audioUrl);
+        if (!response.ok) {
+          throw new Error('Failed to fetch audio file');
+        }
+
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        link.download = `dialogue-${lineId}.mp3`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        // Clean up the blob URL
+        URL.revokeObjectURL(blobUrl);
+      } catch {
+        toast.error('Failed to download audio file');
       }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = `dialogue-${lineId}.mp3`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      // Clean up the blob URL
-      URL.revokeObjectURL(blobUrl);
-    } catch {
-      toast.error('Failed to download audio file');
-    }
-  }, []);
+    },
+    [],
+  );
 
   // Regenerate handler
   const handleRegenerate = useCallback(
@@ -371,7 +404,10 @@ export function DialogueList({
     selectedLines.size > 0 && selectedLines.size < filteredLines.length;
 
   return (
-    <div className={cn('flex flex-col gap-4', className)} data-test="dialogue-list">
+    <div
+      className={cn('flex flex-col gap-4', className)}
+      data-test="dialogue-list"
+    >
       {/* Header with summary */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -413,7 +449,7 @@ export function DialogueList({
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="text-muted-foreground absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" />
           <Input
             placeholder="Search dialogue..."
@@ -478,12 +514,16 @@ export function DialogueList({
         {/* Table header */}
         <div className="bg-muted/50 flex items-center gap-4 border-b px-4 py-3">
           <Checkbox
-            checked={isSelectAllIndeterminate ? 'indeterminate' : isSelectAllChecked}
+            checked={
+              isSelectAllIndeterminate ? 'indeterminate' : isSelectAllChecked
+            }
             onCheckedChange={handleSelectAll}
             aria-label="Select all dialogue lines"
             data-test="select-all-checkbox"
           />
-          <span className="text-muted-foreground w-12 text-sm font-medium">#</span>
+          <span className="text-muted-foreground w-12 text-sm font-medium">
+            #
+          </span>
           <span className="text-muted-foreground flex-1 text-sm font-medium">
             Dialogue
           </span>
@@ -530,13 +570,14 @@ export function DialogueList({
                 </span>
 
                 {/* Dialogue text */}
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm">{line.text}</p>
-                  {line.status === 'failed' && line.generationMetadata?.error && (
-                    <p className="text-destructive mt-1 truncate text-xs">
-                      {line.generationMetadata.error}
-                    </p>
-                  )}
+                  {line.status === 'failed' &&
+                    line.generationMetadata?.error && (
+                      <p className="text-destructive mt-1 truncate text-xs">
+                        {line.generationMetadata.error}
+                      </p>
+                    )}
                 </div>
 
                 {/* Character name */}
@@ -558,9 +599,7 @@ export function DialogueList({
                     onClick={() => handlePlayPause(line)}
                     disabled={!line.audioUrl}
                     aria-label={
-                      playingLineId === line.id
-                        ? 'Pause audio'
-                        : 'Play audio'
+                      playingLineId === line.id ? 'Pause audio' : 'Play audio'
                     }
                     data-test={`play-button-${line.id}`}
                   >
@@ -584,7 +623,7 @@ export function DialogueList({
                     data-test={`regenerate-button-${line.id}`}
                   >
                     {regenerateMutation.isPending &&
-                      regenerateMutation.variables === line.id ? (
+                    regenerateMutation.variables === line.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <RefreshCw className="h-4 w-4" />
@@ -615,7 +654,8 @@ export function DialogueList({
       {selectedLines.size > 0 && (
         <div className="bg-muted/50 flex items-center justify-between rounded-md border px-4 py-3">
           <span className="text-sm">
-            {selectedLines.size} line{selectedLines.size !== 1 ? 's' : ''} selected
+            {selectedLines.size} line{selectedLines.size !== 1 ? 's' : ''}{' '}
+            selected
           </span>
           <Button
             variant="outline"

@@ -46,9 +46,9 @@ import {
   TableRow,
 } from '@kit/ui/table';
 
-import type { EpisodeWithShots, Shot, ShotStatus } from '../../lib/types';
 import { reorderShotsAction } from '../../lib/server/mutations/shot-actions';
 import { generateShotListAction } from '../../lib/server/mutations/shot-list-actions';
+import type { EpisodeWithShots, Shot, ShotStatus } from '../../lib/types';
 import { useStoryStudioContext } from '../story-studio/story-studio-context';
 import { ShotRow } from './shot-row';
 
@@ -143,8 +143,6 @@ export function ShotListEditor({
     [episode.id, refetchEpisode],
   );
 
-
-
   const handleSelectShot = useCallback((shotId: string, selected: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -182,7 +180,6 @@ export function ShotListEditor({
     onGenerateVideos?.(pendingShots.map((s) => s.id));
     toast.info(`Queued ${pendingShots.length} shots for generation`);
   }, [shots, onGenerateVideos]);
-
 
   // const someSelected =
   //   selectedIds.size > 0 && selectedIds.size < filteredShots.length;
@@ -250,9 +247,9 @@ export function ShotListEditor({
               Ready to Generate Shot List
             </h3>
             <p className="text-muted-foreground mb-6 max-w-md text-sm">
-              We&apos;ll analyze your screenplay and break it down into individual
-              shots optimized for AI video generation. Each shot will have a detailed
-              visual prompt.
+              We&apos;ll analyze your screenplay and break it down into
+              individual shots optimized for AI video generation. Each shot will
+              have a detailed visual prompt.
             </p>
 
             <Button onClick={handleGenerateShotList} disabled={_isReordering}>
@@ -393,17 +390,22 @@ export function ShotListEditor({
             onDragEnd={handleDragEnd}
           >
             {Object.entries(
-              filteredShots.reduce((acc, shot) => {
-                const key = shot.sceneNumber;
-                if (!acc[key]) acc[key] = [];
-                acc[key].push(shot);
-                return acc;
-              }, {} as Record<number, Shot[]>)
+              filteredShots.reduce(
+                (acc, shot) => {
+                  const key = shot.sceneNumber;
+                  if (!acc[key]) acc[key] = [];
+                  acc[key].push(shot);
+                  return acc;
+                },
+                {} as Record<number, Shot[]>,
+              ),
             ).map(([sceneNum, sceneShots]) => (
               <div key={sceneNum} className="space-y-4">
                 <div className="flex items-center gap-2 px-2">
-                  <h3 className="text-sm font-semibold text-muted-foreground">SCENE {sceneNum}</h3>
-                  <div className="h-px flex-1 bg-border/50" />
+                  <h3 className="text-muted-foreground text-sm font-semibold">
+                    SCENE {sceneNum}
+                  </h3>
+                  <div className="bg-border/50 h-px flex-1" />
                   <Badge variant="outline" className="text-xs font-normal">
                     {sceneShots.length} shots
                   </Badge>
@@ -417,10 +419,12 @@ export function ShotListEditor({
                           <Checkbox
                             // Scene-level select all could go here, or global
                             // For now keeping simpler global select or individual
-                            checked={sceneShots.every(s => selectedIds.has(s.id))}
+                            checked={sceneShots.every((s) =>
+                              selectedIds.has(s.id),
+                            )}
                             onCheckedChange={(checked) => {
                               const ids = new Set(selectedIds);
-                              sceneShots.forEach(s => {
+                              sceneShots.forEach((s) => {
                                 if (checked) ids.add(s.id);
                                 else ids.delete(s.id);
                               });

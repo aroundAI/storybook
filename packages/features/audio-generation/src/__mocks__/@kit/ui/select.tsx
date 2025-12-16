@@ -6,7 +6,8 @@ interface SelectProps {
   onValueChange?: (value: string) => void;
 }
 
-interface SelectTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface SelectTriggerProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   'data-test'?: string;
 }
@@ -16,15 +17,29 @@ export function Select({ children, value }: SelectProps) {
 }
 
 export function SelectTrigger({ children, ...props }: SelectTriggerProps) {
-  return <button type="button" {...props}>{children}</button>;
+  return (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  );
 }
 
 export function SelectContent({ children }: { children: React.ReactNode }) {
   return <div role="listbox">{children}</div>;
 }
 
-export function SelectItem({ children, value }: { children: React.ReactNode; value: string }) {
-  return <div role="option" aria-selected={false} data-value={value}>{children}</div>;
+export function SelectItem({
+  children,
+  value,
+}: {
+  children: React.ReactNode;
+  value: string;
+}) {
+  return (
+    <div role="option" aria-selected={false} data-value={value}>
+      {children}
+    </div>
+  );
 }
 
 export function SelectValue({ placeholder }: { placeholder?: string }) {

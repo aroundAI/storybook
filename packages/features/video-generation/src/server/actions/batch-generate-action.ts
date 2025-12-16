@@ -150,7 +150,7 @@ export const batchGenerateVideosAction = enhanceAction(
       );
       throw new Error(
         budgetCheck.message ||
-        `Insufficient budget for batch. Required: $${(totalEstimatedCost / 100).toFixed(2)}, Available: $${(budgetCheck.remaining / 100).toFixed(2)}`,
+          `Insufficient budget for batch. Required: $${(totalEstimatedCost / 100).toFixed(2)}, Available: $${(budgetCheck.remaining / 100).toFixed(2)}`,
       );
     }
 
@@ -166,7 +166,11 @@ export const batchGenerateVideosAction = enhanceAction(
     // Create jobs in parallel
     const jobPromises = (shots as ShotWithEpisode[]).map(async (shot) => {
       const duration = shot.duration_seconds || DEFAULT_DURATION_SECONDS;
-      const estimatedCostCents = await calculateVideoCost(provider, duration, mode);
+      const estimatedCostCents = await calculateVideoCost(
+        provider,
+        duration,
+        mode,
+      );
       const generationJobId = randomUUID();
       const idempotencyKey = `batch-shot-${shot.id}-${Date.now()}`;
       const projectId = shot.episodes.project_id;

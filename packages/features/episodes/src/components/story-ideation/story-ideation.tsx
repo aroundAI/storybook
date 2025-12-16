@@ -13,8 +13,6 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
-import { cn } from '@kit/ui/utils';
-
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { Button } from '@kit/ui/button';
 import {
@@ -33,6 +31,7 @@ import {
 import { Slider } from '@kit/ui/slider';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
+import { cn } from '@kit/ui/utils';
 
 import {
   type GenerateStoryIdeasInput,
@@ -123,7 +122,7 @@ export function StoryIdeation({
       <Form {...form}>
         <form onSubmit={onSubmit}>
           {/* Sticky Header with Generate Button */}
-          <div className="sticky top-0 z-10 -mx-4 px-4 py-3 glass border-b border-glass-border mb-6">
+          <div className="glass border-glass-border sticky top-0 z-10 -mx-4 mb-6 border-b px-4 py-3">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold">Story Premise</h2>
@@ -133,7 +132,9 @@ export function StoryIdeation({
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="gap-1.5">
                       <Settings2 className="h-4 w-4" />
-                      <span className="text-xs text-muted-foreground">{numberOfIdeas} variations</span>
+                      <span className="text-muted-foreground text-xs">
+                        {numberOfIdeas} variations
+                      </span>
                       {settingsOpen ? (
                         <ChevronUp className="h-3 w-3" />
                       ) : (
@@ -186,12 +187,14 @@ export function StoryIdeation({
                     control={form.control}
                     name="numberOfIdeas"
                     render={({ field }) => (
-                      <FormItem className="flex-1 max-w-xs">
-                        <div className="flex items-center justify-between mb-2">
-                          <FormLabel className="text-xs font-normal text-muted-foreground">
+                      <FormItem className="max-w-xs flex-1">
+                        <div className="mb-2 flex items-center justify-between">
+                          <FormLabel className="text-muted-foreground text-xs font-normal">
                             Variations
                           </FormLabel>
-                          <span className="text-sm font-medium">{field.value}</span>
+                          <span className="text-sm font-medium">
+                            {field.value}
+                          </span>
                         </div>
                         <FormControl>
                           <Slider
@@ -208,7 +211,9 @@ export function StoryIdeation({
 
                   {(characterIds.length > 0 || locationIds.length > 0) && (
                     <div className="space-y-1">
-                      <span className="text-xs font-normal text-muted-foreground">Context</span>
+                      <span className="text-muted-foreground text-xs font-normal">
+                        Context
+                      </span>
                       <TaggedAssetsDisplay
                         characterIds={characterIds}
                         locationIds={locationIds}
@@ -225,7 +230,8 @@ export function StoryIdeation({
             {/* Premise Editor */}
             <div>
               <p className="text-muted-foreground mb-4">
-                Draft the core concept of your story. What happens? Who is involved?
+                Draft the core concept of your story. What happens? Who is
+                involved?
               </p>
 
               <FormField
@@ -236,19 +242,19 @@ export function StoryIdeation({
                     <FormControl>
                       <Textarea
                         placeholder="Once upon a time..."
-                        className="min-h-[200px] resize-none border-none bg-transparent p-0 text-xl leading-relaxed shadow-none focus-visible:ring-0 sm:text-2xl reading-mode"
+                        className="reading-mode min-h-[200px] resize-none border-none bg-transparent p-0 text-xl leading-relaxed shadow-none focus-visible:ring-0 sm:text-2xl"
                         {...field}
                       />
                     </FormControl>
                     <div className="flex justify-end pt-2">
                       <span
                         className={cn(
-                          'text-xs font-medium mono-data',
+                          'mono-data text-xs font-medium',
                           premiseLength < 10
                             ? 'text-destructive'
                             : premiseLength > 450
                               ? 'text-status-draft'
-                              : 'text-muted-foreground/50'
+                              : 'text-muted-foreground/50',
                         )}
                       >
                         {premiseLength}/500
@@ -266,7 +272,11 @@ export function StoryIdeation({
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold">Generated Options</h3>
                   {selectedIdea && (
-                    <Button onClick={handleContinue} disabled={isGenerating} variant="generate">
+                    <Button
+                      onClick={handleContinue}
+                      disabled={isGenerating}
+                      variant="generate"
+                    >
                       {isGenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

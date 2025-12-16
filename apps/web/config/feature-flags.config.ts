@@ -22,7 +22,8 @@ const FeatureFlagsSchema = z.object({
     required_error: 'Provide the variable NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS',
   }),
   enablePersonalAccounts: z.boolean({
-    description: 'Enable personal accounts. If false, users are forced to use team accounts only.',
+    description:
+      'Enable personal accounts. If false, users are forced to use team accounts only.',
     required_error: 'Provide the variable NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS',
   }),
   enableTeamCreation: z.boolean({

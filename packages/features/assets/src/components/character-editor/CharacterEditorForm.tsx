@@ -63,6 +63,12 @@ import {
  * Form layout with accordion sections for character editing.
  */
 
+/**
+ * Character Editor Form (FILM-205)
+ *
+ * Form layout with accordion sections for character editing.
+ */
+
 interface CharacterEditorFormProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

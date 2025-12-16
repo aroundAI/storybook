@@ -393,7 +393,7 @@ export const batchGenerateDialogueAction = enhanceAction(
       );
       throw new Error(
         `Missing voice assignments for ${missingCharacterIds.length} character(s). ` +
-        `Please assign voices or create voice profiles.`,
+          `Please assign voices or create voice profiles.`,
       );
     }
 
@@ -413,8 +413,8 @@ export const batchGenerateDialogueAction = enhanceAction(
       logger.warn({ ...ctx, estimatedCost, accountId }, 'Insufficient budget');
       throw new Error(
         `Insufficient budget for batch generation. ` +
-        `Estimated cost: $${(estimatedCost / 100).toFixed(2)}. ` +
-        `Please upgrade your plan or wait until next month.`,
+          `Estimated cost: $${(estimatedCost / 100).toFixed(2)}. ` +
+          `Please upgrade your plan or wait until next month.`,
       );
     }
 

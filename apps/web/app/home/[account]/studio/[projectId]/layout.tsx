@@ -4,8 +4,8 @@ import { getAccountProjects } from '@kit/projects/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { requireUserInServerComponent } from '~/lib/server/require-user-in-server-component';
-import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.loader';
 
+import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.loader';
 import { MobileStudioHeader } from './_components/mobile-studio-header';
 import { StudioSidebar } from './_components/studio-sidebar';
 
@@ -91,11 +91,11 @@ export default async function StudioProjectLayout({
   };
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex h-screen flex-col">
       {/* Mobile Header - visible only on mobile */}
       <MobileStudioHeader {...sidebarProps} />
 
-      <div className="flex flex-1 min-h-0">
+      <div className="flex min-h-0 flex-1">
         {/* Desktop Sidebar - hidden on mobile */}
         <div className="hidden md:block">
           <StudioSidebar {...sidebarProps} />

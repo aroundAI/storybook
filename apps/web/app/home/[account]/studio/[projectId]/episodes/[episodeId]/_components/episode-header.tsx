@@ -31,7 +31,7 @@ export function EpisodeHeader({
         </div>
 
         {episode.description && (
-          <p className="text-muted-foreground text-sm max-w-2xl">
+          <p className="text-muted-foreground max-w-2xl text-sm">
             {episode.description}
           </p>
         )}

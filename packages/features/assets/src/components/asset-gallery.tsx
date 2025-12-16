@@ -10,7 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@kit/ui/dialog';
-
 import { toast } from '@kit/ui/sonner';
 
 import { useAssets } from '../hooks/use-assets';
@@ -134,14 +133,19 @@ export function AssetGallery({
   }, [activeTab, onCreateAsset]);
 
   const renderCharacterGroups = () => {
-    const mainRolePatterns = ['Protagonist', 'Antagonist', 'Sidekick', 'Main Character'];
+    const mainRolePatterns = [
+      'Protagonist',
+      'Antagonist',
+      'Sidekick',
+      'Main Character',
+    ];
     const supportRolePatterns = ['Supporting', 'Minor Character'];
 
     // Helper to check role
     const hasRole = (a: Asset, roles: string[]) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const role = (a.metadata as any)?.role;
-      return role && roles.some(r => role.includes(r));
+      return role && roles.some((r) => role.includes(r));
     };
 
     const isMain = (a: Asset) => hasRole(a, mainRolePatterns);
@@ -152,14 +156,16 @@ export function AssetGallery({
     const supportingCast = filteredAssets.filter(isSupporting);
     const others = filteredAssets.filter(isOther);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const hasCreatures = others.some((a) => (a.metadata as any)?.role === 'Creature');
+    const hasCreatures = others.some(
+      (a) => (a.metadata as any)?.role === 'Creature',
+    );
 
     return (
       <div className="space-y-12">
         {/* Main Cast */}
         {mainCast.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-xl font-bold tracking-tight text-orange-900/70 dark:text-orange-100/70 pl-3 border-l-4 border-orange-500">
+            <h3 className="border-l-4 border-orange-500 pl-3 text-xl font-bold tracking-tight text-orange-900/70 dark:text-orange-100/70">
               Main Cast
             </h3>
             <AssetGrid>
@@ -178,7 +184,7 @@ export function AssetGallery({
         {/* Supporting Cast */}
         {supportingCast.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold tracking-tight text-muted-foreground pl-3 border-l-4 border-transparent">
+            <h3 className="text-muted-foreground border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight">
               Supporting Cast
             </h3>
             <AssetGrid>
@@ -197,7 +203,7 @@ export function AssetGallery({
         {/* Other Characters / Creatures */}
         {others.length > 0 && (
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold tracking-tight text-muted-foreground pl-3 border-l-4 border-transparent">
+            <h3 className="text-muted-foreground border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight">
               {hasCreatures ? 'Creatures & Others' : 'Other Characters'}
             </h3>
             <AssetGrid>
@@ -231,7 +237,13 @@ export function AssetGallery({
         activeTab === 'character' ? (
           renderCharacterGroups()
         ) : (
-          <AssetGrid className={activeTab === 'location' ? 'sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2' : undefined}>
+          <AssetGrid
+            className={
+              activeTab === 'location'
+                ? 'sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2'
+                : undefined
+            }
+          >
             {filteredAssets.map((asset) => (
               <AssetCard
                 key={asset.id}

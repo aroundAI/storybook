@@ -6,6 +6,17 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: string;
 }
 
-export function Button({ children, disabled, onClick, variant: _variant, size: _size, ...props }: ButtonProps) {
-  return <button disabled={disabled} onClick={onClick} {...props}>{children}</button>;
+export function Button({
+  children,
+  disabled,
+  onClick,
+  variant: _variant,
+  size: _size,
+  ...props
+}: ButtonProps) {
+  return (
+    <button disabled={disabled} onClick={onClick} {...props}>
+      {children}
+    </button>
+  );
 }

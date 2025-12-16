@@ -22,6 +22,10 @@
     "./components": "./src/components/index.ts",
     "./types": "./src/types.ts",
     "./lib/format": "./src/lib/format.ts",
+    "./lib/report-types": "./src/lib/report-types.ts",
+    "./lib/schemas/report": "./src/lib/schemas/report.schema.ts",
+    "./lib/csv-generator": "./src/lib/csv-generator.ts",
+    "./lib/pdf-generator": "./src/lib/pdf-generator.tsx",
     "./lib/types/revenue": "./src/lib/types/revenue.ts",
     "./lib/schemas/revenue": "./src/lib/schemas/revenue.schema.ts"
   },
@@ -33,6 +37,7 @@
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",
+    "@react-pdf/renderer": "^4.1.5",
     "@tanstack/react-query": "5.89.0",
     "date-fns": "^4.1.0",
     "googleapis": "^148.0.0",

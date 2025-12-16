@@ -19,6 +19,10 @@ export { ProjectDashboard } from './project-dashboard';
 // AI Insights
 export { AIInsights } from './ai-insights';
 
+// Export Reports
+export { ExportReports } from './export-reports';
+export { ScheduledReportsManager } from './scheduled-reports-manager';
+
 // Revenue components (FILM-810)
 export { DateRangePicker, type DateRangeValue } from './date-range-picker';
 export { ManualRevenueForm } from './manual-revenue-form';

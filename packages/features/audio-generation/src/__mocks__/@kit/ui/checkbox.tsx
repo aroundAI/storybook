@@ -1,6 +1,10 @@
 import * as React from 'react';
 
-interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'checked' | 'onChange'> {
+interface CheckboxProps
+  extends Omit<
+    React.InputHTMLAttributes<HTMLInputElement>,
+    'checked' | 'onChange'
+  > {
   checked?: boolean | 'indeterminate';
   onCheckedChange?: (checked: boolean) => void;
   'data-test'?: string;

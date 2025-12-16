@@ -76,9 +76,9 @@ export const generateShotListAction = enhanceAction(
     // Determine input source (screenplay preferred, story as fallback)
     const inputSource = episode.screenplay_data
       ? {
-        type: 'screenplay' as const,
-        data: episode.screenplay_data as ScreenplayData,
-      }
+          type: 'screenplay' as const,
+          data: episode.screenplay_data as ScreenplayData,
+        }
       : episode.story_data
         ? { type: 'story' as const, data: episode.story_data as StoryData }
         : null;

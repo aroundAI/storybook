@@ -5,10 +5,10 @@
  * Supports environment-based configuration and manual override.
  */
 import { AnthropicClient } from './providers/anthropic';
+import { DeepSeekClient } from './providers/deepseek';
 import { GeminiClient } from './providers/gemini';
 import { LocalClient } from './providers/local';
 import { OpenAIClient } from './providers/openai';
-import { DeepSeekClient } from './providers/deepseek';
 import type { LLMClient, LLMConfig, LLMProvider } from './types';
 import { LLMError } from './types';
 

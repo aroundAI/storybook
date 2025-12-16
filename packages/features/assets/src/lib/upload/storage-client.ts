@@ -3,10 +3,10 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
-  getStorageAdapter,
-  type StorageAdapter,
   type UploadOptions as AdapterUploadOptions,
   type UploadResult as AdapterUploadResult,
+  type StorageAdapter,
+  getStorageAdapter,
 } from '@kit/storage';
 
 /**
@@ -133,4 +133,3 @@ export async function bucketExists(
 
   return !!data;
 }
-

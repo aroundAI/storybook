@@ -1,9 +1,17 @@
 'use client';
 
+import {
+  CheckCircle,
+  FileText,
+  Loader2,
+  Pencil,
+  Send,
+  Sparkles,
+} from 'lucide-react';
+
 import type { EpisodeStatus } from '@kit/episodes/types';
 import { Badge } from '@kit/ui/badge';
 import { cn } from '@kit/ui/utils';
-import { CheckCircle, Loader2, Pencil, Send, Sparkles, FileText } from 'lucide-react';
 
 interface StatusBadgeProps {
   status: EpisodeStatus;
@@ -82,16 +90,13 @@ export function StatusBadge({
       className={cn(
         config.className,
         SIZE_CLASSES[size],
-        'font-medium inline-flex items-center gap-1.5 rounded-full border-0',
-        className
+        'inline-flex items-center gap-1.5 rounded-full border-0 font-medium',
+        className,
       )}
     >
       {showIcon && (
         <IconComponent
-          className={cn(
-            'h-3 w-3',
-            isAnimated && 'animate-spin'
-          )}
+          className={cn('h-3 w-3', isAnimated && 'animate-spin')}
         />
       )}
       {config.label}
@@ -124,10 +129,10 @@ export function StatusDot({ status, className, size = 'md' }: StatusDotProps) {
   return (
     <span
       className={cn(
-        'rounded-full inline-block',
+        'inline-block rounded-full',
         dotClasses[status],
         sizeClasses[size],
-        className
+        className,
       )}
       aria-label={status}
     />
@@ -143,7 +148,11 @@ interface StageIndicatorProps {
   className?: string;
 }
 
-export function StageIndicator({ stage, status, className }: StageIndicatorProps) {
+export function StageIndicator({
+  stage,
+  status,
+  className,
+}: StageIndicatorProps) {
   return (
     <div className={cn('flex items-center gap-1.5', className)}>
       <StatusDot status={status} size="sm" />
