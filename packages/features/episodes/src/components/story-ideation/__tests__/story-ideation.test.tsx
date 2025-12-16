@@ -217,8 +217,6 @@ describe('StoryIdeation', () => {
     expect(screen.getByTestId('form-field-premise')).toBeDefined();
   });
 
-
-
   it('should render number of ideas slider', () => {
     render(<StoryIdeation {...defaultProps} />);
 

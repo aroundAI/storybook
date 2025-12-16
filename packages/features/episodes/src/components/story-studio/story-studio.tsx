@@ -29,12 +29,11 @@ import { cn } from '@kit/ui/utils';
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
 import { useUrlTabState } from '../../hooks/use-url-tab-state';
 import type { Episode, EpisodeWithShots, StudioTab } from '../../lib/types';
-import { generateFullStoryAction } from '../../server/story-actions';
 import { convertToScreenplayAction } from '../../server/screenplay-actions';
+import { generateFullStoryAction } from '../../server/story-actions';
 import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
 import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
 import { StoryIdeation } from '../story-ideation/story-ideation';
-
 import {
   StoryStudioContext,
   useStoryStudioContext,
@@ -49,11 +48,11 @@ const STUDIO_TABS: Array<{
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-    { id: 'ideation', label: 'Ideation', icon: Lightbulb },
-    { id: 'story', label: 'Story', icon: BookOpen },
-    { id: 'screenplay', label: 'Screenplay', icon: Film },
-    { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
-  ];
+  { id: 'ideation', label: 'Ideation', icon: Lightbulb },
+  { id: 'story', label: 'Story', icon: BookOpen },
+  { id: 'screenplay', label: 'Screenplay', icon: Film },
+  { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
+];
 
 function getTabUnlockState(
   episode: Episode | undefined,
@@ -86,8 +85,6 @@ function getTabUnlockState(
     'shot-list': shotListUnlocked,
   };
 }
-
-
 
 function LockedTabContent({ tabId }: { tabId: StudioTab }) {
   const tabLabels: Record<StudioTab, { title: string; description: string }> = {
@@ -177,9 +174,16 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
   const formatStoryText = (text: string) => {
     return text.split('\n').map((line, i) => {
       // ACT headers (e.g. ACT ONE, ACT 1, ACT I)
-      if (/^ACT\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|I|II|III|IV|V|VI|\d+)/i.test(line.trim())) {
+      if (
+        /^ACT\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|I|II|III|IV|V|VI|\d+)/i.test(
+          line.trim(),
+        )
+      ) {
         return (
-          <span key={i} className="mt-8 mb-4 block text-center font-serif text-xl font-bold tracking-widest text-primary/80">
+          <span
+            key={i}
+            className="text-primary/80 mb-4 mt-8 block text-center font-serif text-xl font-bold tracking-widest"
+          >
             <br />
             {line}
             <br />
@@ -189,40 +193,81 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
       // Scene headers (e.g. INT. HOUSE - DAY) - Optional, but creates rhythm
       if (/^(INT\.|EXT\.)/i.test(line.trim())) {
         return (
-          <span key={i} className="mt-4 mb-2 block font-mono text-sm font-bold uppercase tracking-wider text-muted-foreground">
+          <span
+            key={i}
+            className="text-muted-foreground mb-2 mt-4 block font-mono text-sm font-bold uppercase tracking-wider"
+          >
             {line}
           </span>
         );
       }
-      return <span key={i} className="block min-h-[1.5em]">{line}</span>;
+      return (
+        <span key={i} className="block min-h-[1.5em]">
+          {line}
+        </span>
+      );
     });
   };
 
-
   return (
-    <div className={cn("transition-all duration-300", isReadingMode ? "fixed inset-0 z-50 overflow-y-auto bg-background p-8" : "mt-4")}>
-      <Card className={cn("transition-all", isReadingMode ? "mx-auto max-w-3xl border-none shadow-none" : "")}>
-        <CardHeader className={cn(isReadingMode ? "px-0" : "")}>
+    <div
+      className={cn(
+        'transition-all duration-300',
+        isReadingMode
+          ? 'bg-background fixed inset-0 z-50 overflow-y-auto p-8'
+          : 'mt-4',
+      )}
+    >
+      <Card
+        className={cn(
+          'transition-all',
+          isReadingMode ? 'mx-auto max-w-3xl border-none shadow-none' : '',
+        )}
+      >
+        <CardHeader className={cn(isReadingMode ? 'px-0' : '')}>
           <div className="flex items-center justify-between">
-            <div className={cn("space-y-1", isReadingMode && "text-center w-full")}>
-              <CardTitle className={cn(isReadingMode ? "text-3xl" : "", "font-serif")}>
+            <div
+              className={cn('space-y-1', isReadingMode && 'w-full text-center')}
+            >
+              <CardTitle
+                className={cn(isReadingMode ? 'text-3xl' : '', 'font-serif')}
+              >
                 {storyData.title ?? 'Story'}
               </CardTitle>
-              {!isReadingMode && <CardDescription>Generated story for this episode</CardDescription>}
+              {!isReadingMode && (
+                <CardDescription>
+                  Generated story for this episode
+                </CardDescription>
+              )}
             </div>
 
-            <div className={cn("flex items-center gap-2", isReadingMode && "absolute right-8 top-8")}>
+            <div
+              className={cn(
+                'flex items-center gap-2',
+                isReadingMode && 'absolute right-8 top-8',
+              )}
+            >
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsReadingMode(!isReadingMode)}
-                title={isReadingMode ? "Exit Reading Mode" : "Enter Reading Mode"}
+                title={
+                  isReadingMode ? 'Exit Reading Mode' : 'Enter Reading Mode'
+                }
               >
-                {isReadingMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+                {isReadingMode ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
               </Button>
 
               {!isReadingMode && !episode.screenplayData?.scenes?.length && (
-                <Button onClick={handleConvertToScreenplay} disabled={isPending} size="sm">
+                <Button
+                  onClick={handleConvertToScreenplay}
+                  disabled={isPending}
+                  size="sm"
+                >
                   {isPending ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   ) : null}
@@ -232,14 +277,14 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className={cn(isReadingMode ? "px-0 pb-32" : "")}>
+        <CardContent className={cn(isReadingMode ? 'px-0 pb-32' : '')}>
           {/* Reading mode uses serif font with constrained width for optimal readability */}
-          <div className={cn(
-            "prose dark:prose-invert transition-all",
-            isReadingMode
-              ? "reading-mode mx-auto"
-              : "prose-base max-w-none"
-          )}>
+          <div
+            className={cn(
+              'prose dark:prose-invert transition-all',
+              isReadingMode ? 'reading-mode mx-auto' : 'prose-base max-w-none',
+            )}
+          >
             {formatStoryText(storyData.fullStory)}
           </div>
         </CardContent>
@@ -340,8 +385,6 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
       }}
     >
       <div className="space-y-6">
-
-
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-4">
             {STUDIO_TABS.map((tab) => {
@@ -369,9 +412,15 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
                   episodeId={episode.id}
                   onComplete={handleIdeaSelected}
                   isGenerating={isGeneratingStory}
-                  initialPremise={episode?.storyData?.premise as string | undefined}
-                  characterIds={(episode?.metadata?.character_ids as string[]) ?? []}
-                  locationIds={(episode?.metadata?.location_ids as string[]) ?? []}
+                  initialPremise={
+                    episode?.storyData?.premise as string | undefined
+                  }
+                  characterIds={
+                    (episode?.metadata?.character_ids as string[]) ?? []
+                  }
+                  locationIds={
+                    (episode?.metadata?.location_ids as string[]) ?? []
+                  }
                   projectGenre={
                     (episode?.projectMetadata?.genre as string) ?? 'general'
                   }

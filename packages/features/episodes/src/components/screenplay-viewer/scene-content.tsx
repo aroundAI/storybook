@@ -17,17 +17,15 @@ export function SceneContent({ scene, isActive = false }: SceneContentProps) {
     <div
       id={`scene-${scene.number}`}
       className={cn(
-        'scroll-mt-4 border-b border-border/30 pb-8 last:border-b-0 screenplay-format',
-        isActive && 'bg-accent/10 rounded-lg px-6 py-4 -mx-2',
+        'border-border/30 screenplay-format scroll-mt-4 border-b pb-8 last:border-b-0',
+        isActive && 'bg-accent/10 -mx-2 rounded-lg px-6 py-4',
       )}
     >
       {/* Scene Heading - Slug Line (uppercase, bold) */}
-      <div className="slug-line text-sm">
-        {scene.heading}
-      </div>
+      <div className="slug-line text-sm">{scene.heading}</div>
 
       {/* Scene metadata - using mono for timecodes */}
-      <div className="text-muted-foreground mb-4 flex gap-4 text-xs mono-data">
+      <div className="text-muted-foreground mono-data mb-4 flex gap-4 text-xs">
         <span>{scene.location}</span>
         <span>•</span>
         <span>{scene.timeOfDay}</span>
@@ -46,9 +44,7 @@ export function SceneContent({ scene, isActive = false }: SceneContentProps) {
           {scene.dialogue.map((line, index) => (
             <div key={index}>
               {/* Character Name - centered, uppercase */}
-              <div className="character-name text-sm">
-                {line.character}
-              </div>
+              <div className="character-name text-sm">{line.character}</div>
 
               {/* Parenthetical - centered, italicized */}
               {line.parenthetical && (
@@ -58,9 +54,7 @@ export function SceneContent({ scene, isActive = false }: SceneContentProps) {
               )}
 
               {/* Dialogue Text - centered, narrower width */}
-              <div className="dialogue text-sm">
-                {line.text}
-              </div>
+              <div className="dialogue text-sm">{line.text}</div>
             </div>
           ))}
         </div>

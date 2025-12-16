@@ -6,6 +6,7 @@
 - **Effort:** M (4-8 hours)
 - **Dependencies:** FILM-805 (Analytics Dashboard), @kit/llm
 - **Blocks:** None
+- **Status:** DONE
 
 ---
 
@@ -396,30 +397,35 @@ export interface InsightsResult {
 |--------|------|
 | CREATE | `packages/features/content-analytics/src/components/ai-insights.tsx` |
 | CREATE | `packages/features/content-analytics/src/server/insights-actions.ts` |
-| CREATE | `packages/features/prompt-engine/src/prompts/analytics/generate-insights.json` |
+| UPDATE | `packages/features/content-analytics/src/types.ts` |
+| UPDATE | `packages/features/content-analytics/src/components/index.ts` |
+| UPDATE | `packages/features/content-analytics/src/server/index.ts` |
+| CREATE | `packages/features/content-analytics/__tests__/insights-actions.test.ts` |
+
+Note: Prompt template file was not created as the implementation uses direct @kit/llm integration per user preference.
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Generates natural language summary of performance
-- [ ] Identifies 3-4 key trends in data
-- [ ] Provides specific content recommendations
-- [ ] Suggests optimal posting times
-- [ ] Analyzes audience demographics and behavior
-- [ ] Explains why top content performed well
-- [ ] Lists actionable items for improvement
-- [ ] Caches insights to avoid repeated LLM calls
-- [ ] Shows loading state during generation
-- [ ] Allows manual refresh of insights
+- [x] Generates natural language summary of performance
+- [x] Identifies 3-4 key trends in data
+- [x] Provides specific content recommendations
+- [x] Suggests optimal posting times
+- [x] Analyzes audience demographics and behavior
+- [x] Explains why top content performed well
+- [x] Lists actionable items for improvement
+- [x] Caches insights to avoid repeated LLM calls
+- [x] Shows loading state during generation
+- [x] Allows manual refresh of insights
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test `calculateChanges` function
-- [ ] Test insights JSON parsing
+- [x] Test `calculateChanges` function
+- [x] Test insights JSON parsing
 
 ### Integration Tests
 - [ ] Test with mocked LLM response

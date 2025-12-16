@@ -103,7 +103,9 @@ describe('DialogueList Types and Utilities', () => {
     });
 
     it('should allow null characterAssetId for narrator lines', () => {
-      const narratorLine = mockDialogueLines.find((l) => l.characterAssetId === null);
+      const narratorLine = mockDialogueLines.find(
+        (l) => l.characterAssetId === null,
+      );
       expect(narratorLine).toBeDefined();
       expect(narratorLine?.characterAssetId).toBeNull();
     });
@@ -179,7 +181,9 @@ describe('DialogueList Types and Utilities', () => {
         (l) => l.characterAssetId === 'char-1',
       );
       expect(char1Lines.length).toBe(2);
-      expect(char1Lines.every((l) => l.characterAssetId === 'char-1')).toBe(true);
+      expect(char1Lines.every((l) => l.characterAssetId === 'char-1')).toBe(
+        true,
+      );
     });
 
     it('should filter narrator lines (null characterAssetId)', () => {
@@ -191,7 +195,9 @@ describe('DialogueList Types and Utilities', () => {
     });
 
     it('should filter by status', () => {
-      const pendingLines = mockDialogueLines.filter((l) => l.status === 'pending');
+      const pendingLines = mockDialogueLines.filter(
+        (l) => l.status === 'pending',
+      );
       expect(pendingLines.length).toBe(1);
       expect(pendingLines[0]?.id).toBe('line-2');
     });
@@ -215,7 +221,12 @@ describe('DialogueList Types and Utilities', () => {
     });
 
     it('should sort by status', () => {
-      const statusOrder = { pending: 0, generating: 1, failed: 2, completed: 3 };
+      const statusOrder = {
+        pending: 0,
+        generating: 1,
+        failed: 2,
+        completed: 3,
+      };
       const sorted = [...mockDialogueLines].sort(
         (a, b) => statusOrder[a.status] - statusOrder[b.status],
       );

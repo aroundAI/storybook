@@ -23,7 +23,7 @@ const buttonVariants = cva(
         link: 'decoration-primary underline-offset-4 hover:underline',
         // Premium generate button with gradient and shine effect
         generate:
-          'btn-generate text-white shadow-md hover:shadow-lg transition-all duration-300 hover:scale-[1.02]',
+          'btn-generate text-white shadow-md transition-all duration-300 hover:scale-[1.02] hover:shadow-lg',
       },
       size: {
         default: 'h-9 px-4 py-2',
@@ -41,7 +41,7 @@ const buttonVariants = cva(
 
 export interface ButtonProps
   extends React.ComponentPropsWithRef<'button'>,
-  VariantProps<typeof buttonVariants> {
+    VariantProps<typeof buttonVariants> {
   asChild?: boolean;
 }
 

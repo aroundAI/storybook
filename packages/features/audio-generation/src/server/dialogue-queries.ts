@@ -7,18 +7,18 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  GetCharactersForEpisodeSchema,
+  type GetCharactersForEpisodeSchemaType,
+  GetDialogueLinesSchema,
+  type GetDialogueLinesSchemaType,
+} from '../lib/schemas/dialogue.schema';
 import type {
   CharacterAsset,
   DialogueLine,
   DialogueLineSummary,
   GetDialogueLinesResult,
 } from '../lib/types/dialogue.types';
-import {
-  GetCharactersForEpisodeSchema,
-  GetDialogueLinesSchema,
-  type GetCharactersForEpisodeSchemaType,
-  type GetDialogueLinesSchemaType,
-} from '../lib/schemas/dialogue.schema';
 
 // Note: These queries use type assertions because the film studio tables
 // are not yet in the generated database types. The database schema will
@@ -163,7 +163,9 @@ export const getDialogueLinesAction = enhanceAction(
  * Returns unique characters from dialogue lines for filtering.
  */
 export const getCharactersForEpisodeAction = enhanceAction(
-  async (data: GetCharactersForEpisodeSchemaType): Promise<CharacterAsset[]> => {
+  async (
+    data: GetCharactersForEpisodeSchemaType,
+  ): Promise<CharacterAsset[]> => {
     const logger = await getLogger();
     const ctx = {
       name: 'dialogue.getCharacters',
@@ -200,7 +202,10 @@ export const getCharactersForEpisodeAction = enhanceAction(
     const characterIds = [
       ...new Set(
         (dialogueRows ?? [])
-          .map((row: { character_asset_id: string | null }) => row.character_asset_id)
+          .map(
+            (row: { character_asset_id: string | null }) =>
+              row.character_asset_id,
+          )
           .filter((id: string | null): id is string => id !== null),
       ),
     ];
@@ -218,7 +223,10 @@ export const getCharactersForEpisodeAction = enhanceAction(
       .eq('type', 'character');
 
     if (assetsError) {
-      logger.error({ ...ctx, error: assetsError }, 'Failed to fetch characters');
+      logger.error(
+        { ...ctx, error: assetsError },
+        'Failed to fetch characters',
+      );
       throw new Error('Failed to fetch characters');
     }
 

@@ -6,10 +6,7 @@ import { fileURLToPath } from 'url';
 
 import { getLogger } from '@kit/shared/logger';
 
-import type {
-  PromptTemplate,
-  RenderedPrompt,
-} from '../types';
+import type { PromptTemplate, RenderedPrompt } from '../types';
 
 /**
  * Cache for discovered prompt directories to avoid repeated filesystem scans

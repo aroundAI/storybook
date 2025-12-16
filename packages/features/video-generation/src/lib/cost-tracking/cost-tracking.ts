@@ -128,10 +128,10 @@ export async function checkAndReserveBudget(
   const newPercentUsed =
     budgetStatus.monthlyBudgetCents > 0
       ? ((budgetStatus.spentCents +
-        budgetStatus.reservedCents +
-        estimatedCostCents) /
-        budgetStatus.monthlyBudgetCents) *
-      100
+          budgetStatus.reservedCents +
+          estimatedCostCents) /
+          budgetStatus.monthlyBudgetCents) *
+        100
       : 0;
 
   if (

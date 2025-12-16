@@ -154,9 +154,9 @@ export const ShotCard = memo(function ShotCard({
           />
         ) : (
           /* Skeleton shimmer with prompt preview */
-          <div className="flex h-full flex-col items-center justify-center p-3 skeleton">
+          <div className="skeleton flex h-full flex-col items-center justify-center p-3">
             <div className="text-center">
-              <span className="text-xs text-muted-foreground/80 line-clamp-3">
+              <span className="text-muted-foreground/80 line-clamp-3 text-xs">
                 {shot.prompt ?? shot.description ?? 'Awaiting generation...'}
               </span>
             </div>

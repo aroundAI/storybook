@@ -147,8 +147,9 @@ export function ScreenplayViewer({
       <div className="flex items-center justify-between px-2">
         <div className="flex items-center gap-2">
           {/* Minimal Header */}
-          <div className="text-sm font-medium text-muted-foreground">
-            {screenplay.metadata.totalScenes} Scenes • ~{Math.round(screenplay.metadata.estimatedDuration / 60)} min
+          <div className="text-muted-foreground text-sm font-medium">
+            {screenplay.metadata.totalScenes} Scenes • ~
+            {Math.round(screenplay.metadata.estimatedDuration / 60)} min
           </div>
         </div>
         <div className="flex gap-2">
@@ -182,8 +183,10 @@ export function ScreenplayViewer({
 
       <div className="grid gap-8 lg:grid-cols-[140px_1fr]">
         {/* Scene Navigation Sidebar - Narrower & Quieter */}
-        <div className="hidden lg:block border-r border-border/40 pr-4">
-          <div className="mb-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground/50">Scene Index</div>
+        <div className="border-border/40 hidden border-r pr-4 lg:block">
+          <div className="text-muted-foreground/50 mb-4 text-xs font-semibold uppercase tracking-wider">
+            Scene Index
+          </div>
           <SceneNavigation
             scenes={screenplay.scenes}
             activeSceneNumber={activeSceneNumber}

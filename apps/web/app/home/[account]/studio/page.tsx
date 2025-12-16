@@ -1,10 +1,11 @@
 import { Suspense } from 'react';
 
-import { getAccountProjects } from '@kit/projects/queries';
 import { StudioProjectsGrid } from '@kit/projects/components';
+import { getAccountProjects } from '@kit/projects/queries';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
+
 import { loadTeamWorkspace } from '../_lib/server/team-account-workspace.loader';
 
 export const metadata = {
@@ -52,9 +53,9 @@ function StudioSkeleton() {
   return (
     <div className="space-y-8">
       {/* Header skeleton */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <Skeleton className="h-10 w-64 mb-2" />
+          <Skeleton className="mb-2 h-10 w-64" />
           <Skeleton className="h-5 w-96" />
         </div>
         <div className="flex items-center gap-4">
@@ -65,10 +66,10 @@ function StudioSkeleton() {
 
       {/* Grid skeleton */}
       <div>
-        <Skeleton className="h-8 w-24 mb-6" />
-        <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-6">
+        <Skeleton className="mb-6 h-8 w-24" />
+        <div className="columns-1 gap-6 sm:columns-2 lg:columns-3 xl:columns-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="break-inside-avoid mb-6">
+            <div key={i} className="mb-6 break-inside-avoid">
               <Skeleton className="aspect-[4/3] rounded-xl" />
             </div>
           ))}
@@ -79,4 +80,3 @@ function StudioSkeleton() {
 }
 
 export default withI18n(FilmStudioPage);
-

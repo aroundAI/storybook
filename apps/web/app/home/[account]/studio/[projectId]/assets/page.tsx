@@ -37,11 +37,17 @@ export async function generateMetadata({
     .eq('id', projectId)
     .single();
 
-  const tabTitle = tab === 'location' ? 'Story World' : tab === 'voice' ? 'Voice Library' : 'Cast';
+  const tabTitle =
+    tab === 'location'
+      ? 'Story World'
+      : tab === 'voice'
+        ? 'Voice Library'
+        : 'Cast';
 
   return {
     title: project ? `${project.name} - ${tabTitle}` : tabTitle,
-    description: 'Manage characters, locations, and voice profiles for your project',
+    description:
+      'Manage characters, locations, and voice profiles for your project',
   };
 }
 
@@ -91,10 +97,7 @@ async function AssetLibraryPage({
         </Link>
       </div>
 
-      <PageHeader
-        title={title}
-        description={description}
-      >
+      <PageHeader title={title} description={description}>
         <CreateAssetButton projectId={projectId} account={account} />
       </PageHeader>
 

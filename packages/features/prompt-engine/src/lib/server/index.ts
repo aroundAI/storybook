@@ -1,7 +1,4 @@
-export {
-  loadAndRenderPrompt,
-  clearPromptCache,
-} from './prompt-loader';
+export { loadAndRenderPrompt, clearPromptCache } from './prompt-loader';
 
 export type {
   PromptOutputConfig,

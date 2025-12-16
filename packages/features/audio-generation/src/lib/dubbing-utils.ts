@@ -5,9 +5,9 @@ import { DUBBING_COSTS } from './dubbing-languages';
  * Based on Claude 3.5 Sonnet pricing: ~$0.02 per 1K chars
  */
 export function estimateTranslationCost(totalCharacters: number): number {
-    return Math.ceil(
-        (totalCharacters / 1000) * DUBBING_COSTS.TRANSLATION_PER_1000_CHARS,
-    );
+  return Math.ceil(
+    (totalCharacters / 1000) * DUBBING_COSTS.TRANSLATION_PER_1000_CHARS,
+  );
 }
 
 /**
@@ -15,16 +15,16 @@ export function estimateTranslationCost(totalCharacters: number): number {
  * Based on ElevenLabs pricing: $0.30 per 1K chars
  */
 export function estimateVoiceGenerationCost(totalCharacters: number): number {
-    return Math.ceil(
-        (totalCharacters / 1000) * DUBBING_COSTS.VOICE_PER_1000_CHARS,
-    );
+  return Math.ceil(
+    (totalCharacters / 1000) * DUBBING_COSTS.VOICE_PER_1000_CHARS,
+  );
 }
 
 /**
  * Calculate total characters from dubbed lines
  */
 export function calculateTotalCharacters(
-    lines: Array<{ translated_text: string }>,
+  lines: Array<{ translated_text: string }>,
 ): number {
-    return lines.reduce((sum, line) => sum + line.translated_text.length, 0);
+  return lines.reduce((sum, line) => sum + line.translated_text.length, 0);
 }

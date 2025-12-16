@@ -52,6 +52,13 @@ import { useImageUpload } from './use-image-upload';
  * Displays dropzone, progress, or preview based on upload state.
  */
 
+/**
+ * ImageUploader Component (FILM-207)
+ *
+ * Main image uploader component that orchestrates the upload flow.
+ * Displays dropzone, progress, or preview based on upload state.
+ */
+
 export function ImageUploader({
   projectId,
   assetType,

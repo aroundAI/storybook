@@ -13,9 +13,13 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { DEFAULT_VOICE_SETTINGS } from '../lib/constants';
 import {
-  getLanguageName,
   MULTILINGUAL_VOICE_MODEL,
+  getLanguageName,
 } from '../lib/dubbing-languages';
+import {
+  estimateTranslationCost,
+  estimateVoiceGenerationCost,
+} from '../lib/dubbing-utils';
 import type {
   CreateDubbedVersionResult,
   CreateDubbedVersionSchemaType,
@@ -34,10 +38,6 @@ import {
   TranslateDialogueSchema,
   UpdateDubbedLineSchema,
 } from '../lib/schemas/dubbing.schema';
-import {
-  estimateTranslationCost,
-  estimateVoiceGenerationCost,
-} from '../lib/dubbing-utils';
 import { ElevenLabsProvider } from '../providers/elevenlabs';
 import {
   getCharacterVoiceProfile,
@@ -265,7 +265,11 @@ export const translateDialogueAction = enhanceAction(
     );
     const estimatedCost = estimateTranslationCost(totalChars);
 
-    const hasBudget = await checkAccountBudget(client, accountId, estimatedCost);
+    const hasBudget = await checkAccountBudget(
+      client,
+      accountId,
+      estimatedCost,
+    );
     if (!hasBudget) {
       throw new Error('Monthly budget exceeded');
     }
@@ -442,7 +446,8 @@ export const generateDubbedAudioAction = enhanceAction(
       data.versionId,
     );
     const linesToGenerate = dubbedLines.filter(
-      (l) => l.status === 'translated' || (l.status === 'failed' && !l.audio_url),
+      (l) =>
+        l.status === 'translated' || (l.status === 'failed' && !l.audio_url),
     );
 
     if (linesToGenerate.length === 0) {
@@ -462,7 +467,11 @@ export const generateDubbedAudioAction = enhanceAction(
     );
     const estimatedCost = estimateVoiceGenerationCost(totalChars);
 
-    const hasBudget = await checkAccountBudget(client, accountId, estimatedCost);
+    const hasBudget = await checkAccountBudget(
+      client,
+      accountId,
+      estimatedCost,
+    );
     if (!hasBudget) {
       throw new Error('Monthly budget exceeded');
     }
@@ -492,7 +501,10 @@ export const generateDubbedAudioAction = enhanceAction(
     let actualCost = 0;
 
     const concurrency = data.concurrency ?? 3;
-    const defaultSettings = { ...DEFAULT_VOICE_SETTINGS, ...data.voiceSettings };
+    const defaultSettings = {
+      ...DEFAULT_VOICE_SETTINGS,
+      ...data.voiceSettings,
+    };
 
     // 7. Process audio generation
     for (let i = 0; i < linesToGenerate.length; i += concurrency) {
@@ -650,9 +662,7 @@ export const generateDubbedAudioAction = enhanceAction(
  * Update a single dubbed line's translation (for manual editing)
  */
 export const updateDubbedLineAction = enhanceAction(
-  async (
-    data: UpdateDubbedLineSchemaType,
-  ): Promise<UpdateDubbedLineResult> => {
+  async (data: UpdateDubbedLineSchemaType): Promise<UpdateDubbedLineResult> => {
     const logger = await getLogger();
     const ctx = { name: 'dubbing.updateLine', lineId: data.lineId };
 

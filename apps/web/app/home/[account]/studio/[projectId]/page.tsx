@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 
 import { notFound } from 'next/navigation';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
 import { getProjectAnalytics } from '@kit/content-analytics/server';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
@@ -74,7 +73,9 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
     // Fetch 3 most recent episodes with status data
     client
       .from('episodes')
-      .select('id, title, number, updated_at, story_data, screenplay_data, shot_list')
+      .select(
+        'id, title, number, updated_at, story_data, screenplay_data, shot_list',
+      )
       .eq('project_id', projectId)
       .is('deleted_at', null)
       .order('updated_at', { ascending: false })
@@ -109,35 +110,47 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   type ShotListData = { shots?: unknown[] };
 
   const productionStatus = {
-    scriptsComplete: episodeStatusData?.filter(e => (e.story_data as StoryData | null)?.fullStory).length ?? 0,
-    storyboardsComplete: episodeStatusData?.filter(e => ((e.screenplay_data as ScreenplayData | null)?.scenes?.length ?? 0) > 0).length ?? 0,
-    visualsComplete: episodeStatusData?.filter(e => ((e.shot_list as ShotListData | null)?.shots?.length ?? 0) > 0).length ?? 0,
+    scriptsComplete:
+      episodeStatusData?.filter(
+        (e) => (e.story_data as StoryData | null)?.fullStory,
+      ).length ?? 0,
+    storyboardsComplete:
+      episodeStatusData?.filter(
+        (e) =>
+          ((e.screenplay_data as ScreenplayData | null)?.scenes?.length ?? 0) >
+          0,
+      ).length ?? 0,
+    visualsComplete:
+      episodeStatusData?.filter(
+        (e) => ((e.shot_list as ShotListData | null)?.shots?.length ?? 0) > 0,
+      ).length ?? 0,
     totalEpisodes: episodeCount ?? 0,
   };
 
   // Map recent episodes to include stage info
-  const mappedEpisodes = recentEpisodes?.map(ep => {
-    const storyData = ep.story_data as StoryData | null;
-    const screenplayData = ep.screenplay_data as ScreenplayData | null;
-    const shotListData = ep.shot_list as ShotListData | null;
+  const mappedEpisodes =
+    recentEpisodes?.map((ep) => {
+      const storyData = ep.story_data as StoryData | null;
+      const screenplayData = ep.screenplay_data as ScreenplayData | null;
+      const shotListData = ep.shot_list as ShotListData | null;
 
-    let stage: 'draft' | 'story' | 'screenplay' | 'shots' = 'draft';
-    if ((shotListData?.shots?.length ?? 0) > 0) stage = 'shots';
-    else if ((screenplayData?.scenes?.length ?? 0) > 0) stage = 'screenplay';
-    else if (storyData?.fullStory) stage = 'story';
+      let stage: 'draft' | 'story' | 'screenplay' | 'shots' = 'draft';
+      if ((shotListData?.shots?.length ?? 0) > 0) stage = 'shots';
+      else if ((screenplayData?.scenes?.length ?? 0) > 0) stage = 'screenplay';
+      else if (storyData?.fullStory) stage = 'story';
 
-    return {
-      id: ep.id,
-      title: ep.title,
-      number: ep.number,
-      updated_at: ep.updated_at,
-      stage,
-    };
-  }) ?? [];
+      return {
+        id: ep.id,
+        title: ep.title,
+        number: ep.number,
+        updated_at: ep.updated_at,
+        stage,
+      };
+    }) ?? [];
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-      <div className="max-w-7xl mx-auto p-8">
+      <div className="mx-auto max-w-7xl p-8">
         <OverviewContent
           project={{
             id: project.id,
@@ -159,4 +172,3 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
 }
 
 export default withI18n(StudioProjectPage);
-

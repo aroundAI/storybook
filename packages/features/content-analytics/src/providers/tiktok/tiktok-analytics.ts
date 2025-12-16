@@ -20,8 +20,8 @@ export class TikTokAnalyticsScopeError extends Error {
   constructor(message?: string) {
     super(
       message ??
-      'TikTok Analytics access denied. Your TikTok connection may be missing required permissions. ' +
-      'Please disconnect and reconnect your TikTok account to grant the required analytics permissions.',
+        'TikTok Analytics access denied. Your TikTok connection may be missing required permissions. ' +
+          'Please disconnect and reconnect your TikTok account to grant the required analytics permissions.',
     );
     this.name = 'TikTokAnalyticsScopeError';
   }
@@ -95,7 +95,7 @@ interface TikTokApiResponse<T> {
  * Fetches analytics data from TikTok Creator Tools API.
  */
 export class TikTokAnalyticsProvider {
-  constructor(private accessToken: string) { }
+  constructor(private accessToken: string) {}
 
   /**
    * Fetches video analytics

@@ -441,7 +441,7 @@ graph TD
 | FILM-805 | [analytics-dashboard](./phase-8-analytics/components/FILM-805-analytics-dashboard.md) | DRAFT | L | FILM-804 |
 | FILM-806 | [metric-cards](./phase-8-analytics/components/FILM-806-metric-cards.md) | ✅ DONE | S | FILM-DS-02 |
 | FILM-807 | [performance-chart](./phase-8-analytics/components/FILM-807-performance-chart.md) | DRAFT | M | FILM-805 |
-| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | DRAFT | M | FILM-805 |
+| FILM-808 | [ai-insights](./phase-8-analytics/components/FILM-808-ai-insights.md) | ✅ DONE | M | FILM-805 |
 | FILM-809 | [export-reports](./phase-8-analytics/lib/FILM-809-export-reports.md) | DRAFT | M | FILM-805 |
 | FILM-810 | [revenue-tracking](./phase-8-analytics/components/FILM-810-revenue-tracking.md) | DRAFT | L | FILM-804, FILM-805 |
 

@@ -16,7 +16,7 @@ const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
  * Handles video uploads using TikTok's Content Posting API with chunked upload
  */
 export class TikTokProvider {
-  constructor(private accessToken: string) { }
+  constructor(private accessToken: string) {}
 
   /**
    * Uploads a video to TikTok using the Content Posting API

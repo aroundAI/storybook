@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -9,6 +9,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import type { z } from 'zod';
 
 import type { TargetPlatform } from '@kit/film-studio-schemas/project';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -43,9 +44,11 @@ import {
   PLATFORM_CONFIGS,
   getSmartDefaults,
 } from '../_lib/schema';
-import { createFilmProject, updateProjectCoverImage } from '../_lib/server/create-film-project.action';
+import {
+  createFilmProject,
+  updateProjectCoverImage,
+} from '../_lib/server/create-film-project.action';
 import { CoverImageUpload } from './cover-image-upload';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 
 type FormData = z.infer<typeof CreateFilmProjectSchema>;
 
@@ -241,7 +244,9 @@ export function CreateFilmProjectForm({
           });
 
           // Check auth status
-          const { data: { user: authUser } } = await client.auth.getUser();
+          const {
+            data: { user: authUser },
+          } = await client.auth.getUser();
           console.log('[Cover Upload Debug] Auth status:', {
             isLoggedIn: !!authUser,
             userId: authUser?.id,
@@ -269,7 +274,10 @@ export function CreateFilmProjectForm({
               .from('project-assets')
               .getPublicUrl(filePath);
 
-            console.log('[Cover Upload Debug] Public URL:', publicUrlData.publicUrl);
+            console.log(
+              '[Cover Upload Debug] Public URL:',
+              publicUrlData.publicUrl,
+            );
             await updateProjectCoverImage(projectId, publicUrlData.publicUrl);
           }
         }
@@ -429,10 +437,11 @@ export function CreateFilmProjectForm({
                           type="button"
                           onClick={() => togglePlatform(platformKey)}
                           disabled={isPending}
-                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${isSelected
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                            }`}
+                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                            isSelected
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50'
+                          }`}
                           data-test={`platform-${key}`}
                         >
                           <span className="font-medium">{config.label}</span>

@@ -45,6 +45,12 @@ import type { UploadProgress, UploadState } from './types';
  * Displays upload progress with progress bar and cancel option.
  */
 
+/**
+ * ImageUploadProgress Component (FILM-207)
+ *
+ * Displays upload progress with progress bar and cancel option.
+ */
+
 interface ImageUploadProgressProps {
   /** Upload progress information */
   progress: UploadProgress;

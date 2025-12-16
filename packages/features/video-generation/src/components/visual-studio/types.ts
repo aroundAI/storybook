@@ -60,19 +60,19 @@ export const PROVIDER_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-    {
-      value: 'kling',
-      label: 'Kling AI',
-      description: 'High quality, reliable results',
-    },
-    {
-      value: 'runway',
-      label: 'Runway',
-      description: 'Flexible duration options',
-    },
-    { value: 'luma', label: 'Luma', description: 'Fast generation' },
-    { value: 'hailuo', label: 'Hailuo', description: 'Ultra-fast processing' },
-  ];
+  {
+    value: 'kling',
+    label: 'Kling AI',
+    description: 'High quality, reliable results',
+  },
+  {
+    value: 'runway',
+    label: 'Runway',
+    description: 'Flexible duration options',
+  },
+  { value: 'luma', label: 'Luma', description: 'Fast generation' },
+  { value: 'hailuo', label: 'Hailuo', description: 'Ultra-fast processing' },
+];
 
 /**
  * Quality mode display information
@@ -82,10 +82,10 @@ export const QUALITY_OPTIONS: Array<{
   label: string;
   description: string;
 }> = [
-    { value: 'std', label: 'Standard', description: 'Faster, lower cost' },
-    {
-      value: 'pro',
-      label: 'Professional',
-      description: 'Higher quality, slower',
-    },
-  ];
+  { value: 'std', label: 'Standard', description: 'Faster, lower cost' },
+  {
+    value: 'pro',
+    label: 'Professional',
+    description: 'Higher quality, slower',
+  },
+];

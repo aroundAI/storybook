@@ -51,6 +51,13 @@ import { useCallback, useEffect, useRef } from 'react';
  * Used by CharacterEditor to prevent accidental data loss.
  */
 
+/**
+ * Unsaved Changes Hook (FILM-205)
+ *
+ * Hook to warn users before leaving a page with unsaved changes.
+ * Used by CharacterEditor to prevent accidental data loss.
+ */
+
 interface UseUnsavedChangesOptions {
   /** Whether there are unsaved changes */
   hasChanges: boolean;

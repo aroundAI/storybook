@@ -77,8 +77,9 @@ function Home() {
                 </b>
                 .{' '}
                 <span className="text-muted-foreground font-normal tracking-tighter">
-                  Everything you need to showrun your next hit series. Centralize
-                  your creative truth and let AI handle the heavy lifting.
+                  Everything you need to showrun your next hit series.
+                  Centralize your creative truth and let AI handle the heavy
+                  lifting.
                 </span>
               </>
             }

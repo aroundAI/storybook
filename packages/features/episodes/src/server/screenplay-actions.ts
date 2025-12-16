@@ -184,12 +184,10 @@ export const convertToScreenplayAction = enhanceAction(
         story: storyData.fullStory,
         target_scene_count: data.targetSceneCount ?? 8,
         style: data.dialogueStyle ?? 'natural',
-        character_names: characterNames.length > 0
-          ? characterNames.join(', ')
-          : '',
-        location_names: locationNames.length > 0
-          ? locationNames.join(', ')
-          : '',
+        character_names:
+          characterNames.length > 0 ? characterNames.join(', ') : '',
+        location_names:
+          locationNames.length > 0 ? locationNames.join(', ') : '',
       },
       context: {
         name: 'screenplay-conversion',

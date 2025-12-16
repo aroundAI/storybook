@@ -13,6 +13,7 @@ export {
 
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
+export { calculateChanges, generateInsightsAction } from './insights-actions';
 
 // Revenue actions
 export {

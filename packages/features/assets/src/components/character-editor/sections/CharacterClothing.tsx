@@ -64,6 +64,12 @@ import type { CharacterFormData } from '../../../lib/schemas/character.schema';
  * Form fields for character clothing and style.
  */
 
+/**
+ * Character Clothing Section (FILM-205)
+ *
+ * Form fields for character clothing and style.
+ */
+
 interface CharacterClothingProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

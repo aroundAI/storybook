@@ -22,13 +22,34 @@ export default defineConfig({
       // UI component mock aliases for component testing
       // These use mock implementations instead of real shadcn components
       // to avoid complex dependency chains (class-variance-authority, tailwind-merge, etc.)
-      '@kit/ui/badge': path.resolve(__dirname, 'src/__mocks__/@kit/ui/badge.tsx'),
-      '@kit/ui/button': path.resolve(__dirname, 'src/__mocks__/@kit/ui/button.tsx'),
-      '@kit/ui/checkbox': path.resolve(__dirname, 'src/__mocks__/@kit/ui/checkbox.tsx'),
-      '@kit/ui/input': path.resolve(__dirname, 'src/__mocks__/@kit/ui/input.tsx'),
-      '@kit/ui/select': path.resolve(__dirname, 'src/__mocks__/@kit/ui/select.tsx'),
-      '@kit/ui/sonner': path.resolve(__dirname, 'src/__mocks__/@kit/ui/sonner.ts'),
-      '@kit/ui/utils': path.resolve(__dirname, 'src/__mocks__/@kit/ui/utils.ts'),
+      '@kit/ui/badge': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/badge.tsx',
+      ),
+      '@kit/ui/button': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/button.tsx',
+      ),
+      '@kit/ui/checkbox': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/checkbox.tsx',
+      ),
+      '@kit/ui/input': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/input.tsx',
+      ),
+      '@kit/ui/select': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/select.tsx',
+      ),
+      '@kit/ui/sonner': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/sonner.ts',
+      ),
+      '@kit/ui/utils': path.resolve(
+        __dirname,
+        'src/__mocks__/@kit/ui/utils.ts',
+      ),
       // Keep original aliases for slider and spinner (used by AudioPlayer tests)
       '@kit/ui/slider': path.resolve(
         __dirname,

@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft } from 'lucide-react';
 
+import { getSeasonAnalytics } from '@kit/content-analytics/server';
 import type {
   EpisodeMetadata,
   EpisodeStatus,
@@ -12,7 +13,6 @@ import type {
   ShotListData,
   StoryData,
 } from '@kit/episodes/types';
-import { getSeasonAnalytics } from '@kit/content-analytics/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
@@ -115,7 +115,10 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const unassignedEpisodes = episodes?.filter((ep) => !ep.season_id) ?? [];
 
   // Fetch analytics for each season (in parallel)
-  const seasonAnalyticsMap: Record<string, { totalViews: number; avgEngagementRate: number }> = {};
+  const seasonAnalyticsMap: Record<
+    string,
+    { totalViews: number; avgEngagementRate: number }
+  > = {};
   if (hasSeasons && seasons) {
     const analyticsResults = await Promise.all(
       seasons.map(async (season) => {
@@ -125,7 +128,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         } catch {
           return { seasonId: season.id, analytics: null };
         }
-      })
+      }),
     );
     analyticsResults.forEach(({ seasonId, analytics }) => {
       if (analytics) {
@@ -166,32 +169,34 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             {/* Render episodes grouped by season */}
             {hasSeasons ? (
               <>
-                {episodesBySeason.map(({ season, episodes: seasonEpisodes }) => (
-                  <CollapsibleSeasonSection
-                    key={season.id}
-                    seasonId={season.id}
-                    seasonNumber={season.number}
-                    seasonName={season.name ?? `Season ${season.number}`}
-                    episodes={seasonEpisodes.map(mapEpisode)}
-                    account={account}
-                    projectId={projectId}
-                    analytics={seasonAnalyticsMap[season.id] || null}
-                  />
-                ))}
+                {episodesBySeason.map(
+                  ({ season, episodes: seasonEpisodes }) => (
+                    <CollapsibleSeasonSection
+                      key={season.id}
+                      seasonId={season.id}
+                      seasonNumber={season.number}
+                      seasonName={season.name ?? `Season ${season.number}`}
+                      episodes={seasonEpisodes.map(mapEpisode)}
+                      account={account}
+                      projectId={projectId}
+                      analytics={seasonAnalyticsMap[season.id] || null}
+                    />
+                  ),
+                )}
 
                 {/* Unassigned episodes (not in any season) */}
                 {unassignedEpisodes.length > 0 && (
                   <div>
                     <div className="mb-6">
-                      <h2 className="text-lg font-semibold text-muted-foreground">
+                      <h2 className="text-muted-foreground text-lg font-semibold">
                         Standalone Episodes
                       </h2>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-muted-foreground text-sm">
                         Episodes not assigned to any season
                       </p>
                     </div>
-                    <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
-                      <div className="space-y-0 relative">
+                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                      <div className="relative space-y-0">
                         {unassignedEpisodes.map((episode, index) => (
                           <EpisodeListItem
                             key={episode.id}
@@ -209,8 +214,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
               </>
             ) : (
               /* No seasons - flat list of episodes */
-              <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
-                <div className="space-y-0 relative">
+              <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                <div className="relative space-y-0">
                   {episodes.map((episode, index) => (
                     <EpisodeListItem
                       key={episode.id}
@@ -226,10 +231,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
             )}
           </div>
         ) : (
-          <EpisodesZeroState
-            projectId={projectId}
-            account={account}
-          />
+          <EpisodesZeroState projectId={projectId} account={account} />
         )}
       </PageBody>
     </>

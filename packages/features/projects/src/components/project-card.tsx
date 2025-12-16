@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, Film, Users, MapPin } from 'lucide-react';
+
+import { ArrowRight, Film, MapPin, Users } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import {
@@ -35,23 +36,23 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
   const isActive = project.status === 'active';
 
   return (
-    <Link href={href} className="block group">
+    <Link href={href} className="group block">
       <Card
         className={cn(
           'relative overflow-hidden transition-all duration-300',
           'hover:-translate-y-1 hover:shadow-xl',
           'border-l-4',
-          isActive ? 'border-l-primary' : 'border-l-muted-foreground/30'
+          isActive ? 'border-l-primary' : 'border-l-muted-foreground/30',
         )}
         data-test={`project-card-${project.id}`}
       >
         {/* Gradient overlay on hover */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
+        <div className="from-primary/5 absolute inset-0 bg-gradient-to-br to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
 
         <CardHeader className="relative pb-2">
           <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg font-semibold truncate group-hover:text-primary transition-colors">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="group-hover:text-primary truncate text-lg font-semibold transition-colors">
                 {project.name}
               </CardTitle>
               {project.description && (
@@ -61,20 +62,20 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
               )}
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex shrink-0 items-center gap-2">
               {project.user_role && (
                 <Badge variant="secondary" className="text-xs">
                   <Trans i18nKey={`projects:role.${project.user_role}`} />
                 </Badge>
               )}
-              <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+              <ArrowRight className="text-muted-foreground h-4 w-4 opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="relative pt-0">
           {/* Quick stats row */}
-          <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
+          <div className="text-muted-foreground mb-3 flex items-center gap-4 text-xs">
             {metadata.episode_count !== undefined && (
               <span className="flex items-center gap-1">
                 <Film className="h-3 w-3" />
@@ -98,7 +99,7 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
           {/* Status and metadata row */}
           <div className="flex items-center justify-between">
             {metadata.genre && (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-muted-foreground text-xs">
                 {metadata.genre}
               </span>
             )}
@@ -106,7 +107,7 @@ export function ProjectCard({ project, href }: ProjectCardProps) {
             <Badge
               className={cn(
                 'text-xs capitalize',
-                isActive ? 'status-complete' : 'status-pending'
+                isActive ? 'status-complete' : 'status-pending',
               )}
             >
               <Trans i18nKey={`projects:status.${project.status}`} />

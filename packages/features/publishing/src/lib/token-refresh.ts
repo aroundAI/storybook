@@ -22,11 +22,11 @@ export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
-  | 'EXPIRED'
-  | 'REFRESH_FAILED'
-  | 'CONNECTION_INACTIVE'
-  | 'NOT_FOUND'
-  | 'NO_REFRESH_TOKEN';
+    | 'EXPIRED'
+    | 'REFRESH_FAILED'
+    | 'CONNECTION_INACTIVE'
+    | 'NOT_FOUND'
+    | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 

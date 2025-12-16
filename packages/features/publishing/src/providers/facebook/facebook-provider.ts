@@ -18,7 +18,7 @@ export class FacebookProvider {
   constructor(
     private accessToken: string,
     private pageId: string,
-  ) { }
+  ) {}
 
   /**
    * Uploads a video to Facebook Page

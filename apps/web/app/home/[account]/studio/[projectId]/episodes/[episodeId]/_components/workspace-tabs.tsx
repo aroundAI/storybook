@@ -37,37 +37,37 @@ const WORKSPACE_TABS: Array<{
   icon: React.ComponentType<{ className?: string }>;
   description: string;
 }> = [
-    {
-      id: 'story',
-      label: 'Story Studio',
-      icon: BookOpen,
-      description: 'Create and refine your story',
-    },
-    {
-      id: 'visuals',
-      label: 'Visual Studio',
-      icon: Film,
-      description: 'Generate video content',
-    },
-    {
-      id: 'audio',
-      label: 'Audio Studio',
-      icon: Music,
-      description: 'Voice and music generation',
-    },
-    {
-      id: 'edit',
-      label: 'Edit Suite',
-      icon: Scissors,
-      description: 'Timeline editing',
-    },
-    {
-      id: 'publish',
-      label: 'Publish Hub',
-      icon: Share2,
-      description: 'Multi-platform publishing',
-    },
-  ];
+  {
+    id: 'story',
+    label: 'Story Studio',
+    icon: BookOpen,
+    description: 'Create and refine your story',
+  },
+  {
+    id: 'visuals',
+    label: 'Visual Studio',
+    icon: Film,
+    description: 'Generate video content',
+  },
+  {
+    id: 'audio',
+    label: 'Audio Studio',
+    icon: Music,
+    description: 'Voice and music generation',
+  },
+  {
+    id: 'edit',
+    label: 'Edit Suite',
+    icon: Scissors,
+    description: 'Timeline editing',
+  },
+  {
+    id: 'publish',
+    label: 'Publish Hub',
+    icon: Share2,
+    description: 'Multi-platform publishing',
+  },
+];
 
 function getTabUnlockState(
   episode: EpisodeWithShots,
@@ -117,29 +117,29 @@ function ComingSoonPlaceholder({
 
 function LockedTabContent({ tabId }: { tabId: WorkspaceTab }) {
   const tabInfo: Record<WorkspaceTab, { title: string; description: string }> =
-  {
-    story: {
-      title: 'Story Studio',
-      description: 'Start creating your story',
-    },
-    visuals: {
-      title: 'Visual Studio Locked',
-      description: 'Complete the story creation to unlock video generation',
-    },
-    audio: {
-      title: 'Audio Studio Locked',
-      description: 'Generate a shot list to unlock audio generation',
-    },
-    edit: {
-      title: 'Edit Suite Locked',
-      description: 'Generate visuals and audio to unlock the timeline editor',
-    },
-    publish: {
-      title: 'Publish Hub Locked',
-      description:
-        'Complete video editing to unlock multi-platform publishing',
-    },
-  };
+    {
+      story: {
+        title: 'Story Studio',
+        description: 'Start creating your story',
+      },
+      visuals: {
+        title: 'Visual Studio Locked',
+        description: 'Complete the story creation to unlock video generation',
+      },
+      audio: {
+        title: 'Audio Studio Locked',
+        description: 'Generate a shot list to unlock audio generation',
+      },
+      edit: {
+        title: 'Edit Suite Locked',
+        description: 'Generate visuals and audio to unlock the timeline editor',
+      },
+      publish: {
+        title: 'Publish Hub Locked',
+        description:
+          'Complete video editing to unlock multi-platform publishing',
+      },
+    };
 
   const { title, description } = tabInfo[tabId];
 
@@ -195,7 +195,9 @@ export function WorkspaceTabs({
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="text-muted-foreground text-sm font-medium">Studio:</span>
+          <span className="text-muted-foreground text-sm font-medium">
+            Studio:
+          </span>
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Select Studio" />
@@ -224,7 +226,11 @@ export function WorkspaceTabs({
       </div>
 
       {/* Content Area */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         {/* Hidden TabsList to maintain accessibility if needed, or we rely on Select */}
         {/* We generally don't need TabsList if we control value programmatically, 
             but for a11y with Radix Tabs, it usually expects a list. 
@@ -240,7 +246,10 @@ export function WorkspaceTabs({
           )}
         </TabsContent>
 
-        <TabsContent value="visuals" className="mt-0 focus-visible:outline-none">
+        <TabsContent
+          value="visuals"
+          className="mt-0 focus-visible:outline-none"
+        >
           {tabUnlockState.visuals ? (
             <VisualStudio episodeId={episode.id} projectId={projectId} />
           ) : (
@@ -272,7 +281,10 @@ export function WorkspaceTabs({
           )}
         </TabsContent>
 
-        <TabsContent value="publish" className="mt-0 focus-visible:outline-none">
+        <TabsContent
+          value="publish"
+          className="mt-0 focus-visible:outline-none"
+        >
           {tabUnlockState.publish ? (
             <PublishHub
               episodeId={episode.id}

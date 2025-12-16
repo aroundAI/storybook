@@ -16,8 +16,8 @@ import { TableCell } from '@kit/ui/table';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
-import type { Shot, ShotStatus } from '../../lib/types';
 import { updateShotAction } from '../../lib/server/mutations/shot-actions';
+import type { Shot, ShotStatus } from '../../lib/types';
 
 interface ShotRowProps {
   shot: Shot;
@@ -92,9 +92,10 @@ export function ShotRow({
         // Selected state
         isSelected && 'bg-muted',
         // Status variants
-        shot.status === 'completed' && 'bg-muted/10 opacity-60 hover:opacity-100',
+        shot.status === 'completed' &&
+          'bg-muted/10 opacity-60 hover:opacity-100',
         shot.status === 'failed' && 'bg-destructive/10',
-        shot.status === 'generating' && 'bg-blue-50/50 dark:bg-blue-900/10'
+        shot.status === 'generating' && 'bg-blue-50/50 dark:bg-blue-900/10',
       )}
     >
       <TableCell className="w-10">

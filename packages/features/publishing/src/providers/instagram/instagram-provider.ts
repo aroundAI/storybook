@@ -17,7 +17,7 @@ export class InstagramProvider {
   constructor(
     private accessToken: string,
     private instagramAccountId: string,
-  ) { }
+  ) {}
 
   /**
    * Publishes a video as a Reel
