@@ -58,6 +58,9 @@ vi.mock('@kit/ui/tooltip', () => ({
   TooltipTrigger: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
+  TooltipProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
 }));
 
 describe('MetricCards', () => {

@@ -8,11 +8,7 @@ import { createLLMClient } from '@kit/llm';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 
-import type {
-  AggregateAnalytics,
-  AnalyticsTotals,
-  InsightsResult,
-} from '../types';
+import type { AnalyticsTotals, InsightsResult } from '../types';
 
 /**
  * Zod schemas for analytics validation
