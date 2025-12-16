@@ -2,6 +2,7 @@
  * @vitest-environment happy-dom
  */
 import React from 'react';
+
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -38,9 +39,7 @@ describe('SceneContent', () => {
     it('should render scene heading', () => {
       render(<SceneContent scene={mockScene} />);
 
-      expect(
-        screen.getByText('INT. COFFEE SHOP - MORNING'),
-      ).toBeDefined();
+      expect(screen.getByText('INT. COFFEE SHOP - MORNING')).toBeDefined();
     });
 
     it('should render scene location', () => {
