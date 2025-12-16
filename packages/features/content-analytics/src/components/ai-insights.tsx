@@ -1,7 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-
 import { useQuery } from '@tanstack/react-query';
 import {
   Clock,
@@ -18,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { generateInsightsAction } from '../server/insights-actions';
-import type { AggregateAnalytics, InsightsResult } from '../types';
+import type { AggregateAnalytics } from '../types';
 
 interface AIInsightsProps {
   projectId: string;
@@ -26,11 +24,10 @@ interface AIInsightsProps {
 }
 
 export function AIInsights({ projectId, analytics }: AIInsightsProps) {
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
   const {
     data: insights,
     isLoading,
+    isFetching,
     refetch,
   } = useQuery({
     queryKey: ['ai-insights', projectId, analytics?.totals?.views],
@@ -39,19 +36,9 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
     enabled: !!projectId,
   });
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refetch();
-    setIsRefreshing(false);
-  };
-
   if (isLoading) {
     return <InsightsSkeleton />;
   }
-
-  // Handle the response which may be wrapped in a data property from enhanceAction
-  const insightsData =
-    (insights as { data?: InsightsResult })?.data ?? insights;
 
   return (
     <div className="space-y-6">
@@ -67,11 +54,11 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         <Button
           variant="outline"
           size="sm"
-          onClick={handleRefresh}
-          disabled={isRefreshing}
+          onClick={() => refetch()}
+          disabled={isFetching}
         >
           <RefreshCw
-            className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
+            className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
           />
           Refresh
         </Button>
@@ -80,7 +67,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
       {/* Summary */}
       <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/20">
         <CardContent className="pt-6">
-          <p className="text-lg leading-relaxed">{insightsData?.summary}</p>
+          <p className="text-lg leading-relaxed">{insights?.summary}</p>
         </CardContent>
       </Card>
 
@@ -90,7 +77,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         <InsightCard
           icon={TrendingUp}
           title="Performance Trends"
-          insights={insightsData?.trends}
+          insights={insights?.trends}
           iconColor="text-green-600"
         />
 
@@ -98,7 +85,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         <InsightCard
           icon={Target}
           title="Content Recommendations"
-          insights={insightsData?.contentRecommendations}
+          insights={insights?.contentRecommendations}
           iconColor="text-blue-600"
         />
 
@@ -106,7 +93,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         <InsightCard
           icon={Clock}
           title="Optimal Posting Times"
-          insights={insightsData?.postingStrategy}
+          insights={insights?.postingStrategy}
           iconColor="text-orange-600"
         />
 
@@ -114,13 +101,13 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
         <InsightCard
           icon={Users}
           title="Audience Insights"
-          insights={insightsData?.audienceInsights}
+          insights={insights?.audienceInsights}
           iconColor="text-purple-600"
         />
       </div>
 
       {/* Top Performers */}
-      {insightsData?.topPerformers && insightsData.topPerformers.length > 0 && (
+      {insights?.topPerformers && insights.topPerformers.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
@@ -128,7 +115,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {insightsData.topPerformers.map((item, index) => (
+            {insights.topPerformers.map((item, index) => (
               <div key={index} className="flex gap-4">
                 {item.thumbnailUrl && (
                   <img
@@ -150,7 +137,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
       )}
 
       {/* Action Items */}
-      {insightsData?.actionItems && insightsData.actionItems.length > 0 && (
+      {insights?.actionItems && insights.actionItems.length > 0 && (
         <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
@@ -160,7 +147,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
           </CardHeader>
           <CardContent>
             <ul className="space-y-2">
-              {insightsData.actionItems.map((action, index) => (
+              {insights.actionItems.map((action, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-xs font-medium text-amber-800 dark:bg-amber-800 dark:text-amber-200">
                     {index + 1}

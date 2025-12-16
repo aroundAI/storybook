@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { calculateChanges } from '../src/server/insights-actions';
+import {
+  calculateChanges,
+  parseInsightsResponse,
+} from '../src/server/insights-actions';
 import type { AnalyticsTotals } from '../src/types';
 
 describe('calculateChanges', () => {
@@ -140,5 +143,89 @@ describe('calculateChanges', () => {
     const changes = calculateChanges(current, previous);
 
     expect(changes.views).toBeCloseTo(23.4, 1);
+  });
+});
+
+describe('parseInsightsResponse', () => {
+  it('should parse valid JSON response', () => {
+    const validJson = JSON.stringify({
+      summary: 'Test summary',
+      trends: ['Trend 1', 'Trend 2'],
+      contentRecommendations: ['Rec 1'],
+      postingStrategy: ['Post daily'],
+      audienceInsights: ['Young audience'],
+      topPerformers: [{ title: 'Video 1', analysis: 'Good content' }],
+      actionItems: ['Action 1', 'Action 2'],
+    });
+
+    const result = parseInsightsResponse(validJson);
+
+    expect(result.summary).toBe('Test summary');
+    expect(result.trends).toEqual(['Trend 1', 'Trend 2']);
+    expect(result.actionItems).toEqual(['Action 1', 'Action 2']);
+  });
+
+  it('should extract JSON from markdown code blocks', () => {
+    const markdownResponse = `Here is the analysis:
+\`\`\`json
+{
+  "summary": "Markdown wrapped summary",
+  "trends": ["Trend from markdown"],
+  "actionItems": []
+}
+\`\`\`
+Additional text after.`;
+
+    const result = parseInsightsResponse(markdownResponse);
+
+    expect(result.summary).toBe('Markdown wrapped summary');
+    expect(result.trends).toEqual(['Trend from markdown']);
+  });
+
+  it('should extract JSON from code blocks without language specifier', () => {
+    const codeBlockResponse = `\`\`\`
+{
+  "summary": "No lang summary",
+  "trends": []
+}
+\`\`\``;
+
+    const result = parseInsightsResponse(codeBlockResponse);
+
+    expect(result.summary).toBe('No lang summary');
+  });
+
+  it('should return empty object for invalid JSON', () => {
+    const invalidJson = 'This is not valid JSON at all';
+
+    const result = parseInsightsResponse(invalidJson);
+
+    expect(result).toEqual({});
+  });
+
+  it('should return empty object for malformed JSON', () => {
+    const malformedJson = '{ "summary": "Missing closing brace"';
+
+    const result = parseInsightsResponse(malformedJson);
+
+    expect(result).toEqual({});
+  });
+
+  it('should handle empty string input', () => {
+    const result = parseInsightsResponse('');
+
+    expect(result).toEqual({});
+  });
+
+  it('should handle partial insights response', () => {
+    const partialJson = JSON.stringify({
+      summary: 'Only summary provided',
+    });
+
+    const result = parseInsightsResponse(partialJson);
+
+    expect(result.summary).toBe('Only summary provided');
+    expect(result.trends).toBeUndefined();
+    expect(result.actionItems).toBeUndefined();
   });
 });

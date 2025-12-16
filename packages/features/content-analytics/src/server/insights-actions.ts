@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { createLLMClient } from '@kit/llm';
 import { enhanceAction } from '@kit/next/actions';
+import { getLogger } from '@kit/shared/logger';
 
 import type {
   AggregateAnalytics,
@@ -14,11 +15,65 @@ import type {
 } from '../types';
 
 /**
+ * Zod schemas for analytics validation
+ */
+const AnalyticsTotalsSchema = z.object({
+  views: z.number(),
+  likes: z.number(),
+  comments: z.number(),
+  shares: z.number(),
+  watchTimeSeconds: z.number(),
+  subscribersGained: z.number(),
+  revenueCents: z.number(),
+  contentCount: z.number(),
+});
+
+const PlatformBreakdownSchema = z.object({
+  platform: z.enum(['youtube', 'tiktok', 'instagram']),
+  views: z.number(),
+  likes: z.number(),
+  comments: z.number(),
+  shares: z.number(),
+});
+
+const TopContentSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  thumbnailUrl: z.string().optional(),
+  views: z.number(),
+  likes: z.number(),
+  engagementRate: z.number(),
+  platform: z.string(),
+});
+
+const AudienceDataSchema = z.object({
+  demographics: z
+    .object({
+      ageGroups: z.record(z.number()).optional(),
+      genders: z.record(z.number()).optional(),
+    })
+    .optional(),
+  geography: z.record(z.number()).optional(),
+});
+
+const AggregateAnalyticsSchema = z
+  .object({
+    totals: AnalyticsTotalsSchema,
+    previousPeriodTotals: AnalyticsTotalsSchema.optional(),
+    platformMetrics: z.array(PlatformBreakdownSchema).optional(),
+    topContent: z.array(TopContentSchema).optional(),
+    audience: AudienceDataSchema.optional(),
+    contentCount: z.number(),
+    avgEngagementRate: z.number(),
+  })
+  .nullable();
+
+/**
  * Schema for generate insights action
  */
 const GenerateInsightsSchema = z.object({
   projectId: z.string().uuid(),
-  analytics: z.any(), // Flexible to accept AggregateAnalytics
+  analytics: AggregateAnalyticsSchema,
 });
 
 /**
@@ -62,7 +117,9 @@ export function calculateChanges(
 /**
  * Safely parse JSON from LLM response
  */
-function parseInsightsResponse(content: string): Partial<InsightsResult> {
+export function parseInsightsResponse(
+  content: string,
+): Partial<InsightsResult> {
   try {
     // Try to extract JSON from markdown code blocks if present
     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -84,10 +141,8 @@ function parseInsightsResponse(content: string): Partial<InsightsResult> {
  */
 export const generateInsightsAction = enhanceAction(
   async function ({ analytics }): Promise<InsightsResult> {
-    const typedAnalytics = analytics as AggregateAnalytics | null;
-
     // Handle empty analytics case
-    if (!typedAnalytics || !typedAnalytics.totals) {
+    if (!analytics || !analytics.totals) {
       return {
         summary:
           'Not enough data available to generate insights. Start publishing content to see AI-powered recommendations.',
@@ -106,16 +161,16 @@ export const generateInsightsAction = enhanceAction(
 
     // Prepare analytics summary for LLM (only aggregate data, no PII)
     const analyticsSummary = {
-      totals: typedAnalytics.totals,
+      totals: analytics.totals,
       previousPeriodChange: calculateChanges(
-        typedAnalytics.totals,
-        typedAnalytics.previousPeriodTotals,
+        analytics.totals,
+        analytics.previousPeriodTotals,
       ),
-      platformBreakdown: typedAnalytics.platformMetrics,
-      topContent: typedAnalytics.topContent?.slice(0, 5),
-      audience: typedAnalytics.audience,
-      contentCount: typedAnalytics.contentCount,
-      avgEngagementRate: typedAnalytics.avgEngagementRate,
+      platformBreakdown: analytics.platformMetrics,
+      topContent: analytics.topContent?.slice(0, 5),
+      audience: analytics.audience,
+      contentCount: analytics.contentCount,
+      avgEngagementRate: analytics.avgEngagementRate,
     };
 
     const prompt = `You are an expert social media analytics consultant. Analyze the following content performance data and provide actionable insights.
@@ -183,7 +238,8 @@ Return ONLY the JSON object, no markdown formatting or explanation.`;
       };
     } catch (error) {
       // Return fallback response on error
-      console.error('Error generating insights:', error);
+      const logger = await getLogger();
+      logger.error({ error }, 'Error generating insights');
 
       return {
         summary:
