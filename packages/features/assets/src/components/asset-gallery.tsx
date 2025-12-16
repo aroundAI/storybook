@@ -155,9 +155,9 @@ export function AssetGallery({
     const mainCast = filteredAssets.filter(isMain);
     const supportingCast = filteredAssets.filter(isSupporting);
     const others = filteredAssets.filter(isOther);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasCreatures = others.some(
-      (a) => (a.metadata as any)?.role === 'Creature',
+      (a) =>
+        (a.metadata as Record<string, unknown> | null)?.role === 'Creature',
     );
 
     return (
