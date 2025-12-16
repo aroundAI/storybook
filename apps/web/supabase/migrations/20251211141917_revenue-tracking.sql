@@ -1,0 +1,229 @@
+-- ==================================
+-- FILM-810: Revenue Tracking Schema
+-- ==================================
+-- Revenue analytics tables for tracking monetization data across platforms
+-- Supports both API-sourced and manually-entered revenue data
+
+-- ==================================
+-- Section: Revenue Records Table
+-- ==================================
+-- Daily revenue data per publish with detailed breakdown
+
+create table if not exists public.revenue_records (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  publish_id uuid not null references public.publishes(id) on delete cascade,
+  platform varchar(50) not null,
+  record_date date not null,
+  revenue_cents integer not null default 0,
+  currency varchar(3) default 'USD',
+  source varchar(20) not null default 'api', -- 'api' or 'manual'
+  breakdown jsonb default '{}',
+  metadata jsonb default '{}',
+  created_at timestamp with time zone default now() not null,
+  updated_at timestamp with time zone default now() not null,
+  unique(publish_id, record_date),
+  check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin', 'manual')),
+  check (source in ('api', 'manual'))
+);
+
+comment on table public.revenue_records is 'Daily revenue records per publish with breakdown by source type';
+comment on column public.revenue_records.source is 'Source of revenue data: api (fetched from platform) or manual (user entered)';
+comment on column public.revenue_records.breakdown is 'JSONB with detailed revenue breakdown (adRevenueCents, membershipRevenueCents, etc.)';
+
+-- Indexes for revenue queries
+create index if not exists idx_revenue_records_publish_date on public.revenue_records(publish_id, record_date desc);
+create index if not exists idx_revenue_records_platform_date on public.revenue_records(platform, record_date desc);
+create index if not exists idx_revenue_records_source on public.revenue_records(source);
+create index if not exists idx_revenue_records_date_range on public.revenue_records(record_date desc) where revenue_cents > 0;
+
+-- Updated timestamp trigger
+create trigger set_revenue_records_timestamp
+  before update on public.revenue_records
+  for each row
+  execute function public.trigger_set_timestamps();
+
+-- ==================================
+-- Section: Revenue Reports Table
+-- ==================================
+-- Generated summary reports for periods
+
+create table if not exists public.revenue_reports (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  period_type varchar(20) not null, -- 'monthly', 'quarterly', 'yearly', 'custom'
+  start_date date not null,
+  end_date date not null,
+  summary_data jsonb not null,
+  top_performers jsonb default '[]',
+  platform_breakdown jsonb default '[]',
+  file_url text,
+  file_format varchar(10),
+  created_at timestamp with time zone default now() not null,
+  check (period_type in ('monthly', 'quarterly', 'yearly', 'custom'))
+);
+
+comment on table public.revenue_reports is 'Generated revenue reports with summaries and breakdowns';
+comment on column public.revenue_reports.summary_data is 'JSONB with RevenueSummary data';
+comment on column public.revenue_reports.top_performers is 'JSONB array of top performing content';
+
+create index if not exists idx_revenue_reports_account_period on public.revenue_reports(account_id, period_type, start_date desc);
+create index if not exists idx_revenue_reports_account_date on public.revenue_reports(account_id, start_date desc, end_date desc);
+
+-- ==================================
+-- Section: Revenue Alerts Table
+-- ==================================
+-- Notifications for significant revenue changes
+
+create table if not exists public.revenue_alerts (
+  id uuid primary key default extensions.uuid_generate_v4(),
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  alert_type varchar(50) not null, -- 'threshold_reached', 'significant_change', 'policy_change'
+  title varchar(255) not null,
+  message text,
+  severity varchar(20) default 'info', -- 'info', 'warning', 'critical'
+  related_data jsonb,
+  is_read boolean default false,
+  created_at timestamp with time zone default now() not null,
+  check (alert_type in ('threshold_reached', 'significant_change', 'policy_change')),
+  check (severity in ('info', 'warning', 'critical'))
+);
+
+comment on table public.revenue_alerts is 'Alerts for significant revenue changes and monetization events';
+
+create index if not exists idx_revenue_alerts_account_unread on public.revenue_alerts(account_id, is_read, created_at desc) where is_read = false;
+create index if not exists idx_revenue_alerts_account_created on public.revenue_alerts(account_id, created_at desc);
+
+-- ==================================
+-- Section: Enable RLS
+-- ==================================
+
+alter table public.revenue_records enable row level security;
+alter table public.revenue_reports enable row level security;
+alter table public.revenue_alerts enable row level security;
+
+-- ==================================
+-- Section: Revoke Default Permissions
+-- ==================================
+
+revoke all on public.revenue_records from authenticated, service_role;
+revoke all on public.revenue_reports from authenticated, service_role;
+revoke all on public.revenue_alerts from authenticated, service_role;
+
+-- ==================================
+-- Section: Grant Specific Permissions
+-- ==================================
+
+grant select, insert, update, delete on table public.revenue_records to authenticated;
+grant select, insert, update, delete on table public.revenue_reports to authenticated;
+grant select, insert, update, delete on table public.revenue_alerts to authenticated;
+
+-- ==================================
+-- Section: Revenue Records RLS Policies
+-- ==================================
+-- Access control through publish -> episode -> project -> account chain
+
+create policy "revenue_records_read" on public.revenue_records for select
+  to authenticated using (
+    exists (
+      select 1 from public.publishes pub
+      join public.episodes e on e.id = pub.episode_id
+      join public.projects p on p.id = e.project_id
+      where pub.id = revenue_records.publish_id
+      and (
+        exists(
+          select 1 from public.accounts a
+          where a.id = p.account_id
+          and a.primary_owner_user_id = auth.uid()
+          and a.is_personal_account = true
+        )
+        or
+        public.has_role_on_account(p.account_id)
+      )
+    )
+  );
+
+create policy "revenue_records_create" on public.revenue_records for insert
+  to authenticated with check (
+    exists (
+      select 1 from public.publishes pub
+      join public.episodes e on e.id = pub.episode_id
+      join public.project_members pm on pm.project_id = e.project_id
+      where pub.id = revenue_records.publish_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin', 'member')
+    )
+  );
+
+create policy "revenue_records_update" on public.revenue_records for update
+  to authenticated using (
+    exists (
+      select 1 from public.publishes pub
+      join public.episodes e on e.id = pub.episode_id
+      join public.project_members pm on pm.project_id = e.project_id
+      where pub.id = revenue_records.publish_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin', 'member')
+    )
+  );
+
+create policy "revenue_records_delete" on public.revenue_records for delete
+  to authenticated using (
+    exists (
+      select 1 from public.publishes pub
+      join public.episodes e on e.id = pub.episode_id
+      join public.project_members pm on pm.project_id = e.project_id
+      where pub.id = revenue_records.publish_id
+      and pm.user_id = auth.uid()
+      and pm.role in ('owner', 'admin')
+    )
+  );
+
+-- ==================================
+-- Section: Revenue Reports RLS Policies
+-- ==================================
+-- Account-scoped access using has_account_access helper
+
+create policy "revenue_reports_read" on public.revenue_reports for select
+  to authenticated using (
+    public.has_account_access(account_id)
+  );
+
+create policy "revenue_reports_create" on public.revenue_reports for insert
+  to authenticated with check (
+    public.has_account_access(account_id)
+  );
+
+create policy "revenue_reports_update" on public.revenue_reports for update
+  to authenticated using (
+    public.has_account_access(account_id)
+  );
+
+create policy "revenue_reports_delete" on public.revenue_reports for delete
+  to authenticated using (
+    public.has_account_access(account_id)
+  );
+
+-- ==================================
+-- Section: Revenue Alerts RLS Policies
+-- ==================================
+-- Account-scoped access using has_account_access helper
+
+create policy "revenue_alerts_read" on public.revenue_alerts for select
+  to authenticated using (
+    public.has_account_access(account_id)
+  );
+
+create policy "revenue_alerts_create" on public.revenue_alerts for insert
+  to authenticated with check (
+    public.has_account_access(account_id)
+  );
+
+create policy "revenue_alerts_update" on public.revenue_alerts for update
+  to authenticated using (
+    public.has_account_access(account_id)
+  );
+
+create policy "revenue_alerts_delete" on public.revenue_alerts for delete
+  to authenticated using (
+    public.has_account_access(account_id)
+  );

@@ -347,6 +347,17 @@ async function syncSinglePublish(
     // 5. Upsert analytics (update if same day, insert if new)
     await upsertContentAnalytics(client, normalizedData);
 
+    // 5b. If there's revenue, also upsert to revenue_records table
+    if (normalizedData.revenue_cents > 0) {
+      await upsertRevenueRecord(client, {
+        publish_id: normalizedData.publish_id,
+        platform,
+        record_date: normalizedData.snapshot_date,
+        revenue_cents: normalizedData.revenue_cents,
+        source: 'api',
+      });
+    }
+
     // 6. Update publish metadata
     await updatePublishSyncMetadata(client, publish.id, {
       last_synced_at: new Date().toISOString(),
@@ -662,4 +673,51 @@ export async function syncSinglePublishById(
     platform,
     ctx,
   );
+}
+
+/**
+ * Revenue record data for upsert
+ */
+interface RevenueRecordData {
+  publish_id: string;
+  platform: string;
+  record_date: string;
+  revenue_cents: number;
+  source: 'api' | 'manual';
+  breakdown?: Record<string, unknown>;
+}
+
+/**
+ * Upserts revenue record (insert or update if same day)
+ * FILM-810: Store revenue data separately for detailed analytics
+ */
+async function upsertRevenueRecord(
+  client: Client,
+  data: RevenueRecordData,
+): Promise<void> {
+  const { error } = await client.from('revenue_records').upsert(
+    {
+      publish_id: data.publish_id,
+      platform: data.platform,
+      record_date: data.record_date,
+      revenue_cents: data.revenue_cents,
+      currency: 'USD',
+      source: data.source,
+      breakdown: data.breakdown ?? {},
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: 'publish_id,record_date',
+      ignoreDuplicates: false,
+    },
+  );
+
+  if (error) {
+    // Log but don't fail the sync - revenue_records is supplementary
+    const logger = await getLogger();
+    logger.warn(
+      { error: error.message, publishId: data.publish_id },
+      'Failed to upsert revenue record',
+    );
+  }
 }

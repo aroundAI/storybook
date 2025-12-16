@@ -77,7 +77,8 @@
     "platforms": "Platforms",
     "profile": "Profile",
     "application": "Application",
-    "projects": "Projects"
+    "projects": "Projects",
+    "analytics": "Analytics"
   },
   "roles": {
     "owner": {
