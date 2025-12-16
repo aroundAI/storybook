@@ -25,18 +25,24 @@
     "./lib/report-types": "./src/lib/report-types.ts",
     "./lib/schemas/report": "./src/lib/schemas/report.schema.ts",
     "./lib/csv-generator": "./src/lib/csv-generator.ts",
-    "./lib/pdf-generator": "./src/lib/pdf-generator.tsx"
+    "./lib/pdf-generator": "./src/lib/pdf-generator.tsx",
+    "./lib/types/revenue": "./src/lib/types/revenue.ts",
+    "./lib/schemas/revenue": "./src/lib/schemas/revenue.schema.ts"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@kit/next": "workspace:*",
     "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",
     "@react-pdf/renderer": "^4.1.5",
+    "@tanstack/react-query": "5.89.0",
     "date-fns": "^4.1.0",
     "googleapis": "^148.0.0",
     "lucide-react": "^0.544.0",
+    "react-day-picker": "^9.10.0",
+    "react-hook-form": "^7.62.0",
     "recharts": "2.15.3",
     "server-only": "^0.0.1",
     "zod": "^3.25.74"

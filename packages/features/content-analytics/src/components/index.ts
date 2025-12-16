@@ -19,3 +19,20 @@ export { ProjectDashboard } from './project-dashboard';
 // Export Reports
 export { ExportReports } from './export-reports';
 export { ScheduledReportsManager } from './scheduled-reports-manager';
+
+// Revenue components (FILM-810)
+export { DateRangePicker, type DateRangeValue } from './date-range-picker';
+export { ManualRevenueForm } from './manual-revenue-form';
+export { RevenueChart, RevenueChartSkeleton } from './revenue-chart';
+export {
+  RevenueDashboard,
+  RevenueDashboardSkeleton,
+} from './revenue-dashboard';
+export {
+  RevenuePlatformBreakdown,
+  RevenuePlatformBreakdownSkeleton,
+} from './revenue-platform-breakdown';
+export {
+  RevenueTopContent,
+  RevenueTopContentSkeleton,
+} from './revenue-top-content';
