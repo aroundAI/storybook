@@ -324,7 +324,8 @@ export const generateCaptionsAction = enhanceAction(
     }
   },
   {
-    schema: GenerateCaptionsSchema,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    schema: GenerateCaptionsSchema as any,
   },
 );
 
