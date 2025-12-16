@@ -157,12 +157,17 @@ export function LipSyncEditor({
   useEffect(() => {
     if (!isProcessing || !existingJob?.id) return;
 
+    let isMounted = true;
+    const jobId = existingJob.id;
+
     setIsPolling(true);
     const interval = setInterval(async () => {
       try {
-        const updated = await pollLipSyncStatusAction({
-          jobId: existingJob.id,
-        });
+        const updated = await pollLipSyncStatusAction({ jobId });
+
+        // Only update state if component is still mounted
+        if (!isMounted) return;
+
         setExistingJob(updated);
 
         if (updated.status === 'completed' || updated.status === 'failed') {
@@ -170,11 +175,15 @@ export function LipSyncEditor({
           setIsPolling(false);
         }
       } catch (error) {
-        console.error('Failed to poll status:', error);
+        // Only log if still mounted to avoid noise from cleanup
+        if (isMounted) {
+          console.error('Failed to poll status:', error);
+        }
       }
     }, 5000); // Poll every 5 seconds
 
     return () => {
+      isMounted = false;
       clearInterval(interval);
       setIsPolling(false);
     };
@@ -185,6 +194,20 @@ export function LipSyncEditor({
       toast.error('Please select a dialogue line');
       return;
     }
+
+    // Find the selected dialogue and validate it has audio
+    const selectedDialogueData = readyDialogues.find(
+      (d) => d.id === selectedDialogue,
+    );
+    if (!selectedDialogueData?.audioUrl) {
+      toast.error('Invalid dialogue selection', {
+        description: 'The selected dialogue does not have generated audio.',
+      });
+      return;
+    }
+
+    // Capture the validated audioUrl to preserve type narrowing in async closure
+    const validatedAudioUrl = selectedDialogueData.audioUrl;
 
     startTransition(async () => {
       try {
@@ -201,9 +224,7 @@ export function LipSyncEditor({
           provider: 'synclabs',
           status: result.status,
           inputVideoUrl: videoUrl,
-          inputAudioUrl:
-            readyDialogues.find((d) => d.id === selectedDialogue)?.audioUrl ??
-            '',
+          inputAudioUrl: validatedAudioUrl,
           quality,
           providerJobId: result.providerJobId,
           createdAt: new Date().toISOString(),
