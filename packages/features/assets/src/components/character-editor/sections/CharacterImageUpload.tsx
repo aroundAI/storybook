@@ -19,7 +19,6 @@ import {
 import { Input } from '@kit/ui/input';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
 /**
  * Character Image Upload Section (FILM-205)
  *
@@ -58,6 +57,12 @@ import type { CharacterFormData } from '../../../lib/schemas/character.schema';
 
 import { ImageUploader } from '../../image-uploader/ImageUploader';
 
+/**
+ * Character Image Upload Section (FILM-205)
+ *
+ * Image upload fields for character reference images.
+ */
+
 interface CharacterImageUploadProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;
@@ -87,12 +92,24 @@ export function CharacterImageUpload({
             initialImageUrl={fileUrl}
             initialThumbnailUrl={thumbnailUrl}
             onUploadComplete={(url, thumb) => {
-              form.setValue('fileUrl', url, { shouldValidate: true, shouldDirty: true });
-              form.setValue('thumbnailUrl', thumb, { shouldValidate: true, shouldDirty: true });
+              form.setValue('fileUrl', url, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+              form.setValue('thumbnailUrl', thumb, {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
             }}
             onRemove={() => {
-              form.setValue('fileUrl', '', { shouldValidate: true, shouldDirty: true });
-              form.setValue('thumbnailUrl', '', { shouldValidate: true, shouldDirty: true });
+              form.setValue('fileUrl', '', {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
+              form.setValue('thumbnailUrl', '', {
+                shouldValidate: true,
+                shouldDirty: true,
+              });
             }}
             disabled={disabled}
             className="h-64 w-full md:w-64"
@@ -114,9 +131,9 @@ export function CharacterImageUpload({
                   const value = e.target.value;
                   const urls = value
                     ? value
-                      .split(',')
-                      .map((u) => u.trim())
-                      .filter((u) => u.length > 0)
+                        .split(',')
+                        .map((u) => u.trim())
+                        .filter((u) => u.length > 0)
                     : [];
                   field.onChange(urls);
                 }}
