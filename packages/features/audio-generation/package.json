@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
+    "@kit/assets": "workspace:*",
     "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",

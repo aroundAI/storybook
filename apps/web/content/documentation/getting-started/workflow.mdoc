@@ -1,0 +1,217 @@
+---
+title: "Episode Production Workflow"
+description: "Complete guide to producing an episode from concept to multi-platform publishing"
+publishedAt: 2024-12-13
+order: 1
+status: "published"
+---
+
+Master the complete StoryBook production pipeline. This guide walks you through the 5-tab workflow that takes your
+episode from concept to YouTube.
+
+## Episode Lifecycle
+
+Episodes progress through 7 states:
+
+```
+draft → story → storyboard → generating → editing → ready → published
+```
+
+Each state unlocks specific workspace tabs and features.
+
+---
+
+## Tab 1: Story (Always Unlocked)
+
+### Story Ideation
+Refine your episode premise using AI brainstorming.
+
+1. **Input**: Provide a rough concept or logline
+2. **Brainstorm**: AI suggests plot beats and character arcs
+3. **Refine**: Edit and approve the premise
+
+### Full Story Generation
+Deepseek V3 writes a complete narrative.
+
+- **Genre/Style**: Inherited from Project settings
+- **Premise**: Auto-filled from Season Generator or manually entered
+- **Output**: 800-1500 word story treatment
+
+### Screenplay Conversion
+Transform your story into industry-standard screenplay format.
+
+- **Scene Headings**: INT/EXT with location
+- **Action**: Scene descriptions
+- **Dialogue**: Character lines with parentheticals
+- **Approval**: Lock screenplay to unlock Visuals tab
+
+**Status Transition**: `draft` → `story`
+
+---
+
+## Tab 2: Visuals (Unlocked after Screenplay)
+
+### Shot List Generation
+AI extracts shots from your screenplay.
+
+**Each Shot Includes:**
+- Scene number & shot number
+- Action description
+- Camera direction (pan, tilt, zoom, dolly, crane, static)
+- Duration (1-60 seconds)
+- AI-ready prompt (Kling/Runway format)
+
+### Video Generation
+Generate AI videos from shot prompts.
+
+**Supported Providers:**
+- **Kling**: Best for character consistency
+- **Runway Gen-3**: Best for creative effects
+- **Hailuo**: Cost-effective alternative
+
+**Process:**
+1. Review shot list
+2. Select shots to generate
+3. Choose provider (or use BYOK)
+4. Submit batch job
+5. Track status: `pending` → `queued` → `generating` → `completed`
+
+**Cost Tracking**: StoryBook tracks estimated and actual costs per shot.
+
+**Status Transition**: `story` → `storyboard` → `generating`
+
+---
+
+## Tab 3: Audio (Unlocked after Shot List)
+
+### Dialogue Extraction
+Automatically pull character lines from screenplay.
+
+### Voice Cloning
+Assign voice profiles to characters.
+
+**Providers:**
+- **ElevenLabs**: High-quality voice cloning
+- **PlayHT**: Cost-effective alternative
+- **Azure/Google**: Enterprise options
+
+**Process:**
+1. Upload voice sample (30 seconds minimum)
+2. Create voice asset
+3. Assign to character
+4. Generate all dialogue lines in bulk
+
+### Music & SFX
+Add background score and sound effects.
+
+- **Music**: Suno AI music generation
+- **SFX**: Shared resource library (org-level)
+- **Ambient**: Atmospheric tracks
+
+---
+
+## Tab 4: Edit (Unlocked at "editing" status)
+
+### Timeline Editor
+Multi-track video and audio editing.
+
+**Tracks:**
+- Video (shots in sequence)
+- Dialogue (character lines)
+- Music
+- SFX
+- Ambient
+
+**Features:**
+- Drag-and-drop reordering
+- Transitions between shots
+- Volume controls per track
+- Timeline scrubbing
+
+### Final Render
+Export the completed episode.
+
+**Status Transition**: `generating` → `editing` → `ready`
+
+---
+
+## Tab 5: Publish (Unlocked at "ready" status)
+
+### Platform Connections
+Connect your social accounts via OAuth.
+
+**Supported Platforms:**
+- YouTube
+- TikTok
+- Instagram
+- Facebook
+- Twitter
+- LinkedIn
+
+### Publishing Options
+**Content Types:**
+- **Full**: Complete episode
+- **Short**: 60-second vertical clip
+- **Teaser**: 15-second preview
+- **Trailer**: Season trailer
+
+### Scheduling
+Queue content for optimal posting times.
+
+### Analytics Dashboard
+Track performance across all platforms:
+- Views
+- Likes, comments, shares
+- Watch time
+- Revenue (YouTube monetization)
+- Subscriber growth
+- Retention curves
+
+**Status Transition**: `ready` → `published`
+
+---
+
+## Cost Management
+
+### BYOK (Bring Your Own Key)
+Provide your own API keys to reduce costs:
+- Kling
+- Runway
+- Hailuo
+- ElevenLabs
+- PlayHT
+- Suno
+
+### Cost Tracking
+Every generation job shows:
+- **Estimated Cost**: Pre-generation estimate
+- **Actual Cost**: Post-generation total
+- **Per-Episode Rollup**: Total production cost
+
+---
+
+## Best Practices
+
+### 1. Build Your Asset Bible First
+Create characters and locations **before** generating episodes. This ensures:
+- Consistent character appearances across shots
+- Accurate location references
+- Better AI generation quality
+
+### 2. Lock Screenplay Before Shots
+Once you approve the screenplay, avoid edits. Regenerating the shot list can cause inconsistencies.
+
+### 3. Batch Generate Shots
+Generate all shots in one batch job for:
+- Better style consistency (Kling uses same model)
+- Cost efficiency (bulk pricing)
+- Faster turnaround
+
+### 4. Preview Before Publishing
+Always review the final edit before publishing. Once published to YouTube, edits require re-uploading.
+
+### 5. Use Scheduled Publishing
+Queue content ahead of time for:
+- Consistent posting schedule
+- Optimal time zones
+- Cross-platform coordination

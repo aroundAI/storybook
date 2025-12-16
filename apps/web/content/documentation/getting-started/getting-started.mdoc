@@ -1,28 +1,194 @@
 ---
-title: "Getting started with Makerkit"
-description: "Makerkit is a SaaS Starter Kit that helps you build a SaaS. Learn how to get started with Makerkit."
-publishedAt: 2024-04-11
+title: "Getting started with StoryBook"
+description: "Launch your first AI film studio and produce Episode 1 in under 30 minutes."
+publishedAt: 2024-12-13
 order: 0
 status: "published"
 ---
 
-Makerkit is a SaaS Starter Kit that helps you build a SaaS. It provides you with a set of tools and best practices to help you build a SaaS quickly and efficiently.
+Welcome to **StoryBook**, the AI-powered film studio. This guide will walk you through creating your first episode—from
+concept to YouTube—in 30 minutes.
 
-## Getting started
+## What is StoryBook?
 
-To get started follow these steps:
+StoryBook is a complete production platform that replaces traditional film studio workflows with AI automation:
 
-1. Sign up for an account on the [website](#).
-2. Create a new project by clicking on the "New Project" button.
-3. Choose a template for your project. Makerkit provides several templates to help you get started quickly.
+- **Pre-Production**: Build your Asset Bible (characters, locations)
+- **Production**: Generate AI videos from screenplays (Kling, Runway)
+- **Post-Production**: Timeline editing with voice cloning (ElevenLabs)
+- **Distribution**: Multi-platform publishing (YouTube, TikTok, Instagram)
 
-## Features
+Think of it as **Adobe Premiere + Writer's Room + Publishing Hub**—all powered by AI.
 
-Makerkit provides the following features to help you build a SaaS:
-1. User authentication
-2. User management
-3. Subscription management
-4. Billing and payments
-5. Super Admin
+---
 
-... and many more!
+## Your First Episode in 30 Minutes
+
+### Step 1: Create a Studio (2 min)
+
+1. Sign up at [/auth/sign-up](/auth/sign-up)
+2. Click **"Create Team"** in the sidebar
+3. Name your Studio (e.g., "Indie Animations Studio")
+4. Invite collaborators (Writers, Producers) via Settings → Members
+
+**Why Teams?** Each Studio gets separate billing, assets, and projects. Perfect for production companies managing
+multiple shows.
+
+---
+
+### Step 2: Launch a Project (3 min)
+
+1. Navigate to **Studios → [Your Studio] → Projects**
+2. Click **"New Project"**
+3. Fill in project details:
+- **Name**: "Detective Dante" (example)
+- **Type**: Series (unlocks Seasons)
+- **Primary Genre**: Crime Thriller
+- **Target Audience**: Young Adults
+- **Default Shot Duration**: 10 seconds
+
+**Project Settings** will be inherited by all episodes for consistent style.
+
+---
+
+### Step 3: Build Your Asset Bible (5 min)
+
+Before generating episodes, create your recurring characters and locations.
+
+#### Create a Character
+
+1. Go to **Assets → Characters → New Character**
+2. Fill in:
+- **Name**: "Detective Dante"
+- **Description**: "Weathered detective in his 40s, sharp eyes, trench coat"
+- **Personality**: "Cynical but caring, dry humor"
+- **Voice**: Upload a 30-second sample (or use ElevenLabs presets)
+
+#### Create a Location
+
+1. Go to **Assets → Locations → New Location**
+2. Fill in:
+- **Name**: "Downtown Precinct"
+- **Description**: "Dimly lit police station, 1970s aesthetic, cluttered desks"
+- **Setting**: Urban, interior
+
+**Why Build the Bible First?** AI video generation (Kling) uses these assets to ensure **visual consistency** across all
+episodes.
+
+---
+
+### Step 4: Generate Your First Episode (10 min)
+
+#### Option A: Manual Creation
+1. Go to **Episodes → New Episode**
+2. Enter title: "The Vanishing Artist"
+3. Navigate to **Story Tab**
+4. Write a premise or use AI ideation
+5. Generate full story → Approve
+6. Convert to screenplay → Approve
+7. Generate shot list → Approve
+
+#### Option B: Season Generator (Recommended)
+1. Go to **Episodes → Generate Season**
+2. Paste a rough roadmap:
+```
+Season 1 of Detective Dante.
+
+Episode 1: The Vanishing Artist - Dante investigates a missing painter
+Episode 2: Shadows of the Past - Dante's old partner resurfaces
+...
+```
+3. Review extracted characters/locations
+4. Map to existing assets or create new ones
+5. Click **"Generate 10 Episodes"**
+
+**Result**: 10 episode outlines with titles, descriptions, and pre-filled premises.
+
+---
+
+### Step 5: Produce Episode 1 (10 min)
+
+Now let's take Episode 1 through the 5-tab workflow.
+
+#### 📖 Story Tab
+1. Click Episode 1
+2. Story Tab → **"Generate Full Story"** (Deepseek V3)
+3. Review the 1000-word treatment
+4. Click **"Convert to Screenplay"**
+5. Review the formatted screenplay → **"Approve Screenplay"**
+
+**Status**: `draft` → `story`
+
+#### 🎥 Visuals Tab (Unlocked)
+1. Visuals Tab → **"Generate Shot List"**
+2. AI extracts 15-20 shots from screenplay
+3. Review shots with camera directions
+4. Select shots → **"Generate Videos"** (Choose Kling)
+5. Wait 5-10 minutes for generation
+
+**Status**: `story` → `storyboard` → `generating`
+
+#### 🎙️ Audio Tab (Unlocked)
+1. Audio Tab → **"Extract Dialogue"**
+2. Assign voice profiles to characters
+3. **"Generate All Voices"** (ElevenLabs)
+4. Add background music (optional)
+
+#### ✂️ Edit Tab (Unlocked)
+1. Edit Tab → Timeline Editor
+2. Shots are auto-sequenced
+3. Drag dialogue tracks to align
+4. Add transitions
+5. **"Render Final Video"**
+
+**Status**: `generating` → `editing` → `ready`
+
+#### 🚀 Publish Tab (Unlocked)
+1. Publish Tab → **"Connect Platform"** (YouTube)
+2. OAuth login
+3. Fill in title, description, tags
+4. **"Publish to YouTube"**
+
+**Status**: `ready` → `published`
+
+---
+
+## Next Steps
+
+### Explore Advanced Features
+- **Dubbing**: Translate episodes to multiple languages (FILM-512)
+- **Analytics**: Track views, revenue, retention across platforms
+- **Batch Jobs**: Generate 50+ episodes at once
+- **Custom Voices**: Clone your own voice or hire voice actors
+
+### Join the Community
+- **Documentation**: [Full workflow guide](/docs/workflow)
+- **Support**: Discord community (link in footer)
+- **Roadmap**: See what's coming next
+
+---
+
+## Key Concepts
+
+### Episodes vs. Projects
+- **Project** = A show/film (e.g., "Detective Dante")
+- **Episode** = Individual content unit within a project
+
+### Workspace Tabs (The 5-Tab Workflow)
+1. **Story**: Ideation → Full Story → Screenplay
+2. **Visuals**: Shot List → AI Video Generation
+3. **Audio**: Dialogue → Voice Cloning → Music
+4. **Edit**: Timeline → Final Render
+5. **Publish**: Multi-Platform Distribution
+
+### Asset Bible
+Your single source of truth for:
+- **Characters**: Appearance, voice, personality
+- **Locations**: Settings, atmosphere
+- **Props/Music/SFX**: Reusable resources
+
+Assets are **project-scoped**, meaning "Detective Dante" can only access its own assets.
+
+---
+
+**Ready to create?** Head to your [Studio Dashboard](/home) and start producing! 🎬

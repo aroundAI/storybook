@@ -430,11 +430,18 @@ export function VoiceAssignmentPanel({
           const isSelected = selectedCharacterIds.has(character.id);
 
           return (
-            <button
+            <div
               key={character.id}
               onClick={() => handleSelectCharacter(character.id)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleSelectCharacter(character.id);
+                }
+              }}
+              tabIndex={0}
               className={cn(
-                'flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors',
+                'flex w-full cursor-pointer items-center gap-3 rounded-lg border p-3 text-left transition-colors',
                 'hover:bg-accent focus:ring-ring focus:outline-none focus:ring-2',
                 isSelected && 'border-primary bg-primary/5',
               )}
@@ -487,7 +494,7 @@ export function VoiceAssignmentPanel({
                   aria-label="No voice assigned"
                 />
               )}
-            </button>
+            </div>
           );
         })}
 

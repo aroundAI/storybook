@@ -12,6 +12,31 @@ export async function register() {
   // Register monitoring instrumentation
   // based on the MONITORING_PROVIDER environment variable.
   await registerMonitoringInstrumentation();
+
+  // Initialize local jobs system (cron + workers)
+  // Only runs on server-side Node.js runtime
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    const { startCronJobs, startWorkers, isRedisAvailable } = await import(
+      '@kit/jobs'
+    );
+
+    // Start cron jobs (always available)
+    if (process.env.ENABLE_LOCAL_CRON === 'true') {
+      console.log('[Instrumentation] Starting cron jobs...');
+      startCronJobs();
+    }
+
+    // Start workers (only if Redis is available)
+    if (process.env.ENABLE_LOCAL_WORKERS === 'true') {
+      const redisAvailable = await isRedisAvailable();
+      if (redisAvailable) {
+        console.log('[Instrumentation] Starting job workers...');
+        await startWorkers();
+      } else {
+        console.log('[Instrumentation] Redis not available, skipping workers');
+      }
+    }
+  }
 }
 
 /**

@@ -34,10 +34,12 @@ import {
   TranslateDialogueSchema,
   UpdateDubbedLineSchema,
 } from '../lib/schemas/dubbing.schema';
-import { ElevenLabsProvider } from '../providers/elevenlabs';
 import {
   estimateTranslationCost,
   estimateVoiceGenerationCost,
+} from '../lib/dubbing-utils';
+import { ElevenLabsProvider } from '../providers/elevenlabs';
+import {
   getCharacterVoiceProfile,
   getDubbedLinesWithOriginal,
   getDubbedVersionWithContext,

@@ -67,7 +67,7 @@ export class PromptsManager {
 {{code}}
 \`\`\`
 
-**Makerkit Standards Review Criteria:**
+**StoryBook Standards Review Criteria:**
 
 **TypeScript Excellence:**
 - Strict TypeScript with no 'any' types - use explicit types always
@@ -85,7 +85,7 @@ export class PromptsManager {
 - Add data-test attributes for E2E testing where appropriate
 - Server actions that redirect should handle the error using "isRedirectError" from 'next/dist/client/components/redirect-error'
 
-**Makerkit Architecture Patterns:**
+**StoryBook Architecture Patterns:**
 - Multi-tenant architecture with proper account-based access control
 - Use account_id foreign keys for data association
 - Personal vs Team accounts pattern implementation
@@ -116,7 +116,7 @@ export class PromptsManager {
 1. **Overview:** Brief summary of code quality
 2. **Issues Found:** List specific problems with severity levels
 3. **Suggestions:** Concrete improvement recommendations
-4. **Best Practices:** Relevant patterns from the Makerkit codebase
+4. **Best Practices:** Relevant patterns from the StoryBook codebase
 5. **Security Review:** Any security concerns or improvements`,
       examples: [
         'Review a React component for best practices',
@@ -165,9 +165,9 @@ export class PromptsManager {
 4. **Props Interface:** Complete TypeScript interface definition
 5. **Usage Examples:** How to use the component in different scenarios
 6. **Testing Strategy:** Unit tests and accessibility considerations
-7. **Makerkit Integration:** How this fits with existing patterns
+7. **StoryBook Integration:** How this fits with existing patterns
 
-**Makerkit Implementation Requirements:**
+**StoryBook Implementation Requirements:**
 
 **TypeScript Standards:**
 - Strict TypeScript with no 'any' types
@@ -247,9 +247,9 @@ export class PromptsManager {
 4. **State Management:** Client-side state architecture
 5. **Security Architecture:** Authentication, authorization, and data protection
 6. **Performance Strategy:** Caching, optimization, and scaling approaches
-7. **Integration Patterns:** How this fits with existing Makerkit architecture
+7. **Integration Patterns:** How this fits with existing StoryBook architecture
 
-**Makerkit Architecture Standards:**
+**StoryBook Architecture Standards:**
 
 **Multi-Tenant Patterns:**
 - Account-based data isolation with proper foreign key relationships
@@ -261,7 +261,7 @@ export class PromptsManager {
 - Next.js 15 App Router with React Server Components
 - Supabase for database, auth, storage, and real-time features
 - TypeScript strict mode with no 'any' types
-- Tailwind CSS 4 with shadcn/ui and custom Makerkit components
+- Tailwind CSS 4 with shadcn/ui and custom StoryBook components
 - Turborepo monorepo with proper package organization
 
 **Performance & Security:**
@@ -283,9 +283,9 @@ export class PromptsManager {
     },
     {
       name: 'makerkit_feature_implementation',
-      title: 'Makerkit Feature Implementation Guide',
+      title: 'StoryBook Feature Implementation Guide',
       description:
-        'Complete guide for implementing new features following Makerkit patterns',
+        'Complete guide for implementing new features following StoryBook patterns',
       category: 'development',
       arguments: [
         {
@@ -322,7 +322,7 @@ export class PromptsManager {
 {{user_stories}}
 {{/if}}
 
-**Please provide a complete Makerkit implementation including:**
+**Please provide a complete StoryBook implementation including:**
 
 **1. Database Design:**
 - Schema changes following multi-tenant patterns
@@ -357,7 +357,7 @@ export class PromptsManager {
 - Proper error boundaries and handling
 - Follow established file structure and naming conventions
 
-**Makerkit Standards:**
+**StoryBook Standards:**
 - Multi-tenant architecture with account-based access
 - Use existing database functions where applicable
 - Follow monorepo patterns and package organization
@@ -372,7 +372,7 @@ export class PromptsManager {
       name: 'supabase_rls_policy_design',
       title: 'Supabase RLS Policy Design',
       description:
-        'Design Row Level Security policies for Makerkit multi-tenant architecture',
+        'Design Row Level Security policies for StoryBook multi-tenant architecture',
       category: 'database',
       arguments: [
         {
@@ -409,7 +409,7 @@ export class PromptsManager {
 
 **1. Policy Design:**
 - Complete RLS policy definitions (SELECT, INSERT, UPDATE, DELETE)
-- Use of existing Makerkit functions: has_role_on_account, has_permission
+- Use of existing StoryBook functions: has_role_on_account, has_permission
 - Account-based access control following multi-tenant patterns
 
 **2. Security Analysis:**
@@ -435,7 +435,7 @@ ALTER TABLE {{table_name}} ENABLE ROW LEVEL SECURITY;
 - Verification of account isolation
 - Performance testing with large datasets
 
-**Makerkit RLS Standards:**
+**StoryBook RLS Standards:**
 - All user data must respect account boundaries
 - Use existing permission functions for consistency
 - Personal accounts: auth.users.id = accounts.id

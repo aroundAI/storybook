@@ -30,7 +30,7 @@ export class StripePageObject {
     const cvc = this.cvc();
     const billingCountry = this.billingCountry();
 
-    await billingName.fill(params.billingName ?? 'Mr Makerkit');
+    await billingName.fill(params.billingName ?? 'Mr StoryBook');
     await cardNumber.fill(params.cardNumber ?? '4242424242424242');
     await expiry.fill(params.expiry ?? '1228');
     await cvc.fill(params.cvc ?? '123');

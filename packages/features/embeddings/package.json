@@ -1,0 +1,15 @@
+{
+    "name": "@kit/embeddings",
+    "version": "0.1.0",
+    "private": true,
+    "exports": {
+        ".": "./src/index.ts",
+        "./voyage-client": "./src/voyage-client.ts"
+    },
+    "scripts": {},
+    "dependencies": {},
+    "devDependencies": {
+        "@kit/supabase": "workspace:*",
+        "@types/node": "^24.5.0"
+    }
+}

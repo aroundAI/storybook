@@ -87,6 +87,9 @@ export interface EpisodeMetadata {
   totalDuration?: number;
   themes?: string[];
   tags?: string[];
+  character_ids?: string[]; // Asset IDs for tagged characters
+  location_ids?: string[]; // Asset IDs for tagged locations
+  season_premise?: string; // Season-level premise for context
 }
 
 /**

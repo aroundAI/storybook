@@ -25,8 +25,10 @@ interface AssetLibraryPageProps {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: AssetLibraryPageProps): Promise<Metadata> {
   const { projectId } = await params;
+  const { tab } = await searchParams;
   const client = getSupabaseServerClient();
 
   const { data: project } = await client
@@ -35,10 +37,11 @@ export async function generateMetadata({
     .eq('id', projectId)
     .single();
 
+  const tabTitle = tab === 'location' ? 'Story World' : tab === 'voice' ? 'Voice Library' : 'Cast';
+
   return {
-    title: project ? `${project.name} - Asset Library` : 'Asset Library',
-    description:
-      'Manage characters, locations, and voice profiles for your project',
+    title: project ? `${project.name} - ${tabTitle}` : tabTitle,
+    description: 'Manage characters, locations, and voice profiles for your project',
   };
 }
 
@@ -62,6 +65,19 @@ async function AssetLibraryPage({
     notFound();
   }
 
+  const activeTab = tab ?? 'character';
+
+  let title = 'Cast';
+  let description = 'Characters in your story world';
+
+  if (activeTab === 'location') {
+    title = 'Story World';
+    description = 'Locations and settings where your story takes place';
+  } else if (activeTab === 'voice') {
+    title = 'Voice Library';
+    description = 'Voice profiles for your characters';
+  }
+
   return (
     <>
       {/* Back Link */}
@@ -76,8 +92,8 @@ async function AssetLibraryPage({
       </div>
 
       <PageHeader
-        title="Asset Library"
-        description="Manage characters, locations, and voice profiles for your project"
+        title={title}
+        description={description}
       >
         <CreateAssetButton projectId={projectId} account={account} />
       </PageHeader>

@@ -1,6 +1,7 @@
 import { use } from 'react';
 
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 
 import { z } from 'zod';
 
@@ -9,6 +10,7 @@ import { Page, PageMobileNavigation, PageNavigation } from '@kit/ui/page';
 import { SidebarProvider } from '@kit/ui/shadcn-sidebar';
 
 import { AppLogo } from '~/components/app-logo';
+import featureFlagsConfig from '~/config/feature-flags.config';
 import { personalAccountNavigationConfig } from '~/config/personal-account-navigation.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
@@ -20,6 +22,23 @@ import { loadUserWorkspace } from './_lib/server/load-user-workspace';
 
 function UserHomeLayout({ children }: React.PropsWithChildren) {
   const state = use(getLayoutState());
+
+  // If personal accounts are disabled, redirect to team account
+  if (!featureFlagsConfig.enablePersonalAccounts) {
+    const workspace = use(loadUserWorkspace());
+
+    // If user has team accounts, redirect to the first one
+    // Note: accounts have { label, value (slug), image }
+    if (workspace.accounts && workspace.accounts.length > 0) {
+      const firstTeam = workspace.accounts[0];
+      if (firstTeam?.value) {
+        redirect(`/home/${firstTeam.value}`);
+      }
+    }
+
+    // If no team accounts, redirect to create team
+    redirect('/home/teams/create');
+  }
 
   if (state.style === 'sidebar') {
     return <SidebarLayout>{children}</SidebarLayout>;

@@ -28,7 +28,7 @@ function Home() {
         <Hero
           pill={
             <Pill label={'New'}>
-              <span>AI SaaS Starter Kit for Lightning-Fast Shipping</span>
+              <span>Deepseek V3 Integration Now Live</span>
               <PillActionButton asChild>
                 <Link href={'/auth/sign-up'}>
                   <ArrowRightIcon className={'h-4 w-4'} />
@@ -38,15 +38,15 @@ function Home() {
           }
           title={
             <>
-              <span>Ship AI Products</span>
-              <span>in Days, Not Months</span>
+              <span>The AI-Powered</span>
+              <span>Production Bible</span>
             </>
           }
           subtitle={
             <span>
-              The complete AI SaaS starter kit for Around AI projects. Built-in
-              LLM integration, prompt management, and everything you need to
-              ship production-ready AI applications faster.
+              From undefined concept to Season 1 Greenlight. StoryBook helps
+              studios, writers, and producers manage characters, locations, and
+              storylines with generative AI.
             </span>
           }
           cta={<MainCallToActionButton />}
@@ -73,52 +73,51 @@ function Home() {
             heading={
               <>
                 <b className="font-medium tracking-tighter dark:text-white">
-                  Everything you need for AI SaaS
+                  Your Virtual Writer&apos;s Room
                 </b>
                 .{' '}
                 <span className="text-muted-foreground font-normal tracking-tighter">
-                  Ship production-ready AI applications with built-in LLM
-                  integration, prompt management, and all the essential SaaS
-                  features.
+                  Everything you need to showrun your next hit series. Centralize
+                  your creative truth and let AI handle the heavy lifting.
                 </span>
               </>
             }
             icon={
               <FeatureShowcaseIconContainer>
                 <LayoutDashboard className="h-5" />
-                <span>Complete AI Platform</span>
+                <span>Production Ready</span>
               </FeatureShowcaseIconContainer>
             }
           >
             <FeatureGrid>
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden'}
-                label={'LLM Integration'}
-                description={`Unified API for OpenAI, Anthropic, and more. Switch providers with zero code changes.`}
+                label={'Season Generation'}
+                description={`Turn loose roadmaps or paragraphs into structured episode guides with one click. Automatically extracts characters and locations.`}
               ></FeatureCard>
 
               <FeatureCard
                 className={'relative col-span-1 w-full overflow-hidden'}
-                label={'Prompt Management'}
-                description={`Version control for prompts, A/B testing, and analytics to optimize your AI workflows.`}
+                label={'Asset Bible'}
+                description={`Centralized character and location management. Track relationships, voice profiles, and settings with RAG-powered consistency.`}
               ></FeatureCard>
 
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden'}
-                label={'Multi-Tenant Ready'}
-                description={`Built-in team workspaces, permissions, and billing for B2B AI products.`}
+                label={'Story Ideation'}
+                description={`Deepseek-powered premise development and plot structuring. Refine loglines, beats, and scenes collaboratively.`}
               />
 
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden md:col-span-2'}
-                label={'Production Infrastructure'}
-                description={`Authentication, billing, monitoring, and deployment - everything configured and ready to ship.`}
+                label={'Studio Workflow'}
+                description={`built for teams. Assign Showrunners, Writers, and Producers with granular permissions. Manage multiple Shows in one workspace.`}
               />
 
               <FeatureCard
                 className={'relative col-span-1 overflow-hidden'}
-                label={'AI-First Stack'}
-                description={`Next.js 15, React 19, TypeScript, Supabase, and Tailwind - optimized for AI applications.`}
+                label={'Screenplay Editor'}
+                description={`Collaborative script editor with AI co-pilot. Auto-format to standard industry screenplay format.`}
               />
             </FeatureGrid>
           </FeatureShowcase>
@@ -133,8 +132,8 @@ function Home() {
         >
           <SecondaryHero
             pill={<Pill label="Start for free">No credit card required.</Pill>}
-            heading="Fair pricing for all types of businesses"
-            subheading="Get started on our free plan and upgrade when you are ready."
+            heading="Flexible pricing for Indie Creators & Studios"
+            subheading="Start with a free Pilot project and upgrade when you get Greenlit."
           />
 
           <div className={'w-full'}>

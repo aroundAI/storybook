@@ -34,6 +34,7 @@ interface AccountSelectorProps {
 
   features: {
     enableTeamCreation: boolean;
+    enablePersonalAccounts: boolean;
   };
 
   userId: string;
@@ -55,6 +56,7 @@ export function AccountSelector({
   className,
   features = {
     enableTeamCreation: true,
+    enablePersonalAccounts: true,
   },
   collapsed = false,
   collisionPadding = 20,
@@ -174,22 +176,24 @@ export function AccountSelector({
             <CommandInput placeholder={t('searchAccount')} className="h-9" />
 
             <CommandList>
-              <CommandGroup>
-                <CommandItem
-                  onSelect={() => onAccountChange(undefined)}
-                  value={PERSONAL_ACCOUNT_SLUG}
-                >
-                  <PersonalAccountAvatar />
+              <If condition={features.enablePersonalAccounts}>
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => onAccountChange(undefined)}
+                    value={PERSONAL_ACCOUNT_SLUG}
+                  >
+                    <PersonalAccountAvatar />
 
-                  <span className={'ml-2'}>
-                    <Trans i18nKey={'teams:personalAccount'} />
-                  </span>
+                    <span className={'ml-2'}>
+                      <Trans i18nKey={'teams:personalAccount'} />
+                    </span>
 
-                  <Icon item={PERSONAL_ACCOUNT_SLUG} />
-                </CommandItem>
-              </CommandGroup>
+                    <Icon item={PERSONAL_ACCOUNT_SLUG} />
+                  </CommandItem>
+                </CommandGroup>
 
-              <CommandSeparator />
+                <CommandSeparator />
+              </If>
 
               <If condition={accounts.length > 0}>
                 <CommandGroup
