@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCheck, Loader2, Sparkles, X } from 'lucide-react';
+import { CheckCheck, Copy, Loader2, Sparkles, X } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import {
@@ -30,6 +30,7 @@ export function VisualStudioHeader({
   onSelectAll,
   onDeselectAll,
   onGenerate,
+  onCopyAllPrompts,
   isGenerating,
 }: VisualStudioHeaderProps) {
   const hasSelection = selectedShotIds.length > 0;
@@ -109,6 +110,19 @@ export function VisualStudioHeader({
             Clear
           </Button>
         </div>
+
+        {/* Copy All Prompts Button */}
+        {onCopyAllPrompts && totalShots > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onCopyAllPrompts}
+            aria-label="Copy all prompts to clipboard"
+          >
+            <Copy className="mr-1 h-4 w-4" />
+            Copy Prompts
+          </Button>
+        )}
 
         {/* Generate Button */}
         <Button

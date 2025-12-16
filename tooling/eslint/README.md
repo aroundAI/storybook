@@ -4,7 +4,7 @@
 
 ## Overview
 
-Shared ESLint configuration for all packages in the Makerkit monorepo. Provides consistent code style and quality enforcement across Next.js, React, and TypeScript projects.
+Shared ESLint configuration for all packages in the StoryBook monorepo. Provides consistent code style and quality enforcement across Next.js, React, and TypeScript projects.
 
 ## Purpose
 

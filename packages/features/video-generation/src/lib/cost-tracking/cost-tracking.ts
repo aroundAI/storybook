@@ -128,10 +128,10 @@ export async function checkAndReserveBudget(
   const newPercentUsed =
     budgetStatus.monthlyBudgetCents > 0
       ? ((budgetStatus.spentCents +
-          budgetStatus.reservedCents +
-          estimatedCostCents) /
-          budgetStatus.monthlyBudgetCents) *
-        100
+        budgetStatus.reservedCents +
+        estimatedCostCents) /
+        budgetStatus.monthlyBudgetCents) *
+      100
       : 0;
 
   if (
@@ -212,11 +212,11 @@ export async function recordJobCost(
  *
  * Uses provider-specific pricing to calculate the estimated cost in cents.
  */
-export function calculateVideoCost(
+export async function calculateVideoCost(
   provider: VideoProvider,
   duration: number,
   mode: VideoMode = 'std',
-): number {
+): Promise<number> {
   const providerCosts = PROVIDER_COSTS[provider];
   if (!providerCosts) {
     throw new Error(`Unknown provider: ${provider}`);

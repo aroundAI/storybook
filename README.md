@@ -1,8 +1,8 @@
-# AroundAIKit - AI SaaS Starter Kit
+# StoryBook - The AI Film Studio
 
-**Ship production-ready AI applications in days, not months.**
+**From Undefined Concept to Multi-Platform Hit.**
 
-AroundAIKit is the complete Next.js starter kit for building AI-powered SaaS applications. Built-in LLM integration, prompt management, multi-tenancy, and all the infrastructure you need to launch quickly.
+StoryBook is the complete AI-powered film studio for creators and production teams. Manage your entire pipeline—from story ideation to YouTube publishing—in one collaborative workspace. Built with Next.js 15, Supabase, and best-in-class AI providers (Deepseek, Kling, ElevenLabs).
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
@@ -10,70 +10,67 @@ AroundAIKit is the complete Next.js starter kit for building AI-powered SaaS app
 
 ---
 
+## 🎬 The Complete Production Pipeline
+
+### 1. **Pre-Production** → Build Your Bible
+- **Characters**: Define personalities, appearance, voice profiles
+- **Locations**: Settings, atmosphere, visual references
+- **Season Generator**: Turn loose roadmaps into 10+ episode outlines
+
+### 2. **Production** → 5-Tab Workflow
+
+#### 📖 Story Tab
+- **Ideation**: Refine premises with AI brainstorming
+- **Story Generation**: Deepseek V3 writes full episode narratives
+- **Screenplay**: Auto-convert stories to industry-standard screenplay format
+
+#### 🎥 Visuals Tab
+- **Shot List**: AI extracts shots from screenplay with camera directions
+- **Video Generation**: Kling/Runway/Hailuo AI video from prompts
+- **Shot Status**: Track pending → generating → completed → approved
+
+#### 🎙️ Audio Tab
+- **Dialogue Extraction**: Pull character lines from screenplay
+- **Voice Cloning**: ElevenLabs/PlayHT character voices
+- **Music & SFX**: Suno music generation + shared SFX library
+
+#### ✂️ Edit Tab
+- **Timeline Editor**: Multi-track video + audio editing
+- **Transitions & Effects**: Polish your final cut
+- **Render**: Export final episode video
+
+#### 🚀 Publish Tab
+- **Multi-Platform Publishing**: YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn
+- **OAuth Automation**: One-click publishing with platform connections
+- **Analytics Dashboard**: Track views, likes, watch time, revenue across all platforms
+- **Scheduled Publishing**: Queue content for optimal posting times
+
+### 3. **Post-Launch** → Analytics & Iteration
+- Daily performance snapshots per platform
+- Audience retention curves
+- Revenue tracking (YouTube monetization)
+- A/B test titles, thumbnails, and descriptions
+
+---
+
 ## 🚀 Quick Start
 
-Get up and running in 3 steps:
-
 ```bash
-# 1. Clone and install (30 seconds)
-git clone https://github.com/aroundAI/base-saas.git aroundaikit
-cd aroundaikit
+# 1. Clone and install
+git clone https://github.com/aroundAI/base-saas.git storybook
+cd storybook
 pnpm install
 
-# 2. Configure environment (2 minutes)
+# 2. Configure environment
 cp apps/web/.env.example apps/web/.env
-# Edit .env and add your API keys
+# Add API keys: DEEPSEEK_API_KEY, KLING_API_KEY, ELEVENLABS_API_KEY
+# Add Supabase credentials
 
 # 3. Start development server
 pnpm dev
 ```
 
-Visit **http://localhost:3003** and start building! 🎉
-
----
-
-## ✨ What's Included Out of the Box
-
-###  🤖 **AI Features**
-
-| Feature | Description | Provider Options |
-|---------|-------------|------------------|
-| **LLM Integration** | Unified API for multiple AI providers | OpenAI, Anthropic, Gemini, Local |
-| **Prompt Management** | Version control, A/B testing, analytics | Built-in database system |
-| **Streaming Support** | Real-time AI responses | All providers |
-| **Cost Tracking** | Per-user, per-model usage metrics | Automatic tracking |
-| **Token Management** | Automatic token counting and limits | All providers |
-
-### 💼 **SaaS Essentials**
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| **Multi-Tenancy** | ✅ Ready | Personal & team workspaces with permissions |
-| **Authentication** | ✅ Ready | Email, OAuth, magic links, MFA |
-| **Billing** | ✅ Ready | Stripe & Lemon Squeezy integration |
-| **Projects** | ✅ Ready | Organize AI workflows and resources |
-| **Notifications** | ✅ Ready | In-app and email notifications |
-| **Admin Panel** | ✅ Ready | User management, analytics, super admin |
-| **Audit Logs** | ✅ Ready | Track all important actions |
-
-### 🎨 **Branding & Customization**
-
-| Feature | Configuration | Description |
-|---------|--------------|-------------|
-| **Environment Branding** | `.env` only | Customize logo, colors, fonts via environment variables |
-| **Dark Mode** | Built-in | Automatic theme switching |
-| **Custom Fonts** | Google Fonts | 1000+ fonts available |
-| **Gradient Effects** | 6 presets | Professional visual effects |
-
-### 🛠️ **Developer Experience**
-
-- ✅ **TypeScript** - Full type safety across the stack
-- ✅ **Hot Reload** - Instant feedback during development
-- ✅ **Vendor Agnostic** - Switch providers without code changes
-- ✅ **Monorepo** - Organized with Turborepo
-- ✅ **Testing** - Unit, E2E, and database tests
-- ✅ **Monitoring** - Sentry & Baselime integration
-- ✅ **Documentation** - Comprehensive guides for every feature
+Visit **http://localhost:3000** and create your first Studio! 🎉
 
 ---
 
@@ -407,7 +404,7 @@ NEXT_PUBLIC_SITE_TITLE="Your Tagline"
 ## 📁 Monorepo Structure
 
 ```
-aroundaikit/
+storybook/
 ├── apps/
 │   ├── web/                         # Main Next.js application
 │   │   ├── app/                     # Next.js App Router

@@ -9,7 +9,7 @@ import { Loader2, Plus } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import { CreateEpisodeSchema } from '@kit/episodes/schemas';
-import { createEpisodeAction } from '@kit/episodes/server';
+import { createEpisodeAction } from '@kit/episodes/server/actions';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -36,13 +36,24 @@ import { Textarea } from '@kit/ui/textarea';
 interface CreateEpisodeDialogProps {
   projectId: string;
   account: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  triggerButton?: boolean;
 }
 
 export function CreateEpisodeDialog({
   projectId,
   account,
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
+  triggerButton = true,
 }: CreateEpisodeDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Use controlled state if provided, otherwise use internal state
+  const isOpen = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setIsOpen = controlledOnOpenChange ?? setInternalOpen;
+
   const router = useRouter();
 
   const form = useForm({
@@ -66,7 +77,7 @@ export function CreateEpisodeDialog({
 
       if (result.success && result.data) {
         toast.success('Episode created successfully');
-        setOpen(false);
+        setIsOpen(false);
         form.reset();
         // Navigate to the new episode workspace
         router.push(
@@ -83,13 +94,15 @@ export function CreateEpisodeDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Episode
-        </Button>
-      </DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {triggerButton && (
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Episode
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Episode</DialogTitle>
@@ -138,7 +151,7 @@ export function CreateEpisodeDialog({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => setIsOpen(false)}
                 disabled={isSubmitting}
               >
                 Cancel

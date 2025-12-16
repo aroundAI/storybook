@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 
+import { cn } from '@kit/ui/utils';
+
 import { AssetCardSkeleton } from './asset-card-skeleton';
 
 interface AssetGridProps {
@@ -14,10 +16,11 @@ export function AssetGrid({
   children,
   isLoading = false,
   skeletonCount = 8,
-}: AssetGridProps) {
+  className,
+}: AssetGridProps & { className?: string }) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)}>
         {Array.from({ length: skeletonCount }).map((_, i) => (
           <AssetCardSkeleton key={i} />
         ))}
@@ -26,7 +29,7 @@ export function AssetGrid({
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className={cn("grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", className)}>
       {children}
     </div>
   );

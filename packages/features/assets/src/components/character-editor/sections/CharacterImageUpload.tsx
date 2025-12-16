@@ -19,97 +19,49 @@ import {
 import { Input } from '@kit/ui/input';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
-
-/**
- * Character Image Upload Section (FILM-205)
- *
- * Image upload fields for character reference images.
- */
+import { ImageUploader } from '../../image-uploader/ImageUploader';
 
 interface CharacterImageUploadProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;
+  projectId: string;
+  assetId?: string;
 }
 
 export function CharacterImageUpload({
   form,
   disabled,
+  projectId,
+  assetId,
 }: CharacterImageUploadProps) {
+  const fileUrl = form.watch('fileUrl');
+  const thumbnailUrl = form.watch('thumbnailUrl');
+
   return (
     <div className="space-y-4">
-      {/* Main Image URL */}
-      <FormField
-        control={form.control}
-        name="fileUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Main Reference Image URL</FormLabel>
-            <FormControl>
-              <Input
-                {...field}
-                value={field.value ?? ''}
-                type="url"
-                placeholder="https://example.com/character-image.jpg"
-                disabled={disabled}
-                data-test="character-image-url-input"
-              />
-            </FormControl>
-            <FormDescription>
-              Primary reference image for this character.
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      {/* Thumbnail URL */}
-      <FormField
-        control={form.control}
-        name="thumbnailUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Thumbnail URL</FormLabel>
-            <FormControl>
-              <Input
-                {...field}
-                value={field.value ?? ''}
-                type="url"
-                placeholder="https://example.com/character-thumb.jpg"
-                disabled={disabled}
-                data-test="character-thumbnail-url-input"
-              />
-            </FormControl>
-            <FormDescription>
-              Smaller image for gallery display (optional).
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+      <div className="flex flex-col gap-6 md:flex-row">
+        {/* Main Image Uploader */}
+        <div className="w-full shrink-0 md:w-64">
+          <FormLabel className="mb-2 block">Visual Reference</FormLabel>
+          <ImageUploader
+            projectId={projectId}
+            assetType="character"
+            assetId={assetId}
+            initialImageUrl={fileUrl}
+            initialThumbnailUrl={thumbnailUrl}
+            onUploadComplete={(url, thumb) => {
+              form.setValue('fileUrl', url, { shouldValidate: true, shouldDirty: true });
+              form.setValue('thumbnailUrl', thumb, { shouldValidate: true, shouldDirty: true });
+            }}
+            onRemove={() => {
+              form.setValue('fileUrl', '', { shouldValidate: true, shouldDirty: true });
+              form.setValue('thumbnailUrl', '', { shouldValidate: true, shouldDirty: true });
+            }}
+            disabled={disabled}
+            className="h-64 w-full md:w-64"
+          />
+        </div>
+      </div>
 
       {/* Reference Images (for Kling AI) */}
       <FormField
@@ -125,9 +77,9 @@ export function CharacterImageUpload({
                   const value = e.target.value;
                   const urls = value
                     ? value
-                        .split(',')
-                        .map((u) => u.trim())
-                        .filter((u) => u.length > 0)
+                      .split(',')
+                      .map((u) => u.trim())
+                      .filter((u) => u.length > 0)
                     : [];
                   field.onChange(urls);
                 }}

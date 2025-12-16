@@ -5,7 +5,6 @@ import {
   FolderOpen,
   MapPin,
   Music,
-  Settings,
   Users,
 } from 'lucide-react';
 
@@ -22,7 +21,7 @@ function getProjectRoutes(accountSlug: string, projectId: string) {
 
   return [
     {
-      label: 'studio:routes.application',
+      label: 'studio:routes.production',
       children: [
         {
           label: 'studio:routes.overview',
@@ -35,44 +34,35 @@ function getProjectRoutes(accountSlug: string, projectId: string) {
           path: `${basePath}/episodes`,
           Icon: <Clapperboard className={iconClasses} />,
         },
+      ],
+    },
+    {
+      label: 'studio:routes.assets',
+      children: [
         {
-          label: 'studio:routes.assets',
-          path: `${basePath}/assets`,
+          label: 'studio:routes.characters',
+          path: `${basePath}/assets?tab=character`,
           Icon: <Users className={iconClasses} />,
-          collapsible: true,
-          children: [
-            {
-              label: 'studio:routes.characters',
-              path: `${basePath}/assets/characters`,
-              Icon: <Users className={iconClasses} />,
-            },
-            {
-              label: 'studio:routes.locations',
-              path: `${basePath}/assets/locations`,
-              Icon: <MapPin className={iconClasses} />,
-            },
-            {
-              label: 'studio:routes.voices',
-              path: `${basePath}/assets/voices`,
-              Icon: <Music className={iconClasses} />,
-            },
-          ],
+        },
+        {
+          label: 'studio:routes.locations',
+          path: `${basePath}/assets?tab=location`,
+          Icon: <MapPin className={iconClasses} />,
+        },
+        {
+          label: 'studio:routes.voices',
+          path: `${basePath}/assets?tab=voice`,
+          Icon: <Music className={iconClasses} />,
         },
       ],
     },
     {
-      label: 'studio:routes.settings',
-      collapsible: false,
+      label: 'common:routes.settings',
       children: [
         {
           label: 'studio:routes.analytics',
           path: `${basePath}/analytics`,
           Icon: <BarChart3 className={iconClasses} />,
-        },
-        {
-          label: 'studio:routes.settings',
-          path: `${basePath}/settings`,
-          Icon: <Settings className={iconClasses} />,
         },
       ],
     },

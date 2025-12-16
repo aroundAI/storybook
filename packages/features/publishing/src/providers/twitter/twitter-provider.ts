@@ -1,5 +1,3 @@
-'use server';
-
 import { promises as fsPromises } from 'fs';
 
 import type {
@@ -20,7 +18,7 @@ const TWITTER_UPLOAD_API = 'https://upload.twitter.com/1.1/media/upload.json';
  * and tweet creation using the v2 API
  */
 export class TwitterProvider {
-  constructor(private accessToken: string) {}
+  constructor(private accessToken: string) { }
 
   /**
    * Uploads a video to Twitter and creates a tweet

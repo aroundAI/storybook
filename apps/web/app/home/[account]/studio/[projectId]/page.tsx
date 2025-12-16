@@ -1,21 +1,14 @@
 import type { Metadata } from 'next';
 
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowRight, FileText, User } from 'lucide-react';
-
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@kit/ui/card';
-import { PageBody, PageHeader } from '@kit/ui/page';
+
+import { getProjectAnalytics } from '@kit/content-analytics/server';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
+
+import { OverviewContent } from './_components/overview-content';
 
 interface StudioProjectPageProps {
   params: Promise<{
@@ -46,22 +39,21 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   const { account, projectId } = await params;
   const client = getSupabaseServerClient();
 
-  const { data: project, error } = await client
-    .from('projects')
-    .select('id, name, description, created_at')
-    .eq('id', projectId)
-    .single();
-
-  if (error || !project) {
-    notFound();
-  }
-
-  // Fetch asset counts in parallel for better performance
+  // Fetch project, counts, and episode status data in parallel
   const [
+    { data: project, error },
     { count: characterCount },
     { count: locationCount },
-    { count: voiceCount },
+    { count: episodeCount },
+    { data: recentEpisodes },
+    { data: episodeStatusData },
+    analytics,
   ] = await Promise.all([
+    client
+      .from('projects')
+      .select('id, name, description, metadata, created_at')
+      .eq('id', projectId)
+      .single(),
     client
       .from('assets')
       .select('*', { count: 'exact', head: true })
@@ -75,71 +67,96 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       .eq('type', 'location')
       .is('deleted_at', null),
     client
-      .from('assets')
+      .from('episodes')
       .select('*', { count: 'exact', head: true })
       .eq('project_id', projectId)
-      .eq('type', 'voice')
       .is('deleted_at', null),
+    // Fetch 3 most recent episodes with status data
+    client
+      .from('episodes')
+      .select('id, title, number, updated_at, story_data, screenplay_data, shot_list')
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .order('updated_at', { ascending: false })
+      .limit(3),
+    // Fetch all episodes for production status calculation
+    client
+      .from('episodes')
+      .select('id, story_data, screenplay_data, shot_list')
+      .eq('project_id', projectId)
+      .is('deleted_at', null),
+    // Fetch analytics
+    getProjectAnalytics(projectId).catch(() => null),
   ]);
+
+  if (error || !project) {
+    notFound();
+  }
+
+  // Extract metadata
+  const metadata = (project.metadata ?? {}) as {
+    genre?: string;
+    targetAudience?: string;
+    format?: string;
+    coverImageUrl?: string;
+  };
 
   const baseUrl = `/home/${account}/studio/${projectId}`;
 
+  // Calculate production status from episode data
+  type StoryData = { fullStory?: string };
+  type ScreenplayData = { scenes?: unknown[] };
+  type ShotListData = { shots?: unknown[] };
+
+  const productionStatus = {
+    scriptsComplete: episodeStatusData?.filter(e => (e.story_data as StoryData | null)?.fullStory).length ?? 0,
+    storyboardsComplete: episodeStatusData?.filter(e => ((e.screenplay_data as ScreenplayData | null)?.scenes?.length ?? 0) > 0).length ?? 0,
+    visualsComplete: episodeStatusData?.filter(e => ((e.shot_list as ShotListData | null)?.shots?.length ?? 0) > 0).length ?? 0,
+    totalEpisodes: episodeCount ?? 0,
+  };
+
+  // Map recent episodes to include stage info
+  const mappedEpisodes = recentEpisodes?.map(ep => {
+    const storyData = ep.story_data as StoryData | null;
+    const screenplayData = ep.screenplay_data as ScreenplayData | null;
+    const shotListData = ep.shot_list as ShotListData | null;
+
+    let stage: 'draft' | 'story' | 'screenplay' | 'shots' = 'draft';
+    if ((shotListData?.shots?.length ?? 0) > 0) stage = 'shots';
+    else if ((screenplayData?.scenes?.length ?? 0) > 0) stage = 'screenplay';
+    else if (storyData?.fullStory) stage = 'story';
+
+    return {
+      id: ep.id,
+      title: ep.title,
+      number: ep.number,
+      updated_at: ep.updated_at,
+      stage,
+    };
+  }) ?? [];
+
   return (
-    <>
-      <PageHeader
-        title={project.name}
-        description={project.description ?? 'Film Studio Project'}
-      />
-
-      <PageBody>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* Assets Card */}
-          <Link href={`${baseUrl}/assets`}>
-            <Card className="cursor-pointer transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <User className="text-primary h-8 w-8" />
-                  <ArrowRight className="text-muted-foreground h-5 w-5" />
-                </div>
-                <CardTitle>Assets</CardTitle>
-                <CardDescription>
-                  Characters, locations, and voice profiles
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-muted-foreground flex gap-4 text-sm">
-                  <span>{characterCount ?? 0} characters</span>
-                  <span>{locationCount ?? 0} locations</span>
-                  <span>{voiceCount ?? 0} voices</span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-
-          {/* Episodes Card */}
-          <Link href={`${baseUrl}/episodes`}>
-            <Card className="cursor-pointer transition-shadow hover:shadow-lg">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <FileText className="text-primary h-8 w-8" />
-                  <ArrowRight className="text-muted-foreground h-5 w-5" />
-                </div>
-                <CardTitle>Episodes</CardTitle>
-                <CardDescription>
-                  Stories, screenplays, and shot lists
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-muted-foreground text-sm">
-                  Coming soon...
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
-      </PageBody>
-    </>
+    <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
+      <div className="max-w-7xl mx-auto p-8">
+        <OverviewContent
+          project={{
+            id: project.id,
+            name: project.name,
+            description: project.description,
+          }}
+          metadata={metadata}
+          episodeCount={episodeCount ?? 0}
+          characterCount={characterCount ?? 0}
+          locationCount={locationCount ?? 0}
+          recentEpisodes={mappedEpisodes}
+          productionStatus={productionStatus}
+          analytics={analytics}
+          baseUrl={baseUrl}
+        />
+      </div>
+    </div>
   );
 }
 
 export default withI18n(StudioProjectPage);
+

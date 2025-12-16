@@ -4,7 +4,7 @@
 
 ## Overview
 
-The `@kit/mcp-server` package provides a Model Context Protocol (MCP) server that enables AI agents to interact with the Makerkit codebase. It exposes tools and resources for code analysis, database operations, component discovery, and development workflows.
+The `@kit/mcp-server` package provides a Model Context Protocol (MCP) server that enables AI agents to interact with the StoryBook codebase. It exposes tools and resources for code analysis, database operations, component discovery, and development workflows.
 
 ## Purpose
 
@@ -52,7 +52,7 @@ Add to your MCP client configuration:
 ```json
 {
   "mcpServers": {
-    "makerkit": {
+    "storybook": {
       "command": "node",
       "args": ["./node_modules/@kit/mcp-server/build/index.js"],
       "env": {
@@ -318,9 +318,9 @@ packages/mcp-server/
 ```json
 {
   "mcpServers": {
-    "makerkit": {
+    "storybook": {
       "command": "node",
-      "args": ["path/to/makerkit-mcp-server/build/index.js"]
+      "args": ["path/to/storybook-mcp-server/build/index.js"]
     }
   }
 }
@@ -339,7 +339,7 @@ const transport = new StdioClientTransport({
 
 const client = new Client(
   {
-    name: 'makerkit-client',
+    name: 'storybook-client',
     version: '1.0.0',
   },
   {

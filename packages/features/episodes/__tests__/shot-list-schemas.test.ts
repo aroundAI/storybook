@@ -164,7 +164,9 @@ describe('Shot List Schemas', () => {
 
     it('should reject invalid camera directions', () => {
       expect(PromptCameraDirectionSchema.safeParse('pan').success).toBe(false);
-      expect(PromptCameraDirectionSchema.safeParse('dolly').success).toBe(false);
+      expect(PromptCameraDirectionSchema.safeParse('dolly').success).toBe(
+        false,
+      );
       expect(PromptCameraDirectionSchema.safeParse('').success).toBe(false);
     });
   });

@@ -392,6 +392,26 @@ export function timelineReducer(
         resizeEdge: null,
       };
 
+    // Clip editor actions
+    case 'UPDATE_CLIP': {
+      const stateWithHistory = pushHistory(state, 'UPDATE_CLIP');
+
+      const updatedTracks = stateWithHistory.tracks.map((track) => ({
+        ...track,
+        clips: track.clips.map((clip) =>
+          clip.id === action.clipId ? { ...clip, ...action.updates } : clip,
+        ),
+      }));
+
+      return { ...stateWithHistory, tracks: updatedTracks };
+    }
+
+    case 'OPEN_CLIP_EDITOR':
+      return { ...state, editingClipId: action.clipId };
+
+    case 'CLOSE_CLIP_EDITOR':
+      return { ...state, editingClipId: null };
+
     default:
       return state;
   }
@@ -430,5 +450,6 @@ export function createInitialState(fps: number = 30): TimelineState {
     isDragging: false,
     draggedClipId: null,
     resizeEdge: null,
+    editingClipId: null,
   };
 }

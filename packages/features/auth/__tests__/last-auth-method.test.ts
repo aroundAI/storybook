@@ -397,7 +397,11 @@ describe('LastAuthMethod Utils', () => {
     });
 
     it('should handle timestamp at exact 30-day boundary', () => {
-      const exactlyThirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      // Use a fixed timestamp to avoid race condition between test setup and function call
+      const fixedNow = 1700000000000; // Fixed point in time
+      vi.setSystemTime(fixedNow);
+
+      const exactlyThirtyDaysAgo = fixedNow - 30 * 24 * 60 * 60 * 1000;
       const authMethod: LastAuthMethod = {
         method: 'password',
         timestamp: exactlyThirtyDaysAgo,
@@ -410,6 +414,8 @@ describe('LastAuthMethod Utils', () => {
       // Should NOT be removed (uses < not <=, so exactly 30 days is still valid)
       expect(result).toEqual(authMethod);
       expect(localStorageMock.removeItem).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
 
     it('should handle future timestamp', () => {

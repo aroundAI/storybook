@@ -6,7 +6,7 @@ import Image from 'next/image';
 
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Check, GripVertical, Loader2, Play, X } from 'lucide-react';
+import { Check, Film, GripVertical, Loader2, Play, X } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -17,7 +17,7 @@ import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
 import type { Shot, ShotStatus } from '../../lib/types';
-import { updateShotAction } from '../../server';
+import { updateShotAction } from '../../lib/server/mutations/shot-actions';
 
 interface ShotRowProps {
   shot: Shot;
@@ -84,8 +84,17 @@ export function ShotRow({
       ref={setNodeRef}
       style={style}
       className={cn(
-        'hover:bg-muted/50 data-[state=selected]:bg-muted border-b transition-colors',
+        'border-b transition-colors',
+        // Hover state
+        'hover:bg-muted/50',
+        // Dragging state
         isDragging && 'opacity-50',
+        // Selected state
+        isSelected && 'bg-muted',
+        // Status variants
+        shot.status === 'completed' && 'bg-muted/10 opacity-60 hover:opacity-100',
+        shot.status === 'failed' && 'bg-destructive/10',
+        shot.status === 'generating' && 'bg-blue-50/50 dark:bg-blue-900/10'
       )}
     >
       <TableCell className="w-10">
@@ -178,8 +187,8 @@ export function ShotRow({
             )}
           </div>
         ) : (
-          <div className="bg-muted text-muted-foreground flex h-12 w-20 items-center justify-center rounded text-xs">
-            No preview
+          <div className="bg-muted/50 flex h-12 w-20 items-center justify-center rounded">
+            <Film className="text-muted-foreground/30 h-4 w-4" />
           </div>
         )}
       </TableCell>

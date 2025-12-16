@@ -14,6 +14,18 @@ export {
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
 
+// Revenue actions
+export {
+  addManualRevenueAction,
+  deleteManualRevenueAction,
+  generateRevenueReportAction,
+  getRevenueProjectionAction,
+  getRevenueSummaryAction,
+  getRevenueTimeSeriesAction,
+  getTopContentByRevenueAction,
+  syncRevenueFromPlatformAction,
+} from './revenue-actions';
+
 // Schedule utilities
 export {
   getIntervalHours,
@@ -29,6 +41,16 @@ export {
   resetRateLimiter,
 } from './rate-limiter';
 
+// Aggregation queries
+export {
+  getEpisodeAnalytics,
+  getProjectAnalytics,
+  getSeasonAnalytics,
+  type EpisodeAnalytics,
+  type ProjectAnalytics,
+  type SeasonAnalytics,
+} from './aggregation-queries';
+
 // Types
 export type {
   NormalizedAnalytics,
@@ -42,3 +64,4 @@ export type {
   SyncSchedule,
   SyncStatusResponse,
 } from './types';
+

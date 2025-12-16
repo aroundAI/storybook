@@ -1,7 +1,7 @@
 import {
+  BarChart3,
   CreditCard,
   Film,
-  FolderKanban,
   LayoutDashboard,
   Settings,
   Share2,
@@ -26,14 +26,14 @@ const getRoutes = (account: string) => [
         end: true,
       },
       {
-        label: 'common:routes.projects',
-        path: createPath(pathsConfig.app.accountProjects, account),
-        Icon: <FolderKanban className={iconClasses} />,
-      },
-      {
-        label: 'studio:routes.application',
+        label: 'studio:routes.allProjects',
         path: `/home/${account}/studio`,
         Icon: <Film className={iconClasses} />,
+      },
+      {
+        label: 'common:routes.analytics',
+        path: `/home/${account}/studio/analytics`,
+        Icon: <BarChart3 className={iconClasses} />,
       },
     ],
   },
@@ -58,10 +58,10 @@ const getRoutes = (account: string) => [
       },
       featureFlagsConfig.enableTeamAccountBilling
         ? {
-            label: 'common:routes.billing',
-            path: createPath(pathsConfig.app.accountBilling, account),
-            Icon: <CreditCard className={iconClasses} />,
-          }
+          label: 'common:routes.billing',
+          path: createPath(pathsConfig.app.accountBilling, account),
+          Icon: <CreditCard className={iconClasses} />,
+        }
         : undefined,
     ].filter(Boolean),
   },

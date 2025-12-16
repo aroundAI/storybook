@@ -114,6 +114,20 @@ export function ClipItem({
     [clip.id, isLocked, dispatch],
   );
 
+  // Handle double-click to open clip editor
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isLocked) return;
+
+      dispatch({
+        type: 'OPEN_CLIP_EDITOR',
+        clipId: clip.id,
+      });
+    },
+    [clip.id, isLocked, dispatch],
+  );
+
   // Handle drag start
   const handleDragStart = useCallback(
     (e: React.MouseEvent, type: DragState['type']) => {
@@ -271,6 +285,7 @@ export function ClipItem({
         height,
       }}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onMouseDown={(e) => {
         if (isLocked) return;
         // Only start move drag if not clicking on resize handles

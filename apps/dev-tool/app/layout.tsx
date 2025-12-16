@@ -6,8 +6,8 @@ import { RootProviders } from '@/components/root-providers';
 import '../styles/globals.css';
 
 export const metadata: Metadata = {
-  title: 'Makerkit | Dev Tool',
-  description: 'The dev tool for Makerkit',
+  title: 'StoryBook | Dev Tool',
+  description: 'The dev tool for StoryBook',
 };
 
 export default function RootLayout({

@@ -1,5 +1,3 @@
-'use server';
-
 import { promises as fsPromises } from 'fs';
 
 import type {
@@ -20,7 +18,7 @@ export class FacebookProvider {
   constructor(
     private accessToken: string,
     private pageId: string,
-  ) {}
+  ) { }
 
   /**
    * Uploads a video to Facebook Page
