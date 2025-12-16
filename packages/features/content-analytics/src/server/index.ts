@@ -13,6 +13,7 @@ export {
 
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
+export { calculateChanges, generateInsightsAction } from './insights-actions';
 
 // Schedule utilities
 export {
@@ -52,4 +53,3 @@ export type {
   SyncSchedule,
   SyncStatusResponse,
 } from './types';
-

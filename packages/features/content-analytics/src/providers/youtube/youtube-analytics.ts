@@ -24,7 +24,7 @@ export class YouTubeAnalyticsScopeError extends Error {
   constructor() {
     super(
       'YouTube Analytics access denied. Your YouTube connection was created before analytics features were added. ' +
-      'Please disconnect and reconnect your YouTube account to grant the required analytics permissions.',
+        'Please disconnect and reconnect your YouTube account to grant the required analytics permissions.',
     );
     this.name = 'YouTubeAnalyticsScopeError';
   }

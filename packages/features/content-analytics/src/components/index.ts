@@ -16,3 +16,5 @@ export { EpisodeAnalytics } from './episode-analytics';
 export { SeasonOverview } from './season-overview';
 export { ProjectDashboard } from './project-dashboard';
 
+// AI Insights
+export { AIInsights } from './ai-insights';

@@ -16,7 +16,12 @@ import {
 
 import { Card, CardContent } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@kit/ui/tooltip';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@kit/ui/tooltip';
 
 import {
   calculateChange,

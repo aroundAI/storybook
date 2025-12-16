@@ -24,11 +24,13 @@
     "./lib/format": "./src/lib/format.ts"
   },
   "dependencies": {
+    "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",
+    "@tanstack/react-query": "5.89.0",
     "date-fns": "^4.1.0",
     "googleapis": "^148.0.0",
     "lucide-react": "^0.544.0",
