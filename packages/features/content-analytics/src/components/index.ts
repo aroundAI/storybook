@@ -39,3 +39,20 @@ export {
   RevenueTopContent,
   RevenueTopContentSkeleton,
 } from './revenue-top-content';
+
+// Analytics Dashboard (FILM-805)
+export {
+  AnalyticsDashboard,
+  AnalyticsDashboardSkeleton,
+} from './analytics-dashboard';
+export type { AnalyticsDashboardProps } from './analytics-dashboard';
+export { ContentTable, type ContentTableProps } from './content-table';
+export {
+  PlatformFilter,
+  type PlatformFilterProps,
+  type Platform,
+} from './platform-filter';
+export {
+  AudienceAnalytics,
+  type AudienceAnalyticsProps,
+} from './audience-analytics';

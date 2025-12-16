@@ -510,3 +510,139 @@ export async function getProjectAnalytics(
     platformTotals: platformTotalsList,
   };
 }
+
+/**
+ * Content list item for content table
+ */
+export interface ContentListItem {
+  publishId: string;
+  episodeId: string;
+  episodeTitle: string;
+  publishTitle: string;
+  platform: 'youtube' | 'tiktok' | 'instagram';
+  thumbnailUrl: string | null;
+  publishedAt: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  engagementRate: number;
+}
+
+/**
+ * Get list of all content for a project with analytics
+ */
+export async function getContentList(
+  projectId: string,
+  options?: {
+    platforms?: string[];
+    startDate?: Date;
+    endDate?: Date;
+  },
+): Promise<ContentListItem[]> {
+  const client = getSupabaseServerClient();
+
+  // Get all publishes for this project through episodes -> seasons
+  let query = client
+    .from('publishes')
+    .select(
+      `
+      id,
+      platform,
+      title,
+      published_at,
+      episodes!inner (
+        id,
+        title,
+        thumbnail_url,
+        seasons!inner (
+          project_id
+        )
+      )
+    `,
+    )
+    .eq('episodes.seasons.project_id', projectId)
+    .is('deleted_at', null)
+    .not('published_at', 'is', null);
+
+  // Filter by platforms if specified
+  if (options?.platforms && options.platforms.length > 0) {
+    query = query.in('platform', options.platforms);
+  }
+
+  // Filter by date range if specified
+  if (options?.startDate) {
+    query = query.gte('published_at', options.startDate.toISOString());
+  }
+  if (options?.endDate) {
+    query = query.lte('published_at', options.endDate.toISOString());
+  }
+
+  const { data: publishes, error } = await query.order('published_at', {
+    ascending: false,
+  });
+
+  if (error || !publishes || publishes.length === 0) {
+    return [];
+  }
+
+  // Get analytics for each publish
+  const publishIds = publishes.map((p) => p.id);
+  const { data: analytics } = await client
+    .from('content_analytics')
+    .select('publish_id, views, likes, comments, shares, snapshot_date')
+    .in('publish_id', publishIds)
+    .order('snapshot_date', { ascending: false });
+
+  // Get latest analytics per publish
+  const latestAnalytics = new Map<
+    string,
+    { views: number; likes: number; comments: number; shares: number }
+  >();
+  if (analytics) {
+    for (const a of analytics) {
+      if (!latestAnalytics.has(a.publish_id)) {
+        latestAnalytics.set(a.publish_id, {
+          views: a.views || 0,
+          likes: a.likes || 0,
+          comments: a.comments || 0,
+          shares: a.shares || 0,
+        });
+      }
+    }
+  }
+
+  // Build content list
+  return publishes.map((publish) => {
+    const episode = publish.episodes as unknown as {
+      id: string;
+      title: string;
+      thumbnail_url: string | null;
+    };
+    const stats = latestAnalytics.get(publish.id) || {
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+    };
+    const engagementRate =
+      stats.views > 0
+        ? ((stats.likes + stats.comments + stats.shares) / stats.views) * 100
+        : 0;
+
+    return {
+      publishId: publish.id,
+      episodeId: episode.id,
+      episodeTitle: episode.title,
+      publishTitle: publish.title || episode.title,
+      platform: publish.platform as 'youtube' | 'tiktok' | 'instagram',
+      thumbnailUrl: episode.thumbnail_url,
+      publishedAt: publish.published_at!,
+      views: stats.views,
+      likes: stats.likes,
+      comments: stats.comments,
+      shares: stats.shares,
+      engagementRate,
+    };
+  });
+}

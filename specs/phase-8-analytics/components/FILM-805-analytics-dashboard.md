@@ -543,18 +543,18 @@ function EngagementRate({ likes, comments, views }: {
 
 ## Acceptance Criteria
 
-- [ ] Shows aggregate metrics across all platforms
-- [ ] Supports date range selection with presets
-- [ ] Filters by selected platforms
-- [ ] Shows performance over time chart
-- [ ] Shows platform breakdown comparison
-- [ ] Lists all content with sortable columns
-- [ ] Shows top performing content
-- [ ] Shows audience demographics
-- [ ] Includes AI insights tab
-- [ ] Export functionality works
-- [ ] Shows last sync time
-- [ ] Auto-refreshes every 5 minutes
+- [x] Shows aggregate metrics across all platforms
+- [x] Supports date range selection with presets
+- [x] Filters by selected platforms
+- [x] Shows performance over time chart
+- [x] Shows platform breakdown comparison
+- [x] Lists all content with sortable columns
+- [x] Shows top performing content
+- [x] Shows audience demographics
+- [x] Includes AI insights tab
+- [x] Export functionality works
+- [x] Shows last sync time
+- [x] Auto-refreshes every 5 minutes
 
 ---
 

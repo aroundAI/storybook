@@ -44,13 +44,21 @@ export {
 
 // Aggregation queries
 export {
+  getContentList,
   getEpisodeAnalytics,
   getProjectAnalytics,
   getSeasonAnalytics,
+  type ContentListItem,
   type EpisodeAnalytics,
   type ProjectAnalytics,
   type SeasonAnalytics,
 } from './aggregation-queries';
+
+// Dashboard actions (FILM-805)
+export {
+  getContentListAction,
+  getProjectAnalyticsAction,
+} from './dashboard-actions';
 
 // Types
 export type {
