@@ -459,27 +459,27 @@ function LipSyncStatusBadge({ status }: { status: string }) {
 
 ## Acceptance Criteria
 
-- [ ] Face detection identifies speakers in video
-- [ ] Lip sync generates with quality settings (fast/standard/high)
-- [ ] Progress tracked during processing
-- [ ] Preview lip-synced video before applying
-- [ ] Apply replaces original video with synced version
-- [ ] Original video preserved in metadata
-- [ ] Error handling for failed jobs
+- [x] Face detection identifies speakers in video
+- [x] Lip sync generates with quality settings (fast/standard/high)
+- [x] Progress tracked during processing
+- [x] Preview lip-synced video before applying
+- [x] Apply replaces original video with synced version
+- [x] Original video preserved in metadata
+- [x] Error handling for failed jobs
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test face detection coordinate parsing
-- [ ] Test provider status mapping
-- [ ] Test duration estimation
+- [x] Test face detection coordinate parsing
+- [x] Test provider status mapping
+- [x] Test duration estimation
 
 ### Integration Tests
-- [ ] Test full lip sync generation workflow
-- [ ] Test apply lip sync to shot
-- [ ] Test provider webhook handling
+- [x] Test full lip sync generation workflow
+- [x] Test apply lip sync to shot
+- [x] Test provider webhook handling
 
 ---
 

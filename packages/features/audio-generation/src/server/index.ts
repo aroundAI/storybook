@@ -5,6 +5,7 @@ export * from './voice-queries';
 export * from './voice-clone-actions';
 export * from './voice-profile-actions';
 export * from './batch-actions';
+export * from './lip-sync-actions';
 export * from './dialogue-queries';
 export * from './dubbing-actions';
 export * from './dubbing-queries';

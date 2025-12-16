@@ -6,3 +6,4 @@ export * from './udio';
 export * from './errors';
 export * from './registry';
 export * from './factory';
+export * from './lip-sync';
