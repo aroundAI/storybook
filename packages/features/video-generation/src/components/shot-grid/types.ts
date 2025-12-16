@@ -66,6 +66,10 @@ export interface ShotCardProps {
   onDoubleClick?: () => void;
   onGenerateClick?: () => void;
   onRetryClick?: () => void;
+  onCopyPrompt?: () => void;
+  onEditPrompt?: () => void;
+  onRegeneratePrompt?: () => void;
+  onUploadVideo?: () => void;
 }
 
 /**

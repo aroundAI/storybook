@@ -1,6 +1,6 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useState } from 'react';
 
 import Image from 'next/image';
 
@@ -8,11 +8,17 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
   AlertCircle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Edit3,
   GripVertical,
   Loader2,
   Play,
   RefreshCw,
   Sparkles,
+  Upload,
 } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
@@ -30,7 +36,14 @@ export const ShotCard = memo(function ShotCard({
   onDoubleClick,
   onGenerateClick,
   onRetryClick,
+  onCopyPrompt,
+  onEditPrompt,
+  onRegeneratePrompt,
+  onUploadVideo,
 }: ShotCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   const {
     attributes,
     listeners,
@@ -60,6 +73,37 @@ export const ShotCard = memo(function ShotCard({
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDoubleClick?.();
+  };
+
+  const handleCopyPrompt = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const promptText = shot.prompt ?? shot.description;
+    if (promptText) {
+      await navigator.clipboard.writeText(promptText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      onCopyPrompt?.();
+    }
+  };
+
+  const handleEditPrompt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onEditPrompt?.();
+  };
+
+  const handleRegeneratePrompt = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onRegeneratePrompt?.();
+  };
+
+  const handleUploadVideo = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onUploadVideo?.();
+  };
+
+  const toggleExpanded = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExpanded(!isExpanded);
   };
 
   return (
@@ -194,9 +238,95 @@ export const ShotCard = memo(function ShotCard({
             {shot.status}
           </Badge>
         </div>
-        <p className="text-muted-foreground mt-1 line-clamp-2 text-xs">
-          {shot.prompt ?? shot.description}
-        </p>
+
+        {/* Prompt Section */}
+        <div className="mt-2">
+          <div className="flex items-start gap-1">
+            <p
+              className={cn(
+                'text-muted-foreground flex-1 text-xs',
+                !isExpanded && 'line-clamp-2',
+              )}
+            >
+              {shot.prompt ?? shot.description}
+            </p>
+            {(shot.prompt ?? shot.description) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 shrink-0"
+                onClick={toggleExpanded}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                {isExpanded ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </Button>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-2 flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              onClick={handleCopyPrompt}
+              title="Copy prompt to clipboard"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3 w-3 text-green-600" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3 w-3" />
+                  <span>Copy</span>
+                </>
+              )}
+            </Button>
+
+            {onEditPrompt && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleEditPrompt}
+                title="Edit prompt"
+              >
+                <Edit3 className="h-3 w-3" />
+              </Button>
+            )}
+
+            {onRegeneratePrompt && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleRegeneratePrompt}
+                title="Regenerate prompt"
+              >
+                <RefreshCw className="h-3 w-3" />
+              </Button>
+            )}
+
+            {onUploadVideo && !shot.videoUrl && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={handleUploadVideo}
+                title="Upload video"
+              >
+                <Upload className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        </div>
+
         <div className="text-muted-foreground mt-1 text-xs">
           {shot.duration}s &middot; {shot.aspectRatio}
         </div>

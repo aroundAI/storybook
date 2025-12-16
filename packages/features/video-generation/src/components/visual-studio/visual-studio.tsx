@@ -173,6 +173,23 @@ export function VisualStudio({
     // Reordering implementation pending - will be added in future PR
   }, []);
 
+  // Copy all prompts to clipboard
+  const handleCopyAllPrompts = useCallback(async () => {
+    if (!shots || shots.length === 0) return;
+
+    const promptsText = shots
+      .map((shot) => {
+        const prompt = shot.prompt ?? shot.description;
+        return `Shot #${shot.sceneNumber}.${shot.shotNumber}:\n${prompt}`;
+      })
+      .join('\n\n---\n\n');
+
+    await navigator.clipboard.writeText(promptsText);
+    toast.success(`Copied ${shots.length} prompts to clipboard`, {
+      description: 'Ready to paste into Kling, ChatGPT, or other apps',
+    });
+  }, [shots]);
+
   // Memoized processing shots for progress component
   const processingShots = useMemo(
     () =>
@@ -248,6 +265,7 @@ export function VisualStudio({
         onSelectAll={handleSelectAll}
         onDeselectAll={handleDeselectAll}
         onGenerate={handleGenerate}
+        onCopyAllPrompts={handleCopyAllPrompts}
         isGenerating={generateMutation.isPending}
       />
 
