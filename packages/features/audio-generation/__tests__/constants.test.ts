@@ -144,7 +144,7 @@ describe('Audio Generation Constants', () => {
 
   describe('Udio Constants', () => {
     it('should have max duration', () => {
-      expect(UDIO.MAX_DURATION).toBe(240); // 4 minutes
+      expect(UDIO.MAX_DURATION).toBe(120); // 2 minutes (per FILM-509b spec)
     });
 
     it('should have supported genres', () => {

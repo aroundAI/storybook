@@ -87,6 +87,9 @@ export interface EpisodeMetadata {
   totalDuration?: number;
   themes?: string[];
   tags?: string[];
+  character_ids?: string[]; // Asset IDs for tagged characters
+  location_ids?: string[]; // Asset IDs for tagged locations
+  season_premise?: string; // Season-level premise for context
 }
 
 /**
@@ -210,6 +213,12 @@ export interface Episode {
   createdAt: string;
   updatedAt: string;
   deletedAt: string | null;
+  projectMetadata?: {
+    videoStyle?: string;
+    targetAudience?: string;
+    description?: string;
+    [key: string]: unknown;
+  };
 }
 
 /**

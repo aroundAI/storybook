@@ -1,5 +1,10 @@
 # FILM-501b: PlayHT Voice Generation Provider
 
+## Status: DONE
+
+- **Implementation Date:** 2025-12-11
+- **PR:** https://github.com/aroundAI/storybook/pull/88
+
 ## Metadata
 - **Phase:** 5 - Audio Generation
 - **Priority:** P1 (Secondary Provider)
@@ -382,39 +387,40 @@ interface PlayHTVoice {
 | CREATE | `packages/features/audio-generation/src/providers/playht/types.ts` |
 | CREATE | `packages/features/audio-generation/src/providers/playht/constants.ts` |
 | CREATE | `packages/features/audio-generation/src/providers/playht/index.ts` |
+| CREATE | `packages/features/audio-generation/__tests__/playht-provider.test.ts` |
 | MODIFY | `packages/features/audio-generation/src/providers/index.ts` (export PlayHT) |
-| MODIFY | `packages/features/audio-generation/src/providers/factory.ts` (add to registry) |
+| MODIFY | `packages/features/audio-generation/src/providers/registry.ts` (register PlayHT provider) |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] `generateVoice()` successfully generates audio from text
-- [ ] `generateVoiceStream()` returns streaming audio response
-- [ ] `getVoices()` returns list of available stock voices
-- [ ] `getClonedVoices()` returns user's cloned voices
-- [ ] `cloneVoice()` creates new voice from audio sample
-- [ ] `deleteClonedVoice()` removes cloned voice
-- [ ] `estimateCost()` returns accurate cost estimate
-- [ ] Provider registered in audio factory registry
-- [ ] Error handling for rate limits, auth errors, credit errors
+- [x] `generateVoice()` successfully generates audio from text
+- [x] `generateVoiceStream()` returns streaming audio response
+- [x] `getVoices()` returns list of available stock voices
+- [x] `getClonedVoices()` returns user's cloned voices
+- [x] `cloneVoice()` creates new voice from audio sample
+- [x] `deleteClonedVoice()` removes cloned voice
+- [x] `estimateCost()` returns accurate cost estimate
+- [x] Provider registered in audio factory registry
+- [x] Error handling for rate limits, auth errors, credit errors
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test text validation (min/max length)
-- [ ] Test voice settings schema validation
-- [ ] Test cost estimation calculation
-- [ ] Test error response parsing
-- [ ] Test voice mapping function
+- [x] Test text validation (min/max length)
+- [x] Test voice settings schema validation
+- [x] Test cost estimation calculation
+- [x] Test error response parsing
+- [x] Test voice mapping function
 
 ### Integration Tests
-- [ ] Test full generation flow with mock API
-- [ ] Test streaming response handling
-- [ ] Test voice cloning flow
-- [ ] Test voice listing with pagination
+- [x] Test full generation flow with mock API
+- [x] Test streaming response handling
+- [x] Test voice cloning flow
+- [x] Test voice listing with filtering
 
 ---
 

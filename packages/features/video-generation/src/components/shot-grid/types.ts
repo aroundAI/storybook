@@ -35,6 +35,7 @@ export interface ShotGridShot {
   status: ShotDisplayStatus;
   videoUrl: string | null;
   thumbnailUrl: string | null;
+  generationJobId: string | null;
   progress?: number;
   errorMessage?: string;
 }
@@ -65,19 +66,21 @@ export interface ShotCardProps {
   onDoubleClick?: () => void;
   onGenerateClick?: () => void;
   onRetryClick?: () => void;
+  onCopyPrompt?: () => void;
+  onEditPrompt?: () => void;
+  onRegeneratePrompt?: () => void;
+  onUploadVideo?: () => void;
 }
 
 /**
- * Status badge color variants
+ * Status badge color variants - using semantic status colors
  */
 export const STATUS_VARIANTS: Record<ShotDisplayStatus, string> = {
-  pending: 'bg-muted text-muted-foreground',
-  queued: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-  generating:
-    'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-  completed:
-    'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-  failed: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+  pending: 'status-pending',
+  queued: 'status-processing',
+  generating: 'status-processing',
+  completed: 'status-complete',
+  failed: 'status-error',
 };
 
 /**
@@ -96,6 +99,7 @@ export function toShotGridShot(shot: EpisodeShot): ShotGridShot {
     status: mapStatusToDisplayStatus(shot.status),
     videoUrl: shot.videoUrl,
     thumbnailUrl: shot.thumbnailUrl,
+    generationJobId: null, // Not available from EpisodeShot type
     progress: undefined,
     errorMessage: undefined,
   };

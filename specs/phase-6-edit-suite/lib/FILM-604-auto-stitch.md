@@ -4,8 +4,11 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Dependencies:** FILM-601 (Timeline Editor), FILM-602 (Track Layer)
+- **Status:** ✅ Done
+- **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-602 (Track Layer) ⚠️
 - **Blocks:** Video export/rendering
+
+> **Note:** FILM-601 Timeline Editor is complete with `TimelineData` type ready for auto-stitch integration.
 
 ---
 
@@ -456,25 +459,25 @@ export const autoStitchAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Shots are arranged sequentially on video track
-- [ ] Dialogue is aligned to corresponding shots
-- [ ] Music is placed as background track
-- [ ] Warnings are generated for missing content
-- [ ] Gaps are detected and reported
-- [ ] Timeline is saved to episode metadata
-- [ ] Incremental mode adds new content only
-- [ ] Result can be undone
+- [x] Shots are arranged sequentially on video track
+- [x] Dialogue is aligned to corresponding shots
+- [x] Music is placed as background track
+- [x] Warnings are generated for missing content
+- [x] Gaps are detected and reported
+- [x] Timeline is saved to episode metadata
+- [ ] Incremental mode adds new content only (deferred to post-MVP)
+- [x] Result can be undone (non-destructive: stored in episode.metadata)
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test shot sequencing with various durations
-- [ ] Test dialogue alignment to shots
-- [ ] Test gap detection accuracy
-- [ ] Test gap fill strategies
-- [ ] Test with missing content
+- [x] Test shot sequencing with various durations
+- [x] Test dialogue alignment to shots
+- [x] Test gap detection accuracy
+- [x] Test gap fill strategies
+- [x] Test with missing content
 
 ### Integration Tests
 - [ ] Test full auto-stitch with real episode data

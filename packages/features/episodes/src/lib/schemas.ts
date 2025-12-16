@@ -249,3 +249,9 @@ export {
   type UpdateSeasonInput,
   type DeleteSeasonInput,
 } from './schemas/season.schema';
+
+// Season Generation Schema (FILM-201)
+export {
+  AnalyzeSeasonSchema,
+  GenerateSeasonEpisodesSchema,
+} from './schemas/season-generation.schema';

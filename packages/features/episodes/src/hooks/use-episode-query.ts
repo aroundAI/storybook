@@ -36,6 +36,9 @@ interface DatabaseEpisode {
     name: string;
     number: number;
   }> | null;
+  project: {
+    metadata: Record<string, unknown>;
+  } | null;
 }
 
 interface DatabaseShot {
@@ -111,6 +114,11 @@ function transformEpisodeResponse(
     deletedAt: episode.deleted_at,
     shots: shots.map(transformShot),
     season: episode.season?.[0] ?? null,
+    projectMetadata: (episode.project?.metadata ?? {}) as {
+      videoStyle?: string;
+      targetAudience?: string;
+      description?: string;
+    },
   };
 }
 
@@ -129,7 +137,8 @@ export function useEpisodeQuery(
         .select(
           `
           *,
-          season:seasons(id, name, number)
+          season:seasons(id, name, number),
+          project:projects(metadata)
         `,
         )
         .eq('id', episodeId)

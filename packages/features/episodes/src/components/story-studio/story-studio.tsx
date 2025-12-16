@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 
 import {
   BookOpen,
@@ -9,8 +9,12 @@ import {
   ListOrdered,
   Loader2,
   Lock,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
+import type { StoryIdea } from '@kit/prompt-engine/schemas';
+import { Button } from '@kit/ui/button';
 import {
   Card,
   CardContent,
@@ -18,18 +22,26 @@ import {
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
+import { toast } from '@kit/ui/sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
 import { useUrlTabState } from '../../hooks/use-url-tab-state';
 import type { Episode, EpisodeWithShots, StudioTab } from '../../lib/types';
-import { PipelineProgress } from './pipeline-progress';
-import { StoryStudioContext } from './story-studio-context';
+import { generateFullStoryAction } from '../../server/story-actions';
+import { convertToScreenplayAction } from '../../server/screenplay-actions';
+import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
+import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
+import { StoryIdeation } from '../story-ideation/story-ideation';
+
+import {
+  StoryStudioContext,
+  useStoryStudioContext,
+} from './story-studio-context';
 
 interface StoryStudioProps {
   episodeId: string;
-  projectId: string;
 }
 
 const STUDIO_TABS: Array<{
@@ -37,11 +49,11 @@ const STUDIO_TABS: Array<{
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'ideation', label: 'Ideation', icon: Lightbulb },
-  { id: 'story', label: 'Story', icon: BookOpen },
-  { id: 'screenplay', label: 'Screenplay', icon: Film },
-  { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
-];
+    { id: 'ideation', label: 'Ideation', icon: Lightbulb },
+    { id: 'story', label: 'Story', icon: BookOpen },
+    { id: 'screenplay', label: 'Screenplay', icon: Film },
+    { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
+  ];
 
 function getTabUnlockState(
   episode: Episode | undefined,
@@ -63,7 +75,9 @@ function getTabUnlockState(
     'ready',
     'published',
   ].includes(episode.status);
-  const shotListUnlocked = episode.shotList !== null;
+  const shotListUnlocked =
+    episode.shotList !== null ||
+    (episode.screenplayData?.scenes?.length ?? 0) > 0;
 
   return {
     ideation: true,
@@ -73,17 +87,7 @@ function getTabUnlockState(
   };
 }
 
-function calculateProgress(episode: Episode | undefined): number {
-  if (!episode) return 1;
 
-  let progress = 1;
-
-  if (episode.storyData?.fullStory) progress = 2;
-  if (episode.screenplayData?.scenes?.length) progress = 3;
-  if (episode.shotList?.shots?.length) progress = 4;
-
-  return progress;
-}
 
 function LockedTabContent({ tabId }: { tabId: StudioTab }) {
   const tabLabels: Record<StudioTab, { title: string; description: string }> = {
@@ -121,8 +125,17 @@ function LockedTabContent({ tabId }: { tabId: StudioTab }) {
   );
 }
 
-function StoryTabPlaceholder({ episode }: { episode: EpisodeWithShots }) {
+/**
+ * Story tab content - displays the generated story and provides
+ * a button to convert it to screenplay
+ */
+function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
+  const [isPending, startTransition] = useTransition();
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const storyData = episode.storyData;
+
+  // Get refetch from context
+  const { refetchEpisode } = useStoryStudioContext();
 
   if (!storyData?.fullStory) {
     return (
@@ -137,106 +150,107 @@ function StoryTabPlaceholder({ episode }: { episode: EpisodeWithShots }) {
     );
   }
 
+  const handleConvertToScreenplay = () => {
+    startTransition(async () => {
+      try {
+        const result = await convertToScreenplayAction({
+          episodeId: episode.id,
+        });
+
+        if (result.success) {
+          toast.success(
+            `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
+          );
+          await refetchEpisode();
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to convert to screenplay',
+        );
+      }
+    });
+  };
+
+  /* Helper to style ACT headers in raw text */
+  const formatStoryText = (text: string) => {
+    return text.split('\n').map((line, i) => {
+      // ACT headers (e.g. ACT ONE, ACT 1, ACT I)
+      if (/^ACT\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|I|II|III|IV|V|VI|\d+)/i.test(line.trim())) {
+        return (
+          <span key={i} className="mt-8 mb-4 block text-center font-serif text-xl font-bold tracking-widest text-primary/80">
+            <br />
+            {line}
+            <br />
+          </span>
+        );
+      }
+      // Scene headers (e.g. INT. HOUSE - DAY) - Optional, but creates rhythm
+      if (/^(INT\.|EXT\.)/i.test(line.trim())) {
+        return (
+          <span key={i} className="mt-4 mb-2 block font-mono text-sm font-bold uppercase tracking-wider text-muted-foreground">
+            {line}
+          </span>
+        );
+      }
+      return <span key={i} className="block min-h-[1.5em]">{line}</span>;
+    });
+  };
+
+
   return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>{storyData.title ?? 'Story'}</CardTitle>
-        <CardDescription>Generated story for this episode</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="whitespace-pre-wrap">{storyData.fullStory}</p>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+    <div className={cn("transition-all duration-300", isReadingMode ? "fixed inset-0 z-50 overflow-y-auto bg-background p-8" : "mt-4")}>
+      <Card className={cn("transition-all", isReadingMode ? "mx-auto max-w-3xl border-none shadow-none" : "")}>
+        <CardHeader className={cn(isReadingMode ? "px-0" : "")}>
+          <div className="flex items-center justify-between">
+            <div className={cn("space-y-1", isReadingMode && "text-center w-full")}>
+              <CardTitle className={cn(isReadingMode ? "text-3xl" : "", "font-serif")}>
+                {storyData.title ?? 'Story'}
+              </CardTitle>
+              {!isReadingMode && <CardDescription>Generated story for this episode</CardDescription>}
+            </div>
 
-function ScreenplayPlaceholder({ episode }: { episode: EpisodeWithShots }) {
-  const screenplayData = episode.screenplayData;
+            <div className={cn("flex items-center gap-2", isReadingMode && "absolute right-8 top-8")}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsReadingMode(!isReadingMode)}
+                title={isReadingMode ? "Exit Reading Mode" : "Enter Reading Mode"}
+              >
+                {isReadingMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </Button>
 
-  if (!screenplayData?.scenes?.length) {
-    return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Screenplay</CardTitle>
-          <CardDescription>
-            Approve the story to generate a screenplay
-          </CardDescription>
+              {!isReadingMode && !episode.screenplayData?.scenes?.length && (
+                <Button onClick={handleConvertToScreenplay} disabled={isPending} size="sm">
+                  {isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  To Screenplay
+                </Button>
+              )}
+            </div>
+          </div>
         </CardHeader>
+        <CardContent className={cn(isReadingMode ? "px-0 pb-32" : "")}>
+          {/* Reading mode uses serif font with constrained width for optimal readability */}
+          <div className={cn(
+            "prose dark:prose-invert transition-all",
+            isReadingMode
+              ? "reading-mode mx-auto"
+              : "prose-base max-w-none"
+          )}>
+            {formatStoryText(storyData.fullStory)}
+          </div>
+        </CardContent>
       </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Screenplay</CardTitle>
-        <CardDescription>{screenplayData.scenes.length} scenes</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          Screenplay viewer coming soon (FILM-310)
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function ShotListPlaceholder({ episode }: { episode: EpisodeWithShots }) {
-  const shotList = episode.shotList;
-
-  if (!shotList?.shots?.length) {
-    return (
-      <Card className="mt-4">
-        <CardHeader>
-          <CardTitle>Shot List</CardTitle>
-          <CardDescription>
-            Approve the screenplay to generate a shot list
-          </CardDescription>
-        </CardHeader>
-      </Card>
-    );
-  }
-
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Shot List</CardTitle>
-        <CardDescription>{shotList.shots.length} shots</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          Shot list editor coming soon (FILM-311)
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function IdeationPlaceholder({ episodeId }: { episodeId: string }) {
-  return (
-    <Card className="mt-4">
-      <CardHeader>
-        <CardTitle>Story Ideation</CardTitle>
-        <CardDescription>
-          Enter your premise and generate story ideas
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          Story ideation form coming soon (FILM-309)
-        </p>
-        <p className="text-muted-foreground mt-2 text-xs">
-          Episode ID: {episodeId}
-        </p>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
 
 export function StoryStudio({ episodeId }: StoryStudioProps) {
   const [activeTab, setActiveTab] = useUrlTabState('ideation');
+  const [isGeneratingStory, startStoryTransition] = useTransition();
   const {
     data: episode,
     isLoading,
@@ -245,8 +259,8 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
   } = useEpisodeQuery(episodeId);
 
   const tabUnlockState = useMemo(() => getTabUnlockState(episode), [episode]);
-  const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
-  const isGenerating = episode?.status === 'generating';
+  // const currentProgress = useMemo(() => calculateProgress(episode), [episode]);
+  const isGenerating = episode?.status === 'generating' || isGeneratingStory;
 
   const handleTabChange = (tab: string) => {
     const studioTab = tab as StudioTab;
@@ -254,6 +268,44 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
     if (tabUnlockState[studioTab]) {
       setActiveTab(studioTab);
     }
+  };
+
+  /**
+   * Handle when user selects a story idea from StoryIdeation
+   * This triggers full story generation and advances to story tab
+   */
+  const handleIdeaSelected = (idea: StoryIdea) => {
+    if (!episode) return;
+
+    startStoryTransition(async () => {
+      try {
+        const result = await generateFullStoryAction({
+          episodeId: episode.id,
+          version: episode.version,
+          title: idea.title,
+          logline: idea.logline,
+          targetDuration: 300, // 5 minutes default
+          style: idea.visualPotential,
+        });
+
+        if (result.success) {
+          toast.success('Story generated successfully!');
+          await refetch();
+          setActiveTab('story');
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Failed to generate story',
+        );
+      }
+    });
+  };
+
+  /**
+   * Handle screenplay approval - advance to shot-list tab
+   */
+  const handleScreenplayApproved = () => {
+    setActiveTab('shot-list');
   };
 
   if (isLoading) {
@@ -288,12 +340,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
       }}
     >
       <div className="space-y-6">
-        <PipelineProgress
-          currentStep={currentProgress}
-          totalSteps={4}
-          currentTab={activeTab}
-          isGenerating={isGenerating}
-        />
+
 
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-4">
@@ -317,7 +364,21 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="ideation">
             {tabUnlockState.ideation ? (
-              <IdeationPlaceholder episodeId={episodeId} />
+              <div className="mt-4">
+                <StoryIdeation
+                  episodeId={episode.id}
+                  onComplete={handleIdeaSelected}
+                  isGenerating={isGeneratingStory}
+                  initialPremise={episode?.storyData?.premise as string | undefined}
+                  characterIds={(episode?.metadata?.character_ids as string[]) ?? []}
+                  locationIds={(episode?.metadata?.location_ids as string[]) ?? []}
+                  projectGenre={
+                    (episode?.projectMetadata?.genre as string) ?? 'general'
+                  }
+                  projectStyle={episode?.projectMetadata?.videoStyle}
+                  projectAudience={episode?.projectMetadata?.targetAudience}
+                />
+              </div>
             ) : (
               <LockedTabContent tabId="ideation" />
             )}
@@ -325,7 +386,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="story">
             {tabUnlockState.story ? (
-              <StoryTabPlaceholder episode={episode} />
+              <StoryTabContent episode={episode} />
             ) : (
               <LockedTabContent tabId="story" />
             )}
@@ -333,7 +394,12 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="screenplay">
             {tabUnlockState.screenplay ? (
-              <ScreenplayPlaceholder episode={episode} />
+              <div className="mt-4">
+                <ScreenplayViewer
+                  episode={episode}
+                  onApprove={handleScreenplayApproved}
+                />
+              </div>
             ) : (
               <LockedTabContent tabId="screenplay" />
             )}
@@ -341,7 +407,9 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
 
           <TabsContent value="shot-list">
             {tabUnlockState['shot-list'] ? (
-              <ShotListPlaceholder episode={episode} />
+              <div className="mt-4">
+                <ShotListEditor episode={episode} />
+              </div>
             ) : (
               <LockedTabContent tabId="shot-list" />
             )}

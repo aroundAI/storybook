@@ -1,6 +1,7 @@
 # FILM-903: Generation Status Panel
 
 ## Metadata
+- **Status:** DONE
 - **Phase:** 9 - Integration
 - **Priority:** P2 (Post-MVP)
 - **Effort:** M (4-8 hours)
@@ -507,17 +508,17 @@ export const retryJobAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] Indicator visible in sidebar/header when jobs active
-- [ ] Shows spinning icon when processing
-- [ ] Badge shows count of active + queued jobs
-- [ ] Panel expands to show job details
-- [ ] Real-time progress updates (2s polling when active)
-- [ ] Cancel button stops queued/processing jobs
-- [ ] Retry button restarts failed jobs
-- [ ] View link opens completed output
-- [ ] Tabs separate active/completed/failed
-- [ ] Empty states for each tab
-- [ ] Works in compact mode for sidebar
+- [x] Indicator visible in sidebar/header when jobs active
+- [x] Shows spinning icon when processing
+- [x] Badge shows count of active + queued jobs
+- [x] Panel expands to show job details
+- [x] Real-time progress updates (2s polling when active)
+- [x] Cancel button stops queued/processing jobs
+- [x] Retry button restarts failed jobs
+- [x] View link opens completed output
+- [x] Tabs separate active/completed/failed
+- [x] Empty states for each tab
+- [x] Works in compact mode for sidebar
 
 ---
 

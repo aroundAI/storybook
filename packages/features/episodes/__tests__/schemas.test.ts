@@ -19,9 +19,11 @@ describe('Episodes Schemas', () => {
     it('should accept all valid episode statuses', () => {
       const statuses = [
         'draft',
-        'planning',
-        'in_progress',
-        'completed',
+        'story',
+        'storyboard',
+        'generating',
+        'editing',
+        'ready',
         'published',
       ];
 
@@ -146,7 +148,6 @@ describe('Episodes Schemas', () => {
     const validEpisode = {
       projectId: '123e4567-e89b-12d3-a456-426614174000',
       title: 'Episode 1',
-      episodeNumber: 1,
     };
 
     it('should accept valid input', () => {
@@ -157,9 +158,9 @@ describe('Episodes Schemas', () => {
     it('should accept all optional fields', () => {
       const result = CreateEpisodeSchema.safeParse({
         ...validEpisode,
+        seasonId: '123e4567-e89b-12d3-a456-426614174001',
+        number: 1,
         description: 'First episode of the series',
-        script: 'INT. LIVING ROOM - DAY\n...',
-        metadata: { sceneCount: 3 },
       });
       expect(result.success).toBe(true);
     });
@@ -192,14 +193,14 @@ describe('Episodes Schemas', () => {
       expect(
         CreateEpisodeSchema.safeParse({
           ...validEpisode,
-          episodeNumber: 0,
+          number: 0,
         }).success,
       ).toBe(false);
 
       expect(
         CreateEpisodeSchema.safeParse({
           ...validEpisode,
-          episodeNumber: -1,
+          number: -1,
         }).success,
       ).toBe(false);
     });
@@ -207,7 +208,7 @@ describe('Episodes Schemas', () => {
     it('should reject non-integer episode number', () => {
       const result = CreateEpisodeSchema.safeParse({
         ...validEpisode,
-        episodeNumber: 1.5,
+        number: 1.5,
       });
       expect(result.success).toBe(false);
     });
@@ -215,10 +216,11 @@ describe('Episodes Schemas', () => {
 
   describe('UpdateEpisodeSchema', () => {
     const validUpdate = {
-      id: '123e4567-e89b-12d3-a456-426614174000',
+      episodeId: '123e4567-e89b-12d3-a456-426614174000',
+      version: 1,
     };
 
-    it('should accept minimal update (id only)', () => {
+    it('should accept minimal update (episodeId and version only)', () => {
       const result = UpdateEpisodeSchema.safeParse(validUpdate);
       expect(result.success).toBe(true);
     });
@@ -228,34 +230,33 @@ describe('Episodes Schemas', () => {
         ...validUpdate,
         title: 'Updated Title',
         description: 'Updated description',
-        episodeNumber: 2,
-        script: 'Updated script',
-        status: 'in_progress',
-        duration: 120.5,
+        storyData: { title: 'Story Title', fullStory: 'Full story text' },
+        screenplayData: { scenes: [] },
+        shotList: { shots: [] },
         metadata: { sceneCount: 5 },
       });
       expect(result.success).toBe(true);
     });
 
-    it('should reject invalid id', () => {
+    it('should reject invalid episodeId', () => {
       const result = UpdateEpisodeSchema.safeParse({
-        id: 'not-a-uuid',
+        episodeId: 'not-a-uuid',
+        version: 1,
       });
       expect(result.success).toBe(false);
     });
 
-    it('should reject invalid status', () => {
+    it('should reject missing version', () => {
       const result = UpdateEpisodeSchema.safeParse({
-        ...validUpdate,
-        status: 'invalid',
+        episodeId: '123e4567-e89b-12d3-a456-426614174000',
       });
       expect(result.success).toBe(false);
     });
 
-    it('should reject negative duration', () => {
+    it('should reject non-positive version', () => {
       const result = UpdateEpisodeSchema.safeParse({
-        ...validUpdate,
-        duration: -10,
+        episodeId: '123e4567-e89b-12d3-a456-426614174000',
+        version: 0,
       });
       expect(result.success).toBe(false);
     });

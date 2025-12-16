@@ -215,7 +215,7 @@ export class ComponentsTool {
     if (category === 'shadcn') {
       return this.getShadcnDescription(componentName);
     } else if (category === 'makerkit') {
-      return this.getMakerkitDescription(componentName);
+      return this.getStoryBookDescription(componentName);
     } else {
       return this.getUtilsDescription(componentName);
     }
@@ -285,7 +285,7 @@ export class ComponentsTool {
     );
   }
 
-  private static getMakerkitDescription(componentName: string): string {
+  private static getStoryBookDescription(componentName: string): string {
     const descriptions: Record<string, string> = {
       if: 'Conditional rendering component that shows children only when condition is true',
       trans:
@@ -322,7 +322,7 @@ export class ComponentsTool {
 
     return (
       descriptions[componentName] ||
-      `Makerkit custom component: ${componentName}`
+      `StoryBook custom component: ${componentName}`
     );
   }
 

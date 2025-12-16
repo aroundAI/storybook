@@ -2,6 +2,7 @@
 export * from './template-actions';
 export * from './activity-actions';
 export * from './generation-actions';
+export * from './generation-status-actions';
 export * from './publish-actions';
 export * from './stats-actions';
 export {

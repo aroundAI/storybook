@@ -13,8 +13,8 @@ import { getTeamAccountSidebarConfig } from '~/config/team-account-navigation.co
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 // local imports
+import { ConditionalSidebarLayout } from './_components/conditional-sidebar-layout';
 import { TeamAccountLayoutMobileNavigation } from './_components/team-account-layout-mobile-navigation';
-import { TeamAccountLayoutSidebar } from './_components/team-account-layout-sidebar';
 import { TeamAccountNavigationMenu } from './_components/team-account-navigation-menu';
 import { loadTeamWorkspace } from './_lib/server/team-account-workspace.loader';
 
@@ -51,30 +51,14 @@ function SidebarLayout({
   return (
     <TeamAccountWorkspaceContextProvider value={data}>
       <SidebarProvider defaultOpen={state.open}>
-        <Page style={'sidebar'}>
-          <PageNavigation>
-            <TeamAccountLayoutSidebar
-              account={account}
-              accountId={data.account.id}
-              accounts={accounts}
-              user={data.user}
-            />
-          </PageNavigation>
-
-          <PageMobileNavigation className={'flex items-center justify-between'}>
-            <AppLogo />
-
-            <div className={'flex space-x-4'}>
-              <TeamAccountLayoutMobileNavigation
-                userId={data.user.id}
-                accounts={accounts}
-                account={account}
-              />
-            </div>
-          </PageMobileNavigation>
-
+        <ConditionalSidebarLayout
+          account={account}
+          accounts={accounts}
+          user={data.user}
+          accountId={data.account.id}
+        >
           {children}
-        </Page>
+        </ConditionalSidebarLayout>
       </SidebarProvider>
     </TeamAccountWorkspaceContextProvider>
   );

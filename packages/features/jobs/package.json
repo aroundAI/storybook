@@ -1,0 +1,33 @@
+{
+    "name": "@kit/jobs",
+    "version": "0.1.0",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "exports": {
+        ".": "./src/index.ts",
+        "./queues": "./src/queues/index.ts",
+        "./cron": "./src/cron/index.ts",
+        "./workers": "./src/workers/index.ts"
+    },
+    "scripts": {
+        "clean": "rm -rf .turbo node_modules",
+        "lint": "eslint .",
+        "test": "vitest",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@kit/content-analytics": "workspace:*",
+        "@kit/publishing": "workspace:*",
+        "bullmq": "^5.34.8",
+        "croner": "^9.1.0",
+        "ioredis": "^5.4.2",
+        "server-only": "^0.0.1"
+    },
+    "devDependencies": {
+        "@types/node": "^24.5.0",
+        "eslint": "^9.35.0",
+        "typescript": "^5.9.2",
+        "vitest": "^3.2.4"
+    }
+}

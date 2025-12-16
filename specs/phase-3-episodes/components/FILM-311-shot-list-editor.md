@@ -1,5 +1,6 @@
 # FILM-311: Shot List Editor Component
 
+**Status**: ✅ DONE
 **Phase**: 3
 **Priority**: P0
 **Effort**: L (5-7 days)

@@ -45,6 +45,24 @@ import type { VoiceAssetOption } from '../../../lib/types';
  * Dropdown to select a voice asset for the character.
  */
 
+/**
+ * Character Voice Selector Section (FILM-205)
+ *
+ * Dropdown to select a voice asset for the character.
+ */
+
+/**
+ * Character Voice Selector Section (FILM-205)
+ *
+ * Dropdown to select a voice asset for the character.
+ */
+
+/**
+ * Character Voice Selector Section (FILM-205)
+ *
+ * Dropdown to select a voice asset for the character.
+ */
+
 interface CharacterVoiceSelectorProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

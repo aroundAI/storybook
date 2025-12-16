@@ -4,6 +4,7 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-701-704 (Platform Providers), FILM-705-707 (OAuth), FILM-312 (Episode Workspace)
 - **Blocks:** None
 
@@ -564,16 +565,16 @@ async function publishToFacebook(
 
 ## Acceptance Criteria
 
-- [ ] Shows all connected platforms with toggle
-- [ ] Unconnected platforms show "Connect" action
-- [ ] Metadata can be customized per platform
-- [ ] Thumbnail preview works
-- [ ] Scheduling works for supported platforms
-- [ ] Publish triggers all selected platforms
-- [ ] Real-time status updates during publish
-- [ ] Success shows platform URLs
-- [ ] Errors are displayed per platform
-- [ ] Can retry failed publishes
+- [x] Shows all connected platforms with toggle
+- [x] Unconnected platforms show "Connect" action
+- [x] Metadata can be customized per platform
+- [x] Thumbnail preview works
+- [x] Scheduling works for supported platforms
+- [x] Publish triggers all selected platforms
+- [x] Real-time status updates during publish
+- [x] Success shows platform URLs
+- [x] Errors are displayed per platform
+- [x] Can retry failed publishes
 
 ---
 
@@ -604,5 +605,55 @@ async function publishToFacebook(
 
 ## Open Questions
 
-- [ ] Should we support partial publish (some succeed, some fail)? (yes - implemented)
-- [ ] Should we allow republishing to failed platforms? (future)
+- [x] Should we support partial publish (some succeed, some fail)? (yes - implemented)
+- [x] Should we allow republishing to failed platforms? (yes - implemented via retry)
+
+---
+
+## Implementation Notes
+
+**Implementation Date:** 2025-12-11
+
+### What Was Built
+
+1. **PublishHub Component** (`packages/features/publishing/src/components/publish-hub.tsx`)
+   - Full Video and Shorts/Clips tabs
+   - Platform selection with connection status
+   - Per-platform metadata editing
+   - Real-time publish status tracking with polling
+
+2. **PlatformSelector Component** (`packages/features/publishing/src/components/platform-selector.tsx`)
+   - All 6 platforms: YouTube, TikTok, Instagram, Facebook, Twitter, LinkedIn
+   - Connection status, account info display, follower counts
+   - Multi-account dropdown support
+   - Token expiry warnings
+
+3. **MetadataEditor Component** (`packages/features/publishing/src/components/metadata-editor.tsx`)
+   - Character count validation per platform
+   - Tags input (YouTube)
+   - Scheduling with date picker
+   - Platform-specific settings
+   - Thumbnail selector
+
+4. **ShortsClipper Component** (`packages/features/publishing/src/components/shorts-clipper.tsx`)
+   - Video player with timeline
+   - Clip region selection
+   - 9:16 aspect ratio conversion
+   - Clip generation via server action
+
+5. **Server Actions**
+   - `getConnectedPlatformsAction` - Fetch platform connections
+   - `publishToAllAction` - Parallel publishing to all platforms
+   - `getPublishStatusAction` - Poll publish status
+   - `retryPublishAction` - Retry failed publishes
+   - `generateClipAction` - Generate shorts/clips
+
+6. **Integration**
+   - Added as 5th tab ("Publish Hub") in WorkspaceTabs
+   - Unlocks when episode status is 'ready' or 'published'
+
+### Deviations from Spec
+
+- Added Twitter and LinkedIn support (6 platforms vs 4 in spec)
+- Added `accountSlug` prop for proper navigation
+- Used existing provider implementations from `@kit/publishing/providers/*`

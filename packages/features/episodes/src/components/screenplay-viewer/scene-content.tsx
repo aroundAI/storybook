@@ -8,46 +8,59 @@ interface SceneContentProps {
   isActive?: boolean;
 }
 
+/**
+ * SceneContent renders a single scene in proper screenplay format
+ * Uses Courier Prime font for industry-standard timing (1 page ≈ 1 minute)
+ */
 export function SceneContent({ scene, isActive = false }: SceneContentProps) {
   return (
     <div
       id={`scene-${scene.number}`}
       className={cn(
-        'scroll-mt-4 border-b pb-6 last:border-b-0',
-        isActive && 'bg-accent/20 rounded-lg p-4',
+        'scroll-mt-4 border-b border-border/30 pb-8 last:border-b-0 screenplay-format',
+        isActive && 'bg-accent/10 rounded-lg px-6 py-4 -mx-2',
       )}
     >
-      {/* Scene Heading - Uppercase, bold */}
-      <div className="mb-4 font-mono text-sm font-bold uppercase">
+      {/* Scene Heading - Slug Line (uppercase, bold) */}
+      <div className="slug-line text-sm">
         {scene.heading}
       </div>
 
-      {/* Location and Time */}
-      <div className="text-muted-foreground mb-3 flex gap-4 text-xs">
-        <span>Location: {scene.location}</span>
-        <span>Time: {scene.timeOfDay}</span>
-        <span>Duration: ~{scene.estimatedDuration}s</span>
+      {/* Scene metadata - using mono for timecodes */}
+      <div className="text-muted-foreground mb-4 flex gap-4 text-xs mono-data">
+        <span>{scene.location}</span>
+        <span>•</span>
+        <span>{scene.timeOfDay}</span>
+        <span>•</span>
+        <span>~{scene.estimatedDuration}s</span>
       </div>
 
-      {/* Action/Description */}
-      <div className="mb-4 whitespace-pre-wrap text-sm leading-relaxed">
+      {/* Action/Description Block */}
+      <div className="action whitespace-pre-wrap text-sm">
         {scene.description}
       </div>
 
-      {/* Dialogue */}
+      {/* Dialogue Blocks */}
       {scene.dialogue.length > 0 && (
-        <div className="space-y-4 pl-4">
+        <div className="mt-6 space-y-4">
           {scene.dialogue.map((line, index) => (
-            <div key={index} className="text-center">
-              <div className="font-mono text-sm font-bold uppercase">
+            <div key={index}>
+              {/* Character Name - centered, uppercase */}
+              <div className="character-name text-sm">
                 {line.character}
               </div>
+
+              {/* Parenthetical - centered, italicized */}
               {line.parenthetical && (
-                <div className="text-muted-foreground text-xs italic">
+                <div className="parenthetical text-xs">
                   ({line.parenthetical})
                 </div>
               )}
-              <div className="mx-auto max-w-md text-sm">{line.text}</div>
+
+              {/* Dialogue Text - centered, narrower width */}
+              <div className="dialogue text-sm">
+                {line.text}
+              </div>
             </div>
           ))}
         </div>

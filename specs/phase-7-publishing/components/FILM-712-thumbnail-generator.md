@@ -4,6 +4,7 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P1 (Post-MVP Enhancement)
 - **Effort:** M (4-8 hours)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-708 (Publish Hub), FILM-401 (Kling Provider)
 - **Blocks:** None
 

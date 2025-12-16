@@ -4,6 +4,7 @@
 - **Phase:** 7 - Publishing
 - **Priority:** P2 (Future Enhancement)
 - **Effort:** S (2-4 hours)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-708 (Publish Hub), FILM-705-707 (OAuth Flows)
 - **Blocks:** None
 
@@ -530,30 +531,34 @@ function extractContentId(url: string, platform: string): string | null {
 | Action | Path |
 |--------|------|
 | CREATE | `packages/features/publishing/src/lib/export-package-types.ts` |
+| CREATE | `packages/features/publishing/src/lib/schemas/upload-only.schema.ts` |
 | CREATE | `packages/features/publishing/src/components/upload-only-mode.tsx` |
 | CREATE | `packages/features/publishing/src/server/upload-only-actions.ts` |
+| MODIFY | `packages/features/publishing/package.json` |
+| MODIFY | `apps/web/supabase/schemas/30-film-studio.sql` |
+| CREATE | `apps/web/supabase/migrations/20251210164448_make-platform-connection-id-nullable.sql` |
 
 ---
 
 ## Acceptance Criteria
 
-- [ ] Generate downloadable video file
-- [ ] Generate downloadable thumbnail
-- [ ] Copy-paste ready title, description, tags
-- [ ] Platform-specific upload instructions
-- [ ] Interactive checklist for upload steps
-- [ ] Link to platform upload page
-- [ ] Input for platform URL after upload
-- [ ] Mark publish as external with URL tracking
+- [x] Generate downloadable video file
+- [x] Generate downloadable thumbnail
+- [x] Copy-paste ready title, description, tags
+- [x] Platform-specific upload instructions
+- [x] Interactive checklist for upload steps
+- [x] Link to platform upload page
+- [x] Input for platform URL after upload
+- [x] Mark publish as external with URL tracking
 
 ---
 
 ## Test Plan
 
 ### Unit Tests
-- [ ] Test content ID extraction from URLs
-- [ ] Test filename sanitization
-- [ ] Test description formatting per platform
+- [x] Test content ID extraction from URLs
+- [x] Test filename sanitization
+- [x] Test description formatting per platform
 
 ### Integration Tests
 - [ ] Test export package generation

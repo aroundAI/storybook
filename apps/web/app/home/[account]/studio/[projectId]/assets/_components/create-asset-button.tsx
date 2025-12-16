@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import { MapPin, Mic, Plus, User } from 'lucide-react';
 
-import { CharacterEditor } from '@kit/assets/components';
+import { CharacterEditor, LocationEditor } from '@kit/assets/components';
 import { VoiceProfileEditor } from '@kit/assets/components';
 import { Button } from '@kit/ui/button';
 import {
@@ -40,7 +40,7 @@ export function CreateAssetButton({
     setOpenDialog(type);
   };
 
-  const handleSuccess = (_assetId: string) => {
+  const handleSuccess = (_result: unknown) => {
     setOpenDialog(null);
     router.refresh(); // Refresh to show new asset
   };
@@ -117,10 +117,11 @@ export function CreateAssetButton({
           <DialogHeader>
             <DialogTitle>Create Location</DialogTitle>
           </DialogHeader>
-          <div className="text-muted-foreground p-8 text-center">
-            <MapPin className="text-muted-foreground mx-auto mb-4 h-12 w-12" />
-            <p>Location editor coming soon...</p>
-          </div>
+          <LocationEditor
+            projectId={projectId}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
         </DialogContent>
       </Dialog>
     </>

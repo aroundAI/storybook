@@ -36,6 +36,27 @@ import type {
  */
 
 /**
+ * useImageUpload Hook (FILM-207)
+ *
+ * Custom hook for handling image uploads with progress tracking.
+ * Uses XMLHttpRequest for upload progress events.
+ */
+
+/**
+ * useImageUpload Hook (FILM-207)
+ *
+ * Custom hook for handling image uploads with progress tracking.
+ * Uses XMLHttpRequest for upload progress events.
+ */
+
+/**
+ * useImageUpload Hook (FILM-207)
+ *
+ * Custom hook for handling image uploads with progress tracking.
+ * Uses XMLHttpRequest for upload progress events.
+ */
+
+/**
  * Hook for uploading images with progress tracking
  */
 export function useImageUpload(

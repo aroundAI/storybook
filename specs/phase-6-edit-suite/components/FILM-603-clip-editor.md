@@ -4,8 +4,11 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP)
 - **Effort:** L (1-3 days)
-- **Dependencies:** FILM-601 (Timeline Editor), FILM-602 (Track Layer)
+- **Status:** ✅ Done
+- **Dependencies:** FILM-601 (Timeline Editor) ✅, FILM-602 (Track Layer) ⚠️
 - **Blocks:** None
+
+> **Note:** FILM-601 Timeline Editor is complete. Clip Editor can now be implemented.
 
 ---
 
@@ -381,17 +384,17 @@ function formatTime(seconds: number): string {
 
 ## Acceptance Criteria
 
-- [ ] Opens on double-click of clip
-- [ ] Shows video preview for video clips
-- [ ] Preview loops within selected range
-- [ ] Trim handles adjust in/out points
-- [ ] Speed slider changes playback rate
-- [ ] Volume slider works for audio clips
-- [ ] Fade in/out sliders work
-- [ ] Name and notes can be edited
-- [ ] Cancel closes without saving
-- [ ] Apply saves changes and closes
-- [ ] Output duration updates in real-time
+- [x] Opens on double-click of clip
+- [x] Shows video preview for video clips
+- [x] Preview loops within selected range
+- [x] Trim handles adjust in/out points
+- [x] Speed slider changes playback rate
+- [x] Volume slider works for audio clips
+- [x] Fade in/out sliders work
+- [x] Name and notes can be edited
+- [x] Cancel closes without saving
+- [x] Apply saves changes and closes
+- [x] Output duration updates in real-time
 
 ---
 
