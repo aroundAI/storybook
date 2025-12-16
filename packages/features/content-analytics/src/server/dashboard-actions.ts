@@ -11,14 +11,19 @@ import { getContentList, getProjectAnalytics } from './aggregation-queries';
  */
 const GetProjectAnalyticsSchema = z.object({
   projectId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
 });
 
 /**
  * Get project analytics data
  */
 export const getProjectAnalyticsAction = enhanceAction(
-  async ({ projectId }) => {
-    return getProjectAnalytics(projectId);
+  async ({ projectId, from, to }) => {
+    return getProjectAnalytics(projectId, {
+      startDate: from,
+      endDate: to,
+    });
   },
   {
     schema: GetProjectAnalyticsSchema,

@@ -279,6 +279,7 @@ export async function getEpisodeAnalytics(
  */
 export async function getSeasonAnalytics(
   seasonId: string,
+  options?: { startDate?: Date; endDate?: Date },
 ): Promise<SeasonAnalytics | null> {
   const client = getSupabaseServerClient();
 
@@ -330,7 +331,11 @@ export async function getSeasonAnalytics(
   let totalEngagement = 0;
 
   for (const ep of episodes) {
-    const analytics = await getEpisodeAnalytics(ep.id);
+    const dateRange =
+      options?.startDate && options?.endDate
+        ? { start: options.startDate, end: options.endDate }
+        : undefined;
+    const analytics = await getEpisodeAnalytics(ep.id, dateRange);
     if (analytics) {
       const epData = {
         episodeId: ep.id,
@@ -394,6 +399,7 @@ export async function getSeasonAnalytics(
  */
 export async function getProjectAnalytics(
   projectId: string,
+  options?: { startDate?: Date; endDate?: Date },
 ): Promise<ProjectAnalytics | null> {
   const client = getSupabaseServerClient();
 
@@ -429,7 +435,7 @@ export async function getProjectAnalytics(
   const platformTotals = new Map<string, number>();
 
   for (const s of seasons || []) {
-    const analytics = await getSeasonAnalytics(s.id);
+    const analytics = await getSeasonAnalytics(s.id, options);
     if (analytics) {
       seasonAnalyticsList.push({
         seasonId: s.id,
@@ -461,11 +467,28 @@ export async function getProjectAnalytics(
 
   if (allPublishes) {
     const publishIds = allPublishes.map((p) => p.id);
-    const { data: analytics } = await client
+    let analyticsQuery = client
       .from('content_analytics')
-      .select('publish_id, views')
-      .in('publish_id', publishIds)
-      .order('snapshot_date', { ascending: false });
+      .select('publish_id, views, snapshot_date')
+      .in('publish_id', publishIds);
+
+    // Filter by date range if specified
+    if (options?.startDate) {
+      analyticsQuery = analyticsQuery.gte(
+        'snapshot_date',
+        options.startDate.toISOString().split('T')[0],
+      );
+    }
+    if (options?.endDate) {
+      analyticsQuery = analyticsQuery.lte(
+        'snapshot_date',
+        options.endDate.toISOString().split('T')[0],
+      );
+    }
+
+    const { data: analytics } = await analyticsQuery.order('snapshot_date', {
+      ascending: false,
+    });
 
     if (analytics) {
       const latestByPublish = new Map<string, number>();

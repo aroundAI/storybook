@@ -6,10 +6,13 @@
  */
 import { Suspense } from 'react';
 
+import type { Metadata } from 'next';
+
 import {
   AnalyticsDashboard,
   AnalyticsDashboardSkeleton,
 } from '@kit/content-analytics/components';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
 interface PageParams {
@@ -17,6 +20,24 @@ interface PageParams {
     account: string;
     projectId: string;
   }>;
+}
+
+export async function generateMetadata({
+  params,
+}: PageParams): Promise<Metadata> {
+  const { projectId } = await params;
+  const client = getSupabaseServerClient();
+
+  const { data: project } = await client
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .single();
+
+  return {
+    title: project?.name ? `${project.name} Analytics` : 'Analytics',
+    description: 'Track your content performance across all platforms.',
+  };
 }
 
 export default async function ProjectAnalyticsPage({ params }: PageParams) {

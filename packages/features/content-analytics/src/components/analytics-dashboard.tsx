@@ -26,6 +26,7 @@ import {
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
+  AnalyticsTotals,
   DailyMetric,
   PlatformBreakdown,
 } from '../types';
@@ -67,8 +68,18 @@ export function AnalyticsDashboard({
     isLoading,
     dataUpdatedAt,
   } = useQuery({
-    queryKey: ['project-analytics', projectId],
-    queryFn: () => getProjectAnalyticsAction({ projectId }),
+    queryKey: [
+      'project-analytics',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectAnalyticsAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
     refetchInterval: 5 * 60 * 1000, // 5 min auto-refresh
   });
 
@@ -96,57 +107,39 @@ export function AnalyticsDashboard({
     (p: PlatformBreakdown) => selectedPlatforms.includes(p.platform),
   );
 
+  // Transform flat ProjectAnalytics into AnalyticsTotals format
+  // getProjectAnalytics returns flat fields (totalViews, totalLikes, etc.)
+  // but MetricCards expects nested structure (views, likes, etc.)
+  const totals: AnalyticsTotals | null = projectData
+    ? {
+        views: projectData.totalViews,
+        likes: projectData.totalLikes,
+        comments: projectData.totalComments,
+        shares: projectData.totalShares,
+        watchTimeSeconds: 0, // Not available at project level
+        subscribersGained: 0, // Not available at project level
+        revenueCents: projectData.totalRevenueCents,
+        contentCount: projectData.contentCount,
+      }
+    : null;
+
   // Build aggregate analytics object for AIInsights
   const aggregateAnalytics: AggregateAnalytics | null = projectData
     ? {
-        totals: projectData.totals,
-        previousPeriodTotals: projectData.previousPeriodTotals,
+        totals: totals!,
+        previousPeriodTotals: undefined, // Not currently fetched
         platformMetrics: filteredPlatformTotals,
-        topContent: projectData.topContent,
-        audience: projectData.audience,
-        contentCount: projectData.totals?.contentCount ?? 0,
+        topContent: undefined, // Not currently fetched
+        audience: undefined, // Not currently fetched
+        contentCount: projectData.contentCount ?? 0,
         avgEngagementRate: projectData.avgEngagementRate ?? 0,
       }
     : null;
 
-  // Filter daily metrics by selected platforms
-  const filteredDailyMetrics: DailyMetric[] =
-    projectData?.dailyMetrics?.map((day: DailyMetric) => {
-      const filteredByPlatform: Record<
-        string,
-        { views: number; likes: number; comments: number; shares: number }
-      > = {};
-      let views = 0,
-        likes = 0,
-        comments = 0,
-        shares = 0;
-
-      if (day.byPlatform) {
-        for (const platform of selectedPlatforms) {
-          if (day.byPlatform[platform]) {
-            filteredByPlatform[platform] = day.byPlatform[platform];
-            views += day.byPlatform[platform].views;
-            likes += day.byPlatform[platform].likes;
-            comments += day.byPlatform[platform].comments;
-            shares += day.byPlatform[platform].shares;
-          }
-        }
-      }
-
-      // If no platform breakdown, use raw totals
-      if (Object.keys(filteredByPlatform).length === 0) {
-        return day;
-      }
-
-      return {
-        date: day.date,
-        views,
-        likes,
-        comments,
-        shares,
-        byPlatform: filteredByPlatform,
-      };
-    }) ?? [];
+  // Daily metrics are not currently available from getProjectAnalytics
+  // This would require additional queries to aggregate daily snapshots
+  // For now, we pass an empty array to the chart
+  const filteredDailyMetrics: DailyMetric[] = [];
 
   return (
     <div className="space-y-6">
@@ -176,11 +169,7 @@ export function AnalyticsDashboard({
       </div>
 
       {/* Metric Cards */}
-      <MetricCards
-        data={projectData?.totals ?? null}
-        previousData={projectData?.previousPeriodTotals ?? null}
-        isLoading={isLoading}
-      />
+      <MetricCards data={totals} previousData={null} isLoading={isLoading} />
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -241,10 +230,7 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="audience" className="mt-6">
-          <AudienceAnalytics
-            data={projectData?.audience}
-            isLoading={isLoading}
-          />
+          <AudienceAnalytics data={undefined} isLoading={isLoading} />
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">
