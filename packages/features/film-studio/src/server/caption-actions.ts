@@ -70,7 +70,14 @@ interface DbCaption {
 // Type assertion helper for tables pending migration
 // TODO: Remove after applying 31-captions.sql migration and regenerating types
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyClient = ReturnType<typeof getSupabaseServerClient> & { from: (table: string) => any };
+const captionTable = (client: ReturnType<typeof getSupabaseServerClient>) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client.from('captions' as any) as any;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const captionSegmentTable = (client: ReturnType<typeof getSupabaseServerClient>) =>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  client.from('caption_segments' as any) as any;
 
 /**
  * Generate captions from dialogue audio using Whisper transcription
@@ -87,8 +94,7 @@ export const generateCaptionsAction = enhanceAction(
     logger.info(ctx, 'Starting caption generation');
 
     const client = getSupabaseServerClient();
-    // Cast for pending migration tables
-    const captionClient = client as AnyClient;
+    
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
@@ -121,8 +127,7 @@ export const generateCaptionsAction = enhanceAction(
     }
 
     // Check for existing captions in this language
-    const { data: existingCaption } = await captionClient
-      .from('captions')
+    const { data: existingCaption } = await captionTable(client)
       .select('id')
       .eq('episode_id', data.episodeId)
       .eq('language', data.language)
@@ -190,8 +195,7 @@ export const generateCaptionsAction = enhanceAction(
 
     try {
       // Create caption record
-      const { data: caption, error: captionError } = await captionClient
-        .from('captions')
+      const { data: caption, error: captionError } = await captionTable(client)
         .insert({
           episode_id: data.episodeId,
           language: data.language,
@@ -261,8 +265,7 @@ export const generateCaptionsAction = enhanceAction(
 
       // Insert all segments
       if (segments.length > 0) {
-        const { error: segmentError } = await captionClient
-          .from('caption_segments')
+        const { error: segmentError } = await captionSegmentTable(client)
           .insert(segments);
 
         if (segmentError) {
@@ -275,8 +278,7 @@ export const generateCaptionsAction = enhanceAction(
       }
 
       // Update caption status
-      await captionClient
-        .from('captions')
+      await captionTable(client)
         .update({ status: 'completed' })
         .eq('id', caption.id);
 
@@ -341,7 +343,7 @@ export const translateCaptionsAction = enhanceAction(
     logger.info(ctx, 'Starting caption translation');
 
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
@@ -350,8 +352,7 @@ export const translateCaptionsAction = enhanceAction(
     }
 
     // Fetch source caption with segments
-    const { data: sourceCaption, error: sourceCaptionError } = await captionClient
-      .from('captions')
+    const { data: sourceCaption, error: sourceCaptionError } = await captionTable(client)
       .select(
         `
         *,
@@ -384,8 +385,7 @@ export const translateCaptionsAction = enhanceAction(
     }
 
     // Check for existing caption in target language
-    const { data: existingCaption } = await captionClient
-      .from('captions')
+    const { data: existingCaption } = await captionTable(client)
       .select('id')
       .eq('episode_id', typedSourceCaption.episode_id)
       .eq('language', data.targetLanguage)
@@ -430,8 +430,7 @@ export const translateCaptionsAction = enhanceAction(
 
     try {
       // Create new caption record
-      const { data: newCaption, error: captionError } = await captionClient
-        .from('captions')
+      const { data: newCaption, error: captionError } = await captionTable(client)
         .insert({
           episode_id: typedSourceCaption.episode_id,
           language: data.targetLanguage,
@@ -510,8 +509,7 @@ Do not add any explanations or notes - only output the translations.`,
 
       // Insert translated segments
       if (translatedSegments.length > 0) {
-        const { error: segmentError } = await captionClient
-          .from('caption_segments')
+        const { error: segmentError } = await captionSegmentTable(client)
           .insert(translatedSegments);
 
         if (segmentError) {
@@ -520,8 +518,7 @@ Do not add any explanations or notes - only output the translations.`,
       }
 
       // Update caption status
-      await captionClient
-        .from('captions')
+      await captionTable(client)
         .update({ status: 'completed' })
         .eq('id', newCaption.id);
 
@@ -581,15 +578,14 @@ Do not add any explanations or notes - only output the translations.`,
 export const getCaptionsAction = enhanceAction(
   async (data: GetCaptionsInput) => {
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { error: authError } = await requireUser(client);
 
     if (authError) {
       throw new Error('Authentication required');
     }
 
-    let query = captionClient
-      .from('captions')
+    let query = captionTable(client)
       .select(
         `
         *,
@@ -647,7 +643,7 @@ export const updateCaptionSegmentAction = enhanceAction(
     const ctx = { name: 'captions.updateSegment', segmentId: data.segmentId };
 
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -670,8 +666,7 @@ export const updateCaptionSegmentAction = enhanceAction(
       updateData.speaker_id = data.speakerId;
     }
 
-    const { error } = await captionClient
-      .from('caption_segments')
+    const { error } = await captionSegmentTable(client)
       .update(updateData)
       .eq('id', data.segmentId);
 
@@ -694,7 +689,7 @@ export const updateCaptionSegmentAction = enhanceAction(
 export const updateCaptionStyleAction = enhanceAction(
   async (data: UpdateCaptionStyleInput) => {
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -712,8 +707,7 @@ export const updateCaptionStyleAction = enhanceAction(
       updateData.custom_styles = data.customStyles;
     }
 
-    const { error } = await captionClient
-      .from('captions')
+    const { error } = await captionTable(client)
       .update(updateData)
       .eq('id', data.captionId);
 
@@ -734,15 +728,14 @@ export const updateCaptionStyleAction = enhanceAction(
 export const exportCaptionsAction = enhanceAction(
   async (data: ExportCaptionsInput) => {
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { error: authError } = await requireUser(client);
 
     if (authError) {
       throw new Error('Authentication required');
     }
 
-    const { data: caption, error } = await captionClient
-      .from('captions')
+    const { data: caption, error } = await captionTable(client)
       .select(
         `
         *,
@@ -793,7 +786,7 @@ export const deleteCaptionAction = enhanceAction(
     const ctx = { name: 'captions.delete', captionId: data.captionId };
 
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -801,8 +794,7 @@ export const deleteCaptionAction = enhanceAction(
     }
 
     // Cascade delete will handle segments
-    const { error } = await captionClient
-      .from('captions')
+    const { error } = await captionTable(client)
       .delete()
       .eq('id', data.captionId);
 
@@ -827,15 +819,14 @@ export const deleteCaptionAction = enhanceAction(
 export const getAvailableLanguagesAction = enhanceAction(
   async (data: GetAvailableLanguagesInput) => {
     const client = getSupabaseServerClient();
-    const captionClient = client as AnyClient;
+    
     const { error: authError } = await requireUser(client);
 
     if (authError) {
       throw new Error('Authentication required');
     }
 
-    const { data: captions, error } = await captionClient
-      .from('captions')
+    const { data: captions, error } = await captionTable(client)
       .select('language, status')
       .eq('episode_id', data.episodeId)
       .eq('status', 'completed');
