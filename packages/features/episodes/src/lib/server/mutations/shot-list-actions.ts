@@ -73,6 +73,12 @@ export const generateShotListAction = enhanceAction(
 
     const accountId = project?.account_id ?? 'unknown';
 
+    // Fetch episode context for full character data
+    const { buildEpisodeContext, formatCharactersForPrompt } = await import(
+      '../../../server/context-builder'
+    );
+    const episodeContext = await buildEpisodeContext(data.episodeId);
+
     // Determine input source (screenplay preferred, story as fallback)
     const inputSource = episode.screenplay_data
       ? {
@@ -107,6 +113,8 @@ export const generateShotListAction = enhanceAction(
       templateSlug: 'shot-list-generation',
       variables: {
         screenplay_text: screenplayText,
+        // Full character context (for accurate visual descriptions in shot prompts)
+        characters: formatCharactersForPrompt(episodeContext.characters),
         shot_duration_min: data.shotDurationMin,
         shot_duration_max: data.shotDurationMax,
         video_provider: data.videoProvider,

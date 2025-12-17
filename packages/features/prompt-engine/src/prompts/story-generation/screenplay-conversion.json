@@ -32,17 +32,77 @@
       "order": 2
     }
   ],
-  "user_prompt": "Convert this story into a screenplay:\n\n**Story**:\n{{story}}\n\n**Guidelines**:\n\n1. **Scene Structure**:\n   - Target {{target_scene_count}} scenes\n   - Each scene should be 30-60 seconds of screen time\n   - Use standard scene headings: INT/EXT. LOCATION - TIME OF DAY\n   - Include clear action lines describing what we see\n\n2. **Dialogue**:\n   - Style: {{style}}\n   - Keep dialogue natural and purposeful\n   - Use dialogue to advance story and reveal character\n   - Include parentheticals for emotion/action only when necessary\n   - Avoid on-the-nose dialogue\n\n3. **Action Lines**:\n   - Write in present tense\n   - Be concise and visual\n   - Focus on what camera can capture\n   - Break up long paragraphs for readability\n\n4. **Scene Types**:\n   - Vary scene locations for visual interest\n   - Balance dialogue-heavy and action-heavy scenes\n   - Include establishing shots where needed\n\n5. **Character Names**:\n   - CAPITALIZE character names in action lines (first appearance)\n   - Character names in dialogue are always capitalized\n\n**Screenplay Format Example**:\n\nINT. COFFEE SHOP - DAY\n\nJAKE (30s, disheveled) stares at his laptop screen, fingers frozen over the keyboard.\n\n                    SARAH (O.S.)\n            Jake?\n\nJake looks up. SARAH (20s, confident) stands at his table with two coffees.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"day|night|dawn|dusk\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"estimatedDuration\": number\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": number,\n      \"estimatedDuration\": number,\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
+  "user_prompt": "Convert this story into a screenplay:\n\n**Story**:\n{{story}}\n\n**Target Duration**: {{target_duration}} seconds ({{duration_description}})\n**Content Style**: {{content_style}}\n**Locations**: {{location_names}}\n\n{{characters}}\n\n**Character Names for Dialogue**: {{character_names}}\n\nUse the character descriptions above to write dialogue that matches each character's personality and role.\n\n**Guidelines**:\n\n1. **Scene Structure**:\n   - Target {{scene_count_min}}-{{scene_count_max}} scenes (for {{target_duration}} seconds total)\n   - Average scene duration: approximately {{avg_scene_duration}} seconds\n   - Use standard scene headings: INT/EXT. LOCATION - TIME OF DAY\n   - Include clear action lines describing what we see\n\n2. **Dialogue** (CRITICAL - Must Meet Targets):\n   - Style: {{style}}\n   - Generate {{dialogue_lines_per_scene_min}}-{{dialogue_lines_per_scene_max}} dialogue lines PER SCENE\n   - Total dialogue lines target: {{total_dialogue_lines_min}}-{{total_dialogue_lines_max}} lines\n   - For dialogue-heavy content (kids' cartoons), prioritize character interactions\n   - Keep dialogue natural and purposeful\n   - Use dialogue to advance story and reveal character\n   - Include parentheticals for emotion/action only when necessary\n   - Each character should have meaningful dialogue exchanges\n\n3. **Action Lines**:\n   - Write in present tense\n   - Be concise and visual\n   - Focus on what camera can capture\n   - Break up long paragraphs for readability\n\n4. **Scene Types**:\n   - Vary scene locations for visual interest\n   - For dialogue-heavy style: emphasize character conversations\n   - Include establishing shots where needed\n\n5. **Character Names**:\n   - CAPITALIZE character names in action lines (first appearance)\n   - Character names in dialogue are always capitalized\n   - Use ONLY the characters provided: {{character_names}}\n\n**Screenplay Format Example**:\n\nINT. COFFEE SHOP - DAY\n\nJAKE (30s, disheveled) stares at his laptop screen, fingers frozen over the keyboard.\n\n                    SARAH (O.S.)\n            Jake?\n\nJake looks up. SARAH (20s, confident) stands at his table with two coffees.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"day|night|dawn|dusk\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"estimatedDuration\": number\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": number,\n      \"estimatedDuration\": number,\n      \"totalDialogueLines\": number,\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
   "variables": {
     "story": {
       "type": "text",
       "required": true,
       "description": "Full story text to convert into screenplay format"
     },
-    "target_scene_count": {
+    "target_duration": {
+      "type": "number",
+      "required": true,
+      "description": "Target episode duration in seconds (60-7200)"
+    },
+    "duration_description": {
+      "type": "text",
+      "required": false,
+      "description": "Human-readable duration (e.g., '5 minutes')"
+    },
+    "content_style": {
+      "type": "text",
+      "required": false,
+      "description": "Content style: dialogue-heavy, action-heavy, or balanced"
+    },
+    "scene_count_min": {
+      "type": "number",
+      "required": true,
+      "description": "Minimum scene count based on duration"
+    },
+    "scene_count_max": {
+      "type": "number",
+      "required": true,
+      "description": "Maximum scene count based on duration"
+    },
+    "avg_scene_duration": {
       "type": "number",
       "required": false,
-      "description": "Target number of scenes (5-15). Defaults to 8"
+      "description": "Average scene duration in seconds"
+    },
+    "dialogue_lines_per_scene_min": {
+      "type": "number",
+      "required": true,
+      "description": "Minimum dialogue lines per scene"
+    },
+    "dialogue_lines_per_scene_max": {
+      "type": "number",
+      "required": true,
+      "description": "Maximum dialogue lines per scene"
+    },
+    "total_dialogue_lines_min": {
+      "type": "number",
+      "required": true,
+      "description": "Total minimum dialogue lines target"
+    },
+    "total_dialogue_lines_max": {
+      "type": "number",
+      "required": true,
+      "description": "Total maximum dialogue lines target"
+    },
+    "characters": {
+      "type": "text",
+      "required": false,
+      "description": "Full character context with names, roles, descriptions, and personalities"
+    },
+    "character_names": {
+      "type": "text",
+      "required": false,
+      "description": "Comma-separated list of character names"
+    },
+    "location_names": {
+      "type": "text",
+      "required": false,
+      "description": "Comma-separated list of location names"
     },
     "style": {
       "type": "text",
@@ -54,9 +114,9 @@
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ screenplay: z.object({ scenes: z.array(z.object({ number: z.number(), heading: z.string(), location: z.string(), timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']), description: z.string(), dialogue: z.array(z.object({ character: z.string(), text: z.string(), parenthetical: z.string().optional() })), estimatedDuration: z.number() })), metadata: z.object({ totalScenes: z.number(), estimatedDuration: z.number(), locations: z.array(z.string()), characters: z.array(z.string()) }) }) })"
+      "definition": "z.object({ screenplay: z.object({ scenes: z.array(z.object({ number: z.number(), heading: z.string(), location: z.string(), timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']), description: z.string(), dialogue: z.array(z.object({ character: z.string(), text: z.string(), parenthetical: z.string().optional() })), estimatedDuration: z.number() })), metadata: z.object({ totalScenes: z.number(), estimatedDuration: z.number(), totalDialogueLines: z.number().optional(), locations: z.array(z.string()), characters: z.array(z.string()) }) }) })"
     },
-    "schema_for_llm": "Return JSON: { \"screenplay\": { \"scenes\": [{ \"number\": 1, \"heading\": \"INT. LOCATION - DAY\", \"location\": \"string\", \"timeOfDay\": \"day|night|dawn|dusk\", \"description\": \"string\", \"dialogue\": [{ \"character\": \"string\", \"text\": \"string\", \"parenthetical\": \"optional string\" }], \"estimatedDuration\": number }], \"metadata\": { \"totalScenes\": number, \"estimatedDuration\": number, \"locations\": [\"string\"], \"characters\": [\"string\"] } } }",
+    "schema_for_llm": "Return JSON: { \"screenplay\": { \"scenes\": [{ \"number\": 1, \"heading\": \"INT. LOCATION - DAY\", \"location\": \"string\", \"timeOfDay\": \"day|night|dawn|dusk\", \"description\": \"string\", \"dialogue\": [{ \"character\": \"string\", \"text\": \"string\", \"parenthetical\": \"optional string\" }], \"estimatedDuration\": number }], \"metadata\": { \"totalScenes\": number, \"estimatedDuration\": number, \"totalDialogueLines\": number, \"locations\": [\"string\"], \"characters\": [\"string\"] } } }",
     "example_output": {
       "screenplay": {
         "scenes": [

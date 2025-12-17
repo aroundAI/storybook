@@ -2,6 +2,8 @@ import 'server-only';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { StoryData } from '../lib/types';
+
 /**
  * Episode context for story generation prompts
  * Contains all necessary information to ensure consistency across the production pipeline
@@ -33,11 +35,13 @@ export interface EpisodeContext {
   seasonPremise?: string;
   seasonTheme?: string;
 
-  // Continuity (previous episodes)
+  // Continuity (previous episodes) - SCORE Framework
   previousEpisodes: Array<{
     number: number;
     title: string;
     summary: string;
+    sentimentScore?: number;
+    keyEvents?: string[];
   }>;
 
   // Project constraints
@@ -264,6 +268,15 @@ async function fetchLocationsByIds(
 }
 
 /**
+ * Build a plot-focused summary from story data
+ * Uses SCORE episodeSummary field (required for new episodes)
+ */
+function buildPlotSummary(storyData: StoryData | null): string {
+  if (!storyData?.episodeSummary) return '';
+  return storyData.episodeSummary;
+}
+
+/**
  * Fetch previous episodes in sequential order
  */
 async function fetchSequentialEpisodes(
@@ -289,13 +302,14 @@ async function fetchSequentialEpisodes(
   }
 
   return (data ?? []).map((ep) => {
-    const storyData = (ep.story_data as { fullStory?: string }) ?? {};
-    const fullStory = storyData.fullStory ?? '';
+    const storyData = ep.story_data as StoryData | null;
 
     return {
       number: ep.number,
       title: ep.title,
-      summary: fullStory.substring(0, 300), // First 300 chars for continuity
+      summary: buildPlotSummary(storyData),
+      sentimentScore: storyData?.sentimentScore,
+      keyEvents: storyData?.keyEvents,
     };
   });
 }
@@ -334,16 +348,30 @@ export function formatLocationsForPrompt(
 
 /**
  * Format previous episodes for prompt injection
+ * SCORE Framework: Includes plot summary and key events for continuity
  */
 export function formatPreviousEpisodesForPrompt(
   episodes: EpisodeContext['previousEpisodes'],
 ): string {
   if (episodes.length === 0) return '';
 
-  return `**Previous Episodes (for continuity)**:\n${episodes
-    .map(
-      (ep) =>
-        `- Episode ${ep.number}: "${ep.title}"\n  Summary: ${ep.summary}...`,
-    )
-    .join('\n\n')}`;
+  return `**Previous Episodes (for continuity)**:
+${episodes
+  .map((ep) => {
+    let entry = `- Episode ${ep.number}: "${ep.title}"
+  Plot: ${ep.summary}`;
+
+    if (ep.keyEvents && ep.keyEvents.length > 0) {
+      entry += `\n  Key Events: ${ep.keyEvents.join('; ')}`;
+    }
+
+    return entry;
+  })
+  .join('\n\n')}
+
+**Continuity Guidelines**:
+- Reference events/characters from previous episodes where natural
+- Maintain character development arcs
+- Build on key events from prior episodes
+- Acknowledge established relationships and dynamics`;
 }

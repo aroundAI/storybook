@@ -38,6 +38,17 @@ export const CharacterInputSchema = z.object({
 export type CharacterInput = z.infer<typeof CharacterInputSchema>;
 
 /**
+ * Content style affects dialogue density and pacing
+ */
+export const ContentStyleSchema = z.enum([
+  'dialogue-heavy',
+  'action-heavy',
+  'balanced',
+]);
+
+export type ContentStyle = z.infer<typeof ContentStyleSchema>;
+
+/**
  * Schema for generating a full story from a selected idea
  * Uses the story-generation prompt template
  */
@@ -46,7 +57,8 @@ export const GenerateFullStorySchema = z.object({
   version: z.number().int().positive(),
   title: z.string().min(1).max(255),
   logline: z.string().min(10).max(500),
-  targetDuration: z.number().int().min(60).max(600), // 1-10 minutes in seconds
+  targetDuration: z.number().int().min(60).max(7200), // 1 min to 2 hours in seconds
+  contentStyle: ContentStyleSchema.optional(), // Affects dialogue density
   characters: z.array(CharacterInputSchema).optional(),
   worldDetails: z.string().max(1000).optional(),
   style: z.string().optional(),

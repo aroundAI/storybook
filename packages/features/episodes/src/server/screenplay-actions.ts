@@ -15,6 +15,11 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import {
+  type ContentStyle,
+  calculateContentScaling,
+  formatDuration,
+} from '../lib/duration-scaling';
 import { ConvertToScreenplaySchema } from '../lib/schemas';
 import { OptimisticLockError } from '../lib/status-workflow';
 import type { EpisodeStatus, StoryData } from '../lib/types';
@@ -135,7 +140,7 @@ export const convertToScreenplayAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(id, account_id)')
+      .select('*, project:projects(id, account_id, metadata)')
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -169,25 +174,97 @@ export const convertToScreenplayAction = enhanceAction(
     }
 
     // Build context for character/location names (Phase 4)
-    const { buildEpisodeContext } = await import('./context-builder');
+    const { buildEpisodeContext, formatCharactersForPrompt } = await import(
+      './context-builder'
+    );
     const episodeContext = await buildEpisodeContext(data.episodeId);
 
     const characterNames = episodeContext.characters.map((c) => c.name);
     const locationNames = episodeContext.locations.map((l) => l.name);
 
+    // Get target duration - cascade through sources:
+    // 1. Episode column (set during story generation)
+    // 2. story_data (fallback from story generation)
+    // 3. Project default
+    // 4. Hardcoded default (5 minutes)
+    const projectMetadata = episode.project?.metadata as {
+      defaultEpisodeDuration?: number;
+      contentStyle?: ContentStyle;
+    } | null;
+    const targetDuration =
+      episode.target_duration_seconds ??
+      storyData?.targetDuration ??
+      projectMetadata?.defaultEpisodeDuration ??
+      300; // Default to 5 minutes
+
+    // Get content style - cascade through sources:
+    // 1. Action parameter (explicit override)
+    // 2. story_data (from story generation)
+    // 3. Project default
+    // 4. Hardcoded default (dialogue-heavy)
+    const contentStyle: ContentStyle =
+      data.contentStyle ??
+      storyData?.contentStyle ??
+      projectMetadata?.contentStyle ??
+      'dialogue-heavy';
+
+    // Calculate content scaling based on target duration
+    const scaling = calculateContentScaling({
+      targetDurationSeconds: targetDuration,
+      contentStyle,
+    });
+
+    // Calculate average scene duration
+    const avgSceneCount =
+      (scaling.screenplay.sceneCountMin + scaling.screenplay.sceneCountMax) / 2;
+    const avgSceneDuration = Math.round(targetDuration / avgSceneCount);
+
     // Execute LLM prompt
-    logger.info(ctx, 'Executing screenplay conversion LLM');
+    logger.info(
+      {
+        ...ctx,
+        targetDuration,
+        contentStyle,
+        sceneCountRange: `${scaling.screenplay.sceneCountMin}-${scaling.screenplay.sceneCountMax}`,
+        dialogueTarget: `${scaling.screenplay.totalDialogueLinesMin}-${scaling.screenplay.totalDialogueLinesMax}`,
+      },
+      'Executing screenplay conversion LLM with scaling',
+    );
 
     const result = await executeLLM<ScreenplayConversionOutput>({
       templateSlug: 'screenplay-conversion',
       variables: {
         story: storyData.fullStory,
-        target_scene_count: data.targetSceneCount ?? 8,
-        style: data.dialogueStyle ?? 'natural',
+
+        // Duration and scaling
+        target_duration: targetDuration,
+        duration_description: formatDuration(targetDuration),
+        content_style: contentStyle,
+
+        // Scene scaling
+        scene_count_min: scaling.screenplay.sceneCountMin,
+        scene_count_max: scaling.screenplay.sceneCountMax,
+        avg_scene_duration: avgSceneDuration,
+
+        // Dialogue scaling (CRITICAL for getting enough dialogue)
+        dialogue_lines_per_scene_min:
+          scaling.screenplay.dialogueLinesPerSceneMin,
+        dialogue_lines_per_scene_max:
+          scaling.screenplay.dialogueLinesPerSceneMax,
+        total_dialogue_lines_min: scaling.screenplay.totalDialogueLinesMin,
+        total_dialogue_lines_max: scaling.screenplay.totalDialogueLinesMax,
+
+        // Full character context (for personality-consistent dialogue)
+        characters: formatCharactersForPrompt(episodeContext.characters),
+
+        // Character and location names (for quick reference)
         character_names:
           characterNames.length > 0 ? characterNames.join(', ') : '',
         location_names:
           locationNames.length > 0 ? locationNames.join(', ') : '',
+
+        // Style
+        style: data.dialogueStyle ?? 'natural',
       },
       context: {
         name: 'screenplay-conversion',

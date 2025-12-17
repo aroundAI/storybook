@@ -33,17 +33,25 @@ import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
 
+import type { ContentStyle } from '../../lib/duration-scaling';
 import {
   type GenerateStoryIdeasInput,
   GenerateStoryIdeasSchema,
 } from '../../lib/schemas';
 import { generateStoryIdeasAction } from '../../server/story-actions';
+import { DurationSelector } from '../duration-selector';
 import { IdeaCard } from './idea-card';
 import { TaggedAssetsDisplay } from './tagged-assets-display';
 
+/** Extended story idea with generation settings */
+export interface StoryIdeaWithSettings extends StoryIdea {
+  targetDuration: number;
+  contentStyle: ContentStyle;
+}
+
 interface StoryIdeationProps {
   episodeId: string;
-  onComplete: (selectedIdea: StoryIdea) => void;
+  onComplete: (selection: StoryIdeaWithSettings) => void;
   isGenerating?: boolean;
   projectGenre?: string;
   projectStyle?: string;
@@ -51,6 +59,10 @@ interface StoryIdeationProps {
   initialPremise?: string;
   characterIds?: string[];
   locationIds?: string[];
+  /** Project's default episode duration in seconds */
+  defaultDuration?: number;
+  /** Project's default content style */
+  defaultContentStyle?: ContentStyle;
 }
 
 /**
@@ -63,12 +75,19 @@ export function StoryIdeation({
   initialPremise,
   characterIds = [],
   locationIds = [],
+  defaultDuration = 300,
+  defaultContentStyle = 'dialogue-heavy',
 }: StoryIdeationProps) {
   const [isPending, startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Duration and content style state
+  const [targetDuration, setTargetDuration] = useState(defaultDuration);
+  const [contentStyle, setContentStyle] =
+    useState<ContentStyle>(defaultContentStyle);
 
   const form = useForm({
     resolver: zodResolver(GenerateStoryIdeasSchema),
@@ -105,7 +124,11 @@ export function StoryIdeation({
 
   const handleContinue = () => {
     if (selectedIdea) {
-      onComplete(selectedIdea);
+      onComplete({
+        ...selectedIdea,
+        targetDuration,
+        contentStyle,
+      });
     }
   };
 
@@ -182,44 +205,57 @@ export function StoryIdeation({
             {/* Collapsible Settings Panel */}
             <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
               <CollapsibleContent className="pt-4">
-                <div className="flex items-center gap-8">
-                  <FormField
-                    control={form.control}
-                    name="numberOfIdeas"
-                    render={({ field }) => (
-                      <FormItem className="max-w-xs flex-1">
-                        <div className="mb-2 flex items-center justify-between">
-                          <FormLabel className="text-muted-foreground text-xs font-normal">
-                            Variations
-                          </FormLabel>
-                          <span className="text-sm font-medium">
-                            {field.value}
-                          </span>
-                        </div>
-                        <FormControl>
-                          <Slider
-                            min={1}
-                            max={5}
-                            step={1}
-                            value={[field.value ?? 3]}
-                            onValueChange={([value]) => field.onChange(value)}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
+                <div className="space-y-6">
+                  {/* Duration and Content Style */}
+                  <DurationSelector
+                    duration={targetDuration}
+                    onDurationChange={setTargetDuration}
+                    contentStyle={contentStyle}
+                    onContentStyleChange={setContentStyle}
+                    projectDefault={defaultDuration}
+                    compact={false}
                   />
 
-                  {(characterIds.length > 0 || locationIds.length > 0) && (
-                    <div className="space-y-1">
-                      <span className="text-muted-foreground text-xs font-normal">
-                        Context
-                      </span>
-                      <TaggedAssetsDisplay
-                        characterIds={characterIds}
-                        locationIds={locationIds}
-                      />
-                    </div>
-                  )}
+                  {/* Variations and Context */}
+                  <div className="flex items-center gap-8 border-t pt-4">
+                    <FormField
+                      control={form.control}
+                      name="numberOfIdeas"
+                      render={({ field }) => (
+                        <FormItem className="max-w-xs flex-1">
+                          <div className="mb-2 flex items-center justify-between">
+                            <FormLabel className="text-muted-foreground text-xs font-normal">
+                              Variations
+                            </FormLabel>
+                            <span className="text-sm font-medium">
+                              {field.value}
+                            </span>
+                          </div>
+                          <FormControl>
+                            <Slider
+                              min={1}
+                              max={5}
+                              step={1}
+                              value={[field.value ?? 3]}
+                              onValueChange={([value]) => field.onChange(value)}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {(characterIds.length > 0 || locationIds.length > 0) && (
+                      <div className="space-y-1">
+                        <span className="text-muted-foreground text-xs font-normal">
+                          Context
+                        </span>
+                        <TaggedAssetsDisplay
+                          characterIds={characterIds}
+                          locationIds={locationIds}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CollapsibleContent>
             </Collapsible>

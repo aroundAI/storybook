@@ -13,7 +13,6 @@ import {
   Minimize2,
 } from 'lucide-react';
 
-import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -28,12 +27,16 @@ import { cn } from '@kit/ui/utils';
 
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
 import { useUrlTabState } from '../../hooks/use-url-tab-state';
+import type { ContentStyle } from '../../lib/duration-scaling';
 import type { Episode, EpisodeWithShots, StudioTab } from '../../lib/types';
 import { convertToScreenplayAction } from '../../server/screenplay-actions';
 import { generateFullStoryAction } from '../../server/story-actions';
 import { ScreenplayViewer } from '../screenplay-viewer/screenplay-viewer';
 import { ShotListEditor } from '../shot-list-editor/shot-list-editor';
-import { StoryIdeation } from '../story-ideation/story-ideation';
+import {
+  type StoryIdeaWithSettings,
+  StoryIdeation,
+} from '../story-ideation/story-ideation';
 import {
   StoryStudioContext,
   useStoryStudioContext,
@@ -319,7 +322,7 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
    * Handle when user selects a story idea from StoryIdeation
    * This triggers full story generation and advances to story tab
    */
-  const handleIdeaSelected = (idea: StoryIdea) => {
+  const handleIdeaSelected = (selection: StoryIdeaWithSettings) => {
     if (!episode) return;
 
     startStoryTransition(async () => {
@@ -327,10 +330,11 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
         const result = await generateFullStoryAction({
           episodeId: episode.id,
           version: episode.version,
-          title: idea.title,
-          logline: idea.logline,
-          targetDuration: 300, // 5 minutes default
-          style: idea.visualPotential,
+          title: selection.title,
+          logline: selection.logline,
+          targetDuration: selection.targetDuration,
+          contentStyle: selection.contentStyle,
+          style: selection.visualPotential,
         });
 
         if (result.success) {
@@ -426,6 +430,14 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
                   }
                   projectStyle={episode?.projectMetadata?.videoStyle}
                   projectAudience={episode?.projectMetadata?.targetAudience}
+                  defaultDuration={
+                    (episode?.projectMetadata
+                      ?.defaultEpisodeDuration as number) ?? 300
+                  }
+                  defaultContentStyle={
+                    (episode?.projectMetadata?.contentStyle as ContentStyle) ??
+                    'dialogue-heavy'
+                  }
                 />
               </div>
             ) : (

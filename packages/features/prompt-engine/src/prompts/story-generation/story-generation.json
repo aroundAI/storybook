@@ -32,7 +32,7 @@
       "order": 2
     }
   ],
-  "user_prompt": "Write a complete story based on this concept:\n\n**Title**: {{title}}\n**Logline**: {{logline}}\n**Premise**: {{premise}}\n**Target Duration**: {{target_duration}} seconds\n**Genre**: {{genre}}\n**Target Audience**: {{target_audience}}\n**Visual Style**: {{visual_style}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: You MUST use ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: The story MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Reference events from previous episodes where relevant. Maintain character development.\n4. **Season Arc**: Align this episode with the season premise and theme.\n\n**Story Requirements**:\n1. **Length**: 500-1000 words, appropriate for the target duration\n2. **Structure**: Clear three-act structure (setup, confrontation, resolution)\n3. **Character Arc**: Protagonist should undergo meaningful change\n4. **Visual Storytelling**: Focus on showing, not telling - include vivid imagery\n5. **Pacing**: Maintain engagement throughout with clear story beats\n6. **Conflict**: Include central conflict and stakes\n7. **Resolution**: Satisfying conclusion that ties up main threads\n\n**Story Guidelines**:\n- Write in present tense for immediacy\n- Use vivid, sensory descriptions\n- Include emotional moments\n- Create visual variety (different locations, actions)\n- Keep dialogue natural and purposeful\n- Consider what can be shown visually vs. narrated\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"story\": {\n    \"title\": \"string\",\n    \"fullText\": \"string (500-1000 words)\",\n    \"actBreakdown\": {\n      \"act1\": \"string (setup summary)\",\n      \"act2\": \"string (confrontation summary)\",\n      \"act3\": \"string (resolution summary)\"\n    },\n    \"characters\": [\n      {\n        \"name\": \"string\",\n        \"role\": \"string (protagonist/antagonist/supporting)\",\n        \"arc\": \"string (character journey)\"\n      }\n    ],\n    \"themes\": [\"string\"],\n    \"tone\": \"string\",\n    \"estimatedSceneCount\": number\n  }\n}\n```",
+  "user_prompt": "Write a complete story based on this concept:\n\n**Title**: {{title}}\n**Logline**: {{logline}}\n**Premise**: {{premise}}\n**Target Duration**: {{target_duration}} seconds ({{duration_description}})\n**Genre**: {{genre}}\n**Target Audience**: {{target_audience}}\n**Visual Style**: {{visual_style}}\n**Content Style**: {{content_style}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: You MUST use ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: The story MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Reference events from previous episodes where relevant. Maintain character development.\n4. **Season Arc**: Align this episode with the season premise and theme.\n\n**Story Requirements**:\n1. **Length**: {{word_count_min}}-{{word_count_max}} words (calibrated for {{target_duration}} seconds of screen time)\n2. **Structure**: Clear three-act structure (setup, confrontation, resolution)\n3. **Character Arc**: Protagonist should undergo meaningful change\n4. **Visual Storytelling**: Focus on showing, not telling - include vivid imagery\n5. **Pacing**: Maintain engagement throughout with clear story beats\n6. **Conflict**: Include central conflict and stakes\n7. **Resolution**: Satisfying conclusion that ties up main threads\n8. **Scene Estimate**: Target approximately {{estimated_scene_count_min}}-{{estimated_scene_count_max}} scenes\n\n**Story Guidelines**:\n- Write in present tense for immediacy\n- Use vivid, sensory descriptions\n- Include emotional moments\n- Create visual variety (different locations, actions)\n- Keep dialogue natural and purposeful\n- Consider what can be shown visually vs. narrated\n- For dialogue-heavy content, include rich character interactions\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"story\": {\n    \"title\": \"string\",\n    \"fullText\": \"string ({{word_count_min}}-{{word_count_max}} words)\",\n    \"actBreakdown\": {\n      \"act1\": \"string (setup summary)\",\n      \"act2\": \"string (confrontation summary)\",\n      \"act3\": \"string (resolution summary)\"\n    },\n    \"characters\": [\n      {\n        \"name\": \"string\",\n        \"role\": \"string (protagonist/antagonist/supporting)\",\n        \"arc\": \"string (character journey)\"\n      }\n    ],\n    \"themes\": [\"string\"],\n    \"tone\": \"string\",\n    \"estimatedSceneCount\": number,\n    \"episodeSummary\": \"string (2-3 sentence plot summary for continuity - include main conflict, character actions, resolution)\",\n    \"sentimentScore\": number (0-1 emotional tone: 0=dark/tragic, 0.5=neutral, 1=uplifting/joyful),\n    \"keyEvents\": [\"string (major plot points that affect future episodes)\"]\n  }\n}\n```",
   "variables": {
     "title": {
       "type": "text",
@@ -52,7 +52,37 @@
     "target_duration": {
       "type": "number",
       "required": true,
-      "description": "Target video duration in seconds (60-600)"
+      "description": "Target video duration in seconds (60-7200, i.e., 1 min to 2 hours)"
+    },
+    "duration_description": {
+      "type": "text",
+      "required": false,
+      "description": "Human-readable duration description (e.g., '5 minutes')"
+    },
+    "word_count_min": {
+      "type": "number",
+      "required": true,
+      "description": "Minimum word count based on target duration"
+    },
+    "word_count_max": {
+      "type": "number",
+      "required": true,
+      "description": "Maximum word count based on target duration"
+    },
+    "estimated_scene_count_min": {
+      "type": "number",
+      "required": false,
+      "description": "Minimum estimated scene count based on duration"
+    },
+    "estimated_scene_count_max": {
+      "type": "number",
+      "required": false,
+      "description": "Maximum estimated scene count based on duration"
+    },
+    "content_style": {
+      "type": "text",
+      "required": false,
+      "description": "Content style: dialogue-heavy, action-heavy, or balanced"
     },
     "characters": {
       "type": "text",
@@ -94,9 +124,9 @@
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ story: z.object({ title: z.string(), fullText: z.string(), actBreakdown: z.object({ act1: z.string(), act2: z.string(), act3: z.string() }), characters: z.array(z.object({ name: z.string(), role: z.enum(['protagonist', 'antagonist', 'supporting']), arc: z.string() })), themes: z.array(z.string()), tone: z.string(), estimatedSceneCount: z.number() }) })"
+      "definition": "z.object({ story: z.object({ title: z.string(), fullText: z.string(), actBreakdown: z.object({ act1: z.string(), act2: z.string(), act3: z.string() }), characters: z.array(z.object({ name: z.string(), role: z.enum(['protagonist', 'antagonist', 'supporting']), arc: z.string() })), themes: z.array(z.string()), tone: z.string(), estimatedSceneCount: z.number(), episodeSummary: z.string(), sentimentScore: z.number().min(0).max(1), keyEvents: z.array(z.string()) }) })"
     },
-    "schema_for_llm": "Return JSON: { \"story\": { \"title\": \"string\", \"fullText\": \"string\", \"actBreakdown\": { \"act1\": \"string\", \"act2\": \"string\", \"act3\": \"string\" }, \"characters\": [{ \"name\": \"string\", \"role\": \"protagonist|antagonist|supporting\", \"arc\": \"string\" }], \"themes\": [\"string\"], \"tone\": \"string\", \"estimatedSceneCount\": number } }",
+    "schema_for_llm": "Return JSON: { \"story\": { \"title\": \"string\", \"fullText\": \"string\", \"actBreakdown\": { \"act1\": \"string\", \"act2\": \"string\", \"act3\": \"string\" }, \"characters\": [{ \"name\": \"string\", \"role\": \"protagonist|antagonist|supporting\", \"arc\": \"string\" }], \"themes\": [\"string\"], \"tone\": \"string\", \"estimatedSceneCount\": number, \"episodeSummary\": \"string\", \"sentimentScore\": number, \"keyEvents\": [\"string\"] } }",
     "example_output": {
       "story": {
         "title": "The Last Signal",
@@ -120,7 +150,14 @@
           "time"
         ],
         "tone": "contemplative, suspenseful",
-        "estimatedSceneCount": 8
+        "estimatedSceneCount": 8,
+        "episodeSummary": "Commander Maya Chen discovers an anomalous signal on her deep space mission containing information about future events. She faces a pivotal choice and ultimately transmits a warning to Earth, sacrificing her career but fulfilling her unique role in the universe.",
+        "sentimentScore": 0.6,
+        "keyEvents": [
+          "Maya discovers anomalous signal with future predictions",
+          "Maya transmits warning to Earth",
+          "Maya realizes she was always meant to receive and send the message"
+        ]
       }
     }
   }

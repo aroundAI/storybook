@@ -17,6 +17,11 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  type ContentStyle,
+  calculateContentScaling,
+  formatDuration,
+} from '../lib/duration-scaling';
+import {
   GenerateFullStorySchema,
   GenerateStoryIdeasSchema,
   type GenerationMetadata,
@@ -256,12 +261,32 @@ export const generateFullStoryAction = enhanceAction(
 
     const episodeContext = await buildEpisodeContext(data.episodeId);
 
+    // Calculate content scaling based on target duration
+    const contentStyle: ContentStyle = data.contentStyle ?? 'dialogue-heavy';
+    const scaling = calculateContentScaling({
+      targetDurationSeconds: data.targetDuration,
+      contentStyle,
+      genre: episodeContext.genre,
+    });
+
     // Prepare variables for prompt template
     const variables = {
       title: data.title,
       logline: data.logline,
       premise: episodeContext.premise,
       target_duration: data.targetDuration,
+      duration_description: formatDuration(data.targetDuration),
+
+      // Content scaling - word count
+      word_count_min: scaling.story.wordCountMin,
+      word_count_max: scaling.story.wordCountMax,
+
+      // Content scaling - estimated scene count (for story generation)
+      estimated_scene_count_min: scaling.screenplay.sceneCountMin,
+      estimated_scene_count_max: scaling.screenplay.sceneCountMax,
+
+      // Content style
+      content_style: contentStyle,
 
       // Rich character context
       characters: formatCharactersForPrompt(episodeContext.characters),
@@ -308,6 +333,7 @@ export const generateFullStoryAction = enhanceAction(
 
     // Prepare story_data for episode (matching StoryData interface)
     const storyData = {
+      // Core content from input and LLM output
       premise: data.logline,
       fullStory: result.data.story.fullText,
       generatedAt,
@@ -322,6 +348,18 @@ export const generateFullStoryAction = enhanceAction(
       themes: result.data.story.themes,
       tone: result.data.story.tone,
       estimatedSceneCount: result.data.story.estimatedSceneCount,
+
+      // Persist generation settings for downstream steps (screenplay, shot-list)
+      targetDuration: data.targetDuration,
+      contentStyle: contentStyle,
+      genre: episodeContext.genre,
+      targetAudience: episodeContext.targetAudience,
+      videoStyle: episodeContext.visualStyle,
+
+      // SCORE Framework fields (for episode continuity)
+      episodeSummary: result.data.story.episodeSummary,
+      sentimentScore: result.data.story.sentimentScore,
+      keyEvents: result.data.story.keyEvents,
     };
 
     // Update episode with story data and change status to 'story'
@@ -331,6 +369,7 @@ export const generateFullStoryAction = enhanceAction(
       .update({
         story_data: storyData as Json,
         status: 'story',
+        target_duration_seconds: data.targetDuration, // Persist for screenplay/shot-list
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)

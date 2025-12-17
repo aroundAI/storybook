@@ -72,6 +72,7 @@ create table if not exists public.episodes (
   description text,
   status varchar(50) default 'draft' not null,
   duration_seconds integer,
+  target_duration_seconds integer check (target_duration_seconds is null or (target_duration_seconds >= 60 and target_duration_seconds <= 7200)),
   thumbnail_url text,
   final_video_url text,
   story_data jsonb,
@@ -93,6 +94,7 @@ comment on column public.episodes.deleted_at is 'Soft delete timestamp';
 comment on column public.episodes.story_data is 'Story generation output (premise, fullStory, generatedBy)';
 comment on column public.episodes.screenplay_data is 'Screenplay conversion output (scenes, dialogue)';
 comment on column public.episodes.shot_list is 'Shot list generation output (shots with prompts)';
+comment on column public.episodes.target_duration_seconds is 'Target duration for content scaling (60-7200 seconds, 1 min to 2 hours)';
 
 -- Indexes for episodes
 create index if not exists idx_episodes_project_status on public.episodes(project_id, status)
