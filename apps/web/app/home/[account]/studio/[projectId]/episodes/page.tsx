@@ -14,7 +14,6 @@ import type {
   StoryData,
 } from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { PageBody, PageHeader } from '@kit/ui/page';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
