@@ -533,9 +533,17 @@ create table if not exists public.content_analytics (
   likes bigint default 0 not null,
   comments bigint default 0 not null,
   shares bigint default 0 not null,
+  saves bigint default 0 not null,
   watch_time_seconds bigint default 0 not null,
   subscribers_gained integer default 0 not null,
   revenue_cents integer default 0 not null,
+  ad_revenue_cents integer default 0 not null,
+  red_revenue_cents integer default 0 not null,
+  subscribed_views bigint default 0 not null,
+  unsubscribed_views bigint default 0 not null,
+  device_breakdown jsonb,
+  os_breakdown jsonb,
+  city_breakdown jsonb,
   retention_data jsonb,
   raw_data jsonb,
   created_at timestamp with time zone default now() not null,
@@ -546,6 +554,14 @@ comment on table public.content_analytics is 'Daily snapshots of content perform
 comment on column public.content_analytics.snapshot_date is 'Date of this snapshot';
 comment on column public.content_analytics.watch_time_seconds is 'Total watch time in seconds';
 comment on column public.content_analytics.revenue_cents is 'Revenue generated in cents';
+comment on column public.content_analytics.saves is 'Bookmarks/saves count (primarily TikTok and Instagram)';
+comment on column public.content_analytics.ad_revenue_cents is 'Ad revenue portion in cents (YouTube)';
+comment on column public.content_analytics.red_revenue_cents is 'YouTube Premium revenue portion in cents';
+comment on column public.content_analytics.subscribed_views is 'Views from subscribed users (YouTube)';
+comment on column public.content_analytics.unsubscribed_views is 'Views from non-subscribed users (YouTube)';
+comment on column public.content_analytics.device_breakdown is 'Device type breakdown: MOBILE, DESKTOP, TABLET, TV, GAME_CONSOLE';
+comment on column public.content_analytics.os_breakdown is 'Operating system breakdown: ANDROID, IOS, WINDOWS, etc.';
+comment on column public.content_analytics.city_breakdown is 'City-level geography breakdown';
 comment on column public.content_analytics.retention_data is 'Audience retention curve data';
 comment on column public.content_analytics.raw_data is 'Platform-specific raw metrics';
 

@@ -1,0 +1,102 @@
+'use client';
+
+import { Globe } from 'lucide-react';
+
+import { AudienceCard } from './audience-card';
+
+interface GeographyCardProps {
+  /** Country data - record of country name to percentage */
+  geography: Record<string, number>;
+}
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  'United States': '🇺🇸',
+  US: '🇺🇸',
+  USA: '🇺🇸',
+  'United Kingdom': '🇬🇧',
+  UK: '🇬🇧',
+  GB: '🇬🇧',
+  Canada: '🇨🇦',
+  CA: '🇨🇦',
+  Australia: '🇦🇺',
+  AU: '🇦🇺',
+  Germany: '🇩🇪',
+  DE: '🇩🇪',
+  France: '🇫🇷',
+  FR: '🇫🇷',
+  Japan: '🇯🇵',
+  JP: '🇯🇵',
+  India: '🇮🇳',
+  IN: '🇮🇳',
+  Brazil: '🇧🇷',
+  BR: '🇧🇷',
+  Mexico: '🇲🇽',
+  MX: '🇲🇽',
+  Spain: '🇪🇸',
+  ES: '🇪🇸',
+  Italy: '🇮🇹',
+  IT: '🇮🇹',
+  Netherlands: '🇳🇱',
+  NL: '🇳🇱',
+  'South Korea': '🇰🇷',
+  KR: '🇰🇷',
+};
+
+function getCountryFlag(country: string): string {
+  return COUNTRY_FLAGS[country] || '🌍';
+}
+
+export function GeographyCard({ geography }: GeographyCardProps) {
+  // Sort countries by percentage and take top 7
+  const sortedCountries = Object.entries(geography)
+    .map(([country, percentage]) => ({ country, percentage }))
+    .sort((a, b) => b.percentage - a.percentage)
+    .slice(0, 7);
+
+  // Find the highest percentage for highlighting
+  const maxPercentage = sortedCountries[0]?.percentage || 0;
+
+  return (
+    <AudienceCard
+      title="Top Geographies"
+      icon={Globe}
+      rowSpan={true}
+      footerInsight="English-speaking regions dominate, but growth in Brazil and Germany indicates localization opportunities."
+    >
+      <div className="space-y-4">
+        {sortedCountries.map((item, index) => {
+          const isTop = item.percentage === maxPercentage;
+          return (
+            <div key={index} className="flex items-center gap-3">
+              <div className="w-6 text-xl">{getCountryFlag(item.country)}</div>
+              <div className="flex-1">
+                <div className="mb-1 flex justify-between text-xs">
+                  <span className="font-medium text-gray-900 dark:text-white">
+                    {item.country}
+                  </span>
+                  <span
+                    className={
+                      isTop
+                        ? 'font-semibold text-gray-900 dark:text-white'
+                        : 'text-gray-500 dark:text-gray-400'
+                    }
+                  >
+                    {item.percentage.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700">
+                  <div
+                    className={`h-1.5 rounded-full ${
+                      isTop ? 'bg-blue-500' : 'bg-gray-400 dark:bg-gray-500'
+                    }`}
+                    style={{ width: `${item.percentage}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </AudienceCard>
+  );
+}

@@ -60,7 +60,7 @@ export function SeasonHeader({
           <div className="text-lg font-bold text-blue-600 dark:text-blue-400">
             {progressPercent}%
           </div>
-          <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+          <div className="text-[10px] font-bold tracking-wider text-gray-400 uppercase dark:text-gray-500">
             Complete
           </div>
         </div>

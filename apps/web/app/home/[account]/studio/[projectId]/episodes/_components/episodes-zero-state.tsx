@@ -67,7 +67,7 @@ export function EpisodesZeroState({
             <Film className="h-5 w-5" />
             Start Crafting Your First Episode
           </Button>
-          <p className="mx-auto mt-8 max-w-2xl text-base italic leading-relaxed text-gray-500 dark:text-gray-400">
+          <p className="mx-auto mt-8 max-w-2xl text-base leading-relaxed text-gray-500 italic dark:text-gray-400">
             &quot;Each episode is a canvas for your imagination. From the spark
             of an idea, our tools help you weave intricate narratives, draft
             compelling screenplays, and envision the visual tapestry of your

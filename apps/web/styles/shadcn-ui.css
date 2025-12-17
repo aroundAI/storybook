@@ -63,6 +63,11 @@
         --chart-4: var(--color-yellow-200);
         --chart-5: var(--color-orange-200);
 
+        /* Analytics chart colors - Light mode */
+        --analytics-green: rgb(34, 197, 94);
+        --analytics-blue: rgb(59, 130, 246);
+        --analytics-donut-secondary: rgb(209, 213, 219);
+
         --sidebar-background: var(--color-neutral-50);
         --sidebar-foreground: oklch(37.05% 0.012 285.8);
         --sidebar-primary: var(--color-neutral-950);
@@ -135,6 +140,11 @@
         --chart-4: oklch(65% 0.2 300);
         --chart-5: oklch(70% 0.2 340);
 
+        /* Analytics chart colors - Dark mode (brighter for visibility) */
+        --analytics-green: rgb(74, 222, 128);
+        --analytics-blue: rgb(96, 165, 250);
+        --analytics-donut-secondary: rgb(75, 85, 99);
+
         --sidebar-background: #0D0D0D;
         --sidebar-foreground: oklch(85% 0.01 250);
         --sidebar-primary: oklch(65% 0.22 250);
@@ -199,6 +209,11 @@
         --chart-3: oklch(70% 0.18 35);
         --chart-4: oklch(65% 0.2 300);
         --chart-5: oklch(70% 0.2 340);
+
+        /* Analytics chart colors - Dark mode (brighter for visibility) */
+        --analytics-green: rgb(74, 222, 128);
+        --analytics-blue: rgb(96, 165, 250);
+        --analytics-donut-secondary: rgb(75, 85, 99);
 
         --sidebar-background: #0D0D0D;
         --sidebar-foreground: oklch(85% 0.01 250);

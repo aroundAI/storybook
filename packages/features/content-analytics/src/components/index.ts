@@ -56,3 +56,44 @@ export {
   AudienceAnalytics,
   type AudienceAnalyticsProps,
 } from './audience-analytics';
+
+// Chart Components (Redesign)
+export {
+  SparklineArea,
+  MiniBarChart,
+  HorizontalProgress,
+  DonutChart,
+  PeakActivityGrid,
+  TagCloudWithAffinity,
+} from './charts';
+
+// Overview Grid Components (Redesign)
+export {
+  OverviewGrid,
+  AnalyticsCard,
+  ViewsCard,
+  LikesCard,
+  PlatformSplitCard,
+  CommentsCard,
+  AIInsightCard,
+  SharesCard,
+  TopContentCard,
+  RevenueCard,
+  TopRegionsCard,
+  GenderCard,
+} from './overview';
+
+// Content Grid Components (Redesign)
+export { ContentGrid, ContentCard } from './content';
+
+// Audience Grid Components (Redesign)
+export {
+  AudienceGrid,
+  AudienceCard,
+  AgeDistributionCard,
+  GenderSplitCard,
+  GeographyCard,
+  DeviceTypeCard,
+  PeakActivityCard,
+  InterestsCard,
+} from './audience';

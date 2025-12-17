@@ -306,7 +306,7 @@ BEGIN
             'retention_curve', ARRAY[100, 90, 80, 70, 60, 55, 50, 48, 45, 42]
           )
         ELSE NULL END,
-        -- Include demographics and geography in raw_data for audience analytics
+        -- Include demographics, geography, and extended audience data in raw_data
         jsonb_build_object(
           'platform', pub.platform,
           'fetched_at', snapshot_day::TEXT,
@@ -339,6 +339,35 @@ BEGIN
             'Japan', 3.0,
             'Mexico', 2.5,
             'Other', 8.0
+          ),
+          -- Extended audience data for redesigned dashboard
+          'deviceType', jsonb_build_object(
+            'mobile', 78,
+            'desktop', 18,
+            'tablet', 4
+          ),
+          -- Peak activity: 4 time slots (Morning, Afternoon, Evening, Night) x 7 days
+          'peakActivity', jsonb_build_array(
+            jsonb_build_array(0.2, 0.3, 0.4, 0.6, 0.8, 0.9, 0.7),  -- Morning
+            jsonb_build_array(0.3, 0.4, 0.6, 0.8, 1.0, 1.0, 0.8),  -- Afternoon
+            jsonb_build_array(0.2, 0.3, 0.4, 0.5, 0.7, 0.9, 0.6),  -- Evening
+            jsonb_build_array(0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.5)   -- Night
+          ),
+          'interests', jsonb_build_array(
+            'Sci-Fi Movies',
+            'Gaming',
+            'Animation',
+            'Technology',
+            'Digital Art',
+            'Storytelling',
+            'Visual Effects',
+            'Fantasy',
+            'Anime',
+            'Comic Books'
+          ),
+          'contentAffinity', jsonb_build_object(
+            'label', 'Cinematic Visuals',
+            'percentage', 24
           )
         )
       )
