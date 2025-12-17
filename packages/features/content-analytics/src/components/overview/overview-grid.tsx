@@ -1,0 +1,201 @@
+'use client';
+
+import { useMemo } from 'react';
+
+import { Skeleton } from '@kit/ui/skeleton';
+
+import { formatDate, formatNumber, formatPercent } from '../../lib/format';
+import type { ContentListItem } from '../../server/aggregation-queries';
+import type {
+  AggregateAnalytics,
+  AudienceData,
+  InsightsResult,
+} from '../../types';
+import { AIInsightCard } from './ai-insight-card';
+import { CommentsCard } from './comments-card';
+import { GenderCard } from './gender-card';
+import { LikesCard } from './likes-card';
+import { PlatformSplitCard } from './platform-split-card';
+import { RevenueCard } from './revenue-card';
+import { SharesCard } from './shares-card';
+import { TopContentCard } from './top-content-card';
+import { TopRegionsCard } from './top-regions-card';
+import { ViewsCard } from './views-card';
+
+interface OverviewGridProps {
+  /** Analytics data */
+  analytics: AggregateAnalytics | null;
+  /** Audience data */
+  audience?: AudienceData;
+  /** Content list for top content */
+  contentList?: ContentListItem[];
+  /** AI insights for the insight card */
+  insights?: InsightsResult | null;
+  /** Share breakdown (mock data) */
+  shareBreakdown?: { direct: number; copyLink: number };
+  /** Revenue breakdown (mock data) */
+  revenueBreakdown?: { adRevenue: number; sponsorships: number };
+  /** Loading state */
+  isLoading?: boolean;
+  /** Callback for View All content */
+  onViewAllContent?: () => void;
+  /** Callback for View AI Report */
+  onViewAIReport?: () => void;
+}
+
+export function OverviewGrid({
+  analytics,
+  audience,
+  contentList,
+  insights,
+  shareBreakdown,
+  revenueBreakdown,
+  isLoading = false,
+  onViewAllContent,
+  onViewAIReport,
+}: OverviewGridProps) {
+  const totals = analytics?.totals;
+  const platformMetrics = analytics?.platformMetrics;
+  const dailyData = analytics?.dailyData;
+
+  // Transform daily data into labeled sparkline data points
+  // Note: Hooks must be called before any early returns
+  const viewsSparklineData = useMemo(() => {
+    if (!dailyData || dailyData.length === 0) return undefined;
+    return dailyData.map((day) => ({
+      value: day.views,
+      label: formatDate(new Date(day.date), 'MMM d'),
+    }));
+  }, [dailyData]);
+
+  const likesSparklineData = useMemo(() => {
+    if (!dailyData || dailyData.length === 0) return undefined;
+    return dailyData.map((day) => ({
+      value: day.likes,
+      label: formatDate(new Date(day.date), 'MMM d'),
+    }));
+  }, [dailyData]);
+
+  if (isLoading) {
+    return <OverviewGridSkeleton />;
+  }
+
+  // Calculate platform percentages for Platform Split card
+  const totalViews = platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;
+  const platforms =
+    platformMetrics?.map((p) => ({
+      platform: p.platform,
+      percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
+    })) || [];
+
+  // Get top content for card
+  const topContent =
+    contentList?.slice(0, 2).map((item) => ({
+      id: item.publishId,
+      title: item.publishTitle,
+      thumbnailUrl: item.thumbnailUrl ?? undefined,
+      publishedAt: item.publishedAt,
+      platform: item.platform,
+      views: item.views,
+      engagementRate: item.engagementRate,
+    })) || [];
+
+  // Get regions from audience data - no fake fallback data
+  const regions = audience?.geography
+    ? Object.entries(audience.geography)
+        .map(([country, percentage]) => ({ country, percentage }))
+        .sort((a, b) => b.percentage - a.percentage)
+    : [];
+
+  // Get gender from audience data - no fake fallback data
+  const genders = audience?.demographics?.genders
+    ? {
+        male: audience.demographics.genders['male'] || 0,
+        female: audience.demographics.genders['female'] || 0,
+        other: audience.demographics.genders['other'],
+      }
+    : undefined;
+
+  // Find top commented content
+  const topCommented = contentList?.reduce(
+    (max, item) => (item.comments > (max?.comments || 0) ? item : max),
+    contentList[0],
+  );
+
+  // Build AI insight summary HTML - only show real data
+  const hasData = (totals?.views || 0) > 0;
+  const aiSummary = insights?.summary
+    ? insights.summary
+    : hasData
+      ? `Your content has <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatNumber(totals?.views || 0)}</span> total views with an average engagement rate of <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatPercent(analytics?.avgEngagementRate || 0)}</span>.`
+      : 'No analytics data available yet. Publish content to social platforms and connect your accounts to see insights.';
+
+  // Build AI insights from actual platform data - no hardcoded fallbacks
+  const topPlatform = platforms.length > 0
+    ? platforms.reduce((max, p) => (p.percentage > max.percentage ? p : max), platforms[0]!)
+    : null;
+
+  const aiInsights = hasData && topPlatform
+    ? [
+        {
+          type: 'success' as const,
+          text: `${topPlatform.platform.charAt(0).toUpperCase() + topPlatform.platform.slice(1)} drives ${topPlatform.percentage.toFixed(0)}% of all views.`,
+        },
+      ]
+    : [];
+
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* Row 1: Views, Likes, Platform Split, Comments */}
+      <ViewsCard
+        views={totals?.views || 0}
+        sparklineDataPoints={viewsSparklineData}
+      />
+      <LikesCard
+        likes={totals?.likes || 0}
+        barDataPoints={likesSparklineData}
+      />
+      <PlatformSplitCard platforms={platforms} />
+      <CommentsCard
+        comments={totals?.comments || 0}
+        topCommentedTitle={topCommented?.publishTitle}
+      />
+
+      {/* Row 2: AI Insight (2 cols), Shares */}
+      <AIInsightCard
+        summary={aiSummary}
+        insights={aiInsights}
+        onViewReport={onViewAIReport}
+      />
+      <SharesCard shares={totals?.shares || 0} breakdown={shareBreakdown} />
+
+      {/* Row 3: Top Content (2 cols), Revenue, Regions */}
+      <TopContentCard content={topContent} onViewAll={onViewAllContent} />
+      <RevenueCard
+        revenueCents={totals?.revenueCents || 0}
+        breakdown={revenueBreakdown}
+      />
+      <TopRegionsCard regions={regions} />
+
+      {/* Row 4: Gender - only show if we have gender data */}
+      {genders && <GenderCard genders={genders} />}
+    </div>
+  );
+}
+
+function OverviewGridSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {/* 10 skeleton cards matching the layout */}
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={`row1-${i}`} className="h-64 rounded-2xl" />
+      ))}
+      <Skeleton className="h-64 rounded-2xl md:col-span-2" />
+      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl md:col-span-2 lg:col-span-2 xl:col-span-2" />
+      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl" />
+    </div>
+  );
+}

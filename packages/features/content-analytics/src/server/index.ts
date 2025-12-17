@@ -13,7 +13,8 @@ export {
 
 // Server actions
 export { getSyncStatusAction, manualSyncAction } from './sync-actions';
-export { calculateChanges, generateInsightsAction } from './insights-actions';
+export { generateInsightsAction } from './insights-actions';
+export { calculateChanges, parseInsightsResponse } from '../lib/insights-utils';
 
 // Revenue actions
 export {

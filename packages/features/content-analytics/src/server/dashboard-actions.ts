@@ -4,7 +4,12 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 
-import { getContentList, getProjectAnalytics } from './aggregation-queries';
+import {
+  getContentList,
+  getProjectAnalytics,
+  getProjectAudienceData,
+  getProjectDailyMetrics,
+} from './aggregation-queries';
 
 /**
  * Schema for getProjectAnalyticsAction
@@ -54,6 +59,56 @@ export const getContentListAction = enhanceAction(
   },
   {
     schema: GetContentListSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Schema for getProjectDailyMetricsAction
+ */
+const GetProjectDailyMetricsSchema = z.object({
+  projectId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+/**
+ * Get daily metrics for the performance chart
+ */
+export const getProjectDailyMetricsAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getProjectDailyMetrics(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetProjectDailyMetricsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Schema for getProjectAudienceDataAction
+ */
+const GetProjectAudienceDataSchema = z.object({
+  projectId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+/**
+ * Get audience demographics and geography data
+ */
+export const getProjectAudienceDataAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getProjectAudienceData(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetProjectAudienceDataSchema,
     auth: true,
   },
 );

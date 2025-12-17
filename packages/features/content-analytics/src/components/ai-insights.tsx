@@ -1,18 +1,19 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useQuery } from '@tanstack/react-query';
 import {
+  CheckCircle,
   Clock,
+  Lightbulb,
   RefreshCw,
   Sparkles,
-  Target,
-  TrendingUp,
   Users,
 } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { generateInsightsAction } from '../server/insights-actions';
@@ -45,119 +46,130 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-500" />
-          <h2 className="text-lg font-semibold">AI Insights</h2>
-          <Badge variant="secondary" className="text-xs">
+          <Sparkles className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+            AI Insights
+          </h2>
+          <Badge
+            variant="secondary"
+            className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+          >
             Powered by Claude
           </Badge>
         </div>
         <Button
-          variant="outline"
+          variant="ghost"
           size="sm"
           onClick={() => refetch()}
           disabled={isFetching}
+          className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
         >
           <RefreshCw
-            className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
+            className={`mr-1 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`}
           />
           Refresh
         </Button>
       </div>
 
-      {/* Summary */}
-      <Card className="border-purple-200 bg-purple-50/50 dark:border-purple-800 dark:bg-purple-950/20">
-        <CardContent className="pt-6">
-          <p className="text-lg leading-relaxed">{insights?.summary}</p>
-        </CardContent>
-      </Card>
+      {/* Summary - Gradient Card */}
+      <div className="rounded-xl border border-purple-100 bg-gradient-to-r from-purple-50 to-white p-6 shadow-sm dark:border-purple-900/50 dark:from-purple-900/20 dark:to-gray-800">
+        <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+          {insights?.summary}
+        </p>
+      </div>
 
-      {/* Insight Cards */}
-      <div className="grid gap-4 md:grid-cols-2">
-        {/* Performance Trends */}
+      {/* Insight Cards - 2x2 Grid */}
+      <div className="grid grid-cols-1 gap-6 pb-8 md:grid-cols-2">
+        {/* Content Recommendations - Blue */}
         <InsightCard
-          icon={TrendingUp}
-          title="Performance Trends"
-          insights={insights?.trends}
-          iconColor="text-green-600"
-        />
-
-        {/* Content Recommendations */}
-        <InsightCard
-          icon={Target}
+          icon={Lightbulb}
           title="Content Recommendations"
           insights={insights?.contentRecommendations}
-          iconColor="text-blue-600"
+          iconBgColor="bg-blue-50 dark:bg-blue-900/30"
+          iconColor="text-blue-600 dark:text-blue-400"
+          bulletColor="bg-blue-500"
         />
 
-        {/* Best Posting Times */}
+        {/* Optimal Posting Times - Orange */}
         <InsightCard
           icon={Clock}
           title="Optimal Posting Times"
           insights={insights?.postingStrategy}
-          iconColor="text-orange-600"
+          iconBgColor="bg-orange-50 dark:bg-orange-900/30"
+          iconColor="text-orange-600 dark:text-orange-400"
+          bulletColor="bg-orange-500"
         />
 
-        {/* Audience Insights */}
+        {/* Audience Insights - Pink */}
         <InsightCard
           icon={Users}
           title="Audience Insights"
           insights={insights?.audienceInsights}
-          iconColor="text-purple-600"
+          iconBgColor="bg-pink-50 dark:bg-pink-900/30"
+          iconColor="text-pink-600 dark:text-pink-400"
+          bulletColor="bg-pink-500"
         />
+
+        {/* Recommended Actions - Amber (Special styling) */}
+        {insights?.actionItems && insights.actionItems.length > 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-6 shadow-sm transition-shadow hover:shadow-md dark:border-amber-800 dark:bg-amber-900/10">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-amber-100 p-2 text-amber-700 dark:bg-amber-900/30 dark:text-amber-500">
+                <CheckCircle className="h-5 w-5" />
+              </div>
+              <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                Recommended Actions
+              </h3>
+            </div>
+            <ul className="space-y-4">
+              {insights.actionItems.map((action, index) => (
+                <li key={index} className="flex gap-3">
+                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800 dark:bg-amber-800 dark:text-amber-200">
+                    {index + 1}
+                  </div>
+                  <p className="pt-0.5 text-sm leading-relaxed text-gray-800 dark:text-gray-200">
+                    {action}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {/* Top Performers */}
       {insights?.topPerformers && insights.topPerformers.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              Why These Videos Performed Well
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+          <h3 className="mb-4 text-base font-semibold text-gray-900 dark:text-white">
+            Why These Videos Performed Well
+          </h3>
+          <div className="space-y-4">
             {insights.topPerformers.map((item, index) => (
               <div key={index} className="flex gap-4">
                 {item.thumbnailUrl && (
-                  <img
-                    src={item.thumbnailUrl}
-                    alt={item.title}
-                    className="h-14 w-24 rounded object-cover"
-                  />
+                  <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded">
+                    <Image
+                      src={item.thumbnailUrl}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                      unoptimized
+                    />
+                  </div>
                 )}
                 <div>
-                  <p className="line-clamp-1 font-medium">{item.title}</p>
-                  <p className="text-muted-foreground mt-1 text-sm">
+                  <p className="line-clamp-1 font-medium text-gray-900 dark:text-white">
+                    {item.title}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-300">
                     {item.analysis}
                   </p>
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Action Items */}
-      {insights?.actionItems && insights.actionItems.length > 0 && (
-        <Card className="border-amber-200 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Target className="h-4 w-4 text-amber-600" />
-              Recommended Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-2">
-              {insights.actionItems.map((action, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-amber-200 text-xs font-medium text-amber-800 dark:bg-amber-800 dark:text-amber-200">
-                    {index + 1}
-                  </span>
-                  <span>{action}</span>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -167,36 +179,44 @@ interface InsightCardProps {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   insights: string[] | undefined;
+  iconBgColor: string;
   iconColor: string;
+  bulletColor: string;
 }
 
 function InsightCard({
   icon: Icon,
   title,
   insights,
+  iconBgColor,
   iconColor,
+  bulletColor,
 }: InsightCardProps) {
   if (!insights?.length) return null;
 
   return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Icon className={`h-4 w-4 ${iconColor}`} />
+    <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-800">
+      <div className="mb-4 flex items-center gap-3">
+        <div className={`rounded-lg p-2 ${iconBgColor}`}>
+          <Icon className={`h-5 w-5 ${iconColor}`} />
+        </div>
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white">
           {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <ul className="space-y-2">
-          {insights.map((insight, index) => (
-            <li key={index} className="flex items-start gap-2 text-sm">
-              <span className="text-muted-foreground">•</span>
-              <span>{insight}</span>
-            </li>
-          ))}
-        </ul>
-      </CardContent>
-    </Card>
+        </h3>
+      </div>
+      <ul className="space-y-4">
+        {insights.map((insight, index) => (
+          <li key={index} className="flex items-start gap-3">
+            <span
+              className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${bulletColor}`}
+            />
+            <p className="text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+              {insight}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

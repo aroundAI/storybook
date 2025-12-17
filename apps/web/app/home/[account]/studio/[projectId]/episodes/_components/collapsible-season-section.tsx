@@ -42,35 +42,31 @@ export function CollapsibleSeasonSection({
   ).length;
 
   return (
-    <div key={seasonId}>
-      <div className="mb-6">
-        <SeasonHeader
-          seasonNumber={seasonNumber}
-          seasonName={seasonName}
-          totalEpisodes={episodes.length}
-          completedEpisodes={completedEpisodes}
-          inProgressEpisodes={inProgressEpisodes}
-          analytics={analytics}
-          isCollapsed={isCollapsed}
-          onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
-        />
-      </div>
+    <div key={seasonId} className="space-y-3">
+      <SeasonHeader
+        seasonNumber={seasonNumber}
+        seasonName={seasonName}
+        totalEpisodes={episodes.length}
+        completedEpisodes={completedEpisodes}
+        inProgressEpisodes={inProgressEpisodes}
+        analytics={analytics}
+        isCollapsed={isCollapsed}
+        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+      />
 
       {/* Episode list - collapsible */}
       {!isCollapsed && (
-        <div className="animate-in fade-in slide-in-from-top-2 p-6 duration-200">
-          <div className="relative space-y-0">
-            {episodes.map((episode, index) => (
-              <EpisodeListItem
-                key={episode.id}
-                episode={episode}
-                account={account}
-                projectId={projectId}
-                isFirst={index === 0}
-                isLast={index === episodes.length - 1}
-              />
-            ))}
-          </div>
+        <div className="animate-in fade-in slide-in-from-top-2 space-y-3 duration-200">
+          {episodes.map((episode, index) => (
+            <EpisodeListItem
+              key={episode.id}
+              episode={episode}
+              account={account}
+              projectId={projectId}
+              isFirst={index === 0}
+              isLast={index === episodes.length - 1}
+            />
+          ))}
         </div>
       )}
     </div>

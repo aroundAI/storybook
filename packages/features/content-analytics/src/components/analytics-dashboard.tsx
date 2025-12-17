@@ -23,6 +23,8 @@ import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
   getProjectAnalyticsAction,
+  getProjectAudienceDataAction,
+  getProjectDailyMetricsAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
@@ -30,12 +32,13 @@ import type {
   DailyMetric,
 } from '../types';
 import { AIInsights } from './ai-insights';
-import { AudienceAnalytics } from './audience-analytics';
-import { ContentTable } from './content-table';
+import { AudienceGrid } from './audience';
+import { ContentGrid } from './content';
 import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { ExportReports } from './export-reports';
 import { MetricCards } from './metric-cards';
+import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
 import type { Platform } from './platform-filter';
 import { PlatformFilter } from './platform-filter';
@@ -101,6 +104,40 @@ export function AnalyticsDashboard({
     enabled: activeTab === 'content' || activeTab === 'overview',
   });
 
+  // Fetch daily metrics for Performance Over Time chart
+  const { data: dailyMetrics, isLoading: isDailyMetricsLoading } = useQuery({
+    queryKey: [
+      'daily-metrics',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectDailyMetricsAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'overview',
+  });
+
+  // Fetch audience data for Audience tab
+  const { data: audienceData, isLoading: isAudienceLoading } = useQuery({
+    queryKey: [
+      'audience-data',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectAudienceDataAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'audience',
+  });
+
   // Filter data by selected platforms
   // projectData.platformTotals has { platform, views, likes, comments, shares, percentage }
   const filteredPlatformTotals = projectData?.platformTotals?.filter((p) =>
@@ -145,10 +182,42 @@ export function AnalyticsDashboard({
       }
     : null;
 
-  // Daily metrics are not currently available from getProjectAnalytics
-  // This would require additional queries to aggregate daily snapshots
-  // For now, we pass an empty array to the chart
-  const filteredDailyMetrics: DailyMetric[] = [];
+  // Filter daily metrics by selected platforms
+  const filteredDailyMetrics: DailyMetric[] = (dailyMetrics || []).map(
+    (day) => {
+      // Sum metrics for selected platforms only
+      let views = 0;
+      let likes = 0;
+      let comments = 0;
+      let shares = 0;
+      const filteredByPlatform: Record<
+        string,
+        { views: number; likes: number; comments: number; shares: number }
+      > = {};
+
+      if (day.byPlatform) {
+        for (const platform of selectedPlatforms) {
+          const platformData = day.byPlatform[platform];
+          if (platformData) {
+            views += platformData.views;
+            likes += platformData.likes;
+            comments += platformData.comments;
+            shares += platformData.shares;
+            filteredByPlatform[platform] = platformData;
+          }
+        }
+      }
+
+      return {
+        date: day.date,
+        views,
+        likes,
+        comments,
+        shares,
+        byPlatform: filteredByPlatform,
+      };
+    },
+  );
 
   return (
     <div className="space-y-6">
@@ -190,13 +259,23 @@ export function AnalyticsDashboard({
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
+          {/* New Overview Grid with Masonry Layout */}
+          <OverviewGrid
+            analytics={aggregateAnalytics}
+            audience={audienceData ?? undefined}
+            contentList={contentList}
+            isLoading={isLoading || isContentLoading}
+            onViewAllContent={() => setActiveTab('content')}
+            onViewAIReport={() => setActiveTab('insights')}
+          />
+
           {/* Performance Chart */}
           <Card>
             <CardHeader>
               <CardTitle>Performance Over Time</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {isLoading || isDailyMetricsLoading ? (
                 <Skeleton className="h-[350px] w-full" />
               ) : (
                 <PerformanceChart
@@ -207,39 +286,30 @@ export function AnalyticsDashboard({
             </CardContent>
           </Card>
 
-          {/* Platform Breakdown */}
+          {/* Platform Breakdown (legacy - kept for detailed view) */}
           {filteredPlatformTotals && filteredPlatformTotals.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Platform Distribution</CardTitle>
+                <CardTitle>Platform Distribution (Detailed)</CardTitle>
               </CardHeader>
               <CardContent>
                 <PlatformBreakdownCard data={filteredPlatformTotals} />
               </CardContent>
             </Card>
           )}
-
-          {/* Top Performing Content */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Top Performing Content</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ContentTable
-                data={contentList}
-                isLoading={isContentLoading}
-                limit={5}
-              />
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="content" className="mt-6">
-          <ContentTable data={contentList} isLoading={isContentLoading} />
+          {/* New Content Grid with Card Layout */}
+          <ContentGrid data={contentList} isLoading={isContentLoading} />
         </TabsContent>
 
         <TabsContent value="audience" className="mt-6">
-          <AudienceAnalytics data={undefined} isLoading={isLoading} />
+          {/* New Audience Grid with Masonry Layout */}
+          <AudienceGrid
+            data={audienceData ?? undefined}
+            isLoading={isAudienceLoading}
+          />
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">

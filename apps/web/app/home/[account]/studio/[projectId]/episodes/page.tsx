@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Film } from 'lucide-react';
 
 import { getSeasonAnalytics } from '@kit/content-analytics/server';
 import type {
@@ -14,7 +14,6 @@ import type {
   StoryData,
 } from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { PageBody, PageHeader } from '@kit/ui/page';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
 
@@ -142,30 +141,34 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
 
   return (
     <>
-      {/* Back Link */}
-      <div className="px-6 pt-6">
-        <Link
-          href={`/home/${account}/studio/${projectId}`}
-          className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm transition-colors"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Project
-        </Link>
-      </div>
-
-      <PageHeader
-        title="Episodes"
-        description="Stories, screenplays, and shot lists for your video content"
-      >
-        <div className="flex gap-2">
-          <SeasonGeneratorDialog projectId={projectId} />
-          <CreateEpisodeDialog projectId={projectId} account={account} />
+      {/* Compact Header */}
+      <header className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-2">
+          <Link
+            href={`/home/${account}/studio/${projectId}`}
+            className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Project
+          </Link>
         </div>
-      </PageHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Film className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              Episodes
+            </h1>
+          </div>
+          <div className="flex gap-2">
+            <SeasonGeneratorDialog projectId={projectId} />
+            <CreateEpisodeDialog projectId={projectId} account={account} />
+          </div>
+        </div>
+      </header>
 
-      <PageBody>
+      <div className="flex-1 overflow-y-auto">
         {episodes && episodes.length > 0 ? (
-          <div className="space-y-10">
+          <div className="space-y-6 p-6">
             {/* Render episodes grouped by season */}
             {hasSeasons ? (
               <>
@@ -233,7 +236,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         ) : (
           <EpisodesZeroState projectId={projectId} account={account} />
         )}
-      </PageBody>
+      </div>
     </>
   );
 }

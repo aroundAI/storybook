@@ -583,7 +583,9 @@ export const generateRevenueReportAction = enhanceAction(
         end_date: endDate,
         summary_data: JSON.parse(JSON.stringify(summary)) as Json,
         top_performers: JSON.parse(JSON.stringify(topPerformers)) as Json,
-        platform_breakdown: JSON.parse(JSON.stringify(platformBreakdown)) as Json,
+        platform_breakdown: JSON.parse(
+          JSON.stringify(platformBreakdown),
+        ) as Json,
         file_format: format,
       })
       .select()

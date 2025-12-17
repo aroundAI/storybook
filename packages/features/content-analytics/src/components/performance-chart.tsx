@@ -104,7 +104,46 @@ export function PerformanceChart({
     if (chartType === 'area' || chartType === 'stacked') {
       return (
         <AreaChart {...commonProps}>
-          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <defs>
+            <linearGradient id="fillAggregate" x1="0" y1="0" x2="0" y2="1">
+              <stop
+                offset="5%"
+                stopColor={PLATFORM_COLORS.aggregate}
+                stopOpacity={0.8}
+              />
+              <stop
+                offset="95%"
+                stopColor={PLATFORM_COLORS.aggregate}
+                stopOpacity={0.1}
+              />
+            </linearGradient>
+            {platforms.map((platform) => (
+              <linearGradient
+                key={platform}
+                id={`fill-${platform}`}
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
+                <stop
+                  offset="5%"
+                  stopColor={
+                    PLATFORM_COLORS[platform] || PLATFORM_COLORS.aggregate
+                  }
+                  stopOpacity={0.8}
+                />
+                <stop
+                  offset="95%"
+                  stopColor={
+                    PLATFORM_COLORS[platform] || PLATFORM_COLORS.aggregate
+                  }
+                  stopOpacity={0.1}
+                />
+              </linearGradient>
+            ))}
+          </defs>
+          <CartesianGrid vertical={false} className="stroke-muted" />
           <XAxis
             dataKey="date"
             tickFormatter={(date: string) =>
@@ -120,22 +159,22 @@ export function PerformanceChart({
             platforms.map((platform) => (
               <Area
                 key={platform}
-                type="monotone"
+                type="natural"
                 dataKey={platform}
                 stackId={chartType === 'stacked' ? '1' : undefined}
                 stroke={PLATFORM_COLORS[platform] || PLATFORM_COLORS.aggregate}
-                fill={PLATFORM_COLORS[platform] || PLATFORM_COLORS.aggregate}
-                fillOpacity={0.3}
+                fill={`url(#fill-${platform})`}
+                fillOpacity={0.4}
                 name={platform.charAt(0).toUpperCase() + platform.slice(1)}
               />
             ))
           ) : (
             <Area
-              type="monotone"
+              type="natural"
               dataKey="value"
               stroke={PLATFORM_COLORS.aggregate}
-              fill={PLATFORM_COLORS.aggregate}
-              fillOpacity={0.3}
+              fill="url(#fillAggregate)"
+              fillOpacity={0.4}
               name={METRIC_LABELS[selectedMetric]}
             />
           )}

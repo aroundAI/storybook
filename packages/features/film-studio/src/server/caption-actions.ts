@@ -94,7 +94,7 @@ export const generateCaptionsAction = enhanceAction(
     logger.info(ctx, 'Starting caption generation');
 
     const client = getSupabaseServerClient();
-    
+
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
@@ -265,8 +265,8 @@ export const generateCaptionsAction = enhanceAction(
 
       // Insert all segments
       if (segments.length > 0) {
-        const { error: segmentError } = await captionSegmentTable(client)
-          .insert(segments);
+        const { error: segmentError } =
+          await captionSegmentTable(client).insert(segments);
 
         if (segmentError) {
           logger.error(
@@ -344,7 +344,7 @@ export const translateCaptionsAction = enhanceAction(
     logger.info(ctx, 'Starting caption translation');
 
     const client = getSupabaseServerClient();
-    
+
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
@@ -353,16 +353,17 @@ export const translateCaptionsAction = enhanceAction(
     }
 
     // Fetch source caption with segments
-    const { data: sourceCaption, error: sourceCaptionError } = await captionTable(client)
-      .select(
-        `
+    const { data: sourceCaption, error: sourceCaptionError } =
+      await captionTable(client)
+        .select(
+          `
         *,
         caption_segments(*),
         episodes!inner(id, project_id, projects(account_id))
       `,
-      )
-      .eq('id', data.sourceCaptionId)
-      .single();
+        )
+        .eq('id', data.sourceCaptionId)
+        .single();
 
     if (sourceCaptionError || !sourceCaption) {
       logger.error(
@@ -431,7 +432,9 @@ export const translateCaptionsAction = enhanceAction(
 
     try {
       // Create new caption record
-      const { data: newCaption, error: captionError } = await captionTable(client)
+      const { data: newCaption, error: captionError } = await captionTable(
+        client,
+      )
         .insert({
           episode_id: typedSourceCaption.episode_id,
           language: data.targetLanguage,
@@ -510,8 +513,8 @@ Do not add any explanations or notes - only output the translations.`,
 
       // Insert translated segments
       if (translatedSegments.length > 0) {
-        const { error: segmentError } = await captionSegmentTable(client)
-          .insert(translatedSegments);
+        const { error: segmentError } =
+          await captionSegmentTable(client).insert(translatedSegments);
 
         if (segmentError) {
           throw new Error('Failed to insert translated segments');
@@ -579,7 +582,7 @@ Do not add any explanations or notes - only output the translations.`,
 export const getCaptionsAction = enhanceAction(
   async (data: GetCaptionsInput) => {
     const client = getSupabaseServerClient();
-    
+
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -644,7 +647,7 @@ export const updateCaptionSegmentAction = enhanceAction(
     const ctx = { name: 'captions.updateSegment', segmentId: data.segmentId };
 
     const client = getSupabaseServerClient();
-    
+
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -690,7 +693,7 @@ export const updateCaptionSegmentAction = enhanceAction(
 export const updateCaptionStyleAction = enhanceAction(
   async (data: UpdateCaptionStyleInput) => {
     const client = getSupabaseServerClient();
-    
+
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -729,7 +732,7 @@ export const updateCaptionStyleAction = enhanceAction(
 export const exportCaptionsAction = enhanceAction(
   async (data: ExportCaptionsInput) => {
     const client = getSupabaseServerClient();
-    
+
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -787,7 +790,7 @@ export const deleteCaptionAction = enhanceAction(
     const ctx = { name: 'captions.delete', captionId: data.captionId };
 
     const client = getSupabaseServerClient();
-    
+
     const { error: authError } = await requireUser(client);
 
     if (authError) {
@@ -820,7 +823,7 @@ export const deleteCaptionAction = enhanceAction(
 export const getAvailableLanguagesAction = enhanceAction(
   async (data: GetAvailableLanguagesInput) => {
     const client = getSupabaseServerClient();
-    
+
     const { error: authError } = await requireUser(client);
 
     if (authError) {

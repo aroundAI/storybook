@@ -48,6 +48,14 @@ export interface YouTubeAnalyticsResult {
   demographics?: DemographicData;
   trafficSources?: TrafficSourceData[];
   geography?: GeographyData[];
+  /** Device type breakdown (mobile, desktop, tablet, TV, etc.) */
+  deviceBreakdown?: DeviceBreakdownData[];
+  /** Operating system breakdown (iOS, Android, Windows, etc.) */
+  operatingSystem?: OperatingSystemData[];
+  /** City-level geography breakdown */
+  cityGeography?: CityGeographyData[];
+  /** Views from subscribed vs non-subscribed viewers */
+  subscribedStatus?: SubscribedStatusData;
 }
 
 /**
@@ -64,7 +72,9 @@ export interface YouTubeTotals {
   averageViewPercentage: number;
   subscribersGained: number;
   subscribersLost: number;
-  estimatedRevenue: number; // cents
+  estimatedRevenue: number; // cents (total)
+  estimatedAdRevenue: number; // cents (ad revenue portion)
+  estimatedRedPartnerRevenue: number; // cents (YouTube Premium portion)
 }
 
 /**
@@ -165,4 +175,43 @@ export interface YouTubeVideoInfo {
   thumbnailUrl: string;
   publishedAt: string;
   duration: number; // seconds
+}
+
+/**
+ * Device type breakdown data
+ */
+export interface DeviceBreakdownData {
+  deviceType:
+    | 'DESKTOP'
+    | 'MOBILE'
+    | 'TABLET'
+    | 'TV'
+    | 'GAME_CONSOLE'
+    | 'UNKNOWN_PLATFORM';
+  views: number;
+  watchTimeMinutes: number;
+}
+
+/**
+ * Operating system breakdown data
+ */
+export interface OperatingSystemData {
+  operatingSystem: string;
+  views: number;
+}
+
+/**
+ * City-level geography data
+ */
+export interface CityGeographyData {
+  city: string;
+  views: number;
+}
+
+/**
+ * Subscribed status breakdown
+ */
+export interface SubscribedStatusData {
+  subscribed: number;
+  notSubscribed: number;
 }
