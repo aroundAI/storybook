@@ -1,3 +1,5 @@
+import type { ContentStyle } from './duration-scaling';
+
 /**
  * Story Studio tab identifiers
  */
@@ -93,9 +95,19 @@ export interface EpisodeMetadata {
 }
 
 /**
+ * Character arc information from story generation
+ */
+export interface StoryCharacterArc {
+  name: string;
+  role: 'protagonist' | 'antagonist' | 'supporting' | string;
+  arc: string;
+}
+
+/**
  * Story generation output stored in story_data JSONB
  */
 export interface StoryData {
+  // Core story content
   title?: string;
   logline?: string;
   premise?: string;
@@ -107,6 +119,24 @@ export interface StoryData {
     provider: string;
     costCents: number;
   };
+
+  // LLM output fields (stored but were missing from interface)
+  actBreakdown?: {
+    act1: string;
+    act2: string;
+    act3: string;
+  };
+  characters?: StoryCharacterArc[];
+  themes?: string[];
+  tone?: string;
+  estimatedSceneCount?: number;
+
+  // Generation settings (NEW: persisted for downstream steps)
+  targetDuration?: number; // Duration in seconds used for generation
+  contentStyle?: ContentStyle; // Affects dialogue density
+  genre?: string; // Genre used for generation
+  targetAudience?: string; // Target audience used
+  videoStyle?: string; // Visual style used
 }
 
 /**

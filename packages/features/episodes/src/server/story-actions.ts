@@ -333,6 +333,7 @@ export const generateFullStoryAction = enhanceAction(
 
     // Prepare story_data for episode (matching StoryData interface)
     const storyData = {
+      // Core content from input and LLM output
       premise: data.logline,
       fullStory: result.data.story.fullText,
       generatedAt,
@@ -347,6 +348,13 @@ export const generateFullStoryAction = enhanceAction(
       themes: result.data.story.themes,
       tone: result.data.story.tone,
       estimatedSceneCount: result.data.story.estimatedSceneCount,
+
+      // Persist generation settings for downstream steps (screenplay, shot-list)
+      targetDuration: data.targetDuration,
+      contentStyle: contentStyle,
+      genre: episodeContext.genre,
+      targetAudience: episodeContext.targetAudience,
+      videoStyle: episodeContext.visualStyle,
     };
 
     // Update episode with story data and change status to 'story'
@@ -356,6 +364,7 @@ export const generateFullStoryAction = enhanceAction(
       .update({
         story_data: storyData as Json,
         status: 'story',
+        target_duration_seconds: data.targetDuration, // Persist for screenplay/shot-list
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)

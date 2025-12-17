@@ -140,7 +140,7 @@ export const convertToScreenplayAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(id, account_id)')
+      .select('*, project:projects(id, account_id, metadata)')
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -180,20 +180,31 @@ export const convertToScreenplayAction = enhanceAction(
     const characterNames = episodeContext.characters.map((c) => c.name);
     const locationNames = episodeContext.locations.map((l) => l.name);
 
-    // Get target duration from episode or project default
-    // Episode can have its own target_duration_seconds, otherwise use project default
+    // Get target duration - cascade through sources:
+    // 1. Episode column (set during story generation)
+    // 2. story_data (fallback from story generation)
+    // 3. Project default
+    // 4. Hardcoded default (5 minutes)
     const projectMetadata = episode.project?.metadata as {
       defaultEpisodeDuration?: number;
       contentStyle?: ContentStyle;
     } | null;
     const targetDuration =
       episode.target_duration_seconds ??
+      storyData?.targetDuration ??
       projectMetadata?.defaultEpisodeDuration ??
       300; // Default to 5 minutes
 
-    // Get content style from data, project, or default to dialogue-heavy
+    // Get content style - cascade through sources:
+    // 1. Action parameter (explicit override)
+    // 2. story_data (from story generation)
+    // 3. Project default
+    // 4. Hardcoded default (dialogue-heavy)
     const contentStyle: ContentStyle =
-      data.contentStyle ?? projectMetadata?.contentStyle ?? 'dialogue-heavy';
+      data.contentStyle ??
+      storyData?.contentStyle ??
+      projectMetadata?.contentStyle ??
+      'dialogue-heavy';
 
     // Calculate content scaling based on target duration
     const scaling = calculateContentScaling({
