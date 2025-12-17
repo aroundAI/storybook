@@ -24,7 +24,7 @@ export function CommentsCard({
       title="Comments"
       icon={MessageCircle}
       description="Total comments and replies"
-      footer="High community interaction"
+      footer="Aggregated across all platforms"
     >
       <div className="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
         {formatNumber(comments)}

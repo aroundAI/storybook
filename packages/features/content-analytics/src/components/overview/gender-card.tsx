@@ -22,7 +22,7 @@ export function GenderCard({ genders }: GenderCardProps) {
       title="Gender"
       icon={Users}
       description="Viewer gender distribution"
-      footer="Male skewing audience"
+      footer="Based on platform demographics data"
     >
       <div className="flex flex-1 flex-col justify-center gap-4">
         {/* Male */}

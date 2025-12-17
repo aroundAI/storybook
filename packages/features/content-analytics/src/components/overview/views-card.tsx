@@ -26,9 +26,10 @@ export function ViewsCard({
   sparklineData,
   sparklineDataPoints,
 }: ViewsCardProps) {
-  // Use labeled data if provided, otherwise fall back to plain array or mock data
+  // Use labeled data if provided, otherwise fall back to plain array
+  // No fake mock data - only show real data or nothing
   const dataPoints = sparklineDataPoints;
-  const data = sparklineData || [40, 30, 45, 30, 50, 20, 40];
+  const data = sparklineData;
 
   return (
     <AnalyticsCard
@@ -48,18 +49,20 @@ export function ViewsCard({
           </span>
         )}
       </div>
-      <div className="relative mt-4 h-16 w-full">
-        <SparklineArea
-          data={dataPoints ? undefined : data}
-          dataPoints={dataPoints}
-          width={200}
-          height={60}
-          strokeColor="var(--analytics-green)"
-          fillColor="var(--analytics-green)"
-          tooltipLabel="Views"
-          className="h-full w-full"
-        />
-      </div>
+      {(dataPoints || data) && (
+        <div className="relative mt-4 h-16 w-full">
+          <SparklineArea
+            data={dataPoints ? undefined : data}
+            dataPoints={dataPoints}
+            width={200}
+            height={60}
+            strokeColor="var(--analytics-green)"
+            fillColor="var(--analytics-green)"
+            tooltipLabel="Views"
+            className="h-full w-full"
+          />
+        </div>
+      )}
     </AnalyticsCard>
   );
 }

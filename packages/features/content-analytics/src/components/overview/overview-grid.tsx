@@ -100,25 +100,21 @@ export function OverviewGrid({
       engagementRate: item.engagementRate,
     })) || [];
 
-  // Get regions from audience data
+  // Get regions from audience data - no fake fallback data
   const regions = audience?.geography
     ? Object.entries(audience.geography)
         .map(([country, percentage]) => ({ country, percentage }))
         .sort((a, b) => b.percentage - a.percentage)
-    : [
-        { country: 'United States', percentage: 42 },
-        { country: 'United Kingdom', percentage: 12.5 },
-        { country: 'Canada', percentage: 8 },
-      ];
+    : [];
 
-  // Get gender from audience data
+  // Get gender from audience data - no fake fallback data
   const genders = audience?.demographics?.genders
     ? {
-        male: audience.demographics.genders['male'] || 58,
-        female: audience.demographics.genders['female'] || 38.5,
+        male: audience.demographics.genders['male'] || 0,
+        female: audience.demographics.genders['female'] || 0,
         other: audience.demographics.genders['other'],
       }
-    : { male: 58, female: 38.5 };
+    : undefined;
 
   // Find top commented content
   const topCommented = contentList?.reduce(
@@ -126,39 +122,42 @@ export function OverviewGrid({
     contentList[0],
   );
 
-  // Build AI insight summary HTML
+  // Build AI insight summary HTML - only show real data
+  const hasData = (totals?.views || 0) > 0;
   const aiSummary = insights?.summary
     ? insights.summary
-    : `Content is performing exceptionally well with over <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatNumber(totals?.views || 0)}</span> total views. The average engagement rate of <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatPercent(analytics?.avgEngagementRate || 0)}</span> indicates highly resonant content.`;
+    : hasData
+      ? `Your content has <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatNumber(totals?.views || 0)}</span> total views with an average engagement rate of <span class="font-extrabold text-indigo-900 dark:text-indigo-100">${formatPercent(analytics?.avgEngagementRate || 0)}</span>.`
+      : 'No analytics data available yet. Publish content to social platforms and connect your accounts to see insights.';
 
-  const aiInsights = [
-    {
-      type: 'success' as const,
-      text: `TikTok drives ${platforms.find((p) => p.platform === 'tiktok')?.percentage.toFixed(0) || 74}% of all views.`,
-    },
-    {
-      type: 'opportunity' as const,
-      text: 'Opportunity to cross-post to YT Shorts.',
-    },
-  ];
+  // Build AI insights from actual platform data - no hardcoded fallbacks
+  const topPlatform = platforms.length > 0
+    ? platforms.reduce((max, p) => (p.percentage > max.percentage ? p : max), platforms[0]!)
+    : null;
+
+  const aiInsights = hasData && topPlatform
+    ? [
+        {
+          type: 'success' as const,
+          text: `${topPlatform.platform.charAt(0).toUpperCase() + topPlatform.platform.slice(1)} drives ${topPlatform.percentage.toFixed(0)}% of all views.`,
+        },
+      ]
+    : [];
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {/* Row 1: Views, Likes, Platform Split, Comments */}
       <ViewsCard
         views={totals?.views || 0}
-        change={100}
         sparklineDataPoints={viewsSparklineData}
       />
       <LikesCard
         likes={totals?.likes || 0}
-        change={100}
         barDataPoints={likesSparklineData}
       />
       <PlatformSplitCard platforms={platforms} />
       <CommentsCard
         comments={totals?.comments || 0}
-        change={100}
         topCommentedTitle={topCommented?.publishTitle}
       />
 
@@ -178,8 +177,8 @@ export function OverviewGrid({
       />
       <TopRegionsCard regions={regions} />
 
-      {/* Row 4: Gender */}
-      <GenderCard genders={genders} />
+      {/* Row 4: Gender - only show if we have gender data */}
+      {genders && <GenderCard genders={genders} />}
     </div>
   );
 }

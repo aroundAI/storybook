@@ -23,16 +23,17 @@ export function LikesCard({
   barData,
   barDataPoints,
 }: LikesCardProps) {
-  // Use labeled data if provided, otherwise fall back to plain array or mock data
+  // Use labeled data if provided, otherwise fall back to plain array
+  // No fake mock data - only show real data or nothing
   const dataPoints = barDataPoints;
-  const data = barData || [30, 60, 45, 75, 100];
+  const data = barData;
 
   return (
     <AnalyticsCard
       title="Total Likes"
       icon={Heart}
       description="Total likes, hearts, and reactions"
-      footer="Strong engagement growth this week"
+      footer="Aggregated across all platforms"
     >
       <div className="flex items-baseline gap-2">
         <span className="text-5xl font-extrabold tracking-tight text-gray-900 dark:text-white">
@@ -45,14 +46,16 @@ export function LikesCard({
           </span>
         )}
       </div>
-      <div className="mt-4">
-        <MiniBarChart
-          data={dataPoints ? undefined : data}
-          dataPoints={dataPoints}
-          color="var(--analytics-blue)"
-          tooltipLabel="Likes"
-        />
-      </div>
+      {(dataPoints || data) && (
+        <div className="mt-4">
+          <MiniBarChart
+            data={dataPoints ? undefined : data}
+            dataPoints={dataPoints}
+            color="var(--analytics-blue)"
+            tooltipLabel="Likes"
+          />
+        </div>
+      )}
     </AnalyticsCard>
   );
 }
