@@ -4,6 +4,7 @@
 - **Phase:** 6 - Edit Suite
 - **Priority:** P1 (Post-MVP Enhancement)
 - **Effort:** L (1-3 days)
+- **Status:** ✅ DONE
 - **Dependencies:** FILM-601 (Timeline Editor), FILM-503 (Batch Dialogue Action)
 - **Blocks:** None
 
