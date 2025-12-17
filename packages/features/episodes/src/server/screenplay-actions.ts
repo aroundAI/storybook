@@ -174,7 +174,9 @@ export const convertToScreenplayAction = enhanceAction(
     }
 
     // Build context for character/location names (Phase 4)
-    const { buildEpisodeContext } = await import('./context-builder');
+    const { buildEpisodeContext, formatCharactersForPrompt } = await import(
+      './context-builder'
+    );
     const episodeContext = await buildEpisodeContext(data.episodeId);
 
     const characterNames = episodeContext.characters.map((c) => c.name);
@@ -252,7 +254,10 @@ export const convertToScreenplayAction = enhanceAction(
         total_dialogue_lines_min: scaling.screenplay.totalDialogueLinesMin,
         total_dialogue_lines_max: scaling.screenplay.totalDialogueLinesMax,
 
-        // Character and location names
+        // Full character context (for personality-consistent dialogue)
+        characters: formatCharactersForPrompt(episodeContext.characters),
+
+        // Character and location names (for quick reference)
         character_names:
           characterNames.length > 0 ? characterNames.join(', ') : '',
         location_names:
