@@ -355,6 +355,11 @@ export const generateFullStoryAction = enhanceAction(
       genre: episodeContext.genre,
       targetAudience: episodeContext.targetAudience,
       videoStyle: episodeContext.visualStyle,
+
+      // SCORE Framework fields (for episode continuity)
+      episodeSummary: result.data.story.episodeSummary,
+      sentimentScore: result.data.story.sentimentScore,
+      keyEvents: result.data.story.keyEvents,
     };
 
     // Update episode with story data and change status to 'story'

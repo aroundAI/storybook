@@ -140,8 +140,11 @@ describe('Story Generation Prompt Templates', () => {
       expect(screenplayConversion.variables.story.required).toBe(true);
     });
 
-    it('should have optional target_scene_count and style variables', () => {
-      expect(screenplayConversion.variables.target_scene_count?.required).toBe(
+    it('should have optional scene_count and style variables', () => {
+      expect(screenplayConversion.variables.scene_count_min?.required).toBe(
+        false,
+      );
+      expect(screenplayConversion.variables.scene_count_max?.required).toBe(
         false,
       );
       expect(screenplayConversion.variables.style?.required).toBe(false);

@@ -137,6 +137,11 @@ export interface StoryData {
   genre?: string; // Genre used for generation
   targetAudience?: string; // Target audience used
   videoStyle?: string; // Visual style used
+
+  // SCORE Framework fields (for episode continuity)
+  episodeSummary?: string; // 2-3 sentence plot summary
+  sentimentScore?: number; // 0-1 emotional tone
+  keyEvents?: string[]; // Major plot points affecting future
 }
 
 /**

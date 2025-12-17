@@ -81,6 +81,10 @@ export const StorySchema = z.object({
   themes: z.array(z.string()),
   tone: z.string(),
   estimatedSceneCount: z.number(),
+  // SCORE Framework fields (for episode continuity)
+  episodeSummary: z.string(),
+  sentimentScore: z.number().min(0).max(1),
+  keyEvents: z.array(z.string()),
 });
 
 export type Story = z.infer<typeof StorySchema>;
