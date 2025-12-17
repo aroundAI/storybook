@@ -131,18 +131,23 @@ export function OverviewGrid({
       : 'No analytics data available yet. Publish content to social platforms and connect your accounts to see insights.';
 
   // Build AI insights from actual platform data - no hardcoded fallbacks
-  const topPlatform = platforms.length > 0
-    ? platforms.reduce((max, p) => (p.percentage > max.percentage ? p : max), platforms[0]!)
-    : null;
+  const topPlatform =
+    platforms.length > 0
+      ? platforms.reduce(
+          (max, p) => (p.percentage > max.percentage ? p : max),
+          platforms[0]!,
+        )
+      : null;
 
-  const aiInsights = hasData && topPlatform
-    ? [
-        {
-          type: 'success' as const,
-          text: `${topPlatform.platform.charAt(0).toUpperCase() + topPlatform.platform.slice(1)} drives ${topPlatform.percentage.toFixed(0)}% of all views.`,
-        },
-      ]
-    : [];
+  const aiInsights =
+    hasData && topPlatform
+      ? [
+          {
+            type: 'success' as const,
+            text: `${topPlatform.platform.charAt(0).toUpperCase() + topPlatform.platform.slice(1)} drives ${topPlatform.percentage.toFixed(0)}% of all views.`,
+          },
+        ]
+      : [];
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

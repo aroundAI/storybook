@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from 'react';
 
-import { format } from 'date-fns';
 import Image from 'next/image';
+
+import { format } from 'date-fns';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';

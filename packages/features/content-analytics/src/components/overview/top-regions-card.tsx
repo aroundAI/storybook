@@ -70,7 +70,9 @@ export function TopRegionsCard({ regions }: TopRegionsCardProps) {
               className="flex items-center justify-between text-sm"
             >
               <div className="flex items-center gap-2">
-                <span className="text-lg">{getCountryFlag(region.country)}</span>
+                <span className="text-lg">
+                  {getCountryFlag(region.country)}
+                </span>
                 <span className="font-medium text-gray-900 dark:text-white">
                   {region.country}
                 </span>
