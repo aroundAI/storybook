@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import { format } from 'date-fns';
+import Image from 'next/image';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
@@ -192,11 +193,16 @@ export function ContentTable({
               <TableCell>
                 <div className="flex items-center gap-3">
                   {item.thumbnailUrl ? (
-                    <img
-                      src={item.thumbnailUrl}
-                      alt={item.publishTitle}
-                      className="h-10 w-16 rounded object-cover"
-                    />
+                    <div className="relative h-10 w-16 overflow-hidden rounded">
+                      <Image
+                        src={item.thumbnailUrl}
+                        alt={item.publishTitle}
+                        fill
+                        className="object-cover"
+                        sizes="64px"
+                        unoptimized
+                      />
+                    </div>
                   ) : (
                     <div className="bg-muted h-10 w-16 rounded" />
                   )}

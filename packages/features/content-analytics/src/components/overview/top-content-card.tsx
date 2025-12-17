@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { format } from 'date-fns';
 import { Trophy } from 'lucide-react';
 
@@ -60,10 +62,13 @@ export function TopContentCard({ content, onViewAll }: TopContentCardProps) {
             >
               <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded-md bg-gray-200 dark:bg-gray-700">
                 {item.thumbnailUrl ? (
-                  <img
+                  <Image
                     src={item.thumbnailUrl}
                     alt={item.title}
-                    className="h-full w-full object-cover opacity-80"
+                    fill
+                    className="object-cover opacity-80"
+                    sizes="64px"
+                    unoptimized
                   />
                 ) : (
                   <div className="h-full w-full bg-gray-300 dark:bg-gray-600" />

@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { useQuery } from '@tanstack/react-query';
 import {
   CheckCircle,
@@ -145,11 +147,16 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
             {insights.topPerformers.map((item, index) => (
               <div key={index} className="flex gap-4">
                 {item.thumbnailUrl && (
-                  <img
-                    src={item.thumbnailUrl}
-                    alt={item.title}
-                    className="h-14 w-24 flex-shrink-0 rounded object-cover"
-                  />
+                  <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded">
+                    <Image
+                      src={item.thumbnailUrl}
+                      alt={item.title}
+                      fill
+                      className="object-cover"
+                      sizes="96px"
+                      unoptimized
+                    />
+                  </div>
                 )}
                 <div>
                   <p className="line-clamp-1 font-medium text-gray-900 dark:text-white">

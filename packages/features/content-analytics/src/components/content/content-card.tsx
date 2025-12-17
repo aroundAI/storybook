@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import { format } from 'date-fns';
 
 import { formatNumber, formatPercent } from '../../lib/format';
@@ -78,10 +80,13 @@ export function ContentCard({
       {/* Thumbnail */}
       <div className="relative aspect-video bg-gray-200 dark:bg-gray-800">
         {thumbnailUrl ? (
-          <img
+          <Image
             src={thumbnailUrl}
             alt={title}
-            className="h-full w-full object-cover"
+            fill
+            className="object-cover"
+            sizes="(max-width: 768px) 100vw, 400px"
+            unoptimized
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">

@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 interface TagCloudProps {
   /** Array of tags to display */
   tags: string[];
@@ -97,11 +99,16 @@ export function TagCloudWithAffinity({
           </h4>
           <div className="flex items-center gap-3">
             {affinity.thumbnailUrl ? (
-              <img
-                src={affinity.thumbnailUrl}
-                alt={affinity.label}
-                className="h-12 w-12 rounded object-cover"
-              />
+              <div className="relative h-12 w-12 overflow-hidden rounded">
+                <Image
+                  src={affinity.thumbnailUrl}
+                  alt={affinity.label}
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                  unoptimized
+                />
+              </div>
             ) : (
               <div className="h-12 w-12 rounded bg-gray-200 dark:bg-gray-700" />
             )}
