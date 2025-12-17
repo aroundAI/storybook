@@ -54,15 +54,12 @@ export function OverviewGrid({
   onViewAllContent,
   onViewAIReport,
 }: OverviewGridProps) {
-  if (isLoading) {
-    return <OverviewGridSkeleton />;
-  }
-
   const totals = analytics?.totals;
   const platformMetrics = analytics?.platformMetrics;
   const dailyData = analytics?.dailyData;
 
   // Transform daily data into labeled sparkline data points
+  // Note: Hooks must be called before any early returns
   const viewsSparklineData = useMemo(() => {
     if (!dailyData || dailyData.length === 0) return undefined;
     return dailyData.map((day) => ({
@@ -78,6 +75,10 @@ export function OverviewGrid({
       label: formatDate(new Date(day.date), 'MMM d'),
     }));
   }, [dailyData]);
+
+  if (isLoading) {
+    return <OverviewGridSkeleton />;
+  }
 
   // Calculate platform percentages for Platform Split card
   const totalViews = platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;

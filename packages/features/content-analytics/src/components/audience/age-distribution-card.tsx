@@ -2,7 +2,6 @@
 
 import { Users } from 'lucide-react';
 
-import { HorizontalProgress } from '../charts/horizontal-progress';
 import { AudienceCard } from './audience-card';
 
 interface AgeGroup {

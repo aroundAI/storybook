@@ -57,6 +57,12 @@ export function SparklineArea({
 }: SparklineAreaProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
+  // Generate a stable gradient ID
+  const gradientId = useMemo(
+    () => `sparkline-gradient-${Math.random().toString(36).substr(2, 9)}`,
+    [],
+  );
+
   // Normalize data to dataPoints format
   const normalizedData = useMemo(() => {
     if (dataPoints && dataPoints.length > 0) {
@@ -105,8 +111,6 @@ export function SparklineArea({
   const lastPoint = points[points.length - 1]!;
   const firstPoint = points[0]!;
   const areaPath = `${smoothPath} L ${lastPoint.x},${height} L ${firstPoint.x},${height} Z`;
-
-  const gradientId = `sparkline-gradient-${useMemo(() => Math.random().toString(36).substr(2, 9), [])}`;
 
   // If we have labeled data, render with tooltips
   if (hasLabels) {
