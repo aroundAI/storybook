@@ -225,13 +225,23 @@ export {
 // ============================================================================
 
 /**
+ * Content style affects dialogue density and pacing
+ */
+export const ContentStyleSchema = z.enum([
+  'dialogue-heavy',
+  'action-heavy',
+  'balanced',
+]);
+
+/**
  * Schema for converting episode story to screenplay format
  * Used by convertToScreenplayAction
  */
 export const ConvertToScreenplaySchema = z.object({
   episodeId: z.string().uuid(),
-  targetSceneCount: z.number().int().min(3).max(15).optional(),
+  targetSceneCount: z.number().int().min(2).max(200).optional(), // Extended for long-form content
   dialogueStyle: z.enum(['natural', 'stylized', 'minimal']).optional(),
+  contentStyle: ContentStyleSchema.optional(), // Affects dialogue density
 });
 
 export type ConvertToScreenplayInput = z.infer<

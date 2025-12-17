@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 
+import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
 import {
   canPerformProjectAction,
   getAvailableProjectMembers,
@@ -26,6 +27,7 @@ import { AddProjectMemberDialog } from '../../../_components/add-project-member-
 import { DeleteProjectDialog } from '../../../_components/delete-project-dialog';
 import { EditProjectDialog } from '../../../_components/edit-project-dialog';
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
+import { StudioSettingsForm } from './_components/studio-settings-form';
 
 interface ProjectSettingsPageProps {
   params: Promise<{ account: string; projectId: string }>;
@@ -175,6 +177,37 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Studio Content Generation Settings */}
+          <If condition={canEdit}>
+            <StudioSettingsForm
+              projectId={project.id}
+              currentSettings={{
+                targetAudience: (project.metadata as Record<string, unknown>)
+                  ?.targetAudience as string | undefined,
+                genre: (project.metadata as Record<string, unknown>)?.genre as
+                  | Genre
+                  | undefined,
+                videoStyle: (project.metadata as Record<string, unknown>)
+                  ?.videoStyle as VideoStyle | undefined,
+                contentStyle: (project.metadata as Record<string, unknown>)
+                  ?.contentStyle as ContentStyle | undefined,
+                defaultEpisodeDuration: (
+                  project.metadata as Record<string, unknown>
+                )?.defaultEpisodeDuration as number | undefined,
+                contentRating: (project.metadata as Record<string, unknown>)
+                  ?.contentRating as
+                  | 'G'
+                  | 'PG'
+                  | 'PG-13'
+                  | 'R'
+                  | 'NR'
+                  | undefined,
+                language: (project.metadata as Record<string, unknown>)
+                  ?.language as string | undefined,
+              }}
+            />
+          </If>
 
           {/* Project Members Card */}
           <Card>

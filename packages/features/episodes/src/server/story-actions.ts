@@ -17,6 +17,11 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+  type ContentStyle,
+  calculateContentScaling,
+  formatDuration,
+} from '../lib/duration-scaling';
+import {
   GenerateFullStorySchema,
   GenerateStoryIdeasSchema,
   type GenerationMetadata,
@@ -256,12 +261,32 @@ export const generateFullStoryAction = enhanceAction(
 
     const episodeContext = await buildEpisodeContext(data.episodeId);
 
+    // Calculate content scaling based on target duration
+    const contentStyle: ContentStyle = data.contentStyle ?? 'dialogue-heavy';
+    const scaling = calculateContentScaling({
+      targetDurationSeconds: data.targetDuration,
+      contentStyle,
+      genre: episodeContext.genre,
+    });
+
     // Prepare variables for prompt template
     const variables = {
       title: data.title,
       logline: data.logline,
       premise: episodeContext.premise,
       target_duration: data.targetDuration,
+      duration_description: formatDuration(data.targetDuration),
+
+      // Content scaling - word count
+      word_count_min: scaling.story.wordCountMin,
+      word_count_max: scaling.story.wordCountMax,
+
+      // Content scaling - estimated scene count (for story generation)
+      estimated_scene_count_min: scaling.screenplay.sceneCountMin,
+      estimated_scene_count_max: scaling.screenplay.sceneCountMax,
+
+      // Content style
+      content_style: contentStyle,
 
       // Rich character context
       characters: formatCharactersForPrompt(episodeContext.characters),

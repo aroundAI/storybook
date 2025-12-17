@@ -5,3 +5,4 @@ export * from './status-workflow';
 export * from './continuity-types';
 export * from './continuity-schemas';
 export * from './auto-stitch';
+export * from './duration-scaling';

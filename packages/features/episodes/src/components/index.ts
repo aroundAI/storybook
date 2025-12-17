@@ -15,8 +15,14 @@ export {
 } from './story-studio/story-studio-context';
 
 // Story Ideation (FILM-309)
-export { StoryIdeation } from './story-ideation/story-ideation';
+export {
+  StoryIdeation,
+  type StoryIdeaWithSettings,
+} from './story-ideation/story-ideation';
 export { IdeaCard } from './story-ideation/idea-card';
+
+// Duration Selector
+export { DurationSelector, DurationBadge } from './duration-selector';
 
 // Screenplay Viewer (FILM-310)
 export { ScreenplayViewer } from './screenplay-viewer/screenplay-viewer';
