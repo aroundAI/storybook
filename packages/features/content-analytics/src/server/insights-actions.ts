@@ -4,11 +4,14 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import { createLLMClient } from '@kit/llm';
 import { enhanceAction } from '@kit/next/actions';
+import { executeLLM } from '@kit/prompt-engine/server';
 import { getLogger } from '@kit/shared/logger';
+import { requireUser } from '@kit/supabase/require-user';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import type { AnalyticsTotals, InsightsResult } from '../types';
+import { calculateChanges } from '../lib/insights-utils';
+import type { InsightsResult } from '../types';
 
 /**
  * Zod schemas for analytics validation
@@ -73,60 +76,15 @@ const GenerateInsightsSchema = z.object({
 });
 
 /**
- * Calculate percentage changes between current and previous period
+ * Output schema for executeLLM
  */
-export function calculateChanges(
-  current: AnalyticsTotals,
-  previous?: AnalyticsTotals,
-): Record<string, number> {
-  const changes: Record<string, number> = {};
-
-  if (!previous) {
-    return changes;
-  }
-
-  const keys: (keyof AnalyticsTotals)[] = [
-    'views',
-    'likes',
-    'comments',
-    'shares',
-    'watchTimeSeconds',
-    'subscribersGained',
-    'revenueCents',
-    'contentCount',
-  ];
-
-  for (const key of keys) {
-    const currentVal = current[key] || 0;
-    const previousVal = previous[key] || 0;
-
-    if (previousVal > 0) {
-      changes[key] = ((currentVal - previousVal) / previousVal) * 100;
-    } else {
-      changes[key] = currentVal > 0 ? 100 : 0;
-    }
-  }
-
-  return changes;
-}
-
-/**
- * Safely parse JSON from LLM response
- */
-export function parseInsightsResponse(
-  content: string,
-): Partial<InsightsResult> {
-  try {
-    // Try to extract JSON from markdown code blocks if present
-    const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/);
-    const jsonStr =
-      jsonMatch && jsonMatch[1] ? jsonMatch[1].trim() : content.trim();
-
-    return JSON.parse(jsonStr) as Partial<InsightsResult>;
-  } catch {
-    // If parsing fails, try to extract what we can
-    return {};
-  }
+interface InsightsLLMOutput {
+  performanceSummary: string;
+  contentRecommendations: string[];
+  postingStrategy: string[];
+  audienceInsights: string[];
+  topPerformers: string[];
+  actionItems: string[];
 }
 
 /**
@@ -136,7 +94,19 @@ export function parseInsightsResponse(
  * Results are intended to be cached client-side for 1 hour.
  */
 export const generateInsightsAction = enhanceAction(
-  async function ({ analytics }): Promise<InsightsResult> {
+  async function ({ projectId, analytics }): Promise<InsightsResult> {
+    const logger = await getLogger();
+    const ctx = { name: 'analytics.generateInsights' };
+
+    // Get authenticated user
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized insights generation attempt');
+      throw new Error('Authentication required');
+    }
+
     // Handle empty analytics case
     if (!analytics || !analytics.totals) {
       return {
@@ -153,8 +123,6 @@ export const generateInsightsAction = enhanceAction(
       };
     }
 
-    const llmClient = createLLMClient();
-
     // Prepare analytics summary for LLM (only aggregate data, no PII)
     const analyticsSummary = {
       totals: analytics.totals,
@@ -169,72 +137,32 @@ export const generateInsightsAction = enhanceAction(
       avgEngagementRate: analytics.avgEngagementRate,
     };
 
-    const prompt = `You are an expert social media analytics consultant. Analyze the following content performance data and provide actionable insights.
-
-## Analytics Data
-${JSON.stringify(analyticsSummary, null, 2)}
-
-## Your Task
-Provide insights in the following JSON format:
-{
-  "summary": "A 2-3 sentence overview of overall performance",
-  "trends": ["Array of 3-4 key trend observations"],
-  "contentRecommendations": ["Array of 3-4 specific content recommendations"],
-  "postingStrategy": ["Array of 2-3 posting time/frequency recommendations"],
-  "audienceInsights": ["Array of 2-3 audience-related insights"],
-  "topPerformers": [
-    {
-      "title": "Video title from the data",
-      "thumbnailUrl": "thumbnail URL from data if available",
-      "analysis": "Why this performed well"
-    }
-  ],
-  "actionItems": ["Array of 3-5 specific actions to take this week"]
-}
-
-Guidelines:
-- Be specific and actionable, not generic
-- Reference actual numbers from the data
-- Compare to previous period when relevant
-- Consider platform-specific best practices
-- Focus on growth opportunities
-- If data is limited, acknowledge it and provide general recommendations
-
-Return ONLY the JSON object, no markdown formatting or explanation.`;
-
     try {
-      const response = await llmClient.createChatCompletion({
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are an expert social media analytics consultant specializing in content performance optimization. Always respond with valid JSON.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.7,
-        maxTokens: 2000,
+      const result = await executeLLM<InsightsLLMOutput>({
+        templateSlug: 'analytics/insights-generation',
+        variables: {
+          analytics_data: JSON.stringify(analyticsSummary, null, 2),
+        },
+        context: {
+          name: 'generate-analytics-insights',
+          accountId: projectId,
+          userId: user.id,
+        },
       });
-
-      const insights = parseInsightsResponse(response.message.content);
 
       return {
         summary:
-          insights.summary ||
+          result.data.performanceSummary ||
           'Performance analysis complete. Review the trends and recommendations below.',
-        trends: insights.trends || [],
-        contentRecommendations: insights.contentRecommendations || [],
-        postingStrategy: insights.postingStrategy || [],
-        audienceInsights: insights.audienceInsights || [],
-        topPerformers: insights.topPerformers || [],
-        actionItems: insights.actionItems || [],
+        trends: [],
+        contentRecommendations: result.data.contentRecommendations || [],
+        postingStrategy: result.data.postingStrategy || [],
+        audienceInsights: result.data.audienceInsights || [],
+        topPerformers: [],
+        actionItems: result.data.actionItems || [],
       };
     } catch (error) {
       // Return fallback response on error
-      const logger = await getLogger();
       logger.error({ error }, 'Error generating insights');
 
       return {

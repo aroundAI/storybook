@@ -1274,6 +1274,9 @@ importers:
       '@kit/next':
         specifier: workspace:*
         version: link:../../next
+      '@kit/prompt-engine':
+        specifier: workspace:*
+        version: link:../prompt-engine
       '@kit/publishing':
         specifier: workspace:*
         version: link:../publishing

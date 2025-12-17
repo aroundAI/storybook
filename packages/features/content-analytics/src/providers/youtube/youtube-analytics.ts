@@ -4,9 +4,13 @@ import { google } from 'googleapis';
 
 import { formatDate, parseDuration } from '../../lib/utils';
 import type {
+  CityGeographyData,
   DemographicData,
+  DeviceBreakdownData,
   GeographyData,
+  OperatingSystemData,
   RetentionData,
+  SubscribedStatusData,
   TrafficSourceData,
   YouTubeAnalyticsInput,
   YouTubeAnalyticsResult,
@@ -90,6 +94,10 @@ export class YouTubeAnalyticsProvider {
         demographics,
         trafficSources,
         geography,
+        deviceBreakdown,
+        operatingSystem,
+        cityGeography,
+        subscribedStatus,
       ] = await Promise.all([
         this.fetchTotals(videoId, startDateStr, endDateStr),
         this.fetchDailyMetrics(videoId, startDateStr, endDateStr),
@@ -97,6 +105,10 @@ export class YouTubeAnalyticsProvider {
         this.fetchDemographics(videoId, startDateStr, endDateStr),
         this.fetchTrafficSources(videoId, startDateStr, endDateStr),
         this.fetchGeography(videoId, startDateStr, endDateStr),
+        this.fetchDeviceBreakdown(videoId, startDateStr, endDateStr),
+        this.fetchOperatingSystemBreakdown(videoId, startDateStr, endDateStr),
+        this.fetchCityGeography(videoId, startDateStr, endDateStr),
+        this.fetchSubscribedStatus(videoId, startDateStr, endDateStr),
       ]);
 
       return {
@@ -108,6 +120,12 @@ export class YouTubeAnalyticsProvider {
         demographics,
         trafficSources,
         geography,
+        deviceBreakdown:
+          deviceBreakdown.length > 0 ? deviceBreakdown : undefined,
+        operatingSystem:
+          operatingSystem.length > 0 ? operatingSystem : undefined,
+        cityGeography: cityGeography.length > 0 ? cityGeography : undefined,
+        subscribedStatus,
       };
     } catch (error) {
       // Check if this is a scope/permission error from existing connections
@@ -142,6 +160,8 @@ export class YouTubeAnalyticsProvider {
         'subscribersGained',
         'subscribersLost',
         'estimatedRevenue',
+        'estimatedAdRevenue',
+        'estimatedRedPartnerRevenue',
       ].join(','),
       filters: `video==${videoId}`,
     });
@@ -160,6 +180,8 @@ export class YouTubeAnalyticsProvider {
       subscribersGained: row[8] ?? 0,
       subscribersLost: row[9] ?? 0,
       estimatedRevenue: Math.round((row[10] ?? 0) * 100), // Convert to cents
+      estimatedAdRevenue: Math.round((row[11] ?? 0) * 100), // Ad revenue in cents
+      estimatedRedPartnerRevenue: Math.round((row[12] ?? 0) * 100), // YouTube Premium in cents
     };
   }
 
@@ -328,6 +350,130 @@ export class YouTubeAnalyticsProvider {
       watchTimeMinutes: row[2] ?? 0,
       viewPercentage: row[3] ?? 0,
     }));
+  }
+
+  /**
+   * Fetches device type breakdown (mobile, desktop, tablet, TV, etc.)
+   */
+  private async fetchDeviceBreakdown(
+    videoId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<DeviceBreakdownData[]> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'views,estimatedMinutesWatched',
+        dimensions: 'deviceType',
+        filters: `video==${videoId}`,
+        sort: '-views',
+      });
+
+      return ((response.data.rows as [string, number, number][]) ?? []).map(
+        (row) => ({
+          deviceType: row[0] as DeviceBreakdownData['deviceType'],
+          views: row[1] ?? 0,
+          watchTimeMinutes: row[2] ?? 0,
+        }),
+      );
+    } catch {
+      // Device breakdown may not be available for all videos
+      return [];
+    }
+  }
+
+  /**
+   * Fetches operating system breakdown (iOS, Android, Windows, etc.)
+   */
+  private async fetchOperatingSystemBreakdown(
+    videoId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<OperatingSystemData[]> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'views',
+        dimensions: 'operatingSystem',
+        filters: `video==${videoId}`,
+        sort: '-views',
+        maxResults: 20,
+      });
+
+      return ((response.data.rows as [string, number][]) ?? []).map((row) => ({
+        operatingSystem: row[0],
+        views: row[1] ?? 0,
+      }));
+    } catch {
+      // Operating system breakdown may not be available for all videos
+      return [];
+    }
+  }
+
+  /**
+   * Fetches city-level geography breakdown
+   */
+  private async fetchCityGeography(
+    videoId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<CityGeographyData[]> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'views',
+        dimensions: 'city',
+        filters: `video==${videoId}`,
+        sort: '-views',
+        maxResults: 50,
+      });
+
+      return ((response.data.rows as [string, number][]) ?? []).map((row) => ({
+        city: row[0],
+        views: row[1] ?? 0,
+      }));
+    } catch {
+      // City geography may not be available for all videos
+      return [];
+    }
+  }
+
+  /**
+   * Fetches subscribed status breakdown (subscribed vs non-subscribed viewers)
+   */
+  private async fetchSubscribedStatus(
+    videoId: string,
+    startDate: string,
+    endDate: string,
+  ): Promise<SubscribedStatusData | undefined> {
+    try {
+      const response = await this.youtubeAnalytics.reports.query({
+        ids: 'channel==MINE',
+        startDate,
+        endDate,
+        metrics: 'views',
+        dimensions: 'subscribedStatus',
+        filters: `video==${videoId}`,
+      });
+
+      const rows = (response.data.rows as [string, number][]) ?? [];
+      const subscribedRow = rows.find((r) => r[0] === 'SUBSCRIBED');
+      const unsubscribedRow = rows.find((r) => r[0] === 'UNSUBSCRIBED');
+
+      return {
+        subscribed: subscribedRow?.[1] ?? 0,
+        notSubscribed: unsubscribedRow?.[1] ?? 0,
+      };
+    } catch {
+      // Subscribed status may not be available for all videos
+      return undefined;
+    }
   }
 
   /**

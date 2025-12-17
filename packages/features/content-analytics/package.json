@@ -33,6 +33,7 @@
     "@hookform/resolvers": "^5.2.2",
     "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
+    "@kit/prompt-engine": "workspace:*",
     "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",

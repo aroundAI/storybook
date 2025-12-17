@@ -19,6 +19,7 @@ export interface EpisodeAnalytics {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
+  totalSaves: number;
   totalRevenueCents: number;
   avgWatchTimeSeconds: number;
   engagementRate: number;
@@ -28,6 +29,7 @@ export interface EpisodeAnalytics {
     likes: number;
     comments: number;
     shares: number;
+    saves: number;
   }[];
   dailyTrend: {
     date: string;
@@ -48,6 +50,7 @@ export interface SeasonAnalytics {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
+  totalSaves: number;
   totalRevenueCents: number;
   avgEngagementRate: number;
   episodeCount: number;
@@ -81,6 +84,7 @@ export interface ProjectAnalytics {
   totalLikes: number;
   totalComments: number;
   totalShares: number;
+  totalSaves: number;
   totalRevenueCents: number;
   avgEngagementRate: number;
   contentCount: number;
@@ -98,6 +102,7 @@ export interface ProjectAnalytics {
     likes: number;
     comments: number;
     shares: number;
+    saves: number;
     percentage: number;
   }[];
 }
@@ -126,8 +131,7 @@ export async function getEpisodeAnalytics(
   const { data: publishes } = await client
     .from('publishes')
     .select('id, platform')
-    .eq('episode_id', episodeId)
-    .is('deleted_at', null);
+    .eq('episode_id', episodeId);
 
   if (!publishes || publishes.length === 0) {
     return {
@@ -138,6 +142,7 @@ export async function getEpisodeAnalytics(
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
+      totalSaves: 0,
       totalRevenueCents: 0,
       avgWatchTimeSeconds: 0,
       engagementRate: 0,
@@ -151,7 +156,9 @@ export async function getEpisodeAnalytics(
   // Build query for analytics
   let analyticsQuery = client
     .from('content_analytics')
-    .select('*')
+    .select(
+      'publish_id, views, likes, comments, shares, saves, revenue_cents, watch_time_seconds, snapshot_date',
+    )
     .in('publish_id', publishIds);
 
   if (dateRange) {
@@ -173,6 +180,7 @@ export async function getEpisodeAnalytics(
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
+      totalSaves: 0,
       totalRevenueCents: 0,
       avgWatchTimeSeconds: 0,
       engagementRate: 0,
@@ -194,12 +202,19 @@ export async function getEpisodeAnalytics(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
+  let totalSaves = 0;
   let totalRevenue = 0;
   let totalWatchTime = 0;
 
   const platformMap = new Map<
     string,
-    { views: number; likes: number; comments: number; shares: number }
+    {
+      views: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      saves: number;
+    }
   >();
 
   for (const [publishId, a] of latestByPublish) {
@@ -207,6 +222,7 @@ export async function getEpisodeAnalytics(
     totalLikes += a.likes || 0;
     totalComments += a.comments || 0;
     totalShares += a.shares || 0;
+    totalSaves += a.saves || 0;
     totalRevenue += a.revenue_cents || 0;
     totalWatchTime += a.watch_time_seconds || 0;
 
@@ -219,12 +235,14 @@ export async function getEpisodeAnalytics(
         likes: 0,
         comments: 0,
         shares: 0,
+        saves: 0,
       };
       platformMap.set(platform, {
         views: current.views + (a.views || 0),
         likes: current.likes + (a.likes || 0),
         comments: current.comments + (a.comments || 0),
         shares: current.shares + (a.shares || 0),
+        saves: current.saves + (a.saves || 0),
       });
     }
   }
@@ -263,6 +281,7 @@ export async function getEpisodeAnalytics(
     totalLikes,
     totalComments,
     totalShares,
+    totalSaves,
     totalRevenueCents: totalRevenue,
     avgWatchTimeSeconds:
       latestByPublish.size > 0 ? totalWatchTime / latestByPublish.size : 0,
@@ -315,6 +334,7 @@ export async function getSeasonAnalytics(
       totalLikes: 0,
       totalComments: 0,
       totalShares: 0,
+      totalSaves: 0,
       totalRevenueCents: 0,
       avgEngagementRate: 0,
       episodeCount: 0,
@@ -330,6 +350,7 @@ export async function getSeasonAnalytics(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
+  let totalSaves = 0;
   let totalRevenue = 0;
   let totalEngagement = 0;
 
@@ -354,6 +375,7 @@ export async function getSeasonAnalytics(
       totalLikes += analytics.totalLikes;
       totalComments += analytics.totalComments;
       totalShares += analytics.totalShares;
+      totalSaves += analytics.totalSaves;
       totalRevenue += analytics.totalRevenueCents;
       totalEngagement += analytics.engagementRate;
     }
@@ -385,6 +407,7 @@ export async function getSeasonAnalytics(
     totalLikes,
     totalComments,
     totalShares,
+    totalSaves,
     totalRevenueCents: totalRevenue,
     avgEngagementRate:
       episodeAnalytics.length > 0
@@ -431,13 +454,20 @@ export async function getProjectAnalytics(
   let totalLikes = 0;
   let totalComments = 0;
   let totalShares = 0;
+  let totalSaves = 0;
   let totalRevenue = 0;
   let totalEngagement = 0;
   let contentCount = 0;
 
   const platformTotals = new Map<
     string,
-    { views: number; likes: number; comments: number; shares: number }
+    {
+      views: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      saves: number;
+    }
   >();
 
   for (const s of seasons || []) {
@@ -456,6 +486,7 @@ export async function getProjectAnalytics(
       totalLikes += analytics.totalLikes;
       totalComments += analytics.totalComments;
       totalShares += analytics.totalShares;
+      totalSaves += analytics.totalSaves;
       totalRevenue += analytics.totalRevenueCents;
       totalEngagement += analytics.avgEngagementRate;
       contentCount += analytics.episodeCount;
@@ -468,14 +499,15 @@ export async function getProjectAnalytics(
     .select(
       'id, platform, episodes!inner(season_id, seasons!inner(project_id))',
     )
-    .eq('episodes.seasons.project_id', projectId)
-    .is('deleted_at', null);
+    .eq('episodes.seasons.project_id', projectId);
 
   if (allPublishes) {
     const publishIds = allPublishes.map((p) => p.id);
     let analyticsQuery = client
       .from('content_analytics')
-      .select('publish_id, views, likes, comments, shares, snapshot_date')
+      .select(
+        'publish_id, views, likes, comments, shares, saves, snapshot_date',
+      )
       .in('publish_id', publishIds);
 
     // Filter by date range if specified
@@ -499,7 +531,13 @@ export async function getProjectAnalytics(
     if (analytics) {
       const latestByPublish = new Map<
         string,
-        { views: number; likes: number; comments: number; shares: number }
+        {
+          views: number;
+          likes: number;
+          comments: number;
+          shares: number;
+          saves: number;
+        }
       >();
       for (const a of analytics) {
         if (!latestByPublish.has(a.publish_id)) {
@@ -508,6 +546,7 @@ export async function getProjectAnalytics(
             likes: a.likes || 0,
             comments: a.comments || 0,
             shares: a.shares || 0,
+            saves: a.saves || 0,
           });
         }
       }
@@ -518,18 +557,21 @@ export async function getProjectAnalytics(
           likes: 0,
           comments: 0,
           shares: 0,
+          saves: 0,
         };
         const current = platformTotals.get(publish.platform) || {
           views: 0,
           likes: 0,
           comments: 0,
           shares: 0,
+          saves: 0,
         };
         platformTotals.set(publish.platform, {
           views: current.views + stats.views,
           likes: current.likes + stats.likes,
           comments: current.comments + stats.comments,
           shares: current.shares + stats.shares,
+          saves: current.saves + stats.saves,
         });
       }
     }
@@ -542,6 +584,7 @@ export async function getProjectAnalytics(
       likes: stats.likes,
       comments: stats.comments,
       shares: stats.shares,
+      saves: stats.saves,
       percentage: totalViews > 0 ? (stats.views / totalViews) * 100 : 0,
     }))
     .sort((a, b) => b.views - a.views);
@@ -553,6 +596,7 @@ export async function getProjectAnalytics(
     totalLikes,
     totalComments,
     totalShares,
+    totalSaves,
     totalRevenueCents: totalRevenue,
     avgEngagementRate:
       seasonAnalyticsList.length > 0
@@ -561,6 +605,312 @@ export async function getProjectAnalytics(
     contentCount,
     seasons: seasonAnalyticsList,
     platformTotals: platformTotalsList,
+  };
+}
+
+/**
+ * Daily metrics for project-level time series chart
+ */
+export interface ProjectDailyMetric {
+  date: string;
+  views: number;
+  likes: number;
+  comments: number;
+  shares: number;
+  byPlatform?: Record<
+    string,
+    { views: number; likes: number; comments: number; shares: number }
+  >;
+}
+
+/**
+ * Get daily metrics aggregated across all content in a project
+ */
+export async function getProjectDailyMetrics(
+  projectId: string,
+  options?: { startDate?: Date; endDate?: Date },
+): Promise<ProjectDailyMetric[]> {
+  const client = getSupabaseServerClient();
+
+  // Get all publishes for this project through episodes -> seasons
+  const { data: allPublishes } = await client
+    .from('publishes')
+    .select(
+      'id, platform, episodes!inner(season_id, seasons!inner(project_id))',
+    )
+    .eq('episodes.seasons.project_id', projectId);
+
+  if (!allPublishes || allPublishes.length === 0) {
+    return [];
+  }
+
+  const publishIds = allPublishes.map((p) => p.id);
+
+  // Build publish to platform map
+  const publishPlatformMap = new Map<string, string>();
+  for (const p of allPublishes) {
+    publishPlatformMap.set(p.id, p.platform);
+  }
+
+  // Get all analytics records for these publishes
+  let analyticsQuery = client
+    .from('content_analytics')
+    .select('publish_id, snapshot_date, views, likes, comments, shares')
+    .in('publish_id', publishIds);
+
+  if (options?.startDate) {
+    analyticsQuery = analyticsQuery.gte(
+      'snapshot_date',
+      options.startDate.toISOString().split('T')[0],
+    );
+  }
+  if (options?.endDate) {
+    analyticsQuery = analyticsQuery.lte(
+      'snapshot_date',
+      options.endDate.toISOString().split('T')[0],
+    );
+  }
+
+  const { data: analytics } = await analyticsQuery.order('snapshot_date', {
+    ascending: true,
+  });
+
+  if (!analytics || analytics.length === 0) {
+    return [];
+  }
+
+  // Aggregate by date
+  const dailyMap = new Map<
+    string,
+    {
+      views: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      byPlatform: Record<
+        string,
+        { views: number; likes: number; comments: number; shares: number }
+      >;
+    }
+  >();
+
+  // For each date, get the max values per publish (since metrics are cumulative)
+  const datePublishMap = new Map<
+    string,
+    Map<
+      string,
+      { views: number; likes: number; comments: number; shares: number }
+    >
+  >();
+
+  for (const a of analytics) {
+    const date = a.snapshot_date;
+    if (!datePublishMap.has(date)) {
+      datePublishMap.set(date, new Map());
+    }
+    const publishMap = datePublishMap.get(date)!;
+    const existing = publishMap.get(a.publish_id);
+
+    // Take max values for this publish on this date
+    publishMap.set(a.publish_id, {
+      views: Math.max(existing?.views || 0, a.views || 0),
+      likes: Math.max(existing?.likes || 0, a.likes || 0),
+      comments: Math.max(existing?.comments || 0, a.comments || 0),
+      shares: Math.max(existing?.shares || 0, a.shares || 0),
+    });
+  }
+
+  // Now aggregate across all publishes for each date
+  for (const [date, publishMap] of datePublishMap) {
+    let totalViews = 0;
+    let totalLikes = 0;
+    let totalComments = 0;
+    let totalShares = 0;
+    const byPlatform: Record<
+      string,
+      { views: number; likes: number; comments: number; shares: number }
+    > = {};
+
+    for (const [publishId, stats] of publishMap) {
+      totalViews += stats.views;
+      totalLikes += stats.likes;
+      totalComments += stats.comments;
+      totalShares += stats.shares;
+
+      const platform = publishPlatformMap.get(publishId) || 'unknown';
+      if (!byPlatform[platform]) {
+        byPlatform[platform] = { views: 0, likes: 0, comments: 0, shares: 0 };
+      }
+      byPlatform[platform].views += stats.views;
+      byPlatform[platform].likes += stats.likes;
+      byPlatform[platform].comments += stats.comments;
+      byPlatform[platform].shares += stats.shares;
+    }
+
+    dailyMap.set(date, {
+      views: totalViews,
+      likes: totalLikes,
+      comments: totalComments,
+      shares: totalShares,
+      byPlatform,
+    });
+  }
+
+  // Convert to sorted array
+  return Array.from(dailyMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, data]) => ({
+      date,
+      views: data.views,
+      likes: data.likes,
+      comments: data.comments,
+      shares: data.shares,
+      byPlatform: data.byPlatform,
+    }));
+}
+
+/**
+ * Audience data aggregated from content_analytics raw_data
+ */
+export interface ProjectAudienceData {
+  demographics?: {
+    ageGroups?: Record<string, number>;
+    genders?: Record<string, number>;
+  };
+  geography?: Record<string, number>;
+}
+
+/**
+ * Get aggregated audience data for a project
+ * Extracts demographics and geography from raw_data JSONB field
+ */
+export async function getProjectAudienceData(
+  projectId: string,
+  options?: { startDate?: Date; endDate?: Date },
+): Promise<ProjectAudienceData | null> {
+  const client = getSupabaseServerClient();
+
+  // Get all publishes for this project
+  const { data: allPublishes } = await client
+    .from('publishes')
+    .select('id, episodes!inner(season_id, seasons!inner(project_id))')
+    .eq('episodes.seasons.project_id', projectId);
+
+  if (!allPublishes || allPublishes.length === 0) {
+    return null;
+  }
+
+  const publishIds = allPublishes.map((p) => p.id);
+
+  // Get latest analytics with raw_data for each publish
+  let analyticsQuery = client
+    .from('content_analytics')
+    .select('publish_id, raw_data, snapshot_date')
+    .in('publish_id', publishIds)
+    .not('raw_data', 'is', null);
+
+  if (options?.startDate) {
+    analyticsQuery = analyticsQuery.gte(
+      'snapshot_date',
+      options.startDate.toISOString().split('T')[0],
+    );
+  }
+  if (options?.endDate) {
+    analyticsQuery = analyticsQuery.lte(
+      'snapshot_date',
+      options.endDate.toISOString().split('T')[0],
+    );
+  }
+
+  const { data: analytics } = await analyticsQuery.order('snapshot_date', {
+    ascending: false,
+  });
+
+  if (!analytics || analytics.length === 0) {
+    return null;
+  }
+
+  // Get latest raw_data for each publish
+  const latestRawData: Record<string, unknown>[] = [];
+  const seenPublishes = new Set<string>();
+
+  for (const a of analytics) {
+    if (!seenPublishes.has(a.publish_id) && a.raw_data) {
+      seenPublishes.add(a.publish_id);
+      latestRawData.push(a.raw_data as Record<string, unknown>);
+    }
+  }
+
+  if (latestRawData.length === 0) {
+    return null;
+  }
+
+  // Aggregate demographics and geography
+  const ageGroups: Record<string, number> = {};
+  const genders: Record<string, number> = {};
+  const geography: Record<string, number> = {};
+  let totalWeight = 0;
+
+  for (const rawData of latestRawData) {
+    const demographics = rawData.demographics as
+      | { ageGroups?: Record<string, number>; genders?: Record<string, number> }
+      | undefined;
+    const geo = rawData.geography as Record<string, number> | undefined;
+    const views = (rawData.views as number) || 1; // Use views as weight
+
+    if (demographics?.ageGroups) {
+      for (const [age, pct] of Object.entries(demographics.ageGroups)) {
+        ageGroups[age] = (ageGroups[age] || 0) + pct * views;
+      }
+    }
+
+    if (demographics?.genders) {
+      for (const [gender, pct] of Object.entries(demographics.genders)) {
+        genders[gender] = (genders[gender] || 0) + pct * views;
+      }
+    }
+
+    if (geo) {
+      for (const [country, pct] of Object.entries(geo)) {
+        geography[country] = (geography[country] || 0) + pct * views;
+      }
+    }
+
+    totalWeight += views;
+  }
+
+  // Normalize to percentages
+  if (totalWeight > 0) {
+    for (const key of Object.keys(ageGroups)) {
+      ageGroups[key] = ageGroups[key]! / totalWeight;
+    }
+    for (const key of Object.keys(genders)) {
+      genders[key] = genders[key]! / totalWeight;
+    }
+    for (const key of Object.keys(geography)) {
+      geography[key] = geography[key]! / totalWeight;
+    }
+  }
+
+  const hasData =
+    Object.keys(ageGroups).length > 0 ||
+    Object.keys(genders).length > 0 ||
+    Object.keys(geography).length > 0;
+
+  if (!hasData) {
+    return null;
+  }
+
+  return {
+    demographics:
+      Object.keys(ageGroups).length > 0 || Object.keys(genders).length > 0
+        ? {
+            ageGroups:
+              Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
+            genders: Object.keys(genders).length > 0 ? genders : undefined,
+          }
+        : undefined,
+    geography: Object.keys(geography).length > 0 ? geography : undefined,
   };
 }
 
@@ -579,6 +929,7 @@ export interface ContentListItem {
   likes: number;
   comments: number;
   shares: number;
+  saves: number;
   engagementRate: number;
 }
 
@@ -615,7 +966,6 @@ export async function getContentList(
     `,
     )
     .eq('episodes.seasons.project_id', projectId)
-    .is('deleted_at', null)
     .not('published_at', 'is', null);
 
   // Filter by platforms if specified
@@ -643,14 +993,20 @@ export async function getContentList(
   const publishIds = publishes.map((p) => p.id);
   const { data: analytics } = await client
     .from('content_analytics')
-    .select('publish_id, views, likes, comments, shares, snapshot_date')
+    .select('publish_id, views, likes, comments, shares, saves, snapshot_date')
     .in('publish_id', publishIds)
     .order('snapshot_date', { ascending: false });
 
   // Get latest analytics per publish
   const latestAnalytics = new Map<
     string,
-    { views: number; likes: number; comments: number; shares: number }
+    {
+      views: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      saves: number;
+    }
   >();
   if (analytics) {
     for (const a of analytics) {
@@ -660,6 +1016,7 @@ export async function getContentList(
           likes: a.likes || 0,
           comments: a.comments || 0,
           shares: a.shares || 0,
+          saves: a.saves || 0,
         });
       }
     }
@@ -677,6 +1034,7 @@ export async function getContentList(
       likes: 0,
       comments: 0,
       shares: 0,
+      saves: 0,
     };
     const engagementRate =
       stats.views > 0
@@ -695,6 +1053,7 @@ export async function getContentList(
       likes: stats.likes,
       comments: stats.comments,
       shares: stats.shares,
+      saves: stats.saves,
       engagementRate,
     };
   });

@@ -69,6 +69,31 @@ export interface SyncJobResult {
 }
 
 /**
+ * Device breakdown data for storage
+ */
+export interface DeviceBreakdown {
+  deviceType: string;
+  views: number;
+  watchTimeMinutes: number;
+}
+
+/**
+ * Operating system breakdown data for storage
+ */
+export interface OSBreakdown {
+  operatingSystem: string;
+  views: number;
+}
+
+/**
+ * City geography breakdown data for storage
+ */
+export interface CityBreakdown {
+  city: string;
+  views: number;
+}
+
+/**
  * Normalized analytics data for database insertion
  */
 export interface NormalizedAnalytics {
@@ -78,9 +103,17 @@ export interface NormalizedAnalytics {
   likes: number;
   comments: number;
   shares: number;
+  saves: number;
   watch_time_seconds: number;
   subscribers_gained: number;
   revenue_cents: number;
+  ad_revenue_cents: number;
+  red_revenue_cents: number;
+  subscribed_views: number;
+  unsubscribed_views: number;
+  device_breakdown: DeviceBreakdown[] | null;
+  os_breakdown: OSBreakdown[] | null;
+  city_breakdown: CityBreakdown[] | null;
   retention_data: Record<string, unknown> | null;
   raw_data: Record<string, unknown>;
 }

@@ -6,9 +6,15 @@ export interface AnalyticsTotals {
   likes: number;
   comments: number;
   shares: number;
+  /** Saves (bookmarks) - primarily TikTok and Instagram */
+  saves?: number;
   watchTimeSeconds: number;
   subscribersGained: number;
   revenueCents: number;
+  /** Ad revenue portion (YouTube) */
+  adRevenueCents?: number;
+  /** YouTube Premium revenue portion */
+  redPartnerRevenueCents?: number;
   contentCount: number;
 }
 
@@ -70,6 +76,71 @@ export interface AudienceData {
 }
 
 /**
+ * Extended audience data for detailed insights
+ * Includes device type, peak activity, interests
+ */
+export interface ExtendedAudienceData {
+  /** Device type percentages (mobile, desktop, tablet, tv, gameConsole) */
+  deviceType?: {
+    mobile: number;
+    desktop: number;
+    tablet: number;
+    tv?: number;
+    gameConsole?: number;
+  };
+  /** Operating system breakdown (iOS, Android, Windows, etc.) */
+  operatingSystem?: Record<string, number>;
+  /** City-level geography data */
+  cityGeography?: Array<{ city: string; views: number }>;
+  /** Subscribed vs non-subscribed viewer breakdown */
+  subscribedStatus?: {
+    subscribed: number;
+    notSubscribed: number;
+  };
+  /** Peak activity heatmap: 4 time slots x 7 days, values 0-1 */
+  peakActivity?: number[][];
+  /** Audience interest tags */
+  interests?: string[];
+  /** Content affinity data */
+  contentAffinity?: {
+    label: string;
+    percentage: number;
+    thumbnailUrl?: string;
+  };
+}
+
+/**
+ * Share breakdown by type (reposts, quotes, saves, shares)
+ */
+export interface ShareBreakdown {
+  reposts: number;
+  quotes: number;
+  saves: number;
+  shares: number;
+}
+
+/**
+ * Revenue breakdown by source
+ */
+export interface RevenueBreakdown {
+  adRevenue: number;
+  /** YouTube Premium (Red Partner) revenue */
+  redPartnerRevenue?: number;
+  memberships: number;
+  superChats: number;
+  merchandise: number;
+}
+
+/**
+ * Geography breakdown with country names and percentages
+ */
+export interface GeographyBreakdown {
+  country: string;
+  percentage: number;
+  flagEmoji?: string;
+}
+
+/**
  * Unified aggregate analytics for AI insights and dashboard
  */
 export interface AggregateAnalytics {
@@ -77,9 +148,17 @@ export interface AggregateAnalytics {
   previousPeriodTotals?: AnalyticsTotals;
   platformMetrics?: PlatformBreakdown[];
   topContent?: TopContent[];
-  audience?: AudienceData;
+  audience?: AudienceData & ExtendedAudienceData;
   contentCount: number;
   avgEngagementRate: number;
+  /** Share breakdown by type */
+  shareBreakdown?: ShareBreakdown;
+  /** Revenue breakdown by source */
+  revenueBreakdown?: RevenueBreakdown;
+  /** Top regions with flag emojis */
+  topRegions?: GeographyBreakdown[];
+  /** Daily time series data for sparklines */
+  dailyData?: DailyMetric[];
 }
 
 /**

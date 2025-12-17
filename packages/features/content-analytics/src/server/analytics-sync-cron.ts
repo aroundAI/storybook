@@ -491,9 +491,17 @@ function normalizeAnalytics(
         likes: data.totals.likes,
         comments: data.totals.comments,
         shares: data.totals.shares,
+        saves: 0, // YouTube doesn't have saves
         watch_time_seconds: (data.totals.estimatedMinutesWatched ?? 0) * 60,
         subscribers_gained: data.totals.subscribersGained ?? 0,
-        revenue_cents: Math.round((data.totals.estimatedRevenue ?? 0) * 100),
+        revenue_cents: data.totals.estimatedRevenue ?? 0,
+        ad_revenue_cents: data.totals.estimatedAdRevenue ?? 0,
+        red_revenue_cents: data.totals.estimatedRedPartnerRevenue ?? 0,
+        subscribed_views: data.subscribedStatus?.subscribed ?? 0,
+        unsubscribed_views: data.subscribedStatus?.notSubscribed ?? 0,
+        device_breakdown: data.deviceBreakdown ?? null,
+        os_breakdown: data.operatingSystem ?? null,
+        city_breakdown: data.cityGeography ?? null,
         retention_data:
           (data.retention as unknown as Record<string, unknown>) ?? null,
         raw_data: data as unknown as Record<string, unknown>,
@@ -508,9 +516,17 @@ function normalizeAnalytics(
         likes: data.totals.likes,
         comments: data.totals.comments,
         shares: data.totals.shares,
+        saves: data.totals.saves ?? 0,
         watch_time_seconds: data.totals.totalPlayTime ?? 0,
         subscribers_gained: 0, // TikTok doesn't provide per-video follower gains
         revenue_cents: 0, // TikTok doesn't expose revenue
+        ad_revenue_cents: 0,
+        red_revenue_cents: 0,
+        subscribed_views: 0,
+        unsubscribed_views: 0,
+        device_breakdown: null, // TikTok API doesn't expose device breakdown
+        os_breakdown: null,
+        city_breakdown: null,
         retention_data: null,
         raw_data: data as unknown as Record<string, unknown>,
       };
@@ -524,9 +540,17 @@ function normalizeAnalytics(
         likes: data.totals.likes ?? 0,
         comments: data.totals.comments ?? 0,
         shares: data.totals.shares ?? 0,
+        saves: data.totals.saved ?? 0,
         watch_time_seconds: 0, // Instagram doesn't expose this
         subscribers_gained: data.totals.follows ?? 0,
         revenue_cents: 0,
+        ad_revenue_cents: 0,
+        red_revenue_cents: 0,
+        subscribed_views: 0,
+        unsubscribed_views: 0,
+        device_breakdown: null, // Instagram API doesn't expose device breakdown
+        os_breakdown: null,
+        city_breakdown: null,
         retention_data: null,
         raw_data: data as unknown as Record<string, unknown>,
       };

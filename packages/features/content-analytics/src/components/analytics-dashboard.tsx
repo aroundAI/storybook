@@ -23,6 +23,8 @@ import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
   getProjectAnalyticsAction,
+  getProjectAudienceDataAction,
+  getProjectDailyMetricsAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
@@ -101,6 +103,40 @@ export function AnalyticsDashboard({
     enabled: activeTab === 'content' || activeTab === 'overview',
   });
 
+  // Fetch daily metrics for Performance Over Time chart
+  const { data: dailyMetrics, isLoading: isDailyMetricsLoading } = useQuery({
+    queryKey: [
+      'daily-metrics',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectDailyMetricsAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'overview',
+  });
+
+  // Fetch audience data for Audience tab
+  const { data: audienceData, isLoading: isAudienceLoading } = useQuery({
+    queryKey: [
+      'audience-data',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getProjectAudienceDataAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'audience',
+  });
+
   // Filter data by selected platforms
   // projectData.platformTotals has { platform, views, likes, comments, shares, percentage }
   const filteredPlatformTotals = projectData?.platformTotals?.filter((p) =>
@@ -145,10 +181,37 @@ export function AnalyticsDashboard({
       }
     : null;
 
-  // Daily metrics are not currently available from getProjectAnalytics
-  // This would require additional queries to aggregate daily snapshots
-  // For now, we pass an empty array to the chart
-  const filteredDailyMetrics: DailyMetric[] = [];
+  // Filter daily metrics by selected platforms
+  const filteredDailyMetrics: DailyMetric[] = (dailyMetrics || []).map((day) => {
+    // Sum metrics for selected platforms only
+    let views = 0;
+    let likes = 0;
+    let comments = 0;
+    let shares = 0;
+    const filteredByPlatform: Record<string, { views: number; likes: number; comments: number; shares: number }> = {};
+
+    if (day.byPlatform) {
+      for (const platform of selectedPlatforms) {
+        const platformData = day.byPlatform[platform];
+        if (platformData) {
+          views += platformData.views;
+          likes += platformData.likes;
+          comments += platformData.comments;
+          shares += platformData.shares;
+          filteredByPlatform[platform] = platformData;
+        }
+      }
+    }
+
+    return {
+      date: day.date,
+      views,
+      likes,
+      comments,
+      shares,
+      byPlatform: filteredByPlatform,
+    };
+  });
 
   return (
     <div className="space-y-6">
@@ -196,7 +259,7 @@ export function AnalyticsDashboard({
               <CardTitle>Performance Over Time</CardTitle>
             </CardHeader>
             <CardContent>
-              {isLoading ? (
+              {isLoading || isDailyMetricsLoading ? (
                 <Skeleton className="h-[350px] w-full" />
               ) : (
                 <PerformanceChart
@@ -239,7 +302,7 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="audience" className="mt-6">
-          <AudienceAnalytics data={undefined} isLoading={isLoading} />
+          <AudienceAnalytics data={audienceData ?? undefined} isLoading={isAudienceLoading} />
         </TabsContent>
 
         <TabsContent value="insights" className="mt-6">
