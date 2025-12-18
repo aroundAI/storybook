@@ -1,7 +1,5 @@
 'use client';
 
-import { Calendar } from 'lucide-react';
-
 import type { EpisodeWithShots } from '@kit/episodes/types';
 
 import { StatusBadge } from '../../_components/status-badge';
@@ -24,39 +22,30 @@ export function EpisodeHeader({
 
   return (
     <div className="flex items-start justify-between">
-      <div className="space-y-2">
+      <div className="space-y-1">
+        {/* Title + Status Badge */}
         <div className="flex items-center gap-3">
-          <h1 className="text-3xl font-bold">{episode.title}</h1>
+          <h1 className="text-2xl font-semibold">{episode.title}</h1>
           <StatusBadge status={episode.status} />
         </div>
 
-        {episode.description && (
-          <p className="text-muted-foreground max-w-2xl text-sm">
-            {episode.description}
-          </p>
-        )}
-
-        <div className="flex items-center gap-4">
-          <p className="text-muted-foreground text-sm">
+        {/* Metadata line: Episode/Season + Tagged Assets */}
+        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+          <span>
             Episode {episode.number}
             {episode.season && ` • Season ${episode.season.number}`}
-          </p>
+          </span>
 
           {(characterIds.length > 0 || locationIds.length > 0) && (
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground text-xs">Tagged:</span>
+            <>
+              <span className="text-border">|</span>
               <TaggedAssets
                 characterIds={characterIds}
                 locationIds={locationIds}
               />
-            </div>
+            </>
           )}
         </div>
-
-        <p className="text-muted-foreground flex items-center gap-1 text-xs">
-          <Calendar className="h-3 w-3" />
-          Last updated: {new Date(episode.updatedAt).toLocaleString()}
-        </p>
       </div>
 
       <QuickActionsMenu

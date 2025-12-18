@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 
-import { Loader2, Lock, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import {
@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
+import { Tabs, TabsContent } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
@@ -399,9 +399,9 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
                     className={cn(
                       'flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
                       isActive &&
-                        'text-primary dark:bg-surface scale-[1.02] transform bg-white shadow-sm',
+                        'bg-primary text-white shadow-sm scale-[1.02] transform',
                       !isActive &&
-                        'text-muted-foreground hover:text-primary dark:hover:text-primary-dark',
+                        'text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/10',
                       !isUnlocked && 'cursor-not-allowed opacity-50',
                     )}
                   >

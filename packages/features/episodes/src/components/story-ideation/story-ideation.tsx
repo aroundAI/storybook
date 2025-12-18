@@ -34,7 +34,6 @@ import {
 import { generateStoryIdeasAction } from '../../server/story-actions';
 import { DurationSelector } from '../duration-selector';
 import { MaterialIcon } from '../ui/material-icon';
-import { IdeaCard } from './idea-card';
 import { TaggedAssetsDisplay } from './tagged-assets-display';
 
 /** Extended story idea with generation settings */
@@ -75,7 +74,7 @@ export function StoryIdeation({
   const [isPending, startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
-  const [hasGenerated, setHasGenerated] = useState(false);
+  const [_hasGenerated, setHasGenerated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Duration and content style state
@@ -126,7 +125,7 @@ export function StoryIdeation({
     }
   };
 
-  const handleRegenerate = () => {
+  const _handleRegenerate = () => {
     setIdeas([]);
     setSelectedIdea(null);
     setHasGenerated(false);
