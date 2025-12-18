@@ -110,8 +110,8 @@ export function EpisodeWorkspaceTabs() {
   const tabsToShow = isAudioStudio ? [AUDIO_TAB] : TABS;
 
   return (
-    <div className="sticky top-[140px] z-10 px-8 py-4">
-      <div className="flex items-center rounded-2xl bg-gray-100/80 p-1.5 dark:bg-gray-800/50">
+    <div className="sticky top-[88px] z-10 px-6 py-2">
+      <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:bg-gray-800/50">
         {tabsToShow.map((tab) => {
           const isActive = activeTab === tab.id;
           const isUnlocked = tabUnlockState[tab.id];
@@ -121,10 +121,10 @@ export function EpisodeWorkspaceTabs() {
             return (
               <div
                 key={tab.id}
-                className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-400 dark:text-gray-500"
+                className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500"
                 title={`Complete previous steps to unlock ${tab.label}`}
               >
-                <Lock className="h-4 w-4" />
+                <Lock className="h-3.5 w-3.5" />
                 <span>{tab.label}</span>
               </div>
             );
@@ -135,13 +135,13 @@ export function EpisodeWorkspaceTabs() {
               key={tab.id}
               href={`${basePath}/${tab.path}`}
               className={cn(
-                'flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition-all',
+                'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
                 isActive
                   ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400'
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200',
               )}
             >
-              <TabIcon className="h-4 w-4" />
+              <TabIcon className="h-3.5 w-3.5" />
               <span>{tab.label}</span>
             </Link>
           );
