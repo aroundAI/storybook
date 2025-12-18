@@ -1,5 +1,9 @@
 // Episode components
 
+// UI Components
+export { MaterialIcon, GlassCard, GlassPanel } from './ui';
+export type { MaterialIconProps, GlassCardProps } from './ui';
+
 // Episode Tabs (FILM-901)
 export { EpisodeTabs } from './episode-tabs';
 
@@ -32,6 +36,8 @@ export { SceneNavigation } from './screenplay-viewer/scene-navigation';
 // Shot List Editor (FILM-311)
 export { ShotListEditor } from './shot-list-editor/shot-list-editor';
 export { ShotRow } from './shot-list-editor/shot-row';
+export { ShotCard, AddShotCard } from './shot-list-editor/shot-card';
+export { ShotDetailsPanel } from './shot-list-editor/shot-details-panel';
 
 // Batch Episode Creator (FILM-314)
 export { BatchEpisodeCreator } from './batch-episode-creator/batch-episode-creator';
@@ -46,3 +52,17 @@ export type {
   TimelineTrack,
   ClipType,
 } from './timeline-editor';
+
+// Audio Studio
+export { AudioStudio } from './audio-studio/audio-studio';
+export { VoiceAssignmentPanel } from './audio-studio/voice-assignment-panel';
+export { AudioTimeline } from './audio-studio/audio-timeline';
+export type { AudioStudioProps } from './audio-studio/audio-studio';
+export type {
+  Character,
+  VoiceAssignmentPanelProps,
+} from './audio-studio/voice-assignment-panel';
+export type {
+  DialogueBlock,
+  AudioTimelineProps,
+} from './audio-studio/audio-timeline';

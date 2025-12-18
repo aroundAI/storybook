@@ -15,9 +15,8 @@ import {
   SortableContext,
   arrayMove,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Filter, ListOrdered, Loader2, Play, Search } from 'lucide-react';
+import { ListOrdered, Loader2, Play } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -28,7 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
-import { Checkbox } from '@kit/ui/checkbox';
 import { Input } from '@kit/ui/input';
 import {
   Select,
@@ -38,19 +36,14 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@kit/ui/table';
 
 import { reorderShotsAction } from '../../lib/server/mutations/shot-actions';
 import { generateShotListAction } from '../../lib/server/mutations/shot-list-actions';
 import type { EpisodeWithShots, Shot, ShotStatus } from '../../lib/types';
 import { useStoryStudioContext } from '../story-studio/story-studio-context';
-import { ShotRow } from './shot-row';
+import { MaterialIcon } from '../ui';
+import { AddShotCard, ShotCard } from './shot-card';
+import { ShotDetailsPanel } from './shot-details-panel';
 
 interface ShotListEditorProps {
   episode: EpisodeWithShots;
@@ -71,6 +64,7 @@ export function ShotListEditor({
   const [shots, setShots] = useState<Shot[]>(episode.shots);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState<ShotFilter>({});
+  const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
   const [_isReordering, startReorderTransition] = useTransition();
 
   const sensors = useSensors(
@@ -317,12 +311,17 @@ export function ShotListEditor({
           )}
         </div>
 
-        {/* Filters */}
-        <div className="mb-4 flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
-            <Search className="text-muted-foreground h-4 w-4" />
+        {/* Filters - Liquid Glass Style */}
+        <div className="mb-8 flex items-center space-x-4">
+          {/* Search Input */}
+          <div className="relative flex flex-grow items-center">
+            <MaterialIcon
+              name="search"
+              className="liquid-dropdown-arrow pointer-events-none absolute left-3"
+              size="sm"
+            />
             <Input
-              placeholder="Search shots..."
+              placeholder="Filter shots..."
               value={filter.searchQuery ?? ''}
               onChange={(e) =>
                 setFilter({
@@ -330,12 +329,12 @@ export function ShotListEditor({
                   searchQuery: e.target.value || undefined,
                 })
               }
-              className="w-64"
+              className="liquid-input text-debossed w-full pl-10 pr-4"
             />
           </div>
 
-          <div className="flex items-center gap-2">
-            <Filter className="text-muted-foreground h-4 w-4" />
+          {/* Scene Filter */}
+          <div className="relative inline-block text-gray-700">
             <Select
               value={filter.sceneNumber?.toString() ?? 'all'}
               onValueChange={(value) =>
@@ -346,8 +345,8 @@ export function ShotListEditor({
                 })
               }
             >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Scene" />
+              <SelectTrigger className="liquid-dropdown text-debossed w-40">
+                <SelectValue placeholder="All Scenes" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Scenes</SelectItem>
@@ -358,7 +357,10 @@ export function ShotListEditor({
                 ))}
               </SelectContent>
             </Select>
+          </div>
 
+          {/* Status Filter */}
+          <div className="relative inline-block text-gray-700">
             <Select
               value={filter.status ?? 'all'}
               onValueChange={(value) =>
@@ -368,11 +370,11 @@ export function ShotListEditor({
                 })
               }
             >
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
+              <SelectTrigger className="liquid-dropdown text-debossed w-40">
+                <SelectValue placeholder="Status: All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="all">Status: All</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="generating">Generating</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -382,8 +384,8 @@ export function ShotListEditor({
           </div>
         </div>
 
-        {/* Shot Table */}
-        <div className="space-y-8">
+        {/* Shot Grid - Comic Panel Layout */}
+        <div className="flex flex-col space-y-12">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -399,79 +401,94 @@ export function ShotListEditor({
                 },
                 {} as Record<number, Shot[]>,
               ),
-            ).map(([sceneNum, sceneShots]) => (
-              <div key={sceneNum} className="space-y-4">
-                <div className="flex items-center gap-2 px-2">
-                  <h3 className="text-muted-foreground text-sm font-semibold">
-                    SCENE {sceneNum}
-                  </h3>
-                  <div className="bg-border/50 h-px flex-1" />
-                  <Badge variant="outline" className="text-xs font-normal">
-                    {sceneShots.length} shots
-                  </Badge>
-                </div>
+            ).map(([sceneNum, sceneShots]) => {
+              // Get scene heading from screenplay if available
+              const sceneData = episode.screenplayData?.scenes.find(
+                (s) => s.number === parseInt(sceneNum, 10),
+              );
+              const sceneTitle = sceneData
+                ? `Scene ${sceneNum}: ${sceneData.heading}`
+                : `Scene ${sceneNum}`;
 
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-10">
-                          <Checkbox
-                            // Scene-level select all could go here, or global
-                            // For now keeping simpler global select or individual
-                            checked={sceneShots.every((s) =>
-                              selectedIds.has(s.id),
-                            )}
-                            onCheckedChange={(checked) => {
-                              const ids = new Set(selectedIds);
-                              sceneShots.forEach((s) => {
-                                if (checked) ids.add(s.id);
-                                else ids.delete(s.id);
-                              });
-                              setSelectedIds(ids);
-                            }}
-                          />
-                        </TableHead>
-                        <TableHead className="w-10"></TableHead>
-                        <TableHead className="w-16">#</TableHead>
-                        <TableHead className="w-24">Status</TableHead>
-                        <TableHead className="w-20">Dur</TableHead>
-                        <TableHead>Visual Prompt</TableHead>
-                        <TableHead className="w-24">Angle</TableHead>
-                        <TableHead className="w-24">Move</TableHead>
-                        <TableHead className="w-24">Preview</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      <SortableContext
-                        items={sceneShots.map((s) => s.id)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {sceneShots.map((shot) => (
-                          <ShotRow
+              return (
+                <div key={sceneNum} className="flex items-start">
+                  {/* Vertical Scene Title Rotator */}
+                  <div className="scene-title-rotator to-white/8 sticky left-0 mr-6 flex h-full max-h-[250px] min-h-[120px] w-auto items-center justify-center whitespace-nowrap rounded-2xl border border-white/30 bg-gradient-to-b from-white/15 px-2 py-4 font-semibold text-gray-700 shadow-sm backdrop-blur-[8px]">
+                    {sceneTitle}
+                  </div>
+
+                  {/* Grid of Shot Cards */}
+                  <div className="grid flex-1 auto-rows-min grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    <SortableContext items={sceneShots.map((s) => s.id)}>
+                      {sceneShots.map((shot, index) => {
+                        // Variable card sizes for visual interest
+                        let size: 'sm' | 'md' | 'lg' = 'md';
+                        if (index === 0 && sceneShots.length > 1) {
+                          size = 'lg'; // First shot is large
+                        } else if (index % 5 === 0) {
+                          size = 'sm'; // Every 5th shot is small
+                        }
+
+                        return (
+                          <ShotCard
                             key={shot.id}
                             shot={shot}
+                            size={size}
                             isSelected={selectedIds.has(shot.id)}
                             onSelect={(selected) =>
                               handleSelectShot(shot.id, selected)
                             }
-                            onUpdate={refetchEpisode}
+                            onClick={() => setSelectedShot(shot)}
                           />
-                        ))}
-                      </SortableContext>
-                    </TableBody>
-                  </Table>
+                        );
+                      })}
+                    </SortableContext>
+
+                    {/* Add New Shot Card */}
+                    <AddShotCard
+                      onClick={() => {
+                        // TODO: Implement add shot functionality
+                        toast.info('Add shot functionality coming soon');
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </DndContext>
         </div>
 
         {filteredShots.length === 0 && (
-          <div className="text-muted-foreground py-8 text-center">
-            No shots match the current filters
+          <div className="text-muted-foreground flex flex-col items-center justify-center py-12 text-center">
+            <MaterialIcon
+              name="search_off"
+              size="xl"
+              className="mb-4 text-gray-400"
+            />
+            <p>No shots match the current filters</p>
           </div>
         )}
+
+        {/* Shot Details Panel */}
+        <ShotDetailsPanel
+          shot={selectedShot}
+          isOpen={!!selectedShot}
+          onClose={() => setSelectedShot(null)}
+          onUpdate={(shotId, updates) => {
+            // Update shot in local state
+            setShots((prev) =>
+              prev.map((s) => (s.id === shotId ? { ...s, ...updates } : s)),
+            );
+            // TODO: Persist to database
+            toast.success('Shot updated');
+            refetchEpisode();
+          }}
+          onRegenerate={(shotId) => {
+            // TODO: Implement regenerate
+            toast.info('Regenerating shot...');
+            onGenerateVideos?.([shotId]);
+          }}
+        />
       </CardContent>
     </Card>
   );

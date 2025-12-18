@@ -1,9 +1,6 @@
 'use client';
 
 import type { Scene } from '@kit/prompt-engine/schemas';
-import { Badge } from '@kit/ui/badge';
-import { Button } from '@kit/ui/button';
-import { ScrollArea } from '@kit/ui/scroll-area';
 import { cn } from '@kit/ui/utils';
 
 interface SceneNavigationProps {
@@ -18,34 +15,63 @@ export function SceneNavigation({
   onSceneSelect,
 }: SceneNavigationProps) {
   return (
-    <ScrollArea className="h-[500px]">
-      <div className="space-y-1 pr-4">
-        {scenes.map((scene) => (
-          <Button
+    <div className="space-y-2">
+      {scenes.map((scene) => {
+        const isActive = activeSceneNumber === scene.number;
+
+        return (
+          <div
             key={scene.number}
-            variant="ghost"
-            className={cn(
-              'w-full justify-start text-left',
-              activeSceneNumber === scene.number && 'bg-accent',
-            )}
             onClick={() => onSceneSelect(scene.number)}
+            className={cn(
+              'group relative mb-2 flex cursor-pointer rounded-md border p-3 transition-all',
+              isActive
+                ? 'border-border/50 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/5'
+                : 'border-transparent hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.05)]',
+            )}
           >
-            <div className="flex w-full items-center gap-2">
-              <Badge variant="outline" className="shrink-0">
+            <div className="mr-3 pt-0.5">
+              <span
+                className={cn(
+                  'flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold',
+                  isActive
+                    ? 'bg-gray-100 text-gray-500'
+                    : 'bg-gray-200 text-gray-500 group-hover:bg-gray-100',
+                )}
+              >
                 {scene.number}
-              </Badge>
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-xs font-medium">
-                  {scene.location}
-                </div>
-                <div className="text-muted-foreground truncate text-xs">
-                  {scene.timeOfDay} - {scene.estimatedDuration}s
-                </div>
+              </span>
+            </div>
+            <div className="min-w-0 flex-1">
+              <div
+                className={cn(
+                  'mb-1.5 truncate text-sm leading-none',
+                  isActive
+                    ? 'font-bold text-gray-800'
+                    : 'font-medium text-gray-600 group-hover:text-gray-900',
+                )}
+              >
+                {scene.location}
+              </div>
+              <div className="flex items-center text-[10px]">
+                <span
+                  className={cn(
+                    'mr-2 rounded px-1.5 py-0.5 font-bold uppercase tracking-wide',
+                    isActive
+                      ? 'bg-gray-100 text-gray-500'
+                      : 'border border-gray-200 text-gray-400',
+                  )}
+                >
+                  {scene.timeOfDay}
+                </span>
+                <span className="text-gray-400">
+                  {scene.estimatedDuration}s
+                </span>
               </div>
             </div>
-          </Button>
-        ))}
-      </div>
-    </ScrollArea>
+          </div>
+        );
+      })}
+    </div>
   );
 }

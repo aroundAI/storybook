@@ -7,6 +7,9 @@
 /* Tailwind CSS */
 @import 'tailwindcss';
 
+/* Material Symbols (Google) */
+@import '@material-design-icons/font/outlined.css';
+
 /* local styles - update the below if you add a new style */
 @import './theme.css';
 @import './theme.utilities.css';
