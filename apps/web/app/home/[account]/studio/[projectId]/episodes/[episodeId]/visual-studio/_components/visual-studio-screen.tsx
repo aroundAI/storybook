@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 
-import { Filter, Play, Search, X } from 'lucide-react';
+import { Filter, Play, PlusCircle, Search, X } from 'lucide-react';
 
 import type { EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
@@ -28,6 +28,18 @@ interface ShotFilter {
   sceneNumber?: number;
   status?: ShotStatus;
   searchQuery?: string;
+}
+
+// Helper to determine shot size for comic strip layout
+function getShotSize(index: number): 'lg' | 'md' | 'sm' {
+  // First shot of each scene is large (spans 2 columns)
+  if (index === 0) return 'lg';
+
+  // Every 4th shot is medium
+  if (index % 4 === 1) return 'md';
+
+  // Alternate between md and sm for variety
+  return index % 2 === 0 ? 'md' : 'sm';
 }
 
 export function VisualStudioScreen({
@@ -102,9 +114,9 @@ export function VisualStudioScreen({
   };
 
   return (
-    <div className="flex h-full">
-      {/* Main Content */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="relative h-full">
+      {/* Main Content - Full width always */}
+      <div className="flex h-full flex-col overflow-hidden">
         {/* Header Bar */}
         <div className="flex items-center justify-between border-b border-black/5 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-white/5 dark:bg-gray-800/85">
           <div className="flex items-center gap-4">
@@ -155,7 +167,7 @@ export function VisualStudioScreen({
           <div className="relative max-w-xs flex-1">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <Input
-              placeholder="Search shots..."
+              placeholder="Filter shots..."
               value={filter.searchQuery ?? ''}
               onChange={(e) =>
                 setFilter({
@@ -227,40 +239,40 @@ export function VisualStudioScreen({
           )}
         </div>
 
-        {/* Shot Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Comic Strip Shot Grid */}
+        <div className="flex-1 overflow-y-auto p-8">
           {Object.entries(shotsByScene).length === 0 ? (
             <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
               No shots match the current filters
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-12">
               {Object.entries(shotsByScene)
                 .sort(([a], [b]) => parseInt(a) - parseInt(b))
                 .map(([sceneNum, sceneShots]) => (
-                  <div key={sceneNum}>
-                    {/* Scene Header */}
-                    <div className="mb-4 flex items-center gap-3">
-                      <h3 className="text-sm font-bold tracking-wider text-gray-400 uppercase dark:text-gray-500">
-                        Scene {sceneNum}
-                      </h3>
-                      <div className="h-px flex-1 bg-gray-200 dark:bg-gray-700" />
-                      <span className="text-xs text-gray-400 dark:text-gray-500">
-                        {sceneShots.length} shot
-                        {sceneShots.length !== 1 ? 's' : ''}
-                      </span>
+                  <div key={sceneNum} className="flex items-start gap-6">
+                    {/* Rotated Scene Title */}
+                    <div className="scene-title-rotator sticky top-8 flex h-[250px] min-w-[40px] items-center justify-center">
+                      Scene {sceneNum}
                     </div>
 
-                    {/* Shot Cards Grid */}
-                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4">
-                      {sceneShots.map((shot) => (
+                    {/* Comic Strip Grid */}
+                    <div className="grid flex-1 auto-rows-min grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-4">
+                      {sceneShots.map((shot, index) => (
                         <ShotCard
                           key={shot.id}
                           shot={shot}
+                          size={getShotSize(index)}
                           isSelected={selectedShot?.id === shot.id}
                           onClick={() => setSelectedShot(shot)}
                         />
                       ))}
+
+                      {/* Add New Shot Card */}
+                      <div className="liquid-card flex min-h-[200px] cursor-pointer flex-col items-center justify-center border border-dashed border-gray-300 bg-gray-50/50 p-4 text-gray-500 transition-colors hover:bg-gray-100/50 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700/50">
+                        <PlusCircle className="mb-2 h-10 w-10" />
+                        <span className="text-sm font-medium">Add New Shot</span>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -269,13 +281,24 @@ export function VisualStudioScreen({
         </div>
       </div>
 
-      {/* Shot Details Sidebar */}
+      {/* Fixed Sidebar Overlay */}
       {selectedShot && (
-        <ShotDetailsSidebar
-          shot={selectedShot}
-          onClose={() => setSelectedShot(null)}
-          onUpdate={refetchEpisode}
-        />
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-20 bg-black/10"
+            onClick={() => setSelectedShot(null)}
+          />
+
+          {/* Sidebar */}
+          <div className="fixed top-0 right-0 z-30 h-full">
+            <ShotDetailsSidebar
+              shot={selectedShot}
+              onClose={() => setSelectedShot(null)}
+              onUpdate={refetchEpisode}
+            />
+          </div>
+        </>
       )}
     </div>
   );
