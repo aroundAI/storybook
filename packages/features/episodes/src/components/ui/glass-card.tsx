@@ -52,7 +52,7 @@ export function GlassCard({
         // Variant styles
         variant === 'default' && 'liquid-card',
         variant === 'light' && 'liquid-card-light',
-        variant === 'solid' && 'shadow-apple border-border/50 border bg-white',
+        variant === 'solid' && 'bg-white shadow-apple border border-border/50',
         // Padding
         paddingClasses[padding],
         // Rounded corners
@@ -80,7 +80,7 @@ export function GlassPanel({
   return (
     <div
       className={cn(
-        'glass-strong border-glass-border rounded-2xl border p-4',
+        'glass-strong rounded-2xl border border-glass-border p-4',
         className,
       )}
     >

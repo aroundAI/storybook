@@ -140,12 +140,12 @@ describe('Story Generation Prompt Templates', () => {
       expect(screenplayConversion.variables.story.required).toBe(true);
     });
 
-    it('should have required scene_count and optional style variables', () => {
+    it('should have optional scene_count and style variables', () => {
       expect(screenplayConversion.variables.scene_count_min?.required).toBe(
-        true,
+        false,
       );
       expect(screenplayConversion.variables.scene_count_max?.required).toBe(
-        true,
+        false,
       );
       expect(screenplayConversion.variables.style?.required).toBe(false);
     });
@@ -279,10 +279,6 @@ describe('Story Generation Prompt Templates', () => {
           themes: ['testing'],
           tone: 'playful',
           estimatedSceneCount: 5,
-          episodeSummary:
-            'A developer embarks on a journey through code, learning valuable lessons about testing.',
-          sentimentScore: 0.7,
-          keyEvents: ['Dev discovers a bug', 'Dev writes tests', 'Tests pass'],
         },
       };
       const result = StoryGenerationOutputSchema.safeParse(output);

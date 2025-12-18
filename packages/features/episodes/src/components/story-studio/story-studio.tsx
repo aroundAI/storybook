@@ -2,7 +2,16 @@
 
 import { useMemo, useState, useTransition } from 'react';
 
-import { Loader2, Lock } from 'lucide-react';
+import {
+  BookOpen,
+  Film,
+  Lightbulb,
+  ListOrdered,
+  Loader2,
+  Lock,
+  Maximize2,
+  Minimize2,
+} from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import {
@@ -13,7 +22,7 @@ import {
   CardTitle,
 } from '@kit/ui/card';
 import { toast } from '@kit/ui/sonner';
-import { Tabs, TabsContent } from '@kit/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { cn } from '@kit/ui/utils';
 
 import { useEpisodeQuery } from '../../hooks/use-episode-query';
@@ -28,7 +37,6 @@ import {
   type StoryIdeaWithSettings,
   StoryIdeation,
 } from '../story-ideation/story-ideation';
-import { MaterialIcon } from '../ui/material-icon';
 import {
   StoryStudioContext,
   useStoryStudioContext,
@@ -41,12 +49,12 @@ interface StoryStudioProps {
 const STUDIO_TABS: Array<{
   id: StudioTab;
   label: string;
-  icon: string;
+  icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'ideation', label: 'Ideation', icon: 'lightbulb' },
-  { id: 'story', label: 'Story', icon: 'menu_book' },
-  { id: 'screenplay', label: 'Screenplay', icon: 'movie_creation' },
-  { id: 'shot-list', label: 'Shot List', icon: 'format_list_numbered' },
+  { id: 'ideation', label: 'Ideation', icon: Lightbulb },
+  { id: 'story', label: 'Story', icon: BookOpen },
+  { id: 'screenplay', label: 'Screenplay', icon: Film },
+  { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
 ];
 
 function getTabUnlockState(
@@ -175,13 +183,14 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
         )
       ) {
         return (
-          <div key={i} className="my-6 flex items-center justify-center py-6">
-            <div className="border-border dark:border-border h-px w-16" />
-            <span className="text-muted-foreground mx-4 font-sans text-xs font-bold uppercase tracking-widest">
-              {line.trim()}
-            </span>
-            <div className="border-border dark:border-border h-px w-16" />
-          </div>
+          <span
+            key={i}
+            className="text-primary/80 mb-4 mt-8 block text-center font-serif text-xl font-bold tracking-widest"
+          >
+            <br />
+            {line}
+            <br />
+          </span>
         );
       }
       // Scene headers (e.g. INT. HOUSE - DAY) - Optional, but creates rhythm
@@ -196,9 +205,9 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
         );
       }
       return (
-        <p key={i} className="min-h-[1.5em]">
+        <span key={i} className="block min-h-[1.5em]">
           {line}
-        </p>
+        </span>
       );
     });
   };
@@ -212,80 +221,77 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
           : 'mt-4',
       )}
     >
-      {/* Story Container Card */}
-      <div
+      <Card
         className={cn(
-          'shadow-apple dark:border-border dark:bg-surface rounded-2xl border bg-white transition-all dark:shadow-none',
+          'transition-all',
           isReadingMode ? 'mx-auto max-w-3xl border-none shadow-none' : '',
         )}
       >
-        {/* Header */}
-        <div
-          className={cn(
-            'border-border dark:border-border dark:bg-surface/50 flex items-end justify-between border-b bg-white/50 px-8 py-6 backdrop-blur-sm',
-            isReadingMode ? 'px-0' : '',
-          )}
-        >
-          <div className={cn(isReadingMode && 'w-full text-center')}>
-            <h2
+        <CardHeader className={cn(isReadingMode ? 'px-0' : '')}>
+          <div className="flex items-center justify-between">
+            <div
+              className={cn('space-y-1', isReadingMode && 'w-full text-center')}
+            >
+              <CardTitle
+                className={cn(isReadingMode ? 'text-3xl' : '', 'font-serif')}
+              >
+                {storyData.title ?? 'Story'}
+              </CardTitle>
+              {!isReadingMode && (
+                <CardDescription>
+                  Generated story for this episode
+                </CardDescription>
+              )}
+            </div>
+
+            <div
               className={cn(
-                'font-serif text-lg font-semibold',
-                isReadingMode && 'text-3xl',
+                'flex items-center gap-2',
+                isReadingMode && 'absolute right-8 top-8',
               )}
             >
-              {storyData.title ?? 'Story'}
-            </h2>
-            {!isReadingMode && (
-              <p className="text-muted-foreground mt-1 text-sm">
-                Generated story for this episode
-              </p>
-            )}
-          </div>
-
-          <div
-            className={cn(
-              'flex items-center gap-2',
-              isReadingMode && 'absolute right-8 top-8',
-            )}
-          >
-            <button
-              onClick={() => setIsReadingMode(!isReadingMode)}
-              className="text-muted-foreground hover:text-primary rounded-lg p-2 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-              title={isReadingMode ? 'Exit Reading Mode' : 'Enter Reading Mode'}
-            >
-              <MaterialIcon
-                name="open_in_full"
-                className={cn('text-xl', isReadingMode && 'rotate-180')}
-              />
-            </button>
-
-            {!isReadingMode && !episode.screenplayData?.scenes?.length && (
               <Button
-                onClick={handleConvertToScreenplay}
-                disabled={isPending}
+                variant="ghost"
                 size="sm"
-                className="bg-primary hover:bg-primary/90 text-white"
+                onClick={() => setIsReadingMode(!isReadingMode)}
+                title={
+                  isReadingMode ? 'Exit Reading Mode' : 'Enter Reading Mode'
+                }
               >
-                {isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
-                To Screenplay
+                {isReadingMode ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
               </Button>
-            )}
-          </div>
-        </div>
 
-        {/* Story Content */}
-        <div className={cn('px-12 py-10', isReadingMode ? 'px-0 pb-32' : '')}>
+              {!isReadingMode && !episode.screenplayData?.scenes?.length && (
+                <Button
+                  onClick={handleConvertToScreenplay}
+                  disabled={isPending}
+                  size="sm"
+                >
+                  {isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : null}
+                  To Screenplay
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className={cn(isReadingMode ? 'px-0 pb-32' : '')}>
+          {/* Reading mode uses serif font with constrained width for optimal readability */}
           <div
             className={cn(
-              'reading-mode mx-auto max-w-3xl space-y-8 font-serif text-lg leading-relaxed',
+              'prose dark:prose-invert transition-all',
+              isReadingMode ? 'reading-mode mx-auto' : 'prose-base max-w-none',
             )}
           >
             {formatStoryText(storyData.fullStory)}
           </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -384,34 +390,24 @@ export function StoryStudio({ episodeId }: StoryStudioProps) {
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          {/* Apple HIG-inspired pill-style tabs */}
-          <div className="sticky top-0 z-20 -mx-2 mb-8 rounded-xl bg-black/5 p-1 shadow-inner backdrop-blur-md dark:bg-white/10">
-            <div className="flex items-center">
-              {STUDIO_TABS.map((tab) => {
-                const isUnlocked = tabUnlockState[tab.id];
-                const isActive = activeTab === tab.id;
+          <TabsList className="grid w-full grid-cols-4">
+            {STUDIO_TABS.map((tab) => {
+              const isUnlocked = tabUnlockState[tab.id];
+              const TabIcon = tab.icon;
 
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => isUnlocked && handleTabChange(tab.id)}
-                    disabled={!isUnlocked}
-                    className={cn(
-                      'flex flex-1 items-center justify-center gap-2 rounded-lg py-2 text-sm font-medium transition-all',
-                      isActive &&
-                        'bg-primary text-white shadow-sm scale-[1.02] transform',
-                      !isActive &&
-                        'text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/10',
-                      !isUnlocked && 'cursor-not-allowed opacity-50',
-                    )}
-                  >
-                    <MaterialIcon name={tab.icon} className="text-sm" />
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+              return (
+                <TabsTrigger
+                  key={tab.id}
+                  value={tab.id}
+                  disabled={!isUnlocked}
+                  className={cn(!isUnlocked && 'cursor-not-allowed opacity-50')}
+                >
+                  <TabIcon className="mr-2 h-4 w-4" />
+                  {tab.label}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
 
           <TabsContent value="ideation">
             {tabUnlockState.ideation ? (
