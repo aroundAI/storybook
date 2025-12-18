@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { buildEpisodeContext } from '@kit/episodes/server';
+import { buildEpisodeContext } from '@kit/episodes/server/context-builder';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 export const dynamic = 'force-dynamic';

@@ -1,0 +1,466 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+
+import {
+  ArrowRight,
+  ChevronRight,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Users,
+} from 'lucide-react';
+
+import { convertToScreenplayAction } from '@kit/episodes/server';
+import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
+import { Button } from '@kit/ui/button';
+import { toast } from '@kit/ui/sonner';
+import { cn } from '@kit/ui/utils';
+
+import { ActDivider } from './act-divider';
+
+interface StoryScreenProps {
+  episode: EpisodeWithShots;
+  onScreenplayComplete: () => void;
+  refetchEpisode: () => void;
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  protagonist:
+    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  antagonist: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+  supporting:
+    'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+};
+
+export function StoryScreen({
+  episode,
+  onScreenplayComplete,
+  refetchEpisode,
+}: StoryScreenProps) {
+  const [isPending, startTransition] = useTransition();
+  const [isReadingMode, setIsReadingMode] = useState(false);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const storyData = episode.storyData;
+
+  const handleConvertToScreenplay = () => {
+    startTransition(async () => {
+      try {
+        const result = await convertToScreenplayAction({
+          episodeId: episode.id,
+        });
+
+        if (result.success) {
+          toast.success(
+            `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
+          );
+          refetchEpisode();
+          onScreenplayComplete();
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to convert to screenplay',
+        );
+      }
+    });
+  };
+
+  if (!storyData?.fullStory) {
+    return (
+      <div className="flex h-full items-center justify-center p-8">
+        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+            No Story Generated
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400">
+            Select an idea from the Ideation tab to generate a full story.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Parse story into sections with act dividers
+  const formatStoryContent = (text: string) => {
+    const elements: React.ReactNode[] = [];
+    const lines = text.split('\n');
+
+    lines.forEach((line, index) => {
+      // ACT headers (e.g. ACT ONE, ACT 1, ACT I)
+      const actMatch = line
+        .trim()
+        .match(
+          /^ACT\s+(ONE|TWO|THREE|FOUR|FIVE|SIX|SEVEN|EIGHT|NINE|TEN|I|II|III|IV|V|VI|\d+)/i,
+        );
+      if (actMatch?.[1]) {
+        elements.push(
+          <ActDivider key={`act-${index}`} actNumber={actMatch[1]} />,
+        );
+        return;
+      }
+
+      // Scene headers (e.g. INT. HOUSE - DAY)
+      if (/^(INT\.|EXT\.)/i.test(line.trim())) {
+        elements.push(
+          <p
+            key={index}
+            className="mt-8 mb-4 font-mono text-sm font-bold tracking-wider text-gray-500 uppercase dark:text-gray-400"
+          >
+            {line}
+          </p>,
+        );
+        return;
+      }
+
+      // Regular paragraphs
+      if (line.trim()) {
+        elements.push(
+          <p
+            key={index}
+            className="mb-4 font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-200"
+          >
+            {line}
+          </p>,
+        );
+      }
+    });
+
+    return elements;
+  };
+
+  const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
+
+  // Reading mode - full screen
+  if (isReadingMode) {
+    return (
+      <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-50 p-8 dark:bg-gray-900">
+        <div className="relative mx-auto max-w-3xl rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          {/* Label */}
+          <div className="absolute -top-3 left-6 bg-gray-50 px-2 text-xs font-semibold tracking-wide text-blue-600 uppercase dark:bg-gray-900 dark:text-blue-400">
+            Story
+          </div>
+
+          {/* Header */}
+          <div className="flex items-start justify-between border-b border-gray-100 p-6 dark:border-gray-700">
+            <div className="flex-1 text-center">
+              <h2 className="font-serif text-3xl font-bold text-gray-900 dark:text-white">
+                {storyData.title ?? 'Untitled Story'}
+              </h2>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsReadingMode(false)}
+              title="Exit Reading Mode"
+              className="absolute top-6 right-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <Minimize2 className="h-5 w-5" />
+            </Button>
+          </div>
+
+          {/* Story Content */}
+          <div className="p-8 pb-24">
+            <div className="prose prose-gray dark:prose-invert mx-auto max-w-2xl">
+              {formatStoryContent(storyData.fullStory)}
+            </div>
+          </div>
+
+          {/* Themes at bottom */}
+          {storyData.themes && storyData.themes.length > 0 && (
+            <div className="border-t border-gray-100 p-6 dark:border-gray-700">
+              <div className="mx-auto flex max-w-2xl flex-wrap gap-2">
+                {storyData.themes.map((theme, i) => (
+                  <span
+                    key={i}
+                    className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  >
+                    {theme}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Normal mode
+  return (
+    <div className="relative min-h-full p-8">
+      <div className="mx-auto max-w-5xl">
+        {/* Story Card */}
+        <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+          {/* Label */}
+          <div className="absolute -top-3 left-6 bg-[#F5F5F7] px-2 text-xs font-semibold tracking-wide text-blue-600 uppercase dark:bg-gray-900 dark:text-blue-400">
+            Story
+          </div>
+
+          {/* Header */}
+          <div className="flex items-start justify-between border-b border-gray-100 p-6 dark:border-gray-700">
+            <div className="flex-1">
+              <h2 className="font-serif text-2xl font-bold text-gray-900 dark:text-white">
+                {storyData.title ?? 'Untitled Story'}
+              </h2>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Generated story for this episode
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsReadingMode(true)}
+                title="Enter Reading Mode"
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                <Maximize2 className="h-5 w-5" />
+              </Button>
+
+              {!hasScreenplay && (
+                <Button
+                  onClick={handleConvertToScreenplay}
+                  disabled={isPending}
+                  className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+                >
+                  {isPending ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Converting...
+                    </>
+                  ) : (
+                    <>
+                      Convert to Screenplay
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {hasScreenplay && (
+                <Button
+                  onClick={onScreenplayComplete}
+                  className="gap-2 bg-green-600 text-white hover:bg-green-700"
+                >
+                  View Screenplay
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+
+          {/* Story Content */}
+          <div className="p-8">
+            <div className="prose prose-gray dark:prose-invert max-w-none">
+              {formatStoryContent(storyData.fullStory)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Collapsible Glass Sidebar */}
+      <>
+        {/* Trigger Button - Fixed to right edge */}
+        <button
+          onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+          className={cn(
+            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-white/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-white/90 dark:border-gray-700/50 dark:bg-gray-800/70 dark:hover:bg-gray-800/90',
+            isSidebarExpanded && 'right-80',
+          )}
+        >
+          <div className="flex items-center gap-2">
+            <Users className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+            <ChevronRight
+              className={cn(
+                'h-4 w-4 text-gray-400 transition-transform',
+                isSidebarExpanded && 'rotate-180',
+              )}
+            />
+          </div>
+        </button>
+
+        {/* Sidebar Panel */}
+        <div
+          className={cn(
+            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-white/60 shadow-2xl backdrop-blur-xl transition-transform duration-300 dark:border-gray-700/30 dark:bg-gray-800/60',
+            isSidebarExpanded ? 'translate-x-0' : 'translate-x-full',
+          )}
+        >
+          <div className="flex h-full flex-col">
+            {/* Header */}
+            <div className="border-b border-white/20 p-6 dark:border-gray-700/30">
+              <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
+                Story Info
+              </h3>
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Details, structure & characters
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-4">
+                {/* Story Details */}
+                <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                  <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                    Story Details
+                  </h3>
+                  <div className="space-y-2 text-xs">
+                    {storyData.tone && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Tone
+                        </span>
+                        <span className="text-right font-medium text-gray-900 dark:text-white">
+                          {storyData.tone}
+                        </span>
+                      </div>
+                    )}
+                    {storyData.estimatedSceneCount && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Est. Scenes
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {storyData.estimatedSceneCount}
+                        </span>
+                      </div>
+                    )}
+                    {storyData.targetDuration && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Target Duration
+                        </span>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {Math.floor(storyData.targetDuration / 60)}m
+                        </span>
+                      </div>
+                    )}
+                    {storyData.contentStyle && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500 dark:text-gray-400">
+                          Style
+                        </span>
+                        <span className="font-medium text-gray-900 capitalize dark:text-white">
+                          {storyData.contentStyle.replace('-', ' ')}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Act Breakdown */}
+                {storyData.actBreakdown && (
+                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                    <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                      Act Breakdown
+                    </h3>
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                          Act 1
+                        </span>
+                        <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                          {storyData.actBreakdown.act1}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                          Act 2
+                        </span>
+                        <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                          {storyData.actBreakdown.act2}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                          Act 3
+                        </span>
+                        <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                          {storyData.actBreakdown.act3}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Themes */}
+                {storyData.themes && storyData.themes.length > 0 && (
+                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                    <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                      Themes
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
+                      {storyData.themes.map((theme, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                        >
+                          {theme}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Characters */}
+                {storyData.characters && storyData.characters.length > 0 && (
+                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                    <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                      <Users className="h-4 w-4" />
+                      Characters
+                    </h3>
+                    <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                      {storyData.characters.length} character
+                      {storyData.characters.length !== 1 ? 's' : ''} in this
+                      story
+                    </p>
+                    <div className="space-y-3">
+                      {storyData.characters.map(
+                        (character: StoryCharacterArc, index: number) => (
+                          <div
+                            key={index}
+                            className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
+                          >
+                            <div className="mb-2 flex items-start justify-between">
+                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {character.name}
+                              </h4>
+                              <span
+                                className={cn(
+                                  'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+                                  ROLE_COLORS[character.role.toLowerCase()] ??
+                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                )}
+                              >
+                                {character.role}
+                              </span>
+                            </div>
+                            <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                              {character.arc}
+                            </p>
+                          </div>
+                        ),
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Backdrop */}
+        {isSidebarExpanded && (
+          <div
+            className="fixed inset-0 z-20 bg-black/20"
+            onClick={() => setIsSidebarExpanded(false)}
+          />
+        )}
+      </>
+    </div>
+  );
+}

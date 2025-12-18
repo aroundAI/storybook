@@ -1,7 +1,5 @@
 'use server';
 
-import 'server-only';
-
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
