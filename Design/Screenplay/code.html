@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Screenplay Editor Replica</title>
+<!-- Tailwind CSS v3 with Plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- FontAwesome for Icons -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
+<!-- Fonts: Courier Prime for Screenplay, Inter/San-serif for UI -->
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&amp;family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<!-- Custom Tailwind Configuration -->
+<script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              screenplay: ['"Courier Prime"', '"Courier New"', 'monospace'],
+            },
+            colors: {
+              sidebar: '#f7f7f7',
+              'sidebar-secondary': '#f0f0f0',
+              'main-bg': '#e8e8e8',
+              'selection-blue': '#dbeafe', // Light blue for selection
+            }
+          }
+        }
+      }
+    </script>
+<style data-purpose="custom-scrollbar">
+      /* Subtle scrollbar for the script area */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #9ca3af;
+      }
+    </style>
+</head>
+<body class="h-screen w-screen flex overflow-hidden text-gray-700 bg-white font-sans text-sm antialiased">
+<!-- BEGIN: Main Navigation (Left Sidebar) -->
+<aside class="w-[240px] bg-sidebar border-r border-gray-200 flex flex-col flex-shrink-0 z-20">
+<!-- Project Header -->
+<div class="h-14 flex items-center px-4 border-b border-gray-100 hover:bg-gray-100 cursor-pointer transition-colors">
+<div class="w-8 h-8 rounded bg-gray-200 flex items-center justify-center mr-3 text-gray-500">
+<i class="fa-regular fa-folder"></i>
+</div>
+<div class="flex-1 min-w-0">
+<div class="font-medium text-gray-900 truncate">Little Detective ...</div>
+<div class="text-xs text-gray-500">Switch Project</div>
+</div>
+<i class="fa-solid fa-chevron-down text-xs text-gray-400"></i>
+</div>
+<!-- Scrollable Nav Links -->
+<nav class="flex-1 overflow-y-auto py-4 px-2 space-y-6">
+<!-- Section: Application -->
+<div>
+<div class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Application</div>
+<ul class="space-y-0.5">
+<li>
+<a class="flex items-center px-3 py-2 rounded-md hover:bg-gray-200 group text-gray-600" href="#">
+<i class="fa-solid fa-border-all w-5 text-center mr-3 text-gray-400 group-hover:text-gray-600"></i>
+<span>Overview</span>
+</a>
+</li>
+<!-- Active State -->
+<li>
+<a class="flex items-center px-3 py-2 rounded-md bg-gray-200 text-gray-900 font-medium group" href="#">
+<i class="fa-solid fa-clapperboard w-5 text-center mr-3 text-gray-600"></i>
+<span class="flex-1">Episodes</span>
+<span class="bg-gray-300 text-gray-700 text-[10px] font-semibold px-1.5 py-0.5 rounded ml-2">30</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- Section: Assets -->
+<div>
+<div class="px-3 text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Assets</div>
+<ul class="space-y-0.5">
+<li>
+<a class="flex items-center px-3 py-2 rounded-md hover:bg-gray-200 group text-gray-600" href="#">
+<i class="fa-solid fa-user-group w-5 text-center mr-3 text-gray-400 group-hover:text-gray-600"></i>
+<span class="flex-1">Characters</span>
+<span class="text-gray-400 text-xs">28</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-3 py-2 rounded-md hover:bg-gray-200 group text-gray-600" href="#">
+<i class="fa-solid fa-location-dot w-5 text-center mr-3 text-gray-400 group-hover:text-gray-600"></i>
+<span class="flex-1">Locations</span>
+<span class="text-gray-400 text-xs">8</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-3 py-2 rounded-md hover:bg-gray-200 group text-gray-600" href="#">
+<i class="fa-solid fa-wave-square w-5 text-center mr-3 text-gray-400 group-hover:text-gray-600"></i>
+<span>Voices</span>
+</a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- User Footer -->
+<div class="p-3 border-t border-gray-200">
+<div class="flex items-center p-2 rounded-md hover:bg-gray-200 cursor-pointer">
+<div class="w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center text-xs font-medium mr-3">N</div>
+<div class="min-w-0 flex-1">
+<p class="text-sm font-medium text-gray-900 truncate">test</p>
+<p class="text-xs text-gray-500 truncate">test@storybook.com</p>
+</div>
+<i class="fa-solid fa-sort text-gray-400 text-xs"></i>
+</div>
+</div>
+</aside>
+<!-- END: Main Navigation -->
+<!-- BEGIN: Scene Index (Middle Sidebar) -->
+<aside class="w-[300px] bg-sidebar-secondary border-r border-gray-200 flex flex-col flex-shrink-0 z-10">
+<div class="h-14 flex items-center justify-between px-4 border-b border-gray-200 bg-sidebar-secondary">
+<span class="font-bold text-xs text-gray-500 uppercase">Scene Index</span>
+<span class="text-xs text-gray-400">8 Scenes • ~7 min</span>
+</div>
+<div class="flex-1 overflow-y-auto p-2 space-y-2"><!-- Scene 1 (Active) -->
+<div class="flex p-3 bg-white rounded-md cursor-pointer shadow-[0_2px_8px_rgba(0,0,0,0.05)] ring-1 ring-black/5 mb-2 relative group">
+<div class="mr-3 pt-0.5">
+<span class="flex items-center justify-center w-5 h-5 bg-gray-100 text-gray-500 text-[10px] font-bold rounded">1</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="text-sm font-bold text-gray-800 mb-1.5 leading-none truncate">EXT. MAGICAL PARK</div>
+<div class="flex items-center text-[10px]">
+<span class="bg-gray-100 text-gray-500 font-bold px-1.5 py-0.5 rounded mr-2 uppercase tracking-wide">DAY</span>
+<span class="text-gray-400">45s</span>
+</div>
+</div>
+</div>
+<!-- Scene 2 -->
+<div class="flex p-3 rounded-md hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.05)] cursor-pointer transition-colors mb-2 group border border-transparent">
+<div class="mr-3 pt-0.5">
+<span class="flex items-center justify-center w-5 h-5 bg-gray-200 text-gray-500 text-[10px] font-bold rounded group-hover:bg-gray-100">2</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="text-sm font-medium text-gray-600 group-hover:text-gray-900 mb-1.5 leading-none truncate">EXT. MAGICAL PARK STREAM</div>
+<div class="flex items-center text-[10px]">
+<span class="border border-gray-200 text-gray-400 font-bold px-1.5 py-0.5 rounded mr-2 uppercase tracking-wide">DAY</span>
+<span class="text-gray-400">40s</span>
+</div>
+</div>
+</div>
+<!-- Scene 3 -->
+<div class="flex p-3 rounded-md hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.05)] cursor-pointer transition-colors mb-2 group border border-transparent">
+<div class="mr-3 pt-0.5">
+<span class="flex items-center justify-center w-5 h-5 bg-gray-200 text-gray-500 text-[10px] font-bold rounded group-hover:bg-gray-100">3</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="text-sm font-medium text-gray-600 group-hover:text-gray-900 mb-1.5 leading-none truncate">EXT. MAGICAL PARK CLEARING</div>
+<div class="flex items-center text-[10px]">
+<span class="border border-gray-200 text-gray-400 font-bold px-1.5 py-0.5 rounded mr-2 uppercase tracking-wide">DAY</span>
+<span class="text-gray-400">30s</span>
+</div>
+</div>
+</div>
+<!-- Scene 4 -->
+<div class="flex p-3 rounded-md hover:bg-white hover:shadow-[0_2px_8px_rgba(0,0,0,0.05)] cursor-pointer transition-colors mb-2 group border border-transparent">
+<div class="mr-3 pt-0.5">
+<span class="flex items-center justify-center w-5 h-5 bg-gray-200 text-gray-500 text-[10px] font-bold rounded group-hover:bg-gray-100">4</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="text-sm font-medium text-gray-600 group-hover:text-gray-900 mb-1.5 leading-none truncate">EXT. CONSTRUCTION PAPER TRAIL</div>
+<div class="flex items-center text-[10px]">
+<span class="border border-gray-200 text-gray-400 font-bold px-1.5 py-0.5 rounded mr-2 uppercase tracking-wide">DAY</span>
+<span class="text-gray-400">50s</span>
+</div>
+</div>
+</div></div>
+</aside>
+<!-- END: Scene Index -->
+<!-- BEGIN: Main Content Area -->
+<main class="flex-1 flex flex-col min-w-0 bg-main-bg">
+<!-- Top Toolbar -->
+<header class="h-14 bg-sidebar border-b border-gray-200 flex items-center justify-between px-4 flex-shrink-0 z-30">
+<!-- Breadcrumbs -->
+<div class="flex items-center text-sm text-gray-500">
+<button class="mr-3 hover:text-gray-800"><i class="fa-solid fa-arrow-left"></i></button>
+<span class="hover:text-gray-800 cursor-pointer">Little Detective Dante</span>
+<span class="mx-2 text-gray-300">/</span>
+<span class="hover:text-gray-800 cursor-pointer">Episodes</span>
+<span class="mx-2 text-gray-300">/</span>
+<span class="font-medium text-gray-900">The Origami Lion's Request</span>
+</div>
+<!-- View Switcher -->
+<div class="flex bg-gray-200 rounded-lg p-1 text-xs font-medium">
+<button class="px-3 py-1 rounded-md text-gray-600 hover:text-gray-900 flex items-center space-x-1.5">
+<i class="fa-regular fa-lightbulb"></i>
+<span>Ideation</span>
+</button>
+<button class="px-3 py-1 rounded-md text-gray-600 hover:text-gray-900 flex items-center space-x-1.5">
+<i class="fa-solid fa-book-open"></i>
+<span>Story</span>
+</button>
+<button class="px-3 py-1 bg-white shadow-sm rounded-md text-blue-600 flex items-center space-x-1.5">
+<i class="fa-solid fa-keyboard"></i>
+<span>Screenplay</span>
+</button>
+<button class="px-3 py-1 rounded-md text-gray-600 hover:text-gray-900 flex items-center space-x-1.5">
+<i class="fa-solid fa-list-ul"></i>
+<span>Shot List</span>
+</button>
+</div>
+<!-- Right Actions -->
+<div class="flex items-center space-x-3 text-sm">
+<span class="text-gray-500 text-xs">Studio:</span>
+<button class="flex items-center space-x-2 bg-white border border-gray-300 rounded px-3 py-1.5 text-gray-700 hover:bg-gray-50">
+<i class="fa-solid fa-pen text-xs"></i>
+<span class="font-medium">Edit Studio</span>
+</button>
+</div>
+</header>
+<!-- Editor Workspace (Flex Row) -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Script Page Container -->
+<div class="flex-1 overflow-y-auto relative flex justify-center py-8 px-4" data-purpose="script-container">
+<!-- The Page -->
+<div class="w-[800px] min-h-[1100px] bg-white p-[1in] font-screenplay text-[16px] leading-[1.2] relative text-black mb-20 shadow-[0_2px_8px_rgba(0,0,0,0.05)]" data-purpose="screenplay-paper">
+<!-- Page Number -->
+<div class="absolute top-10 right-10 text-gray-400 font-sans text-xs">p. 1</div>
+<!-- Approve Button (Positioned top-right inside paper) -->
+<div class="absolute top-6 right-8 z-10">
+<button class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2 px-5 rounded-full shadow-[0_2px_8px_rgba(0,0,0,0.1)] flex items-center space-x-2 transition-transform transform hover:-translate-y-0.5">
+<i class="fa-solid fa-check"></i>
+<span>Approve Screenplay</span>
+</button>
+</div>
+<!-- BEGIN: Script Content -->
+<!-- SCENE 1 -->
+<div class="font-bold mb-4 uppercase text-black">1. EXT. MAGICAL PARK - AFTERNOON</div>
+<div class="mb-4 text-black">
+            Sunlight filters through paper-thin leaves, creating a dappled glow. <span class="font-bold">DANTE</span> (a boy in a navy blue detective coat and cap) kneels by a small stream. Watercolor fish swim in the clear water.
+          </div>
+<div class="mb-4 text-black">
+<span class="font-bold">CECE</span>, a chihuahua with a monocle, sniffs at a patch of yarn moss nearby. Her monocle catches the light.
+          </div>
+<!-- SCENE 2 -->
+<div class="font-bold mb-4 mt-8 uppercase text-black">2. EXT. MAGICAL PARK CLEARING - AFTERNOON</div>
+<div class="mb-4 text-black">
+            A crisp paper rustle echoes. The <span class="font-bold">ORIGAMI LION</span> appears, his golden paper folds shimmering. His face is creased with worry.
+          </div>
+<div class="mb-6 text-black">
+            Dante and Cece turn to face him.
+          </div>
+<!-- Dialogue Block 1 -->
+<div class="mb-4">
+<div class="font-bold mb-0 ml-[37%] uppercase text-black">ORIGAMI LION</div>
+<div class="text-sm mb-0 ml-[30%] text-black">((voice like rustling parchment))</div>
+<div class="mt-0 ml-[25%] max-w-[50%] text-black">Dante! Cece!</div>
+</div>
+<!-- Dialogue Block 2 -->
+<div class="mb-4">
+<div class="font-bold mb-0 ml-[37%] uppercase text-black">ORIGAMI LION</div>
+<div class="mt-0 ml-[25%] max-w-[50%] text-black">My cub... he wandered off while we were playing hide-and-seek.</div>
+</div>
+<!-- Dialogue Block 3 -->
+<div class="mb-4">
+<div class="font-bold mb-0 ml-[37%] uppercase text-black">DANTE</div>
+<div class="text-sm mb-0 ml-[30%] text-black">((adjusting his cap))</div>
+<div class="mt-0 ml-[25%] max-w-[50%] text-black">Don't worry, Mr. Lion. We'll help you</div>
+</div>
+<!-- END: Script Content --></div>
+</div>
+<!-- BEGIN: AI Assistant Sidebar (Right) -->
+<aside class="w-[280px] bg-sidebar-secondary border-l border-gray-200 flex flex-col flex-shrink-0 overflow-y-auto p-4 space-y-4">
+<h2 class="text-xs font-bold text-gray-500 uppercase mb-2">AI Assistant</h2>
+<!-- Card 1: Scene Description -->
+<div class="bg-white p-4 rounded-lg border border-gray-200 ring-1 ring-black/5 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
+<div class="flex items-center space-x-2 mb-2 text-blue-600">
+<i class="fa-solid fa-wand-magic-sparkles"></i>
+<span class="font-semibold text-xs">Scene Description</span>
+</div>
+<p class="text-xs text-gray-600 mb-3 leading-relaxed">
+            Consider adding more detail about the "paper" texture of the environment. How does it sound?
+          </p>
+<button class="w-full py-1.5 bg-blue-50 text-blue-600 text-xs font-medium rounded hover:bg-blue-100 transition-colors">
+            Generate Suggestion
+          </button>
+</div>
+<!-- Card 2: Active Characters -->
+<div class="bg-white p-4 rounded-lg border border-gray-200 ring-1 ring-black/5 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
+<div class="flex items-center justify-between mb-3">
+<span class="font-semibold text-xs text-gray-700">Active Characters</span>
+</div>
+<ul class="space-y-2"><li class="flex items-center p-1">
+<div class="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0">D</div>
+<span class="text-xs font-medium text-gray-700">Dante</span>
+</li>
+<li class="flex items-center p-1">
+<div class="w-6 h-6 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0">C</div>
+<span class="text-xs font-medium text-gray-700">Cece</span>
+</li>
+<li class="flex items-center p-1">
+<div class="w-6 h-6 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center text-[10px] font-bold mr-3 shrink-0">L</div>
+<span class="text-xs font-medium text-gray-700">Origami Lion</span>
+</li></ul>
+</div>
+<!-- Card 3: Dialogue Enhancements -->
+<div class="bg-white p-4 rounded-lg border border-gray-200 opacity-60 ring-1 ring-black/5 shadow-[0_2px_8px_rgba(0,0,0,0.05)]">
+<div class="flex items-center justify-between mb-1">
+<span class="font-semibold text-xs text-gray-700">Character Dialogue Enhancements</span>
+</div>
+<p class="text-[10px] text-gray-400 italic mb-2">"My cub, he wandered..." -&gt; "Have you seen my cub? We were playing..."</p>
+<button class="w-full py-1.5 bg-gray-50 text-gray-400 text-xs font-medium rounded cursor-not-allowed">
+            Generate Suggestion
+          </button>
+</div>
+</aside>
+<!-- END: AI Assistant Sidebar -->
+</div>
+</main>
+<!-- END: Main Content Area -->
+</body></html>

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Audio Studio Redesign</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#007AFF", // Apple Blue
+                        "background-light": "#F5F5F7",
+                        "background-dark": "#000000",
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#1C1C1E",
+                        "border-light": "#E5E7EB",
+                        "border-dark": "#38383A",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.75rem", // 12px default
+                    },
+                },
+            },
+        };
+    </script>
+<style>::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #4b5563;
+        }.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display antialiased h-screen flex overflow-hidden selection:bg-primary selection:text-white">
+<aside class="w-[280px] flex-shrink-0 bg-surface-light dark:bg-surface-dark border-r border-border-light dark:border-border-dark flex flex-col justify-between transition-colors duration-300">
+<div class="flex flex-col h-full">
+<div class="h-16 flex items-center px-6 border-b border-border-light dark:border-border-dark cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+<div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center text-white mr-3 shadow-sm">
+<span class="material-icons-round text-lg">folder</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="text-sm font-semibold truncate text-slate-900 dark:text-white">Little Detective...</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400">Switch Project</p>
+</div>
+<span class="material-icons-round text-slate-400">keyboard_arrow_down</span>
+</div>
+<nav class="flex-1 overflow-y-auto px-4 py-6 space-y-8">
+<div>
+<h4 class="px-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Application</h4>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 group transition-colors" href="#">
+<span class="material-icons-outlined text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 mr-3">dashboard</span>
+                                Overview
+                            </a>
+</li>
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 group transition-colors" href="#">
+<span class="material-icons-round text-blue-500 dark:text-blue-400 mr-3">movie</span>
+                                Episodes
+                                <span class="ml-auto bg-white dark:bg-blue-900 py-0.5 px-2 rounded-full text-xs font-semibold text-blue-600 dark:text-blue-300 shadow-sm">30</span>
+</a>
+</li>
+</ul>
+</div>
+<div>
+<h4 class="px-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Assets</h4>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 group transition-colors" href="#">
+<span class="material-icons-outlined text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 mr-3">people</span>
+                                Characters
+                                <span class="ml-auto text-xs text-slate-400 group-hover:text-slate-500">28</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 group transition-colors" href="#">
+<span class="material-icons-outlined text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 mr-3">place</span>
+                                Locations
+                                <span class="ml-auto text-xs text-slate-400 group-hover:text-slate-500">8</span>
+</a>
+</li>
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 group transition-colors" href="#">
+<span class="material-icons-outlined text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 mr-3">graphic_eq</span>
+                                Voices
+                            </a>
+</li>
+</ul>
+</div>
+<div>
+<h4 class="px-2 text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Settings</h4>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 group transition-colors" href="#">
+<span class="material-icons-outlined text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 mr-3">analytics</span>
+                                Analytics
+                            </a>
+</li>
+<li>
+<a class="flex items-center px-2 py-2 text-sm font-medium rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 group transition-colors" href="#">
+<span class="material-icons-outlined text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300 mr-3">settings</span>
+                                Project Settings
+                            </a>
+</li>
+</ul>
+</div>
+</nav>
+<div class="p-4 border-t border-border-light dark:border-border-dark">
+<a class="flex items-center w-full hover:bg-slate-100 dark:hover:bg-white/5 p-2 rounded-lg transition-colors" href="#">
+<div class="h-9 w-9 rounded-full bg-slate-800 flex items-center justify-center text-white text-xs font-medium">N</div>
+<div class="ml-3">
+<p class="text-sm font-medium text-slate-900 dark:text-white">Nick</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">nick@example.com</p>
+</div>
+<span class="material-icons-round ml-auto text-slate-400 text-sm">unfold_more</span>
+</a>
+</div>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-full bg-background-light dark:bg-black relative">
+<header class="h-16 flex items-center justify-between px-6 bg-surface-light dark:bg-surface-dark/80 backdrop-blur-md border-b border-border-light dark:border-border-dark z-20 sticky top-0">
+<div class="flex items-center space-x-3 overflow-hidden">
+<button class="p-1 rounded-md hover:bg-slate-100 dark:hover:bg-white/10 transition-colors text-slate-500 dark:text-slate-400">
+<span class="material-icons-round">arrow_back</span>
+</button>
+<nav class="flex items-center text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
+<span class="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">Little Detective Dante</span>
+<span class="mx-2 text-slate-300 dark:text-slate-600">/</span>
+<span class="hover:text-slate-900 dark:hover:text-white cursor-pointer transition-colors">Episodes</span>
+<span class="mx-2 text-slate-300 dark:text-slate-600">/</span>
+<span class="font-medium text-slate-900 dark:text-white truncate">The Origami Lion's Request</span>
+</nav>
+</div>
+<div class="flex items-center space-x-4 pl-4">
+<span class="text-xs text-slate-400 dark:text-slate-500 hidden sm:block">Last saved 2m ago</span>
+<button class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+<span class="material-icons-round">more_horiz</span>
+</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto overflow-x-hidden">
+<div class="max-w-7xl mx-auto p-6 md:p-8 space-y-6">
+<div class="space-y-4">
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+<div class="space-y-2">
+<div class="flex items-center gap-3">
+<h1 class="text-3xl font-bold tracking-tight text-slate-900 dark:text-white">The Origami Lion's Request</h1>
+<span class="px-2.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium border border-blue-200 dark:border-blue-800">Storyboard</span>
+</div>
+<p class="text-slate-500 dark:text-slate-400 max-w-2xl text-sm leading-relaxed">
+                                The Origami Lion's cub wandered off while playing. Dante and Cece help find the cub, who was playing hide-and-seek.
+                            </p>
+</div>
+<div class="flex items-center bg-slate-100 dark:bg-white/10 p-1 rounded-lg self-start">
+<button class="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors">Story Studio</button>
+<button class="px-3 py-1.5 text-xs font-medium bg-white dark:bg-surface-dark text-slate-900 dark:text-white shadow-sm rounded-md transition-all">Audio Studio</button>
+</div>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">Ep 1 • S1</span>
+<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
+<span class="material-icons-round text-[14px] mr-1">person</span> Dante
+                        </span>
+<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
+<span class="material-icons-round text-[14px] mr-1">person</span> Cece
+                        </span>
+<span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-white/10">
+<span class="material-icons-round text-[14px] mr-1">pets</span> Origami Lion
+                        </span>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-xl p-1 shadow-sm border border-border-light dark:border-border-dark flex overflow-x-auto">
+<button class="flex-1 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-outlined text-lg">lightbulb</span> Ideation
+                    </button>
+<button class="flex-1 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-outlined text-lg">menu_book</span> Story
+                    </button>
+<button class="flex-1 py-2.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-outlined text-lg">movie_filter</span> Screenplay
+                    </button>
+<button class="flex-1 py-2.5 text-sm font-semibold text-primary bg-white dark:bg-white/10 shadow-sm rounded-lg flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-round text-lg">graphic_eq</span> Audio Studio
+                    </button>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark shadow-sm p-2 flex flex-col lg:flex-row items-center justify-between gap-4 sticky top-0 z-10">
+<div class="flex items-center gap-4 w-full lg:w-auto px-2 overflow-x-auto no-scrollbar">
+<div class="flex bg-slate-100 dark:bg-black/40 rounded-lg p-1">
+<button class="px-4 py-1.5 rounded-md bg-white dark:bg-surface-dark shadow-sm text-xs font-semibold text-slate-900 dark:text-white transition-all">
+                                Dialogue <span class="ml-1 text-slate-400 font-normal">16</span>
+</button>
+<button class="px-4 py-1.5 rounded-md text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all">Music</button>
+<button class="px-4 py-1.5 rounded-md text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-all">SFX</button>
+</div>
+<div class="h-6 w-px bg-border-light dark:bg-border-dark"></div>
+<div class="flex items-center gap-2">
+<span class="px-2.5 py-1 rounded-md bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-medium border border-green-100 dark:border-green-800">0 completed</span>
+<span class="px-2.5 py-1 rounded-md bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 text-xs font-medium border border-orange-100 dark:border-orange-800">16 pending</span>
+</div>
+</div>
+<div class="flex items-center gap-2 w-full lg:w-auto justify-end px-2">
+<button class="flex items-center gap-2 px-3 py-2 text-xs font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-white/5 border border-border-light dark:border-white/10 rounded-lg hover:bg-slate-50 dark:hover:bg-white/10 transition-colors">
+<span class="material-icons-outlined text-sm">settings</span> Settings
+                        </button>
+<button class="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-slate-900 dark:bg-white dark:text-black rounded-lg hover:bg-slate-800 dark:hover:bg-slate-200 shadow-sm transition-colors">
+<span class="material-icons-round text-sm">play_circle</span> Generate All Pending
+                        </button>
+<button class="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-primary rounded-lg hover:bg-blue-600 shadow-sm transition-colors">
+<span class="material-icons-outlined text-sm">file_upload</span> Export
+                        </button>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[600px] overflow-hidden">
+<div class="lg:col-span-1 bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col h-full shadow-sm">
+<div class="p-4 border-b border-border-light dark:border-border-dark flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-icons-round text-blue-500">record_voice_over</span>
+<h3 class="font-semibold text-sm text-slate-900 dark:text-white">Voice Assignment</h3>
+</div>
+<button class="text-xs text-primary font-medium hover:underline">Manage All</button>
+</div>
+<div class="flex-1 overflow-y-auto p-3 space-y-3">
+<div class="group relative bg-white dark:bg-white/5 border border-l-4 border-l-orange-400 border-slate-100 dark:border-white/10 rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center text-xs font-bold">D</div>
+<div>
+<h4 class="text-sm font-semibold text-slate-900 dark:text-white">Dante</h4>
+<p class="text-[10px] text-slate-500 dark:text-slate-400">Main Character</p>
+</div>
+</div>
+<div class="h-2 w-2 rounded-full bg-green-500"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400">Young Boy • Energetic</span>
+<button class="text-slate-400 hover:text-primary"><span class="material-icons-outlined text-sm">edit</span></button>
+</div>
+</div>
+<div class="group relative bg-white dark:bg-white/5 border border-l-4 border-l-purple-400 border-slate-100 dark:border-white/10 rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">O</div>
+<div>
+<h4 class="text-sm font-semibold text-slate-900 dark:text-white">Origami Lion</h4>
+<p class="text-[10px] text-slate-500 dark:text-slate-400">Side Character</p>
+</div>
+</div>
+<div class="h-2 w-2 rounded-full bg-yellow-400"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400">Deep • Wise</span>
+<button class="text-slate-400 hover:text-primary"><span class="material-icons-outlined text-sm">edit</span></button>
+</div>
+</div>
+<div class="group relative bg-white dark:bg-white/5 border border-l-4 border-l-green-400 border-slate-100 dark:border-white/10 rounded-xl p-3 shadow-sm hover:shadow-md transition-all cursor-pointer">
+<div class="flex justify-between items-start mb-2">
+<div class="flex items-center gap-3">
+<div class="h-8 w-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center text-xs font-bold">C</div>
+<div>
+<h4 class="text-sm font-semibold text-slate-900 dark:text-white">Cece</h4>
+<p class="text-[10px] text-slate-500 dark:text-slate-400">Main Character</p>
+</div>
+</div>
+<div class="h-2 w-2 rounded-full bg-green-500"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-[10px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-400">High Pitch • Excited</span>
+<button class="text-slate-400 hover:text-primary"><span class="material-icons-outlined text-sm">edit</span></button>
+</div>
+</div>
+</div>
+</div>
+<div class="lg:col-span-3 bg-surface-light dark:bg-surface-dark rounded-2xl border border-border-light dark:border-border-dark flex flex-col h-full shadow-sm relative overflow-hidden">
+<div class="h-10 border-b border-border-light dark:border-border-dark bg-slate-50 dark:bg-black/20 flex items-end px-4 text-[10px] text-slate-400 font-mono select-none">
+<div class="flex-1 flex justify-between px-2 pb-1 relative">
+<span>0:00</span>
+<span>0:15</span>
+<span>0:30</span>
+<span>0:45</span>
+<span>1:00</span>
+<span>1:15</span>
+<span>1:30</span>
+<div class="absolute bottom-0 left-0 w-full h-1.5 flex justify-between px-2">
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+<span class="w-px h-full bg-slate-300 dark:bg-slate-700"></span>
+</div>
+</div>
+</div>
+<div class="flex-1 relative overflow-x-auto overflow-y-auto bg-grid-slate-50 dark:bg-grid-white/5 p-4">
+<div class="absolute top-0 bottom-0 left-[20px] w-0.5 bg-black dark:bg-white z-10 flex flex-col items-center">
+<div class="w-3 h-3 -mt-1.5 bg-black dark:bg-white rotate-45 rounded-sm"></div>
+</div>
+<div class="space-y-4 min-w-[800px] relative pt-2">
+<div class="h-24 relative">
+<div class="absolute left-[30px] top-0 w-[180px] bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<p class="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">Dante! Cece!</p>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-purple-500"></div>
+<span class="text-[10px] font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Origami Lion</span>
+</div>
+</div>
+</div>
+<div class="h-24 relative">
+<div class="absolute left-[220px] top-0 w-[160px] bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+<p class="text-sm font-medium text-purple-900 dark:text-purple-100 mb-2">My cub...</p>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-purple-500"></div>
+<span class="text-[10px] font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wide">Origami Lion</span>
+</div>
+</div>
+</div>
+<div class="h-28 relative">
+<div class="absolute left-[400px] top-0 w-[190px] bg-orange-100 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-700 rounded-xl p-3 shadow-md ring-2 ring-primary ring-offset-2 dark:ring-offset-black cursor-pointer z-10">
+<p class="text-sm font-medium text-orange-900 dark:text-orange-100 mb-2">Don't worry... Mr. you find him!</p>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-orange-500"></div>
+<span class="text-[10px] font-semibold text-orange-700 dark:text-orange-300 uppercase tracking-wide">Dante</span>
+</div>
+<span class="absolute -right-3 bottom-2 text-slate-800 dark:text-white drop-shadow-md material-icons-round text-xl" style="transform: rotate(-15deg);">pan_tool_alt</span>
+<div class="absolute top-1/2 -right-[160px] transform -translate-y-1/2 w-40 bg-white dark:bg-surface-dark rounded-xl shadow-xl border border-slate-100 dark:border-white/10 py-1.5 z-50">
+<button class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
+<span class="material-icons-round text-sm">play_arrow</span> Play
+                                            </button>
+<button class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
+<span class="material-icons-round text-sm">autorenew</span> Regenerate
+                                            </button>
+<button class="w-full text-left px-4 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/10 flex items-center gap-2">
+<span class="material-icons-round text-sm">mic</span> Assign Voice
+                                            </button>
+</div>
+</div>
+<div class="absolute left-[610px] top-0 w-[220px] bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-xl p-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer opacity-80">
+<p class="text-sm font-medium text-green-900 dark:text-green-100 mb-2">We were counting by this clay mashroom. When</p>
+<div class="flex items-center gap-1.5">
+<div class="w-2 h-2 rounded-full bg-green-500"></div>
+<span class="text-[10px] font-semibold text-green-700 dark:text-green-300 uppercase tracking-wide">Origami Lion</span>
+</div>
+</div>
+</div>
+<div class="mt-8 border-t border-border-light dark:border-border-dark pt-2">
+<h5 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wide mb-2 pl-4">Music/SFX</h5>
+<div class="h-8 relative w-full">
+<div class="absolute left-[400px] w-[430px] h-6 bg-green-200/50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<div class="fixed inset-0 pointer-events-none opacity-[0.015] bg-[url('https://www.transparenttextures.com/patterns/noise.png')] mix-blend-multiply dark:mix-blend-overlay"></div>
+
+</body></html>

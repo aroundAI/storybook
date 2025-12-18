@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Story Text Editor - Apple HIG Redesign</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#007AFF", // Apple System Blue
+                        "background-light": "#F5F5F7", // Apple Light Gray Background
+                        "background-dark": "#1C1C1E", // Apple Dark Gray Background
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#2C2C2E",
+                        "border-light": "#E5E5EA",
+                        "border-dark": "#3A3A3C",
+                        "text-primary-light": "#000000",
+                        "text-primary-dark": "#FFFFFF",
+                        "text-secondary-light": "#8E8E93",
+                        "text-secondary-dark": "#98989D",
+                    },
+                    fontFamily: {
+                        display: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                        body: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "Helvetica", "Arial", "sans-serif"],
+                        serif: ["New York", "Charter", "Georgia", "serif"], // For the story text
+                    },
+                    borderRadius: {
+                        DEFAULT: "12px",
+                        "xl": "16px",
+                        "2xl": "20px",
+                    },
+                    boxShadow: {
+                        'apple': '0 4px 24px rgba(0, 0, 0, 0.04)',
+                        'apple-hover': '0 8px 32px rgba(0, 0, 0, 0.08)',
+                        'float': '0 20px 40px -8px rgba(0,0,0,0.08)',
+                    }
+                },
+            },
+        };
+    </script>
+<style>::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D1D1D6;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #AEAEB2;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #636366;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #8E8E93;
+        }.glass-morphism {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+        .dark .glass-morphism {
+            background: rgba(44, 44, 46, 0.85);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark font-body antialiased transition-colors duration-200 h-screen flex overflow-hidden selection:bg-primary selection:text-white">
+<aside class="w-64 flex-shrink-0 flex flex-col border-r border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark transition-colors duration-200">
+<div class="p-4 border-b border-border-light dark:border-border-dark">
+<button class="w-full flex items-center justify-between p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors group">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900 dark:to-indigo-900 flex items-center justify-center text-primary border border-black/5 dark:border-white/10 shadow-sm">
+<span class="material-icons-round text-xl">folder</span>
+</div>
+<div class="text-left">
+<p class="text-sm font-semibold truncate w-32">Little Detective...</p>
+<p class="text-xs text-text-secondary-light dark:text-text-secondary-dark group-hover:text-primary transition-colors">Switch Project</p>
+</div>
+</div>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark text-sm">expand_more</span>
+</button>
+</div>
+<nav class="flex-1 overflow-y-auto py-4 px-2 space-y-1">
+<div class="px-3 pb-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Application</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-black/5 dark:hover:bg-white/10 hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">
+<span class="material-icons-round text-xl">dashboard</span>
+                Overview
+            </a>
+<a class="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium bg-primary/10 text-primary dark:bg-primary/20 transition-colors" href="#">
+<div class="flex items-center gap-3">
+<span class="material-icons-round text-xl">movie</span>
+                    Episodes
+                </div>
+<span class="bg-primary/20 dark:bg-primary/30 text-primary px-2 py-0.5 rounded-full text-xs font-semibold">30</span>
+</a>
+<div class="mt-6 px-3 pb-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Assets</div>
+<a class="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-black/5 dark:hover:bg-white/10 hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">
+<div class="flex items-center gap-3">
+<span class="material-icons-round text-xl">people</span>
+                    Characters
+                </div>
+<span class="text-xs text-text-secondary-light dark:text-text-secondary-dark">28</span>
+</a>
+<a class="flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-black/5 dark:hover:bg-white/10 hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">
+<div class="flex items-center gap-3">
+<span class="material-icons-round text-xl">place</span>
+                    Locations
+                </div>
+<span class="text-xs text-text-secondary-light dark:text-text-secondary-dark">8</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-black/5 dark:hover:bg-white/10 hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">
+<span class="material-icons-round text-xl">graphic_eq</span>
+                Voices
+            </a>
+<div class="mt-6 px-3 pb-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Settings</div>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-black/5 dark:hover:bg-white/10 hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">
+<span class="material-icons-round text-xl">bar_chart</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:bg-black/5 dark:hover:bg-white/10 hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">
+<span class="material-icons-round text-xl">settings</span>
+                Project Settings
+            </a>
+</nav>
+<div class="p-4 border-t border-border-light dark:border-border-dark">
+<button class="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+<div class="w-8 h-8 rounded-full bg-gray-800 text-white flex items-center justify-center text-xs font-bold">N</div>
+<div class="flex-1 text-left overflow-hidden">
+<p class="text-sm font-medium truncate">Nick</p>
+<p class="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">nick@example.com</p>
+</div>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark text-sm">unfold_more</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex flex-col min-w-0 bg-background-light dark:bg-background-dark relative">
+<header class="glass-morphism sticky top-0 z-30 px-8 py-4 border-b border-black/5 dark:border-white/5 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-text-secondary-light dark:text-text-secondary-dark hover:text-primary">
+<span class="material-icons-round">arrow_back</span>
+</button>
+<nav class="flex items-center text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark">
+<a class="hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">Little Detective Dante</a>
+<span class="mx-2 text-gray-300 dark:text-gray-600">/</span>
+<a class="hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors" href="#">Episodes</a>
+<span class="mx-2 text-gray-300 dark:text-gray-600">/</span>
+<span class="text-text-primary-light dark:text-text-primary-dark">The Origami Lion's Request</span>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative group">
+<button class="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark text-sm font-medium shadow-sm hover:shadow-md transition-shadow">
+<span class="material-icons-round text-primary text-sm">auto_stories</span>
+                        Story Studio
+                        <span class="material-icons-round text-gray-400 text-sm">expand_more</span>
+</button>
+</div>
+<button class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors text-text-secondary-light dark:text-text-secondary-dark">
+<span class="material-icons-round">more_vert</span>
+</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto relative z-0 pb-20">
+<div class="max-w-4xl mx-auto px-8 pt-8">
+<section class="mb-8 animate-fade-in-down">
+<div class="flex items-start justify-between mb-4">
+<div>
+<h1 class="text-4xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark mb-2">
+                                The Origami Lion’s Request
+                                <span class="align-middle ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+<span class="material-icons-round text-[14px] mr-1">auto_awesome</span> Storyboard
+                                </span>
+</h1>
+<p class="text-lg text-text-secondary-light dark:text-text-secondary-dark max-w-2xl leading-relaxed">
+                                The Origami Lion's cub wandered off while playing. Dante and Cece help find the cub, who was playing hide-and-seek.
+                            </p>
+</div>
+</div>
+<div class="flex flex-wrap gap-2 items-center text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark mb-6">
+<span class="text-text-primary-light dark:text-text-primary-dark mr-2">Episode 1 • Season 1</span>
+<div class="h-4 w-px bg-border-light dark:border-border-dark mx-1"></div>
+<span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-md">
+<span class="material-icons-round text-[14px]">person</span> Dante
+                        </span>
+<span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-md">
+<span class="material-icons-round text-[14px]">person</span> Cece
+                        </span>
+<span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-md">
+<span class="material-icons-round text-[14px]">pets</span> Origami Lion
+                        </span>
+<span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-2 py-1 rounded-md">
+<span class="material-icons-round text-[14px]">location_on</span> The Magical Park
+                        </span>
+</div>
+</section>
+<div class="sticky top-[73px] z-20 mb-8 -mx-2 px-2 pb-4 bg-gradient-to-b from-background-light via-background-light to-transparent dark:from-background-dark dark:via-background-dark">
+<div class="bg-black/5 dark:bg-white/10 p-1 rounded-xl flex items-center shadow-inner backdrop-blur-md">
+<button class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors">
+<span class="material-icons-round text-sm">lightbulb</span> Ideation
+                        </button>
+<button class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium bg-surface-light dark:bg-surface-dark text-text-primary-light dark:text-text-primary-dark shadow-sm transition-all transform scale-[1.02]">
+<span class="material-icons-round text-sm">menu_book</span> Story
+                        </button>
+<button class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors">
+<span class="material-icons-round text-sm">movie_creation</span> Screenplay
+                        </button>
+<button class="flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-text-primary-light dark:hover:text-text-primary-dark transition-colors">
+<span class="material-icons-round text-sm">format_list_numbered</span> Shot List
+                        </button>
+</div>
+</div>
+<div class="bg-surface-light dark:bg-surface-dark rounded-2xl shadow-apple dark:shadow-none dark:border dark:border-border-dark overflow-hidden min-h-[800px] relative mb-20">
+<div class="px-8 py-6 border-b border-border-light dark:border-border-dark flex justify-between items-end bg-surface-light/50 dark:bg-surface-dark/50 backdrop-blur-sm">
+<div>
+<h2 class="text-lg font-semibold text-text-primary-light dark:text-text-primary-dark">The Cub's Crinkle Trail</h2>
+<p class="text-sm text-text-secondary-light dark:text-text-secondary-dark mt-1">Generated story for this episode</p>
+</div>
+<button class="text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5">
+<span class="material-icons-round text-xl">open_in_full</span>
+</button>
+</div>
+<div class="px-12 py-10 font-serif leading-relaxed text-lg text-text-primary-light dark:text-text-primary-dark max-w-3xl mx-auto space-y-8">
+<p>The Magical Park glows with afternoon light filtering through paper-thin leaves. Dante, in his navy blue detective coat and cap, kneels beside a small stream where watercolor fish swim. Cece, his chihuahua sidekick, sniffs at a patch of yarn moss, her monocle catching the light.</p>
+<p>Suddenly, a rustle of crisp paper echoes through the clearing. The Origami Lion appears, his golden paper folds shimmering. His usually proud face is creased with worry. "Dante! Cece!" he whispers, his voice like rustling parchment. "My cub... he wandered off while we were playing hide-and-seek. He thinks the game is still on, but I can't find him."</p>
+<p>Dante's eyes widen with concern. He adjusts his detective cap, the gold emblem gleaming. "Don't worry, Mr. Lion. We'll help you find him!" Cece yaps in agreement, standing at attention.</p>
+<div class="flex items-center justify-center py-6">
+<div class="h-px w-16 bg-border-light dark:border-border-dark"></div>
+<span class="mx-4 text-xs font-bold tracking-widest uppercase text-text-secondary-light dark:text-text-secondary-dark font-sans">Act One: The Trail Begins</span>
+<div class="h-px w-16 bg-border-light dark:border-border-dark"></div>
+</div>
+<p>The Origami Lion leads them to where they were playing. "We were counting by this clay mushroom," he explains, pointing to a red-and-white spotted mushroom made of polymer clay. "When I finished counting... he was gone."</p>
+<p>Dante kneels, his small hands brushing the forest floor. "Look!" he exclaims. A faint crinkle mark—like a tiny paper footprint—presses into the soft earth. Beside it, another. And another. They form a trail leading deeper into the park.</p>
+<p>"He left us clues!" Dante says, his voice filled with wonder. "He's still playing!"</p>
+<p>Cece sniffs the crinkle marks, her tail wagging. She follows the trail, Dante close behind, with the Origami Lion anxiously bringing up the rear.</p>
+<p>The trail winds past a grove of construction-paper trees, their edges crisp against the light. More crinkle marks appear—some on fallen leaves, others on smooth stones. Then Dante spots something new: a tiny origami paw print pressed into a patch of velvet moss.</p>
+<p>"He's making it a game for us too," Dante realizes, smiling. The Origami Lion's worry softens slightly.</p>
+<div class="flex items-center justify-center py-6">
+<div class="h-px w-16 bg-border-light dark:border-border-dark"></div>
+<span class="mx-4 text-xs font-bold tracking-widest uppercase text-text-secondary-light dark:text-text-secondary-dark font-sans">Act Two: Following The Clues</span>
+<div class="h-px w-16 bg-border-light dark:border-border-dark"></div>
+</div>
+<p>The trail leads to a small clearing where wooden butterflies hover on invisible threads. Here, the crinkle marks become more frequent, and Dante discovers the cub's first deliberate clue: a perfect origami flower resting on a stone. It's folded from the same golden paper as the lion family.</p>
+<div class="relative -mx-6 px-6 py-2 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border-l-4 border-primary">
+<p>"He wants us to know we're on the right path," Dante says, carefully picking up the flower.</p>
+<div class="absolute -right-36 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 hover:opacity-100 group-hover:opacity-100 transition-opacity">
+<button class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 shadow-md flex items-center justify-center text-primary hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-100 dark:border-gray-600" title="Add Comment">
+<span class="material-icons-round text-[16px]">add_comment</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-white dark:bg-gray-700 shadow-md flex items-center justify-center text-green-600 hover:bg-gray-50 dark:hover:bg-gray-600 border border-gray-100 dark:border-gray-600" title="Regenerate">
+<span class="material-icons-round text-[16px]">autorenew</span>
+</button>
+</div>
+</div>
+<p>But the trail grows trickier. They reach a babbling brook where watercolor currents flow. The crinkle marks stop at the water's edge. Dante frowns, thinking. Cece sniffs along the bank, then yaps excitedly. She's found another origami flower on the opposite side.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute bottom-8 right-8 z-40">
+<button class="flex items-center gap-2 bg-primary hover:bg-blue-600 text-white px-6 py-4 rounded-full shadow-float hover:shadow-lg hover:-translate-y-1 transition-all duration-300 font-semibold text-lg">
+<span class="material-icons-round">auto_awesome</span>
+                Generate Ideas
+            </button>
+</div>
+</main>
+<div class="fixed top-1/2 right-0 -translate-y-1/2 z-30 translate-x-full hover:translate-x-0 transition-transform duration-300 bg-surface-light dark:bg-surface-dark border-l border-border-light dark:border-border-dark h-3/4 w-12 hover:w-64 rounded-l-2xl shadow-2xl flex overflow-hidden">
+<div class="w-12 flex-shrink-0 flex flex-col items-center py-6 gap-6 border-r border-border-light dark:border-border-dark bg-gray-50 dark:bg-black/20">
+<div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center text-indigo-600 dark:text-indigo-300 cursor-pointer" title="Dante">D</div>
+<div class="w-8 h-8 rounded-full bg-pink-100 dark:bg-pink-900 flex items-center justify-center text-pink-600 dark:text-pink-300 cursor-pointer" title="Cece">C</div>
+<div class="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900 flex items-center justify-center text-yellow-600 dark:text-yellow-300 cursor-pointer" title="Lion">L</div>
+</div>
+<div class="flex-1 p-4">
+<h3 class="font-semibold text-sm uppercase tracking-wide text-text-secondary-light dark:text-text-secondary-dark mb-4">In this Scene</h3>
+<div class="space-y-3">
+<div class="flex items-center gap-3 p-2 rounded-lg bg-background-light dark:bg-white/5">
+<div class="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">D</div>
+<div>
+<p class="text-sm font-medium">Dante</p>
+<p class="text-xs text-text-secondary-light">Protagonist</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</body></html>

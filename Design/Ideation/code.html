@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Ideation - Story Studio</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#3B82F6", // System Blue equivalent
+                        "background-light": "#F5F5F7", // Apple-ish light gray background
+                        "background-dark": "#1C1C1E", // Apple-ish dark gray background
+                        "surface-light": "#FFFFFF",
+                        "surface-dark": "#2C2C2E",
+                        "border-light": "#E5E5EA",
+                        "border-dark": "#38383A",
+                        "text-primary-light": "#000000",
+                        "text-primary-dark": "#FFFFFF",
+                        "text-secondary-light": "#8E8E93",
+                        "text-secondary-dark": "#98989D",
+                    },
+                    fontFamily: {
+                        display: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+                        body: ["Inter", "-apple-system", "BlinkMacSystemFont", "sans-serif"],
+                    },
+                    borderRadius: {
+                        DEFAULT: "0.5rem",
+                        'lg': "0.75rem",
+                        'xl': "1rem",
+                        '2xl': "1.5rem",
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                        'glow': '0 0 15px rgba(59, 130, 246, 0.3)',
+                    }
+                },
+            },
+        };
+    </script>
+<style>::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #D1D1D6;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #48484A;
+        }
+        .glass-panel {
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark font-body antialiased h-screen flex overflow-hidden transition-colors duration-300">
+<aside class="w-64 flex-shrink-0 border-r border-border-light dark:border-border-dark bg-surface-light/80 dark:bg-surface-dark/80 glass-panel flex flex-col h-full z-20">
+<div class="p-4 border-b border-border-light dark:border-border-dark">
+<button class="w-full flex items-center gap-3 p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors text-left group">
+<div class="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-white transition-all">
+<span class="material-icons-round text-xl">folder_open</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold truncate">Little Detective...</p>
+<p class="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">Switch Project</p>
+</div>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark">expand_more</span>
+</button>
+</div>
+<nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+<div class="px-3 mb-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Application</div>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">dashboard</span>
+                Overview
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium bg-primary/10 text-primary rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">movie</span>
+                Episodes
+                <span class="ml-auto bg-primary/20 text-primary text-xs py-0.5 px-2 rounded-full font-semibold">30</span>
+</a>
+<div class="mt-6 px-3 mb-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Assets</div>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">people</span>
+                Characters
+                <span class="ml-auto text-xs text-text-secondary-light dark:text-text-secondary-dark">28</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">location_on</span>
+                Locations
+                <span class="ml-auto text-xs text-text-secondary-light dark:text-text-secondary-dark">8</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">graphic_eq</span>
+                Voices
+            </a>
+<div class="mt-6 px-3 mb-2 text-xs font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wider">Settings</div>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">analytics</span>
+                Analytics
+            </a>
+<a class="flex items-center gap-3 px-3 py-2 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark hover:text-primary hover:bg-primary/5 rounded-lg transition-colors" href="#">
+<span class="material-icons-round text-[20px]">settings</span>
+                Project Settings
+            </a>
+</nav>
+<div class="p-4 border-t border-border-light dark:border-border-dark">
+<button class="w-full flex items-center gap-3 p-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors text-left">
+<div class="w-8 h-8 bg-gray-800 rounded-full flex items-center justify-center text-white font-medium text-xs">
+                    N
+                </div>
+<div class="flex-1 min-w-0">
+<p class="text-sm font-semibold truncate">test</p>
+<p class="text-xs text-text-secondary-light dark:text-text-secondary-dark truncate">test@storybook.io</p>
+</div>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark text-sm">unfold_more</span>
+</button>
+</div>
+</aside>
+<main class="flex-1 flex flex-col h-full overflow-hidden relative">
+<header class="flex-shrink-0 h-16 border-b border-border-light dark:border-border-dark bg-surface-light/80 dark:bg-surface-dark/80 glass-panel flex items-center justify-between px-8 z-10 sticky top-0">
+<div class="flex items-center gap-4">
+<button class="text-text-secondary-light dark:text-text-secondary-dark hover:text-primary transition-colors">
+<span class="material-icons-round">arrow_back</span>
+</button>
+<nav class="flex items-center text-sm">
+<span class="text-text-secondary-light dark:text-text-secondary-dark">Little Detective Dante</span>
+<span class="material-icons-round text-base mx-2 text-text-secondary-light dark:text-text-secondary-dark">chevron_right</span>
+<span class="text-text-secondary-light dark:text-text-secondary-dark">Episodes</span>
+<span class="material-icons-round text-base mx-2 text-text-secondary-light dark:text-text-secondary-dark">chevron_right</span>
+<span class="font-medium text-text-primary-light dark:text-text-primary-dark">The Origami Lion's Request</span>
+</nav>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex items-center gap-2 bg-white dark:bg-white/5 border border-border-light dark:border-border-dark rounded-lg px-3 py-1.5 shadow-sm">
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark text-sm">auto_stories</span>
+<span class="text-sm font-medium">Story Studio</span>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark text-sm ml-2">expand_more</span>
+</div>
+<button class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark">more_vert</span>
+</button>
+</div>
+</header>
+<div class="flex-1 overflow-y-auto p-8 relative">
+<div class="max-w-5xl mx-auto space-y-8 pb-20">
+<div class="space-y-4">
+<div class="flex items-start justify-between">
+<div>
+<h1 class="text-4xl font-bold tracking-tight text-text-primary-light dark:text-text-primary-dark mb-2">The Origami Lion's Request</h1>
+<div class="flex flex-wrap gap-2 items-center">
+<span class="bg-primary/10 text-primary text-xs px-2 py-1 rounded-md font-semibold flex items-center gap-1">
+<span class="material-icons-round text-sm">auto_awesome</span> Storyboard
+                                </span>
+<span class="text-text-secondary-light dark:text-text-secondary-dark text-sm">Episode 1 • Season 1</span>
+<span class="text-text-secondary-light dark:text-text-secondary-dark text-sm ml-2">Last updated: 12/15/2025, 3:21:20 PM</span>
+</div>
+</div>
+</div>
+<p class="text-text-secondary-light dark:text-text-secondary-dark max-w-2xl leading-relaxed">
+                        The Origami Lion's cub wandered off while playing. Dante and Cece help find the cub, who was playing hide-and-seek.
+                    </p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2.5 py-1 rounded-md bg-white dark:bg-white/10 border border-border-light dark:border-transparent text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center gap-1 shadow-sm">
+<span class="material-icons-round text-sm">person</span> Dante
+                        </span>
+<span class="px-2.5 py-1 rounded-md bg-white dark:bg-white/10 border border-border-light dark:border-transparent text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center gap-1 shadow-sm">
+<span class="material-icons-round text-sm">person</span> Cece
+                        </span>
+<span class="px-2.5 py-1 rounded-md bg-white dark:bg-white/10 border border-border-light dark:border-transparent text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center gap-1 shadow-sm">
+<span class="material-icons-round text-sm">pets</span> Origami Lion
+                        </span>
+<span class="px-2.5 py-1 rounded-md bg-white dark:bg-white/10 border border-border-light dark:border-transparent text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center gap-1 shadow-sm">
+<span class="material-icons-round text-sm">pets</span> Origami Cub
+                        </span>
+<span class="px-2.5 py-1 rounded-md bg-white dark:bg-white/10 border border-border-light dark:border-transparent text-xs font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center gap-1 shadow-sm">
+<span class="material-icons-round text-sm">place</span> The Magical Park
+                        </span>
+</div>
+</div>
+<div class="bg-gray-100 dark:bg-surface-dark/50 p-1 rounded-xl flex items-center gap-1 sticky top-0 z-20 backdrop-blur-md">
+<button class="flex-1 bg-white dark:bg-surface-dark shadow-sm rounded-lg py-2 px-4 text-sm font-semibold text-primary flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-round text-base">lightbulb</span> Ideation
+                    </button>
+<button class="flex-1 hover:bg-white/50 dark:hover:bg-surface-dark/50 rounded-lg py-2 px-4 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-round text-base">menu_book</span> Story
+                    </button>
+<button class="flex-1 hover:bg-white/50 dark:hover:bg-surface-dark/50 rounded-lg py-2 px-4 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-round text-base">movie_creation</span> Screenplay
+                    </button>
+<button class="flex-1 hover:bg-white/50 dark:hover:bg-surface-dark/50 rounded-lg py-2 px-4 text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark flex items-center justify-center gap-2 transition-all">
+<span class="material-icons-round text-base">format_list_numbered</span> Shot List
+                    </button>
+</div>
+<section class="mt-8">
+<div class="flex items-center justify-between mb-6">
+<h2 class="text-xl font-semibold text-text-primary-light dark:text-text-primary-dark flex items-center gap-2">
+                            Story Premise
+                            <span class="text-xs font-normal text-text-secondary-light dark:text-text-secondary-dark bg-gray-100 dark:bg-white/10 px-2 py-0.5 rounded-full flex items-center gap-1 cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+<span class="material-icons-round text-xs">shuffle</span> 3 variations
+                                <span class="material-icons-round text-xs">expand_more</span>
+</span>
+</h2>
+<div class="flex items-center gap-3">
+<div class="text-xs text-text-secondary-light dark:text-text-secondary-dark font-medium">159/500</div>
+<button class="bg-primary hover:bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-glow shadow-blue-500/20 text-sm font-semibold flex items-center gap-2 transition-all active:scale-95">
+<span class="material-icons-round text-lg">auto_awesome</span> Generate Ideas
+                            </button>
+</div>
+</div>
+<div class="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-2xl p-8 shadow-soft relative group transition-all hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-900">
+<div class="absolute -top-3 left-6 bg-surface-light dark:bg-surface-dark px-2 text-xs font-semibold text-primary uppercase tracking-wide">Draft Concept</div>
+<label class="block text-sm font-medium text-text-secondary-light dark:text-text-secondary-dark mb-4" for="premise">
+                            Draft the core concept of your story. What happens? Who is involved?
+                        </label>
+<textarea class="w-full bg-transparent border-none text-xl md:text-2xl leading-relaxed font-serif text-text-primary-light dark:text-text-primary-dark placeholder-gray-300 dark:placeholder-gray-600 focus:ring-0 resize-none p-0" id="premise" placeholder="Once upon a time..." rows="6">Dante and Cece must follow a trail of faint paper crinkles and tiny origami paw prints to find the mischievous cub who thinks he's still playing hide-and-seek.</textarea>
+<div class="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+<button class="p-2 bg-gray-100 dark:bg-white/10 rounded-full hover:bg-gray-200 dark:hover:bg-white/20 text-text-secondary-light dark:text-text-secondary-dark transition-colors" title="Clear">
+<span class="material-icons-round text-sm">restart_alt</span>
+</button>
+<button class="p-2 bg-gray-100 dark:bg-white/10 rounded-full hover:bg-gray-200 dark:hover:bg-white/20 text-text-secondary-light dark:text-text-secondary-dark transition-colors" title="Expand">
+<span class="material-icons-round text-sm">fullscreen</span>
+</button>
+</div>
+</div>
+<div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="bg-white/50 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-xl p-6 hover:bg-white dark:hover:bg-white/10 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<h3 class="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wide">Variation 1</h3>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+<p class="text-text-primary-light dark:text-text-primary-dark text-sm leading-relaxed line-clamp-3">
+                                The cub is actually hiding in plain sight, disguised as a crumpled paper ball. Dante almost recycles him by accident!
+                            </p>
+</div>
+<div class="bg-white/50 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-xl p-6 hover:bg-white dark:hover:bg-white/10 transition-colors cursor-pointer group">
+<div class="flex justify-between items-start mb-2">
+<h3 class="text-sm font-semibold text-text-secondary-light dark:text-text-secondary-dark uppercase tracking-wide">Variation 2</h3>
+<span class="material-icons-round text-text-secondary-light dark:text-text-secondary-dark opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+</div>
+<p class="text-text-primary-light dark:text-text-primary-dark text-sm leading-relaxed line-clamp-3">
+                                A sudden gust of wind threatens to blow the clues away. Cece uses her monocle to spot the indentations in the moss before they vanish.
+                            </p>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+
+</body></html>

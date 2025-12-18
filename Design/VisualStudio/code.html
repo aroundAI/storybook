@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Liquid Glass Storyboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style type="text/tailwindcss">
+        .liquid-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+        .liquid-card:hover {
+            box-shadow: 0 8px 60px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }.liquid-sidebar {
+            background: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.5));backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            border-radius: 0 40px 40px 0;
+        }
+        .liquid-input, .liquid-button, .liquid-dropdown {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05), 0 1px 1px rgba(255, 255, 255, 0.2);
+            color: #374151;
+        }
+        .liquid-input:focus, .liquid-dropdown:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(255, 255, 255, 0.3);
+        }
+        .liquid-button {
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1), inset 0 -2px 4px rgba(0, 0, 0, 0.05);
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+            font-weight: 500;
+        }
+        .liquid-button:hover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15), inset 0 -3px 6px rgba(0, 0, 0, 0.08);
+        }
+        .liquid-button:active {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 1px 2px rgba(0, 0, 0, 0.05);
+            transform: translateY(1px);
+        }
+        .liquid-image-container {
+            border-radius: 25px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1;
+            mask-image: radial-gradient(circle at center, white 70%, transparent 100%);
+            -webkit-mask-image: radial-gradient(circle at center, white 70%, transparent 100%);
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.3));
+        }
+        .liquid-image-container::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+            z-index: 2;
+            border-radius: inherit;
+        }
+        .text-debossed {
+            color: #4a5568;
+            text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.4), -1px -1px 0 rgba(0, 0, 0, 0.1);
+        }
+        .liquid-pill {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 20px;
+            padding: 4px 12px;
+            display: inline-flex;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+            color: #4a5568;
+            font-size: 0.875rem;
+        }
+        .liquid-dropdown-arrow {
+            color: #718096;
+            text-shadow: 0 1px 1px rgba(255, 255, 255, 0.5);
+        }
+        .scene-title-rotator {
+            writing-mode: vertical-lr;
+            text-orientation: mixed;
+            transform: rotate(180deg);
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #4a5568;
+            text-shadow: 1px 1px 0 rgba(255, 255, 255, 0.4), -1px -1px 0 rgba(0, 0, 0, 0.1);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 15px;
+            padding: 1rem 0.5rem;
+        }.no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }.comic-panel {
+            grid-column: span 1;grid-row: span 1;}.comic-panel-lg {
+            grid-column: span 2;
+            min-height: 400px;
+        }
+        .comic-panel-md {
+            min-height: 300px;
+        }
+        .comic-panel-sm {
+            min-height: 200px;
+        }.liquid-card .liquid-image-container img {
+            width: 100%;
+            height: 100%;object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex h-screen text-gray-700">
+<div class="w-64 p-4 flex flex-col justify-between liquid-sidebar">
+<div>
+<div class="flex items-center space-x-2 pb-6 border-b border-gray-200 mb-6">
+<span class="material-symbols-outlined text-blue-500 text-3xl">lightbulb</span>
+<div class="flex flex-col">
+<span class="text-sm font-semibold">Little Detective...</span>
+<span class="text-xs text-gray-500">SWITCH Project</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-lg ml-auto cursor-pointer">expand_more</span>
+</div>
+<div class="mb-8">
+<h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3 text-debossed">Application</h3>
+<nav>
+<a class="flex items-center space-x-3 p-2 rounded-xl text-gray-700 hover:bg-blue-100/50 hover:text-blue-600 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">grid_view</span>
+<span class="font-medium text-debossed">Overview</span>
+</a>
+<a class="flex items-center space-x-3 p-2 rounded-xl bg-blue-100/70 text-blue-600 font-semibold shadow-md" href="#">
+<span class="material-symbols-outlined text-xl">book_5</span>
+<span class="text-debossed">Episodes</span>
+<span class="ml-auto text-sm bg-blue-200/50 text-blue-700 px-2 py-0.5 rounded-full text-debossed">30</span>
+</a>
+</nav>
+</div>
+<div class="mb-8">
+<h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3 text-debossed">Assets</h3>
+<nav>
+<a class="flex items-center space-x-3 p-2 rounded-xl text-gray-700 hover:bg-blue-100/50 hover:text-blue-600 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">group</span>
+<span class="font-medium text-debossed">Characters</span>
+<span class="ml-auto text-sm text-gray-500 text-debossed">28</span>
+</a>
+<a class="flex items-center space-x-3 p-2 rounded-xl text-gray-700 hover:bg-blue-100/50 hover:text-blue-600 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">location_on</span>
+<span class="font-medium text-debossed">Locations</span>
+<span class="ml-auto text-sm text-gray-500 text-debossed">8</span>
+</a>
+<a class="flex items-center space-x-3 p-2 rounded-xl text-gray-700 hover:bg-blue-100/50 hover:text-blue-600 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">mic</span>
+<span class="font-medium text-debossed">Voices</span>
+</a>
+</nav>
+</div>
+<div>
+<h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3 text-debossed">Settings</h3>
+<nav>
+<a class="flex items-center space-x-3 p-2 rounded-xl text-gray-700 hover:bg-blue-100/50 hover:text-blue-600 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">bar_chart</span>
+<span class="font-medium text-debossed">Analytics</span>
+</a>
+<a class="flex items-center space-x-3 p-2 rounded-xl text-gray-700 hover:bg-blue-100/50 hover:text-blue-600 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+<span class="font-medium text-debossed">Project Settings</span>
+</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center space-x-3 p-2 border-t border-gray-200 pt-4 mt-4">
+<div class="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center text-gray-600 font-semibold text-debossed">N</div>
+<div class="flex flex-col">
+<span class="text-sm font-medium text-debossed">test</span>
+<span class="text-xs text-gray-500 text-debossed">test@storybook.io</span>
+</div>
+<span class="material-symbols-outlined text-gray-400 text-lg ml-auto cursor-pointer">expand_less</span>
+</div>
+</div>
+<div class="flex-1 p-8 overflow-auto relative">
+<div class="flex items-center justify-between mb-8">
+<div class="flex items-center space-x-4">
+<span class="material-symbols-outlined text-gray-500 text-2xl cursor-pointer">arrow_back</span>
+<span class="text-gray-500 text-sm text-debossed">Back</span>
+<span class="text-gray-400 text-sm">/</span>
+<span class="text-gray-500 text-sm text-debossed">Little Detective Dante</span>
+<span class="text-gray-400 text-sm">/</span>
+<span class="font-medium text-gray-700 text-sm text-debossed">Episodes</span>
+</div>
+<div class="flex items-center space-x-4">
+</div>
+</div>
+<div class="mb-8">
+<h1 class="text-3xl font-bold text-gray-800 text-debossed">The Origami Lion's Request</h1>
+<div class="flex items-center space-x-4 text-gray-500 text-sm mt-2">
+<div class="flex items-center">
+<span class="w-2 h-2 bg-green-500 rounded-full mr-1"></span>
+<span class="text-debossed">Updated 12/16/2025</span>
+</div>
+<span class="text-debossed">Episode 1</span>
+<span>•</span>
+<span class="text-debossed">Season 1</span>
+<div class="flex space-x-2">
+<span class="liquid-pill text-debossed">Bante</span>
+<span class="liquid-pill text-debossed">Cece</span>
+</div>
+<div class="flex space-x-2 ml-4">
+<button class="px-4 py-2 bg-blue-500 text-white rounded-full font-semibold shadow-md transition-all liquid-button">Storyboard</button>
+<button class="px-4 py-2 text-gray-700 rounded-full font-medium transition-all liquid-button bg-gray-200">Ideation</button>
+<button class="px-4 py-2 text-gray-700 rounded-full font-medium transition-all liquid-button bg-gray-200">Story</button>
+</div>
+</div>
+</div>
+<div class="flex items-center mb-8 space-x-4">
+<div class="relative flex items-center flex-grow">
+<span class="material-symbols-outlined text-gray-500 absolute left-3 text-lg liquid-dropdown-arrow">search</span>
+<input class="pl-10 pr-4 py-2 w-full liquid-input text-debossed" placeholder="Filter shots..." type="text"/>
+</div>
+<div class="relative inline-block text-gray-700">
+<select class="block appearance-none w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-full liquid-dropdown text-debossed">
+<option>All Scenes</option>
+<option>Scene 1</option>
+<option>Scene 2</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+<span class="material-symbols-outlined text-sm liquid-dropdown-arrow">expand_more</span>
+</div>
+</div>
+<div class="relative inline-block text-gray-700">
+<select class="block appearance-none w-full bg-white border border-gray-300 text-gray-700 py-2 px-4 pr-8 rounded-full liquid-dropdown text-debossed">
+<option>Status: All</option>
+<option>Pending</option>
+<option>Approved</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+<span class="material-symbols-outlined text-sm liquid-dropdown-arrow">expand_more</span>
+</div>
+</div>
+</div>
+<div class="flex flex-col space-y-12"> 
+<div class="flex items-start">
+<div class="scene-title-rotator sticky left-0 mr-6 h-full min-h-[120px] max-h-[250px] w-auto">
+            Scene 1: The Forest Stream
+        </div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 auto-rows-min">
+<div class="liquid-card p-4 pb-6 relative group overflow-hidden comic-panel-lg col-span-full sm:col-span-1 md:col-span-2 flex flex-col">
+<div class="relative liquid-image-container flex-1">
+<img alt="Magical forest stream" class="w-full h-full object-cover rounded-2xl relative z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuClS9-6N2x85BIXWj68tidAfV6Y2RWNUWSpvFhkauLu6l2qH_a6sEJgXXCA9JhihcLX1OjIEaO1axGiHJRl2Ef14YSMkXwK8ipqSZgNq18I753brMSXe4ICXBqP5uX6D-BV4E3PKafTytsLtJwsytye3B6hzBv6kcOSO5-5FJy_2VjcidhLjhkEQZBT21CkxagbzRscFZz0jjbIqtq3lkR5Ba6KPClcS-i77BT2oCJ_ovnjz1Eq1Lrv8Ka9FsHS43KLbMzHlfDbaVo5"/>
+<div class="absolute top-3 right-3 bg-orange-200 text-orange-700 text-xs px-3 py-1 rounded-full font-medium liquid-pill text-debossed">PENDING</div>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg font-medium">Shot 1.1</div>
+<div class="mt-4 px-2">
+<p class="font-semibold text-gray-800 text-debossed">Action: Wide shot, magical forest stream, dappled light. The sun filters through the leaves creating a mystical glow.</p>
+<p class="text-sm text-gray-500 text-debossed">Shot 1.1</p>
+</div>
+</div>
+<div class="liquid-card p-4 pb-6 relative group overflow-hidden comic-panel-md flex flex-col">
+<div class="relative liquid-image-container flex-1">
+<img alt="Boy by stream" class="w-full h-full object-cover rounded-2xl relative z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBC8nKJAuUh-NpAwdF2cCjbnxGKSRrFaIluBzMf30CVKhSbb82-hRAoRp6YrYyukz9p9To00b6A8vFtuAFMOvW1LD5QRH4QQNb15k__YaDVsPWr4puk4hl9ofEBUhUJif7z3Iwafcrs3iKgAhxi2W7RNWIVN-FtwPjUhVaOwALBnyj_XO8lvrTSzVeES0AGbHLnYBfD9P7gnxhIEcJJbxrTbAtTgLj57zrCuC4IzABeS96Y0HWQ6AUUnVHVovW1pV9-j_uqbsxOmzd2"/>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg font-medium">Shot 1.2</div>
+<div class="mt-4 px-2">
+<p class="font-semibold text-gray-800 text-debossed">Action: Close-up, boy by stream, painterly water, serene expression.</p>
+<p class="text-sm text-gray-500 text-debossed">Shot 1.2</p>
+</div>
+</div>
+<div class="liquid-card p-4 pb-6 relative group overflow-hidden comic-panel-sm flex flex-col">
+<div class="relative liquid-image-container flex-1">
+<img alt="Magical forest stream with ripples" class="w-full h-full object-cover rounded-2xl relative z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKdHdovIOo2DLzLnXnG7a9nxA_wTyURm4SJCUnfwA4SVKBiHfqiFyyaDCsk1FIPU4iH3CHjRSNnTH1CsrKiiPfXihd3vzc541WRaqEz52aB58wRvA-0XoKceqHBh6NuSDc1HM8Q_TcPSbJhRgFvxuZ8Xv1kXFfjLAjWvwfYnT48Ozu-irFD2Bd7VH1Xg5Duc0yUsDCw9v6nlZCSeIPbwoWuR5utxB4rT7ycN8SzorgV8hofX69nbRskJFNCp7q7hT7TRWsXm2M-mBx"/>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg font-medium">Shot 1.3</div>
+<div class="mt-4 px-2">
+<p class="font-semibold text-gray-800 text-debossed">Action: Medium shot, intricate origami boat on water, gently floating downstream.</p>
+<p class="text-sm text-gray-500 text-debossed">Shot 1.3</p>
+</div>
+</div>
+<div class="liquid-card p-4 pb-6 relative group overflow-hidden comic-panel flex flex-col">
+<div class="relative liquid-image-container flex-1">
+<img alt="Boy reaches for boat" class="w-full h-full object-cover rounded-2xl relative z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCP9J1nn_qYnExesjxLWhMmqFs1alTXhpPElCFA3vWEPXMZQcr_y5E8vjBmOyABrsgGKQHxoyWfV52mmpWQdZ8-FtY7zXLYz2XQXxvw95jLpDHGgGrC6U_U2sSYN-uk9lHEFTxxAP5yf83LvW17By-_I9VX8jOUZH4r84L6aTpTYGqEjD6SNF68VwfsXgLk4ZNFMiOoXHvF8FHqaQeSdpyk85Swy5MfLKASReSb99tX62t-VBzfMk3x58XBS4k6fP1cZgnQ7zaTrTLD"/>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg font-medium">Shot 1.4</div>
+<div class="mt-4 px-2">
+<p class="font-semibold text-gray-800 text-debossed">Action: Close-up of boy's hand reaching for the boat, anticipation in his gesture.</p>
+<p class="text-sm text-gray-500 text-debossed">Shot 1.4</p>
+</div>
+</div>
+<div class="liquid-card p-4 flex flex-col items-center justify-center border-dashed border-gray-300 bg-gray-50/50 text-gray-500 comic-panel hover:bg-gray-100/50 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-4xl mb-2">add_circle</span>
+<span class="text-debossed">Add New Shot</span>
+</div>
+</div>
+</div>
+<div class="flex items-start">
+<div class="scene-title-rotator sticky left-0 mr-6 h-full min-h-[120px] max-h-[250px] w-auto">
+            Scene 2: Encounter with the Lion
+        </div>
+<div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 auto-rows-min">
+<div class="liquid-card p-4 pb-6 relative group overflow-hidden comic-panel-md flex flex-col">
+<div class="relative liquid-image-container flex-1">
+<img alt="Boy finds origami lion" class="w-full h-full object-cover rounded-2xl relative z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBC8nKJAuUh-NpAwdF2cCjbnxGKSRrFaIluBzMf30CVKhSbb82-hRAoRp6YrYyukz9p9To00b6A8vFtuAFMOvW1LD5QRH4QQNb15k__YaDVsPWr4puk4hl9ofEBUhUJif7z3Iwafcrs3iKgAhxi2W7RNWIVN-FtwPjUhVaOwALBnyj_XO8lvrTSzVeES0AGbHLnYBfD9P7gnxhIEcJJbxrTbAtTgLj57zrCuC4IzABeS96Y0HWQ6AUUnVHVovW1pV9-j_uqbsxOmzd2"/>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg font-medium">Shot 2.1</div>
+<div class="mt-4 px-2">
+<p class="font-semibold text-gray-800 text-debossed">Action: Boy discovers a large, intricate origami lion on the riverbank, looking surprised.</p>
+<p class="text-sm text-gray-500 text-debossed">Shot 2.1</p>
+</div>
+</div>
+<div class="liquid-card p-4 pb-6 relative group overflow-hidden comic-panel-lg col-span-full sm:col-span-1 md:col-span-2 flex flex-col">
+<div class="relative liquid-image-container flex-1">
+<img alt="Lion looks at boy" class="w-full h-full object-cover rounded-2xl relative z-0" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKdHdovIOo2DLzLnXnG7a9nxA_wTyURm4SJCUnfwA4SVKBiHfqiFyyaDCsk1FIPU4iH3CHjRSNnTH1CsrKiiPfXihd3vzc541WRaqEz52aB58wRvA-0XoKceqHBh6NuSDc1HM8Q_TcPSbJhRgFvxuZ8Xv1kXFfjLAjWvwfYnT48Ozu-irFD2Bd7VH1Xg5Duc0yUsDCw9v6nlZCSeIPbwoWuR5utxB4rT7ycN8SzorgV8hofX69nbRskJFNCp7q7hT7TRWsXm2M-mBx"/>
+</div>
+<div class="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-2 py-1 rounded-lg font-medium">Shot 2.2</div>
+<div class="mt-4 px-2">
+<p class="font-semibold text-gray-800 text-debossed">Action: Close-up of the origami lion's face, eyes seem to follow the boy with a gentle, curious gaze.</p>
+<p class="text-sm text-gray-500 text-debossed">Shot 2.2</p>
+</div>
+</div>
+<div class="liquid-card p-4 flex flex-col items-center justify-center border-dashed border-gray-300 bg-gray-50/50 text-gray-500 comic-panel hover:bg-gray-100/50 cursor-pointer transition-colors">
+<span class="material-symbols-outlined text-4xl mb-2">add_circle</span>
+<span class="text-debossed">Add New Shot</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="fixed right-0 top-0 h-full w-96 bg-white/70 backdrop-blur-xl border-l border-gray-200 p-6 flex flex-col liquid-sidebar rounded-l-3xl shadow-xl z-30">
+<div class="flex justify-between items-center mb-6">
+<h2 class="text-xl font-semibold text-gray-800 text-debossed">Shot 1.2 Details</h2>
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-gray-500 text-2xl cursor-pointer">open_in_new</span>
+<span class="material-symbols-outlined text-gray-500 text-2xl cursor-pointer">close</span>
+</div>
+</div>
+<div class="flex items-center text-sm text-gray-500 mb-6 space-x-4">
+<span class="text-blue-600 font-semibold liquid-pill text-debossed">3s Duration</span>
+<span class="text-debossed">• 16:9</span>
+<span class="text-debossed">• Static</span>
+</div>
+<div class="flex-1 overflow-y-auto pr-2">
+<div class="mb-6">
+<div class="flex justify-between items-center mb-2">
+<label class="block text-sm font-semibold text-gray-700 text-debossed">VISUAL PROMPT</label>
+<button class="text-blue-600 text-sm font-medium liquid-button bg-blue-100/50 px-3 py-1">ENHANCE WITH AI</button>
+</div>
+<div class="liquid-card p-4 text-sm text-gray-800 leading-relaxed text-debossed">
+                    Close-up, static shot of a boy's hands near a clear forest stream. Vibrant, painterly watercolor fish swim in the water. The boy wears a navy blue coat sleeve. Soft, magical lighting, detailed and whimsical style.
+                </div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div>
+<label class="block text-sm font-semibold text-gray-700 mb-2 text-debossed">MOVEMENT</label>
+<div class="relative">
+<select class="block appearance-none w-full liquid-dropdown text-debossed py-2 px-4 pr-8">
+<option>Static</option>
+<option>Pan</option>
+<option>Tilt</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+<span class="material-symbols-outlined text-sm liquid-dropdown-arrow">expand_more</span>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-sm font-semibold text-gray-700 mb-2 text-debossed">ANGLE</label>
+<div class="relative">
+<select class="block appearance-none w-full liquid-dropdown text-debossed py-2 px-4 pr-8">
+<option>Close-up</option>
+<option>Medium Shot</option>
+<option>Wide Shot</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+<span class="material-symbols-outlined text-sm liquid-dropdown-arrow">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4 mb-6">
+<div>
+<label class="block text-sm font-semibold text-gray-700 mb-2 text-debossed">LIGHTING</label>
+<div class="relative">
+<select class="block appearance-none w-full liquid-dropdown text-debossed py-2 px-4 pr-8">
+<option>Soft Day</option>
+<option>Golden Hour</option>
+<option>Night</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+<span class="material-symbols-outlined text-sm liquid-dropdown-arrow">expand_more</span>
+</div>
+</div>
+</div>
+<div>
+<label class="block text-sm font-semibold text-gray-700 mb-2 text-debossed">STYLE</label>
+<div class="relative">
+<select class="block appearance-none w-full liquid-dropdown text-debossed py-2 px-4 pr-8">
+<option>Watercolor</option>
+<option>Anime</option>
+<option>Photorealistic</option>
+</select>
+<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+<span class="material-symbols-outlined text-sm liquid-dropdown-arrow">expand_more</span>
+</div>
+</div>
+</div>
+</div>
+<div class="mb-6">
+<label class="block text-sm font-semibold text-gray-700 mb-2 text-debossed">NEGATIVE PROMPT</label>
+<input class="liquid-input w-full py-2 px-4 text-debossed" type="text" value="blurry, low quality, distorted hands, bad anatom"/>
+</div>
+<div class="mb-6">
+<label class="block text-sm font-semibold text-gray-700 mb-2 text-debossed">SEED</label>
+<div class="relative flex items-center">
+<input class="liquid-input w-full py-2 px-4 pr-10 text-debossed" type="text" value="293847102"/>
+<span class="material-symbols-outlined text-gray-500 absolute right-3 cursor-pointer liquid-dropdown-arrow">content_copy</span>
+</div>
+</div>
+</div>
+<div class="mt-auto pt-6 border-t border-gray-200">
+<button class="liquid-button bg-blue-500 text-white w-full py-3 rounded-full flex items-center justify-center space-x-2 font-semibold">
+<span class="material-symbols-outlined text-xl">refresh</span>
+<span class="text-debossed">Regenerate Shot</span>
+</button>
+</div>
+</div>
+</body></html>
