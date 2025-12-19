@@ -59,7 +59,11 @@ export function ShotCard({
             className="h-full w-full object-cover"
           />
         ) : shot.videoUrl ? (
-          <video src={shot.videoUrl} className="h-full w-full object-cover" muted />
+          <video
+            src={shot.videoUrl}
+            className="h-full w-full object-cover"
+            muted
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <ImageIcon className="h-12 w-12 text-gray-300 dark:text-gray-600" />

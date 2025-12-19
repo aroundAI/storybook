@@ -154,7 +154,7 @@ export function ShotDetailsSidebar({
           <div className="mb-3 flex items-center gap-4">
             <button
               className={cn(
-                'text-xs font-semibold uppercase tracking-wide transition-colors',
+                'text-xs font-semibold tracking-wide uppercase transition-colors',
                 activeTab === 'prompt'
                   ? 'text-gray-900 dark:text-white'
                   : 'text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300',
@@ -192,10 +192,13 @@ export function ShotDetailsSidebar({
         <div className="grid grid-cols-2 gap-4 border-b border-gray-200/50 p-4 dark:border-gray-700/50">
           {/* Movement */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
               Movement
             </label>
-            <Select value={movement} onValueChange={(v) => setMovement(v as typeof movement)}>
+            <Select
+              value={movement}
+              onValueChange={(v) => setMovement(v as typeof movement)}
+            >
               <SelectTrigger className="bg-white/50 dark:bg-gray-800/50">
                 <SelectValue />
               </SelectTrigger>
@@ -211,10 +214,13 @@ export function ShotDetailsSidebar({
 
           {/* Angle */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
               Angle
             </label>
-            <Select value={angle} onValueChange={(v) => setAngle(v as typeof angle)}>
+            <Select
+              value={angle}
+              onValueChange={(v) => setAngle(v as typeof angle)}
+            >
               <SelectTrigger className="bg-white/50 dark:bg-gray-800/50">
                 <SelectValue />
               </SelectTrigger>
@@ -230,7 +236,7 @@ export function ShotDetailsSidebar({
 
           {/* Lighting */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
               Lighting
             </label>
             <Select value={lighting} onValueChange={setLighting}>
@@ -249,7 +255,7 @@ export function ShotDetailsSidebar({
 
           {/* Style */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
               Style
             </label>
             <Select value={style} onValueChange={setStyle}>
@@ -269,7 +275,7 @@ export function ShotDetailsSidebar({
 
         {/* Negative Prompt */}
         <div className="border-b border-gray-200/50 p-4 dark:border-gray-700/50">
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
             Negative Prompt
           </label>
           <Input
@@ -282,7 +288,7 @@ export function ShotDetailsSidebar({
 
         {/* Seed */}
         <div className="p-4">
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+          <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
             Seed
           </label>
           <div className="flex gap-2">

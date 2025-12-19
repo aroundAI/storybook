@@ -1,21 +1,31 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from 'react';
 
 import {
   Download,
   Loader2,
-  MessageSquare,
   Music,
   Play,
+  Settings,
   Volume2,
 } from 'lucide-react';
 
+import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
+import {
+  getCharactersForEpisodeAction,
+  getDialogueLinesAction,
+} from '@kit/audio-generation/server';
 import { autoStitchAction } from '@kit/episodes/server';
-import type { EpisodeWithShots, ScreenplayScene } from '@kit/episodes/types';
+import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { DialogueTimeline } from './dialogue-timeline';
 import { VoiceAssignmentPanel } from './voice-assignment-panel';
@@ -23,14 +33,6 @@ import { VoiceAssignmentPanel } from './voice-assignment-panel';
 interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
   refetchEpisode: () => void;
-}
-
-interface DialogueLine {
-  character: string;
-  text: string;
-  parenthetical?: string;
-  sceneNumber: number;
-  lineIndex: number;
 }
 
 export function AudioStudioScreen({
@@ -42,39 +44,51 @@ export function AudioStudioScreen({
     'dialogue',
   );
 
-  // Extract all dialogue lines from screenplay
-  const dialogueLines = useMemo<DialogueLine[]>(() => {
-    const lines: DialogueLine[] = [];
-    if (!episode.screenplayData?.scenes) return lines;
+  // State for real dialogue data
+  const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
+  const [characters, setCharacters] = useState<CharacterAsset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-    episode.screenplayData.scenes.forEach((scene: ScreenplayScene) => {
-      scene.dialogue.forEach((line, index) => {
-        lines.push({
-          character: line.character,
-          text: line.text,
-          parenthetical: line.parenthetical,
-          sceneNumber: scene.number,
-          lineIndex: index,
-        });
-      });
-    });
+  // Fetch dialogue lines and characters on mount
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dialogueResult, chars] = await Promise.all([
+        getDialogueLinesAction({ episodeId: episode.id }),
+        getCharactersForEpisodeAction({ episodeId: episode.id }),
+      ]);
+      // Defensive: ensure we always set arrays
+      setDialogueLines(
+        Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [],
+      );
+      setCharacters(Array.isArray(chars) ? chars : []);
+    } catch (error) {
+      console.error('Failed to fetch audio studio data:', error);
+      toast.error('Failed to load dialogue data');
+      // Reset to empty arrays on error
+      setDialogueLines([]);
+      setCharacters([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [episode.id]);
 
-    return lines;
-  }, [episode.screenplayData]);
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
-  // Get unique characters from dialogue
-  const characters = useMemo(() => {
-    const charSet = new Set<string>();
-    dialogueLines.forEach((line) => charSet.add(line.character));
-    return Array.from(charSet);
-  }, [dialogueLines]);
-
-  // Stats
+  // Stats from real data
   const stats = useMemo(() => {
     const total = dialogueLines.length;
-    const generated = 0; // TODO: Track which lines have audio
-    const pending = total - generated;
-    return { total, generated, pending };
+    const completed = dialogueLines.filter(
+      (l) => l.status === 'completed',
+    ).length;
+    const pending = dialogueLines.filter((l) => l.status === 'pending').length;
+    const generating = dialogueLines.filter(
+      (l) => l.status === 'generating',
+    ).length;
+    const failed = dialogueLines.filter((l) => l.status === 'failed').length;
+    return { total, completed, pending, generating, failed };
   }, [dialogueLines]);
 
   const handleGenerateAll = () => {
@@ -89,6 +103,7 @@ export function AudioStudioScreen({
         if (result.success) {
           toast.success('Audio generation started');
           refetchEpisode();
+          void fetchData(); // Refresh dialogue data
         } else {
           toast.error(result.error ?? 'Failed to generate audio');
         }
@@ -102,45 +117,94 @@ export function AudioStudioScreen({
 
   const handleExport = () => {
     toast.info('Export functionality coming soon');
-    // TODO: Implement export
   };
 
   return (
     <div className="flex h-full">
       {/* Left Sidebar - Voice Assignment */}
-      <div className="w-72 shrink-0 border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
-        <VoiceAssignmentPanel characters={characters} episodeId={episode.id} />
+      <div className="w-[280px] shrink-0 border-r border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900/50">
+        <VoiceAssignmentPanel
+          characters={characters}
+          episodeId={episode.id}
+          isLoading={isLoading}
+        />
       </div>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 dark:border-gray-700 dark:bg-gray-800">
+        <div className="flex items-center justify-between border-b border-gray-200/50 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85">
           <div className="flex items-center gap-4">
-            <h2 className="font-semibold text-gray-900 dark:text-white">
-              Audio Studio
-            </h2>
-            <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span>{stats.total} dialogue lines</span>
-              <span>•</span>
-              <span>{characters.length} characters</span>
+            {/* Tab Switcher */}
+            <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
+              <button
+                onClick={() => setActiveTab('dialogue')}
+                className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all ${
+                  activeTab === 'dialogue'
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                Dialogue{' '}
+                <span className="ml-1 font-normal text-gray-400">
+                  {stats.total}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('music')}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${
+                  activeTab === 'music'
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                Music
+              </button>
+              <button
+                onClick={() => setActiveTab('sfx')}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${
+                  activeTab === 'sfx'
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
+              >
+                SFX
+              </button>
+            </div>
+
+            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2">
+              <span className="rounded-md border border-green-100 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+                {stats.completed} completed
+              </span>
+              <span className="rounded-md border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                {stats.pending} pending
+              </span>
+              {stats.generating > 0 && (
+                <span className="rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                  {stats.generating} generating
+                </span>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 text-xs">
-              <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
-                {stats.pending} pending
-              </span>
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                {stats.generated} generated
-              </span>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-300"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
 
             <Button
               onClick={handleGenerateAll}
               disabled={isPending || stats.pending === 0}
-              className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+              size="sm"
+              className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
             >
               {isPending ? (
                 <>
@@ -155,70 +219,47 @@ export function AudioStudioScreen({
               )}
             </Button>
 
-            <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleExport}
+              className="gap-2 bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+            >
               <Download className="h-4 w-4" />
               Export
             </Button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as 'dialogue' | 'music' | 'sfx')}
-          className="flex flex-1 flex-col overflow-hidden"
-        >
-          <div className="border-b border-gray-200 bg-gray-50 px-6 dark:border-gray-700 dark:bg-gray-900">
-            <TabsList className="h-12 bg-transparent">
-              <TabsTrigger
-                value="dialogue"
-                className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-gray-800"
-              >
-                <MessageSquare className="h-4 w-4" />
-                Dialogue
-              </TabsTrigger>
-              <TabsTrigger
-                value="music"
-                className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-gray-800"
-              >
-                <Music className="h-4 w-4" />
-                Music
-              </TabsTrigger>
-              <TabsTrigger
-                value="sfx"
-                className="gap-2 data-[state=active]:bg-white data-[state=active]:shadow dark:data-[state=active]:bg-gray-800"
-              >
-                <Volume2 className="h-4 w-4" />
-                SFX
-              </TabsTrigger>
-            </TabsList>
-          </div>
-
-          <TabsContent value="dialogue" className="mt-0 flex-1 overflow-hidden">
+        {/* Timeline Content */}
+        <div className="flex-1 overflow-hidden">
+          {activeTab === 'dialogue' && (
             <DialogueTimeline
               dialogueLines={dialogueLines}
               characters={characters}
+              isLoading={isLoading}
+              onRefresh={fetchData}
             />
-          </TabsContent>
+          )}
 
-          <TabsContent value="music" className="flex-1 p-6">
+          {activeTab === 'music' && (
             <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <Music className="mx-auto mb-3 h-12 w-12 opacity-30" />
                 <p>Music tracks coming soon</p>
               </div>
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="sfx" className="flex-1 p-6">
+          {activeTab === 'sfx' && (
             <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <Volume2 className="mx-auto mb-3 h-12 w-12 opacity-30" />
                 <p>Sound effects coming soon</p>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+          )}
+        </div>
       </div>
     </div>
   );

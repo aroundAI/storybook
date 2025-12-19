@@ -271,7 +271,9 @@ export function VisualStudioScreen({
                       {/* Add New Shot Card */}
                       <div className="liquid-card flex min-h-[200px] cursor-pointer flex-col items-center justify-center border border-dashed border-gray-300 bg-gray-50/50 p-4 text-gray-500 transition-colors hover:bg-gray-100/50 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:bg-gray-700/50">
                         <PlusCircle className="mb-2 h-10 w-10" />
-                        <span className="text-sm font-medium">Add New Shot</span>
+                        <span className="text-sm font-medium">
+                          Add New Shot
+                        </span>
                       </div>
                     </div>
                   </div>
