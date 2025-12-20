@@ -115,7 +115,7 @@ export type TimeOfDay = z.infer<typeof TimeOfDaySchema>;
 export const DialogueLineSchema = z.object({
   character: z.string(),
   text: z.string(),
-  parenthetical: z.string().optional(),
+  parenthetical: z.string().nullish(),
 });
 
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;

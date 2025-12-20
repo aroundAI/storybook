@@ -42,9 +42,22 @@ export interface ConvertToScreenplayResponse {
   };
 }
 
+// Constants for dialogue duration estimation
+const WORDS_PER_SECOND = 2.5; // ~150 words/min speaking rate
+const GAP_BETWEEN_DIALOGUES = 0.5; // seconds between dialogue lines
+
+/**
+ * Estimate dialogue duration from text word count
+ */
+function estimateDialogueDuration(text: string): number {
+  const wordCount = text.trim().split(/\s+/).length;
+  return Math.max(1, wordCount / WORDS_PER_SECOND);
+}
+
 /**
  * Extract dialogue lines from screenplay scenes and prepare for database insertion
  * Matches character names to asset IDs for proper linking
+ * Calculates timeline positions based on scene durations
  */
 function extractDialogueLines(
   screenplay: Screenplay,
@@ -58,6 +71,8 @@ function extractDialogueLines(
   text: string;
   emotion: string | null;
   sequence_number: number;
+  timeline_start_seconds: number;
+  estimated_duration_seconds: number;
 }> {
   // Create case-insensitive lookup map for character name -> asset ID
   const characterMap = new Map<string, string>();
@@ -65,6 +80,17 @@ function extractDialogueLines(
     // Normalize name to uppercase for matching
     characterMap.set(char.name.toUpperCase(), char.id);
   }
+
+  // Calculate scene start times based on estimatedDuration
+  const sceneStartTimes = new Map<number, number>();
+  let cumulativeTime = 0;
+  for (const scene of screenplay.scenes) {
+    sceneStartTimes.set(scene.number, cumulativeTime);
+    cumulativeTime += scene.estimatedDuration;
+  }
+
+  // Track dialogue offset within each scene
+  const sceneDialogueOffsets = new Map<number, number>();
 
   const lines: Array<{
     episode_id: string;
@@ -74,15 +100,28 @@ function extractDialogueLines(
     text: string;
     emotion: string | null;
     sequence_number: number;
+    timeline_start_seconds: number;
+    estimated_duration_seconds: number;
   }> = [];
 
   let sequenceNumber = 1;
 
   for (const scene of screenplay.scenes) {
+    const sceneStart = sceneStartTimes.get(scene.number) ?? 0;
+
     for (const dialogue of scene.dialogue) {
       // Normalize dialogue character name for lookup
       const normalizedName = dialogue.character.toUpperCase();
       const characterAssetId = characterMap.get(normalizedName) ?? null;
+
+      // Get current offset within scene
+      const dialogueOffset = sceneDialogueOffsets.get(scene.number) ?? 0;
+
+      // Calculate duration from text
+      const duration = estimateDialogueDuration(dialogue.text);
+
+      // Calculate timeline position
+      const timelineStart = sceneStart + dialogueOffset;
 
       lines.push({
         episode_id: episodeId,
@@ -92,7 +131,15 @@ function extractDialogueLines(
         text: dialogue.text,
         emotion: dialogue.parenthetical ?? null,
         sequence_number: sequenceNumber++,
+        timeline_start_seconds: timelineStart,
+        estimated_duration_seconds: duration,
       });
+
+      // Update offset for next dialogue in this scene
+      sceneDialogueOffsets.set(
+        scene.number,
+        dialogueOffset + duration + GAP_BETWEEN_DIALOGUES,
+      );
     }
   }
 

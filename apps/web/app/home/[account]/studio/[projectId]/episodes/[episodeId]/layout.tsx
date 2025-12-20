@@ -77,7 +77,7 @@ async function EpisodeWorkspaceLayout({
       .single(),
     client
       .from('projects')
-      .select('name, account_id')
+      .select('name, account_id, metadata')
       .eq('id', projectId)
       .single(),
     client
@@ -167,6 +167,7 @@ async function EpisodeWorkspaceLayout({
       accountSlug={account}
       accountId={project?.account_id ?? ''}
       projectName={project?.name ?? 'Project'}
+      projectMetadata={project?.metadata as Record<string, unknown> | null}
     >
       <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-gray-900">
         <EpisodeWorkspaceHeader />

@@ -18,6 +18,7 @@ interface EpisodeContextValue {
   accountSlug: string;
   accountId: string;
   projectName: string;
+  projectMetadata: Record<string, unknown> | null;
   isGenerating: boolean;
   setIsGenerating: (value: boolean) => void;
   refetchEpisode: () => void;
@@ -43,6 +44,7 @@ interface EpisodeContextProviderProps {
   accountSlug: string;
   accountId: string;
   projectName: string;
+  projectMetadata: Record<string, unknown> | null;
 }
 
 export function EpisodeContextProvider({
@@ -52,6 +54,7 @@ export function EpisodeContextProvider({
   accountSlug,
   accountId,
   projectName,
+  projectMetadata,
 }: EpisodeContextProviderProps) {
   const router = useRouter();
   const [isRefetching, startRefetchTransition] = useTransition();
@@ -72,6 +75,7 @@ export function EpisodeContextProvider({
         accountSlug,
         accountId,
         projectName,
+        projectMetadata,
         isGenerating,
         setIsGenerating,
         refetchEpisode,
