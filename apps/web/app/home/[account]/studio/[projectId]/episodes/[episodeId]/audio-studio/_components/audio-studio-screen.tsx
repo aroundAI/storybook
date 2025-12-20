@@ -8,14 +8,7 @@ import {
   useTransition,
 } from 'react';
 
-import {
-  Download,
-  Loader2,
-  Music,
-  Play,
-  Settings,
-  Volume2,
-} from 'lucide-react';
+import { Download, Loader2, Play, Settings, Volume2 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
 import {
@@ -28,6 +21,7 @@ import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 
 import { DialogueTimeline } from './dialogue-timeline';
+import { MusicTimeline } from './music-timeline';
 import { VoiceAssignmentPanel } from './voice-assignment-panel';
 
 interface AudioStudioScreenProps {
@@ -90,6 +84,33 @@ export function AudioStudioScreen({
     const failed = dialogueLines.filter((l) => l.status === 'failed').length;
     return { total, completed, pending, generating, failed };
   }, [dialogueLines]);
+
+  // Extract scenes from screenplay data for music timeline
+  const scenes = useMemo(() => {
+    const screenplayData = episode.screenplayData as {
+      scenes?: Array<{
+        number: number;
+        heading: string;
+        estimatedDuration: number;
+      }>;
+    } | null;
+
+    return (
+      screenplayData?.scenes?.map((scene) => ({
+        number: scene.number,
+        heading: scene.heading ?? `Scene ${scene.number}`,
+        estimatedDuration: scene.estimatedDuration ?? 30,
+      })) ?? []
+    );
+  }, [episode.screenplayData]);
+
+  // Calculate total duration from scenes or use target duration
+  const totalDuration = useMemo(() => {
+    if (scenes.length > 0) {
+      return scenes.reduce((acc, scene) => acc + scene.estimatedDuration, 0);
+    }
+    return episode.durationSeconds ?? 90;
+  }, [scenes, episode.durationSeconds]);
 
   const handleGenerateAll = () => {
     startTransition(async () => {
@@ -243,12 +264,12 @@ export function AudioStudioScreen({
           )}
 
           {activeTab === 'music' && (
-            <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
-              <div className="text-center">
-                <Music className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                <p>Music tracks coming soon</p>
-              </div>
-            </div>
+            <MusicTimeline
+              episodeId={episode.id}
+              totalDuration={totalDuration}
+              scenes={scenes}
+              onRefresh={fetchData}
+            />
           )}
 
           {activeTab === 'sfx' && (

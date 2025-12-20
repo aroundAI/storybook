@@ -42,14 +42,22 @@ export interface DialogueLine {
   episodeId: string;
   /** Character asset ID (null for narrator/system) */
   characterAssetId: string | null;
+  /** Shot this dialogue belongs to (for timeline alignment) */
+  shotId: string | null;
   /** The dialogue text */
   text: string;
   /** Order in the episode */
   sequenceNumber: number;
+  /** Scene number this dialogue belongs to */
+  sceneNumber: number;
   /** Audio generation status */
   status: DialogueLineStatus;
   /** URL to generated audio file (null if not generated) */
   audioUrl: string | null;
+  /** Absolute position in episode timeline (seconds from start) */
+  timelineStartSeconds: number | null;
+  /** Speaking duration calculated from word count (~0.4s per word) */
+  estimatedDurationSeconds: number | null;
   /** Metadata about the generation */
   generationMetadata: DialogueVoiceGenerationMetadata | null;
   /** Creation timestamp */

@@ -395,6 +395,40 @@ export interface GeneratedShot {
 }
 
 /**
+ * Shot with dialogue lines for timeline planning
+ */
+export interface ShotWithDialogue {
+  shotId: string;
+  sceneNumber: number;
+  shotNumber: number;
+  sequenceNumber: number;
+  durationSeconds: number;
+  startSeconds: number;
+  dialogueLines: {
+    id: string;
+    text: string;
+    characterAssetId: string | null;
+    sequenceNumber: number;
+  }[];
+}
+
+/**
+ * Result of timeline planning action
+ */
+export interface TimelinePlanResult {
+  episodeId: string;
+  totalDurationSeconds: number;
+  shotsProcessed: number;
+  dialogueLinesUpdated: number;
+  shots: Array<{
+    id: string;
+    startSeconds: number;
+    durationSeconds: number;
+    dialogueCount: number;
+  }>;
+}
+
+/**
  * Response for generating a shot list
  */
 export interface GenerateShotListResponse {

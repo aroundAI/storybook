@@ -119,29 +119,63 @@ export function DialogueTimeline({
   const { positionedDialogues, totalDuration, timeMarkers } = useMemo(() => {
     // Defensive: ensure dialogueLines is an array
     const lines = Array.isArray(dialogueLines) ? dialogueLines : [];
-    const sorted = [...lines].sort(
-      (a, b) => (a.sequenceNumber ?? 0) - (b.sequenceNumber ?? 0),
-    );
-    let currentTime = 0;
 
-    const positioned: TimelineDialogue[] = sorted.map((d) => {
-      const startTime = currentTime;
-      // Safely access generationMetadata
+    // Calculate positions for each dialogue line
+    // Priority: DB timeline position > fallback to sequential calculation
+    const positioned: TimelineDialogue[] = lines.map((d) => {
+      // Use DB timeline position if available, otherwise calculate fallback
+      const startTime =
+        typeof d.timelineStartSeconds === 'number'
+          ? d.timelineStartSeconds
+          : null;
+
+      // Duration priority: generated audio > DB estimated > calculated from text
       const metadataDuration =
         typeof d.generationMetadata?.durationSeconds === 'number'
           ? d.generationMetadata.durationSeconds
           : null;
-      const duration = metadataDuration ?? estimateDuration(d.text);
-      currentTime += duration + GAP_BETWEEN_DIALOGUES;
+      const dbEstimatedDuration =
+        typeof d.estimatedDurationSeconds === 'number'
+          ? d.estimatedDurationSeconds
+          : null;
+      const duration =
+        metadataDuration ?? dbEstimatedDuration ?? estimateDuration(d.text);
+
       return {
         ...d,
-        startTime,
+        startTime: startTime ?? 0, // Will be recalculated below if null
         duration,
         characterName: characterNameMap[d.characterAssetId ?? ''] ?? 'Unknown',
       };
     });
 
-    const total = currentTime > 0 ? currentTime : 90; // Default to 90 seconds if empty
+    // Check if any dialogue has DB timeline position
+    const hasDbTimeline = positioned.some(
+      (d) => typeof d.timelineStartSeconds === 'number',
+    );
+
+    // If no DB timeline, calculate positions sequentially as fallback
+    if (!hasDbTimeline) {
+      // Sort by sequence number for fallback calculation
+      positioned.sort(
+        (a, b) => (a.sequenceNumber ?? 0) - (b.sequenceNumber ?? 0),
+      );
+      let currentTime = 0;
+      for (const d of positioned) {
+        d.startTime = currentTime;
+        currentTime += d.duration + GAP_BETWEEN_DIALOGUES;
+      }
+    } else {
+      // Sort by timeline position when using DB values
+      positioned.sort((a, b) => a.startTime - b.startTime);
+    }
+
+    // Calculate total duration
+    const lastDialogue = positioned[positioned.length - 1];
+    const calculatedTotal = lastDialogue
+      ? lastDialogue.startTime + lastDialogue.duration + GAP_BETWEEN_DIALOGUES
+      : 0;
+    const total = calculatedTotal > 0 ? calculatedTotal : 90; // Default to 90 seconds if empty
 
     // Generate time markers every 15 seconds
     const markers: number[] = [];

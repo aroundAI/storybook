@@ -743,6 +743,7 @@ export type Database = {
           created_at: string;
           emotion: string | null;
           episode_id: string;
+          estimated_duration_seconds: number | null;
           generation_metadata: Json | null;
           id: string;
           scene_number: number | null;
@@ -750,6 +751,7 @@ export type Database = {
           shot_id: string | null;
           status: string;
           text: string;
+          timeline_start_seconds: number | null;
         };
         Insert: {
           audio_url?: string | null;
@@ -758,6 +760,7 @@ export type Database = {
           created_at?: string;
           emotion?: string | null;
           episode_id: string;
+          estimated_duration_seconds?: number | null;
           generation_metadata?: Json | null;
           id?: string;
           scene_number?: number | null;
@@ -765,6 +768,7 @@ export type Database = {
           shot_id?: string | null;
           status?: string;
           text: string;
+          timeline_start_seconds?: number | null;
         };
         Update: {
           audio_url?: string | null;
@@ -773,6 +777,7 @@ export type Database = {
           created_at?: string;
           emotion?: string | null;
           episode_id?: string;
+          estimated_duration_seconds?: number | null;
           generation_metadata?: Json | null;
           id?: string;
           scene_number?: number | null;
@@ -780,6 +785,7 @@ export type Database = {
           shot_id?: string | null;
           status?: string;
           text?: string;
+          timeline_start_seconds?: number | null;
         };
         Relationships: [
           {
@@ -957,6 +963,7 @@ export type Database = {
           shot_list: Json | null;
           status: string;
           story_data: Json | null;
+          target_duration_seconds: number | null;
           thumbnail_url: string | null;
           title: string;
           updated_at: string;
@@ -977,6 +984,7 @@ export type Database = {
           shot_list?: Json | null;
           status?: string;
           story_data?: Json | null;
+          target_duration_seconds?: number | null;
           thumbnail_url?: string | null;
           title: string;
           updated_at?: string;
@@ -997,6 +1005,7 @@ export type Database = {
           shot_list?: Json | null;
           status?: string;
           story_data?: Json | null;
+          target_duration_seconds?: number | null;
           thumbnail_url?: string | null;
           title?: string;
           updated_at?: string;
@@ -2713,6 +2722,10 @@ export type Database = {
       };
       can_action_account_member: {
         Args: { target_team_account_id: string; target_user_id: string };
+        Returns: boolean;
+      };
+      can_edit_project: {
+        Args: { target_project_id: string };
         Returns: boolean;
       };
       can_perform_project_action: {
