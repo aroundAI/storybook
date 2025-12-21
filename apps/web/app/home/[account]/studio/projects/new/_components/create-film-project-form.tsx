@@ -222,7 +222,7 @@ export function CreateFilmProjectForm({
     startTransition(async () => {
       try {
         // 1. Create the project
-        const { projectId } = await createFilmProject(accountSlug, {
+        const { projectId, projectSlug } = await createFilmProject(accountSlug, {
           name: data.name,
           description: data.description,
           settings: data.settings,
@@ -282,8 +282,8 @@ export function CreateFilmProjectForm({
           }
         }
 
-        // 3. Redirect to the new project
-        router.push(`/home/${accountSlug}/studio/${projectId}`);
+        // 3. Redirect to the new project using slug
+        router.push(`/home/${accountSlug}/studio/${projectSlug ?? projectId}`);
       } catch (error) {
         toast.error(
           error instanceof Error ? error.message : 'Failed to create project',

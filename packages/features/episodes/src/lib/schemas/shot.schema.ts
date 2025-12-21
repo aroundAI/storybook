@@ -12,34 +12,82 @@ export const ShotStatusSchema = z.enum([
 ]);
 
 /**
- * Camera direction for shot
- * Simple movements optimized for AI video generation
+ * Camera direction for shot - free-form string to allow LLM creativity
+ * Examples: static, pan_left, zoom_in_slow, push_in_slow, dolly_in, etc.
  */
-export const CameraDirectionSchema = z.enum([
-  'static',
-  'pan_left',
-  'pan_right',
-  'tilt_up',
-  'tilt_down',
-  'zoom_in',
-  'zoom_out',
-  'dolly_in',
-  'dolly_out',
-  'tracking',
-  'crane_up',
-  'crane_down',
-]);
+export const CameraDirectionSchema = z.string();
 
 /**
- * Shot metadata schema
+ * VEO 3.1 structured prompt for a shot
+ */
+export const VeoPromptDataSchema = z.object({
+  subject: z.string(),
+  action: z.string(),
+  scene: z.string(),
+  style: z.string(),
+  dialogue: z.string().optional().nullable(),
+  sounds: z.string(),
+  negativePrompt: z.string(),
+  fullPrompt: z.string(),
+});
+
+/**
+ * Reference image for VEO 3.1 "Ingredients"
+ */
+export const ShotReferenceImageSchema = z.object({
+  name: z.string(),
+  url: z.string().url(),
+});
+
+/**
+ * Dialogue timing for a shot
+ */
+export const ShotDialogueTimingDataSchema = z.object({
+  startSeconds: z.number(),
+  durationSeconds: z.number(),
+  characterName: z.string(),
+  text: z.string(),
+  emotion: z.string().nullable(),
+});
+
+/**
+ * Shot metadata schema (extended for VEO 3.1)
  */
 export const ShotMetadataSchema = z.object({
   characters: z.array(z.string()).optional(),
   location: z.string().optional(),
-  timeOfDay: z.enum(['day', 'night', 'dawn', 'dusk']).optional(),
+  timeOfDay: z
+    .enum([
+      'dawn',
+      'morning',
+      'midday',
+      'afternoon',
+      'golden-hour',
+      'dusk',
+      'night',
+      'day',
+    ])
+    .optional(),
   weather: z.string().optional(),
   mood: z.string().optional(),
   lighting: z.string().optional(),
+  shotType: z.string().optional(),
+  action: z.string().optional(),
+  // VEO 3.1 Enhanced Fields
+  veoPrompt: VeoPromptDataSchema.optional(),
+  referenceImages: z
+    .object({
+      characters: z.array(ShotReferenceImageSchema),
+      locations: z.array(ShotReferenceImageSchema),
+    })
+    .optional(),
+  dialogueTiming: z.array(ShotDialogueTimingDataSchema).optional(),
+  missingAssets: z
+    .object({
+      characters: z.array(z.string()),
+      locations: z.array(z.string()),
+    })
+    .optional(),
 });
 
 /**
@@ -50,7 +98,7 @@ export const CreateShotSchema = z.object({
   sceneNumber: z.number().int().positive(),
   shotNumber: z.number().int().positive(),
   description: z.string().min(1).max(1000),
-  prompt: z.string().min(1).max(2000),
+  prompt: z.string().min(1).max(8000),
   durationSeconds: z.number().positive().max(10),
   cameraDirection: CameraDirectionSchema.optional(),
   metadata: ShotMetadataSchema.optional(),
@@ -63,7 +111,7 @@ export const BatchShotDefinitionSchema = z.object({
   sceneNumber: z.number().int().positive(),
   shotNumber: z.number().int().positive(),
   description: z.string().min(1).max(1000),
-  prompt: z.string().min(1).max(2000),
+  prompt: z.string().min(1).max(8000),
   durationSeconds: z.number().positive().max(10),
   cameraDirection: CameraDirectionSchema.optional(),
   characters: z.array(z.string()).optional(),

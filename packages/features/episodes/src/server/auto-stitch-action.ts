@@ -194,7 +194,7 @@ export const autoStitchAction = enhanceAction(
         'Auto-stitch completed successfully',
       );
 
-      revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
 
       return { success: true, data: result };
     } catch (error) {

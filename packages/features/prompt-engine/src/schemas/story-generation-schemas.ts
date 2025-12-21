@@ -104,8 +104,18 @@ export type StoryGenerationOutput = z.infer<typeof StoryGenerationOutputSchema>;
 
 /**
  * Time of day for scene
+ * Expanded for cinematographic lighting descriptions
  */
-export const TimeOfDaySchema = z.enum(['day', 'night', 'dawn', 'dusk']);
+export const TimeOfDaySchema = z.enum([
+  'dawn',
+  'morning',
+  'midday',
+  'afternoon',
+  'golden-hour',
+  'dusk',
+  'night',
+  'day', // Generic fallback
+]);
 
 export type TimeOfDay = z.infer<typeof TimeOfDaySchema>;
 
@@ -174,32 +184,46 @@ export type ScreenplayConversionOutput = z.infer<
 
 /**
  * Shot type for cinematography
+ * Expanded for animation-friendly compositions (2.5D, multi-character)
  */
 export const ShotTypeSchema = z.enum([
+  // Shot sizes (standard progression)
+  'extreme-wide',
   'wide',
+  'medium-wide',
   'medium',
+  'medium-close-up',
   'close-up',
   'extreme-close-up',
+  // Multi-character compositions (animation-friendly)
+  'two-shot',
+  'three-shot',
+  'group-shot',
   'over-shoulder',
+  // Character framing (2D/2.5D animation)
+  'full-body',
+  'profile',
+  'three-quarter',
+  // Dramatic angles
+  'low-angle',
+  'high-angle',
+  'dutch-angle',
+  'bird-eye',
+  // Special purpose
   'pov',
+  'insert',
+  'establishing',
+  'reaction',
+  'silhouette',
 ]);
 
 export type ShotType = z.infer<typeof ShotTypeSchema>;
 
 /**
- * Camera direction for shot
+ * Camera direction for shot - free-form string to allow LLM creativity
+ * Examples: static, pan_left, zoom_in_slow, push_in_slow, dolly_in, etc.
  */
-export const CameraDirectionSchema = z.enum([
-  'static',
-  'pan_left',
-  'pan_right',
-  'tilt_up',
-  'tilt_down',
-  'zoom_in',
-  'zoom_out',
-  'dolly_in',
-  'dolly_out',
-]);
+export const CameraDirectionSchema = z.string();
 
 export type CameraDirection = z.infer<typeof CameraDirectionSchema>;
 

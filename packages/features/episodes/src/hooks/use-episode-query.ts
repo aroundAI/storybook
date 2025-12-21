@@ -14,6 +14,7 @@ interface UseEpisodeQueryOptions {
 
 interface DatabaseEpisode {
   id: string;
+  slug: string | null;
   project_id: string;
   season_id: string | null;
   number: number;
@@ -94,6 +95,7 @@ function transformEpisodeResponse(
 ): EpisodeWithShots {
   return {
     id: episode.id,
+    slug: episode.slug,
     projectId: episode.project_id,
     seasonId: episode.season_id,
     number: episode.number,

@@ -160,7 +160,15 @@ export interface ScreenplayScene {
   number: number;
   heading: string;
   location: string;
-  timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+  timeOfDay:
+    | 'dawn'
+    | 'morning'
+    | 'midday'
+    | 'afternoon'
+    | 'golden-hour'
+    | 'dusk'
+    | 'night'
+    | 'day';
   description: string;
   dialogue: ScreenplayDialogueLine[];
   estimatedDuration: number;
@@ -192,6 +200,39 @@ export interface ScreenplayData {
 }
 
 /**
+ * VEO 3.1 structured prompt components
+ */
+export interface VeoPromptData {
+  subject: string;
+  action: string;
+  scene: string;
+  style: string;
+  dialogue?: string;
+  sounds: string;
+  negativePrompt: string;
+  fullPrompt: string;
+}
+
+/**
+ * Dialogue timing for a shot
+ */
+export interface ShotDialogueTimingData {
+  startSeconds: number;
+  durationSeconds: number;
+  characterName: string;
+  text: string;
+  emotion: string | null;
+}
+
+/**
+ * Reference image for VEO 3.1 "Ingredients"
+ */
+export interface ReferenceImageData {
+  name: string;
+  url: string;
+}
+
+/**
  * Shot list generation output stored in shot_list JSONB
  */
 export interface ShotListData {
@@ -204,6 +245,9 @@ export interface ShotListData {
     prompt: string;
     cameraDirection: string;
     characters: string[];
+    // VEO 3.1 Enhanced Fields
+    veoPrompt?: VeoPromptData;
+    dialogueTiming?: ShotDialogueTimingData[];
   }>;
   generatedAt?: string | null;
   approvedAt?: string | null;
@@ -223,6 +267,19 @@ export interface ShotListData {
     locations: string[];
     characters: string[];
     inputSource: 'screenplay' | 'story';
+    // Processing method: parallel-batches (default), scene-by-scene (legacy), or monolithic
+    processingMethod?: 'parallel-batches' | 'scene-by-scene' | 'monolithic';
+    scenesProcessed?: number;
+    scenesSuccessful?: number;
+    // VEO 3.1 reference images summary
+    referenceImages?: {
+      characters: ReferenceImageData[];
+      locations: ReferenceImageData[];
+    };
+    missingAssets?: {
+      characters: string[];
+      locations: string[];
+    };
   };
 }
 
@@ -231,6 +288,7 @@ export interface ShotListData {
  */
 export interface Episode {
   id: string;
+  slug: string | null;
   projectId: string;
   seasonId: string | null;
   number: number;
@@ -430,24 +488,37 @@ export interface TimelinePlanResult {
 
 /**
  * Response for generating a shot list
+ * Supports both legacy monolithic and new scene-by-scene processing
  */
 export interface GenerateShotListResponse {
   success: boolean;
   shots: GeneratedShot[];
   shotsCreated: number;
-  episode: {
+  // Episode info (optional for scene-by-scene processing)
+  episode?: {
     id: string;
     status: string;
     version: number;
   };
   metadata: {
-    provider: string;
-    model: string;
-    costCents: number;
-    tokensUsed: number;
-    generatedAt: string;
+    // Common fields
     totalShots: number;
     totalDuration: number;
-    inputSource: 'screenplay' | 'story';
+    // Legacy fields (monolithic processing)
+    provider?: string;
+    model?: string;
+    costCents?: number;
+    tokensUsed?: number;
+    generatedAt?: string;
+    inputSource?: 'screenplay' | 'story';
+    // Scene-by-scene processing fields
+    shotTypes?: {
+      wide: number;
+      medium: number;
+      closeUp: number;
+    };
+    locations?: string[];
+    characters?: string[];
+    processingMethod?: 'parallel-batches' | 'scene-by-scene' | 'monolithic';
   };
 }

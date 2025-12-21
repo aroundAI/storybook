@@ -159,7 +159,7 @@ export function StudioProjectsGrid({
               <div key={project.id} className="mb-6 break-inside-avoid">
                 <StudioProjectCard
                   project={project}
-                  href={`${basePath}/${project.id}`}
+                  href={`${basePath}/${project.slug ?? project.id}`}
                 />
               </div>
             ))}

@@ -20,6 +20,7 @@ import {
   type RegenerateEpisodeOutlineResponse,
   RegenerateEpisodeOutlineSchema,
 } from '../lib/schemas/batch-episode.schema';
+import { generateEpisodeSlug } from '../lib/slug-utils';
 
 /**
  * Generate season episode outlines via LLM (FILM-314)
@@ -233,22 +234,26 @@ export const batchCreateEpisodesAction = enhanceAction(
 
     // Prepare episode records for batch insert
     const episodesToInsert = data.episodes.map(
-      (ep: EpisodeOutline, index: number) => ({
-        project_id: data.projectId,
-        season_id: data.seasonId ?? null,
-        number: nextNumber + index,
-        title: ep.title,
-        description: ep.premise,
-        status: 'draft',
-        story_data: {
-          premise: ep.premise,
-          mainPlot: ep.mainPlot,
-          characterFocus: ep.characterFocus ?? [],
-          arcPosition: ep.arcPosition,
-          generatedFromBatch: true,
-        } as Json,
-        version: 1,
-      }),
+      (ep: EpisodeOutline, index: number) => {
+        const episodeNumber = nextNumber + index;
+        return {
+          project_id: data.projectId,
+          season_id: data.seasonId ?? null,
+          number: episodeNumber,
+          title: ep.title,
+          slug: generateEpisodeSlug(episodeNumber, ep.title),
+          description: ep.premise,
+          status: 'draft',
+          story_data: {
+            premise: ep.premise,
+            mainPlot: ep.mainPlot,
+            characterFocus: ep.characterFocus ?? [],
+            arcPosition: ep.arcPosition,
+            generatedFromBatch: true,
+          } as Json,
+          version: 1,
+        };
+      },
     );
 
     // Insert all episodes atomically

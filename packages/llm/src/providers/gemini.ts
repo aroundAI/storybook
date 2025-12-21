@@ -1,12 +1,13 @@
 /**
  * Google Gemini Provider Implementation
  *
- * Implements LLMClient interface for Google Gemini models:
- * - Gemini 1.5 Pro (most capable)
- * - Gemini 1.5 Flash (fastest)
- * - Gemini 1.5 Flash-8B (ultra-efficient)
+ * Implements LLMClient interface for Google Gemini models using the new @google/genai SDK.
+ * Supports:
+ * - Gemini 3 Flash Preview (latest)
+ * - Gemini 2.5 Flash
+ * - Gemini 1.5 Pro/Flash
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 
 import { calculateTokenCost, getModelPricing } from '../pricing';
 import type {
@@ -21,10 +22,25 @@ import type {
 import { LLMError } from '../types';
 
 /**
- * Gemini client implementation
+ * Content part for Gemini API
+ */
+interface ContentPart {
+  text: string;
+}
+
+/**
+ * Content object for Gemini API
+ */
+interface Content {
+  role: 'user' | 'model';
+  parts: ContentPart[];
+}
+
+/**
+ * Gemini client implementation using new @google/genai SDK
  */
 export class GeminiClient implements LLMClient {
-  private client: GoogleGenerativeAI;
+  private client: GoogleGenAI;
   private config: LLMConfig;
 
   constructor(config: LLMConfig) {
@@ -37,7 +53,7 @@ export class GeminiClient implements LLMClient {
     }
 
     this.config = config;
-    this.client = new GoogleGenerativeAI(config.apiKey);
+    this.client = new GoogleGenAI({ apiKey: config.apiKey });
   }
 
   getProvider() {
@@ -55,30 +71,26 @@ export class GeminiClient implements LLMClient {
     request: ChatCompletionRequest,
   ): Promise<ChatCompletionResponse> {
     try {
-      const model = this.client.getGenerativeModel({
+      const { systemInstruction, contents } = this.buildContents(
+        request.messages,
+      );
+
+      const response = await this.client.models.generateContent({
         model: this.config.model,
-      });
-
-      // Build Gemini chat history
-      const { systemInstruction, history, currentMessage } =
-        this.buildChatHistory(request.messages);
-
-      // Start chat with history
-      const chat = model.startChat({
-        history,
-        generationConfig: {
+        contents,
+        config: {
+          systemInstruction,
           temperature: request.temperature ?? this.config.temperature ?? 0.7,
           maxOutputTokens: request.maxTokens ?? this.config.maxTokens,
           topP: request.topP ?? this.config.topP,
         },
-        systemInstruction,
       });
 
-      // Send message and get response
-      const result = await chat.sendMessage(currentMessage);
-      const response = result.response;
+      const text = response.text;
 
-      const text = response.text();
+      if (!text) {
+        throw new LLMError('No text in response', 'gemini', 'NO_CONTENT');
+      }
 
       // Get usage metadata
       const usageMetadata = response.usageMetadata;
@@ -92,8 +104,8 @@ export class GeminiClient implements LLMClient {
       }
 
       const cost = this.calculateCost(
-        usageMetadata.promptTokenCount,
-        usageMetadata.candidatesTokenCount,
+        usageMetadata.promptTokenCount ?? 0,
+        usageMetadata.candidatesTokenCount ?? 0,
       );
 
       return {
@@ -105,14 +117,12 @@ export class GeminiClient implements LLMClient {
           content: text,
         },
         usage: {
-          promptTokens: usageMetadata.promptTokenCount,
-          completionTokens: usageMetadata.candidatesTokenCount,
-          totalTokens: usageMetadata.totalTokenCount,
+          promptTokens: usageMetadata.promptTokenCount ?? 0,
+          completionTokens: usageMetadata.candidatesTokenCount ?? 0,
+          totalTokens: usageMetadata.totalTokenCount ?? 0,
         },
         cost,
-        finishReason: this.mapFinishReason(
-          response.candidates?.[0]?.finishReason,
-        ),
+        finishReason: this.mapFinishReason(response.candidates?.[0]?.finishReason),
       };
     } catch (error) {
       throw this.handleError(error);
@@ -126,30 +136,23 @@ export class GeminiClient implements LLMClient {
     request: ChatCompletionRequest,
   ): AsyncGenerator<StreamChunk, void, unknown> {
     try {
-      const model = this.client.getGenerativeModel({
+      const { systemInstruction, contents } = this.buildContents(
+        request.messages,
+      );
+
+      const stream = await this.client.models.generateContentStream({
         model: this.config.model,
-      });
-
-      // Build Gemini chat history
-      const { systemInstruction, history, currentMessage } =
-        this.buildChatHistory(request.messages);
-
-      // Start chat with history
-      const chat = model.startChat({
-        history,
-        generationConfig: {
+        contents,
+        config: {
+          systemInstruction,
           temperature: request.temperature ?? this.config.temperature ?? 0.7,
           maxOutputTokens: request.maxTokens ?? this.config.maxTokens,
           topP: request.topP ?? this.config.topP,
         },
-        systemInstruction,
       });
 
-      // Send message and stream response
-      const result = await chat.sendMessageStream(currentMessage);
-
-      for await (const chunk of result.stream) {
-        const text = chunk.text();
+      for await (const chunk of stream) {
+        const text = chunk.text;
 
         if (text) {
           yield {
@@ -177,41 +180,34 @@ export class GeminiClient implements LLMClient {
   }
 
   /**
-   * Build Gemini chat history from our ChatMessage format
+   * Build contents array from ChatMessage format
    *
-   * Gemini requires:
-   * - System instructions separate from chat history
-   * - History as array of { role: 'user' | 'model', parts: [{ text }] }
-   * - Last message separate for sending
+   * The new SDK expects:
+   * - systemInstruction as a plain string in config
+   * - contents as array of { role: 'user' | 'model', parts: [{ text }] }
    */
-  private buildChatHistory(messages: ChatMessage[]): {
+  private buildContents(messages: ChatMessage[]): {
     systemInstruction: string | undefined;
-    history: Array<{ role: string; parts: Array<{ text: string }> }>;
-    currentMessage: string;
+    contents: Content[];
   } {
     // Extract system message
     const systemMessage = messages.find((m) => m.role === 'system');
 
-    // Filter out system messages and get conversation messages
-    const conversationMessages = messages.filter((m) => m.role !== 'system');
+    // Filter out system messages and convert to Gemini format
+    const contents: Content[] = messages
+      .filter((m) => m.role !== 'system')
+      .map((msg) => ({
+        role: msg.role === 'assistant' ? ('model' as const) : ('user' as const),
+        parts: [{ text: msg.content }],
+      }));
 
-    // Last message is what we're sending
-    const lastMessage = conversationMessages[conversationMessages.length - 1];
-
-    if (!lastMessage) {
+    if (contents.length === 0) {
       throw new LLMError('No messages to send', 'gemini', 'NO_MESSAGES');
     }
 
-    // Build history (all messages except the last one)
-    const history = conversationMessages.slice(0, -1).map((msg) => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    }));
-
     return {
       systemInstruction: systemMessage?.content,
-      history,
-      currentMessage: lastMessage.content,
+      contents,
     };
   }
 
@@ -246,6 +242,10 @@ export class GeminiClient implements LLMClient {
    * Handle Gemini-specific errors
    */
   private handleError(error: unknown): LLMError {
+    if (error instanceof LLMError) {
+      return error;
+    }
+
     if (error instanceof Error) {
       // Check for specific error patterns in message
       if (error.message.includes('API key')) {
@@ -254,6 +254,14 @@ export class GeminiClient implements LLMClient {
 
       if (error.message.includes('quota')) {
         return new LLMError(error.message, 'gemini', 'QUOTA_EXCEEDED');
+      }
+
+      if (error.message.includes('not found') || error.message.includes('404')) {
+        return new LLMError(
+          `Model not found: ${this.config.model}. Check if the model name is correct.`,
+          'gemini',
+          'MODEL_NOT_FOUND',
+        );
       }
 
       return new LLMError(error.message, 'gemini', 'UNKNOWN_ERROR');
