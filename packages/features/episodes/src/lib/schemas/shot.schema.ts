@@ -18,16 +18,35 @@ export const ShotStatusSchema = z.enum([
 export const CameraDirectionSchema = z.string();
 
 /**
- * VEO 3.1 structured prompt for a shot
+ * Timeline event type within a shot
+ */
+export const TimelineEventTypeSchema = z.enum([
+  'action',
+  'dialogue',
+  'transition',
+]);
+
+/**
+ * Single timeline event within a shot (timestamp-based)
+ */
+export const TimelineEventDataSchema = z.object({
+  startTime: z.string(), // "00:00" format
+  endTime: z.string(), // "03:00" format
+  type: TimelineEventTypeSchema,
+  character: z.string().nullish(),
+  content: z.string(),
+  emotion: z.string().nullable().optional(),
+});
+
+/**
+ * VEO 3.1 structured prompt for a shot (V2 - Timeline-based)
  */
 export const VeoPromptDataSchema = z.object({
-  subject: z.string(),
-  action: z.string(),
-  scene: z.string(),
+  shotLine: z.string(),
+  timeline: z.array(TimelineEventDataSchema),
+  audio: z.string(),
   style: z.string(),
-  dialogue: z.string().optional().nullable(),
-  sounds: z.string(),
-  negativePrompt: z.string(),
+  avoid: z.string(),
   fullPrompt: z.string(),
 });
 
@@ -169,6 +188,9 @@ export const DeleteShotSchema = z.object({
 // Type exports
 export type ShotStatus = z.infer<typeof ShotStatusSchema>;
 export type CameraDirection = z.infer<typeof CameraDirectionSchema>;
+export type TimelineEventType = z.infer<typeof TimelineEventTypeSchema>;
+export type TimelineEventData = z.infer<typeof TimelineEventDataSchema>;
+export type VeoPromptData = z.infer<typeof VeoPromptDataSchema>;
 export type ShotMetadata = z.infer<typeof ShotMetadataSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type BatchShotDefinition = z.infer<typeof BatchShotDefinitionSchema>;

@@ -55,6 +55,14 @@ function delay(ms: number): Promise<void> {
 }
 
 /**
+ * Parse timestamp string "MM:SS" to seconds
+ */
+function parseTimeToSeconds(time: string): number {
+  const [minutes, seconds] = time.split(':').map(Number);
+  return (minutes || 0) * 60 + (seconds || 0);
+}
+
+/**
  * Result from generating shots for a single scene
  */
 interface SceneGenerationResult {
@@ -250,13 +258,18 @@ interface AggregatedShot {
     lighting?: string;
   };
   veoPrompt?: {
-    subject: string;
-    action: string;
-    scene: string;
+    shotLine: string;
+    timeline: Array<{
+      startTime: string;
+      endTime: string;
+      type: 'action' | 'dialogue' | 'transition';
+      character?: string | null;
+      content: string;
+      emotion?: string | null;
+    }>;
+    audio: string;
     style: string;
-    dialogue?: string;
-    sounds: string;
-    negativePrompt: string;
+    avoid: string;
     fullPrompt: string;
   };
   dialogueTiming?: Array<{
@@ -299,11 +312,19 @@ function aggregateSceneResults(
 
   for (const sceneResult of sceneResults) {
     for (const shot of sceneResult.shots) {
+      // Derive action from timeline events (concatenate action content)
+      const derivedAction = shot.veoPrompt.timeline
+        .filter((event) => event.type === 'action')
+        .map((event) => event.content)
+        .join(' ');
+
       // Assign global sequence number
-      const sequencedShot = {
+      const sequencedShot: AggregatedShot = {
         ...shot,
         sequenceNumber: sequenceNumber++,
         sceneNumber: sceneResult.sceneNumber,
+        action: derivedAction || shot.description,
+        prompt: shot.veoPrompt.fullPrompt,
       };
 
       allShots.push(sequencedShot);
@@ -322,13 +343,26 @@ function aggregateSceneResults(
             .includes(img.name.toLowerCase()),
       );
 
+      // Derive dialogue timing from timeline dialogue events
+      const dialogueTiming = shot.veoPrompt.timeline
+        .filter((event) => event.type === 'dialogue' && event.character)
+        .map((event) => ({
+          startSeconds: parseTimeToSeconds(event.startTime),
+          durationSeconds:
+            parseTimeToSeconds(event.endTime) -
+            parseTimeToSeconds(event.startTime),
+          characterName: event.character || 'Unknown',
+          text: event.content,
+          emotion: event.emotion || null,
+        }));
+
       // Prepare for batch creation
       // Cast cameraDirection to CameraDirection type (validated by LLM output schema)
       shotsToCreate.push({
         sceneNumber: sceneResult.sceneNumber,
         shotNumber: shot.shotNumber,
         description: shot.description,
-        prompt: shot.veoPrompt?.fullPrompt ?? shot.prompt,
+        prompt: shot.veoPrompt.fullPrompt,
         durationSeconds: shot.duration,
         cameraDirection: shot.cameraDirection as CameraDirection,
         characters: shot.characters,
@@ -336,18 +370,17 @@ function aggregateSceneResults(
           location: shot.metadata.location,
           timeOfDay: shot.metadata.timeOfDay,
           mood: shot.metadata.mood,
-          lighting: shot.metadata.lighting,
           shotType: shot.shotType,
-          action: shot.action,
+          action: derivedAction,
           veoPrompt: shot.veoPrompt,
           referenceImages:
             shotCharacterImages.length > 0 || shotLocationImages.length > 0
               ? {
-                  characters: shotCharacterImages,
-                  locations: shotLocationImages,
-                }
+                characters: shotCharacterImages,
+                locations: shotLocationImages,
+              }
               : undefined,
-          dialogueTiming: shot.dialogueTiming,
+          dialogueTiming: dialogueTiming.length > 0 ? dialogueTiming : undefined,
         },
       });
 

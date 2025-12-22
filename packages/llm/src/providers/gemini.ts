@@ -122,7 +122,9 @@ export class GeminiClient implements LLMClient {
           totalTokens: usageMetadata.totalTokenCount ?? 0,
         },
         cost,
-        finishReason: this.mapFinishReason(response.candidates?.[0]?.finishReason),
+        finishReason: this.mapFinishReason(
+          response.candidates?.[0]?.finishReason,
+        ),
       };
     } catch (error) {
       throw this.handleError(error);
@@ -256,7 +258,10 @@ export class GeminiClient implements LLMClient {
         return new LLMError(error.message, 'gemini', 'QUOTA_EXCEEDED');
       }
 
-      if (error.message.includes('not found') || error.message.includes('404')) {
+      if (
+        error.message.includes('not found') ||
+        error.message.includes('404')
+      ) {
         return new LLMError(
           `Model not found: ${this.config.model}. Check if the model name is correct.`,
           'gemini',

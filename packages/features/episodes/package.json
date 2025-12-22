@@ -25,7 +25,10 @@
   "dependencies": {
     "@kit/film-studio": "workspace:*",
     "@kit/projects": "workspace:*",
-    "@kit/prompt-engine": "workspace:*"
+    "@kit/prompt-engine": "workspace:*",
+    "@kit/storage": "workspace:*",
+    "@kit/video-rendering": "workspace:*",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@dnd-kit/core": "^6.1.0",

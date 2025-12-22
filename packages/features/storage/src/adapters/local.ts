@@ -13,18 +13,33 @@ import { dirname, join } from 'path';
 import type { StorageAdapter, UploadOptions, UploadResult } from '../types';
 
 /**
+ * Expand tilde (~) in paths to the user's home directory
+ */
+function expandTilde(filePath: string): string {
+    if (filePath.startsWith('~/')) {
+        const home = process.env.HOME || process.env.USERPROFILE || '';
+        return join(home, filePath.slice(2));
+    }
+    if (filePath === '~') {
+        return process.env.HOME || process.env.USERPROFILE || '';
+    }
+    return filePath;
+}
+
+/**
  * Default base path for local storage
  * Can be overridden via constructor or STORAGE_LOCAL_PATH env var
  */
-const DEFAULT_BASE_PATH =
-    process.env.STORAGE_LOCAL_PATH || join(process.cwd(), '.storage');
+const DEFAULT_BASE_PATH = expandTilde(
+    process.env.STORAGE_LOCAL_PATH || join(process.cwd(), '.storage'),
+);
 
 export class LocalStorageAdapter implements StorageAdapter {
     private basePath: string;
     private baseUrl: string;
 
     constructor(options?: { basePath?: string; baseUrl?: string }) {
-        this.basePath = options?.basePath || DEFAULT_BASE_PATH;
+        this.basePath = expandTilde(options?.basePath || DEFAULT_BASE_PATH);
         this.baseUrl =
             options?.baseUrl || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
 

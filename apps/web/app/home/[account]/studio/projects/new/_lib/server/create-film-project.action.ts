@@ -63,7 +63,11 @@ export async function createFilmProject(
     throw new Error(`Failed to create project: ${error.message}`);
   }
 
-  return { projectId: project.id, projectSlug: project.slug ?? slug, accountSlug };
+  return {
+    projectId: project.id,
+    projectSlug: project.slug ?? slug,
+    accountSlug,
+  };
 }
 
 /**

@@ -7,6 +7,7 @@ import { LLMError, createLLMClient, logLLMUsage } from '@kit/llm';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { normalizeSceneShotData } from '../normalize-llm-output';
 import type { LLMExecutionConfig, LLMExecutionResult } from '../types';
 import { loadAndRenderPrompt } from './prompt-loader';
 
@@ -508,7 +509,14 @@ export async function executeLLM<T = unknown>(
       }
     }
 
-    // 8. Validate with Zod schema if provided and validation enabled
+    // 8. Normalize data before validation (for specific templates)
+    // This fixes common LLM output variations like "medium shot" → "medium"
+    if (config.templateSlug.includes('scene-shot-generation')) {
+      logger.info({ ...config.context }, 'Normalizing scene shot data');
+      fullData = normalizeSceneShotData(fullData);
+    }
+
+    // 9. Validate with Zod schema if provided and validation enabled
     if (
       outputConfig?.schema?.type === 'zod' &&
       config.validateSchema !== false
@@ -550,7 +558,7 @@ export async function executeLLM<T = unknown>(
       }
     }
 
-    // 9. Extract wrapper array if needed (after validation)
+    // 10. Extract wrapper array if needed (after validation)
     let data: T;
     if (wrapperKey) {
       // Extract array from validated wrapper object
@@ -574,7 +582,7 @@ export async function executeLLM<T = unknown>(
       data = fullData as T;
     }
 
-    // 10. Log analytics (success) - use admin client to bypass RLS
+    // 11. Log analytics (success) - use admin client to bypass RLS
     const client = getSupabaseServerAdminClient();
 
     try {

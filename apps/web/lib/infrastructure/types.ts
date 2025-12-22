@@ -4,7 +4,7 @@
 
 export type DatabaseProvider = 'supabase' | 'postgresql' | 'mysql';
 export type AuthProvider = 'supabase' | 'cognito' | 'auth0' | 'clerk';
-export type StorageProvider = 'supabase' | 's3';
+export type StorageProvider = 'supabase' | 's3' | 'local';
 export type EmailProvider = 'resend' | 'ses' | 'sendgrid' | 'nodemailer';
 export type QueueProvider = 'sqs' | 'bullmq';
 export type RealtimeProvider = 'supabase' | 'websocket' | 'pusher';

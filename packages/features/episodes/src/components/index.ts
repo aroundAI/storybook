@@ -46,3 +46,6 @@ export type {
   TimelineTrack,
   ClipType,
 } from './timeline-editor';
+
+// Video Upload
+export { VideoUploader, type VideoUploaderProps } from './video-uploader';

@@ -1,9 +1,9 @@
 {
   "slug": "scene-shot-generation",
-  "name": "VEO 3.1 Single Scene Shot Generation",
-  "version": 1,
+  "name": "VEO 3.1 Scene Shot Generation with Timestamps",
+  "version": 2,
   "category": "story-generation",
-  "description": "Generate VEO 3.1 optimized shots for a SINGLE SCENE with filtered context. Used by the scalable scene-by-scene pipeline to process long screenplays.",
+  "description": "Generate concise VEO 3.1 shots with timestamp-based prompts. Designed for Ingredients-to-Video workflow where reference images are attached.",
   "exported_at": "2025-01-01T00:00:00.000Z",
 
   "llm": {
@@ -19,31 +19,31 @@
   "system_prompts": [
     {
       "slug": "role",
-      "name": "VEO 3.1 Scene Cinematographer",
-      "content": "You are an expert cinematographer creating VEO 3.1 optimized shots for a SINGLE SCENE. You receive filtered context (only characters/locations appearing in this scene) and scene-specific content.\n\nGenerate 3-8 shots that capture the scene's action, emotion, and dialogue following the VEO 3.1 7-Component Professional Format:\n1. SUBJECT: Character with 15+ physical attributes (use EXACTLY as provided)\n2. ACTION: Movements, gestures, timing, micro-expressions\n3. SCENE: Environment, props, lighting, weather (use location description provided)\n4. STYLE: Camera shot type, angle, movement, aesthetic\n5. DIALOGUE: Using colon format to prevent subtitles\n6. SOUNDS: Ambient + SFX (prevents audio hallucinations)\n7. NEGATIVE: Elements to exclude",
+      "name": "VEO 3.1 Director with Reference Images",
+      "content": "You are a VEO 3.1 video director. IMPORTANT: Reference images for characters and locations will be attached during video generation - do NOT describe character appearances in detail. Instead, reference characters by NAME and focus on ACTIONS, DIALOGUE, and EMOTIONS.\n\nYour prompts should be CONCISE (100-150 words, 3-6 sentences) with:\n1. Camera shot and positioning first\n2. Timestamp-based action and dialogue beats\n3. Audio design\n4. Visual style\n5. Elements to avoid",
       "layer_type": "role",
       "scope": "template",
       "order": 1
     },
     {
-      "slug": "context-usage",
-      "name": "Scene Context Usage Rules",
-      "content": "CONTEXT USAGE RULES:\n\n1. CHARACTER REGISTRY: Use the provided character descriptions EXACTLY as written (15+ attributes). These are the ONLY characters in this scene.\n\n2. LOCATION REGISTRY: Use the provided location description EXACTLY as written. This is the scene's location.\n\n3. EPISODE METADATA: Use genre, style, tone for consistent aesthetic choices.\n\n4. PREVIOUS SCENE SUMMARY: Understand narrative flow and emotional continuity from the previous scene.\n\n5. GENERATE SHOTS ONLY FOR THE CURRENT SCENE CONTENT - do not invent additional action.",
-      "layer_type": "constraints",
+      "slug": "format",
+      "name": "Timestamp Prompt Format",
+      "content": "OUTPUT FORMAT - Use timestamps within each 8-second shot:\n\nSHOT: [Shot type], [Camera movement] (thats where the camera is)\n\n[00:00-03:00] [Character] [action]. Setting: [brief location/lighting].\n\n[03:00-06:00] [Character]: \"[Dialogue]\" (Tone: [emotion])\n\n[06:00-08:00] [Reaction or next action]\n\nAUDIO: [Ambient sounds], [SFX]\n\nSTYLE: [Aesthetic], [lighting], [mood]\n\nAVOID: subtitles, captions, watermarks, text overlays\n\nKEY RULES:\n- Use colon syntax for dialogue (prevents subtitles)\n- Include '(thats where the camera is)' for spatial clarity\n- Reference characters by NAME only - images provide visual reference\n- One main action per shot\n- Max 8 seconds per clip",
+      "layer_type": "format",
       "scope": "template",
       "order": 2
     },
     {
-      "slug": "veo-technical",
-      "name": "VEO 3.1 Technical Requirements",
-      "content": "VEO 3.1 CRITICAL REQUIREMENTS:\n\n- DURATION: 5-8 seconds per shot (VEO 3.1 limit)\n- DIALOGUE FORMAT: Use colon syntax - 'says: \"dialogue\"' to PREVENT subtitles\n- CAMERA POSITION: Include '(thats where the camera is)' for spatial clarity\n- AUDIO: Always specify environment audio to prevent hallucinations\n- NEGATIVE PROMPTS: Always exclude subtitles, captions, watermarks, text overlays\n\nSHOT BALANCE:\n- Include at least one wide/establishing shot if scene changes location\n- Balance wide, medium, and close-up shots\n- Use close-ups for emotional moments and dialogue\n- Use wide shots for action and context",
-      "layer_type": "format",
+      "slug": "context",
+      "name": "Reference Image Context",
+      "content": "REFERENCE IMAGE WORKFLOW:\n\nCharacters and locations provided below have reference images that will be attached to VEO 3.1 during generation. This means:\n\n1. DO NOT describe character appearances (age, ethnicity, clothing, hair, eyes, etc.)\n2. DO reference characters by their exact NAME\n3. DO describe their ACTIONS, MOVEMENTS, and EMOTIONS\n4. DO include dialogue with timing and emotional tone\n5. DO describe camera work and shot composition\n6. Location images provide the setting - just reference the mood/lighting\n\nThe images ARE the visual reference. Your prompt provides the ACTION and STORY.",
+      "layer_type": "constraints",
       "scope": "template",
       "order": 3
     }
   ],
 
-  "user_prompt": "Generate VEO 3.1 shots for Scene {{scene_number}} of {{total_scenes}}.\n\n## SCENE-RELEVANT CONTEXT\n\n### Characters in This Scene\n{{characters}}\n\n### Location for This Scene\n{{locations}}\n\n### Episode Metadata\n{{episode_metadata}}\n\n## NARRATIVE CONTEXT\n\n### Previous Scene Summary\n{{previous_scene_summary}}\n\n## CURRENT SCENE\n\n{{scene_content}}\n\n## REQUIREMENTS\n\n1. Generate 3-8 shots for this scene\n2. Use character descriptions EXACTLY as provided (these are the only characters in this scene)\n3. Use location description EXACTLY as provided (this is the scene's location)\n4. Include dialogue timing when dialogue is present\n5. Each shot should be 5-8 seconds (VEO 3.1 limit)\n6. Use appropriate shot types for multi-character scenes (two-shot, three-shot, group-shot)\n7. Balance shot sizes and dramatic angles for visual variety\n\n## SHOT TYPE OPTIONS\n\n- Shot sizes: extreme-wide, wide, medium-wide, medium, medium-close-up, close-up, extreme-close-up\n- Multi-character: two-shot (2 chars), three-shot (3 chars), group-shot (4+ chars), over-shoulder\n- Character framing: full-body, profile, three-quarter\n- Dramatic angles: low-angle (power), high-angle (vulnerability), dutch-angle (tension), bird-eye\n- Special: pov, insert, establishing, reaction, silhouette\n\n## OUTPUT\n\nReturn JSON with structure:\n{\n  \"shots\": [\n    {\n      \"shotNumber\": 1,\n      \"shotType\": \"MUST be one of the shot types listed above\",\n      \"cameraDirection\": \"string (e.g., static, pan_left, zoom_in_slow, dolly_in, tracking)\",\n      \"description\": \"What the camera captures\",\n      \"action\": \"What happens in the shot\",\n      \"prompt\": \"Legacy simple prompt\",\n      \"characters\": [\"Character Name\"],\n      \"duration\": 6,\n      \"metadata\": {\n        \"location\": \"location name\",\n        \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\",\n        \"mood\": \"emotional tone\",\n        \"lighting\": \"lighting description\"\n      },\n      \"veoPrompt\": {\n        \"subject\": \"15+ attribute character description from registry\",\n        \"action\": \"Movements, gestures, body language\",\n        \"scene\": \"Environment from location registry\",\n        \"style\": \"Camera shot, angle, movement, aesthetic with (thats where the camera is)\",\n        \"dialogue\": \"[Character]: 'text' (Tone: emotion)\" or null,\n        \"sounds\": \"Ambient sounds, effects, no unwanted music\",\n        \"negativePrompt\": \"subtitles, captions, watermark, etc.\",\n        \"fullPrompt\": \"Complete VEO 3.1 prompt ready for copy/paste\"\n      },\n      \"dialogueTiming\": [\n        {\n          \"startSeconds\": 1.5,\n          \"durationSeconds\": 2.0,\n          \"characterName\": \"Character Name\",\n          \"text\": \"The dialogue text\",\n          \"emotion\": \"surprised\"\n        }\n      ]\n    }\n  ],\n  \"sceneSummary\": \"One sentence summary of what happened in this scene (for next scene's context)\"\n}",
+  "user_prompt": "Generate VEO 3.1 shots for Scene {{scene_number}} of {{total_scenes}}.\n\n## CHARACTERS (Reference images will be attached)\n{{characters}}\n\n## LOCATION (Reference image will be attached)\n{{locations}}\n\n## EPISODE CONTEXT\n{{episode_metadata}}\n\n## PREVIOUS SCENE\n{{previous_scene_summary}}\n\n## CURRENT SCENE CONTENT\n{{scene_content}}\n\n## REQUIREMENTS\n\n1. Generate 3-8 shots for this scene\n2. Each shot is MAX 8 seconds\n3. Use TIMESTAMP format: [00:00-03:00] Action description\n4. Reference characters by NAME only (images provide visuals)\n5. Use colon syntax for dialogue: Character: \"text\" (Tone: emotion)\n6. Include '(thats where the camera is)' for camera positioning\n7. Keep prompts CONCISE: 100-150 words per shot\n\n## SHOT TYPES (USE EXACT VALUES - NO VARIATIONS)\n✓ CORRECT: wide, medium, close-up, extreme-close-up, two-shot, three-shot, over-shoulder, pov, establishing, reaction, extreme-wide, medium-wide, medium-close-up, group-shot, full-body, profile, three-quarter, low-angle, high-angle, dutch-angle, bird-eye, insert, silhouette\n✗ WRONG: \"medium shot\", \"close up\" (no hyphen), \"extreme close-up\" (use hyphen), \"medium two-shot\"\n\nIMPORTANT: Use the EXACT kebab-case value. Do NOT add 'shot' suffix or use spaces instead of hyphens.\n\n## OUTPUT JSON\n{\n  \"shots\": [{\n    \"shotNumber\": 1,\n    \"shotType\": \"medium|wide|close-up|etc\",\n    \"cameraDirection\": \"static|pan_left|dolly_in|tracking|etc\",\n    \"description\": \"Brief shot description\",\n    \"characters\": [\"Character Name\"],\n    \"duration\": 8,\n    \"veoPrompt\": {\n      \"shotLine\": \"SHOT: Medium two-shot, tracking from the side (thats where the camera is)\",\n      \"timeline\": [\n        {\n          \"startTime\": \"00:00\",\n          \"endTime\": \"03:00\",\n          \"type\": \"action\",\n          \"character\": \"Character Name\",\n          \"content\": \"action description\",\n          \"emotion\": null\n        },\n        {\n          \"startTime\": \"03:00\",\n          \"endTime\": \"06:00\",\n          \"type\": \"dialogue\",\n          \"character\": \"Character Name\",\n          \"content\": \"Dialogue text here\",\n          \"emotion\": \"surprised\"\n        }\n      ],\n      \"audio\": \"Ambient sounds, SFX description\",\n      \"style\": \"Visual aesthetic, lighting, mood\",\n      \"avoid\": \"subtitles, captions, watermarks, text overlays\",\n      \"fullPrompt\": \"Complete formatted prompt ready for VEO 3.1\"\n    },\n    \"metadata\": {\n      \"location\": \"location name\",\n      \"timeOfDay\": \"golden-hour|night|day|etc\",\n      \"mood\": \"emotional tone\"\n    }\n  }],\n  \"sceneSummary\": \"One sentence summary\"\n}",
 
   "variables": {
     "scene_number": {
@@ -54,17 +54,17 @@
     "total_scenes": {
       "type": "number",
       "required": true,
-      "description": "Total number of scenes in the screenplay"
+      "description": "Total number of scenes"
     },
     "characters": {
       "type": "text",
       "required": true,
-      "description": "VEO-formatted character descriptions for characters appearing in THIS scene only (filtered from episode registry)"
+      "description": "Character names appearing in this scene (reference images attached separately)"
     },
     "locations": {
       "type": "text",
       "required": true,
-      "description": "VEO-formatted location description for THIS scene only (filtered from episode registry)"
+      "description": "Location name and brief context (reference image attached separately)"
     },
     "episode_metadata": {
       "type": "text",
@@ -79,7 +79,7 @@
     "scene_content": {
       "type": "text",
       "required": true,
-      "description": "Full scene content: heading, action/description, dialogue with character names"
+      "description": "Full scene content: heading, action/description, dialogue"
     }
   },
 
@@ -87,73 +87,97 @@
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ shots: z.array(z.object({ shotNumber: z.number(), shotType: z.enum(['extreme-wide', 'wide', 'medium-wide', 'medium', 'medium-close-up', 'close-up', 'extreme-close-up', 'two-shot', 'three-shot', 'group-shot', 'over-shoulder', 'full-body', 'profile', 'three-quarter', 'low-angle', 'high-angle', 'dutch-angle', 'bird-eye', 'pov', 'insert', 'establishing', 'reaction', 'silhouette']), cameraDirection: z.string(), description: z.string(), action: z.string(), prompt: z.string(), characters: z.array(z.string()), duration: z.number().min(3).max(10), metadata: z.object({ location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), mood: z.string().optional(), lighting: z.string().optional() }), veoPrompt: z.object({ subject: z.string(), action: z.string(), scene: z.string(), style: z.string(), dialogue: z.string().optional().nullable(), sounds: z.string(), negativePrompt: z.string(), fullPrompt: z.string() }), dialogueTiming: z.array(z.object({ startSeconds: z.number(), durationSeconds: z.number(), characterName: z.string(), text: z.string(), emotion: z.string().nullable() })).optional() })), sceneSummary: z.string() })"
+      "definition": "z.object({ shots: z.array(z.object({ shotNumber: z.number(), shotType: z.enum(['extreme-wide', 'wide', 'medium-wide', 'medium', 'medium-close-up', 'close-up', 'extreme-close-up', 'two-shot', 'three-shot', 'group-shot', 'over-shoulder', 'full-body', 'profile', 'three-quarter', 'low-angle', 'high-angle', 'dutch-angle', 'bird-eye', 'pov', 'insert', 'establishing', 'reaction', 'silhouette']), cameraDirection: z.string(), description: z.string(), characters: z.array(z.string()), duration: z.number().min(3).max(10), veoPrompt: z.object({ shotLine: z.string(), timeline: z.array(z.object({ startTime: z.string(), endTime: z.string(), type: z.enum(['action', 'dialogue', 'transition']), character: z.string().nullish(), content: z.string(), emotion: z.string().nullable().optional() })), audio: z.string(), style: z.string(), avoid: z.string(), fullPrompt: z.string() }), metadata: z.object({ location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), mood: z.string().optional() }) })), sceneSummary: z.string() })"
     },
-    "schema_for_llm": "Return JSON: { \"shots\": [{ \"shotNumber\": 1, \"shotType\": \"extreme-wide|wide|medium-wide|medium|medium-close-up|close-up|extreme-close-up|two-shot|three-shot|group-shot|over-shoulder|full-body|profile|three-quarter|low-angle|high-angle|dutch-angle|bird-eye|pov|insert|establishing|reaction|silhouette\", \"cameraDirection\": \"string (e.g., static, pan_left, zoom_in_slow, dolly_in, tracking)\", \"description\": \"string\", \"action\": \"string\", \"prompt\": \"simple prompt\", \"characters\": [\"Name\"], \"duration\": 6, \"metadata\": {...}, \"veoPrompt\": { \"subject\": \"15+ attrs\", \"action\": \"...\", \"scene\": \"...\", \"style\": \"...\", \"dialogue\": \"[Name]: 'text' (Tone: emotion)\" | null, \"sounds\": \"...\", \"negativePrompt\": \"...\", \"fullPrompt\": \"complete VEO 3.1 prompt\" }, \"dialogueTiming\": [...] }], \"sceneSummary\": \"One sentence summary of scene\" }",
+    "schema_for_llm": "Return JSON: { \"shots\": [{ \"shotNumber\": 1, \"shotType\": \"wide|medium|close-up|etc\", \"cameraDirection\": \"static|pan|dolly|tracking\", \"description\": \"brief\", \"characters\": [\"Name\"], \"duration\": 8, \"veoPrompt\": { \"shotLine\": \"SHOT: type, movement (thats where the camera is)\", \"timeline\": [{ \"startTime\": \"00:00\", \"endTime\": \"03:00\", \"type\": \"action|dialogue|transition\", \"character\": \"Name\", \"content\": \"...\", \"emotion\": \"...\" }], \"audio\": \"...\", \"style\": \"...\", \"avoid\": \"subtitles, captions, watermarks\", \"fullPrompt\": \"complete prompt\" }, \"metadata\": {...} }], \"sceneSummary\": \"...\" }",
     "example_output": {
       "shots": [
         {
           "shotNumber": 1,
           "shotType": "wide",
           "cameraDirection": "static",
-          "description": "Establishing shot of Maya's corner office, afternoon light streaming through windows.",
-          "action": "The camera holds on the office space as Maya enters from the right.",
-          "prompt": "Wide shot of modern corner office, floor-to-ceiling windows, city skyline, afternoon golden hour light",
+          "description": "Establishing shot of Maya entering office",
           "characters": ["Maya Chen"],
-          "duration": 5,
-          "metadata": {
-            "location": "corner office",
-            "timeOfDay": "day",
-            "mood": "contemplative",
-            "lighting": "golden hour, soft directional"
-          },
+          "duration": 6,
           "veoPrompt": {
-            "subject": "A 28-year-old East Asian woman with shoulder-length black hair, warm brown eyes, athletic build, wearing a navy blazer over white blouse, entering frame from right",
-            "action": "Walks purposefully into frame from right side, moving toward desk",
-            "scene": "Modern corner office with floor-to-ceiling windows, city skyline visible, afternoon golden hour light streaming in, minimalist desk with laptop",
-            "style": "Wide establishing shot, camera at standing eye level (thats where the camera is), deep focus, warm cinematic color grading, 35mm film aesthetic",
-            "sounds": "Soft footsteps on hardwood, ambient office hum, distant city traffic, no background music",
-            "negativePrompt": "subtitles, captions, watermark, text overlays, blurry, poor lighting",
-            "fullPrompt": "Wide establishing shot, camera at standing eye level (thats where the camera is), a 28-year-old East Asian woman with shoulder-length black hair, warm brown eyes, athletic build, wearing navy blazer over white blouse, walks purposefully into frame from right side toward desk. Modern corner office with floor-to-ceiling windows showing city skyline, afternoon golden hour light streaming in. Soft footsteps on hardwood, ambient office hum. Deep focus, warm cinematic color grading, 35mm film aesthetic. No subtitles, no captions, no watermarks."
+            "shotLine": "SHOT: Wide establishing, static camera at standing height (thats where the camera is)",
+            "timeline": [
+              {
+                "startTime": "00:00",
+                "endTime": "03:00",
+                "type": "action",
+                "character": "Maya Chen",
+                "content": "enters frame from right, walks toward desk with purpose",
+                "emotion": null
+              },
+              {
+                "startTime": "03:00",
+                "endTime": "06:00",
+                "type": "action",
+                "character": "Maya Chen",
+                "content": "pauses, notices something off-screen, expression shifts to curiosity",
+                "emotion": "curious"
+              }
+            ],
+            "audio": "Soft footsteps on hardwood, ambient office hum, distant city traffic",
+            "style": "Cinematic, golden hour light streaming through windows, warm color grading",
+            "avoid": "subtitles, captions, watermarks, text overlays, anime style",
+            "fullPrompt": "SHOT: Wide establishing, static camera at standing height (thats where the camera is)\n\n[00:00-03:00] Maya Chen enters frame from right, walks toward desk with purpose. Setting: Modern corner office, golden hour light.\n\n[03:00-06:00] Maya Chen pauses, notices something off-screen, expression shifts to curiosity.\n\nAUDIO: Soft footsteps on hardwood, ambient office hum, distant city traffic\n\nSTYLE: Cinematic, golden hour light streaming through windows, warm color grading\n\nAVOID: subtitles, captions, watermarks, text overlays, anime style"
+          },
+          "metadata": {
+            "location": "Maya's Corner Office",
+            "timeOfDay": "golden-hour",
+            "mood": "contemplative"
           }
         },
         {
           "shotNumber": 2,
           "shotType": "close-up",
           "cameraDirection": "static",
-          "description": "Maya's face as she reacts with surprise to her phone.",
-          "action": "Maya looks at phone, eyes widen, lips part in surprise as she says her line.",
-          "prompt": "Close-up of woman reacting with surprise, warm lighting, shallow focus",
+          "description": "Maya reacts with surprise, delivers dialogue",
           "characters": ["Maya Chen"],
-          "duration": 5,
-          "metadata": {
-            "location": "corner office",
-            "timeOfDay": "day",
-            "mood": "surprised",
-            "lighting": "golden hour, rim lighting"
-          },
+          "duration": 6,
           "veoPrompt": {
-            "subject": "A 28-year-old East Asian woman with shoulder-length black hair, warm brown eyes, fair skin, minimal makeup, surprised expression forming",
-            "action": "Eyes widen, eyebrows raise subtly, lips part in surprise",
-            "scene": "Blurred office background, warm golden rim lighting on hair, soft ambient fill",
-            "style": "Close-up shot, camera at eye level (thats where the camera is), shallow depth of field f/1.8 bokeh, warm cinematic grading",
-            "dialogue": "Maya: 'I didn't expect to see you here.' (Tone: surprised, slightly defensive)",
-            "sounds": "Phone notification, soft exhale, ambient office hum, no background music",
-            "negativePrompt": "subtitles, captions, watermark, text overlays, blurry face, distorted features",
-            "fullPrompt": "Close-up shot, camera at eye level (thats where the camera is), a 28-year-old East Asian woman with shoulder-length black hair, warm brown eyes, eyes widening in surprise, lips parting. She says: 'I didn't expect to see you here.' Tone is surprised, slightly defensive. Blurred office background, warm golden rim lighting on hair. Phone notification sound, soft exhale. Shallow depth of field, warm cinematic grading. No subtitles, no captions, no watermarks."
+            "shotLine": "SHOT: Close-up, static camera at eye level (thats where the camera is)",
+            "timeline": [
+              {
+                "startTime": "00:00",
+                "endTime": "02:00",
+                "type": "action",
+                "character": "Maya Chen",
+                "content": "eyes widen, eyebrows raise in surprise",
+                "emotion": "surprised"
+              },
+              {
+                "startTime": "02:00",
+                "endTime": "05:00",
+                "type": "dialogue",
+                "character": "Maya Chen",
+                "content": "I didn't expect to see you here.",
+                "emotion": "surprised"
+              },
+              {
+                "startTime": "05:00",
+                "endTime": "06:00",
+                "type": "action",
+                "character": "Maya Chen",
+                "content": "crosses arms defensively, chin lifts slightly",
+                "emotion": "defensive"
+              }
+            ],
+            "audio": "Sharp intake of breath, ambient office hum",
+            "style": "Shallow depth of field, warm rim lighting on hair, intimate framing",
+            "avoid": "subtitles, captions, watermarks, text overlays, blurry face",
+            "fullPrompt": "SHOT: Close-up, static camera at eye level (thats where the camera is)\n\n[00:00-02:00] Maya Chen eyes widen, eyebrows raise in surprise.\n\n[02:00-05:00] Maya Chen: \"I didn't expect to see you here.\" (Tone: surprised)\n\n[05:00-06:00] Maya Chen crosses arms defensively, chin lifts slightly.\n\nAUDIO: Sharp intake of breath, ambient office hum\n\nSTYLE: Shallow depth of field, warm rim lighting on hair, intimate framing\n\nAVOID: subtitles, captions, watermarks, text overlays, blurry face"
           },
-          "dialogueTiming": [
-            {
-              "startSeconds": 2.0,
-              "durationSeconds": 2.5,
-              "characterName": "Maya Chen",
-              "text": "I didn't expect to see you here.",
-              "emotion": "surprised"
-            }
-          ]
+          "metadata": {
+            "location": "Maya's Corner Office",
+            "timeOfDay": "golden-hour",
+            "mood": "surprised"
+          }
         }
       ],
-      "sceneSummary": "Maya enters her office and is surprised by an unexpected visitor, expressing her shock at their presence."
+      "sceneSummary": "Maya enters her office and is caught off guard by an unexpected visitor."
     }
   }
 }

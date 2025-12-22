@@ -10,6 +10,8 @@ import {
   ListOrdered,
   Lock,
   Music,
+  Scissors,
+  Share2,
 } from 'lucide-react';
 
 import { cn } from '@kit/ui/utils';
@@ -21,10 +23,10 @@ interface TabConfig {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   path: string;
-  studioMode: 'story' | 'audio';
+  studioMode: 'story' | 'post';
 }
 
-const TABS: TabConfig[] = [
+const STORY_TABS: TabConfig[] = [
   {
     id: 'ideation',
     label: 'Ideation',
@@ -53,25 +55,46 @@ const TABS: TabConfig[] = [
     path: 'visual-studio',
     studioMode: 'story',
   },
+  {
+    id: 'audio',
+    label: 'Audio',
+    icon: Music,
+    path: 'audio-studio',
+    studioMode: 'story',
+  },
 ];
 
-const AUDIO_TAB: TabConfig = {
-  id: 'audio',
-  label: 'Audio Studio',
-  icon: Music,
-  path: 'audio-studio',
-  studioMode: 'audio',
-};
+const POST_TABS: TabConfig[] = [
+  {
+    id: 'editing',
+    label: 'Editing',
+    icon: Scissors,
+    path: 'editing-studio',
+    studioMode: 'post',
+  },
+  {
+    id: 'publish',
+    label: 'Publish',
+    icon: Share2,
+    path: 'publish',
+    studioMode: 'post',
+  },
+];
 
-function getTabUnlockState(episode: {
-  storyData: unknown;
-  screenplayData: unknown;
-  shotList: unknown;
-  status: string;
-}): Record<string, boolean> {
+function getTabUnlockState(
+  episode: {
+    storyData: unknown;
+    screenplayData: unknown;
+    shotList: unknown;
+    status: string;
+    finalVideoUrl: string | null;
+  },
+  hasCompletedShots: boolean,
+): Record<string, boolean> {
   const hasStoryData = episode.storyData !== null;
   const hasScreenplayData = episode.screenplayData !== null;
   const hasShotList = episode.shotList !== null;
+  const hasFinalVideo = episode.finalVideoUrl !== null;
 
   return {
     ideation: true, // Always accessible
@@ -79,6 +102,8 @@ function getTabUnlockState(episode: {
     screenplay: hasStoryData, // Unlocked when story exists
     'shot-list': hasScreenplayData, // Unlocked when screenplay exists
     audio: hasShotList, // Unlocked when shot list exists
+    editing: hasCompletedShots, // Unlocked when shots have videos
+    publish: hasFinalVideo, // Unlocked when final video exists
   };
 }
 
@@ -86,10 +111,12 @@ export function EpisodeWorkspaceTabs() {
   const pathname = usePathname();
   const { episode, accountSlug, projectSlug } = useEpisodeContext();
 
-  const tabUnlockState = getTabUnlockState(episode);
+  // Check if any shots have completed videos
+  const hasCompletedShots = episode.shots?.some(
+    (shot) => shot.status === 'completed' && shot.videoUrl,
+  );
 
-  // Determine which studio mode we're in
-  const isAudioStudio = pathname.includes('/audio-studio');
+  const tabUnlockState = getTabUnlockState(episode, hasCompletedShots ?? false);
 
   // Get base path for episode using slugs
   const episodeSlug = episode.slug ?? episode.id;
@@ -102,51 +129,63 @@ export function EpisodeWorkspaceTabs() {
     if (pathname.endsWith('/screenplay')) return 'screenplay';
     if (pathname.endsWith('/visual-studio')) return 'shot-list';
     if (pathname.endsWith('/audio-studio')) return 'audio';
+    if (pathname.endsWith('/editing-studio')) return 'editing';
+    if (pathname.endsWith('/publish')) return 'publish';
     return 'ideation';
   };
 
   const activeTab = getActiveTab();
 
-  // Show Story Studio tabs or Audio Studio
-  const tabsToShow = isAudioStudio ? [AUDIO_TAB] : TABS;
+  const renderTab = (tab: TabConfig) => {
+    const isActive = activeTab === tab.id;
+    const isUnlocked = tabUnlockState[tab.id];
+    const TabIcon = tab.icon;
+
+    if (!isUnlocked) {
+      return (
+        <div
+          key={tab.id}
+          className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500"
+          title={`Complete previous steps to unlock ${tab.label}`}
+        >
+          <Lock className="h-3.5 w-3.5" />
+          <span>{tab.label}</span>
+        </div>
+      );
+    }
+
+    return (
+      <Link
+        key={tab.id}
+        href={`${basePath}/${tab.path}`}
+        className={cn(
+          'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+          isActive
+            ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400'
+            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200',
+        )}
+      >
+        <TabIcon className="h-3.5 w-3.5" />
+        <span>{tab.label}</span>
+      </Link>
+    );
+  };
 
   return (
     <div className="sticky top-[88px] z-10 px-6 py-2">
-      <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:bg-gray-800/50">
-        {tabsToShow.map((tab) => {
-          const isActive = activeTab === tab.id;
-          const isUnlocked = tabUnlockState[tab.id];
-          const TabIcon = tab.icon;
+      <div className="flex items-center gap-4">
+        {/* Story Studio Tabs */}
+        <div className="flex flex-1 items-center rounded-xl bg-gray-100/80 p-1 dark:bg-gray-800/50">
+          {STORY_TABS.map(renderTab)}
+        </div>
 
-          if (!isUnlocked) {
-            return (
-              <div
-                key={tab.id}
-                className="flex flex-1 cursor-not-allowed items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 dark:text-gray-500"
-                title={`Complete previous steps to unlock ${tab.label}`}
-              >
-                <Lock className="h-3.5 w-3.5" />
-                <span>{tab.label}</span>
-              </div>
-            );
-          }
+        {/* Separator */}
+        <div className="h-8 w-px bg-gray-300 dark:bg-gray-600" />
 
-          return (
-            <Link
-              key={tab.id}
-              href={`${basePath}/${tab.path}`}
-              className={cn(
-                'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
-                isActive
-                  ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400'
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200',
-              )}
-            >
-              <TabIcon className="h-3.5 w-3.5" />
-              <span>{tab.label}</span>
-            </Link>
-          );
-        })}
+        {/* Post-Production Tabs */}
+        <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:bg-gray-800/50">
+          {POST_TABS.map(renderTab)}
+        </div>
       </div>
     </div>
   );

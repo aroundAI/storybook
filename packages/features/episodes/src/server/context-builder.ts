@@ -1011,6 +1011,68 @@ export function formatFilteredCharactersForPrompt(
 }
 
 /**
+ * Format characters for Ingredients-to-Video workflow (minimal descriptions)
+ * When reference images are attached, we only need character names - images provide visuals
+ *
+ * @param sceneContext - Filtered scene context
+ * @param dialogueCharacters - Character names from dialogue (for fallback)
+ * @returns Minimal character list for prompt
+ */
+export function formatCharactersMinimal(
+  sceneContext: SceneFilteredContext,
+  dialogueCharacters: string[],
+): string {
+  if (sceneContext.characters.length === 0) {
+    return dialogueCharacters.length > 0
+      ? `Characters: ${dialogueCharacters.join(', ')}`
+      : 'No characters in this scene';
+  }
+
+  return sceneContext.characters
+    .map((c) => {
+      const hasImage = !!c.referenceImageUrl;
+      if (hasImage) {
+        // Reference image will provide visual - just note the name and role
+        return `- **${c.name}** (${c.role}) - Reference image attached`;
+      } else {
+        // No image - provide brief description for visual reference
+        return `- **${c.name}** (${c.role}): ${c.veoDescription.slice(0, 100)}...`;
+      }
+    })
+    .join('\n');
+}
+
+/**
+ * Format locations for Ingredients-to-Video workflow (minimal descriptions)
+ * When reference images are attached, we only need location name and mood
+ *
+ * @param sceneContext - Filtered scene context
+ * @param sceneLocation - Scene location name (for fallback)
+ * @returns Minimal location info for prompt
+ */
+export function formatLocationsMinimal(
+  sceneContext: SceneFilteredContext,
+  sceneLocation: string,
+): string {
+  if (sceneContext.locations.length === 0) {
+    return `Location: ${sceneLocation}`;
+  }
+
+  return sceneContext.locations
+    .map((l) => {
+      const hasImage = !!l.referenceImageUrl;
+      if (hasImage) {
+        // Reference image will provide visual - just note atmosphere
+        return `- **${l.name}** - Reference image attached${l.atmosphere ? `. Mood: ${l.atmosphere}` : ''}`;
+      } else {
+        // No image - provide description
+        return `- **${l.name}**: ${l.veoDescription}`;
+      }
+    })
+    .join('\n');
+}
+
+/**
  * Format filtered location registry for prompt
  * Handles edge cases when location is not in registry
  *

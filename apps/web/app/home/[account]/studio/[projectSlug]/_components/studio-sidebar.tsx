@@ -277,7 +277,9 @@ export function StudioSidebar({
                               navigateToProject(p.slug ?? p.id)
                             }
                             className={
-                              p.id === project.id ? 'bg-muted' : 'cursor-pointer'
+                              p.id === project.id
+                                ? 'bg-muted'
+                                : 'cursor-pointer'
                             }
                           >
                             <FolderOpen className="text-muted-foreground mr-2 h-4 w-4" />
@@ -339,7 +341,11 @@ export function StudioSidebar({
                 </button>
               </DropdownMenuTrigger>
 
-              <DropdownMenuContent className="w-56" align="start" sideOffset={8}>
+              <DropdownMenuContent
+                className="w-56"
+                align="start"
+                sideOffset={8}
+              >
                 {/* Search */}
                 <div className="p-2">
                   <div className="relative">

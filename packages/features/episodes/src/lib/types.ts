@@ -161,14 +161,14 @@ export interface ScreenplayScene {
   heading: string;
   location: string;
   timeOfDay:
-    | 'dawn'
-    | 'morning'
-    | 'midday'
-    | 'afternoon'
-    | 'golden-hour'
-    | 'dusk'
-    | 'night'
-    | 'day';
+  | 'dawn'
+  | 'morning'
+  | 'midday'
+  | 'afternoon'
+  | 'golden-hour'
+  | 'dusk'
+  | 'night'
+  | 'day';
   description: string;
   dialogue: ScreenplayDialogueLine[];
   estimatedDuration: number;
@@ -200,16 +200,27 @@ export interface ScreenplayData {
 }
 
 /**
- * VEO 3.1 structured prompt components
+ * Timeline event within a VEO 3.1 shot (V2 format)
+ */
+export interface TimelineEventData {
+  startTime: string; // "00:00" format
+  endTime: string; // "03:00" format
+  type: 'action' | 'dialogue' | 'transition';
+  character?: string | null;
+  content: string;
+  emotion?: string | null;
+}
+
+/**
+ * VEO 3.1 structured prompt components (V2 - Timeline-based)
+ * Designed for Ingredients-to-Video workflow with reference images
  */
 export interface VeoPromptData {
-  subject: string;
-  action: string;
-  scene: string;
+  shotLine: string;
+  timeline: TimelineEventData[];
+  audio: string;
   style: string;
-  dialogue?: string;
-  sounds: string;
-  negativePrompt: string;
+  avoid: string;
   fullPrompt: string;
 }
 

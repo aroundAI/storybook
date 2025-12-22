@@ -74,37 +74,41 @@ export const TimeOfDaySchema = z.enum([
 ]);
 
 /**
- * VEO 3.1 Structured Prompt Components
- * Following the 7-component professional format for maximum video generation quality
+ * Timeline event type within a shot
+ */
+export const TimelineEventTypeSchema = z.enum([
+  'action',
+  'dialogue',
+  'transition',
+]);
+
+/**
+ * Single timeline event within a shot (timestamp-based)
+ */
+export const TimelineEventSchema = z.object({
+  startTime: z.string(), // "00:00" format
+  endTime: z.string(), // "03:00" format
+  type: TimelineEventTypeSchema,
+  character: z.string().nullish(), // Can be undefined, null, or empty (for ambient/sfx)
+  content: z.string(),
+  emotion: z.string().nullable().optional(),
+});
+
+/**
+ * VEO 3.1 Structured Prompt Components (V2 - Timeline-based)
+ * Designed for Ingredients-to-Video workflow with reference images
  */
 export const VeoPromptSchema = z.object({
-  // Subject: Character with 15+ physical attributes
-  subject: z
-    .string()
-    .describe('Detailed character description with 15+ attributes'),
-  // Action: Movements, gestures, timing, micro-expressions
-  action: z
-    .string()
-    .describe('What happens, movements, gestures, body language'),
-  // Scene: Environment, props, lighting setup
-  scene: z
-    .string()
-    .describe('Environment, props, lighting, weather, time of day'),
-  // Style: Camera shot type, angle, movement, aesthetic
-  style: z
-    .string()
-    .describe('Camera shot, angle, movement, lighting style, aesthetic'),
-  // Dialogue: "[Character]: 'dialogue' (Tone: emotion)" - uses colon syntax
-  dialogue: z
-    .string()
-    .optional()
-    .describe('Dialogue with colon format to prevent subtitles'),
-  // Sounds: Ambient + SFX (prevents audio hallucinations)
-  sounds: z.string().describe('Ambient sounds, effects, no unwanted music'),
-  // Negative prompt: What to avoid
-  negativePrompt: z
-    .string()
-    .describe('Elements to exclude: subtitles, watermarks, etc.'),
+  // Shot line: Camera setup and positioning
+  shotLine: z.string().describe('Camera shot type and positioning'),
+  // Timeline: Timestamped action/dialogue/transition events
+  timeline: z.array(TimelineEventSchema).describe('Timestamped events in the shot'),
+  // Audio: Ambient sounds, SFX
+  audio: z.string().describe('Ambient sounds, SFX description'),
+  // Style: Visual aesthetic, lighting, mood
+  style: z.string().describe('Visual aesthetic, lighting, mood'),
+  // Avoid: Elements to exclude
+  avoid: z.string().describe('Elements to exclude: subtitles, watermarks, etc.'),
   // Combined prompt ready for VEO 3.1
   fullPrompt: z.string().describe('Complete formatted prompt for copy/paste'),
 });
@@ -219,6 +223,8 @@ export type ShotListGenerationOutput = z.infer<
 >;
 
 // VEO 3.1 Enhanced Type Exports
+export type TimelineEventType = z.infer<typeof TimelineEventTypeSchema>;
+export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 export type VeoPrompt = z.infer<typeof VeoPromptSchema>;
 export type ReferenceImage = z.infer<typeof ReferenceImageSchema>;
 export type ShotReferenceImages = z.infer<typeof ShotReferenceImagesSchema>;
@@ -251,13 +257,10 @@ export const SceneShotOutputSchema = z.object({
   shotType: ShotTypeSchema,
   cameraDirection: PromptCameraDirectionSchema,
   description: z.string(),
-  action: z.string(),
-  prompt: z.string(),
   characters: z.array(z.string()),
   duration: z.number().min(3).max(10),
   metadata: GeneratedShotMetadataSchema,
   veoPrompt: VeoPromptSchema,
-  dialogueTiming: z.array(ShotDialogueTimingSchema).optional(),
 });
 
 export type SceneShotOutput = z.infer<typeof SceneShotOutputSchema>;

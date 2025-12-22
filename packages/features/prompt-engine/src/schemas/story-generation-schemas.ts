@@ -304,6 +304,82 @@ export type ShotListGenerationOutput = z.infer<
 >;
 
 // ============================================================
+// VEO 3.1 Timestamp-Based Shot Schemas (v2)
+// ============================================================
+
+/**
+ * Timeline event type within a shot
+ */
+export const TimelineEventTypeSchema = z.enum([
+  'action',
+  'dialogue',
+  'transition',
+]);
+
+export type TimelineEventType = z.infer<typeof TimelineEventTypeSchema>;
+
+/**
+ * Single timeline event within a shot (timestamp-based)
+ */
+export const TimelineEventSchema = z.object({
+  startTime: z.string(), // "00:00" format
+  endTime: z.string(), // "03:00" format
+  type: TimelineEventTypeSchema,
+  character: z.string().nullish(), // Can be undefined, null, or empty (for ambient/sfx)
+  content: z.string(),
+  emotion: z.string().nullable().optional(),
+});
+
+export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
+
+/**
+ * VEO 3.1 Prompt V2 - Timestamp-based format for Ingredients-to-Video workflow
+ * Designed for use with reference images (minimal character descriptions)
+ */
+export const VeoPromptV2Schema = z.object({
+  shotLine: z.string(), // "SHOT: Medium two-shot, tracking (thats where the camera is)"
+  timeline: z.array(TimelineEventSchema), // Timestamped events
+  audio: z.string(), // "AUDIO: Ambient sounds, SFX"
+  style: z.string(), // "STYLE: Cinematic, lighting, mood"
+  avoid: z.string(), // "AVOID: subtitles, captions, watermarks"
+  fullPrompt: z.string(), // Complete formatted prompt
+});
+
+export type VeoPromptV2 = z.infer<typeof VeoPromptV2Schema>;
+
+/**
+ * Single shot from scene-shot-generation (v2 format)
+ */
+export const SceneShotSchema = z.object({
+  shotNumber: z.number(),
+  shotType: ShotTypeSchema,
+  cameraDirection: CameraDirectionSchema,
+  description: z.string(),
+  characters: z.array(z.string()),
+  duration: z.number().min(3).max(10),
+  veoPrompt: VeoPromptV2Schema,
+  metadata: z.object({
+    location: z.string(),
+    timeOfDay: TimeOfDaySchema,
+    mood: z.string().optional(),
+  }),
+});
+
+export type SceneShot = z.infer<typeof SceneShotSchema>;
+
+/**
+ * Scene shot generation output (per-scene pipeline)
+ */
+export const SceneShotGenerationOutputSchema = z.object({
+  shots: z.array(SceneShotSchema),
+  sceneSummary: z.string(),
+});
+
+export type SceneShotGenerationOutput = z.infer<
+  typeof SceneShotGenerationOutputSchema
+>;
+
+// ============================================================
 // Season Outline Generation Schemas (FILM-314)
 // ============================================================
 

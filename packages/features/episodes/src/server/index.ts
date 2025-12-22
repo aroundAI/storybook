@@ -17,8 +17,12 @@ export * from '../lib/server/mutations/season-actions';
 // Auto-stitch action (FILM-604)
 export * from './auto-stitch-action';
 
+// Video rendering action
+export * from './render-video-action';
+
 // Season Generation (FILM-201)
 export * from '../lib/server/mutations/season-generation-actions';
 
 // Timeline Planning
 export * from './timeline-actions';
+

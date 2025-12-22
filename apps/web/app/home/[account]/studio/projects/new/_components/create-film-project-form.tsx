@@ -222,11 +222,14 @@ export function CreateFilmProjectForm({
     startTransition(async () => {
       try {
         // 1. Create the project
-        const { projectId, projectSlug } = await createFilmProject(accountSlug, {
-          name: data.name,
-          description: data.description,
-          settings: data.settings,
-        });
+        const { projectId, projectSlug } = await createFilmProject(
+          accountSlug,
+          {
+            name: data.name,
+            description: data.description,
+            settings: data.settings,
+          },
+        );
 
         // 2. Upload cover image if provided
         if (coverFile) {

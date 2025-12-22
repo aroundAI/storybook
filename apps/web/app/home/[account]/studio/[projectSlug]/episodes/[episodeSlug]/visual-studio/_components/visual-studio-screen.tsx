@@ -440,6 +440,7 @@ export function VisualStudioScreen({
           <div className="fixed top-0 right-0 z-30 h-full">
             <ShotDetailsSidebar
               shot={selectedShot}
+              projectId={episode.projectId}
               onClose={() => setSelectedShot(null)}
               onUpdate={refetchEpisode}
             />
