@@ -69,6 +69,7 @@ create table if not exists public.episodes (
   season_id uuid references public.seasons(id) on delete set null,
   number integer not null,
   title varchar(255) not null,
+  slug text,
   description text,
   status varchar(50) default 'draft' not null,
   duration_seconds integer,
@@ -95,9 +96,14 @@ comment on column public.episodes.story_data is 'Story generation output (premis
 comment on column public.episodes.screenplay_data is 'Screenplay conversion output (scenes, dialogue)';
 comment on column public.episodes.shot_list is 'Shot list generation output (shots with prompts)';
 comment on column public.episodes.target_duration_seconds is 'Target duration for content scaling (60-7200 seconds, 1 min to 2 hours)';
+comment on column public.episodes.slug is 'Human-readable URL slug, unique within project (e.g., episode-1-pilot)';
 
 -- Indexes for episodes
 create index if not exists idx_episodes_project_status on public.episodes(project_id, status)
+  where deleted_at is null;
+create unique index if not exists idx_episodes_project_slug on public.episodes(project_id, slug)
+  where deleted_at is null;
+create index if not exists idx_episodes_slug on public.episodes(slug)
   where deleted_at is null;
 create index if not exists idx_episodes_season on public.episodes(season_id)
   where deleted_at is null;

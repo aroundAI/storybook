@@ -33,6 +33,18 @@ export interface DialogueVoiceGenerationMetadata {
 }
 
 /**
+ * Supported languages for multi-language content
+ */
+export type SupportedLanguage = 'en' | 'hi' | 'es' | 'pt';
+
+export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  es: 'Spanish',
+  pt: 'Portuguese',
+};
+
+/**
  * A dialogue line with its audio generation status
  */
 export interface DialogueLine {
@@ -42,16 +54,28 @@ export interface DialogueLine {
   episodeId: string;
   /** Character asset ID (null for narrator/system) */
   characterAssetId: string | null;
+  /** Shot this dialogue belongs to (for timeline alignment) */
+  shotId: string | null;
   /** The dialogue text */
   text: string;
   /** Order in the episode */
   sequenceNumber: number;
+  /** Scene number this dialogue belongs to */
+  sceneNumber: number;
   /** Audio generation status */
   status: DialogueLineStatus;
   /** URL to generated audio file (null if not generated) */
   audioUrl: string | null;
+  /** Absolute position in episode timeline (seconds from start) */
+  timelineStartSeconds: number | null;
+  /** Speaking duration calculated from word count (~0.4s per word) */
+  estimatedDurationSeconds: number | null;
   /** Metadata about the generation */
   generationMetadata: DialogueVoiceGenerationMetadata | null;
+  /** Language code for this dialogue line */
+  language: SupportedLanguage;
+  /** Reference to source dialogue line if this is a translation */
+  sourceDialogueId: string | null;
   /** Creation timestamp */
   createdAt?: string;
 }

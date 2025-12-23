@@ -104,8 +104,18 @@ export type StoryGenerationOutput = z.infer<typeof StoryGenerationOutputSchema>;
 
 /**
  * Time of day for scene
+ * Expanded for cinematographic lighting descriptions
  */
-export const TimeOfDaySchema = z.enum(['day', 'night', 'dawn', 'dusk']);
+export const TimeOfDaySchema = z.enum([
+  'dawn',
+  'morning',
+  'midday',
+  'afternoon',
+  'golden-hour',
+  'dusk',
+  'night',
+  'day', // Generic fallback
+]);
 
 export type TimeOfDay = z.infer<typeof TimeOfDaySchema>;
 
@@ -115,7 +125,7 @@ export type TimeOfDay = z.infer<typeof TimeOfDaySchema>;
 export const DialogueLineSchema = z.object({
   character: z.string(),
   text: z.string(),
-  parenthetical: z.string().optional(),
+  parenthetical: z.string().nullish(),
 });
 
 export type DialogueLine = z.infer<typeof DialogueLineSchema>;
@@ -174,32 +184,46 @@ export type ScreenplayConversionOutput = z.infer<
 
 /**
  * Shot type for cinematography
+ * Expanded for animation-friendly compositions (2.5D, multi-character)
  */
 export const ShotTypeSchema = z.enum([
+  // Shot sizes (standard progression)
+  'extreme-wide',
   'wide',
+  'medium-wide',
   'medium',
+  'medium-close-up',
   'close-up',
   'extreme-close-up',
+  // Multi-character compositions (animation-friendly)
+  'two-shot',
+  'three-shot',
+  'group-shot',
   'over-shoulder',
+  // Character framing (2D/2.5D animation)
+  'full-body',
+  'profile',
+  'three-quarter',
+  // Dramatic angles
+  'low-angle',
+  'high-angle',
+  'dutch-angle',
+  'bird-eye',
+  // Special purpose
   'pov',
+  'insert',
+  'establishing',
+  'reaction',
+  'silhouette',
 ]);
 
 export type ShotType = z.infer<typeof ShotTypeSchema>;
 
 /**
- * Camera direction for shot
+ * Camera direction for shot - free-form string to allow LLM creativity
+ * Examples: static, pan_left, zoom_in_slow, push_in_slow, dolly_in, etc.
  */
-export const CameraDirectionSchema = z.enum([
-  'static',
-  'pan_left',
-  'pan_right',
-  'tilt_up',
-  'tilt_down',
-  'zoom_in',
-  'zoom_out',
-  'dolly_in',
-  'dolly_out',
-]);
+export const CameraDirectionSchema = z.string();
 
 export type CameraDirection = z.infer<typeof CameraDirectionSchema>;
 
@@ -277,6 +301,82 @@ export const ShotListGenerationOutputSchema = z.object({
 
 export type ShotListGenerationOutput = z.infer<
   typeof ShotListGenerationOutputSchema
+>;
+
+// ============================================================
+// VEO 3.1 Timestamp-Based Shot Schemas (v2)
+// ============================================================
+
+/**
+ * Timeline event type within a shot
+ */
+export const TimelineEventTypeSchema = z.enum([
+  'action',
+  'dialogue',
+  'transition',
+]);
+
+export type TimelineEventType = z.infer<typeof TimelineEventTypeSchema>;
+
+/**
+ * Single timeline event within a shot (timestamp-based)
+ */
+export const TimelineEventSchema = z.object({
+  startTime: z.string(), // "00:00" format
+  endTime: z.string(), // "03:00" format
+  type: TimelineEventTypeSchema,
+  character: z.string().nullish(), // Can be undefined, null, or empty (for ambient/sfx)
+  content: z.string(),
+  emotion: z.string().nullable().optional(),
+});
+
+export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
+
+/**
+ * VEO 3.1 Prompt V2 - Timestamp-based format for Ingredients-to-Video workflow
+ * Designed for use with reference images (minimal character descriptions)
+ */
+export const VeoPromptV2Schema = z.object({
+  shotLine: z.string(), // "SHOT: Medium two-shot, tracking (thats where the camera is)"
+  timeline: z.array(TimelineEventSchema), // Timestamped events
+  audio: z.string(), // "AUDIO: Ambient sounds, SFX"
+  style: z.string(), // "STYLE: Cinematic, lighting, mood"
+  avoid: z.string(), // "AVOID: subtitles, captions, watermarks"
+  fullPrompt: z.string(), // Complete formatted prompt
+});
+
+export type VeoPromptV2 = z.infer<typeof VeoPromptV2Schema>;
+
+/**
+ * Single shot from scene-shot-generation (v2 format)
+ */
+export const SceneShotSchema = z.object({
+  shotNumber: z.number(),
+  shotType: ShotTypeSchema,
+  cameraDirection: CameraDirectionSchema,
+  description: z.string(),
+  characters: z.array(z.string()),
+  duration: z.number().min(3).max(10),
+  veoPrompt: VeoPromptV2Schema,
+  metadata: z.object({
+    location: z.string(),
+    timeOfDay: TimeOfDaySchema,
+    mood: z.string().optional(),
+  }),
+});
+
+export type SceneShot = z.infer<typeof SceneShotSchema>;
+
+/**
+ * Scene shot generation output (per-scene pipeline)
+ */
+export const SceneShotGenerationOutputSchema = z.object({
+  shots: z.array(SceneShotSchema),
+  sceneSummary: z.string(),
+});
+
+export type SceneShotGenerationOutput = z.infer<
+  typeof SceneShotGenerationOutputSchema
 >;
 
 // ============================================================

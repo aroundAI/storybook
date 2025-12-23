@@ -185,6 +185,7 @@ describe('ScreenplayViewer', () => {
 
   const mockEpisode: EpisodeWithShots = {
     id: 'episode-1',
+    slug: 'episode-1-test-episode',
     projectId: 'project-1',
     seasonId: null,
     number: 1,

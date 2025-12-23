@@ -7,8 +7,16 @@ import { LLMError, createLLMClient, logLLMUsage } from '@kit/llm';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
+import { normalizeSceneShotData } from '../normalize-llm-output';
 import type { LLMExecutionConfig, LLMExecutionResult } from '../types';
 import { loadAndRenderPrompt } from './prompt-loader';
+
+/**
+ * JSON parse retry configuration
+ * When JSON extraction fails (truncated response), retry with higher max_tokens
+ */
+const MAX_JSON_RETRIES = 2;
+const JSON_RETRY_TOKEN_MULTIPLIER = 1.5; // Increase tokens by 50% on each retry
 
 /**
  * Retry helper for network-related LLM failures
@@ -341,64 +349,7 @@ export async function executeLLM<T = unknown>(
       );
     }
 
-    // Execute LLM call with retry logic for network errors
-    const response = await executeWithRetry(
-      () =>
-        llm.createChatCompletion({
-          messages,
-          temperature:
-            config.temperature ?? rendered.llmConfig.temperature ?? 0.5,
-          maxTokens: resolvedMaxTokens,
-        }),
-      logger,
-      config.context,
-      {
-        maxRetries: 5,
-        retryDelay: 2000, // 2s, 4s, 8s, 16s, 32s with exponential backoff
-        retryableErrors: [
-          'ERR_STREAM_PREMATURE_CLOSE',
-          'ERR_SOCKET_TIMEOUT',
-          'ECONNRESET',
-          'ETIMEDOUT',
-          'ECONNREFUSED',
-          'ENOTFOUND',
-          'Premature close',
-          'Connection closed',
-          'socket hang up',
-          'Socket timeout',
-          'EHOSTUNREACH',
-          'fetch failed',
-          'network error',
-        ],
-      },
-    );
-    const latency = Date.now() - startTime;
-
-    logger.info(
-      {
-        ...config.context,
-        latency,
-        tokens: response.usage.totalTokens,
-        cost: response.cost?.total,
-        provider,
-        model,
-      },
-      `LLM execution completed: ${config.templateSlug}`,
-    );
-
-    // 5. Log full response before extraction attempt
-    const responseContent = response.message.content ?? '';
-    logger.info(
-      {
-        ...config.context,
-        responseLength: responseContent.length,
-        provider,
-        model,
-      },
-      'LLM response received - attempting JSON extraction',
-    );
-
-    // 6. Auto-detect response structure from output config
+    // Auto-detect response structure from output config (needed for retry loop)
     const outputConfig = rendered.output;
     const responseType = outputConfig?.type || 'object'; // Default to object
     const wrapperKey = outputConfig?.wrapper_key;
@@ -413,47 +364,159 @@ export async function executeLLM<T = unknown>(
       'Auto-detected output configuration from prompt file',
     );
 
-    // 7. Extract JSON (always extract full structure first for validation)
+    // Execute LLM call with JSON parse retry (escalates max_tokens on truncation)
     let fullData: unknown;
-    try {
-      fullData = extractJSON<unknown>(responseContent, responseType);
-    } catch (extractionError) {
-      // Log full request and response on extraction failure
-      logger.error(
-        {
-          ...config.context,
-          // Full request context
-          requestMessages: messages.map((m) => ({
-            role: m.role,
-            contentLength: (m.content ?? '').length,
-            contentFull: m.content ?? '', // FULL content, not truncated
-          })),
-          requestConfig: {
+    // Using definite assignment assertion (!) since the loop always executes at least once
+    let response!: Awaited<ReturnType<typeof llm.createChatCompletion>>;
+    let latency!: number;
+    let currentMaxTokens = resolvedMaxTokens;
+
+    for (
+      let jsonRetryAttempt = 0;
+      jsonRetryAttempt <= MAX_JSON_RETRIES;
+      jsonRetryAttempt++
+    ) {
+      // Execute LLM call with retry logic for network errors
+      response = await executeWithRetry(
+        () =>
+          llm.createChatCompletion({
+            messages,
             temperature:
               config.temperature ?? rendered.llmConfig.temperature ?? 0.5,
-            maxTokens: resolvedMaxTokens,
-            responseFormat: rendered.llmConfig.response_format,
-          },
-          // Full response context
-          responseContentFull: responseContent, // FULL response
+            maxTokens: currentMaxTokens,
+          }),
+        logger,
+        config.context,
+        {
+          maxRetries: 5,
+          retryDelay: 2000, // 2s, 4s, 8s, 16s, 32s with exponential backoff
+          retryableErrors: [
+            'ERR_STREAM_PREMATURE_CLOSE',
+            'ERR_SOCKET_TIMEOUT',
+            'ECONNRESET',
+            'ETIMEDOUT',
+            'ECONNREFUSED',
+            'ENOTFOUND',
+            'Premature close',
+            'Connection closed',
+            'socket hang up',
+            'Socket timeout',
+            'EHOSTUNREACH',
+            'fetch failed',
+            'network error',
+          ],
+        },
+      );
+      latency = Date.now() - startTime;
+
+      logger.info(
+        {
+          ...config.context,
+          latency,
+          tokens: response.usage.totalTokens,
+          cost: response.cost?.total,
+          provider,
+          model,
+          maxTokens: currentMaxTokens,
+          jsonRetryAttempt:
+            jsonRetryAttempt > 0 ? jsonRetryAttempt + 1 : undefined,
+        },
+        `LLM execution completed: ${config.templateSlug}`,
+      );
+
+      // Log full response before extraction attempt
+      const responseContent = response.message.content ?? '';
+      logger.info(
+        {
+          ...config.context,
           responseLength: responseContent.length,
           provider,
           model,
-          // Extraction error details
-          extractionError:
-            extractionError instanceof Error
-              ? extractionError.message
-              : 'Unknown error',
-          expectedResponseType: responseType,
-          wrapperKey,
         },
-        'JSON extraction failed - full request and response logged',
+        'LLM response received - attempting JSON extraction',
       );
 
-      throw extractionError;
+      // Try to extract JSON
+      try {
+        fullData = extractJSON<unknown>(responseContent, responseType);
+        // Success - break out of retry loop
+        break;
+      } catch (extractionError) {
+        const errorMessage =
+          extractionError instanceof Error
+            ? extractionError.message
+            : 'Unknown error';
+
+        // Check if this is a JSON syntax error (likely truncation)
+        const isJsonSyntaxError = errorMessage.includes('Invalid JSON syntax');
+
+        if (isJsonSyntaxError && jsonRetryAttempt < MAX_JSON_RETRIES) {
+          // Escalate max_tokens and retry
+          const nextMaxTokens = Math.ceil(
+            currentMaxTokens * JSON_RETRY_TOKEN_MULTIPLIER,
+          );
+
+          logger.warn(
+            {
+              ...config.context,
+              jsonRetryAttempt: jsonRetryAttempt + 1,
+              maxJsonRetries: MAX_JSON_RETRIES,
+              currentMaxTokens,
+              nextMaxTokens,
+              responseLength: responseContent.length,
+              error: errorMessage,
+            },
+            'JSON parse failed (likely truncation) - retrying with higher max_tokens',
+          );
+
+          currentMaxTokens = nextMaxTokens;
+          continue;
+        }
+
+        // Either not a JSON syntax error, or max retries exhausted
+        // Log full request and response on final extraction failure
+        logger.error(
+          {
+            ...config.context,
+            // Full request context
+            requestMessages: messages.map((m) => ({
+              role: m.role,
+              contentLength: (m.content ?? '').length,
+              contentFull: m.content ?? '', // FULL content, not truncated
+            })),
+            requestConfig: {
+              temperature:
+                config.temperature ?? rendered.llmConfig.temperature ?? 0.5,
+              maxTokens: currentMaxTokens,
+              responseFormat: rendered.llmConfig.response_format,
+            },
+            // Full response context
+            responseContentFull: responseContent, // FULL response
+            responseLength: responseContent.length,
+            provider,
+            model,
+            // Extraction error details
+            extractionError: errorMessage,
+            expectedResponseType: responseType,
+            wrapperKey,
+            jsonRetryAttempt: jsonRetryAttempt + 1,
+            maxJsonRetries: MAX_JSON_RETRIES,
+          },
+          'JSON extraction failed after all retries - full request and response logged',
+        );
+
+        throw extractionError;
+      }
     }
 
-    // 8. Validate with Zod schema if provided and validation enabled
+    // 8. Normalize data before validation (for specific templates)
+    // This fixes common LLM output variations like "medium shot" → "medium"
+    if (config.templateSlug.includes('scene-shot-generation')) {
+      logger.info({ ...config.context }, 'Normalizing scene shot data');
+      fullData = normalizeSceneShotData(fullData);
+    }
+
+    // 9. Validate with Zod schema if provided and validation enabled
     if (
       outputConfig?.schema?.type === 'zod' &&
       config.validateSchema !== false
@@ -495,7 +558,7 @@ export async function executeLLM<T = unknown>(
       }
     }
 
-    // 9. Extract wrapper array if needed (after validation)
+    // 10. Extract wrapper array if needed (after validation)
     let data: T;
     if (wrapperKey) {
       // Extract array from validated wrapper object
@@ -519,7 +582,7 @@ export async function executeLLM<T = unknown>(
       data = fullData as T;
     }
 
-    // 10. Log analytics (success) - use admin client to bypass RLS
+    // 11. Log analytics (success) - use admin client to bypass RLS
     const client = getSupabaseServerAdminClient();
 
     try {

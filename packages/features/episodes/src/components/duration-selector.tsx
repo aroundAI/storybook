@@ -161,27 +161,31 @@ export function DurationSelector({
           Target Duration
         </Label>
         <div className="flex flex-wrap gap-2">
-          {DURATION_PRESETS.slice(0, 6).map((preset) => (
-            <button
-              key={preset.value}
-              type="button"
-              onClick={() => onDurationChange(preset.value)}
-              disabled={disabled}
-              className={cn(
-                'border-input hover:bg-accent hover:text-accent-foreground rounded-md border px-3 py-1.5 text-sm transition-colors',
-                duration === preset.value &&
-                  'bg-primary text-primary-foreground border-primary',
-                disabled && 'cursor-not-allowed opacity-50',
-              )}
-            >
-              {preset.label}
-              {projectDefault === preset.value && (
-                <Badge variant="outline" className="ml-1.5 text-xs">
-                  Default
-                </Badge>
-              )}
-            </button>
-          ))}
+          {DURATION_PRESETS.slice(0, 6).map((preset) => {
+            const isSelected = duration === preset.value;
+            const isDefault = projectDefault === preset.value;
+            return (
+              <button
+                key={preset.value}
+                type="button"
+                onClick={() => onDurationChange(preset.value)}
+                disabled={disabled}
+                className={cn(
+                  'rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700',
+                  isSelected &&
+                    'border-blue-600 bg-blue-600 text-white hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700',
+                  disabled && 'cursor-not-allowed opacity-50',
+                )}
+              >
+                {preset.label}
+                {isDefault && !isSelected && (
+                  <span className="ml-1.5 text-xs text-gray-400">
+                    (Default)
+                  </span>
+                )}
+              </button>
+            );
+          })}
           <Select
             value={
               DURATION_PRESETS.slice(6).some((p) => p.value === duration)
@@ -195,7 +199,7 @@ export function DurationSelector({
               className={cn(
                 'h-auto w-[110px] py-1.5',
                 DURATION_PRESETS.slice(6).some((p) => p.value === duration) &&
-                  'bg-primary text-primary-foreground border-primary',
+                  'border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-600',
               )}
             >
               <SelectValue placeholder="More..." />
@@ -231,9 +235,9 @@ export function DurationSelector({
                 onClick={() => onContentStyleChange(style.value)}
                 disabled={disabled}
                 className={cn(
-                  'border-input hover:bg-accent flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-colors',
+                  'flex flex-col items-center gap-1.5 rounded-lg border border-gray-200 bg-white p-3 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700',
                   contentStyle === style.value &&
-                    'bg-primary/10 border-primary ring-primary/20 ring-2',
+                    'border-blue-500 bg-blue-50 ring-2 ring-blue-200 dark:border-blue-500 dark:bg-blue-900/30 dark:ring-blue-800',
                   disabled && 'cursor-not-allowed opacity-50',
                 )}
               >
@@ -241,8 +245,8 @@ export function DurationSelector({
                   className={cn(
                     'h-5 w-5',
                     contentStyle === style.value
-                      ? 'text-primary'
-                      : 'text-muted-foreground',
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-400 dark:text-gray-500',
                   )}
                 />
                 <span className="text-xs font-medium">{style.label}</span>

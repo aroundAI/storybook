@@ -1,0 +1,395 @@
+'use client';
+
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from 'react';
+
+import {
+  Download,
+  Loader2,
+  Minus,
+  Play,
+  Plus,
+  Settings,
+  Volume2,
+} from 'lucide-react';
+
+import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
+import {
+  getCharactersForEpisodeAction,
+  getDialogueLinesAction,
+} from '@kit/audio-generation/server';
+import { autoStitchAction } from '@kit/episodes/server';
+import type { EpisodeWithShots } from '@kit/episodes/types';
+import { Button } from '@kit/ui/button';
+import { toast } from '@kit/ui/sonner';
+
+import { DialogueTimeline } from './dialogue-timeline';
+import {
+  LanguageTabBar,
+  type SupportedLanguage,
+} from './language-tab-bar';
+import { MusicTimeline } from './music-timeline';
+import { VoiceAssignmentPanel } from './voice-assignment-panel';
+
+interface AudioStudioScreenProps {
+  episode: EpisodeWithShots;
+  refetchEpisode: () => void;
+}
+
+export function AudioStudioScreen({
+  episode,
+  refetchEpisode,
+}: AudioStudioScreenProps) {
+  const [isPending, startTransition] = useTransition();
+  const [activeTab, setActiveTab] = useState<'dialogue' | 'music' | 'sfx'>(
+    'dialogue',
+  );
+
+  // State for real dialogue data
+  const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
+  const [characters, setCharacters] = useState<CharacterAsset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Language selection state
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const [availableLanguages, setAvailableLanguages] = useState<SupportedLanguage[]>(['en']);
+
+  // Timeline zoom state (pixels per second)
+  const [pixelsPerSecond, setPixelsPerSecond] = useState(2);
+  const timelineContainerRef = useRef<HTMLDivElement>(null);
+
+  // Zoom presets
+  const ZOOM_LEVELS = [2, 5, 10, 20, 40, 60, 80, 120, 160, 200];
+
+  const zoomIn = () => {
+    const idx = ZOOM_LEVELS.findIndex((z) => z >= pixelsPerSecond);
+    if (idx < ZOOM_LEVELS.length - 1) {
+      setPixelsPerSecond(ZOOM_LEVELS[idx + 1]!);
+    }
+  };
+
+  const zoomOut = () => {
+    const idx = ZOOM_LEVELS.findIndex((z) => z >= pixelsPerSecond);
+    if (idx > 0) {
+      setPixelsPerSecond(ZOOM_LEVELS[idx - 1]!);
+    }
+  };
+
+  const fitToWindow = () => {
+    const containerWidth = timelineContainerRef.current?.clientWidth ?? 800;
+    // Leave some padding (280px for sidebar, 60px for margins)
+    const availableWidth = containerWidth - 60;
+    const newPPS = Math.floor(availableWidth / totalDuration);
+    setPixelsPerSecond(Math.max(20, Math.min(200, newPPS)));
+  };
+
+  // Fetch dialogue lines and characters on mount
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dialogueResult, chars] = await Promise.all([
+        getDialogueLinesAction({ episodeId: episode.id }),
+        getCharactersForEpisodeAction({ episodeId: episode.id }),
+      ]);
+
+      const allLines = Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [];
+
+      // Extract available languages from dialogue lines
+      const langs = new Set<SupportedLanguage>(
+        allLines.map((l) => (l.language || 'en') as SupportedLanguage)
+      );
+      const langArray = Array.from(langs).sort((a, b) => {
+        const order = ['en', 'hi', 'es', 'pt'];
+        return order.indexOf(a) - order.indexOf(b);
+      });
+      setAvailableLanguages(langArray.length > 0 ? langArray : ['en']);
+
+      // Filter dialogue by selected language
+      const filteredLines = allLines.filter(
+        (l) => (l.language || 'en') === selectedLanguage
+      );
+      setDialogueLines(filteredLines);
+      setCharacters(Array.isArray(chars) ? chars : []);
+    } catch (error) {
+      console.error('Failed to fetch audio studio data:', error);
+      toast.error('Failed to load dialogue data');
+      // Reset to empty arrays on error
+      setDialogueLines([]);
+      setCharacters([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [episode.id, selectedLanguage]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
+
+  // Stats from real data
+  const stats = useMemo(() => {
+    const total = dialogueLines.length;
+    const completed = dialogueLines.filter(
+      (l) => l.status === 'completed',
+    ).length;
+    const pending = dialogueLines.filter((l) => l.status === 'pending').length;
+    const generating = dialogueLines.filter(
+      (l) => l.status === 'generating',
+    ).length;
+    const failed = dialogueLines.filter((l) => l.status === 'failed').length;
+    return { total, completed, pending, generating, failed };
+  }, [dialogueLines]);
+
+  // Extract scenes from screenplay data for music timeline
+  const scenes = useMemo(() => {
+    const screenplayData = episode.screenplayData as {
+      scenes?: Array<{
+        number: number;
+        heading: string;
+        estimatedDuration: number;
+      }>;
+    } | null;
+
+    return (
+      screenplayData?.scenes?.map((scene) => ({
+        number: scene.number,
+        heading: scene.heading ?? `Scene ${scene.number}`,
+        estimatedDuration: scene.estimatedDuration ?? 30,
+      })) ?? []
+    );
+  }, [episode.screenplayData]);
+
+  // Calculate total duration from scenes or use target duration
+  const totalDuration = useMemo(() => {
+    if (scenes.length > 0) {
+      return scenes.reduce((acc, scene) => acc + scene.estimatedDuration, 0);
+    }
+    return episode.durationSeconds ?? 90;
+  }, [scenes, episode.durationSeconds]);
+
+  const handleGenerateAll = () => {
+    startTransition(async () => {
+      try {
+        const result = await autoStitchAction({
+          episodeId: episode.id,
+          mode: 'audio-only',
+          gapFillStrategy: 'ignore',
+        });
+
+        if (result.success) {
+          toast.success('Audio generation started');
+          refetchEpisode();
+          void fetchData(); // Refresh dialogue data
+        } else {
+          toast.error(result.error ?? 'Failed to generate audio');
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Failed to generate audio',
+        );
+      }
+    });
+  };
+
+  const handleExport = () => {
+    toast.info('Export functionality coming soon');
+  };
+
+  return (
+    <div className="flex h-full">
+      {/* Left Sidebar - Voice Assignment */}
+      <div className="w-[280px] shrink-0 border-r border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900/50">
+        <VoiceAssignmentPanel
+          characters={characters}
+          episodeId={episode.id}
+          isLoading={isLoading}
+        />
+      </div>
+
+      {/* Main Content */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Header Bar */}
+        <div className="flex items-center justify-between border-b border-gray-200/50 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85">
+          <div className="flex items-center gap-4">
+            {/* Tab Switcher */}
+            <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
+              <button
+                onClick={() => setActiveTab('dialogue')}
+                className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all ${activeTab === 'dialogue'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+              >
+                Dialogue{' '}
+                <span className="ml-1 font-normal text-gray-400">
+                  {stats.total}
+                </span>
+              </button>
+              <button
+                onClick={() => setActiveTab('music')}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'music'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+              >
+                Music
+              </button>
+              <button
+                onClick={() => setActiveTab('sfx')}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'sfx'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
+              >
+                SFX
+              </button>
+            </div>
+
+            {/* Language Selector (for Dialogue tab) */}
+            {activeTab === 'dialogue' && (
+              <>
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                <LanguageTabBar
+                  episodeId={episode.id}
+                  availableLanguages={availableLanguages}
+                  selectedLanguage={selectedLanguage}
+                  onLanguageChange={setSelectedLanguage}
+                  onLanguageAdded={fetchData}
+                />
+              </>
+            )}
+
+            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+
+            {/* Status badges */}
+            <div className="flex items-center gap-2">
+              <span className="rounded-md border border-green-100 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
+                {stats.completed} completed
+              </span>
+              <span className="rounded-md border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
+                {stats.pending} pending
+              </span>
+              {stats.generating > 0 && (
+                <span className="rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
+                  {stats.generating} generating
+                </span>
+              )}
+            </div>
+
+            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+
+            {/* Zoom Controls */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={zoomOut}
+                className="h-7 w-7 p-0"
+                title="Zoom out"
+              >
+                <Minus className="h-3.5 w-3.5" />
+              </Button>
+              <span className="w-14 text-center text-xs text-gray-500 dark:text-gray-400">
+                {pixelsPerSecond}px/s
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={zoomIn}
+                className="h-7 w-7 p-0"
+                title="Zoom in"
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fitToWindow}
+                className="ml-1 h-7 px-2 text-xs"
+              >
+                Fit
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-300"
+            >
+              <Settings className="h-4 w-4" />
+              Settings
+            </Button>
+
+            <Button
+              onClick={handleGenerateAll}
+              disabled={isPending || stats.pending === 0}
+              size="sm"
+              className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Play className="h-4 w-4" />
+                  Generate All Pending
+                </>
+              )}
+            </Button>
+
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleExport}
+              className="gap-2 bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          </div>
+        </div>
+
+        {/* Timeline Content */}
+        <div ref={timelineContainerRef} className="flex-1 overflow-hidden">
+          {activeTab === 'dialogue' && (
+            <DialogueTimeline
+              dialogueLines={dialogueLines}
+              characters={characters}
+              isLoading={isLoading}
+              onRefresh={fetchData}
+              pixelsPerSecond={pixelsPerSecond}
+            />
+          )}
+
+          {activeTab === 'music' && (
+            <MusicTimeline
+              episodeId={episode.id}
+              totalDuration={totalDuration}
+              scenes={scenes}
+              onRefresh={fetchData}
+              pixelsPerSecond={pixelsPerSecond}
+            />
+          )}
+
+          {activeTab === 'sfx' && (
+            <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
+              <div className="text-center">
+                <Volume2 className="mx-auto mb-3 h-12 w-12 opacity-30" />
+                <p>Sound effects coming soon</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

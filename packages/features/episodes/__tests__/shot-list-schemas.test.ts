@@ -25,7 +25,7 @@ describe('Shot List Schemas', () => {
         // Check defaults are applied
         expect(result.data.shotDurationMin).toBe(5);
         expect(result.data.shotDurationMax).toBe(8);
-        expect(result.data.videoProvider).toBe('kling');
+        expect(result.data.videoProvider).toBe('veo-3.1');
       }
     });
 
@@ -82,7 +82,7 @@ describe('Shot List Schemas', () => {
     });
 
     it('should accept all valid video providers', () => {
-      ['kling', 'runway', 'luma'].forEach((provider) => {
+      ['veo-3.1', 'kling', 'runway', 'luma'].forEach((provider) => {
         const result = GenerateShotListSchema.safeParse({
           ...validInput,
           videoProvider: provider,
@@ -142,7 +142,7 @@ describe('Shot List Schemas', () => {
   });
 
   describe('PromptCameraDirectionSchema', () => {
-    it('should accept all valid camera directions', () => {
+    it('should accept any string for camera direction (free-form)', () => {
       const directions = [
         'static',
         'pan_left',
@@ -153,6 +153,9 @@ describe('Shot List Schemas', () => {
         'zoom_out',
         'dolly_in',
         'dolly_out',
+        'pan', // Any string is valid
+        'dolly',
+        'tracking from the side',
       ];
 
       directions.forEach((direction) => {
@@ -162,18 +165,25 @@ describe('Shot List Schemas', () => {
       });
     });
 
-    it('should reject invalid camera directions', () => {
-      expect(PromptCameraDirectionSchema.safeParse('pan').success).toBe(false);
-      expect(PromptCameraDirectionSchema.safeParse('dolly').success).toBe(
-        false,
-      );
-      expect(PromptCameraDirectionSchema.safeParse('').success).toBe(false);
+    it('should reject non-string values', () => {
+      expect(PromptCameraDirectionSchema.safeParse(123).success).toBe(false);
+      expect(PromptCameraDirectionSchema.safeParse(null).success).toBe(false);
+      expect(PromptCameraDirectionSchema.safeParse(undefined).success).toBe(false);
     });
   });
 
   describe('TimeOfDaySchema', () => {
     it('should accept all valid times of day', () => {
-      const times = ['day', 'night', 'dawn', 'dusk'];
+      const times = [
+        'dawn',
+        'morning',
+        'midday',
+        'afternoon',
+        'golden-hour',
+        'dusk',
+        'night',
+        'day',
+      ];
 
       times.forEach((time) => {
         expect(TimeOfDaySchema.safeParse(time).success).toBe(true);
@@ -181,8 +191,8 @@ describe('Shot List Schemas', () => {
     });
 
     it('should reject invalid times', () => {
-      expect(TimeOfDaySchema.safeParse('morning').success).toBe(false);
       expect(TimeOfDaySchema.safeParse('evening').success).toBe(false);
+      expect(TimeOfDaySchema.safeParse('sunset').success).toBe(false);
       expect(TimeOfDaySchema.safeParse('').success).toBe(false);
     });
   });
@@ -223,7 +233,7 @@ describe('Shot List Schemas', () => {
     it('should reject invalid timeOfDay', () => {
       const result = GeneratedShotMetadataSchema.safeParse({
         location: 'Park',
-        timeOfDay: 'afternoon',
+        timeOfDay: 'sunset', // Invalid value
       });
       expect(result.success).toBe(false);
     });
@@ -304,12 +314,12 @@ describe('Shot List Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject invalid cameraDirection', () => {
+    it('should accept any string cameraDirection (free-form)', () => {
       const result = GeneratedShotSchema.safeParse({
         ...validShot,
-        cameraDirection: 'invalid-direction',
+        cameraDirection: 'any-custom-direction',
       });
-      expect(result.success).toBe(false);
+      expect(result.success).toBe(true);
     });
 
     it('should reject missing required fields', () => {

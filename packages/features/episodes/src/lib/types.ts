@@ -160,7 +160,15 @@ export interface ScreenplayScene {
   number: number;
   heading: string;
   location: string;
-  timeOfDay: 'day' | 'night' | 'dawn' | 'dusk';
+  timeOfDay:
+  | 'dawn'
+  | 'morning'
+  | 'midday'
+  | 'afternoon'
+  | 'golden-hour'
+  | 'dusk'
+  | 'night'
+  | 'day';
   description: string;
   dialogue: ScreenplayDialogueLine[];
   estimatedDuration: number;
@@ -192,6 +200,50 @@ export interface ScreenplayData {
 }
 
 /**
+ * Timeline event within a VEO 3.1 shot (V2 format)
+ */
+export interface TimelineEventData {
+  startTime: string; // "00:00" format
+  endTime: string; // "03:00" format
+  type: 'action' | 'dialogue' | 'transition';
+  character?: string | null;
+  content: string;
+  emotion?: string | null;
+}
+
+/**
+ * VEO 3.1 structured prompt components (V2 - Timeline-based)
+ * Designed for Ingredients-to-Video workflow with reference images
+ */
+export interface VeoPromptData {
+  shotLine: string;
+  timeline: TimelineEventData[];
+  audio: string;
+  style: string;
+  avoid: string;
+  fullPrompt: string;
+}
+
+/**
+ * Dialogue timing for a shot
+ */
+export interface ShotDialogueTimingData {
+  startSeconds: number;
+  durationSeconds: number;
+  characterName: string;
+  text: string;
+  emotion: string | null;
+}
+
+/**
+ * Reference image for VEO 3.1 "Ingredients"
+ */
+export interface ReferenceImageData {
+  name: string;
+  url: string;
+}
+
+/**
  * Shot list generation output stored in shot_list JSONB
  */
 export interface ShotListData {
@@ -204,6 +256,9 @@ export interface ShotListData {
     prompt: string;
     cameraDirection: string;
     characters: string[];
+    // VEO 3.1 Enhanced Fields
+    veoPrompt?: VeoPromptData;
+    dialogueTiming?: ShotDialogueTimingData[];
   }>;
   generatedAt?: string | null;
   approvedAt?: string | null;
@@ -223,6 +278,19 @@ export interface ShotListData {
     locations: string[];
     characters: string[];
     inputSource: 'screenplay' | 'story';
+    // Processing method: parallel-batches (default), scene-by-scene (legacy), or monolithic
+    processingMethod?: 'parallel-batches' | 'scene-by-scene' | 'monolithic';
+    scenesProcessed?: number;
+    scenesSuccessful?: number;
+    // VEO 3.1 reference images summary
+    referenceImages?: {
+      characters: ReferenceImageData[];
+      locations: ReferenceImageData[];
+    };
+    missingAssets?: {
+      characters: string[];
+      locations: string[];
+    };
   };
 }
 
@@ -231,6 +299,7 @@ export interface ShotListData {
  */
 export interface Episode {
   id: string;
+  slug: string | null;
   projectId: string;
   seasonId: string | null;
   number: number;
@@ -240,6 +309,8 @@ export interface Episode {
   durationSeconds: number | null;
   thumbnailUrl: string | null;
   finalVideoUrl: string | null;
+  /** Localized video URLs by language: { en: "url", hi: "url", es: "url", pt: "url" } */
+  localizedVideos?: Record<string, string> | null;
   storyData: StoryData | null;
   screenplayData: ScreenplayData | null;
   shotList: ShotListData | null;
@@ -297,6 +368,24 @@ export interface ShotGenerationSettings {
   negativePrompt?: string;
 }
 
+/**
+ * Metadata for shorts/clips potential
+ */
+export interface ShortsMetadata {
+  /** LLM-rated viral potential 1-10 */
+  viralScore: number;
+  /** Type of hook this shot contains */
+  hookType?: 'question' | 'reveal' | 'conflict' | 'visual' | 'humor' | 'cliffhanger';
+  /** Suggested offset from shot start for optimal clip (seconds) */
+  suggestedStartOffset?: number;
+  /** Suggested clip duration (seconds) */
+  suggestedDuration?: number;
+  /** Brief context so clip makes sense standalone */
+  standaloneSummary?: string;
+  /** Suggested hashtags */
+  hashtags?: string[];
+}
+
 export interface Shot {
   id: string;
   episodeId: string;
@@ -318,6 +407,10 @@ export interface Shot {
   generationJobId: string | null;
   generationStartedAt: string | null;
   generationCompletedAt: string | null;
+  /** Whether this shot is suitable for short-form content */
+  shortsCandidate?: boolean;
+  /** Shorts/clips metadata: viralScore, hookType, etc. */
+  shortsMetadata?: ShortsMetadata | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
@@ -395,25 +488,72 @@ export interface GeneratedShot {
 }
 
 /**
+ * Shot with dialogue lines for timeline planning
+ */
+export interface ShotWithDialogue {
+  shotId: string;
+  sceneNumber: number;
+  shotNumber: number;
+  sequenceNumber: number;
+  durationSeconds: number;
+  startSeconds: number;
+  dialogueLines: {
+    id: string;
+    text: string;
+    characterAssetId: string | null;
+    sequenceNumber: number;
+  }[];
+}
+
+/**
+ * Result of timeline planning action
+ */
+export interface TimelinePlanResult {
+  episodeId: string;
+  totalDurationSeconds: number;
+  shotsProcessed: number;
+  dialogueLinesUpdated: number;
+  shots: Array<{
+    id: string;
+    startSeconds: number;
+    durationSeconds: number;
+    dialogueCount: number;
+  }>;
+}
+
+/**
  * Response for generating a shot list
+ * Supports both legacy monolithic and new scene-by-scene processing
  */
 export interface GenerateShotListResponse {
   success: boolean;
   shots: GeneratedShot[];
   shotsCreated: number;
-  episode: {
+  // Episode info (optional for scene-by-scene processing)
+  episode?: {
     id: string;
     status: string;
     version: number;
   };
   metadata: {
-    provider: string;
-    model: string;
-    costCents: number;
-    tokensUsed: number;
-    generatedAt: string;
+    // Common fields
     totalShots: number;
     totalDuration: number;
-    inputSource: 'screenplay' | 'story';
+    // Legacy fields (monolithic processing)
+    provider?: string;
+    model?: string;
+    costCents?: number;
+    tokensUsed?: number;
+    generatedAt?: string;
+    inputSource?: 'screenplay' | 'story';
+    // Scene-by-scene processing fields
+    shotTypes?: {
+      wide: number;
+      medium: number;
+      closeUp: number;
+    };
+    locations?: string[];
+    characters?: string[];
+    processingMethod?: 'parallel-batches' | 'scene-by-scene' | 'monolithic';
   };
 }

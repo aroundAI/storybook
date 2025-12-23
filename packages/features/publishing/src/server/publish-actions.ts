@@ -83,6 +83,13 @@ export const publishToAllAction = enhanceAction(
           }
 
           // Create publish record
+          // Determine if this is a server-side scheduled publish
+          // YouTube and Facebook have native scheduling, others don't
+          const hasNativeScheduling =
+            platform.platform === 'youtube' || platform.platform === 'facebook';
+          const isScheduled = !!platform.scheduledAt;
+          const useServerScheduling = isScheduled && !hasNativeScheduling;
+
           const { data: publish, error: publishError } = await client
             .from('publishes')
             .insert({
@@ -94,7 +101,7 @@ export const publishToAllAction = enhanceAction(
               description: platform.description,
               tags: platform.tags,
               thumbnail_url: platform.thumbnailUrl ?? episode.thumbnail_url,
-              status: 'publishing',
+              status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: JSON.parse(JSON.stringify(platform.platformSpecific)),
             })
@@ -105,12 +112,26 @@ export const publishToAllAction = enhanceAction(
             throw new Error('Failed to create publish record');
           }
 
+          // For server-side scheduling, don't upload now - the cron job will handle it
+          if (useServerScheduling) {
+            logger.info(
+              { ...platformCtx, publishId: publish.id, scheduledAt: platform.scheduledAt },
+              'Created scheduled publish record - will be processed by cron job',
+            );
+
+            return {
+              platform: platform.platform,
+              status: 'scheduled' as const,
+              publishId: publish.id,
+            };
+          }
+
           logger.info(
             { ...platformCtx, publishId: publish.id },
             'Created publish record, starting upload',
           );
 
-          // Upload to platform
+          // Upload to platform (immediately or with native scheduling)
           const uploadResult = await uploadToPlatform(
             platform.platform,
             accessToken,

@@ -6,9 +6,9 @@
   "description": "Generate multiple story ideas from a premise. Creates diverse, creative story concepts suitable for short-form video content.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
-    "max_tokens": 2000,
+    "provider": "gemini",
+    "model": "gemini-3-flash-preview",
+    "max_tokens": 8000,
     "temperature": 0.8,
     "response_format": {
       "type": "json_object"

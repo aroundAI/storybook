@@ -18,7 +18,7 @@ import type {
 // Provider enum schemas
 const DatabaseProviderSchema = z.enum(['supabase', 'postgresql', 'mysql']);
 const AuthProviderSchema = z.enum(['supabase', 'cognito', 'auth0', 'clerk']);
-const StorageProviderSchema = z.enum(['supabase', 's3']);
+const StorageProviderSchema = z.enum(['supabase', 's3', 'local']);
 const EmailProviderSchema = z.enum(['resend', 'ses', 'sendgrid', 'nodemailer']);
 const QueueProviderSchema = z.enum(['sqs', 'bullmq']);
 const RealtimeProviderSchema = z.enum(['supabase', 'websocket', 'pusher']);
@@ -330,6 +330,12 @@ function getStorageConfig(provider: StorageProvider): Record<string, string> {
         bucket: process.env.S3_BUCKET ?? '',
         accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? '',
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',
+      };
+
+    case 'local':
+      return {
+        basePath: process.env.STORAGE_LOCAL_PATH ?? '.storage',
+        baseUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
       };
 
     default:

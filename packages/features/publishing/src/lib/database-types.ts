@@ -15,6 +15,7 @@ export interface PlatformConnection {
   scopes: string[] | null;
   metadata: Record<string, unknown>;
   is_active: boolean;
+  language: string; // Target language for this channel (en, hi, es, pt, etc.)
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +32,7 @@ export interface PlatformConnectionInsert {
   scopes?: string[] | null;
   metadata?: Record<string, unknown>;
   is_active?: boolean;
+  language?: string; // Default: 'en'
   created_at?: string;
   updated_at?: string;
 }
@@ -47,6 +49,7 @@ export interface PlatformConnectionUpdate {
   scopes?: string[] | null;
   metadata?: Record<string, unknown>;
   is_active?: boolean;
+  language?: string;
   created_at?: string;
   updated_at?: string;
 }

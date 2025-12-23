@@ -1,7 +1,5 @@
 'use server';
 
-import 'server-only';
-
 import { revalidatePath } from 'next/cache';
 
 import { z } from 'zod';
@@ -196,7 +194,7 @@ export const autoStitchAction = enhanceAction(
         'Auto-stitch completed successfully',
       );
 
-      revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+      revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
 
       return { success: true, data: result };
     } catch (error) {

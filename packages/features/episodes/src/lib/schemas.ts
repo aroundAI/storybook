@@ -265,3 +265,10 @@ export {
   AnalyzeSeasonSchema,
   GenerateSeasonEpisodesSchema,
 } from './schemas/season-generation.schema';
+
+// Timeline Planning Schema
+export const PlanTimelineSchema = z.object({
+  episodeId: z.string().uuid(),
+});
+
+export type PlanTimelineInput = z.infer<typeof PlanTimelineSchema>;

@@ -18,6 +18,7 @@ import type {
   DialogueLine,
   DialogueLineSummary,
   GetDialogueLinesResult,
+  SupportedLanguage,
 } from '../lib/types/dialogue.types';
 
 // Note: These queries use type assertions because the film studio tables
@@ -31,11 +32,17 @@ interface DialogueLineRow {
   id: string;
   episode_id: string;
   character_asset_id: string | null;
+  shot_id: string | null;
   text: string;
   sequence_number: number;
+  scene_number: number;
   status: string;
   audio_url: string | null;
+  timeline_start_seconds: number | null;
+  estimated_duration_seconds: number | null;
   generation_metadata: Record<string, unknown> | null;
+  language: string;
+  source_dialogue_id: string | null;
   created_at: string;
 }
 
@@ -57,24 +64,30 @@ function transformDialogueLine(row: DialogueLineRow): DialogueLine {
     id: row.id,
     episodeId: row.episode_id,
     characterAssetId: row.character_asset_id,
+    shotId: row.shot_id,
     text: row.text,
     sequenceNumber: row.sequence_number,
+    sceneNumber: row.scene_number,
     status: row.status as DialogueLine['status'],
     audioUrl: row.audio_url,
+    timelineStartSeconds: row.timeline_start_seconds,
+    estimatedDurationSeconds: row.estimated_duration_seconds,
     generationMetadata: row.generation_metadata
       ? {
-          durationSeconds:
-            (row.generation_metadata.durationSeconds as number) ?? undefined,
-          error: (row.generation_metadata.error as string) ?? undefined,
-          provider: (row.generation_metadata.provider as string) ?? undefined,
-          costCents: (row.generation_metadata.costCents as number) ?? undefined,
-          voiceId: (row.generation_metadata.voiceId as string) ?? undefined,
-          generatedAt:
-            (row.generation_metadata.generatedAt as string) ?? undefined,
-          characterCount:
-            (row.generation_metadata.characterCount as number) ?? undefined,
-        }
+        durationSeconds:
+          (row.generation_metadata.durationSeconds as number) ?? undefined,
+        error: (row.generation_metadata.error as string) ?? undefined,
+        provider: (row.generation_metadata.provider as string) ?? undefined,
+        costCents: (row.generation_metadata.costCents as number) ?? undefined,
+        voiceId: (row.generation_metadata.voiceId as string) ?? undefined,
+        generatedAt:
+          (row.generation_metadata.generatedAt as string) ?? undefined,
+        characterCount:
+          (row.generation_metadata.characterCount as number) ?? undefined,
+      }
       : null,
+    language: (row.language || 'en') as SupportedLanguage,
+    sourceDialogueId: row.source_dialogue_id,
     createdAt: row.created_at,
   };
 }
@@ -125,11 +138,17 @@ export const getDialogueLinesAction = enhanceAction(
         id,
         episode_id,
         character_asset_id,
+        shot_id,
         text,
         sequence_number,
+        scene_number,
         status,
         audio_url,
+        timeline_start_seconds,
+        estimated_duration_seconds,
         generation_metadata,
+        language,
+        source_dialogue_id,
         created_at
       `,
       )

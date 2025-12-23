@@ -47,3 +47,68 @@
     color: theme(--color-muted-foreground);
   }
 }
+
+/* Liquid Glass Design System - Visual Studio */
+@layer components {
+  .liquid-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    border-radius: 30px;
+    transition: all 0.3s ease;
+  }
+
+  .liquid-card:hover {
+    box-shadow: 0 8px 60px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .liquid-image-container {
+    border-radius: 25px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .liquid-pill {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 4px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-size: 0.75rem;
+    font-weight: 500;
+  }
+
+  .scene-title-rotator {
+    writing-mode: vertical-lr;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.08));
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 15px;
+    padding: 1rem 0.5rem;
+    font-weight: 600;
+    color: #4a5568;
+  }
+
+  /* Dark mode variants */
+  .dark .liquid-card {
+    background: linear-gradient(135deg, rgba(30, 30, 30, 0.6), rgba(30, 30, 30, 0.3));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .dark .liquid-pill {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .dark .scene-title-rotator {
+    background: linear-gradient(135deg, rgba(50, 50, 50, 0.6), rgba(50, 50, 50, 0.3));
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #9ca3af;
+  }
+}

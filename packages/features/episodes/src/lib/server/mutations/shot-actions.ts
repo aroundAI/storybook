@@ -1,7 +1,5 @@
 'use server';
 
-import 'server-only';
-
 import { revalidatePath } from 'next/cache';
 
 import { enhanceAction } from '@kit/next/actions';

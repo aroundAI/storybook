@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Clock,
   Facebook,
+  Globe,
   Instagram,
   Plus,
   RefreshCw,
@@ -37,6 +38,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@kit/ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@kit/ui/select';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
@@ -45,6 +53,7 @@ import {
   disconnectPlatformAction,
   getConnectionsAction,
   refreshConnectionAction,
+  updateConnectionLanguageAction,
 } from '../server/connection-actions';
 import type {
   ConnectionStatus,
@@ -58,6 +67,19 @@ const TikTokIcon = ({ className }: { className?: string }) => (
     <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-5.2 1.74 2.89 2.89 0 012.31-4.64 2.93 2.93 0 01.88.13V9.4a6.84 6.84 0 00-1-.05A6.33 6.33 0 005 20.1a6.34 6.34 0 0010.86-4.43v-7a8.16 8.16 0 004.77 1.52v-3.4a4.85 4.85 0 01-1-.1z" />
   </svg>
 );
+
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  es: 'Spanish',
+  pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+  ar: 'Arabic',
+};
 
 const PLATFORMS: PlatformConfig[] = [
   {
@@ -292,6 +314,23 @@ function ConnectionRow({
     },
   });
 
+  const languageMutation = useMutation({
+    mutationFn: (language: string) =>
+      updateConnectionLanguageAction({
+        connectionId: connection.id,
+        language,
+      }),
+    onSuccess: (_, language) => {
+      queryClient.invalidateQueries({
+        queryKey: ['platform-connections', accountId],
+      });
+      toast.success(`Language set to ${LANGUAGE_NAMES[language as keyof typeof LANGUAGE_NAMES] ?? language}`);
+    },
+    onError: () => {
+      toast.error('Failed to update language');
+    },
+  });
+
   return (
     <>
       <div className="bg-muted/30 flex items-center justify-between rounded-lg border p-3">
@@ -322,6 +361,25 @@ function ConnectionRow({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Language Selector */}
+          <Select
+            value={connection.language ?? 'en'}
+            onValueChange={(value) => languageMutation.mutate(value)}
+            disabled={languageMutation.isPending}
+          >
+            <SelectTrigger className="w-[130px]" title="Target language for this channel">
+              <Globe className="mr-1 h-3 w-3" />
+              <SelectValue placeholder="Language" />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(LANGUAGE_NAMES).map(([code, name]) => (
+                <SelectItem key={code} value={code}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
           {connection.status === 'expired' && (
             <Button
               variant="outline"

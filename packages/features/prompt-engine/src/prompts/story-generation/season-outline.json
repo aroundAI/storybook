@@ -6,9 +6,9 @@
   "description": "Generate episode outlines for an entire season with proper story structure. Creates 2-24 episode concepts following classic narrative arc.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
-    "provider": "deepseek",
-    "model": "deepseek-chat",
-    "max_tokens": 4000,
+    "provider": "gemini",
+    "model": "gemini-3-flash-preview",
+    "max_tokens": 16000,
     "temperature": 0.7,
     "response_format": {
       "type": "json_object"

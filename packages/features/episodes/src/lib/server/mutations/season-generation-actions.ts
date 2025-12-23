@@ -1,7 +1,5 @@
 'use server';
 
-import 'server-only';
-
 import { revalidatePath } from 'next/cache';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -13,6 +11,7 @@ import {
   AnalyzeSeasonSchema,
   GenerateSeasonEpisodesSchema,
 } from '../../schemas/season-generation.schema';
+import { generateEpisodeSlug } from '../../slug-utils';
 
 interface AnalysisResult {
   premise: string;
@@ -317,6 +316,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
         season_id: seasonId, // Link to the newly created season
         number: ep.number,
         title: ep.title,
+        slug: generateEpisodeSlug(ep.number, ep.title),
         description: ep.description,
         status: 'draft',
         story_data: {
@@ -350,8 +350,8 @@ export const generateSeasonEpisodesAction = enhanceAction(
     // Audit Log logic (simplified)
     // ... (Skipping full audit log detail for brevity in this refactor, relying on standard logs)
 
-    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
-    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page'); // In case we added assets
+    revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
+    revalidatePath('/home/[account]/studio/[projectSlug]/assets', 'page'); // In case we added assets
 
     return {
       success: true,

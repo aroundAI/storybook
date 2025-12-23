@@ -1,7 +1,5 @@
 'use server';
 
-import 'server-only';
-
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
@@ -19,6 +17,7 @@ import {
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
+import { generateEpisodeSlug } from '../lib/slug-utils';
 import {
   InvalidStatusTransitionError,
   OptimisticLockError,
@@ -60,8 +59,10 @@ export const createEpisodeAction = enhanceAction(
     let lastError;
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      let episodeNumber = data.number;
-      if (!episodeNumber) {
+      let episodeNumber: number;
+      if (data.number) {
+        episodeNumber = data.number;
+      } else {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: existingEpisodes } = await (client as any)
           .from('episodes')
@@ -74,6 +75,9 @@ export const createEpisodeAction = enhanceAction(
         episodeNumber = (existingEpisodes?.[0]?.number ?? 0) + 1;
       }
 
+      // Generate slug from episode number and title
+      const slug = generateEpisodeSlug(episodeNumber, data.title);
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: insertedEpisode, error } = await (client as any)
         .from('episodes')
@@ -82,6 +86,7 @@ export const createEpisodeAction = enhanceAction(
           season_id: data.seasonId ?? null,
           number: episodeNumber,
           title: data.title,
+          slug,
           description: data.description ?? null,
           status: 'draft',
           metadata: {},

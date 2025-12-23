@@ -6,3 +6,4 @@ export * from './continuity-types';
 export * from './continuity-schemas';
 export * from './auto-stitch';
 export * from './duration-scaling';
+export * from './slug-utils';
