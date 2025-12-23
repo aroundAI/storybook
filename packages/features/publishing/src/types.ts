@@ -28,6 +28,7 @@ export interface PlatformConnection {
   createdAt: string;
   updatedAt: string;
   accountSlug: string;
+  language?: string; // Target language for this channel (en, hi, es, etc.)
 }
 
 /**

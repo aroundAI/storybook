@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Clock, ImageIcon, Loader2, Play } from 'lucide-react';
+import { AlertCircle, Clock, Flame, ImageIcon, Loader2, Play } from 'lucide-react';
 
 import type { Shot, ShotStatus } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
@@ -80,6 +80,17 @@ export function ShotCard({
           {STATUS_ICONS[shot.status]}
           <span>{shot.status}</span>
         </div>
+
+        {/* Shorts Candidate Badge - top left */}
+        {shot.shortsCandidate && (
+          <div
+            className="absolute top-3 left-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-xs font-bold text-white shadow-lg"
+            title={`Viral Score: ${shot.shortsMetadata?.viralScore ?? 'N/A'}/10`}
+          >
+            <Flame className="h-3 w-3" />
+            <span>Shorts</span>
+          </div>
+        )}
 
         {/* Shot Number - bottom left */}
         <div className="absolute bottom-3 left-3 rounded-lg bg-black/60 px-2 py-1 text-xs font-medium text-white">

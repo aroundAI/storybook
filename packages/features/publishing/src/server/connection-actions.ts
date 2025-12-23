@@ -43,30 +43,34 @@ export const getConnectionsAction = enhanceAction(
     }
 
     return (
-      connections?.map((conn) => ({
-        id: conn.id,
-        platform: conn.platform as PlatformType,
-        platformAccountId: conn.platform_account_id ?? '',
-        accountName: conn.platform_account_name ?? 'Unknown Account',
-        profileImageUrl:
-          conn.metadata && typeof conn.metadata === 'object'
-            ? ((conn.metadata as Record<string, unknown>).profile_image_url as
-              | string
-              | undefined)
-            : undefined,
-        status: determineStatus(conn),
-        errorMessage:
-          conn.metadata && typeof conn.metadata === 'object'
-            ? ((conn.metadata as Record<string, unknown>).last_error as
-              | string
-              | undefined)
-            : undefined,
-        scopes: conn.scopes ?? [],
-        tokenExpiresAt: conn.token_expires_at,
-        createdAt: conn.created_at,
-        updatedAt: conn.updated_at,
-        accountSlug: '', // Will be set by the caller
-      })) ?? []
+      connections?.map((conn) => {
+        const connWithLanguage = conn as typeof conn & { language?: string };
+        return {
+          id: conn.id,
+          platform: conn.platform as PlatformType,
+          platformAccountId: conn.platform_account_id ?? '',
+          accountName: conn.platform_account_name ?? 'Unknown Account',
+          profileImageUrl:
+            conn.metadata && typeof conn.metadata === 'object'
+              ? ((conn.metadata as Record<string, unknown>).profile_image_url as
+                | string
+                | undefined)
+              : undefined,
+          status: determineStatus(conn),
+          errorMessage:
+            conn.metadata && typeof conn.metadata === 'object'
+              ? ((conn.metadata as Record<string, unknown>).last_error as
+                | string
+                | undefined)
+              : undefined,
+          scopes: conn.scopes ?? [],
+          tokenExpiresAt: conn.token_expires_at,
+          createdAt: conn.created_at,
+          updatedAt: conn.updated_at,
+          accountSlug: '', // Will be set by the caller
+          language: connWithLanguage.language ?? 'en',
+        };
+      }) ?? []
     );
   },
   {
@@ -133,6 +137,43 @@ export const refreshConnectionAction = enhanceAction(
   },
   {
     schema: RefreshSchema,
+    auth: true,
+  },
+);
+
+const UpdateLanguageSchema = z.object({
+  connectionId: z.string().uuid(),
+  language: z.string().min(2).max(5),
+});
+
+/**
+ * Updates the target language for a platform connection
+ * Used for automatic routing of multi-language content to language-specific channels
+ */
+export const updateConnectionLanguageAction = enhanceAction(
+  async ({ connectionId, language }) => {
+    const client = getSupabaseServerClient();
+
+    // Type cast until migration is applied and types regenerated
+    const { error } = await (client as unknown as {
+      from: (table: string) => {
+        update: (data: { language: string }) => {
+          eq: (col: string, val: string) => Promise<{ error: unknown }>;
+        };
+      };
+    })
+      .from('platform_connections')
+      .update({ language })
+      .eq('id', connectionId);
+
+    if (error) {
+      throw new Error('Failed to update connection language');
+    }
+
+    return { success: true, language };
+  },
+  {
+    schema: UpdateLanguageSchema,
     auth: true,
   },
 );
