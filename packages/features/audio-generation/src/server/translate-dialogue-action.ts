@@ -249,10 +249,10 @@ function parseNumberedTranslations(content: string, expectedCount: number): stri
 
     for (const line of lines) {
         // Match patterns like "1. translation" or "1: translation" or just "translation"
-        const match = line.match(/^\d+[\.\:\)]\s*["']?(.+?)["']?\s*$/);
+        const match = line.match(/^\d+[.:)]\s*["']?(.+?)["']?\s*$/);
         if (match?.[1]) {
             translations.push(match[1].trim());
-        } else if (!line.match(/^\d+[\.\:\)]/) && translations.length < expectedCount) {
+        } else if (!line.match(/^\d+[.:)]/) && translations.length < expectedCount) {
             // Line without number - might be a translation
             translations.push(line.trim().replace(/^["']|["']$/g, ''));
         }
