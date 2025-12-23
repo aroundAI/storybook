@@ -18,7 +18,6 @@ import {
   Play,
   RefreshCw,
   Trash2,
-  Upload,
   Video,
   X,
 } from 'lucide-react';
@@ -280,7 +279,7 @@ export function ShotDetailsSidebar({
   }, [isVideoPlaying]);
 
   const handleVideoUploadComplete = useCallback(
-    (videoUrl: string, thumbnailUrl: string) => {
+    (_videoUrl: string, _thumbnailUrl: string) => {
       toast.success('Video uploaded successfully');
       onUpdate();
     },
@@ -642,9 +641,9 @@ export function ShotDetailsSidebar({
                                 className={cn(
                                   'text-xs capitalize',
                                   event.type === 'dialogue' &&
-                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+                                  'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
                                   event.type === 'action' &&
-                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                  'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
                                 )}
                               >
                                 {event.type}

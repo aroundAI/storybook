@@ -67,7 +67,7 @@ export function LanguageTabBar({
                 } else {
                     toast.error(result.error ?? 'Translation failed');
                 }
-            } catch (error) {
+            } catch (_error) {
                 toast.error('Failed to translate dialogue');
             } finally {
                 setTranslatingTo(null);

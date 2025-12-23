@@ -6,7 +6,6 @@ import {
   uploadToStorage,
 } from '@kit/assets/upload';
 import {
-  generateStoragePath,
   sanitizeFilename,
   validateUpload,
 } from '@kit/assets/upload-validation';

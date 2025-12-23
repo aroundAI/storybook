@@ -2,7 +2,7 @@
 
 import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react';
 
-import { Film, Maximize2, Pause, Play } from 'lucide-react';
+import { Film, Maximize2, Play } from 'lucide-react';
 
 import type { Shot } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';

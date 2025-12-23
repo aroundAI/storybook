@@ -22,7 +22,6 @@ import { Progress } from '@kit/ui/progress';
 import { cn } from '@kit/ui/utils';
 
 import {
-  type UseVideoUploadOptions,
   type VideoInfo,
   type VideoUploadError,
   type VideoUploadState,
