@@ -18,6 +18,7 @@
     "clean": "git clean -xdf node_modules dist .next",
     "clean:workspaces": "turbo clean",
     "dev": "cross-env FORCE_COLOR=1 turbo dev --parallel",
+    "dev:all": "npx tsx scripts/local-dev.ts",
     "format": "turbo format --cache-dir=.turbo --continue -- --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\"",
     "format:fix": "turbo format --cache-dir=.turbo --continue -- --write --cache --cache-location=\"node_modules/.cache/.prettiercache\" --ignore-path=\"../../.gitignore\"",
     "lint": "turbo lint --cache-dir=.turbo --affected --continue -- --cache --cache-location \"node_modules/.cache/.eslintcache\" && manypkg check",
