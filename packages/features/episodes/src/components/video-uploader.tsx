@@ -15,7 +15,6 @@ import {
   Film,
   Loader2,
   Upload,
-  X,
 } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
