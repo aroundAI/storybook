@@ -279,6 +279,14 @@ interface AggregatedShot {
     text: string;
     emotion: string | null;
   }>;
+  /** Whether this shot is suitable for short-form content */
+  shortsCandidate?: boolean;
+  /** Shorts metadata: viralScore, hookType, standaloneSummary */
+  shortsMetadata?: {
+    viralScore: number;
+    hookType?: 'question' | 'reveal' | 'conflict' | 'visual' | 'humor' | 'cliffhanger';
+    standaloneSummary?: string;
+  };
 }
 
 /**
@@ -381,6 +389,9 @@ function aggregateSceneResults(
               }
               : undefined,
           dialogueTiming: dialogueTiming.length > 0 ? dialogueTiming : undefined,
+          // Shorts candidate data from LLM
+          shortsCandidate: shot.shortsCandidate ?? false,
+          shortsMetadata: shot.shortsMetadata ?? undefined,
         },
       });
 

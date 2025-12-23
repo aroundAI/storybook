@@ -18,7 +18,8 @@ import {
     X,
 } from 'lucide-react';
 
-import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
+import type { CharacterAsset, DialogueLine, SupportedLanguage } from '@kit/audio-generation/lib';
+import { SUPPORTED_LANGUAGES } from '@kit/audio-generation/lib';
 import { autoStitchAction, renderVideoAction } from '@kit/episodes/server';
 import type { EpisodeWithShots, Shot } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
@@ -50,6 +51,7 @@ interface FinalizeDialogProps {
     characters: CharacterAsset[];
     musicTracks: MusicTrackData[];
     accountSlug: string;
+    selectedLanguage?: SupportedLanguage;
     onComplete: () => void;
 }
 
@@ -63,6 +65,7 @@ export function FinalizeDialog({
     dialogueLines,
     musicTracks,
     accountSlug,
+    selectedLanguage = 'en',
     onComplete,
 }: FinalizeDialogProps) {
     const router = useRouter();
@@ -117,6 +120,7 @@ export function FinalizeDialog({
             // Step 2: Render video using FFmpeg
             const renderResult = await renderVideoAction({
                 episodeId: episode.id,
+                language: selectedLanguage,
                 quality: 'standard',
                 format: 'mp4',
                 dialogueVolume,

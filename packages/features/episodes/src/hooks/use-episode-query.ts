@@ -24,6 +24,7 @@ interface DatabaseEpisode {
   duration_seconds: number | null;
   thumbnail_url: string | null;
   final_video_url: string | null;
+  localized_videos: Record<string, string> | null;
   story_data: unknown;
   screenplay_data: unknown;
   shot_list: unknown;
@@ -105,6 +106,7 @@ function transformEpisodeResponse(
     durationSeconds: episode.duration_seconds,
     thumbnailUrl: episode.thumbnail_url,
     finalVideoUrl: episode.final_video_url,
+    localizedVideos: episode.localized_videos,
     storyData: episode.story_data as EpisodeWithShots['storyData'],
     screenplayData:
       episode.screenplay_data as EpisodeWithShots['screenplayData'],

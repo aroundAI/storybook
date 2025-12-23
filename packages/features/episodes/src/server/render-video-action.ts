@@ -29,6 +29,7 @@ const execAsync = promisify(exec);
  */
 const RenderVideoActionSchema = z.object({
     episodeId: z.string().uuid(),
+    language: z.enum(['en', 'hi', 'es', 'pt']).default('en'),
     quality: z.enum(['draft', 'standard', 'high']).default('standard'),
     format: z.enum(['mp4', 'webm', 'mov']).default('mp4'),
     dialogueVolume: z.number().min(0).max(2).default(1.0),
@@ -45,6 +46,7 @@ export interface RenderVideoActionResult {
     durationSeconds?: number;
     error?: string;
     provider?: string;
+    language?: string;
 }
 
 interface ShotData {
@@ -132,8 +134,8 @@ export const renderVideoAction = enhanceAction(
         }
 
         try {
-            // Fetch episode data
-            const episodeData = await fetchEpisodeData(client, input.episodeId, logger, ctx);
+            // Fetch episode data (filtered by language for dialogue)
+            const episodeData = await fetchEpisodeData(client, input.episodeId, input.language, logger, ctx);
 
             // Verify permissions
             const canEdit = await canPerformProjectAction(
@@ -164,11 +166,27 @@ export const renderVideoAction = enhanceAction(
 
             // Update episode with final video URL if successful
             if (result.success && result.finalVideoUrl) {
+                // Fetch current localized_videos to merge
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const { data: currentEpisode } = await (client as any)
+                    .from('episodes')
+                    .select('localized_videos')
+                    .eq('id', input.episodeId)
+                    .single();
+
+                const currentLocalized = (currentEpisode?.localized_videos || {}) as Record<string, string>;
+                const updatedLocalized = {
+                    ...currentLocalized,
+                    [input.language]: result.finalVideoUrl,
+                };
+
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await (client as any)
                     .from('episodes')
                     .update({
-                        final_video_url: result.finalVideoUrl,
+                        // Keep final_video_url for backward compatibility (uses English as default)
+                        final_video_url: input.language === 'en' ? result.finalVideoUrl : currentEpisode?.final_video_url,
+                        localized_videos: updatedLocalized,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('id', input.episodeId);
@@ -176,7 +194,7 @@ export const renderVideoAction = enhanceAction(
                 revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
             }
 
-            return { ...result, provider };
+            return { ...result, provider, language: input.language };
         } catch (error) {
             const message = error instanceof Error ? error.message : 'Unknown error';
             logger.error({ ...ctx, error: message }, 'Video render failed');
@@ -203,6 +221,7 @@ async function fetchEpisodeData(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     client: any,
     episodeId: string,
+    language: string,
     logger: ReturnType<typeof getLogger> extends Promise<infer T> ? T : never,
     ctx: Record<string, unknown>,
 ): Promise<EpisodeData> {
@@ -231,6 +250,7 @@ async function fetchEpisodeData(
             .select('id, audio_url, timeline_start_seconds, generation_metadata')
             .eq('episode_id', episodeId)
             .eq('status', 'completed')
+            .eq('language', language)
             .not('audio_url', 'is', null)
             .order('sequence_number', { ascending: true }),
         client

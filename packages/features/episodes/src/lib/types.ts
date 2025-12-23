@@ -309,6 +309,8 @@ export interface Episode {
   durationSeconds: number | null;
   thumbnailUrl: string | null;
   finalVideoUrl: string | null;
+  /** Localized video URLs by language: { en: "url", hi: "url", es: "url", pt: "url" } */
+  localizedVideos?: Record<string, string> | null;
   storyData: StoryData | null;
   screenplayData: ScreenplayData | null;
   shotList: ShotListData | null;
@@ -366,6 +368,24 @@ export interface ShotGenerationSettings {
   negativePrompt?: string;
 }
 
+/**
+ * Metadata for shorts/clips potential
+ */
+export interface ShortsMetadata {
+  /** LLM-rated viral potential 1-10 */
+  viralScore: number;
+  /** Type of hook this shot contains */
+  hookType?: 'question' | 'reveal' | 'conflict' | 'visual' | 'humor' | 'cliffhanger';
+  /** Suggested offset from shot start for optimal clip (seconds) */
+  suggestedStartOffset?: number;
+  /** Suggested clip duration (seconds) */
+  suggestedDuration?: number;
+  /** Brief context so clip makes sense standalone */
+  standaloneSummary?: string;
+  /** Suggested hashtags */
+  hashtags?: string[];
+}
+
 export interface Shot {
   id: string;
   episodeId: string;
@@ -387,6 +407,10 @@ export interface Shot {
   generationJobId: string | null;
   generationStartedAt: string | null;
   generationCompletedAt: string | null;
+  /** Whether this shot is suitable for short-form content */
+  shortsCandidate?: boolean;
+  /** Shorts/clips metadata: viralScore, hookType, etc. */
+  shortsMetadata?: ShortsMetadata | null;
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

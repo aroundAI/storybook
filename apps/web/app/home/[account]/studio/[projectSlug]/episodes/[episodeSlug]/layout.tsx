@@ -129,6 +129,7 @@ async function EpisodeWorkspaceLayout({
     durationSeconds: episodeData.duration_seconds,
     thumbnailUrl: episodeData.thumbnail_url,
     finalVideoUrl: episodeData.final_video_url,
+    localizedVideos: (episodeData as { localized_videos?: Record<string, string> | null }).localized_videos ?? null,
     storyData: episodeData.story_data as StoryData | null,
     screenplayData: episodeData.screenplay_data as ScreenplayData | null,
     shotList: episodeData.shot_list as ShotListData | null,
@@ -169,10 +170,10 @@ async function EpisodeWorkspaceLayout({
       })) ?? [],
     season: seasonData
       ? {
-          id: seasonData.id,
-          name: seasonData.name ?? '',
-          number: seasonData.number,
-        }
+        id: seasonData.id,
+        name: seasonData.name ?? '',
+        number: seasonData.number,
+      }
       : null,
   };
 

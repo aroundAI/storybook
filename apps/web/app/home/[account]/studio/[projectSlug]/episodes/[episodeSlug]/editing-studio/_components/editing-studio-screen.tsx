@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 
 import {
   Download,
+  Globe,
   Loader2,
   Pause,
   Play,
@@ -17,7 +18,8 @@ import {
   VolumeX,
 } from 'lucide-react';
 
-import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
+import type { CharacterAsset, DialogueLine, SupportedLanguage } from '@kit/audio-generation/lib';
+import { SUPPORTED_LANGUAGES } from '@kit/audio-generation/lib';
 import {
   getAudioTracksAction,
   getCharactersForEpisodeAction,
@@ -25,6 +27,12 @@ import {
 } from '@kit/audio-generation/server';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@kit/ui/dropdown-menu';
 import { toast } from '@kit/ui/sonner';
 
 import { TimelinePanel } from './timeline/timeline-panel';
@@ -77,7 +85,11 @@ export function EditingStudioScreen({
   const [musicTracks, setMusicTracks] = useState<MusicTrackData[]>([]);
   const [isAudioLoading, setIsAudioLoading] = useState(true);
 
-  // Fetch audio data on mount
+  // Language selection state
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const [availableLanguages, setAvailableLanguages] = useState<SupportedLanguage[]>(['en']);
+
+  // Fetch audio data on mount and language change
   useEffect(() => {
     async function fetchAudioData() {
       setIsAudioLoading(true);
@@ -88,9 +100,23 @@ export function EditingStudioScreen({
           getAudioTracksAction({ episodeId: episode.id, type: 'music' }),
         ]);
 
-        setDialogueLines(
-          Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [],
+        const allLines = Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [];
+
+        // Extract available languages
+        const langs = new Set<SupportedLanguage>(
+          allLines.map((l) => (l.language || 'en') as SupportedLanguage)
         );
+        const langArray = Array.from(langs).sort((a, b) => {
+          const order = ['en', 'hi', 'es', 'pt'];
+          return order.indexOf(a) - order.indexOf(b);
+        });
+        setAvailableLanguages(langArray.length > 0 ? langArray : ['en']);
+
+        // Filter by selected language
+        const filteredLines = allLines.filter(
+          (l) => (l.language || 'en') === selectedLanguage
+        );
+        setDialogueLines(filteredLines);
         setCharacters(Array.isArray(chars) ? chars : []);
         setMusicTracks(
           musicResult.tracks.map((t) => ({
@@ -110,7 +136,7 @@ export function EditingStudioScreen({
       }
     }
     void fetchAudioData();
-  }, [episode.id]);
+  }, [episode.id, selectedLanguage]);
 
   // Get completed shots with videos, sorted by sequence
   const completedShots = useMemo(() => {
@@ -268,6 +294,29 @@ export function EditingStudioScreen({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Language Selector */}
+          {availableLanguages.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Globe className="h-4 w-4" />
+                  {SUPPORTED_LANGUAGES[selectedLanguage] ?? 'English'}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {availableLanguages.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang}
+                    onClick={() => setSelectedLanguage(lang)}
+                    className={selectedLanguage === lang ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                  >
+                    {SUPPORTED_LANGUAGES[lang] ?? lang}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           <Button
             variant="outline"
             onClick={() => setShowFinalizeDialog(true)}
@@ -396,6 +445,7 @@ export function EditingStudioScreen({
         characters={characters}
         musicTracks={musicTracks}
         accountSlug={accountSlug}
+        selectedLanguage={selectedLanguage}
         onComplete={handleExportComplete}
       />
     </div>

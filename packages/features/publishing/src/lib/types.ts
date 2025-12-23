@@ -53,6 +53,7 @@ export interface PlatformConnection {
   tokenExpiresAt?: string | null;
   followerCount?: number | null;
   scopes?: string[] | null;
+  language: string; // Target language for this channel (en, hi, es, pt)
 }
 
 /**

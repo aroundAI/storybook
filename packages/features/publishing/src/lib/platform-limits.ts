@@ -33,7 +33,7 @@ export const PLATFORM_LIMITS: Record<Platform, PlatformLimits> = {
     descriptionMax: 0, // No separate description
     tagsMax: 100, // Number of hashtags
     hashtagsSupported: true,
-    schedulingSupported: false,
+    schedulingSupported: true, // Server-side scheduling
     shortsSupported: true,
     minShortsDuration: 3,
     maxShortsDuration: 600,
@@ -43,7 +43,7 @@ export const PLATFORM_LIMITS: Record<Platform, PlatformLimits> = {
     descriptionMax: 0,
     tagsMax: 30, // Number of hashtags
     hashtagsSupported: true,
-    schedulingSupported: false,
+    schedulingSupported: true, // Server-side scheduling
     shortsSupported: true,
     minShortsDuration: 3,
     maxShortsDuration: 90,
@@ -63,7 +63,7 @@ export const PLATFORM_LIMITS: Record<Platform, PlatformLimits> = {
     descriptionMax: 0,
     tagsMax: 0,
     hashtagsSupported: true, // In tweet text
-    schedulingSupported: false,
+    schedulingSupported: true, // Server-side scheduling
     shortsSupported: false,
     minShortsDuration: 0,
     maxShortsDuration: 0,
@@ -73,7 +73,7 @@ export const PLATFORM_LIMITS: Record<Platform, PlatformLimits> = {
     descriptionMax: 0,
     tagsMax: 0,
     hashtagsSupported: true, // In post text
-    schedulingSupported: false,
+    schedulingSupported: true, // Server-side scheduling
     shortsSupported: false,
     minShortsDuration: 0,
     maxShortsDuration: 0,

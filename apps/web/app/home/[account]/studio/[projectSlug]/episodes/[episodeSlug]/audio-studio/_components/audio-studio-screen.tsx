@@ -30,6 +30,10 @@ import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 
 import { DialogueTimeline } from './dialogue-timeline';
+import {
+  LanguageTabBar,
+  type SupportedLanguage,
+} from './language-tab-bar';
 import { MusicTimeline } from './music-timeline';
 import { VoiceAssignmentPanel } from './voice-assignment-panel';
 
@@ -51,6 +55,10 @@ export function AudioStudioScreen({
   const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
   const [characters, setCharacters] = useState<CharacterAsset[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Language selection state
+  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
+  const [availableLanguages, setAvailableLanguages] = useState<SupportedLanguage[]>(['en']);
 
   // Timeline zoom state (pixels per second)
   const [pixelsPerSecond, setPixelsPerSecond] = useState(2);
@@ -89,10 +97,24 @@ export function AudioStudioScreen({
         getDialogueLinesAction({ episodeId: episode.id }),
         getCharactersForEpisodeAction({ episodeId: episode.id }),
       ]);
-      // Defensive: ensure we always set arrays
-      setDialogueLines(
-        Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [],
+
+      const allLines = Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [];
+
+      // Extract available languages from dialogue lines
+      const langs = new Set<SupportedLanguage>(
+        allLines.map((l) => (l.language || 'en') as SupportedLanguage)
       );
+      const langArray = Array.from(langs).sort((a, b) => {
+        const order = ['en', 'hi', 'es', 'pt'];
+        return order.indexOf(a) - order.indexOf(b);
+      });
+      setAvailableLanguages(langArray.length > 0 ? langArray : ['en']);
+
+      // Filter dialogue by selected language
+      const filteredLines = allLines.filter(
+        (l) => (l.language || 'en') === selectedLanguage
+      );
+      setDialogueLines(filteredLines);
       setCharacters(Array.isArray(chars) ? chars : []);
     } catch (error) {
       console.error('Failed to fetch audio studio data:', error);
@@ -103,7 +125,7 @@ export function AudioStudioScreen({
     } finally {
       setIsLoading(false);
     }
-  }, [episode.id]);
+  }, [episode.id, selectedLanguage]);
 
   useEffect(() => {
     void fetchData();
@@ -198,11 +220,10 @@ export function AudioStudioScreen({
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
               <button
                 onClick={() => setActiveTab('dialogue')}
-                className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all ${
-                  activeTab === 'dialogue'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
+                className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all ${activeTab === 'dialogue'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
               >
                 Dialogue{' '}
                 <span className="ml-1 font-normal text-gray-400">
@@ -211,25 +232,37 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('music')}
-                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${
-                  activeTab === 'music'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'music'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
               >
                 Music
               </button>
               <button
                 onClick={() => setActiveTab('sfx')}
-                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${
-                  activeTab === 'sfx'
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-                }`}
+                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'sfx'
+                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                  }`}
               >
                 SFX
               </button>
             </div>
+
+            {/* Language Selector (for Dialogue tab) */}
+            {activeTab === 'dialogue' && (
+              <>
+                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                <LanguageTabBar
+                  episodeId={episode.id}
+                  availableLanguages={availableLanguages}
+                  selectedLanguage={selectedLanguage}
+                  onLanguageChange={setSelectedLanguage}
+                  onLanguageAdded={fetchData}
+                />
+              </>
+            )}
 
             <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
 

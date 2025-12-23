@@ -34,9 +34,9 @@ export const getConnectionsAction = enhanceAction(
       .select('*')
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false })) as {
-      data: DBPlatformConnection[] | null;
-      error: unknown;
-    };
+        data: DBPlatformConnection[] | null;
+        error: unknown;
+      };
 
     if (error) {
       throw new Error('Failed to fetch connections');
@@ -51,15 +51,15 @@ export const getConnectionsAction = enhanceAction(
         profileImageUrl:
           conn.metadata && typeof conn.metadata === 'object'
             ? ((conn.metadata as Record<string, unknown>).profile_image_url as
-                | string
-                | undefined)
+              | string
+              | undefined)
             : undefined,
         status: determineStatus(conn),
         errorMessage:
           conn.metadata && typeof conn.metadata === 'object'
             ? ((conn.metadata as Record<string, unknown>).last_error as
-                | string
-                | undefined)
+              | string
+              | undefined)
             : undefined,
         scopes: conn.scopes ?? [],
         tokenExpiresAt: conn.token_expires_at,
@@ -219,6 +219,7 @@ export const getConnectedPlatformsAction = enhanceAction(
       (conn) => {
         const connWithMetadata = conn as typeof conn & {
           metadata?: Record<string, unknown> | null;
+          language?: string;
         };
         const metadata = connWithMetadata.metadata;
         return {
@@ -232,6 +233,7 @@ export const getConnectedPlatformsAction = enhanceAction(
           tokenExpiresAt: conn.token_expires_at ?? null,
           followerCount: (metadata?.follower_count as number) ?? null,
           scopes: conn.scopes ?? null,
+          language: connWithMetadata.language ?? 'en', // Target language for this channel
         };
       },
     );

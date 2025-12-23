@@ -107,6 +107,17 @@ export const ShotMetadataSchema = z.object({
       locations: z.array(z.string()),
     })
     .optional(),
+  // Shorts/Clips Candidate Fields
+  shortsCandidate: z.boolean().optional().default(false),
+  shortsMetadata: z
+    .object({
+      viralScore: z.number().min(1).max(10),
+      hookType: z
+        .enum(['question', 'reveal', 'conflict', 'visual', 'humor', 'cliffhanger'])
+        .optional(),
+      standaloneSummary: z.string().optional(),
+    })
+    .optional(),
 });
 
 /**

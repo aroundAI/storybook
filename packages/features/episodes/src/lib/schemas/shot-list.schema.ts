@@ -261,6 +261,17 @@ export const SceneShotOutputSchema = z.object({
   duration: z.number().min(3).max(10),
   metadata: GeneratedShotMetadataSchema,
   veoPrompt: VeoPromptSchema,
+  // Shorts candidate fields
+  shortsCandidate: z.boolean().optional().default(false),
+  shortsMetadata: z
+    .object({
+      viralScore: z.number().min(1).max(10),
+      hookType: z
+        .enum(['question', 'reveal', 'conflict', 'visual', 'humor', 'cliffhanger'])
+        .optional(),
+      standaloneSummary: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type SceneShotOutput = z.infer<typeof SceneShotOutputSchema>;

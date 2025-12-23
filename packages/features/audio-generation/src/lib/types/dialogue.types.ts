@@ -33,6 +33,18 @@ export interface DialogueVoiceGenerationMetadata {
 }
 
 /**
+ * Supported languages for multi-language content
+ */
+export type SupportedLanguage = 'en' | 'hi' | 'es' | 'pt';
+
+export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, string> = {
+  en: 'English',
+  hi: 'Hindi',
+  es: 'Spanish',
+  pt: 'Portuguese',
+};
+
+/**
  * A dialogue line with its audio generation status
  */
 export interface DialogueLine {
@@ -60,6 +72,10 @@ export interface DialogueLine {
   estimatedDurationSeconds: number | null;
   /** Metadata about the generation */
   generationMetadata: DialogueVoiceGenerationMetadata | null;
+  /** Language code for this dialogue line */
+  language: SupportedLanguage;
+  /** Reference to source dialogue line if this is a translation */
+  sourceDialogueId: string | null;
   /** Creation timestamp */
   createdAt?: string;
 }
