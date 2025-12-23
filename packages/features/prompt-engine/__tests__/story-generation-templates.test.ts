@@ -187,7 +187,7 @@ describe('Story Generation Prompt Templates', () => {
 
     it('should have correct metadata', () => {
       expect(shotListGeneration.slug).toBe('shot-list-generation');
-      expect(shotListGeneration.version).toBe(1);
+      expect(shotListGeneration.version).toBe(2);
       expect(shotListGeneration.category).toBe('story-generation');
     });
 
@@ -235,10 +235,10 @@ describe('Story Generation Prompt Templates', () => {
 
     it('should have constraints system prompt for AI video limitations', () => {
       const constraintsPrompt = shotListGeneration.system_prompts.find(
-        (p) => p.slug === 'constraints',
+        (p) => p.slug === 'veo-constraints',
       );
       expect(constraintsPrompt).toBeDefined();
-      expect(constraintsPrompt?.content).toContain('3-10 seconds');
+      expect(constraintsPrompt?.content).toContain('8 seconds');
     });
   });
 
