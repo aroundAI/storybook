@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine, SupportedLanguage } from '@kit/audio-generation/lib';
-import { SUPPORTED_LANGUAGES } from '@kit/audio-generation/lib';
 import { autoStitchAction, renderVideoAction } from '@kit/episodes/server';
 import type { EpisodeWithShots, Shot } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';

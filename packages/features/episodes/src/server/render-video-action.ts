@@ -444,7 +444,7 @@ function buildCloudTimeline(
 
     // Calculate total duration
     let totalDuration = 0;
-    const videoClips = shots.map((shot, i) => {
+    const videoClips = shots.map((shot, _i) => {
         const startTime = totalDuration;
         const duration = shot.duration_seconds || 5;
         totalDuration += duration;

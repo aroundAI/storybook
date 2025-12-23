@@ -75,7 +75,7 @@ export function normalizeShotType(value: string): string {
   if (!value) return value;
 
   // Step 1: Normalize to lowercase, trim, convert spaces to hyphens
-  let normalized = value
+  const normalized = value
     .toLowerCase()
     .trim()
     .replace(/\s+shot$/i, '') // Remove trailing " shot" suffix

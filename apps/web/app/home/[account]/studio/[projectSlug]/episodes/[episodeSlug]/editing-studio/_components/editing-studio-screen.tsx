@@ -7,7 +7,6 @@ import { useRouter } from 'next/navigation';
 import {
   Download,
   Globe,
-  Loader2,
   Pause,
   Play,
   RotateCcw,
@@ -33,7 +32,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
-import { toast } from '@kit/ui/sonner';
 
 import { TimelinePanel } from './timeline/timeline-panel';
 import { VideoPreview, type VideoPreviewHandle } from './video-preview';
