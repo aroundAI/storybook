@@ -61,6 +61,12 @@ export {
   getProjectAnalyticsAction,
 } from './dashboard-actions';
 
+// Account-level dashboard actions
+export {
+  getAccountDashboardData,
+  type AccountDashboardData,
+} from './account-dashboard-actions';
+
 // Types
 export type {
   NormalizedAnalytics,

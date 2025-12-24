@@ -97,3 +97,9 @@ export {
   PeakActivityCard,
   InterestsCard,
 } from './audience';
+
+// Account-level Company Dashboard
+export {
+  CompanyDashboard,
+  CompanyDashboardSkeleton,
+} from './company-dashboard';
