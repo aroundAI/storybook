@@ -4,21 +4,11 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { Redis } from 'ioredis';
 
-// Force local configuration (Highest Priority)
-process.env.STORAGE_PROVIDER = 'local';
-process.env.ENABLE_FILE_LOGGING = 'true';
-process.env.ENABLE_LOCAL_WORKERS = 'true';
-process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS = 'false';
-
-// Load environment variables in priority order (first match wins)
-// 1. .env.local (Secrets & Local Overrides)
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/web/.env.local') });
-
-// 2. .env.development (Dev Defaults)
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/web/.env.development') });
-
-// 3. .env (Shared Defaults)
-dotenv.config({ path: path.resolve(process.cwd(), 'apps/web/.env') });
+// Load consolidated environment variables
+// This file is manually generated to ensure a single source of truth for the local runner
+const envPath = path.resolve(process.cwd(), 'apps/web/.env.localprod');
+console.log('\x1b[36m%s\x1b[0m', `📝 Loading environment from: ${envPath}`);
+dotenv.config({ path: envPath });
 
 // Redis Configuration
 const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
