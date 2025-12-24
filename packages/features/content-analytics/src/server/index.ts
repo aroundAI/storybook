@@ -67,6 +67,16 @@ export {
   type AccountDashboardData,
 } from './account-dashboard-actions';
 
+// Language and content type analytics
+export {
+  getLanguagePerformance,
+  getPlatformLanguageMatrix,
+  getContentTypeComparison,
+  type LanguagePerformance,
+  type PlatformLanguageEntry,
+  type ContentTypeComparison,
+} from './language-analytics';
+
 // Types
 export type {
   NormalizedAnalytics,
