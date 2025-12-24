@@ -103,3 +103,18 @@ export {
   CompanyDashboard,
   CompanyDashboardSkeleton,
 } from './company-dashboard';
+
+// Language Analytics Dashboard (Multi-language analytics)
+export {
+  LanguagePerformanceCard,
+  LanguagePerformanceCardSkeleton,
+  PlatformLanguageMatrix,
+  PlatformLanguageMatrixSkeleton,
+  ContentTypeCard,
+  ContentTypeCardSkeleton,
+} from './language-analytics-cards';
+
+export {
+  LanguageAnalyticsDashboard,
+  LanguageAnalyticsDashboardSkeleton,
+} from './language-analytics-dashboard';
