@@ -71,10 +71,10 @@ export const publishToAllAction = enhanceAction(
           }
           const accessToken = tokenResult.accessToken;
 
-          // Get connection details (including language for analytics)
+          // Get connection details
           const { data: connection, error: connError } = await client
             .from('platform_connections')
-            .select('platform_account_id, platform_account_name, language')
+            .select('platform_account_id, platform_account_name')
             .eq('id', platform.connectionId)
             .single();
 
@@ -104,8 +104,9 @@ export const publishToAllAction = enhanceAction(
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: JSON.parse(JSON.stringify(platform.platformSpecific)),
-              // Language tracking for multi-language analytics
-              language: (connection as { language?: string }).language || 'en',
+              // Language tracking for multi-language analytics (defaults to 'en')
+              // TODO: Add language selection in publish UI when multi-language support is enabled
+              language: 'en',
             })
             .select()
             .single();
