@@ -1,9 +1,8 @@
 'use client';
 
-import { Film, Globe, MapPin, PlayCircle, Video } from 'lucide-react';
+import { Film, Globe, MapPin, Video } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
-import { Progress } from '@kit/ui/progress';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { formatNumber } from '../lib/format';

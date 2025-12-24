@@ -1,6 +1,5 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import {
     BarChart3,
     Calendar,
@@ -27,7 +26,7 @@ interface CompanyDashboardProps {
 /**
  * Company Dashboard - Shows aggregated analytics across all projects for an account
  */
-export function CompanyDashboard({ accountId, data }: CompanyDashboardProps) {
+export function CompanyDashboard({ accountId: _accountId, data }: CompanyDashboardProps) {
     const platforms = data.platformBreakdown.map((p) => p.platform);
 
     return (

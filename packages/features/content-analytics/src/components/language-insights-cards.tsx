@@ -4,7 +4,6 @@ import { useState } from 'react';
 
 import { useMutation } from '@tanstack/react-query';
 import {
-    AlertCircle,
     ChevronRight,
     Globe,
     Lightbulb,
