@@ -10,6 +10,11 @@ import {
   getProjectAudienceData,
   getProjectDailyMetrics,
 } from './aggregation-queries';
+import {
+  getContentTypeComparison,
+  getLanguagePerformance,
+  getPlatformLanguageMatrix,
+} from './language-analytics';
 
 /**
  * Schema for getProjectAnalyticsAction
@@ -109,6 +114,63 @@ export const getProjectAudienceDataAction = enhanceAction(
   },
   {
     schema: GetProjectAudienceDataSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Schema for getLanguageAnalyticsAction
+ */
+const GetLanguageAnalyticsSchema = z.object({
+  projectId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+/**
+ * Get language performance data for the Language tab
+ */
+export const getLanguagePerformanceAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getLanguagePerformance(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get platform × language matrix for the Language tab
+ */
+export const getPlatformLanguageMatrixAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getPlatformLanguageMatrix(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get content type comparison for the Language tab
+ */
+export const getContentTypeComparisonAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getContentTypeComparison(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
     auth: true,
   },
 );
