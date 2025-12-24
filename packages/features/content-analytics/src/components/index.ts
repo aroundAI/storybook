@@ -126,3 +126,9 @@ export {
   LanguageGeographyCard,
   LanguageGeographyCardSkeleton,
 } from './shorts-geography-cards';
+
+// Language Trend Chart
+export {
+  LanguageTrendChart,
+  LanguageTrendChartSkeleton,
+} from './language-trend-chart';

@@ -25,6 +25,7 @@ import {
   getContentTypeComparisonAction,
   getGeographyByLanguageAction,
   getLanguagePerformanceAction,
+  getLanguageTrendAction,
   getPlatformLanguageMatrixAction,
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
@@ -229,6 +230,23 @@ export function AnalyticsDashboard({
     enabled: activeTab === 'language',
   });
 
+  // Fetch language trend for trend chart
+  const { data: languageTrend, isLoading: isTrendLoading } = useQuery({
+    queryKey: [
+      'language-trend',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getLanguageTrendAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
   // Filter data by selected platforms
   // projectData.platformTotals has { platform, views, likes, comments, shares, percentage }
   const filteredPlatformTotals = projectData?.platformTotals?.filter((p) =>
@@ -409,7 +427,7 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="language" className="mt-6">
-          {isLanguageLoading || isMatrixLoading || isContentTypeLoading || isShortsLoading || isGeographyLoading ? (
+          {isLanguageLoading || isMatrixLoading || isContentTypeLoading || isShortsLoading || isGeographyLoading || isTrendLoading ? (
             <LanguageAnalyticsDashboardSkeleton />
           ) : (
             <LanguageAnalyticsDashboard
@@ -418,6 +436,7 @@ export function AnalyticsDashboard({
               contentTypeData={contentTypeComparison ?? null}
               shortsData={shortsPerformance ?? null}
               geographyData={geographyByLanguage ?? null}
+              trendData={languageTrend ?? null}
             />
           )}
         </TabsContent>

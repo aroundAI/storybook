@@ -927,3 +927,117 @@ export async function getGeographyByLanguage(
         return bTotal - aTotal;
     });
 }
+
+// =============================================================================
+// Language Trend Over Time
+// =============================================================================
+
+/**
+ * Daily views by language for trend chart
+ */
+export interface LanguageTrendEntry {
+    date: string;
+    viewsByLanguage: Record<string, number>;
+}
+
+/**
+ * Get daily views by language for trend visualization
+ */
+export async function getLanguageTrend(
+    projectId: string,
+    options?: { startDate?: Date; endDate?: Date },
+): Promise<LanguageTrendEntry[]> {
+    const client = getSupabaseServerClient();
+
+    const endDate = options?.endDate || new Date();
+    const startDate =
+        options?.startDate ||
+        new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    // Get project structure
+    const { data: seasons } = await client
+        .from('seasons')
+        .select('id')
+        .eq('project_id', projectId)
+        .is('deleted_at', null);
+
+    if (!seasons || seasons.length === 0) return [];
+
+    const seasonIds = seasons.map((s) => s.id);
+
+    const { data: episodes } = await client
+        .from('episodes')
+        .select('id')
+        .in('season_id', seasonIds)
+        .is('deleted_at', null);
+
+    if (!episodes || episodes.length === 0) return [];
+
+    const episodeIds = episodes.map((e) => e.id);
+
+    // Get publishes with language info
+    const { data: publishes } = await client
+        .from('publishes')
+        .select('id, platform_connection_id')
+        .in('episode_id', episodeIds);
+
+    if (!publishes || publishes.length === 0) return [];
+
+    const publishIds = publishes.map((p) => p.id);
+
+    // Get language from platform connections
+    const connectionIds = [...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean))];
+    const languageByConnection = new Map<string, string>();
+
+    if (connectionIds.length > 0) {
+        const { data: connections } = await client
+            .from('platform_connections')
+            .select('id, language')
+            .in('id', connectionIds as string[]);
+
+        for (const conn of connections || []) {
+            const c = conn as unknown as { id: string; language?: string };
+            languageByConnection.set(c.id, c.language || 'en');
+        }
+    }
+
+    // Create publish -> language map
+    const publishLanguageMap = new Map<string, string>();
+    for (const pub of publishes) {
+        const connId = pub.platform_connection_id;
+        const language = connId ? (languageByConnection.get(connId) || 'en') : 'en';
+        publishLanguageMap.set(pub.id, language);
+    }
+
+    // Get analytics grouped by date
+    const { data: analytics } = await client
+        .from('content_analytics')
+        .select('publish_id, snapshot_date, views')
+        .in('publish_id', publishIds)
+        .gte('snapshot_date', startDate.toISOString().split('T')[0])
+        .lte('snapshot_date', endDate.toISOString().split('T')[0])
+        .order('snapshot_date', { ascending: true });
+
+    // Aggregate by date and language
+    const trendByDate = new Map<string, Map<string, number>>();
+
+    for (const a of analytics || []) {
+        const date = a.snapshot_date;
+        const language = publishLanguageMap.get(a.publish_id) || 'en';
+
+        if (!trendByDate.has(date)) {
+            trendByDate.set(date, new Map());
+        }
+
+        const dateData = trendByDate.get(date)!;
+        dateData.set(language, (dateData.get(language) || 0) + (a.views || 0));
+    }
+
+    // Convert to array
+    return Array.from(trendByDate.entries())
+        .map(([date, langMap]) => ({
+            date,
+            viewsByLanguage: Object.fromEntries(langMap),
+        }))
+        .sort((a, b) => a.date.localeCompare(b.date));
+}

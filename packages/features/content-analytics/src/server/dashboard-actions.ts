@@ -209,3 +209,20 @@ export const getGeographyByLanguageAction = enhanceAction(
     auth: true,
   },
 );
+
+/**
+ * Get language trend over time for trend chart
+ */
+export const getLanguageTrendAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    const { getLanguageTrend } = await import('./language-analytics');
+    return getLanguageTrend(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);

@@ -74,11 +74,13 @@ export {
   getContentTypeComparison,
   getShortsSourcePerformance,
   getGeographyByLanguage,
+  getLanguageTrend,
   type LanguagePerformance,
   type PlatformLanguageEntry,
   type ContentTypeComparison,
   type ShortsSourcePerformance,
   type GeographyByLanguage,
+  type LanguageTrendEntry,
 } from './language-analytics';
 
 // Types
