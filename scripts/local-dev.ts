@@ -72,16 +72,12 @@ async function main() {
     console.log('\x1b[33m%s\x1b[0m', '📝 Configuration:');
     console.log(`   - Storage: Local (${process.env.STORAGE_LOCAL_PATH || 'default'})`);
     console.log(`   - Logging: Stdout + File (${process.env.STORAGE_LOCAL_PATH ? path.join(process.env.STORAGE_LOCAL_PATH, 'logs/app.log') : './logs/app.log'})`);
-    console.log(`   - Scheduler: Active`);
     console.log(`   - Workers: Active (via Next.js Instrumentation)`);
-
-    // Import jobs now that env is set
-    const { processScheduledPublishes } = await import('@kit/publishing/jobs');
-    const { refreshExpiringTokens } = await import('@kit/publishing/jobs');
+    console.log(`   - Scheduler: Handled by Workers (BullMQ Repeatable Jobs)`);
 
     // 2. Start Next.js Dev Server
     console.log('\x1b[32m%s\x1b[0m', '\n🌐 Starting Next.js Dev Server...');
-    console.log('\x1b[90m%s\x1b[0m', '(Workers will be started automatically by Next.js instrumentation)');
+    console.log('\x1b[90m%s\x1b[0m', '(Workers and scheduled jobs are started automatically by Next.js instrumentation)');
 
     const nextDev = spawn('pnpm', ['dev'], {
         stdio: 'inherit',
@@ -92,35 +88,6 @@ async function main() {
     nextDev.on('error', (err) => {
         console.error('Failed to start next dev:', err);
     });
-
-    // 3. Start Local Scheduler Loop
-    console.log('\x1b[35m%s\x1b[0m', '\n⏰ Starting Background Scheduler...\n');
-
-    // Helper to run job with logging
-    const runJob = async (name: string, fn: () => Promise<any>) => {
-        try {
-            // console.log(`[Scheduler] Running ${name}...`);
-            await fn();
-        } catch (error) {
-            console.error(`[Scheduler] ❌ ${name} failed:`, error);
-        }
-    };
-
-    // Initial Run
-    runJob('Scheduled Publishes', processScheduledPublishes);
-    runJob('Token Refresh', refreshExpiringTokens);
-
-    // Schedule Intervals
-
-    // Every 60 seconds: Publish Scheduled Content
-    setInterval(() => {
-        runJob('Scheduled Publishes', processScheduledPublishes);
-    }, 60 * 1000);
-
-    // Every 30 minutes: Refresh Tokens
-    setInterval(() => {
-        runJob('Token Refresh', refreshExpiringTokens);
-    }, 30 * 60 * 1000);
 
     // Handle shutdown
     const cleanup = () => {
