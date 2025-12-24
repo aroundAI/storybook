@@ -174,3 +174,38 @@ export const getContentTypeComparisonAction = enhanceAction(
     auth: true,
   },
 );
+
+/**
+ * Get shorts source performance for Phase 3
+ */
+export const getShortsSourcePerformanceAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    const { getShortsSourcePerformance } = await import('./language-analytics');
+    return getShortsSourcePerformance(projectId, {
+      startDate: from,
+      endDate: to,
+      limit: 10,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get geography by language for Phase 4
+ */
+export const getGeographyByLanguageAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    const { getGeographyByLanguage } = await import('./language-analytics');
+    return getGeographyByLanguage(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);

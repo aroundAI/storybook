@@ -118,3 +118,11 @@ export {
   LanguageAnalyticsDashboard,
   LanguageAnalyticsDashboardSkeleton,
 } from './language-analytics-dashboard';
+
+// Shorts & Geography Cards (Phase 3 & 4)
+export {
+  TopShortsCard,
+  TopShortsCardSkeleton,
+  LanguageGeographyCard,
+  LanguageGeographyCardSkeleton,
+} from './shorts-geography-cards';

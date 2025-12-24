@@ -8,16 +8,26 @@ import {
     PlatformLanguageMatrix,
     PlatformLanguageMatrixSkeleton,
 } from './language-analytics-cards';
+import {
+    TopShortsCard,
+    TopShortsCardSkeleton,
+    LanguageGeographyCard,
+    LanguageGeographyCardSkeleton,
+} from './shorts-geography-cards';
 import type {
     ContentTypeComparison,
+    GeographyByLanguage,
     LanguagePerformance,
     PlatformLanguageEntry,
+    ShortsSourcePerformance,
 } from '../server/language-analytics';
 
 interface LanguageAnalyticsDashboardProps {
     languageData: LanguagePerformance[] | null;
     matrixData: PlatformLanguageEntry[] | null;
     contentTypeData: ContentTypeComparison | null;
+    shortsData?: ShortsSourcePerformance[] | null;
+    geographyData?: GeographyByLanguage[] | null;
     isLoading?: boolean;
 }
 
@@ -28,11 +38,15 @@ interface LanguageAnalyticsDashboardProps {
  * - Language performance breakdown
  * - Platform × Language matrix
  * - Shorts vs Long-form comparison
+ * - Top performing shorts (Phase 3)
+ * - Geography by language (Phase 4)
  */
 export function LanguageAnalyticsDashboard({
     languageData,
     matrixData,
     contentTypeData,
+    shortsData,
+    geographyData,
     isLoading = false,
 }: LanguageAnalyticsDashboardProps) {
     if (isLoading) {
@@ -41,14 +55,20 @@ export function LanguageAnalyticsDashboard({
 
     return (
         <div className="space-y-6">
-            {/* Language Performance */}
+            {/* Row 1: Language Performance + Content Type */}
             <div className="grid gap-6 md:grid-cols-2">
                 <LanguagePerformanceCard data={languageData || []} />
                 <ContentTypeCard data={contentTypeData} />
             </div>
 
-            {/* Platform × Language Matrix */}
+            {/* Row 2: Platform × Language Matrix */}
             <PlatformLanguageMatrix data={matrixData || []} />
+
+            {/* Row 3: Shorts + Geography */}
+            <div className="grid gap-6 md:grid-cols-2">
+                <TopShortsCard data={shortsData || []} />
+                <LanguageGeographyCard data={geographyData || []} />
+            </div>
         </div>
     );
 }
@@ -61,6 +81,10 @@ export function LanguageAnalyticsDashboardSkeleton() {
                 <ContentTypeCardSkeleton />
             </div>
             <PlatformLanguageMatrixSkeleton />
+            <div className="grid gap-6 md:grid-cols-2">
+                <TopShortsCardSkeleton />
+                <LanguageGeographyCardSkeleton />
+            </div>
         </div>
     );
 }

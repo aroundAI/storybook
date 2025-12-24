@@ -23,11 +23,13 @@ import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
   getContentTypeComparisonAction,
+  getGeographyByLanguageAction,
   getLanguagePerformanceAction,
   getPlatformLanguageMatrixAction,
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
+  getShortsSourcePerformanceAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
@@ -186,6 +188,40 @@ export function AnalyticsDashboard({
     ],
     queryFn: () =>
       getContentTypeComparisonAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch shorts source performance for Language tab (Phase 3)
+  const { data: shortsPerformance, isLoading: isShortsLoading } = useQuery({
+    queryKey: [
+      'shorts-performance',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getShortsSourcePerformanceAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch geography by language for Language tab (Phase 4)
+  const { data: geographyByLanguage, isLoading: isGeographyLoading } = useQuery({
+    queryKey: [
+      'geography-by-language',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getGeographyByLanguageAction({
         projectId,
         from: dateRange.from,
         to: dateRange.to,
@@ -373,13 +409,15 @@ export function AnalyticsDashboard({
         </TabsContent>
 
         <TabsContent value="language" className="mt-6">
-          {isLanguageLoading || isMatrixLoading || isContentTypeLoading ? (
+          {isLanguageLoading || isMatrixLoading || isContentTypeLoading || isShortsLoading || isGeographyLoading ? (
             <LanguageAnalyticsDashboardSkeleton />
           ) : (
             <LanguageAnalyticsDashboard
               languageData={languagePerformance ?? null}
               matrixData={platformLanguageMatrix ?? null}
               contentTypeData={contentTypeComparison ?? null}
+              shortsData={shortsPerformance ?? null}
+              geographyData={geographyByLanguage ?? null}
             />
           )}
         </TabsContent>
