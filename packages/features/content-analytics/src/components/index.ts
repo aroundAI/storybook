@@ -132,3 +132,11 @@ export {
   LanguageTrendChart,
   LanguageTrendChartSkeleton,
 } from './language-trend-chart';
+
+// Phase 4: AI Insights and Geography Heatmap
+export {
+  GeographyHeatmapCard,
+  GeographyHeatmapCardSkeleton,
+  LanguageInsightsCard,
+  LanguageInsightsCardSkeleton,
+} from './language-insights-cards';

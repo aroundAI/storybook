@@ -83,7 +83,11 @@ export {
   type LanguageTrendEntry,
 } from './language-analytics';
 
-// Types
+// Language AI insights
+export {
+  generateLanguageInsightsAction,
+  type LanguageInsightsResult,
+} from './language-insights-actions';
 export type {
   NormalizedAnalytics,
   PublishForSync,

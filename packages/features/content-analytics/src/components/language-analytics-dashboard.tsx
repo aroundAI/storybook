@@ -9,14 +9,18 @@ import {
     PlatformLanguageMatrixSkeleton,
 } from './language-analytics-cards';
 import {
+    GeographyHeatmapCard,
+    GeographyHeatmapCardSkeleton,
+    LanguageInsightsCard,
+    LanguageInsightsCardSkeleton,
+} from './language-insights-cards';
+import {
     LanguageTrendChart,
     LanguageTrendChartSkeleton,
 } from './language-trend-chart';
 import {
     TopShortsCard,
     TopShortsCardSkeleton,
-    LanguageGeographyCard,
-    LanguageGeographyCardSkeleton,
 } from './shorts-geography-cards';
 import type {
     ContentTypeComparison,
@@ -28,6 +32,7 @@ import type {
 } from '../server/language-analytics';
 
 interface LanguageAnalyticsDashboardProps {
+    projectId: string;
     languageData: LanguagePerformance[] | null;
     matrixData: PlatformLanguageEntry[] | null;
     contentTypeData: ContentTypeComparison | null;
@@ -46,9 +51,11 @@ interface LanguageAnalyticsDashboardProps {
  * - Shorts vs Long-form comparison
  * - Language trend chart (time-series)
  * - Top performing shorts (Phase 3)
- * - Geography by language (Phase 4)
+ * - Geography heatmap (Phase 4)
+ * - AI Language Insights (Phase 4)
  */
 export function LanguageAnalyticsDashboard({
+    projectId,
     languageData,
     matrixData,
     contentTypeData,
@@ -75,11 +82,14 @@ export function LanguageAnalyticsDashboard({
             {/* Row 3: Platform × Language Matrix */}
             <PlatformLanguageMatrix data={matrixData || []} />
 
-            {/* Row 4: Shorts + Geography */}
+            {/* Row 4: Shorts + AI Insights */}
             <div className="grid gap-6 md:grid-cols-2">
                 <TopShortsCard data={shortsData || []} />
-                <LanguageGeographyCard data={geographyData || []} />
+                <LanguageInsightsCard projectId={projectId} />
             </div>
+
+            {/* Row 5: Geography Heatmap */}
+            <GeographyHeatmapCard data={geographyData || []} />
         </div>
     );
 }
@@ -95,8 +105,9 @@ export function LanguageAnalyticsDashboardSkeleton() {
             <PlatformLanguageMatrixSkeleton />
             <div className="grid gap-6 md:grid-cols-2">
                 <TopShortsCardSkeleton />
-                <LanguageGeographyCardSkeleton />
+                <LanguageInsightsCardSkeleton />
             </div>
+            <GeographyHeatmapCardSkeleton />
         </div>
     );
 }

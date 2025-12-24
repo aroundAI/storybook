@@ -431,6 +431,7 @@ export function AnalyticsDashboard({
             <LanguageAnalyticsDashboardSkeleton />
           ) : (
             <LanguageAnalyticsDashboard
+              projectId={projectId}
               languageData={languagePerformance ?? null}
               matrixData={platformLanguageMatrix ?? null}
               contentTypeData={contentTypeComparison ?? null}
