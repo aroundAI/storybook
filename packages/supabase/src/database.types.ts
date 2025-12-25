@@ -194,6 +194,90 @@ export type Database = {
           },
         ]
       }
+      audio_assets: {
+        Row: {
+          asset_id: string | null
+          audio_type: string
+          created_at: string
+          deleted_at: string | null
+          duration_seconds: number | null
+          file_path: string | null
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          last_used_at: string | null
+          metadata: Json | null
+          name: string | null
+          project_id: string
+          prompt: string
+          prompt_hash: string
+          provider: string
+          provider_job_id: string | null
+          status: string
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          asset_id?: string | null
+          audio_type: string
+          created_at?: string
+          deleted_at?: string | null
+          duration_seconds?: number | null
+          file_path?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          project_id: string
+          prompt: string
+          prompt_hash: string
+          provider?: string
+          provider_job_id?: string | null
+          status?: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          asset_id?: string | null
+          audio_type?: string
+          created_at?: string
+          deleted_at?: string | null
+          duration_seconds?: number | null
+          file_path?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          name?: string | null
+          project_id?: string
+          prompt?: string
+          prompt_hash?: string
+          provider?: string
+          provider_job_id?: string | null
+          status?: string
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_assets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audio_tracks: {
         Row: {
           created_at: string
@@ -571,6 +655,7 @@ export type Database = {
           personality: string | null
           physical_attributes: Json | null
           reference_images: string[] | null
+          role: string | null
         }
         Insert: {
           asset_id: string
@@ -579,6 +664,7 @@ export type Database = {
           personality?: string | null
           physical_attributes?: Json | null
           reference_images?: string[] | null
+          role?: string | null
         }
         Update: {
           asset_id?: string
@@ -587,6 +673,7 @@ export type Database = {
           personality?: string | null
           physical_attributes?: Json | null
           reference_images?: string[] | null
+          role?: string | null
         }
         Relationships: [
           {
