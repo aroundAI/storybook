@@ -12,3 +12,8 @@ export * from './dubbing-queries';
 export * from './audio-track-queries';
 export * from './music-actions';
 export * from './translate-dialogue-action';
+// ElevenLabs Music & SFX
+export * from './audio-asset-actions';
+export * from './sfx-actions';
+export * from './elevenlabs-music-actions';
+export * from './episode-audio-actions';
