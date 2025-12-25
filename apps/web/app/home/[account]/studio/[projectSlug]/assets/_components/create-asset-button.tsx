@@ -24,6 +24,7 @@ import {
 
 interface CreateAssetButtonProps {
   projectId: string;
+  accountId: string;
   account: string;
 }
 
@@ -31,6 +32,7 @@ type AssetDialogType = 'character' | 'location' | 'voice' | null;
 
 export function CreateAssetButton({
   projectId,
+  accountId,
   account: _account,
 }: CreateAssetButtonProps) {
   const router = useRouter();
@@ -102,6 +104,7 @@ export function CreateAssetButton({
           </DialogHeader>
           <VoiceProfileEditor
             projectId={projectId}
+            accountId={accountId}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />

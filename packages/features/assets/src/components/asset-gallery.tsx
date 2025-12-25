@@ -28,6 +28,7 @@ type TabType = 'character' | 'location' | 'voice';
 
 interface AssetGalleryProps {
   projectId: string;
+  accountId: string;
   initialTab?: TabType;
   onAssetSelect?: (asset: Asset) => void;
   onCreateAsset?: (type: TabType) => void;
@@ -35,6 +36,7 @@ interface AssetGalleryProps {
 
 export function AssetGallery({
   projectId,
+  accountId,
   initialTab = 'character',
   onAssetSelect,
   onCreateAsset,
@@ -302,6 +304,7 @@ export function AssetGallery({
           {editingAsset?.type === 'voice' && (
             <VoiceProfileEditor
               projectId={projectId}
+              accountId={accountId}
               voiceProfile={editingAsset}
               onSuccess={handleEditSuccess}
               onCancel={() => setEditingAsset(null)}

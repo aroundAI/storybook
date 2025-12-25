@@ -37,3 +37,11 @@ export {
   listCharactersAction,
   deleteCharacterAction,
 } from './character.mutations';
+
+// Re-export voice actions (ElevenLabs integration)
+export {
+  getElevenLabsVoicesAction,
+  assignVoiceToCharacterAction,
+} from './voice.actions';
+
+export type { ElevenLabsVoice } from './voice.actions';

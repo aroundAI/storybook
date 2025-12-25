@@ -60,6 +60,13 @@ async function AssetLibraryPage({
 
   const client = getSupabaseServerClient();
 
+  // Fetch account ID from slug
+  const { data: accountRecord } = await client
+    .from('accounts')
+    .select('id')
+    .eq('slug', account)
+    .single();
+
   // Fetch project by slug
   const { data: project, error } = await client
     .from('projects')
@@ -67,7 +74,7 @@ async function AssetLibraryPage({
     .eq('slug', projectSlug)
     .single();
 
-  if (error || !project) {
+  if (error || !project || !accountRecord) {
     notFound();
   }
 
@@ -98,11 +105,19 @@ async function AssetLibraryPage({
       </div>
 
       <PageHeader title={title} description={description}>
-        <CreateAssetButton projectId={project.id} account={account} />
+        <CreateAssetButton
+          projectId={project.id}
+          accountId={accountRecord.id}
+          account={account}
+        />
       </PageHeader>
 
       <PageBody>
-        <AssetGallery projectId={project.id} initialTab={tab ?? 'character'} />
+        <AssetGallery
+          projectId={project.id}
+          accountId={accountRecord.id}
+          initialTab={tab ?? 'character'}
+        />
       </PageBody>
     </>
   );
