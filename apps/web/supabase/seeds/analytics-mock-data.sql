@@ -10,7 +10,7 @@
 -- Configuration
 -- ==================================
 -- Account: storybook (5deaa894-2094-4da3-b4fd-1fada0809d1c)
--- User: test@storybook.dev (31a03e74-1639-45b6-bfa7-77447f1a4762)
+-- User: shaurya@storybook.digital (31a03e74-1639-45b6-bfa7-77447f1a4762)
 -- New Project ID: a1b2c3d4-e5f6-7890-abcd-ef1234567890
 
 -- ==================================
