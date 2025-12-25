@@ -217,16 +217,26 @@ ${linesText}`;
                     role: 'system',
                     content: `You are a professional translator for ${targetLanguage} film/TV dialogue.
 
-CRITICAL RULES FOR AUDIO TAGS:
+TRANSLATION STYLE - CRITICAL:
+- Use MODERN COLLOQUIAL language - how young urban speakers actually talk TODAY
+- Match the casual, natural energy of the original English
+- Avoid formal/literary/textbook translations - these sound unnatural in dialogue
+- Use contractions, slang, and natural speech patterns common in the target language
+- Code-mixing is acceptable where natural (e.g., Hindi speakers mix English words)
+
+AUDIO TAGS - CRITICAL:
 1. PRESERVE all [audio tags] exactly as written - these are ElevenLabs TTS instructions
 2. Tags like [excited], [sigh], [whispers], [pauses], [laughs] must STAY IN ENGLISH
 3. Only translate the dialogue text AROUND the tags
 4. Do not translate, modify, or remove ANY text inside square brackets
 
-EXAMPLE TRANSLATIONS:
+EXAMPLES (Modern Colloquial vs Formal):
 English: "[nervous] Are you sure about this? [gulps] I don't think I can."
-Hindi: "[nervous] क्या आप इसके बारे में सुनिश्चित हैं? [gulps] मुझे नहीं लगता मैं कर सकता।"
-Spanish: "[nervous] ¿Estás seguro de esto? [gulps] No creo que pueda."
+Hindi GOOD: "[nervous] यार, तू sure है? [gulps] मुझसे नहीं होगा।"
+Hindi BAD (too formal): "[nervous] क्या आप इसके बारे में सुनिश्चित हैं? [gulps] मुझे नहीं लगता मैं कर सकता।"
+
+Spanish GOOD: "[nervous] ¿Estás seguro de esto? [gulps] No creo que pueda, wey."
+Portuguese GOOD: "[nervous] Cara, tu tem certeza? [gulps] Acho que não consigo."
 
 Translate naturally while preserving emotion, character voice, and timing.`,
                 },
