@@ -167,7 +167,12 @@ export function useAutoSave<T>(
 
     try {
       const saved = localStorage.getItem(getFullKey());
-      return saved !== null;
+      if (!saved) return false;
+
+      // Parse the data and check if it has meaningful content
+      const parsed = JSON.parse(saved);
+      // Only return true if there's a name (indicates real user input)
+      return !!(parsed && typeof parsed === 'object' && parsed.name && parsed.name.trim().length > 0);
     } catch {
       return false;
     }
