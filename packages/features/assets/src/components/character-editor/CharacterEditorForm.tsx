@@ -95,16 +95,13 @@ export function CharacterEditorForm({
         <CharacterBasicInfo form={form} disabled={disabled} />
       </div>
 
-      {/* Image Upload - Always visible */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium">Reference Images</h3>
-        <CharacterImageUpload
-          form={form}
-          disabled={disabled}
-          projectId={projectId}
-          assetId={assetId}
-        />
-      </div>
+      {/* Character Image Upload - Always visible */}
+      <CharacterImageUpload
+        form={form}
+        disabled={disabled}
+        projectId={projectId}
+        assetId={assetId}
+      />
 
       {/* Collapsible Sections */}
       <Accordion type="multiple" defaultValue={['physical']} className="w-full">

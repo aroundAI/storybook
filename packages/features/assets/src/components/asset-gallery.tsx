@@ -22,9 +22,8 @@ import { AssetTabs } from './asset-tabs';
 import { CharacterEditor } from './character-editor';
 import { EmptyAssetState } from './empty-asset-state';
 import { LocationEditor } from './location-editor';
-import { VoiceProfileEditor } from './voice-profile-editor';
 
-type TabType = 'character' | 'location' | 'voice';
+type TabType = 'character' | 'location';
 
 interface AssetGalleryProps {
   projectId: string;
@@ -274,12 +273,7 @@ export function AssetGallery({
         <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Edit{' '}
-              {editingAsset?.type === 'voice'
-                ? 'Voice Profile'
-                : editingAsset?.type === 'location'
-                  ? 'Location'
-                  : 'Character'}
+              Edit {editingAsset?.type === 'location' ? 'Location' : 'Character'}
             </DialogTitle>
           </DialogHeader>
 
@@ -297,16 +291,6 @@ export function AssetGallery({
             <LocationEditor
               projectId={projectId}
               location={editingAsset}
-              onSuccess={handleEditSuccess}
-              onCancel={() => setEditingAsset(null)}
-            />
-          )}
-
-          {editingAsset?.type === 'voice' && (
-            <VoiceProfileEditor
-              projectId={projectId}
-              accountId={accountId}
-              voiceProfile={editingAsset}
               onSuccess={handleEditSuccess}
               onCancel={() => setEditingAsset(null)}
             />
