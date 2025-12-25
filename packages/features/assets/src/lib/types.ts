@@ -178,6 +178,18 @@ export function mapRowToAsset(row: AssetRow): Asset {
 // ============================================================================
 
 /**
+ * Character role for sorting
+ */
+export type CharacterRole =
+  | 'protagonist'
+  | 'deuteragonist'
+  | 'supporting'
+  | 'creature'
+  | 'object'
+  | 'background'
+  | 'narrator';
+
+/**
  * Character with full details from character_details table
  * Used for CharacterEditor and character display components
  */
@@ -185,6 +197,7 @@ export interface CharacterWithDetails extends Omit<Asset, 'type' | 'metadata'> {
   type: 'character';
   metadata: Record<string, unknown> | null;
   // Character details (from character_details table)
+  role: CharacterRole;
   physicalAttributes: PhysicalAttributes | null;
   personality: string | null;
   personalityTraits: PersonalityTraits | null;
@@ -199,6 +212,7 @@ export interface CharacterWithDetails extends Omit<Asset, 'type' | 'metadata'> {
  * Database row type for character with joined details
  */
 export interface CharacterDetailsRow {
+  role: string | null;
   physical_attributes: Record<string, unknown> | null;
   personality: string | null;
   element_prompt: string | null;
@@ -241,6 +255,7 @@ export function mapRowToCharacterWithDetails(
   return {
     ...baseAsset,
     type: 'character',
+    role: (details?.role as CharacterRole) ?? 'supporting',
     physicalAttributes:
       (physicalAttrs?.physicalAttributes as PhysicalAttributes | undefined) ??
       null,
