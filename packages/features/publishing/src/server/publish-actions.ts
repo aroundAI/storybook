@@ -82,7 +82,7 @@ export const publishToAllAction = enhanceAction(
             throw new Error('Platform connection not found');
           }
 
-          // Get connection language for analytics tracking
+          // Get connection language as fallback (if explicit language not provided)
           // Using separate query to handle both typed and untyped scenarios
           let connectionLanguage = 'en';
           try {
@@ -99,6 +99,9 @@ export const publishToAllAction = enhanceAction(
           } catch {
             // Column may not exist yet, use default
           }
+
+          // Use explicit language from request, or fall back to connection language
+          const publishLanguage = platform.language || connectionLanguage;
 
           // Create publish record
           // Determine if this is a server-side scheduled publish
@@ -122,8 +125,8 @@ export const publishToAllAction = enhanceAction(
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: JSON.parse(JSON.stringify(platform.platformSpecific)),
-              // Language from platform connection for multi-language analytics
-              language: connectionLanguage,
+              // Language from explicit request or connection fallback
+              language: publishLanguage,
             })
             .select()
             .single();

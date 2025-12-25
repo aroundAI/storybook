@@ -69,6 +69,8 @@ export interface PlatformPublishConfig {
   thumbnailUrl?: string;
   scheduledAt?: Date;
   platformSpecific: PlatformSpecificSettings;
+  // Language for this publish (from connection or user override)
+  language: string;
   // Connection info for display
   platformAccountName?: string;
   avatarUrl?: string | null;

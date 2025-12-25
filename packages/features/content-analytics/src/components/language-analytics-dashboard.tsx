@@ -1,6 +1,14 @@
 'use client';
 
 import {
+    BestEpisodesToClipCard,
+    BestEpisodesToClipCardSkeleton,
+    LanguageComparisonChart,
+    LanguageComparisonChartSkeleton,
+    ShortsROICard,
+    ShortsROICardSkeleton,
+} from './analytics-enhancement-cards';
+import {
     ContentTypeCard,
     ContentTypeCardSkeleton,
     LanguagePerformanceCard,
@@ -50,7 +58,10 @@ interface LanguageAnalyticsDashboardProps {
  * - Platform × Language matrix
  * - Shorts vs Long-form comparison
  * - Language trend chart (time-series)
- * - Top performing shorts (Phase 3)
+ * - Top performing shorts
+ * - Language comparison chart (Phase 3)
+ * - Shorts ROI calculator (Phase 3)
+ * - Best episodes recommendations (Phase 3)
  * - Geography heatmap (Phase 4)
  * - AI Language Insights (Phase 4)
  */
@@ -82,13 +93,23 @@ export function LanguageAnalyticsDashboard({
             {/* Row 3: Platform × Language Matrix */}
             <PlatformLanguageMatrix data={matrixData || []} />
 
-            {/* Row 4: Shorts + AI Insights */}
+            {/* Row 4: Phase 3 Analytics Enhancements */}
+            <div className="grid gap-6 md:grid-cols-3">
+                <LanguageComparisonChart data={languageData} />
+                <ShortsROICard contentTypeData={contentTypeData} />
+                <BestEpisodesToClipCard
+                    languageData={languageData}
+                    contentTypeData={contentTypeData}
+                />
+            </div>
+
+            {/* Row 5: Shorts + AI Insights */}
             <div className="grid gap-6 md:grid-cols-2">
                 <TopShortsCard data={shortsData || []} />
                 <LanguageInsightsCard projectId={projectId} />
             </div>
 
-            {/* Row 5: Geography Heatmap */}
+            {/* Row 6: Geography Heatmap */}
             <GeographyHeatmapCard data={geographyData || []} />
         </div>
     );
@@ -103,6 +124,11 @@ export function LanguageAnalyticsDashboardSkeleton() {
             </div>
             <LanguageTrendChartSkeleton />
             <PlatformLanguageMatrixSkeleton />
+            <div className="grid gap-6 md:grid-cols-3">
+                <LanguageComparisonChartSkeleton />
+                <ShortsROICardSkeleton />
+                <BestEpisodesToClipCardSkeleton />
+            </div>
             <div className="grid gap-6 md:grid-cols-2">
                 <TopShortsCardSkeleton />
                 <LanguageInsightsCardSkeleton />

@@ -77,6 +77,8 @@ export function PublishHub({
           avatarUrl: conn.avatarUrl,
           followerCount: conn.followerCount,
           tokenValid: conn.tokenValid,
+          // Language from connection for multi-language analytics
+          language: conn.language || 'en',
         }),
       );
       setPlatforms(configs);
@@ -98,6 +100,8 @@ export function PublishHub({
           thumbnailUrl: p.thumbnailUrl ?? null,
           scheduledAt: p.scheduledAt?.toISOString() ?? null,
           platformSpecific: p.platformSpecific,
+          // Language for multi-language analytics
+          language: p.language,
         })),
       });
     },

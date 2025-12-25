@@ -140,3 +140,13 @@ export {
   LanguageInsightsCard,
   LanguageInsightsCardSkeleton,
 } from './language-insights-cards';
+
+// Phase 3: Analytics Enhancements (Comparison, ROI, Recommendations)
+export {
+  LanguageComparisonChart,
+  LanguageComparisonChartSkeleton,
+  ShortsROICard,
+  ShortsROICardSkeleton,
+  BestEpisodesToClipCard,
+  BestEpisodesToClipCardSkeleton,
+} from './analytics-enhancement-cards';
