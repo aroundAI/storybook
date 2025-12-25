@@ -93,10 +93,8 @@ CREATE POLICY audio_assets_select_policy ON public.audio_assets
   USING (
     EXISTS (
       SELECT 1 FROM public.projects p
-      JOIN public.team_accounts ta ON ta.id = p.account_id
-      JOIN public.team_account_members tam ON tam.team_account_id = ta.id
       WHERE p.id = audio_assets.project_id
-        AND tam.user_id = auth.uid()
+        AND public.has_role_on_account(p.account_id)
     )
   );
 
@@ -106,10 +104,8 @@ CREATE POLICY audio_assets_insert_policy ON public.audio_assets
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.projects p
-      JOIN public.team_accounts ta ON ta.id = p.account_id
-      JOIN public.team_account_members tam ON tam.team_account_id = ta.id
       WHERE p.id = audio_assets.project_id
-        AND tam.user_id = auth.uid()
+        AND public.has_role_on_account(p.account_id)
     )
   );
 
@@ -119,10 +115,8 @@ CREATE POLICY audio_assets_update_policy ON public.audio_assets
   USING (
     EXISTS (
       SELECT 1 FROM public.projects p
-      JOIN public.team_accounts ta ON ta.id = p.account_id
-      JOIN public.team_account_members tam ON tam.team_account_id = ta.id
       WHERE p.id = audio_assets.project_id
-        AND tam.user_id = auth.uid()
+        AND public.has_role_on_account(p.account_id)
     )
   );
 
@@ -132,10 +126,8 @@ CREATE POLICY audio_assets_delete_policy ON public.audio_assets
   USING (
     EXISTS (
       SELECT 1 FROM public.projects p
-      JOIN public.team_accounts ta ON ta.id = p.account_id
-      JOIN public.team_account_members tam ON tam.team_account_id = ta.id
       WHERE p.id = audio_assets.project_id
-        AND tam.user_id = auth.uid()
+        AND public.has_role_on_account(p.account_id)
     )
   );
 
