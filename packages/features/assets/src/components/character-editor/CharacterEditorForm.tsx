@@ -16,7 +16,6 @@ import {
 } from '@kit/ui/accordion';
 
 import type { CharacterFormData } from '../../lib/schemas/character.schema';
-import type { VoiceAssetOption } from '../../lib/types';
 import {
   CharacterBackstory,
   CharacterBasicInfo,
@@ -78,15 +77,15 @@ import {
 interface CharacterEditorFormProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;
-  voiceAssets?: VoiceAssetOption[];
+  accountId: string;
 }
 
 export function CharacterEditorForm({
   form,
   disabled,
-  voiceAssets = [],
   projectId,
   assetId,
+  accountId,
 }: CharacterEditorFormProps & { projectId: string; assetId?: string }) {
   return (
     <div className="space-y-6">
@@ -158,7 +157,7 @@ export function CharacterEditorForm({
             <CharacterVoiceSelector
               form={form}
               disabled={disabled}
-              voiceAssets={voiceAssets}
+              accountId={accountId}
             />
           </AccordionContent>
         </AccordionItem>

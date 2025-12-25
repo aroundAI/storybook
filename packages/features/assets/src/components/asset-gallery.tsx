@@ -286,6 +286,7 @@ export function AssetGallery({
           {editingAsset?.type === 'character' && (
             <CharacterEditor
               projectId={projectId}
+              accountId={accountId}
               character={editingAsset as CharacterWithDetails}
               onSuccess={handleEditSuccess}
               onCancel={() => setEditingAsset(null)}

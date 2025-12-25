@@ -34,26 +34,34 @@ const GetElevenLabsVoicesSchema = z.object({
  */
 export const getElevenLabsVoicesAction = enhanceAction(
     async ({ accountId }, _user) => {
-        const client = getSupabaseServerClient();
+        // First check environment variable
+        let apiKey = process.env.ELEVENLABS_API_KEY;
 
-        // Get ElevenLabs API key from external_api_keys table
-        const { data: apiKeyRecord, error: keyError } = await client
-            .from('external_api_keys')
-            .select('encrypted_key')
-            .eq('account_id', accountId)
-            .eq('provider', 'elevenlabs')
-            .eq('is_active', true)
-            .single();
+        // Debug: log env var status
+        console.log('[ElevenLabs] ELEVENLABS_API_KEY from env:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT SET');
 
-        if (keyError || !apiKeyRecord) {
-            throw new Error(
-                'ElevenLabs API key not found. Please add your API key in Settings > API Keys.'
-            );
+        // Fall back to database if no env var
+        if (!apiKey) {
+            const client = getSupabaseServerClient();
+            const { data: apiKeyRecord } = await client
+                .from('external_api_keys')
+                .select('encrypted_key')
+                .eq('account_id', accountId)
+                .eq('provider', 'elevenlabs')
+                .eq('is_active', true)
+                .single();
+
+            if (apiKeyRecord) {
+                const keyRecord = apiKeyRecord as unknown as { encrypted_key: string };
+                apiKey = keyRecord.encrypted_key;
+            }
         }
 
-        // The encrypted_key column - cast through unknown for untyped column
-        const keyRecord = apiKeyRecord as unknown as { encrypted_key: string };
-        const apiKey = keyRecord.encrypted_key;
+        if (!apiKey) {
+            throw new Error(
+                'ElevenLabs API key not found. Set ELEVENLABS_API_KEY in env or add in Settings > API Keys.'
+            );
+        }
 
         // Fetch voices directly from ElevenLabs API
         const response = await fetch('https://api.elevenlabs.io/v1/voices', {

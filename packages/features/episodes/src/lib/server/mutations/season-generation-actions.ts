@@ -43,17 +43,41 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
       roadmap: data.roadmap,
     });
 
-    // 2. Call LLM
-    const { createLLMClient } = await import('@kit/llm');
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    // 2. Determine API key based on provider from prompt template
+    const provider = renderedPrompt.llmConfig.provider || 'deepseek';
+    let apiKey: string | undefined;
+
+    switch (provider) {
+      case 'gemini':
+        apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+        break;
+      case 'deepseek':
+        apiKey = process.env.DEEPSEEK_API_KEY;
+        break;
+      case 'openai':
+        apiKey = process.env.OPENAI_API_KEY;
+        break;
+      case 'anthropic':
+        apiKey = process.env.ANTHROPIC_API_KEY;
+        break;
+      default:
+        apiKey = process.env.DEEPSEEK_API_KEY;
+    }
+
+    // Log which key is being used for debugging
+    if (apiKey) {
+      logger.info({ ...ctx, provider, keyPrefix: apiKey.substring(0, 10) + '...' }, 'Using API key');
+    }
 
     if (!apiKey) {
-      throw new Error('LLM API key not configured');
+      throw new Error(`API key not configured for provider: ${provider}`);
     }
+
+    const { createLLMClient } = await import('@kit/llm');
 
     const llm = createLLMClient({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      provider: renderedPrompt.llmConfig.provider as any,
+      provider: provider as any,
       model: renderedPrompt.llmConfig.model,
       apiKey,
       temperature: renderedPrompt.llmConfig.temperature,

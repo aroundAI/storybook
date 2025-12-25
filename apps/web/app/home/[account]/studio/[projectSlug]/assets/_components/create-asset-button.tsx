@@ -87,6 +87,7 @@ export function CreateAssetButton({
           </DialogHeader>
           <CharacterEditor
             projectId={projectId}
+            accountId={accountId}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />
