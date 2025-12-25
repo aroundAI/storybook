@@ -24,12 +24,20 @@
       "order": 1
     },
     {
+      "slug": "audio-tags",
+      "name": "ElevenLabs Audio Tags",
+      "content": "EMOTIONAL DIALOGUE WITH ELEVENLABS AUDIO TAGS:\n\nEmbed emotion and delivery cues DIRECTLY IN the dialogue text using square bracket tags. These tags guide text-to-speech synthesis for natural, emotional delivery.\n\nAVAILABLE TAGS:\n\n1. EMOTIONAL STATES: [excited], [nervous], [frustrated], [sorrowful], [calm], [happy], [sad], [angry], [sarcastic], [curious], [tired], [anxious], [annoyed], [amused]\n\n2. REACTIONS/SOUNDS: [sigh], [laughs], [laughs harder], [gulps], [gasps], [whispers], [crying], [sobs], [clears throat], [exhales], [snorts]\n\n3. PACING/BEATS: [pauses], [short pause], [long pause], [hesitates], [stammers], [rushed]\n\n4. TONE/DELIVERY: [cheerfully], [flatly], [deadpan], [playfully], [whispering], [shouting], [quietly], [loudly], [mischievously]\n\nUSAGE RULES:\n- Place tags BEFORE the words they affect\n- Tags can appear mid-sentence for tone shifts\n- Use 1-2 word tags (short tags work best)\n- Combine tags naturally for emotional arcs\n\nEXAMPLES:\n- '[excited] This is amazing! [laughs] I can't believe it worked!'\n- '[nervous] Are you sure about this? [gulps] Okay... let's go.'\n- '[sigh] I knew this would happen. [resigned tone] We have no choice.'\n- '[whispering] Did you hear that? [gasps] It's coming from the basement!'",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
       "slug": "format",
       "name": "JSON Output Format",
       "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
       "layer_type": "format",
       "scope": "template",
-      "order": 2
+      "order": 3
     }
   ],
   "user_prompt": "Convert this story into a screenplay:\n\n**Story**:\n{{story}}\n\n**Target Duration**: {{target_duration}} seconds ({{duration_description}})\n**Content Style**: {{content_style}}\n**Locations**: {{location_names}}\n\n{{characters}}\n\n**Character Names for Dialogue**: {{character_names}}\n\nUse the character descriptions above to write dialogue that matches each character's personality and role.\n\n**Guidelines**:\n\n1. **Scene Structure**:\n   - Target {{scene_count_min}}-{{scene_count_max}} scenes (for {{target_duration}} seconds total)\n   - Average scene duration: approximately {{avg_scene_duration}} seconds\n   - Use standard scene headings: INT/EXT. LOCATION - TIME OF DAY\n   - Include clear action lines describing what we see\n\n2. **Dialogue** (CRITICAL - Must Meet Targets):\n   - Style: {{style}}\n   - Generate {{dialogue_lines_per_scene_min}}-{{dialogue_lines_per_scene_max}} dialogue lines PER SCENE\n   - Total dialogue lines target: {{total_dialogue_lines_min}}-{{total_dialogue_lines_max}} lines\n   - For dialogue-heavy content (kids' cartoons), prioritize character interactions\n   - Keep dialogue natural and purposeful\n   - Use dialogue to advance story and reveal character\n   - Include parentheticals for emotion/action only when necessary\n   - Each character should have meaningful dialogue exchanges\n\n3. **Action Lines**:\n   - Write in present tense\n   - Be concise and visual\n   - Focus on what camera can capture\n   - Break up long paragraphs for readability\n\n4. **Scene Types**:\n   - Vary scene locations for visual interest\n   - For dialogue-heavy style: emphasize character conversations\n   - Include establishing shots where needed\n\n5. **Character Names**:\n   - CAPITALIZE character names in action lines (first appearance)\n   - Character names in dialogue are always capitalized\n   - Use ONLY the characters provided: {{character_names}}\n\n**Screenplay Format Example**:\n\nINT. COFFEE SHOP - DAY\n\nJAKE (30s, disheveled) stares at his laptop screen, fingers frozen over the keyboard.\n\n                    SARAH (O.S.)\n            Jake?\n\nJake looks up. SARAH (20s, confident) stands at his table with two coffees.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"estimatedDuration\": number\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": number,\n      \"estimatedDuration\": number,\n      \"totalDialogueLines\": number,\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
@@ -129,12 +137,12 @@
             "dialogue": [
               {
                 "character": "MAYA",
-                "text": "Houston, this is Relay One. Please respond.",
+                "text": "[urgently] Houston, this is Relay One. [pauses] Please respond.",
                 "parenthetical": "into comm"
               },
               {
                 "character": "HOUSTON",
-                "text": "Relay One, we're picking up an anomalous signal on your frequency. Can you verify source?",
+                "text": "[calmly] Relay One, we're picking up an anomalous signal on your frequency. [short pause] Can you verify source?",
                 "parenthetical": "over comm, distorted"
               }
             ],
