@@ -84,7 +84,7 @@ export interface ListCharactersResponse {
  */
 export interface CharacterDetailsRow {
   asset_id: string;
-  voice_asset_id: string | null;
+  elevenlabs_voice_id: string | null;
   physical_attributes: Record<string, unknown> | null;
   personality: string | null;
   element_prompt: string | null;

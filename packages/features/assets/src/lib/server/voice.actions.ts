@@ -128,7 +128,7 @@ export const assignVoiceToCharacterAction = enhanceAction(
         // Note: characterId is the asset_id (PK of character_details)
         const { error } = await client
             .from('character_details')
-            .update({ voice_asset_id: voiceAssetId })
+            .update({ elevenlabs_voice_id: voiceAssetId })
             .eq('asset_id', characterId);
 
         if (error) {

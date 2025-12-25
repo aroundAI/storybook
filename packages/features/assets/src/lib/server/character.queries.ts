@@ -40,7 +40,7 @@ export async function getCharacter(
         personality,
         element_prompt,
         reference_images,
-        voice_asset_id
+        elevenlabs_voice_id
       )
     `,
     )
@@ -88,7 +88,7 @@ export async function listCharacters(
         personality,
         element_prompt,
         reference_images,
-        voice_asset_id
+        elevenlabs_voice_id
       )
     `,
       { count: 'exact' },

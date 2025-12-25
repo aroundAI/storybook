@@ -142,7 +142,7 @@ export const createCharacterAction = enhanceAction(
         personality: data.personality ?? null,
         element_prompt: data.elementPrompt ?? null,
         reference_images: data.referenceImages ?? null,
-        voice_asset_id: data.voiceAssetId ?? null,
+        elevenlabs_voice_id: data.voiceAssetId ?? null,
       });
 
     if (detailsError) {
@@ -170,7 +170,7 @@ export const createCharacterAction = enhanceAction(
           personality,
           element_prompt,
           reference_images,
-          voice_asset_id
+          elevenlabs_voice_id
         )
       `,
       )
@@ -235,7 +235,7 @@ export const getCharacterAction = enhanceAction(
           personality,
           element_prompt,
           reference_images,
-          voice_asset_id
+          elevenlabs_voice_id
         )
       `,
       )
@@ -254,9 +254,13 @@ export const getCharacterAction = enhanceAction(
     }
 
     logger.info(ctx, 'Character fetched successfully');
+
+    const mappedCharacter = mapRowToCharacterWithDetails(character as CharacterRow);
+    logger.info({ ...ctx, voiceAssetId: mappedCharacter.voiceAssetId }, 'Character mapped with voiceAssetId');
+
     return {
       success: true,
-      data: mapRowToCharacterWithDetails(character as CharacterRow),
+      data: mappedCharacter,
     };
   },
   {
@@ -273,6 +277,9 @@ export const updateCharacterAction = enhanceAction(
     const ctx = { name: 'character.update', assetId: data.assetId };
 
     logger.info(ctx, 'Updating character');
+
+    // Debug: log incoming voiceAssetId
+    logger.info({ ...ctx, voiceAssetIdFromInput: data.voiceAssetId }, 'Incoming voiceAssetId value');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -362,26 +369,37 @@ export const updateCharacterAction = enhanceAction(
       hasDetailsUpdates = true;
     }
     if (data.voiceAssetId !== undefined) {
-      detailsUpdates.voice_asset_id = data.voiceAssetId;
+      detailsUpdates.elevenlabs_voice_id = data.voiceAssetId;
       hasDetailsUpdates = true;
     }
 
-    // Update character_details if there are changes
+    // Update character_details if there are changes (or create if missing)
     if (hasDetailsUpdates) {
-      const { error: detailsError } = await client
+      logger.info({ ...ctx, detailsUpdates }, 'Updating character_details with');
+
+      // Use upsert to handle cases where character_details row doesn't exist
+      const { data: upsertedRows, error: detailsError } = await client
         .from('character_details')
-        .update(detailsUpdates)
-        .eq('asset_id', data.assetId);
+        .upsert(
+          {
+            asset_id: data.assetId,
+            ...detailsUpdates,
+          },
+          { onConflict: 'asset_id' }
+        )
+        .select();
 
       if (detailsError) {
         logger.error(
           { ...ctx, error: detailsError },
-          'Failed to update character details',
+          'Failed to upsert character details',
         );
         throw new Error(
-          `Failed to update character details: ${detailsError.message}`,
+          `Failed to upsert character details: ${detailsError.message}`,
         );
       }
+
+      logger.info({ ...ctx, rowsAffected: upsertedRows?.length ?? 0 }, 'character_details upsert result');
     }
 
     // Fetch updated character
@@ -395,7 +413,7 @@ export const updateCharacterAction = enhanceAction(
           personality,
           element_prompt,
           reference_images,
-          voice_asset_id
+          elevenlabs_voice_id
         )
       `,
       )
@@ -465,7 +483,7 @@ export const listCharactersAction = enhanceAction(
           personality,
           element_prompt,
           reference_images,
-          voice_asset_id
+          elevenlabs_voice_id
         )
       `,
         { count: 'exact' },

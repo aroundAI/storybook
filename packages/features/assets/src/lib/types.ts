@@ -203,7 +203,7 @@ export interface CharacterDetailsRow {
   personality: string | null;
   element_prompt: string | null;
   reference_images: string[] | null;
-  voice_asset_id: string | null;
+  elevenlabs_voice_id: string | null;
 }
 
 export interface CharacterRow extends AssetRow {
@@ -253,7 +253,7 @@ export function mapRowToCharacterWithDetails(
     backstory: (physicalAttrs?.backstory as string | undefined) ?? null,
     elementPrompt: details?.element_prompt ?? null,
     referenceImages: details?.reference_images ?? null,
-    voiceAssetId: details?.voice_asset_id ?? null,
+    voiceAssetId: details?.elevenlabs_voice_id ?? null,
   };
 }
 

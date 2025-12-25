@@ -61,6 +61,11 @@ export function CharacterVoiceSelector({
 
   const voices: ElevenLabsVoice[] = voicesData?.voices ?? [];
 
+  // Debug: log current form value and available voices
+  const currentValue = form.watch('voiceAssetId');
+  console.log('[VoiceSelector] Current form value:', currentValue);
+  console.log('[VoiceSelector] Available voices:', voices.map(v => ({ id: v.id, name: v.name })));
+
   if (isLoading) {
     return (
       <div className="space-y-4">
