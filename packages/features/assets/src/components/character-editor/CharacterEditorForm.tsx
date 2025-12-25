@@ -1,7 +1,8 @@
 /**
  * Character Editor Form (FILM-205)
  *
- * Form layout with accordion sections for character editing.
+ * Simplified form layout for character editing.
+ * Focus on: name, description, reference image, and voice selection.
  */
 
 'use client';
@@ -17,62 +18,10 @@ import {
 
 import type { CharacterFormData } from '../../lib/schemas/character.schema';
 import {
-  CharacterBackstory,
   CharacterBasicInfo,
-  CharacterClothing,
   CharacterImageUpload,
-  CharacterPersonality,
-  CharacterPhysicalAttributes,
   CharacterVoiceSelector,
 } from './sections';
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
-
-/**
- * Character Editor Form (FILM-205)
- *
- * Form layout with accordion sections for character editing.
- */
 
 interface CharacterEditorFormProps {
   form: UseFormReturn<CharacterFormData>;
@@ -103,49 +52,8 @@ export function CharacterEditorForm({
         assetId={assetId}
       />
 
-      {/* Collapsible Sections */}
-      <Accordion type="multiple" defaultValue={['physical']} className="w-full">
-        {/* Physical Attributes */}
-        <AccordionItem value="physical">
-          <AccordionTrigger data-test="character-physical-accordion">
-            Physical Attributes
-          </AccordionTrigger>
-          <AccordionContent>
-            <CharacterPhysicalAttributes form={form} disabled={disabled} />
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Personality */}
-        <AccordionItem value="personality">
-          <AccordionTrigger data-test="character-personality-accordion">
-            Personality
-          </AccordionTrigger>
-          <AccordionContent>
-            <CharacterPersonality form={form} disabled={disabled} />
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Clothing */}
-        <AccordionItem value="clothing">
-          <AccordionTrigger data-test="character-clothing-accordion">
-            Clothing & Style
-          </AccordionTrigger>
-          <AccordionContent>
-            <CharacterClothing form={form} disabled={disabled} />
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Backstory */}
-        <AccordionItem value="backstory">
-          <AccordionTrigger data-test="character-backstory-accordion">
-            Backstory & AI Prompt
-          </AccordionTrigger>
-          <AccordionContent>
-            <CharacterBackstory form={form} disabled={disabled} />
-          </AccordionContent>
-        </AccordionItem>
-
-        {/* Voice */}
+      {/* Voice Selection */}
+      <Accordion type="multiple" defaultValue={['voice']} className="w-full">
         <AccordionItem value="voice">
           <AccordionTrigger data-test="character-voice-accordion">
             Voice Profile
@@ -162,3 +70,4 @@ export function CharacterEditorForm({
     </div>
   );
 }
+
