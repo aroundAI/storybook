@@ -7,7 +7,6 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import {
   ArrowLeft,
-  AudioLines,
   BarChart3,
   Check,
   ChevronDown,
@@ -271,15 +270,7 @@ export function MobileStudioHeader({
                     }
                     onClick={closeSheet}
                   />
-                  <NavItem
-                    href={`${basePath}/assets?tab=voice`}
-                    icon={<AudioLines className="h-4 w-4" />}
-                    label="Voices"
-                    isActive={
-                      pathname.includes('/assets') && pathname.includes('voice')
-                    }
-                    onClick={closeSheet}
-                  />
+
                 </nav>
               </div>
 

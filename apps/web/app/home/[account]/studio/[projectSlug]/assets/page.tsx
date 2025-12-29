@@ -19,7 +19,7 @@ interface AssetLibraryPageProps {
     projectSlug: string;
   }>;
   searchParams: Promise<{
-    tab?: 'character' | 'location' | 'voice';
+    tab?: 'character' | 'location';
   }>;
 }
 
@@ -40,9 +40,7 @@ export async function generateMetadata({
   const tabTitle =
     tab === 'location'
       ? 'Story World'
-      : tab === 'voice'
-        ? 'Voice Library'
-        : 'Cast';
+      : 'Cast';
 
   return {
     title: project ? `${project.name} - ${tabTitle}` : tabTitle,
@@ -86,9 +84,6 @@ async function AssetLibraryPage({
   if (activeTab === 'location') {
     title = 'Story World';
     description = 'Locations and settings where your story takes place';
-  } else if (activeTab === 'voice') {
-    title = 'Voice Library';
-    description = 'Voice profiles for your characters';
   }
 
   return (
