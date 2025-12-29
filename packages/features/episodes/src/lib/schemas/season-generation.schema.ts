@@ -5,13 +5,56 @@ export const AnalyzeSeasonSchema = z.object({
   roadmap: z.string().min(50, 'Roadmap must be at least 50 characters long'),
 });
 
+/**
+ * A single beat/section extracted from the episode roadmap
+ * Preserves the original label from the source document
+ */
+export const EpisodeBeatSchema = z.object({
+  label: z.string(),   // Original label: "The Mystery", "Act 1", "Cold Open", etc.
+  content: z.string(), // The content for that beat
+});
+
+/**
+ * Flexible episode data extracted from roadmap
+ * Works with any episode structure (mystery, anime, drama, sitcom, etc.)
+ */
+export const ExtractedEpisodeSchema = z.object({
+  number: z.number(),
+  title: z.string(),
+
+  // Always synthesized - one-paragraph summary
+  synopsis: z.string(),
+
+  // Flexible: Array of labeled beats preserving original roadmap structure
+  beats: z.array(EpisodeBeatSchema),
+
+  // Optional structured elements if explicitly present
+  moral: z.string().nullish(),
+  signature_line: z.string().nullish(),
+
+  // References (support both naming conventions)
+  character_names: z.array(z.string()).optional(),
+  location_names: z.array(z.string()).optional(),
+  characterNames: z.array(z.string()).optional(),
+  locationNames: z.array(z.string()).optional(),
+
+  // Free-form tags
+  tags: z.array(z.string()).optional(),
+
+  // Legacy support: description field from older roadmaps
+  description: z.string().optional(),
+});
+
 export const GenerateSeasonEpisodesSchema = z.object({
   projectId: z.string().uuid(),
-  // Season name for the new season
+
+  // Season metadata
   seasonName: z.string().optional(),
-  // Refined premise from step 2
   premise: z.string().optional(),
-  // Validated list of characters to create
+  tone: z.string().optional(),
+  targetAudience: z.string().optional(),
+
+  // Characters to create
   charactersToCreate: z.array(
     z.object({
       name: z.string(),
@@ -19,7 +62,8 @@ export const GenerateSeasonEpisodesSchema = z.object({
       role: z.string().optional(),
     }),
   ),
-  // Validated list of locations to create
+
+  // Locations to create
   locationsToCreate: z.array(
     z.object({
       name: z.string(),
@@ -27,19 +71,18 @@ export const GenerateSeasonEpisodesSchema = z.object({
       setting: z.string().optional(),
     }),
   ),
-  // Mapping of extracted character names to existing asset IDs (from dropdowns)
-  // e.g. { "Dante": "uuid-123", "Virgil": "uuid-456" }
+
+  // Mappings to existing assets
   characterMappings: z.record(z.string(), z.string().uuid()),
-  // Mapping of extracted location names to existing asset IDs
   locationMappings: z.record(z.string(), z.string().uuid()),
-  // Validated list of episodes with character references
-  episodes: z.array(
-    z.object({
-      number: z.number(),
-      title: z.string(),
-      description: z.string(),
-      characterNames: z.array(z.string()).optional(),
-      locationNames: z.array(z.string()).optional(),
-    }),
-  ),
+
+  // Episodes with flexible structure
+  episodes: z.array(ExtractedEpisodeSchema),
 });
+
+// Type exports
+export type EpisodeBeat = z.infer<typeof EpisodeBeatSchema>;
+export type ExtractedEpisode = z.infer<typeof ExtractedEpisodeSchema>;
+export type GenerateSeasonEpisodesInput = z.infer<typeof GenerateSeasonEpisodesSchema>;
+
+

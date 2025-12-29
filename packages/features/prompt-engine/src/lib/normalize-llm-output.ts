@@ -64,6 +64,68 @@ const SHOT_TYPE_MAPPINGS: Record<string, string> = {
 };
 
 /**
+ * Valid time of day enum values (must match TimeOfDaySchema)
+ */
+const VALID_TIME_OF_DAY = new Set([
+  'dawn',
+  'morning',
+  'midday',
+  'afternoon',
+  'golden-hour',
+  'dusk',
+  'night',
+  'day',
+]);
+
+/**
+ * Common LLM time-of-day variations mapped to valid enum values
+ */
+const TIME_OF_DAY_MAPPINGS: Record<string, string> = {
+  // Sunset variations → dusk or golden-hour
+  sunset: 'golden-hour',
+  'late-afternoon': 'afternoon',
+  'early-morning': 'morning',
+  'early-afternoon': 'afternoon',
+  'late-morning': 'midday',
+  evening: 'dusk',
+  'early-evening': 'dusk',
+  'late-evening': 'night',
+  'golden hour': 'golden-hour',
+  goldenhour: 'golden-hour',
+  sunrise: 'dawn',
+  daytime: 'day',
+  nighttime: 'night',
+  noon: 'midday',
+  twilight: 'dusk',
+  // Handle casing
+  'golden-Hour': 'golden-hour',
+  'Golden-hour': 'golden-hour',
+};
+
+/**
+ * Normalize a time-of-day value from LLM output to valid enum value
+ */
+export function normalizeTimeOfDay(value: string): string {
+  if (!value) return value;
+
+  // Step 1: Normalize to lowercase, trim, convert spaces to hyphens
+  const normalized = value.toLowerCase().trim().replace(/\s+/g, '-');
+
+  // Step 2: Check mappings for known variations
+  if (TIME_OF_DAY_MAPPINGS[normalized]) {
+    return TIME_OF_DAY_MAPPINGS[normalized];
+  }
+
+  // Step 3: If already valid, return as-is
+  if (VALID_TIME_OF_DAY.has(normalized)) {
+    return normalized;
+  }
+
+  // Return normalized value even if not in enum (let Zod handle final validation)
+  return normalized;
+}
+
+/**
  * Normalize a shot type value from LLM output to valid enum value
  *
  * Handles common variations:
@@ -171,6 +233,7 @@ function normalizeVeoPrompt(veoPrompt: VeoPrompt): VeoPrompt {
  * Fixes:
  * - Shot type variations (e.g., "medium shot" → "medium")
  * - Null character fields in timeline entries
+ * - Time of day variations (e.g., "sunset" → "golden-hour")
  */
 export function normalizeSceneShotData(
   data: unknown,
@@ -187,6 +250,16 @@ export function normalizeSceneShotData(
     shotType: shot.shotType ? normalizeShotType(shot.shotType) : shot.shotType,
     // Normalize VEO prompt timeline entries
     veoPrompt: shot.veoPrompt ? normalizeVeoPrompt(shot.veoPrompt) : undefined,
+    // Normalize metadata.timeOfDay
+    metadata: shot.metadata
+      ? {
+        ...shot.metadata,
+        timeOfDay:
+          typeof shot.metadata.timeOfDay === 'string'
+            ? normalizeTimeOfDay(shot.metadata.timeOfDay)
+            : shot.metadata.timeOfDay,
+      }
+      : shot.metadata,
   }));
 
   return {

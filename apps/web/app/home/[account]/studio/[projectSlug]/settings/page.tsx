@@ -217,6 +217,16 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   | undefined,
                 language: (project.metadata as Record<string, unknown>)
                   ?.language as string | undefined,
+                recurringElement: (project.metadata as Record<string, unknown>)
+                  ?.recurringElement as
+                  | {
+                    enabled?: boolean;
+                    location?: string;
+                    purpose?: string;
+                    placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+                    dialogueHints?: string;
+                  }
+                  | undefined,
               }}
             />
           </If>

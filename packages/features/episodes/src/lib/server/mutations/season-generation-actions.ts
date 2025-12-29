@@ -13,17 +13,34 @@ import {
 } from '../../schemas/season-generation.schema';
 import { generateEpisodeSlug } from '../../slug-utils';
 
+
+interface EpisodeBeat {
+  label: string;
+  content: string;
+}
+
+interface ExtractedEpisode {
+  number: number;
+  title: string;
+  synopsis: string;
+  beats: EpisodeBeat[];
+  moral?: string | null;
+  signature_line?: string | null;
+  character_names?: string[];
+  location_names?: string[];
+  characterNames?: string[];
+  locationNames?: string[];
+  tags?: string[];
+  description?: string;  // Legacy support
+}
+
 interface AnalysisResult {
   premise: string;
+  tone?: string | null;
+  target_audience?: string | null;
   characters: Array<{ name: string; role: string; description: string }>;
   locations: Array<{ name: string; setting: string; description: string }>;
-  episodes: Array<{
-    number: number;
-    title: string;
-    description: string;
-    character_names: string[];
-    location_names: string[];
-  }>;
+  episodes: ExtractedEpisode[];
 }
 
 /**
@@ -325,31 +342,57 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
     // 5. Create Episodes (linked to season)
     const episodesToInsert = data.episodes.map((ep) => {
+      // Handle both naming conventions from LLM output
+      const charNames = ep.characterNames || ep.character_names || [];
+      const locNames = ep.locationNames || ep.location_names || [];
+
       const characterIds =
-        (ep.characterNames
-          ?.map((name) => finalCharacterMap[name])
+        (charNames
+          .map((name) => finalCharacterMap[name])
           .filter(Boolean) as string[]) ?? [];
 
       const locationIds =
-        (ep.locationNames
-          ?.map((name) => finalLocationMap[name])
+        (locNames
+          .map((name) => finalLocationMap[name])
           .filter(Boolean) as string[]) ?? [];
+
+      // Use synopsis as primary description, fallback to legacy description
+      const description = ep.synopsis || ep.description || '';
+
+      // Build premise from beats if synopsis is empty
+      const buildPremiseFromBeats = () => {
+        if (ep.beats && ep.beats.length > 0) {
+          return ep.beats.map(b => `${b.label}: ${b.content}`).join(' | ');
+        }
+        return description;
+      };
 
       return {
         project_id: data.projectId,
-        season_id: seasonId, // Link to the newly created season
+        season_id: seasonId,
         number: ep.number,
         title: ep.title,
         slug: generateEpisodeSlug(ep.number, ep.title),
-        description: ep.description,
+        description,
         status: 'draft',
         story_data: {
-          premise: ep.description, // Use episode-specific description as premise
+          // Synopsis as primary premise
+          premise: ep.synopsis || buildPremiseFromBeats(),
+          // Store flexible beats array (preserves original labels)
+          beats: ep.beats || [],
+          // Store moral if present
+          moral: ep.moral || null,
+          // Store signature line (catchphrase) if present
+          signature_line: ep.signature_line || null,
+          // Store tags for genre/mood
+          tags: ep.tags || [],
         },
         metadata: {
           character_ids: characterIds,
           location_ids: locationIds,
-          season_premise: data.premise, // Store season premise in metadata for reference
+          season_premise: data.premise,
+          season_tone: data.tone || null,
+          target_audience: data.targetAudience || null,
         },
       };
     });

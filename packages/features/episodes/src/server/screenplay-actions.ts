@@ -219,9 +219,11 @@ export const convertToScreenplayAction = enhanceAction(
     }
 
     // Build context for character/location names (Phase 4)
-    const { buildEpisodeContext, formatCharactersForPrompt } = await import(
-      './context-builder'
-    );
+    const {
+      buildEpisodeContext,
+      formatCharactersForPrompt,
+      formatRecurringElementForPrompt,
+    } = await import('./context-builder');
     const episodeContext = await buildEpisodeContext(data.episodeId);
 
     const characterNames = episodeContext.characters.map((c) => c.name);
@@ -310,6 +312,11 @@ export const convertToScreenplayAction = enhanceAction(
 
         // Style
         style: data.dialogueStyle ?? 'natural',
+
+        // Recurring story element (from project settings)
+        recurring_element: formatRecurringElementForPrompt(
+          episodeContext.recurringElement,
+        ),
       },
       context: {
         name: 'screenplay-conversion',

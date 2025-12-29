@@ -74,7 +74,7 @@ interface AudioAssetRow {
  * - Remove extra spaces
  * - Sort words alphabetically (for fuzzy matching)
  */
-export function normalizePrompt(prompt: string): string {
+function normalizePrompt(prompt: string): string {
     return prompt
         .toLowerCase()
         .trim()
@@ -87,7 +87,7 @@ export function normalizePrompt(prompt: string): string {
 /**
  * Generate SHA-256 hash of normalized prompt
  */
-export function hashPrompt(normalizedPrompt: string): string {
+function hashPrompt(normalizedPrompt: string): string {
     return crypto.createHash('sha256').update(normalizedPrompt).digest('hex');
 }
 

@@ -1,14 +1,14 @@
 {
     "slug": "season-generation",
     "name": "Season Generation",
-    "version": 1,
+    "version": 3,
     "category": "story",
-    "description": "Generate episode list from roadmap",
+    "description": "Generate episode list from roadmap with flexible structure extraction",
     "llm": {
         "provider": "gemini",
         "model": "gemini-3-pro-preview",
-        "max_tokens": 16000,
-        "temperature": 0.7,
+        "max_tokens": 32000,
+        "temperature": 0.5,
         "response_format": {
             "type": "json_object"
         }
@@ -17,18 +17,30 @@
         {
             "slug": "tv-showrunner",
             "name": "TV Showrunner Persona",
-            "content": "You are an expert TV showrunner assistant. Your task is to analyze a 'Production Roadmap' or 'Series Bible' and extract a list of episodes. CRITICAL: You must output ONLY valid JSON. No markdown, no explanations, no code fences. Just pure JSON.",
+            "content": "You are an expert TV showrunner and story analyst. Your task is to analyze a 'Production Roadmap' or 'Series Bible' and extract episode information while PRESERVING the original structure and labels from the source document.\n\nKEY PRINCIPLES:\n1. PRESERVE LABELS - If the roadmap uses labels like 'The Mystery', 'Act 1', 'Cold Open', etc., keep those exact labels.\n2. ADAPT TO ANY FORMAT - Different shows have different structures (mystery, anime, drama, sitcom). Do NOT force a specific structure.\n3. SYNTHESIZE SYNOPSIS - Always create a one-paragraph summary for each episode.\n4. EXTRACT BEATS IN ORDER - Capture all labeled sections from each episode as 'beats' in the order they appear.\n5. IDENTIFY PATTERNS - If there are recurring elements (catchphrases, moral lessons), extract them separately.\n\nCRITICAL: Output ONLY valid JSON. No markdown, no explanations, no code fences.",
             "layer_type": "persona",
             "scope": "story",
             "order": 0
         }
     ],
-    "user_prompt": "Please analyze the following Show Roadmap and extract the Series Bible details.\n\nROADMAP:\n{{roadmap}}\n\nInstructions:\n1. Analyze the roadmap to extract a cohesive Season Premise (Logline/Summary).\n2. Identify all detailed Characters mentioned, including their Role and a Description.\n3. Identify all key Locations mentioned, including a Description and Setting (e.g. 'Interior', 'Exterior', 'City', etc).\n4. Extract all Episodes, including Number, Title, Description, and lists of 'character_names' and 'location_names' appearing in that episode.\n\nCRITICAL RULES:\n- Output ONLY valid JSON\n- NO markdown code fences (no ```json)\n- NO explanatory text before or after the JSON\n- Ensure all strings are properly escaped\n- If the roadmap is very long, prioritize completeness over length - use all available tokens\n\nOutput JSON structure:\n{\n  \"premise\": \"string\",\n  \"characters\": [\n    { \"name\": \"string\", \"role\": \"string\", \"description\": \"string\" }\n  ],\n  \"locations\": [\n    { \"name\": \"string\", \"description\": \"string\", \"setting\": \"string\" }\n  ],\n  \"episodes\": [\n    { \"number\": number, \"title\": \"string\", \"description\": \"string\", \"character_names\": [\"string\"], \"location_names\": [\"string\"] }\n  ]\n}\n\nOutput ONLY the JSON object.",
+    "user_prompt": "Analyze this Show Roadmap and extract a comprehensive Series Bible with FLEXIBLE episode structure.\n\nROADMAP:\n{{roadmap}}\n\n{{recurring_element}}\n\n## EXTRACTION INSTRUCTIONS\n\n### 1. PREMISE & METADATA\n- Extract the overall series premise/logline\n- Identify tone (comedic, dramatic, action, educational, etc.)\n- Identify target audience if mentioned (kids 4-8, teens, adults, etc.)\n\n### 2. CHARACTERS\nFor each character, extract: name, role, description, material/type if mentioned\n\n### 3. LOCATIONS\nFor each location: name, description, setting type\n\n### 4. EPISODES (FLEXIBLE STRUCTURE)\n\nFor EACH episode, extract:\n- **number**: Episode number\n- **title**: Episode title\n- **synopsis**: Synthesize a 1-2 sentence summary of the episode\n- **beats**: Array of labeled content sections, PRESERVING the original labels from the roadmap\n  - Each beat has a 'label' (the original heading like 'The Mystery', 'Act 1', 'Cold Open') and 'content' (the text)\n  - Extract beats IN ORDER as they appear in the roadmap\n  - Include ALL labeled sections, not just plot points\n- **moral**: If an explicit moral/lesson is stated, extract it (otherwise null)\n- **signature_line**: If there's a recurring catchphrase or dialogue pattern, extract it (otherwise null)\n- **character_names**: Characters appearing in this episode\n- **location_names**: Locations used in this episode\n- **tags**: Any genre/mood tags you can infer (e.g., 'comedy', 'action', 'emotional')\n\n### EXAMPLE MAPPINGS\n\nIf roadmap has:\n```\n* **Creature:** The Dragon\n* **The Mystery:** Something is missing...\n* **The Reality:** It was just a misunderstanding...\n* **Walk & Talk:** \"See Cece, sometimes...\"\n* **Moral:** Be kind to others.\n```\n\nExtract as:\n```json\n{\n  \"synopsis\": \"When something goes missing, Dante suspects foul play but discovers it was just a misunderstanding.\",\n  \"beats\": [\n    { \"label\": \"Creature\", \"content\": \"The Dragon\" },\n    { \"label\": \"The Mystery\", \"content\": \"Something is missing...\" },\n    { \"label\": \"The Reality\", \"content\": \"It was just a misunderstanding...\" }\n  ],\n  \"moral\": \"Be kind to others.\",\n  \"signature_line\": \"See Cece, sometimes...\"\n}\n```\n\nIf roadmap has:\n```\n* **Cold Open:** Flashback to previous battle...\n* **Act 1:** Hero discovers new power...\n* **Training Montage:** Learning to control...\n* **Climax:** Epic showdown...\n* **Stinger:** Mysterious figure appears...\n```\n\nExtract as:\n```json\n{\n  \"synopsis\": \"After discovering a new power, the hero must learn to control it before the climactic showdown.\",\n  \"beats\": [\n    { \"label\": \"Cold Open\", \"content\": \"Flashback to previous battle...\" },\n    { \"label\": \"Act 1\", \"content\": \"Hero discovers new power...\" },\n    { \"label\": \"Training Montage\", \"content\": \"Learning to control...\" },\n    { \"label\": \"Climax\", \"content\": \"Epic showdown...\" },\n    { \"label\": \"Stinger\", \"content\": \"Mysterious figure appears...\" }\n  ]\n}\n```\n\n### OUTPUT FORMAT\n```\n{\n  \"premise\": \"string\",\n  \"tone\": \"string or null\",\n  \"target_audience\": \"string or null\",\n  \"characters\": [\n    { \"name\": \"string\", \"role\": \"string\", \"description\": \"string\" }\n  ],\n  \"locations\": [\n    { \"name\": \"string\", \"description\": \"string\", \"setting\": \"string or null\" }\n  ],\n  \"episodes\": [\n    {\n      \"number\": 1,\n      \"title\": \"string\",\n      \"synopsis\": \"string\",\n      \"beats\": [\n        { \"label\": \"string\", \"content\": \"string\" }\n      ],\n      \"moral\": \"string or null\",\n      \"signature_line\": \"string or null\",\n      \"character_names\": [\"string\"],\n      \"location_names\": [\"string\"],\n      \"tags\": [\"string\"]\n    }\n  ]\n}\n```\n\nCRITICAL RULES:\n- Output ONLY the JSON object, no markdown fences\n- PRESERVE original labels from the roadmap in beats\n- Extract ALL episodes, do not truncate\n- Use null for optional fields that aren't present\n\nOutput the JSON now:",
     "variables": {
         "roadmap": {
             "type": "string",
             "required": true,
             "description": "The production roadmap content"
+        },
+        "recurring_element": {
+            "type": "text",
+            "required": false,
+            "description": "Recurring story element that must appear in every episode"
+        }
+    },
+    "output": {
+        "type": "object",
+        "schema": {
+            "type": "zod",
+            "definition": "z.object({ premise: z.string(), tone: z.string().nullish(), target_audience: z.string().nullish(), characters: z.array(z.object({ name: z.string(), role: z.string(), description: z.string() })), locations: z.array(z.object({ name: z.string(), description: z.string(), setting: z.string().nullish() })), episodes: z.array(z.object({ number: z.number(), title: z.string(), synopsis: z.string(), beats: z.array(z.object({ label: z.string(), content: z.string() })), moral: z.string().nullish(), signature_line: z.string().nullish(), character_names: z.array(z.string()), location_names: z.array(z.string()), tags: z.array(z.string()).optional() })) })"
         }
     },
     "exported_at": "2025-01-01T00:00:00.000Z"

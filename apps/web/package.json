@@ -67,6 +67,7 @@
     "@kit/prompt-engine": "workspace:*",
     "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
+    "@kit/storage": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/team-accounts": "workspace:*",
     "@kit/ui": "workspace:*",

@@ -104,6 +104,7 @@ export const generateStoryIdeasAction = enhanceAction(
       buildEpisodeContext,
       formatCharactersForPrompt,
       formatLocationsForPrompt,
+      formatRecurringElementForPrompt,
     } = await import('./context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId);
@@ -130,11 +131,15 @@ export const generateStoryIdeasAction = enhanceAction(
           ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
           : '',
 
-      // Project settings
       genre: episodeContext.genre,
       target_audience: episodeContext.targetAudience,
       visual_style: episodeContext.visualStyle,
       style: 'balanced', // Default style
+
+      // Recurring story element (from project settings)
+      recurring_element: formatRecurringElementForPrompt(
+        episodeContext.recurringElement,
+      ),
     };
 
     logger.info(
@@ -249,12 +254,13 @@ export const generateFullStoryAction = enhanceAction(
       throw new Error('Project not found or access denied');
     }
 
-    // Build rich context for episode (Phase 1: Context Builder)
     const {
       buildEpisodeContext,
       formatCharactersForPrompt,
       formatLocationsForPrompt,
       formatPreviousEpisodesForPrompt,
+      formatRecurringElementForPrompt,
+      formatBeatsForPrompt,
     } = await import('./context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId);
@@ -302,11 +308,23 @@ export const generateFullStoryAction = enhanceAction(
         episodeContext.previousEpisodes,
       ),
 
-      // Project settings
       genre: episodeContext.genre,
       target_audience: episodeContext.targetAudience,
       visual_style: episodeContext.visualStyle,
       style: data.style ?? 'balanced',
+
+      // Recurring story element (from project settings)
+      recurring_element: formatRecurringElementForPrompt(
+        episodeContext.recurringElement,
+      ),
+
+      // Plot beats from roadmap extraction (synopsis, beats, moral, signature line)
+      plot_beats: formatBeatsForPrompt({
+        synopsis: episodeContext.synopsis,
+        beats: episodeContext.beats,
+        moral: episodeContext.moral,
+        signatureLine: episodeContext.signatureLine,
+      }),
     };
 
     logger.info(

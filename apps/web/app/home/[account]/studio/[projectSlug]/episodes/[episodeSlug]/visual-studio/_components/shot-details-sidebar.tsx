@@ -123,12 +123,61 @@ function isVeoPromptV2(
 /**
  * Parse timestamp string "MM:SS" to seconds
  */
+/**
+ * Parse time string to seconds
+ * Format: SS:FF where SS=seconds, FF=frames (assuming 100fps for simplicity)
+ * Examples: "00:00" = 0s, "04:00" = 4s, "08:00" = 8s
+ * Note: This is for shot-level timelines, not episode-level
+ */
 function parseTimeToSeconds(timeStr: string): number {
   const parts = timeStr.split(':');
   if (parts.length !== 2) return 0;
-  const minutes = parseInt(parts[0] ?? '0', 10);
-  const seconds = parseInt(parts[1] ?? '0', 10);
-  return minutes * 60 + seconds;
+  const seconds = parseInt(parts[0] ?? '0', 10);
+  const frames = parseInt(parts[1] ?? '0', 10);
+  // Treat as SS:FF format (seconds and centiseconds/frames)
+  return seconds + frames / 100;
+}
+
+/**
+ * Assemble a VEO 3.1 prompt from its component parts at runtime.
+ * This ensures the fullPrompt always reflects the current state of all parts.
+ * Format matches the LLM-generated structure from scene-shot-generation.json
+ */
+function assembleVeoPrompt(veoPrompt: VeoPromptDataV2): string {
+  const lines: string[] = [];
+
+  // 1. Shot line (camera info)
+  lines.push(veoPrompt.shotLine);
+  lines.push('');
+
+  // 2. Timeline events formatted as [start-end] content
+  for (const event of veoPrompt.timeline) {
+    const startSec = parseTimeToSeconds(event.startTime);
+    const endSec = parseTimeToSeconds(event.endTime);
+
+    if (event.type === 'dialogue' && event.character) {
+      // Dialogue: "[0s-4s] Character: 'text' (Tone: emotion)"
+      const emotionPart = event.emotion ? ` (Tone: ${event.emotion})` : '';
+      lines.push(`[${startSec}s-${endSec}s] ${event.character}: "${event.content}"${emotionPart}`);
+    } else {
+      // Action/transition: "[0s-4s] content. Setting: location"
+      lines.push(`[${startSec}s-${endSec}s] ${event.content}`);
+    }
+  }
+  lines.push('');
+
+  // 3. Audio section
+  lines.push(`AUDIO: ${veoPrompt.audio}`);
+  lines.push('');
+
+  // 4. Style section
+  lines.push(`STYLE: ${veoPrompt.style}`);
+  lines.push('');
+
+  // 5. Avoid section
+  lines.push(`AVOID: ${veoPrompt.avoid}`);
+
+  return lines.join('\n');
 }
 
 interface ShotDetailsSidebarProps {
@@ -218,10 +267,13 @@ export function ShotDetailsSidebar({
   const missingAssets = metadata?.missingAssets;
   const hasVeoData = !!veoPrompt;
 
-  // Form state
-  const [editedPrompt, setEditedPrompt] = useState(
-    veoPrompt?.fullPrompt ?? shot.prompt ?? '',
-  );
+  // Form state - use runtime-assembled prompt for V2
+  const [editedPrompt, setEditedPrompt] = useState(() => {
+    if (veoPrompt && isVeoPromptV2(veoPrompt)) {
+      return assembleVeoPrompt(veoPrompt);
+    }
+    return veoPrompt?.fullPrompt ?? shot.prompt ?? '';
+  });
   const [movement, setMovement] = useState(shot.cameraMovement ?? 'static');
   const [angle, setAngle] = useState(shot.cameraAngle ?? 'medium');
   const [lighting, setLighting] = useState('soft-day');
@@ -592,95 +644,67 @@ export function ShotDetailsSidebar({
                     <Clock className="h-3 w-3" />
                     Timeline ({shot.duration}s)
                   </h4>
-                  <div className="relative space-y-1.5">
-                    {/* Timeline Bar */}
-                    <div className="mb-3 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                      {veoPrompt.timeline.map((event, idx) => {
-                        const startSec = parseTimeToSeconds(event.startTime);
-                        const endSec = parseTimeToSeconds(event.endTime);
-                        const duration = shot.duration || 8;
-                        const left = (startSec / duration) * 100;
-                        const width = ((endSec - startSec) / duration) * 100;
-                        const colors = {
-                          action: 'bg-blue-500',
-                          dialogue: 'bg-purple-500',
-                          transition: 'bg-gray-400',
-                        };
-                        return (
-                          <div
-                            key={idx}
-                            className={cn(
-                              'absolute top-0 h-full rounded-full',
-                              colors[event.type],
-                            )}
-                            style={{ left: `${left}%`, width: `${width}%` }}
-                            title={`${event.type}: ${event.startTime}-${event.endTime}`}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Event List */}
-                    {veoPrompt.timeline.map((event, idx) => (
-                      <div
-                        key={idx}
-                        className={cn(
-                          'rounded-lg border p-2.5 backdrop-blur-sm',
-                          event.type === 'dialogue'
-                            ? 'border-purple-200/50 bg-purple-50/50 dark:border-purple-800/50 dark:bg-purple-900/20'
-                            : event.type === 'action'
-                              ? 'border-blue-200/50 bg-blue-50/50 dark:border-blue-800/50 dark:bg-blue-900/20'
-                              : 'border-gray-200/50 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/30',
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <div className="mb-1 flex items-center gap-2">
-                              <Badge
-                                variant="secondary"
+                  <div className="space-y-1.5">
+                    {/* Event List - simplified without visual timeline bar */}
+                    {veoPrompt.timeline.map((event, idx) => {
+                      // Convert time strings to seconds for cleaner display
+                      const startSec = parseTimeToSeconds(event.startTime);
+                      const endSec = parseTimeToSeconds(event.endTime);
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-white/30 bg-white/40 p-2.5 backdrop-blur-sm dark:border-white/10 dark:bg-white/5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="mb-1 flex items-center gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-xs capitalize',
+                                    event.type === 'dialogue' &&
+                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+                                    event.type === 'action' &&
+                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                  )}
+                                >
+                                  {event.type}
+                                </Badge>
+                                {event.character && (
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                    {event.character}
+                                  </span>
+                                )}
+                                {event.emotion && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs capitalize"
+                                  >
+                                    {event.emotion}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p
                                 className={cn(
-                                  'text-xs capitalize',
-                                  event.type === 'dialogue' &&
-                                  'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-                                  event.type === 'action' &&
-                                  'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                  'text-sm',
+                                  event.type === 'dialogue'
+                                    ? 'font-medium text-gray-800 dark:text-gray-200'
+                                    : 'text-gray-600 dark:text-gray-400',
                                 )}
                               >
-                                {event.type}
-                              </Badge>
-                              {event.character && (
-                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                  {event.character}
-                                </span>
-                              )}
-                              {event.emotion && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs capitalize"
-                                >
-                                  {event.emotion}
-                                </Badge>
-                              )}
+                                {event.type === 'dialogue'
+                                  ? `"${event.content}"`
+                                  : event.content}
+                              </p>
                             </div>
-                            <p
-                              className={cn(
-                                'text-sm',
-                                event.type === 'dialogue'
-                                  ? 'font-medium text-gray-800 dark:text-gray-200'
-                                  : 'text-gray-600 dark:text-gray-400',
-                              )}
-                            >
-                              {event.type === 'dialogue'
-                                ? `"${event.content}"`
-                                : event.content}
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                            {event.startTime}-{event.endTime}
+                            {/* Show time as seconds: "0s-4s" instead of "00:00-04:00" */}
+                            <div className="flex-shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                              {startSec}s-{endSec}s
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -723,7 +747,7 @@ export function ShotDetailsSidebar({
               </>
             )}
 
-            {/* Full VEO Prompt - Copy Ready */}
+            {/* Full VEO Prompt - Copy Ready (assembled at runtime for V2) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
@@ -732,9 +756,13 @@ export function ShotDetailsSidebar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() =>
-                    copyToClipboard(veoPrompt.fullPrompt, 'Full prompt')
-                  }
+                  onClick={() => {
+                    // Use runtime-assembled prompt for V2, fallback to stored for V1
+                    const prompt = isVeoPromptV2(veoPrompt)
+                      ? assembleVeoPrompt(veoPrompt)
+                      : veoPrompt.fullPrompt;
+                    copyToClipboard(prompt, 'Full prompt');
+                  }}
                   className="h-7 gap-1.5 text-xs"
                 >
                   {copiedField === 'Full prompt' ? (
@@ -746,7 +774,10 @@ export function ShotDetailsSidebar({
                 </Button>
               </div>
               <div className="max-h-40 overflow-y-auto rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
-                {veoPrompt.fullPrompt}
+                {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
+                {isVeoPromptV2(veoPrompt)
+                  ? assembleVeoPrompt(veoPrompt)
+                  : veoPrompt.fullPrompt}
               </div>
             </div>
 

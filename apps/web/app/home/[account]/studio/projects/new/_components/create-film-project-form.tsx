@@ -9,7 +9,6 @@ import { useForm, useWatch } from 'react-hook-form';
 import type { z } from 'zod';
 
 import type { TargetPlatform } from '@kit/film-studio-schemas/project';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -46,7 +45,7 @@ import {
 } from '../_lib/schema';
 import {
   createFilmProject,
-  updateProjectCoverImage,
+  uploadProjectCoverImage,
 } from '../_lib/server/create-film-project.action';
 import { CoverImageUpload } from './cover-image-upload';
 
@@ -231,57 +230,25 @@ export function CreateFilmProjectForm({
           },
         );
 
-        // 2. Upload cover image if provided
+        // 2. Upload cover image if provided (uses storage adapter)
         if (coverFile) {
-          const client = getSupabaseBrowserClient();
-          const fileExt = coverFile.name.split('.').pop();
-          const filePath = `${projectId}/cover.${fileExt}`;
-
-          // Debug logging
-          console.log('[Cover Upload Debug] Starting upload:', {
-            bucket: 'project-assets',
-            filePath,
+          console.log('[Cover Upload Debug] Starting upload via server action:', {
+            projectId,
+            fileName: coverFile.name,
             fileSize: coverFile.size,
             fileType: coverFile.type,
-            projectId,
           });
 
-          // Check auth status
-          const {
-            data: { user: authUser },
-          } = await client.auth.getUser();
-          console.log('[Cover Upload Debug] Auth status:', {
-            isLoggedIn: !!authUser,
-            userId: authUser?.id,
-          });
+          const formData = new FormData();
+          formData.append('file', coverFile);
 
-          const { error: uploadError, data: uploadData } = await client.storage
-            .from('project-assets')
-            .upload(filePath, coverFile, {
-              cacheControl: '3600',
-              upsert: true,
-            });
+          const uploadResult = await uploadProjectCoverImage(projectId, formData);
 
-          console.log('[Cover Upload Debug] Upload result:', {
-            success: !uploadError,
-            error: uploadError,
-            data: uploadData,
-          });
+          console.log('[Cover Upload Debug] Upload result:', uploadResult);
 
-          if (uploadError) {
-            console.error('Cover image upload failed:', uploadError);
-            toast.error(`Cover upload failed: ${uploadError.message}`);
-          } else {
-            // Get public URL and update project
-            const { data: publicUrlData } = client.storage
-              .from('project-assets')
-              .getPublicUrl(filePath);
-
-            console.log(
-              '[Cover Upload Debug] Public URL:',
-              publicUrlData.publicUrl,
-            );
-            await updateProjectCoverImage(projectId, publicUrlData.publicUrl);
+          if (!uploadResult.success) {
+            console.error('Cover image upload failed:', uploadResult.error);
+            toast.error(`Cover upload failed: ${uploadResult.error}`);
           }
         }
 
@@ -440,11 +407,10 @@ export function CreateFilmProjectForm({
                           type="button"
                           onClick={() => togglePlatform(platformKey)}
                           disabled={isPending}
-                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
-                            isSelected
-                              ? 'border-primary bg-primary/10'
-                              : 'border-border hover:border-primary/50'
-                          }`}
+                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${isSelected
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                            }`}
                           data-test={`platform-${key}`}
                         >
                           <span className="font-medium">{config.label}</span>

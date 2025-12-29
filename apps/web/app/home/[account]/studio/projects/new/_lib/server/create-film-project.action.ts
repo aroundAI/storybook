@@ -91,3 +91,49 @@ export async function updateProjectCoverImage(
     throw new Error(`Failed to update cover image: ${error.message}`);
   }
 }
+
+/**
+ * Upload project cover image using the storage adapter
+ * Respects STORAGE_PROVIDER env var (local or supabase)
+ */
+export async function uploadProjectCoverImage(
+  projectId: string,
+  formData: FormData,
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const { getStorageAdapter } = await import('@kit/storage');
+  const client = getSupabaseServerClient();
+
+  const file = formData.get('file') as File;
+  if (!file) {
+    return { success: false, error: 'No file provided' };
+  }
+
+  const fileExt = file.name.split('.').pop() || 'jpeg';
+  const filePath = `${projectId}/cover.${fileExt}`;
+
+  try {
+    // Convert File to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Use storage adapter (respects STORAGE_PROVIDER=local)
+    const storage = getStorageAdapter(client);
+    const result = await storage.upload('project-assets', filePath, buffer, {
+      contentType: file.type,
+      cacheControl: '3600',
+      upsert: true,
+    });
+
+    // Update project metadata with cover URL
+    await updateProjectCoverImage(projectId, result.url);
+
+    return { success: true, url: result.url };
+  } catch (error) {
+    console.error('[Cover Upload] Failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Upload failed',
+    };
+  }
+}
+
