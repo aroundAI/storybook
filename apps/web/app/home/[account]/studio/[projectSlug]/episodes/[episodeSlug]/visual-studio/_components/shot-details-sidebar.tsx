@@ -86,6 +86,7 @@ interface DialogueTiming {
 }
 
 interface ShotMetadataExtended {
+  characters?: string[];
   location?: string;
   timeOfDay?: string;
   mood?: string;
@@ -284,11 +285,17 @@ export function ShotDetailsSidebar({
   const referenceImages = metadata?.referenceImages;
   const dialogueTiming = metadata?.dialogueTiming;
   const missingAssets = metadata?.missingAssets;
+  const shotCharacters = metadata?.characters ?? [];
   const hasVeoData = !!veoPrompt;
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
     if (veoPrompt && isVeoPromptV2(veoPrompt)) {
-      return assembleVeoPrompt(veoPrompt, { projectVideoStyle, projectAestheticStyle, characterDetails });
+      return assembleVeoPrompt(veoPrompt, {
+        projectVideoStyle,
+        projectAestheticStyle,
+        characterDetails,
+        characterNames: shotCharacters,
+      });
     }
     return veoPrompt?.fullPrompt ?? shot.prompt ?? '';
   });
@@ -799,7 +806,12 @@ export function ShotDetailsSidebar({
                   onClick={() => {
                     // Use runtime-assembled prompt for V2, fallback to stored for V1
                     const prompt = isVeoPromptV2(veoPrompt)
-                      ? assembleVeoPrompt(veoPrompt, { projectVideoStyle, projectAestheticStyle, characterDetails })
+                      ? assembleVeoPrompt(veoPrompt, {
+                        projectVideoStyle,
+                        projectAestheticStyle,
+                        characterDetails,
+                        characterNames: shotCharacters,
+                      })
                       : veoPrompt.fullPrompt;
                     copyToClipboard(prompt, 'Full prompt');
                   }}
@@ -816,7 +828,12 @@ export function ShotDetailsSidebar({
               <div className="rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
                 {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
                 {isVeoPromptV2(veoPrompt)
-                  ? assembleVeoPrompt(veoPrompt, { projectVideoStyle, projectAestheticStyle, characterDetails })
+                  ? assembleVeoPrompt(veoPrompt, {
+                    projectVideoStyle,
+                    projectAestheticStyle,
+                    characterDetails,
+                    characterNames: shotCharacters,
+                  })
                   : veoPrompt.fullPrompt}
               </div>
             </div>
