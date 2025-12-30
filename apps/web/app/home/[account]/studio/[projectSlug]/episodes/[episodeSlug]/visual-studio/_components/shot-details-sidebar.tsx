@@ -156,12 +156,8 @@ function assembleVeoPrompt(
 ): string {
   const lines: string[] = [];
 
-  // 1. Shot line (camera info)
-  lines.push(veoPrompt.shotLine);
-  lines.push('');
-
-  // 2. Characters section (for image identification)
-  // Use detailed character info if provided, otherwise extract names from timeline
+  // 1. Characters section FIRST (for image identification before shot description)
+  // Use detailed character info if provided, otherwise extract names from timeline/metadata
   if (options?.characterDetails && options.characterDetails.length > 0) {
     // Detailed format with descriptions
     lines.push('CHARACTERS:');
@@ -189,6 +185,10 @@ function assembleVeoPrompt(
     }
   }
 
+  // 2. Shot line (camera info)
+  lines.push(veoPrompt.shotLine);
+  lines.push('');
+
   // 3. Timeline events formatted as [start-end] content
   for (const event of veoPrompt.timeline) {
     const startSec = parseTimeToSeconds(event.startTime);
@@ -209,17 +209,14 @@ function assembleVeoPrompt(
   lines.push(`AUDIO: ${veoPrompt.audio}`);
   lines.push('');
 
-  // 5. Style section (include project style if provided)
+  // 5. Style section (include project aesthetic style if provided)
   let styleText = veoPrompt.style;
-  const styleParts: string[] = [];
-  if (options?.projectVideoStyle) {
-    styleParts.push(`Video style: ${options.projectVideoStyle}`);
-  }
   if (options?.projectAestheticStyle) {
-    styleParts.push(`Project aesthetic: ${options.projectAestheticStyle}`);
-  }
-  if (styleParts.length > 0) {
-    styleText = `${veoPrompt.style}. ${styleParts.join('. ')}`;
+    // Append project aesthetic style at the end
+    styleText = `${veoPrompt.style}. ${options.projectAestheticStyle}`;
+  } else if (options?.projectVideoStyle) {
+    // Fallback to video style if no aesthetic style
+    styleText = `${veoPrompt.style}. ${options.projectVideoStyle}`;
   }
   lines.push(`STYLE: ${styleText}`);
   lines.push('');
@@ -413,17 +410,20 @@ export function ShotDetailsSidebar({
 
       {/* Characters Section */}
       {(() => {
-        // Extract unique characters from VEO timeline
-        const characters: string[] = [];
-        if (veoPrompt && isVeoPromptV2(veoPrompt)) {
+        // Use characters from shot metadata first, then fallback to timeline
+        let characters: string[] = [...shotCharacters];
+
+        // If no characters in metadata, extract from VEO timeline
+        if (characters.length === 0 && veoPrompt && isVeoPromptV2(veoPrompt)) {
           const charSet = new Set<string>();
           for (const event of veoPrompt.timeline) {
             if (event.character) {
               charSet.add(event.character);
             }
           }
-          characters.push(...charSet);
+          characters = [...charSet];
         }
+
         if (characters.length === 0) return null;
         return (
           <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
