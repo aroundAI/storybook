@@ -751,7 +751,7 @@ export function ShotDetailsSidebar({
                   {copiedField === 'Full prompt' ? 'Copied!' : 'Copy'}
                 </Button>
               </div>
-              <div className="max-h-40 overflow-y-auto rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
+              <div className="rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
                 {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
                 {isVeoPromptV2(veoPrompt)
                   ? assembleVeoPrompt(veoPrompt)
