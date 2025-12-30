@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   MapPin,
   Menu,
+  Music,
   Search,
   Settings,
   Users,
@@ -268,6 +269,13 @@ export function MobileStudioHeader({
                       pathname.includes('/assets') &&
                       pathname.includes('location')
                     }
+                    onClick={closeSheet}
+                  />
+                  <NavItem
+                    href={`${basePath}/audio-library`}
+                    icon={<Music className="h-4 w-4" />}
+                    label="Audio Library"
+                    isActive={pathname.includes('/audio-library')}
                     onClick={closeSheet}
                   />
 

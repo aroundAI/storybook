@@ -49,3 +49,6 @@ export { MusicTrackList, type MusicTrackListProps } from './MusicTrackList';
 
 // Audio Studio - main workspace (FILM-505)
 export { AudioStudio, type AudioStudioProps } from './AudioStudio';
+
+// Asset Picker - library selection modal
+export { AssetPicker, type PickerAudioAsset } from './AssetPicker';

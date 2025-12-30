@@ -30,6 +30,7 @@
     "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
+    "@kit/storage": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@supabase/supabase-js": "2.57.4",
     "@tanstack/react-query": "5.89.0",

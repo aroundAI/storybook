@@ -446,3 +446,309 @@ export async function findOrCreateAudioAsset(params: {
 
     return { asset: newAsset, isNew: true };
 }
+
+// =============================================================================
+// Generation Actions
+// =============================================================================
+
+const GenerateMusicSchema = z.object({
+    projectId: z.string().uuid(),
+    prompt: z.string().min(1).max(500),
+    name: z.string().max(100).optional(),
+    duration: z.number().min(5).max(300).default(30),
+    genre: z.string().optional(),
+    mood: z.string().optional(),
+});
+
+const GenerateSfxSchema = z.object({
+    projectId: z.string().uuid(),
+    prompt: z.string().min(1).max(500),
+    name: z.string().max(100).optional(),
+    duration: z.number().min(1).max(22).default(5),
+});
+
+const UploadAudioSchema = z.object({
+    projectId: z.string().uuid(),
+    audioType: z.enum(['music', 'sfx']),
+    name: z.string().min(1).max(100),
+    fileUrl: z.string().url(),
+    filePath: z.string().optional(),
+    durationSeconds: z.number().positive().optional(),
+    fileSizeBytes: z.number().int().positive().optional(),
+    metadata: z.record(z.unknown()).optional(),
+});
+
+/**
+ * Generate music using ElevenLabs Music API
+ * Creates asset record, generates audio, uploads to storage, updates record
+ */
+export const generateMusicAction = enhanceAction(
+    async (data): Promise<AudioAsset> => {
+        const logger = await getLogger();
+        const ctx = { name: 'audioAsset.generateMusic', projectId: data.projectId };
+
+        const client = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(client);
+
+        if (authError || !user) {
+            throw new Error('Authentication required');
+        }
+
+        logger.info({ ...ctx, prompt: data.prompt }, 'Starting music generation');
+
+        // Check for existing asset with same prompt (deduplication)
+        const { asset, isNew } = await findOrCreateAudioAsset({
+            projectId: data.projectId,
+            audioType: 'music',
+            prompt: data.prompt,
+            name: data.name,
+            metadata: {
+                genre: data.genre,
+                mood: data.mood,
+                duration: data.duration,
+            },
+        });
+
+        // If existing completed asset, return it
+        if (!isNew && asset.status === 'completed' && asset.fileUrl) {
+            logger.info({ ...ctx, assetId: asset.id }, 'Reusing existing music asset');
+            return asset;
+        }
+
+        // Update status to processing
+        await updateAudioAssetAction({
+            assetId: asset.id,
+            status: 'processing',
+        });
+
+        try {
+            // Import provider dynamically to avoid circular deps
+            const { ElevenLabsMusicProvider } = await import('../providers/elevenlabs-music');
+
+            const apiKey = process.env.ELEVENLABS_API_KEY;
+            if (!apiKey) {
+                throw new Error('ELEVENLABS_API_KEY is not configured');
+            }
+
+            const provider = new ElevenLabsMusicProvider({ apiKey });
+
+            // Generate music
+            const result = await provider.generateMusic({
+                prompt: data.prompt,
+                duration: data.duration,
+                genre: data.genre,
+                mood: data.mood,
+            });
+
+            if (result.status !== 'completed' || !result.audioBuffer) {
+                throw new Error('Music generation failed');
+            }
+
+            // Upload to storage
+            const fileName = `music/${asset.id}.mp3`;
+            const { getStorageAdapter } = await import('@kit/storage');
+            const storage = getStorageAdapter();
+
+            const uploadResult = await storage.upload(
+                'audio-assets',
+                fileName,
+                result.audioBuffer,
+                { contentType: 'audio/mpeg' },
+            );
+
+            // Update asset with completed status
+            await updateAudioAssetAction({
+                assetId: asset.id,
+                status: 'completed',
+                fileUrl: uploadResult.url,
+                filePath: fileName,
+                durationSeconds: result.duration,
+                fileSizeBytes: result.audioBuffer.length,
+                providerJobId: result.jobId,
+            });
+
+            logger.info({ ...ctx, assetId: asset.id }, 'Music generation completed');
+
+            // Return updated asset
+            return {
+                ...asset,
+                status: 'completed',
+                fileUrl: uploadResult.url,
+                filePath: fileName,
+                durationSeconds: result.duration ?? null,
+                fileSizeBytes: result.audioBuffer.length,
+                providerJobId: result.jobId,
+            };
+        } catch (error) {
+            logger.error({ ...ctx, error, assetId: asset.id }, 'Music generation failed');
+
+            await updateAudioAssetAction({
+                assetId: asset.id,
+                status: 'failed',
+                metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+            });
+
+            throw error;
+        }
+    },
+    { schema: GenerateMusicSchema }
+);
+
+/**
+ * Generate SFX using ElevenLabs Sound Effects API
+ */
+export const generateSfxAction = enhanceAction(
+    async (data): Promise<AudioAsset> => {
+        const logger = await getLogger();
+        const ctx = { name: 'audioAsset.generateSfx', projectId: data.projectId };
+
+        const client = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(client);
+
+        if (authError || !user) {
+            throw new Error('Authentication required');
+        }
+
+        logger.info({ ...ctx, prompt: data.prompt }, 'Starting SFX generation');
+
+        // Check for existing asset with same prompt
+        const { asset, isNew } = await findOrCreateAudioAsset({
+            projectId: data.projectId,
+            audioType: 'sfx',
+            prompt: data.prompt,
+            name: data.name,
+            metadata: { duration: data.duration },
+        });
+
+        // If existing completed asset, return it
+        if (!isNew && asset.status === 'completed' && asset.fileUrl) {
+            logger.info({ ...ctx, assetId: asset.id }, 'Reusing existing SFX asset');
+            return asset;
+        }
+
+        // Update status to processing
+        await updateAudioAssetAction({
+            assetId: asset.id,
+            status: 'processing',
+        });
+
+        try {
+            const { ElevenLabsSfxProvider } = await import('../providers/elevenlabs-sfx');
+
+            const apiKey = process.env.ELEVENLABS_API_KEY;
+            if (!apiKey) {
+                throw new Error('ELEVENLABS_API_KEY is not configured');
+            }
+
+            const provider = new ElevenLabsSfxProvider({ apiKey });
+
+            // Generate SFX
+            const result = await provider.generateSfx({
+                text: data.prompt,
+                durationSeconds: data.duration,
+            });
+
+            if (result.status !== 'completed' || !result.audioBuffer) {
+                throw new Error('SFX generation failed');
+            }
+
+            // Upload to storage
+            const fileName = `sfx/${asset.id}.mp3`;
+            const { getStorageAdapter } = await import('@kit/storage');
+            const storage = getStorageAdapter();
+
+            const uploadResult = await storage.upload(
+                'audio-assets',
+                fileName,
+                result.audioBuffer,
+                { contentType: 'audio/mpeg' },
+            );
+
+            // Update asset with completed status
+            await updateAudioAssetAction({
+                assetId: asset.id,
+                status: 'completed',
+                fileUrl: uploadResult.url,
+                filePath: fileName,
+                durationSeconds: result.duration,
+                fileSizeBytes: result.audioBuffer.length,
+                providerJobId: result.jobId,
+            });
+
+            logger.info({ ...ctx, assetId: asset.id }, 'SFX generation completed');
+
+            return {
+                ...asset,
+                status: 'completed',
+                fileUrl: uploadResult.url,
+                filePath: fileName,
+                durationSeconds: result.duration ?? null,
+                fileSizeBytes: result.audioBuffer.length,
+                providerJobId: result.jobId,
+            };
+        } catch (error) {
+            logger.error({ ...ctx, error, assetId: asset.id }, 'SFX generation failed');
+
+            await updateAudioAssetAction({
+                assetId: asset.id,
+                status: 'failed',
+                metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
+            });
+
+            throw error;
+        }
+    },
+    { schema: GenerateSfxSchema }
+);
+
+/**
+ * Upload an audio file as an asset
+ */
+export const uploadAudioAssetAction = enhanceAction(
+    async (data): Promise<AudioAsset> => {
+        const logger = await getLogger();
+        const ctx = { name: 'audioAsset.upload', projectId: data.projectId };
+
+        const client = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(client);
+
+        if (authError || !user) {
+            throw new Error('Authentication required');
+        }
+
+        logger.info({ ...ctx, name: data.name }, 'Creating uploaded audio asset');
+
+        // Create the asset with uploaded source
+        const promptHash = hashPrompt(normalizePrompt(data.name));
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: row, error } = await (client as any)
+            .from('audio_assets')
+            .insert({
+                project_id: data.projectId,
+                audio_type: data.audioType,
+                prompt_hash: promptHash,
+                prompt: data.name, // For uploads, name is the "prompt"
+                name: data.name,
+                file_url: data.fileUrl,
+                file_path: data.filePath,
+                duration_seconds: data.durationSeconds,
+                file_size_bytes: data.fileSizeBytes,
+                provider: 'upload',
+                status: 'completed',
+                metadata: { ...data.metadata, source: 'uploaded' },
+            })
+            .select()
+            .single();
+
+        if (error || !row) {
+            logger.error({ ...ctx, error }, 'Failed to create uploaded audio asset');
+            throw new Error('Failed to create audio asset');
+        }
+
+        logger.info({ ...ctx, assetId: row.id }, 'Uploaded audio asset created');
+
+        return mapRowToAudioAsset(row);
+    },
+    { schema: UploadAudioSchema }
+);

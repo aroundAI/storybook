@@ -23,6 +23,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   MapPin,
+  Music,
   Search,
   Settings,
   Users,
@@ -450,6 +451,13 @@ export function StudioSidebar({
                 isActive={
                   pathname.includes('/assets') && pathname.includes('location')
                 }
+                isCollapsed={isCollapsed}
+              />
+              <NavItem
+                href={`${basePath}/audio-library`}
+                icon={<Music className="h-4 w-4" />}
+                label="Audio Library"
+                isActive={pathname.includes('/audio-library')}
                 isCollapsed={isCollapsed}
               />
 
