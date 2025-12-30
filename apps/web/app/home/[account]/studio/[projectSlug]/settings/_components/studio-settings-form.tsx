@@ -280,6 +280,84 @@ export function StudioSettingsForm({
                 </FormItem>
               )}
             />
+
+            {/* Content Style - button grid */}
+            <FormField
+              control={form.control}
+              name="contentStyle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content Style</FormLabel>
+                  <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
+                    {CONTENT_STYLES.map((style) => {
+                      const StyleIcon = style.icon;
+                      return (
+                        <button
+                          key={style.value}
+                          type="button"
+                          onClick={() => field.onChange(style.value)}
+                          className={cn(
+                            'border-input hover:bg-accent flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors',
+                            field.value === style.value &&
+                            'bg-primary/10 border-primary ring-primary/20 ring-2',
+                          )}
+                        >
+                          <StyleIcon
+                            className={cn(
+                              'h-6 w-6',
+                              field.value === style.value
+                                ? 'text-primary'
+                                : 'text-muted-foreground',
+                            )}
+                          />
+                          <span className="text-sm font-medium">
+                            {style.label}
+                          </span>
+                          <span className="text-muted-foreground text-center text-xs">
+                            {style.description}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Default Episode Duration - button list */}
+            <FormField
+              control={form.control}
+              name="defaultEpisodeDuration"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Default Episode Duration
+                  </FormLabel>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {DURATION_PRESETS.map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        onClick={() => field.onChange(preset.value)}
+                        className={cn(
+                          'border-input hover:bg-accent rounded-md border px-3 py-1.5 text-sm transition-colors',
+                          field.value === preset.value &&
+                          'bg-primary text-primary-foreground border-primary',
+                        )}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                  <FormDescription>
+                    Default duration for new episodes.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
       </form>
