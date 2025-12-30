@@ -313,6 +313,105 @@ app: {
 }
 ```
 
+## Deployment 🚀
+
+### Lambda/SST Deployment
+
+This app deploys to **AWS Lambda via SST (Serverless Stack)** with **OpenNext 3.8.0**.
+
+**Infrastructure Configuration**: `sst.config.ts` (root)
+
+**Key Components**:
+
+- **Lambda Functions**: Next.js server, Email worker, WebSocket handlers
+- **CloudFront CDN**: Global content delivery
+- **S3**: Static assets and user uploads
+- **SQS**: Background job queue (email sending)
+- **API Gateway WebSocket**: Real-time features
+- **DynamoDB**: WebSocket connection tracking
+
+**Lambda Optimization**:
+
+```typescript
+// sst.config.ts - Lambda configuration
+transform: {
+  server: {
+    memory: "1024 MB",  // More memory = faster CPU
+    timeout: "30 seconds",
+    architecture: "arm64",  // Cheaper + faster
+  },
+}
+```
+
+**Cold Start Optimization**:
+
+- Bundle size should be < 50MB (check `.next/standalone`)
+- Use webpack optimization in `next.config.mjs`
+- Consider provisioned concurrency for critical paths
+- Monitor cold starts in CloudWatch
+
+**Environment Variables**:
+
+```bash
+# Provider configuration (vendor agnostic)
+DATABASE_PROVIDER=supabase
+AUTH_PROVIDER=supabase
+STORAGE_PROVIDER=s3
+EMAIL_PROVIDER=resend    # or 'ses' for production
+QUEUE_PROVIDER=sqs
+CACHE_PROVIDER=redis
+REDIS_URL=redis://upstash-endpoint
+```
+
+**Deployment Commands**:
+
+```bash
+# Deploy to AWS Lambda
+pnpm sst deploy --stage production
+
+# Deploy with custom domain
+DOMAIN_NAME=your-domain.com pnpm sst deploy --stage production
+
+# Remove infrastructure
+pnpm sst remove --stage production
+```
+
+**Monitoring**:
+
+- CloudWatch Logs: `/aws/lambda/{stage}-Web-server`
+- CloudWatch Dashboard: `{stage}-cost-monitoring`
+- Alarms configured for cost and DLQ monitoring
+
+**See**: `DEPLOYMENT.md` for complete deployment guide
+
+### Provider Abstraction
+
+**Zero code changes to switch providers** - just update environment variables:
+
+```bash
+# Example: Switch from Resend to AWS SES
+EMAIL_PROVIDER=ses              # Was: resend
+AWS_SES_CONFIG_SET=production   # Add SES config
+
+# Example: Switch from memory cache to Redis
+CACHE_PROVIDER=redis
+REDIS_URL=redis://upstash...
+
+# Example: Switch from Supabase to AWS RDS
+DATABASE_PROVIDER=postgresql
+POSTGRES_HOST=your-rds-endpoint.amazonaws.com
+```
+
+**Provider packages used**:
+
+- `@kit/providers-database`
+- `@kit/providers-storage`
+- `@kit/providers-email`
+- `@kit/providers-queue`
+- `@kit/providers-cache`
+
+**Migration guides**: See `SUPABASE_VENDOR_LOCKIN_REPORT.md`
+
 ## Security Guidelines 🛡️
 
 ### Authentication & Authorization

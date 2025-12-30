@@ -5,9 +5,10 @@ This file contains instructions for working with feature packages including acco
 ## Feature Package Structure
 
 - `accounts/` - Personal account management
-- `admin/` - Super admin functionality  
+- `admin/` - Super admin functionality
 - `auth/` - Authentication features
 - `notifications/` - Notification system
+- `projects/` - Project management (multi-user collaboration)
 - `team-accounts/` - Team account management
 
 ## Account Services
@@ -67,6 +68,237 @@ const count = await api.getMembersCount(accountId);
 // Get invitation
 const invitation = await api.getInvitation(adminClient, token);
 ```
+
+## Projects API
+
+**New Feature**: Multi-user project collaboration within team accounts.
+
+Located at: `packages/features/projects/src/lib/server/project.queries.ts` and `project.mutations.ts`
+
+### Project Queries
+
+```typescript
+import {
+  getAccountProjects,
+  getProject,
+  getProjectMembers,
+  hasProjectRole,
+  canPerformProjectAction,
+  getUserProjectRole,
+  getAvailableProjectMembers,
+} from '@kit/projects/server';
+
+// Get all projects for an account
+const projects = await getAccountProjects(accountId);
+// Returns: ProjectWithRole[] (includes user's role)
+
+// Get single project
+const project = await getProject(projectId);
+// Returns: Project | null
+
+// Get project members with user info
+const members = await getProjectMembers(projectId);
+// Returns: ProjectMemberWithUser[]
+
+// Check if user has specific role
+const isOwner = await hasProjectRole(projectId, 'owner');
+const hasAccess = await hasProjectRole(projectId); // Any role
+
+// Check specific permissions
+const canEdit = await canPerformProjectAction(projectId, 'project.edit');
+const canManageMembers = await canPerformProjectAction(projectId, 'project.members.add');
+
+// Get user's role on project
+const role = await getUserProjectRole(projectId);
+// Returns: 'owner' | 'admin' | 'member' | 'viewer' | null
+
+// Get available users to add (account members not in project)
+const availableUsers = await getAvailableProjectMembers(projectId, accountSlug);
+```
+
+### Project Mutations
+
+```typescript
+import {
+  createProjectAction,
+  updateProjectAction,
+  deleteProjectAction,
+  addProjectMemberAction,
+  updateProjectMemberAction,
+  removeProjectMemberAction,
+} from '@kit/projects/server';
+
+// Create project
+const result = await createProjectAction({
+  account_id: accountId,
+  name: 'My Project',
+  description: 'Project description',
+  slug: 'my-project',
+  metadata: { custom: 'data' },
+});
+
+// Update project
+await updateProjectAction({
+  id: projectId,
+  name: 'Updated Name',
+  status: 'active', // or 'archived'
+});
+
+// Delete project
+await deleteProjectAction({ id: projectId });
+
+// Add member
+await addProjectMemberAction({
+  project_id: projectId,
+  user_id: userId,
+  role: 'member', // 'owner' | 'admin' | 'member' | 'viewer'
+});
+
+// Update member role
+await updateProjectMemberAction({
+  project_id: projectId,
+  user_id: userId,
+  role: 'admin',
+});
+
+// Remove member
+await removeProjectMemberAction({
+  project_id: projectId,
+  user_id: userId,
+});
+```
+
+### Project Roles & Permissions
+
+**Roles** (hierarchical):
+- **Owner**: Full control, can delete project
+- **Admin**: Manage members, edit settings
+- **Member**: Edit project content
+- **Viewer**: Read-only access
+
+**Permissions**:
+- `project.view` - View project details
+- `project.edit` - Edit project metadata
+- `project.delete` - Delete project (owner only)
+- `project.members.view` - View member list
+- `project.members.add` - Add new members
+- `project.members.remove` - Remove members
+- `project.settings.view` - View project settings
+- `project.settings.edit` - Modify project settings
+
+**Database Functions**:
+```sql
+-- Check access with permission
+public.has_permission(user_id, account_id, 'projects.manage'::app_permissions)
+
+-- Get projects with user's role
+public.get_account_projects(target_account_id uuid)
+
+-- Get project members with user info
+public.get_project_members(target_project_id uuid)
+
+-- Check specific role
+public.has_role_on_project(target_project_id uuid, target_role text)
+
+-- Check action permission
+public.can_perform_project_action(target_project_id uuid, action text)
+```
+
+### Project Components
+
+**UI Components** (located in `packages/features/projects/src/components/`):
+
+```typescript
+import {
+  CreateProjectForm,
+  UpdateProjectForm,
+  DeleteProjectDialog,
+  ProjectsList,
+  ProjectCard,
+  ProjectMembersList,
+  AddProjectMemberForm,
+  UpdateProjectMemberDialog,
+  RemoveProjectMemberDialog,
+} from '@kit/projects/components';
+
+// Create project
+<CreateProjectForm
+  accountId={accountId}
+  onSuccess={() => router.refresh()}
+/>
+
+// Update project
+<UpdateProjectForm
+  project={project}
+  onSuccess={() => router.refresh()}
+/>
+
+// Manage members
+<AddProjectMemberForm
+  projectId={projectId}
+  availableMembers={availableMembers}
+  onSuccess={() => router.refresh()}
+/>
+```
+
+### Project Routes
+
+**Personal Account Projects**:
+- List: `/home/(user)/projects`
+- Detail: `/home/(user)/projects/[id]`
+- Settings: `/home/(user)/projects/[id]/settings`
+
+**Team Account Projects**:
+- List: `/home/[account]/projects`
+- Detail: `/home/[account]/projects/[id]`
+- Settings: `/home/[account]/projects/[id]/settings`
+
+### Project Usage Example
+
+```typescript
+// app/home/[account]/projects/page.tsx
+import { getAccountProjects } from '@kit/projects/server';
+import { ProjectsList } from '@kit/projects/components';
+
+export default async function ProjectsPage({
+  params,
+}: {
+  params: Promise<{ account: string }>;
+}) {
+  const { account } = await params;
+
+  // Fetch projects (RLS ensures user has access)
+  const projects = await getAccountProjects(account);
+
+  return (
+    <div>
+      <h1>Projects</h1>
+      <ProjectsList projects={projects} accountSlug={account} />
+    </div>
+  );
+}
+```
+
+### Project Security
+
+**Row Level Security (RLS)**:
+- Projects table enforces account membership
+- Project members table validates project access
+- Automatic creator added as owner via trigger
+
+**Authorization Pattern**:
+```typescript
+// Check permission before action
+const canDelete = await canPerformProjectAction(projectId, 'project.delete');
+
+if (!canDelete) {
+  throw new Error('Insufficient permissions');
+}
+
+await deleteProjectAction({ id: projectId });
+```
+
+**See**: `packages/features/projects/src/lib/server/project.queries.ts` for implementation details
 
 ## Workspace Contexts
 

@@ -2,6 +2,27 @@
 
 This file contains instructions for working with UI components, styling, and forms.
 
+## Deployment Considerations
+
+**Lambda/CloudFront Optimization**:
+- UI components are server-rendered in Lambda
+- Static assets served via CloudFront CDN
+- CSS optimized with Tailwind CSS 4
+
+**Bundle Size**:
+- UI components are tree-shakeable
+- Import only what you need: `import { Button } from '@kit/ui/button'`
+- Avoid: `import * from '@kit/ui'` (increases Lambda bundle size)
+
+**Cold Starts**:
+- UI components add minimal overhead (~5-10ms)
+- Use dynamic imports for heavy components:
+  ```typescript
+  const HeavyChart = dynamic(() => import('@kit/ui/chart'), {
+    loading: () => <Spinner />,
+  });
+  ```
+
 ## Core UI Library
 
 Import from `packages/ui/src/`:
@@ -10,15 +31,12 @@ Import from `packages/ui/src/`:
 // Shadcn components
 import { Button } from '@kit/ui/button';
 import { Card } from '@kit/ui/card';
-
 // StoryBook components
 import { If } from '@kit/ui/if';
 import { ProfileAvatar } from '@kit/ui/profile-avatar';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 ```
-
-NB: imports must follow the convention "@kit/ui/<name>", no matter the folder they're placed in
 
 ## Styling Guidelines
 
@@ -88,17 +106,17 @@ const onSubmit = (data) => {
 };
 ```
 
-### Form Examples
-
-- Contact form: `apps/web/app/(marketing)/contact/_components/contact-form.tsx`
-- Verify OTP form: `packages/otp/src/components/verify-otp-form.tsx`
-
 ### Guidelines
 
 - Place Zod resolver outside so it can be reused with Server Actions
 - Never add generics to `useForm`, use Zod resolver to infer types instead
 - Never use `watch()` instead use hook `useWatch`
 - Add `FormDescription` (optionally) and always add `FormMessage` to display errors
+
+### Form Examples
+
+- Contact form: `apps/web/app/(marketing)/contact/_components/contact-form.tsx`
+- Verify OTP form: `packages/otp/src/components/verify-otp-form.tsx`
 
 ## Internationalization
 
@@ -222,15 +240,9 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from '@kit/u
   render={({ field }) => (
     <FormItem>
       <FormLabel>Title</FormLabel>
-
       <FormControl>
         <Input placeholder="Enter title" {...field} />
       </FormControl>
-
-      <FormDescription>
-        The title of your task
-      </FormDescription>
-
       <FormMessage />
     </FormItem>
   )}
@@ -254,17 +266,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
         </FormControl>
-        
         <SelectContent>
           <SelectItem value="option1">Option 1</SelectItem>
           <SelectItem value="option2">Option 2</SelectItem>
         </SelectContent>
       </Select>
-
-      <FormDescription>
-        The category of your task
-      </FormDescription>
-
       <FormMessage />
     </FormItem>
   )}

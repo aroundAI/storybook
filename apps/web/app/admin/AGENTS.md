@@ -107,6 +107,44 @@ async function auditedAdminAction(action: string, data: unknown) {
 }
 ```
 
+## Deployment Considerations
+
+### Lambda/Serverless Deployment
+
+Admin operations work seamlessly in serverless environments (AWS Lambda via SST):
+
+- **Admin client**: Works in Lambda (uses service role key)
+- **Cold starts**: Admin pages may have slower initial loads
+- **Timeouts**: Complex admin operations should use background jobs (SQS)
+- **Monitoring**: Admin actions logged to CloudWatch
+
+**Environment Variables**:
+
+```bash
+# Admin operations require service role key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Or for non-Supabase:
+DATABASE_PROVIDER=postgresql
+POSTGRES_USER=admin  # Elevated permissions
+```
+
+### Provider-Agnostic Admin Patterns
+
+Admin operations work with any database provider:
+
+```typescript
+// Works with Supabase, PostgreSQL, MySQL
+const adminClient = getSupabaseServerAdminClient();
+
+// Always validate admin status first
+if (!(await isSuperAdmin(currentUser))) {
+  throw new Error('Unauthorized');
+}
+```
+
+**See**: `DEPLOYMENT.md` for admin-specific deployment configuration
+
 ## Common Patterns to Follow
 
 1. **Always wrap admin pages with `AdminGuard`**

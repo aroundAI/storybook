@@ -1,48 +1,86 @@
-# Supabase Database Schema Management
+# Database Schema Management
 
-This file contains guidance for working with database schemas, migrations, and Supabase development workflows.
+This file contains guidance for working with database schemas, migrations, and database development workflows (Supabase or vendor-agnostic).
+
+## Provider-Agnostic Database Patterns
+
+This platform supports **multiple database providers** via environment variables:
+
+```bash
+# Option 1: Supabase (recommended for development)
+DATABASE_PROVIDER=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-key
+
+# Option 2: PostgreSQL (AWS RDS, self-hosted)
+DATABASE_PROVIDER=postgresql
+POSTGRES_HOST=your-rds-endpoint.amazonaws.com
+POSTGRES_PORT=5432
+POSTGRES_DB=postgres
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=secure-password
+
+# Option 3: MySQL (for specific use cases)
+DATABASE_PROVIDER=mysql
+MYSQL_HOST=your-mysql-endpoint.amazonaws.com
+# ... MySQL config
+```
+
+**Zero code changes required** - the `@kit/providers-database` package handles provider switching automatically.
+
+**Migration Strategies**: See `SUPABASE_VENDOR_LOCKIN_REPORT.md` for detailed migration guides between providers.
 
 ## Schema Organization
 
 Schemas are organized in numbered files in the `schemas/` directory. Numbers are used to sort dependencies.
 
-Migrations are generated from schemas. If creating a new schema, the migration can be created using the exact same content.
+Migrations are generated from schemas. You MUST create a migration file for database changes to take effect.
 
-If modifying an existing migration, use the `diff` command:
-
-### 1. Creating New Schema Files
-
-```bash
-# Create new schema file
-touch apps/web/supabase/schemas/15-my-new-feature.sql
-
-# Apply changes and create migration
-pnpm --filter web run supabase:db:diff -f my-new-feature
-
-# Restart Supabase with fresh schema
-pnpm supabase:web:reset
-
-# Generate TypeScript types
-pnpm supabase:web:typegen
-```
-
-Verify the diff command generated the same content as the schema; if not, take steps to fix the migration.
-
-### 2. Modifying Existing Schemas
+### Method 1: Using `db diff` (Recommended for modifications)
 
 ```bash
 # Edit schema file (e.g., schemas/03-accounts.sql)
 # Make your changes...
 
 # Create migration for changes
-pnpm --filter web run supabase:db:diff -f update-accounts
+pnpm --filter web run supabase db diff -f update-accounts
 
 # Apply and test
-pnpm supabase:web:reset
+pnpm --filter web supabase migration up
 
-# After resetting
-pnpm supabase:web:typegen
+# Generate TypeScript types
+supabase gen types typescript --local > lib/database.types.ts
+cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
 ```
+
+**Verify** the diff command generated the expected SQL; if not, manually adjust the migration.
+
+### Method 2: Manual Migration from Schema (For new features)
+
+When adding a completely new schema file, manually create a timestamped migration:
+
+```bash
+# 1. Create schema file
+touch apps/web/supabase/schemas/19-my-feature.sql
+# ... edit the schema file ...
+
+# 2. Create timestamped migration from schema
+timestamp=$(date -u +"%Y%m%d%H%M%S")
+cp apps/web/supabase/schemas/19-my-feature.sql "apps/web/supabase/migrations/${timestamp}_my-feature.sql"
+
+# 3. Reset database to apply all migrations
+pnpm --filter web supabase db reset
+
+# 4. Generate TypeScript types
+supabase gen types typescript --local > lib/database.types.ts
+cp lib/database.types.ts ../../packages/supabase/src/database.types.ts
+```
+
+⚠️ **CRITICAL**: Schema files are just templates! Database changes require:
+
+- Either: Run `db diff` to generate migration
+- Or: Manually copy schema to migrations folder with timestamp
+- Then: Apply with `migration up` or `db reset`
 
 ## Security First Patterns
 
