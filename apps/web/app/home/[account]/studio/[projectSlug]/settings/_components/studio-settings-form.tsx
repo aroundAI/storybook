@@ -195,33 +195,55 @@ export function StudioSettingsForm({
     });
   });
 
-  // TEST 1: Just a simple Input field (no Form wrapper)
+  // TEST 2: With Form wrapper + FormField (minimal)
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Content Generation Settings</CardTitle>
-        <CardDescription>
-          Testing with just one simple Input field (no Form wrapper).
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <label className="text-sm font-medium">Target Audience</label>
-          <Input
-            placeholder="e.g., Children ages 4-8"
-            defaultValue={currentSettings.targetAudience}
-          />
-          <p className="text-muted-foreground text-sm mt-1">Test input</p>
-        </div>
-        <div>
-          <label className="text-sm font-medium">Another Field</label>
-          <Input
-            placeholder="Another test"
-            defaultValue=""
-          />
-          <p className="text-muted-foreground text-sm mt-1">Second test input</p>
-        </div>
-      </CardContent>
-    </Card>
+    <Form {...form}>
+      <form onSubmit={onSubmit}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Content Generation Settings</CardTitle>
+            <CardDescription>
+              Testing with Form wrapper + FormField components.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="targetAudience"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Target Audience</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., Children ages 4-8"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>Test description</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="language"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Language</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="e.g., en"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>Second field</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
+      </form>
+    </Form>
   );
 }
