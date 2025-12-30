@@ -341,6 +341,8 @@ create table if not exists public.shots (
   status varchar(50) default 'pending' not null,
   video_url text,
   thumbnail_url text,
+  first_frame_url text,
+  last_frame_url text,
   generation_job_id uuid,
   generation_metadata jsonb,
   created_at timestamp with time zone default now() not null,
@@ -357,6 +359,8 @@ comment on column public.shots.shot_number is 'Shot number within the scene';
 comment on column public.shots.sequence_number is 'Order within episode (1, 2, 3...)';
 comment on column public.shots.prompt is 'Kling/Runway-ready prompt';
 comment on column public.shots.status is 'Generation status: pending, queued, generating, completed, failed, approved';
+comment on column public.shots.first_frame_url is 'URL for first frame storyboard image';
+comment on column public.shots.last_frame_url is 'URL for last frame storyboard image';
 comment on column public.shots.generation_metadata is 'Provider-specific metadata (provider, cost, parameters)';
 comment on column public.shots.deleted_at is 'Soft delete timestamp';
 

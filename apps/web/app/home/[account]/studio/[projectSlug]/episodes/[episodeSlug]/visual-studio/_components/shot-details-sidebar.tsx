@@ -12,6 +12,7 @@ import {
   Download,
   ExternalLink,
   Image as ImageIcon,
+  Layers,
   Maximize2,
   MessageCircle,
   Pause,
@@ -22,6 +23,8 @@ import {
   Video,
   X,
 } from 'lucide-react';
+
+import { FrameUploader } from './frame-uploader';
 
 import { VideoUploader } from '@kit/episodes/components';
 import { updateShotAction } from '@kit/episodes/server';
@@ -590,6 +593,40 @@ export function ShotDetailsSidebar({
               compact
             />
           )}
+        </div>
+
+        {/* Storyboard Frames Section */}
+        <div className="border-b border-white/20 p-4 dark:border-white/10">
+          <h4 className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
+            <Layers className="h-3 w-3" />
+            Storyboard Frames
+          </h4>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                First Frame
+              </span>
+              <FrameUploader
+                projectId={projectId}
+                shotId={shot.id}
+                frameType="first"
+                currentUrl={shot.firstFrameUrl}
+                onUploadComplete={onUpdate}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Last Frame
+              </span>
+              <FrameUploader
+                projectId={projectId}
+                shotId={shot.id}
+                frameType="last"
+                currentUrl={shot.lastFrameUrl}
+                onUploadComplete={onUpdate}
+              />
+            </div>
+          </div>
         </div>
 
         {/* VEO 3.1 Tab Content */}

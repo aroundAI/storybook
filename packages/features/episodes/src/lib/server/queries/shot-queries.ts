@@ -79,6 +79,8 @@ export const getEpisodeShotsAction = enhanceAction(
         cameraDirection: shot.camera_direction as string | null,
         videoUrl: shot.video_url as string | null,
         thumbnailUrl: shot.thumbnail_url as string | null,
+        firstFrameUrl: shot.first_frame_url as string | null,
+        lastFrameUrl: shot.last_frame_url as string | null,
         generationJobId: shot.generation_job_id as string | null,
         metadata: shot.generation_metadata as Record<string, unknown>,
         createdAt: shot.created_at as string,

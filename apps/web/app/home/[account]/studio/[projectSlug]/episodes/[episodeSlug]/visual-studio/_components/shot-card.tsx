@@ -83,18 +83,31 @@ export function ShotCard({
       )}
     >
       {/* Image Container with liquid styling */}
+      {/* Priority: Video → Thumbnail → First Frame → Last Frame → Placeholder */}
       <div className="liquid-image-container relative flex-1 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-700">
-        {shot.thumbnailUrl ? (
+        {shot.videoUrl ? (
+          <video
+            src={shot.videoUrl}
+            className="h-full w-full object-cover"
+            muted
+          />
+        ) : shot.thumbnailUrl ? (
           <img
             src={shot.thumbnailUrl}
             alt={`Shot ${shot.shotNumber}`}
             className="h-full w-full object-cover"
           />
-        ) : shot.videoUrl ? (
-          <video
-            src={shot.videoUrl}
+        ) : shot.firstFrameUrl ? (
+          <img
+            src={shot.firstFrameUrl}
+            alt={`Shot ${shot.shotNumber} first frame`}
             className="h-full w-full object-cover"
-            muted
+          />
+        ) : shot.lastFrameUrl ? (
+          <img
+            src={shot.lastFrameUrl}
+            alt={`Shot ${shot.shotNumber} last frame`}
+            className="h-full w-full object-cover"
           />
         ) : (
           <div className="flex h-full items-center justify-center">

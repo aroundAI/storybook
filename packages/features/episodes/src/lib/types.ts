@@ -403,6 +403,10 @@ export interface Shot {
   prompt: string | null;
   videoUrl: string | null;
   thumbnailUrl: string | null;
+  /** URL for first frame storyboard image */
+  firstFrameUrl: string | null;
+  /** URL for last frame storyboard image */
+  lastFrameUrl: string | null;
   metadata: ShotMetadata | null;
   generationSettings: ShotGenerationSettings | null;
   generationJobId: string | null;
