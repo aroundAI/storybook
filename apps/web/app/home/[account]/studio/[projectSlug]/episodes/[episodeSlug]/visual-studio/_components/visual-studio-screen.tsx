@@ -73,10 +73,18 @@ export function VisualStudioScreen({
     limit: 100,
   });
 
-  // Fetch characters on mount
+  // Fetch project locations for export
+  const { assets: projectLocations, fetchAssets: fetchLocations } = useAssets({
+    projectId: episode.projectId,
+    type: 'location',
+    limit: 100,
+  });
+
+  // Fetch assets on mount
   useEffect(() => {
     fetchCharacters();
-  }, [fetchCharacters]);
+    fetchLocations();
+  }, [fetchCharacters, fetchLocations]);
 
   const shots = episode.shots;
 
@@ -328,20 +336,48 @@ export function VisualStudioScreen({
           const promptMd = generatePromptMd(shot);
           shotFolder.file('prompt.md', promptMd);
 
-          // Get reference images from metadata
+          // Add storyboard frames (first and last frame images)
+          if (shot.firstFrameUrl) {
+            let blob = fetchedImages.get(shot.firstFrameUrl);
+            if (!blob) {
+              blob = (await fetchImageAsBlob(shot.firstFrameUrl)) ?? undefined;
+              if (blob) {
+                fetchedImages.set(shot.firstFrameUrl, blob);
+              }
+            }
+            if (blob) {
+              shotFolder.file('first-frame.png', blob);
+            }
+          }
+
+          if (shot.lastFrameUrl) {
+            let blob = fetchedImages.get(shot.lastFrameUrl);
+            if (!blob) {
+              blob = (await fetchImageAsBlob(shot.lastFrameUrl)) ?? undefined;
+              if (blob) {
+                fetchedImages.set(shot.lastFrameUrl, blob);
+              }
+            }
+            if (blob) {
+              shotFolder.file('last-frame.png', blob);
+            }
+          }
+
+          // Get metadata for reference images
           const metadata = shot.metadata as {
+            characters?: string[];
+            locations?: string[];
             referenceImages?: {
               characters: Array<{ name: string; url: string }>;
               locations: Array<{ name: string; url: string }>;
             };
           } | null;
 
-          // Add character images
-          if (metadata?.referenceImages?.characters) {
+          // Add character images - try metadata.referenceImages first, then fall back to project assets
+          if (metadata?.referenceImages?.characters && metadata.referenceImages.characters.length > 0) {
+            // Use reference images from metadata
             for (const img of metadata.referenceImages.characters) {
               const filename = `character-${sanitizeName(img.name)}.png`;
-
-              // Check cache first
               let blob = fetchedImages.get(img.url);
               if (!blob) {
                 blob = (await fetchImageAsBlob(img.url)) ?? undefined;
@@ -349,19 +385,37 @@ export function VisualStudioScreen({
                   fetchedImages.set(img.url, blob);
                 }
               }
-
               if (blob) {
                 shotFolder.file(filename, blob);
               }
             }
+          } else if (metadata?.characters && metadata.characters.length > 0) {
+            // Fall back to looking up characters from project assets
+            for (const charName of metadata.characters) {
+              const asset = projectCharacters.find(
+                (c) => c.name.toLowerCase() === charName.toLowerCase()
+              );
+              if (asset?.fileUrl) {
+                const filename = `character-${sanitizeName(charName)}.png`;
+                let blob = fetchedImages.get(asset.fileUrl);
+                if (!blob) {
+                  blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
+                  if (blob) {
+                    fetchedImages.set(asset.fileUrl, blob);
+                  }
+                }
+                if (blob) {
+                  shotFolder.file(filename, blob);
+                }
+              }
+            }
           }
 
-          // Add location images
-          if (metadata?.referenceImages?.locations) {
+          // Add location images - try metadata.referenceImages first, then fall back to project assets
+          if (metadata?.referenceImages?.locations && metadata.referenceImages.locations.length > 0) {
+            // Use reference images from metadata
             for (const img of metadata.referenceImages.locations) {
               const filename = `location-${sanitizeName(img.name)}.png`;
-
-              // Check cache first
               let blob = fetchedImages.get(img.url);
               if (!blob) {
                 blob = (await fetchImageAsBlob(img.url)) ?? undefined;
@@ -369,9 +423,28 @@ export function VisualStudioScreen({
                   fetchedImages.set(img.url, blob);
                 }
               }
-
               if (blob) {
                 shotFolder.file(filename, blob);
+              }
+            }
+          } else if (metadata?.locations && metadata.locations.length > 0) {
+            // Fall back to looking up locations from project assets
+            for (const locName of metadata.locations) {
+              const asset = projectLocations.find(
+                (l) => l.name.toLowerCase() === locName.toLowerCase()
+              );
+              if (asset?.fileUrl) {
+                const filename = `location-${sanitizeName(locName)}.png`;
+                let blob = fetchedImages.get(asset.fileUrl);
+                if (!blob) {
+                  blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
+                  if (blob) {
+                    fetchedImages.set(asset.fileUrl, blob);
+                  }
+                }
+                if (blob) {
+                  shotFolder.file(filename, blob);
+                }
               }
             }
           }
