@@ -195,7 +195,7 @@ export function StudioSettingsForm({
     });
   });
 
-  // TEST 2: With Form wrapper + FormField (minimal)
+  // TEST 3: With Form wrapper + FormField + Select components
   return (
     <Form {...form}>
       <form onSubmit={onSubmit}>
@@ -203,7 +203,7 @@ export function StudioSettingsForm({
           <CardHeader>
             <CardTitle>Content Generation Settings</CardTitle>
             <CardDescription>
-              Testing with Form wrapper + FormField components.
+              Testing with Select components.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -226,17 +226,56 @@ export function StudioSettingsForm({
             />
             <FormField
               control={form.control}
-              name="language"
+              name="genre"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Language</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g., en"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>Second field</FormDescription>
+                  <FormLabel>Genre</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a genre" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {GENRES.map((genre) => (
+                        <SelectItem key={genre.value} value={genre.value}>
+                          {genre.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Genre affects story themes.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="videoStyle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Video Style</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a video style" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {VIDEO_STYLES.map((style) => (
+                        <SelectItem key={style.value} value={style.value}>
+                          {style.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Visual style.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
