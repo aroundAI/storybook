@@ -482,7 +482,7 @@ const UploadAudioSchema = z.object({
  * Generate music using ElevenLabs Music API
  * Creates asset record, generates audio, uploads to storage, updates record
  */
-export const generateMusicAction = enhanceAction(
+export const generateMusicAssetAction = enhanceAction(
     async (data): Promise<AudioAsset> => {
         const logger = await getLogger();
         const ctx = { name: 'audioAsset.generateMusic', projectId: data.projectId };
@@ -532,13 +532,13 @@ export const generateMusicAction = enhanceAction(
 
             const provider = new ElevenLabsMusicProvider({ apiKey });
 
-            // Generate music
+            // ElevenLabs returns audioBuffer directly in the response (extended type)
             const result = await provider.generateMusic({
                 prompt: data.prompt,
                 duration: data.duration,
                 genre: data.genre,
                 mood: data.mood,
-            });
+            }) as { audioBuffer?: Buffer; status: string; jobId: string; duration?: number };
 
             if (result.status !== 'completed' || !result.audioBuffer) {
                 throw new Error('Music generation failed');
@@ -597,7 +597,7 @@ export const generateMusicAction = enhanceAction(
 /**
  * Generate SFX using ElevenLabs Sound Effects API
  */
-export const generateSfxAction = enhanceAction(
+export const generateSfxAssetAction = enhanceAction(
     async (data): Promise<AudioAsset> => {
         const logger = await getLogger();
         const ctx = { name: 'audioAsset.generateSfx', projectId: data.projectId };
@@ -642,11 +642,11 @@ export const generateSfxAction = enhanceAction(
 
             const provider = new ElevenLabsSfxProvider({ apiKey });
 
-            // Generate SFX
+            // ElevenLabs returns audioBuffer directly in the response (extended type)
             const result = await provider.generateSfx({
                 text: data.prompt,
                 durationSeconds: data.duration,
-            });
+            }) as { audioBuffer?: Buffer; status: string; jobId: string; duration?: number };
 
             if (result.status !== 'completed' || !result.audioBuffer) {
                 throw new Error('SFX generation failed');

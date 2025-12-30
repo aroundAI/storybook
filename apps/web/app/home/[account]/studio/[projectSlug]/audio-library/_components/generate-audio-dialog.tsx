@@ -88,12 +88,12 @@ export function GenerateAudioDialog({
         startTransition(async () => {
             try {
                 // Import actions dynamically
-                const { generateMusicAction, generateSfxAction } = await import(
+                const { generateMusicAssetAction, generateSfxAssetAction } = await import(
                     '@kit/audio-generation/server'
                 );
 
                 if (audioType === 'music') {
-                    await generateMusicAction({
+                    await generateMusicAssetAction({
                         projectId,
                         prompt: prompt.trim(),
                         name: name.trim() || undefined,
@@ -102,7 +102,7 @@ export function GenerateAudioDialog({
                         mood: mood || undefined,
                     });
                 } else {
-                    await generateSfxAction({
+                    await generateSfxAssetAction({
                         projectId,
                         prompt: prompt.trim(),
                         name: name.trim() || undefined,

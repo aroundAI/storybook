@@ -18,6 +18,7 @@ import {
   Play,
   RefreshCw,
   Trash2,
+  Users,
   Video,
   X,
 } from 'lucide-react';
@@ -400,6 +401,43 @@ export function ShotDetailsSidebar({
           {movement}
         </span>
       </div>
+
+      {/* Characters Section */}
+      {(() => {
+        // Extract unique characters from VEO timeline
+        const characters: string[] = [];
+        if (veoPrompt && isVeoPromptV2(veoPrompt)) {
+          const charSet = new Set<string>();
+          for (const event of veoPrompt.timeline) {
+            if (event.character) {
+              charSet.add(event.character);
+            }
+          }
+          characters.push(...charSet);
+        }
+        if (characters.length === 0) return null;
+        return (
+          <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Characters
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {characters.map((char) => (
+                <Badge
+                  key={char}
+                  variant="secondary"
+                  className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                >
+                  {char}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">

@@ -103,7 +103,7 @@ export function BatchGenerateDialog({
         setError(null);
         startTransition(async () => {
             // Import actions dynamically
-            const { generateMusicAction, generateSfxAction } = await import(
+            const { generateMusicAssetAction, generateSfxAssetAction } = await import(
                 '@kit/audio-generation/server'
             );
 
@@ -118,16 +118,16 @@ export function BatchGenerateDialog({
 
                 try {
                     if (audioType === 'music') {
-                        await generateMusicAction({
+                        await generateMusicAssetAction({
                             projectId,
-                            prompt: items[i].prompt,
-                            duration: items[i].duration,
+                            prompt: items[i]!.prompt,
+                            duration: items[i]!.duration,
                         });
                     } else {
-                        await generateSfxAction({
+                        await generateSfxAssetAction({
                             projectId,
-                            prompt: items[i].prompt,
-                            duration: items[i].duration,
+                            prompt: items[i]!.prompt,
+                            duration: items[i]!.duration,
                         });
                     }
 

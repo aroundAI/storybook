@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Clock, Flame, ImageIcon, Loader2, Play } from 'lucide-react';
+import { AlertCircle, Clock, Flame, ImageIcon, Loader2, Play, Users } from 'lucide-react';
 
 import type { Shot, ShotStatus } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
@@ -10,6 +10,36 @@ interface ShotCardProps {
   isSelected: boolean;
   onClick: () => void;
   size?: 'lg' | 'md' | 'sm';
+}
+
+/**
+ * Extract unique character names from shot metadata (VEO timeline)
+ */
+function extractCharacters(shot: Shot): string[] {
+  const metadata = shot.metadata as {
+    veoPrompt?: {
+      timeline?: Array<{ character?: string }>;
+    };
+    characters?: string[];
+  } | null;
+
+  // First try metadata.characters (direct field)
+  if (metadata?.characters && metadata.characters.length > 0) {
+    return metadata.characters;
+  }
+
+  // Then try extracting from VEO timeline
+  if (metadata?.veoPrompt?.timeline) {
+    const chars = new Set<string>();
+    for (const event of metadata.veoPrompt.timeline) {
+      if (event.character) {
+        chars.add(event.character);
+      }
+    }
+    return Array.from(chars);
+  }
+
+  return [];
 }
 
 const STATUS_STYLES: Record<ShotStatus, string> = {
@@ -41,6 +71,8 @@ export function ShotCard({
   onClick,
   size = 'md',
 }: ShotCardProps) {
+  const characters = extractCharacters(shot);
+
   return (
     <div
       onClick={onClick}
@@ -97,6 +129,26 @@ export function ShotCard({
           Shot {shot.sceneNumber}.{shot.shotNumber}
         </div>
 
+        {/* Character Badges - bottom right */}
+        {characters.length > 0 && (
+          <div className="absolute bottom-3 right-3 flex items-center gap-1">
+            {characters.slice(0, 3).map((char) => (
+              <div
+                key={char}
+                className="flex items-center gap-1 rounded-lg bg-purple-600/80 px-2 py-1 text-xs font-medium text-white shadow-lg backdrop-blur-sm"
+                title={char}
+              >
+                {char.length > 8 ? `${char.slice(0, 8)}…` : char}
+              </div>
+            ))}
+            {characters.length > 3 && (
+              <div className="flex items-center gap-1 rounded-lg bg-gray-600/80 px-2 py-1 text-xs font-medium text-white shadow-lg backdrop-blur-sm">
+                +{characters.length - 3}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Play Overlay (for completed shots) */}
         {shot.status === 'completed' && shot.videoUrl && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 transition-opacity group-hover:opacity-100">
@@ -112,9 +164,17 @@ export function ShotCard({
         <p className="line-clamp-3 font-semibold text-gray-800 dark:text-gray-200">
           Action: {shot.description || shot.prompt || 'No description'}
         </p>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Shot {shot.sceneNumber}.{shot.shotNumber}
-        </p>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            Shot {shot.sceneNumber}.{shot.shotNumber}
+          </span>
+          {characters.length > 0 && (
+            <span className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400">
+              <Users className="h-3 w-3" />
+              {characters.join(', ')}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
