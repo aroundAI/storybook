@@ -43,7 +43,16 @@ export function ConditionalSidebarLayout({
     pathname.startsWith(studioPath) && pathname.length > studioPath.length; // Has content after /studio/
 
   return (
-    <Page style={'sidebar'}>
+    <Page
+      style={'sidebar'}
+      // When in studio project mode, don't use h-screen on content container
+      // because the studio layout has its own h-screen container
+      contentContainerClassName={
+        isStudioProject
+          ? 'mx-auto flex w-full flex-1 flex-col bg-inherit'
+          : undefined
+      }
+    >
       {!isStudioProject && (
         <PageNavigation>
           <TeamAccountLayoutSidebar
