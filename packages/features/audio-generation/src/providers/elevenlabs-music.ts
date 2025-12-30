@@ -129,7 +129,7 @@ export class ElevenLabsMusicProvider extends BaseMusicGenerationProvider {
      * Get status of a music generation job
      * For ElevenLabs, generation is synchronous, so this always returns completed
      */
-    async getStatus(jobId: string): Promise<{
+    async getStatus(_jobId: string): Promise<{
         status: 'pending' | 'processing' | 'completed' | 'failed';
         audioUrl?: string;
         progress?: number;

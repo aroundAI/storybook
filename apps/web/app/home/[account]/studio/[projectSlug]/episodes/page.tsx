@@ -67,11 +67,11 @@ interface Episode {
   duration_seconds: number | null;
   thumbnail_url: string | null;
   final_video_url: string | null;
-  localized_videos?: any;
-  story_data: any;
-  screenplay_data: any;
-  shot_list: any;
-  metadata: any;
+  localized_videos?: Record<string, string>;
+  story_data: Record<string, unknown> | null;
+  screenplay_data: Record<string, unknown> | null;
+  shot_list: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   version: number;
   created_at: string;
   updated_at: string;

@@ -42,7 +42,6 @@ import {
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
-import { Label } from '@kit/ui/label';
 import { Switch } from '@kit/ui/switch';
 import { Textarea } from '@kit/ui/textarea';
 

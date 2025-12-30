@@ -10,7 +10,7 @@
 import type { UseFormReturn } from 'react-hook-form';
 
 import { useQuery } from '@tanstack/react-query';
-import { AlertCircle, Loader2, Volume2 } from 'lucide-react';
+import { AlertCircle, Volume2 } from 'lucide-react';
 
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import {

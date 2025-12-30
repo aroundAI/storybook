@@ -31,7 +31,7 @@ const GenerateEpisodeAudioSchema = z.object({
     }).optional(),
 });
 
-const GenerateShotSfxSchema = z.object({
+const _GenerateShotSfxSchema = z.object({
     episodeId: z.string().uuid(),
     shotId: z.string().uuid(),
     /** Audio description from shot data */
@@ -44,7 +44,7 @@ const GenerateShotSfxSchema = z.object({
 // Types
 // =============================================================================
 
-interface ShotAudioData {
+interface _ShotAudioData {
     shotId: string;
     sequenceNumber: number;
     audio?: string;

@@ -61,7 +61,7 @@ export function AssetPicker({
     const [isLoading, setIsLoading] = useState(true);
     const [assets, setAssets] = useState<PickerAudioAsset[]>([]);
     const [selectedId, setSelectedId] = useState<string | null>(null);
-    const [playingId, setPlayingId] = useState<string | null>(null);
+    const [_playingId, _setPlayingId] = useState<string | null>(null);
 
     // Fetch assets when dialog opens
     useEffect(() => {

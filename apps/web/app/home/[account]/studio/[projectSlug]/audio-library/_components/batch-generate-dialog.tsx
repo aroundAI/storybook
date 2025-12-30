@@ -255,7 +255,7 @@ export function BatchGenerateDialog({
                             {/* Items List */}
                             <ScrollArea className="flex-1 -mx-6 px-6 max-h-64">
                                 <div className="space-y-2">
-                                    {items.map((item, index) => (
+                                    {items.map((item, _index) => (
                                         <div
                                             key={item.id}
                                             className={cn(

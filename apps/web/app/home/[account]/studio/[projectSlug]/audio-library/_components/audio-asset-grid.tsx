@@ -12,7 +12,6 @@ import { Search, Music, Volume2, Loader2, Sparkles } from 'lucide-react';
 import { Input } from '@kit/ui/input';
 import { Button } from '@kit/ui/button';
 import { Tabs, TabsList, TabsTrigger } from '@kit/ui/tabs';
-import { cn } from '@kit/ui/utils';
 
 import { AudioAssetCard, type AudioAsset } from './audio-asset-card';
 
@@ -39,7 +38,7 @@ export function AudioAssetGrid({
 }: AudioAssetGridProps) {
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState<'all' | 'music' | 'sfx'>('all');
-    const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'pending'>('all');
+    const [statusFilter] = useState<'all' | 'completed' | 'pending'>('all');
 
     // Filter assets
     const filteredAssets = assets.filter((asset) => {

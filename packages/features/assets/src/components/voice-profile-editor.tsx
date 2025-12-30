@@ -50,7 +50,7 @@ const VoiceProfileFormSchema = z.object({
 });
 
 // Sample voices for demo (in production, these would come from ElevenLabs API)
-const SAMPLE_VOICES: VoiceOption[] = [
+const _SAMPLE_VOICES: VoiceOption[] = [
   {
     id: 'voice-1',
     name: 'Adam',
