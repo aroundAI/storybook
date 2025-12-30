@@ -206,7 +206,7 @@ export function StudioSettingsForm({
               generated for episodes in this project.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6 overflow-hidden">
+          <CardContent className="space-y-6">
             {/* Target Audience */}
             <FormField
               control={form.control}
