@@ -206,7 +206,7 @@ export function StudioSettingsForm({
               generated for episodes in this project.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 overflow-hidden">
             {/* Target Audience */}
             <FormField
               control={form.control}
@@ -300,7 +300,7 @@ export function StudioSettingsForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Content Style</FormLabel>
-                  <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
                     {CONTENT_STYLES.map((style) => {
                       const StyleIcon = style.icon;
                       return (
