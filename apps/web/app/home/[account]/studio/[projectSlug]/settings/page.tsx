@@ -230,6 +230,8 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   | undefined,
                 language: (project.metadata as Record<string, unknown>)
                   ?.language as string | undefined,
+                projectAestheticStyle: (project.metadata as Record<string, unknown>)
+                  ?.projectAestheticStyle as string | undefined,
                 recurringElement: (project.metadata as Record<string, unknown>)
                   ?.recurringElement as
                   | {

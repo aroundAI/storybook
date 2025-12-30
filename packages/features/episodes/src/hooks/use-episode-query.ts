@@ -122,6 +122,7 @@ function transformEpisodeResponse(
       videoStyle?: string;
       targetAudience?: string;
       description?: string;
+      projectAestheticStyle?: string;
     },
   };
 }

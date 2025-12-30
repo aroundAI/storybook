@@ -62,6 +62,7 @@ interface StudioSettingsFormProps {
     defaultEpisodeDuration?: number;
     contentRating?: 'G' | 'PG' | 'PG-13' | 'R' | 'NR';
     language?: string;
+    projectAestheticStyle?: string;
     recurringElement?: {
       enabled?: boolean;
       location?: string;
@@ -169,6 +170,7 @@ export function StudioSettingsForm({
       defaultEpisodeDuration: currentSettings.defaultEpisodeDuration ?? 300,
       contentRating: currentSettings.contentRating,
       language: currentSettings.language ?? 'en',
+      projectAestheticStyle: currentSettings.projectAestheticStyle ?? '',
       recurringElement: {
         enabled: currentSettings.recurringElement?.enabled ?? false,
         location: currentSettings.recurringElement?.location ?? '',
@@ -412,6 +414,32 @@ export function StudioSettingsForm({
                     </SelectContent>
                   </Select>
                   <FormDescription>Primary language.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Project Aesthetic Style */}
+            <FormField
+              control={form.control}
+              name="projectAestheticStyle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Film className="h-4 w-4" />
+                    Project Aesthetic Style
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="e.g., Noir-inspired with saturated colors, dramatic shadows, and whimsical undertones"
+                      className="resize-none"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Visual aesthetic applied to all shot prompts for consistency across the project.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

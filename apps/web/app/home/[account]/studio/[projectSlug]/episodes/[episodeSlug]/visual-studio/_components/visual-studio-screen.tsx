@@ -442,6 +442,7 @@ export function VisualStudioScreen({
               shot={selectedShot}
               projectId={episode.projectId}
               projectVideoStyle={episode.projectMetadata?.videoStyle}
+              projectAestheticStyle={episode.projectMetadata?.projectAestheticStyle}
               onClose={() => setSelectedShot(null)}
               onUpdate={refetchEpisode}
             />

@@ -132,6 +132,14 @@ function parseTimeToSeconds(timeStr: string): number {
 }
 
 /**
+ * Character details for prompt assembly
+ */
+interface CharacterDetail {
+  name: string;
+  description: string; // Full description with physical attributes
+}
+
+/**
  * Assemble a VEO 3.1 prompt from its component parts at runtime.
  * This ensures the fullPrompt always reflects the current state of all parts.
  * Format matches the LLM-generated structure from scene-shot-generation.json
@@ -140,6 +148,8 @@ function assembleVeoPrompt(
   veoPrompt: VeoPromptDataV2,
   options?: {
     projectVideoStyle?: string;
+    projectAestheticStyle?: string;
+    characterDetails?: CharacterDetail[];
     characterNames?: string[];
   },
 ): string {
@@ -150,20 +160,32 @@ function assembleVeoPrompt(
   lines.push('');
 
   // 2. Characters section (for image identification)
-  const characters = options?.characterNames ?? [];
-  // Also extract from timeline if not provided
-  if (characters.length === 0) {
-    const charSet = new Set<string>();
-    for (const event of veoPrompt.timeline) {
-      if (event.character) {
-        charSet.add(event.character);
-      }
+  // Use detailed character info if provided, otherwise extract names from timeline
+  if (options?.characterDetails && options.characterDetails.length > 0) {
+    // Detailed format with descriptions
+    lines.push('CHARACTERS:');
+    for (const char of options.characterDetails) {
+      lines.push(`- ${char.name}: ${char.description}`);
     }
-    characters.push(...charSet);
-  }
-  if (characters.length > 0) {
-    lines.push(`CHARACTERS: ${characters.join(', ')} (identify from reference images)`);
+    lines.push('(Identify from provided reference images)');
     lines.push('');
+  } else {
+    // Fallback to simple names-only format
+    const characters = options?.characterNames ?? [];
+    // Also extract from timeline if not provided
+    if (characters.length === 0) {
+      const charSet = new Set<string>();
+      for (const event of veoPrompt.timeline) {
+        if (event.character) {
+          charSet.add(event.character);
+        }
+      }
+      characters.push(...charSet);
+    }
+    if (characters.length > 0) {
+      lines.push(`CHARACTERS: ${characters.join(', ')} (identify from reference images)`);
+      lines.push('');
+    }
   }
 
   // 3. Timeline events formatted as [start-end] content
@@ -188,8 +210,15 @@ function assembleVeoPrompt(
 
   // 5. Style section (include project style if provided)
   let styleText = veoPrompt.style;
+  const styleParts: string[] = [];
   if (options?.projectVideoStyle) {
-    styleText = `${veoPrompt.style}. Project aesthetic: ${options.projectVideoStyle}`;
+    styleParts.push(`Video style: ${options.projectVideoStyle}`);
+  }
+  if (options?.projectAestheticStyle) {
+    styleParts.push(`Project aesthetic: ${options.projectAestheticStyle}`);
+  }
+  if (styleParts.length > 0) {
+    styleText = `${veoPrompt.style}. ${styleParts.join('. ')}`;
   }
   lines.push(`STYLE: ${styleText}`);
   lines.push('');
@@ -204,6 +233,8 @@ interface ShotDetailsSidebarProps {
   shot: Shot;
   projectId: string;
   projectVideoStyle?: string;
+  projectAestheticStyle?: string;
+  characterDetails?: CharacterDetail[];
   onClose: () => void;
   onUpdate: () => void;
 }
@@ -233,6 +264,8 @@ export function ShotDetailsSidebar({
   shot,
   projectId,
   projectVideoStyle,
+  projectAestheticStyle,
+  characterDetails,
   onClose,
   onUpdate,
 }: ShotDetailsSidebarProps) {
@@ -255,7 +288,7 @@ export function ShotDetailsSidebar({
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
     if (veoPrompt && isVeoPromptV2(veoPrompt)) {
-      return assembleVeoPrompt(veoPrompt, { projectVideoStyle });
+      return assembleVeoPrompt(veoPrompt, { projectVideoStyle, projectAestheticStyle, characterDetails });
     }
     return veoPrompt?.fullPrompt ?? shot.prompt ?? '';
   });
@@ -766,7 +799,7 @@ export function ShotDetailsSidebar({
                   onClick={() => {
                     // Use runtime-assembled prompt for V2, fallback to stored for V1
                     const prompt = isVeoPromptV2(veoPrompt)
-                      ? assembleVeoPrompt(veoPrompt, { projectVideoStyle })
+                      ? assembleVeoPrompt(veoPrompt, { projectVideoStyle, projectAestheticStyle, characterDetails })
                       : veoPrompt.fullPrompt;
                     copyToClipboard(prompt, 'Full prompt');
                   }}
@@ -783,7 +816,7 @@ export function ShotDetailsSidebar({
               <div className="rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
                 {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
                 {isVeoPromptV2(veoPrompt)
-                  ? assembleVeoPrompt(veoPrompt, { projectVideoStyle })
+                  ? assembleVeoPrompt(veoPrompt, { projectVideoStyle, projectAestheticStyle, characterDetails })
                   : veoPrompt.fullPrompt}
               </div>
             </div>
