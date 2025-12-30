@@ -386,8 +386,8 @@ export function SeasonGeneratorDialog({
         const payload = {
           projectId,
           premise,
-          tone: analysis.tone,
-          targetAudience: analysis.target_audience,
+          tone: analysis.tone ?? undefined,
+          targetAudience: analysis.target_audience ?? undefined,
           charactersToCreate,
           locationsToCreate,
           characterMappings: charMappingBackend,
