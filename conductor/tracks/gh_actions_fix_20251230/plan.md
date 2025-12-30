@@ -1,19 +1,19 @@
 # Plan: Investigate and Fix GitHub Actions Workflows
 
 ## Phase 1: Diagnosis & Analysis
-- [ ] Task: List recent workflow runs to identify failing jobs.
-  - [ ] Sub-task: Execute `gh run list` to get an overview of recent statuses.
-  - [ ] Sub-task: Identify the specific Run IDs of the most recent failures.
-- [ ] Task: Analyze failure logs for specific errors.
-  - [ ] Sub-task: Use `gh run view <run-id> --log` for each failing run to extract error messages.
-  - [ ] Sub-task: Document the root cause for each failure (e.g., "Linting failed in package X", "Timeout in test Y").
+- [x] Task: List recent workflow runs to identify failing jobs.
+  - [x] Sub-task: Execute `gh run list` to get an overview of recent statuses.
+  - [x] Sub-task: Identify the specific Run IDs of the most recent failures.
+- [x] Task: Analyze failure logs for specific errors.
+  - [x] Sub-task: Use `gh run view <run-id> --log` for each failing run to extract error messages.
+  - [x] Sub-task: Document the root cause for each failure (e.g., "TypeScript errors in apps/web", "Vitest coverage version mismatch").
 
 ## Phase 2: Remediation
-- [ ] Task: Fix identified CI issues.
-  - [ ] Sub-task: Create a reproduction case locally if possible (e.g., run `pnpm lint` or `pnpm test` locally).
-  - [ ] Sub-task: Modify `.github/workflows/` files or project code to resolve the errors.
-  - [ ] Sub-task: Verify the fix locally.
-- [ ] Task: Conductor - User Manual Verification 'Remediation' (Protocol in workflow.md)
+- [x] Task: Fix identified CI issues. [fa93996]
+  - [x] Sub-task: Create a reproduction case locally if possible (e.g., run `pnpm lint` or `pnpm test` locally).
+  - [x] Sub-task: Modify `.github/workflows/` files or project code to resolve the errors.
+  - [x] Sub-task: Verify the fix locally.
+- [x] Task: Conductor - User Manual Verification 'Remediation' (Protocol in workflow.md) [d148eaf]
 
 ## Phase 3: Verification & Commit
 - [ ] Task: Push fixes and verify CI stability.
