@@ -46,6 +46,11 @@
   textarea::placeholder {
     color: theme(--color-muted-foreground);
   }
+
+  /* Remove min-h-screen for studio pages to prevent extra whitespace */
+  html[data-studio-mode="true"] {
+    min-height: unset !important;
+  }
 }
 
 /* Liquid Glass Design System - Visual Studio */
