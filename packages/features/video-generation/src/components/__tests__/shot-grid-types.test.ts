@@ -57,6 +57,8 @@ describe('ShotGrid Types', () => {
       prompt: 'Cinematic wide shot of downtown at sunset',
       videoUrl: 'https://example.com/video.mp4',
       thumbnailUrl: 'https://example.com/thumb.jpg',
+      firstFrameUrl: null,
+      lastFrameUrl: null,
       metadata: null,
       generationSettings: {
         aspectRatio: '16:9',
