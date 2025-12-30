@@ -33,14 +33,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@kit/ui/collapsible';
-import { Input } from '@kit/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
@@ -188,42 +180,6 @@ interface ShotDetailsSidebarProps {
   onUpdate: () => void;
 }
 
-const MOVEMENTS = [
-  { value: 'static', label: 'Static' },
-  { value: 'pan', label: 'Pan' },
-  { value: 'tilt', label: 'Tilt' },
-  { value: 'dolly', label: 'Dolly' },
-  { value: 'tracking', label: 'Tracking' },
-  { value: 'crane', label: 'Crane' },
-  { value: 'handheld', label: 'Handheld' },
-] as const;
-
-const ANGLES = [
-  { value: 'wide', label: 'Wide' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'close-up', label: 'Close-up' },
-  { value: 'extreme-close-up', label: 'Extreme Close-up' },
-  { value: 'over-shoulder', label: 'Over Shoulder' },
-  { value: 'pov', label: 'POV' },
-] as const;
-
-const LIGHTING = [
-  { value: 'soft-day', label: 'Soft Day' },
-  { value: 'golden-hour', label: 'Golden Hour' },
-  { value: 'night', label: 'Night' },
-  { value: 'studio', label: 'Studio' },
-  { value: 'dramatic', label: 'Dramatic' },
-  { value: 'natural', label: 'Natural' },
-] as const;
-
-const STYLES = [
-  { value: 'watercolor', label: 'Watercolor' },
-  { value: 'cinematic', label: 'Cinematic' },
-  { value: 'anime', label: 'Anime' },
-  { value: 'realistic', label: 'Realistic' },
-  { value: 'cartoon', label: 'Cartoon' },
-  { value: 'painterly', label: 'Painterly' },
-] as const;
 
 /**
  * Copy text to clipboard with toast feedback
@@ -268,32 +224,12 @@ export function ShotDetailsSidebar({
   const missingAssets = metadata?.missingAssets;
   const hasVeoData = !!veoPrompt;
 
-  // Form state - use runtime-assembled prompt for V2
   const [editedPrompt, setEditedPrompt] = useState(() => {
     if (veoPrompt && isVeoPromptV2(veoPrompt)) {
       return assembleVeoPrompt(veoPrompt);
     }
     return veoPrompt?.fullPrompt ?? shot.prompt ?? '';
   });
-  const [movement, setMovement] = useState(shot.cameraMovement ?? 'static');
-  const [angle, setAngle] = useState(shot.cameraAngle ?? 'medium');
-  const [lighting, setLighting] = useState('soft-day');
-  const [style, setStyle] = useState('watercolor');
-  const [negativePrompt, setNegativePrompt] = useState(() => {
-    if (!veoPrompt) return 'blurry, low quality, distorted hands, bad anatomy';
-    if (isVeoPromptV2(veoPrompt)) return veoPrompt.avoid;
-    return (
-      veoPrompt.negativePrompt ??
-      'blurry, low quality, distorted hands, bad anatomy'
-    );
-  });
-  const [seed, setSeed] = useState(
-    Math.floor(Math.random() * 1000000000).toString(),
-  );
-
-  const handleCopySeed = () => {
-    copyToClipboard(seed, 'Seed');
-  };
 
   const handleRegenerate = () => {
     startTransition(async () => {
@@ -396,10 +332,14 @@ export function ShotDetailsSidebar({
         </span>
         <span className="text-gray-300 dark:text-gray-600">•</span>
         <span className="text-sm text-gray-500 dark:text-gray-400">16:9</span>
-        <span className="text-gray-300 dark:text-gray-600">•</span>
-        <span className="text-sm text-gray-500 capitalize dark:text-gray-400">
-          {movement}
-        </span>
+        {shot.cameraMovement && (
+          <>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="text-sm text-gray-500 capitalize dark:text-gray-400">
+              {shot.cameraMovement}
+            </span>
+          </>
+        )}
       </div>
 
       {/* Characters Section */}
@@ -1005,127 +945,6 @@ export function ShotDetailsSidebar({
             />
           </div>
         )}
-
-        {/* Settings Grid */}
-        <div className="grid grid-cols-2 gap-4 border-b border-white/20 p-4 dark:border-white/10">
-          {/* Movement */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Movement
-            </label>
-            <Select
-              value={movement}
-              onValueChange={(v) => setMovement(v as typeof movement)}
-            >
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MOVEMENTS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Angle */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Angle
-            </label>
-            <Select
-              value={angle}
-              onValueChange={(v) => setAngle(v as typeof angle)}
-            >
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ANGLES.map((a) => (
-                  <SelectItem key={a.value} value={a.value}>
-                    {a.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Lighting */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Lighting
-            </label>
-            <Select value={lighting} onValueChange={setLighting}>
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LIGHTING.map((l) => (
-                  <SelectItem key={l.value} value={l.value}>
-                    {l.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Style */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Style
-            </label>
-            <Select value={style} onValueChange={setStyle}>
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STYLES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Negative Prompt */}
-        <div className="border-b border-white/20 p-4 dark:border-white/10">
-          <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-            Negative Prompt
-          </label>
-          <Input
-            value={negativePrompt}
-            onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder="blurry, low quality, distorted hands..."
-            className="bg-white/50 text-sm dark:bg-gray-800/50"
-          />
-        </div>
-
-        {/* Seed */}
-        <div className="p-4">
-          <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-            Seed
-          </label>
-          <div className="flex gap-2">
-            <Input
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              placeholder="Random"
-              className="flex-1 bg-white/50 font-mono text-sm dark:bg-gray-800/50"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleCopySeed}
-              className="shrink-0 bg-white/40 backdrop-blur-sm dark:bg-white/5"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}
