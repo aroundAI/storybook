@@ -89,7 +89,7 @@ export default async function StudioProjectLayout({
   };
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen flex-col">
       {/* Mobile Header - visible only on mobile */}
       <MobileStudioHeader {...sidebarProps} />
 
