@@ -8,10 +8,14 @@ import {
   ArrowRight,
   Check,
   ChevronDown,
+  ChevronRight,
   Cloud,
   Eye,
+  Heart,
+  ListChecks,
   Loader2,
   MapPin,
+  MessageCircle,
   Pencil,
   Plus,
   Sparkles,
@@ -53,16 +57,28 @@ interface SeasonGeneratorDialogProps {
 
 type Step = 'premise' | 'assets' | 'generate';
 
+interface EpisodeBeat {
+  label: string;
+  content: string;
+}
+
 interface AnalysisResult {
   premise: string;
+  tone?: string | null;
+  target_audience?: string | null;
   characters: Array<{ name: string; role: string; description: string }>;
   locations: Array<{ name: string; setting: string; description: string }>;
   episodes: Array<{
     number: number;
     title: string;
-    description: string;
-    character_names: string[];
-    location_names: string[];
+    synopsis: string;
+    beats: EpisodeBeat[];
+    moral?: string | null;
+    signature_line?: string | null;
+    character_names?: string[];
+    location_names?: string[];
+    tags?: string[];
+    description?: string;  // Legacy support
   }>;
 }
 
@@ -89,7 +105,7 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                 isCurrent &&
-                  'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
+                'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
                 !isCurrent && 'text-zinc-500 dark:text-zinc-400',
               )}
             >
@@ -98,10 +114,10 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
                   'flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                    'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+                  'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
                   !isCompleted &&
-                    !isCurrent &&
-                    'border border-zinc-300 dark:border-zinc-600',
+                  !isCurrent &&
+                  'border border-zinc-300 dark:border-zinc-600',
                 )}
               >
                 {isCompleted ? <Check className="h-2.5 w-2.5" /> : step.number}
@@ -143,10 +159,10 @@ function ProgressStepper({ currentStep }: { currentStep: Step }) {
                   'z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-transform',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                    'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
+                  'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
                   !isCompleted &&
-                    !isCurrent &&
-                    'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
+                  !isCurrent &&
+                  'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
                 )}
               >
                 {isCompleted ? <Check className="h-3.5 w-3.5" /> : idx + 1}
@@ -238,19 +254,73 @@ export function SeasonGeneratorDialog({
       try {
         const result = await analyzeSeasonRoadmapAction(data);
         if (result?.data) {
-          setAnalysis(result.data);
-          setPremise(result.data.premise);
+          // Post-process: Aggregate all unique locations from episodes into main list
+          // This fixes the gap where episode-specific locations aren't in the global list
+          const globalLocations = result.data.locations || [];
+          const globalLocationNames = new Set(globalLocations.map(l => l.name.toLowerCase()));
+
+          // Collect all unique locations mentioned in episodes
+          const episodeLocationNames = new Set<string>();
+          result.data.episodes.forEach(ep => {
+            ep.location_names?.forEach(name => {
+              if (!globalLocationNames.has(name.toLowerCase())) {
+                episodeLocationNames.add(name);
+              }
+            });
+          });
+
+          // Add missing episode locations to the global list
+          const allLocations = [
+            ...globalLocations,
+            ...Array.from(episodeLocationNames).map(name => ({
+              name,
+              description: `Location mentioned in episodes`,
+              setting: 'general',
+            })),
+          ];
+
+          // Same for characters
+          const globalCharacters = result.data.characters || [];
+          const globalCharNames = new Set(globalCharacters.map(c => c.name.toLowerCase()));
+
+          const episodeCharNames = new Set<string>();
+          result.data.episodes.forEach(ep => {
+            ep.character_names?.forEach(name => {
+              if (!globalCharNames.has(name.toLowerCase())) {
+                episodeCharNames.add(name);
+              }
+            });
+          });
+
+          const allCharacters = [
+            ...globalCharacters,
+            ...Array.from(episodeCharNames).map(name => ({
+              name,
+              role: 'supporting',
+              description: `Character mentioned in episodes`,
+            })),
+          ];
+
+          // Update the analysis with merged lists
+          const enrichedAnalysis = {
+            ...result.data,
+            characters: allCharacters,
+            locations: allLocations,
+          };
+
+          setAnalysis(enrichedAnalysis);
+          setPremise(enrichedAnalysis.premise);
           setShowPremise(true);
 
           // Debug: log existing assets
           console.log('Existing Characters:', existingCharacters);
           console.log('Existing Locations:', existingLocations);
-          console.log('Extracted Characters:', result.data.characters);
-          console.log('Extracted Locations:', result.data.locations);
+          console.log('Extracted Characters:', enrichedAnalysis.characters);
+          console.log('Extracted Locations:', enrichedAnalysis.locations);
 
           // Auto-map Characters
           const initialCharMapping: Record<string, string> = {};
-          result.data.characters.forEach((c) => {
+          enrichedAnalysis.characters.forEach((c) => {
             const match = existingCharacters.find(
               (ex) => ex.name.toLowerCase() === c.name.toLowerCase(),
             );
@@ -263,7 +333,7 @@ export function SeasonGeneratorDialog({
 
           // Auto-map Locations
           const initialLocMapping: Record<string, string> = {};
-          result.data.locations?.forEach((l) => {
+          enrichedAnalysis.locations?.forEach((l) => {
             const match = existingLocations.find(
               (ex) => ex.name.toLowerCase() === l.name.toLowerCase(),
             );
@@ -316,6 +386,8 @@ export function SeasonGeneratorDialog({
         const payload = {
           projectId,
           premise,
+          tone: analysis.tone ?? undefined,
+          targetAudience: analysis.target_audience ?? undefined,
           charactersToCreate,
           locationsToCreate,
           characterMappings: charMappingBackend,
@@ -323,9 +395,15 @@ export function SeasonGeneratorDialog({
           episodes: analysis.episodes.map((e) => ({
             number: e.number,
             title: e.title,
-            description: e.description,
+            synopsis: e.synopsis,
+            beats: e.beats || [],
+            moral: e.moral,
+            signature_line: e.signature_line,
             characterNames: e.character_names,
             locationNames: e.location_names,
+            tags: e.tags,
+            // Legacy fallback
+            description: e.description || e.synopsis,
           })),
         };
 
@@ -845,8 +923,49 @@ export function SeasonGeneratorDialog({
                           {ep.title}
                         </h4>
                         <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                          {ep.description}
+                          {ep.synopsis || ep.description || 'No description available'}
                         </p>
+
+                        {/* Plot Beats */}
+                        {ep.beats && ep.beats.length > 0 && (
+                          <div className="mb-3 rounded-lg border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800/50">
+                            <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                              <ListChecks className="h-3.5 w-3.5" />
+                              Plot Structure
+                            </div>
+                            <div className="space-y-1.5">
+                              {ep.beats.map((beat, idx) => (
+                                <div key={idx} className="flex items-start gap-2 text-xs">
+                                  <ChevronRight className="mt-0.5 h-3 w-3 flex-shrink-0 text-zinc-400" />
+                                  <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                    {beat.label}:
+                                  </span>
+                                  <span className="text-zinc-500 dark:text-zinc-400">
+                                    {beat.content.length > 80 ? beat.content.slice(0, 80) + '...' : beat.content}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Moral & Signature Line */}
+                        <div className="mb-3 flex flex-wrap gap-2">
+                          {ep.moral && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-100 bg-pink-50 px-2.5 py-1 text-[11px] font-medium text-pink-700 dark:border-pink-900 dark:bg-pink-900/20 dark:text-pink-300">
+                              <Heart className="h-3 w-3" />
+                              {ep.moral}
+                            </span>
+                          )}
+                          {ep.signature_line && (
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-100 bg-purple-50 px-2.5 py-1 text-[11px] font-medium text-purple-700 dark:border-purple-900 dark:bg-purple-900/20 dark:text-purple-300">
+                              <MessageCircle className="h-3 w-3" />
+                              &quot;{ep.signature_line.length > 40 ? ep.signature_line.slice(0, 40) + '...' : ep.signature_line}&quot;
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Characters & Locations */}
                         <div className="flex flex-wrap items-center gap-2">
                           {ep.character_names?.map((name) => (
                             <span

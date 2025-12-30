@@ -175,6 +175,7 @@ export const translateDialogueToLanguageAction = enhanceAction(
 
 /**
  * Translate dialogue lines using LLM
+ * Preserves ElevenLabs audio tags like [excited], [sigh] in the output
  */
 async function translateWithLLM(
     lines: DialogueLineRow[],
@@ -214,7 +215,29 @@ ${linesText}`;
             messages: [
                 {
                     role: 'system',
-                    content: `You are a professional translator specializing in ${targetLanguage} dialogue for film and television. 
+                    content: `You are a professional translator for ${targetLanguage} film/TV dialogue.
+
+TRANSLATION STYLE - CRITICAL:
+- Use MODERN COLLOQUIAL language - how young urban speakers actually talk TODAY
+- Match the casual, natural energy of the original English
+- Avoid formal/literary/textbook translations - these sound unnatural in dialogue
+- Use contractions, slang, and natural speech patterns common in the target language
+- Code-mixing is acceptable where natural (e.g., Hindi speakers mix English words)
+
+AUDIO TAGS - CRITICAL:
+1. PRESERVE all [audio tags] exactly as written - these are ElevenLabs TTS instructions
+2. Tags like [excited], [sigh], [whispers], [pauses], [laughs] must STAY IN ENGLISH
+3. Only translate the dialogue text AROUND the tags
+4. Do not translate, modify, or remove ANY text inside square brackets
+
+EXAMPLES (Modern Colloquial vs Formal):
+English: "[nervous] Are you sure about this? [gulps] I don't think I can."
+Hindi GOOD: "[nervous] यार, तू sure है? [gulps] मुझसे नहीं होगा।"
+Hindi BAD (too formal): "[nervous] क्या आप इसके बारे में सुनिश्चित हैं? [gulps] मुझे नहीं लगता मैं कर सकता।"
+
+Spanish GOOD: "[nervous] ¿Estás seguro de esto? [gulps] No creo que pueda, wey."
+Portuguese GOOD: "[nervous] Cara, tu tem certeza? [gulps] Acho que não consigo."
+
 Translate naturally while preserving emotion, character voice, and timing.`,
                 },
                 {
@@ -230,7 +253,34 @@ Translate naturally while preserving emotion, character voice, and timing.`,
         // Parse numbered translations
         const translations = parseNumberedTranslations(content, lines.length);
 
-        logger.info({ ...ctx, translationCount: translations.length }, 'LLM translation complete');
+        // Validate audio tag preservation (warning only)
+        let tagsPreserved = 0;
+        let tagsLost = 0;
+        for (let i = 0; i < lines.length; i++) {
+            const originalTags: string[] = lines[i]?.text.match(/\[[a-zA-Z\s]+\]/g) ?? [];
+            const translatedTags: string[] = translations[i]?.match(/\[[a-zA-Z\s]+\]/g) ?? [];
+
+            for (const tag of originalTags) {
+                if (translatedTags.includes(tag)) {
+                    tagsPreserved++;
+                } else {
+                    tagsLost++;
+                    logger.warn(
+                        { ...ctx, line: i + 1, tag, originalText: lines[i]?.text?.substring(0, 50) ?? '' },
+                        'Audio tag lost in translation'
+                    );
+                }
+            }
+        }
+
+        if (tagsLost > 0) {
+            logger.warn(
+                { ...ctx, tagsPreserved, tagsLost },
+                'Some audio tags were not preserved during translation'
+            );
+        }
+
+        logger.info({ ...ctx, translationCount: translations.length, tagsPreserved, tagsLost }, 'LLM translation complete');
 
         return translations;
     } catch (error) {
@@ -239,6 +289,7 @@ Translate naturally while preserving emotion, character voice, and timing.`,
         return lines.map(l => l.text);
     }
 }
+
 
 /**
  * Parse numbered translations from LLM output

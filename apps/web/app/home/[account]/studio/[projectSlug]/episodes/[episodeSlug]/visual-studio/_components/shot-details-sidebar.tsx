@@ -18,6 +18,7 @@ import {
   Play,
   RefreshCw,
   Trash2,
+  Users,
   Video,
   X,
 } from 'lucide-react';
@@ -32,14 +33,6 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@kit/ui/collapsible';
-import { Input } from '@kit/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
@@ -93,6 +86,7 @@ interface DialogueTiming {
 }
 
 interface ShotMetadataExtended {
+  characters?: string[];
   location?: string;
   timeOfDay?: string;
   mood?: string;
@@ -123,57 +117,126 @@ function isVeoPromptV2(
 /**
  * Parse timestamp string "MM:SS" to seconds
  */
+/**
+ * Parse time string to seconds
+ * Format: SS:FF where SS=seconds, FF=frames (assuming 100fps for simplicity)
+ * Examples: "00:00" = 0s, "04:00" = 4s, "08:00" = 8s
+ * Note: This is for shot-level timelines, not episode-level
+ */
 function parseTimeToSeconds(timeStr: string): number {
   const parts = timeStr.split(':');
   if (parts.length !== 2) return 0;
-  const minutes = parseInt(parts[0] ?? '0', 10);
-  const seconds = parseInt(parts[1] ?? '0', 10);
-  return minutes * 60 + seconds;
+  const seconds = parseInt(parts[0] ?? '0', 10);
+  const frames = parseInt(parts[1] ?? '0', 10);
+  // Treat as SS:FF format (seconds and centiseconds/frames)
+  return seconds + frames / 100;
+}
+
+/**
+ * Character details for prompt assembly
+ */
+interface CharacterDetail {
+  name: string;
+  description: string; // Full description with physical attributes
+}
+
+/**
+ * Assemble a VEO 3.1 prompt from its component parts at runtime.
+ * This ensures the fullPrompt always reflects the current state of all parts.
+ * Format matches the LLM-generated structure from scene-shot-generation.json
+ */
+function assembleVeoPrompt(
+  veoPrompt: VeoPromptDataV2,
+  options?: {
+    projectVideoStyle?: string;
+    projectAestheticStyle?: string;
+    characterDetails?: CharacterDetail[];
+    characterNames?: string[];
+  },
+): string {
+  const lines: string[] = [];
+
+  // 1. Characters section FIRST (for image identification before shot description)
+  // Use detailed character info if provided, otherwise extract names from timeline/metadata
+  if (options?.characterDetails && options.characterDetails.length > 0) {
+    // Detailed format with descriptions
+    lines.push('CHARACTERS:');
+    for (const char of options.characterDetails) {
+      lines.push(`- ${char.name}: ${char.description}`);
+    }
+    lines.push('(Identify from provided reference images)');
+    lines.push('');
+  } else {
+    // Fallback to simple names-only format
+    const characters = options?.characterNames ?? [];
+    // Also extract from timeline if not provided
+    if (characters.length === 0) {
+      const charSet = new Set<string>();
+      for (const event of veoPrompt.timeline) {
+        if (event.character) {
+          charSet.add(event.character);
+        }
+      }
+      characters.push(...charSet);
+    }
+    if (characters.length > 0) {
+      lines.push(`CHARACTERS: ${characters.join(', ')} (identify from reference images)`);
+      lines.push('');
+    }
+  }
+
+  // 2. Shot line (camera info)
+  lines.push(veoPrompt.shotLine);
+  lines.push('');
+
+  // 3. Timeline events formatted as [start-end] content
+  for (const event of veoPrompt.timeline) {
+    const startSec = parseTimeToSeconds(event.startTime);
+    const endSec = parseTimeToSeconds(event.endTime);
+
+    if (event.type === 'dialogue' && event.character) {
+      // Dialogue: "[0s-4s] Character: 'text' (Tone: emotion)"
+      const emotionPart = event.emotion ? ` (Tone: ${event.emotion})` : '';
+      lines.push(`[${startSec}s-${endSec}s] ${event.character}: "${event.content}"${emotionPart}`);
+    } else {
+      // Action/transition: "[0s-4s] content. Setting: location"
+      lines.push(`[${startSec}s-${endSec}s] ${event.content}`);
+    }
+  }
+  lines.push('');
+
+  // 4. Audio section
+  lines.push(`AUDIO: ${veoPrompt.audio}`);
+  lines.push('');
+
+  // 5. Style section (include project aesthetic style if provided)
+  let styleText = veoPrompt.style;
+  if (options?.projectAestheticStyle) {
+    // Append project aesthetic style at the end
+    styleText = `${veoPrompt.style}. ${options.projectAestheticStyle}`;
+  } else if (options?.projectVideoStyle) {
+    // Fallback to video style if no aesthetic style
+    styleText = `${veoPrompt.style}. ${options.projectVideoStyle}`;
+  }
+  lines.push(`STYLE: ${styleText}`);
+  lines.push('');
+
+  // 6. Avoid section
+  lines.push(`AVOID: ${veoPrompt.avoid}`);
+
+  return lines.join('\n');
 }
 
 interface ShotDetailsSidebarProps {
   shot: Shot;
   projectId: string;
+  projectVideoStyle?: string;
+  projectAestheticStyle?: string;
+  characterDetails?: CharacterDetail[];
   onClose: () => void;
   onUpdate: () => void;
 }
 
-const MOVEMENTS = [
-  { value: 'static', label: 'Static' },
-  { value: 'pan', label: 'Pan' },
-  { value: 'tilt', label: 'Tilt' },
-  { value: 'dolly', label: 'Dolly' },
-  { value: 'tracking', label: 'Tracking' },
-  { value: 'crane', label: 'Crane' },
-  { value: 'handheld', label: 'Handheld' },
-] as const;
-
-const ANGLES = [
-  { value: 'wide', label: 'Wide' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'close-up', label: 'Close-up' },
-  { value: 'extreme-close-up', label: 'Extreme Close-up' },
-  { value: 'over-shoulder', label: 'Over Shoulder' },
-  { value: 'pov', label: 'POV' },
-] as const;
-
-const LIGHTING = [
-  { value: 'soft-day', label: 'Soft Day' },
-  { value: 'golden-hour', label: 'Golden Hour' },
-  { value: 'night', label: 'Night' },
-  { value: 'studio', label: 'Studio' },
-  { value: 'dramatic', label: 'Dramatic' },
-  { value: 'natural', label: 'Natural' },
-] as const;
-
-const STYLES = [
-  { value: 'watercolor', label: 'Watercolor' },
-  { value: 'cinematic', label: 'Cinematic' },
-  { value: 'anime', label: 'Anime' },
-  { value: 'realistic', label: 'Realistic' },
-  { value: 'cartoon', label: 'Cartoon' },
-  { value: 'painterly', label: 'Painterly' },
-] as const;
 
 /**
  * Copy text to clipboard with toast feedback
@@ -198,6 +261,9 @@ function useCopyToClipboard() {
 export function ShotDetailsSidebar({
   shot,
   projectId,
+  projectVideoStyle,
+  projectAestheticStyle,
+  characterDetails,
   onClose,
   onUpdate,
 }: ShotDetailsSidebarProps) {
@@ -216,31 +282,20 @@ export function ShotDetailsSidebar({
   const referenceImages = metadata?.referenceImages;
   const dialogueTiming = metadata?.dialogueTiming;
   const missingAssets = metadata?.missingAssets;
+  const shotCharacters = metadata?.characters ?? [];
   const hasVeoData = !!veoPrompt;
 
-  // Form state
-  const [editedPrompt, setEditedPrompt] = useState(
-    veoPrompt?.fullPrompt ?? shot.prompt ?? '',
-  );
-  const [movement, setMovement] = useState(shot.cameraMovement ?? 'static');
-  const [angle, setAngle] = useState(shot.cameraAngle ?? 'medium');
-  const [lighting, setLighting] = useState('soft-day');
-  const [style, setStyle] = useState('watercolor');
-  const [negativePrompt, setNegativePrompt] = useState(() => {
-    if (!veoPrompt) return 'blurry, low quality, distorted hands, bad anatomy';
-    if (isVeoPromptV2(veoPrompt)) return veoPrompt.avoid;
-    return (
-      veoPrompt.negativePrompt ??
-      'blurry, low quality, distorted hands, bad anatomy'
-    );
+  const [editedPrompt, setEditedPrompt] = useState(() => {
+    if (veoPrompt && isVeoPromptV2(veoPrompt)) {
+      return assembleVeoPrompt(veoPrompt, {
+        projectVideoStyle,
+        projectAestheticStyle,
+        characterDetails,
+        characterNames: shotCharacters,
+      });
+    }
+    return veoPrompt?.fullPrompt ?? shot.prompt ?? '';
   });
-  const [seed, setSeed] = useState(
-    Math.floor(Math.random() * 1000000000).toString(),
-  );
-
-  const handleCopySeed = () => {
-    copyToClipboard(seed, 'Seed');
-  };
 
   const handleRegenerate = () => {
     startTransition(async () => {
@@ -343,11 +398,55 @@ export function ShotDetailsSidebar({
         </span>
         <span className="text-gray-300 dark:text-gray-600">•</span>
         <span className="text-sm text-gray-500 dark:text-gray-400">16:9</span>
-        <span className="text-gray-300 dark:text-gray-600">•</span>
-        <span className="text-sm text-gray-500 capitalize dark:text-gray-400">
-          {movement}
-        </span>
+        {shot.cameraMovement && (
+          <>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            <span className="text-sm text-gray-500 capitalize dark:text-gray-400">
+              {shot.cameraMovement}
+            </span>
+          </>
+        )}
       </div>
+
+      {/* Characters Section */}
+      {(() => {
+        // Use characters from shot metadata first, then fallback to timeline
+        let characters: string[] = [...shotCharacters];
+
+        // If no characters in metadata, extract from VEO timeline
+        if (characters.length === 0 && veoPrompt && isVeoPromptV2(veoPrompt)) {
+          const charSet = new Set<string>();
+          for (const event of veoPrompt.timeline) {
+            if (event.character) {
+              charSet.add(event.character);
+            }
+          }
+          characters = [...charSet];
+        }
+
+        if (characters.length === 0) return null;
+        return (
+          <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Characters
+              </span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {characters.map((char) => (
+                <Badge
+                  key={char}
+                  variant="secondary"
+                  className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                >
+                  {char}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto">
@@ -592,95 +691,67 @@ export function ShotDetailsSidebar({
                     <Clock className="h-3 w-3" />
                     Timeline ({shot.duration}s)
                   </h4>
-                  <div className="relative space-y-1.5">
-                    {/* Timeline Bar */}
-                    <div className="mb-3 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                      {veoPrompt.timeline.map((event, idx) => {
-                        const startSec = parseTimeToSeconds(event.startTime);
-                        const endSec = parseTimeToSeconds(event.endTime);
-                        const duration = shot.duration || 8;
-                        const left = (startSec / duration) * 100;
-                        const width = ((endSec - startSec) / duration) * 100;
-                        const colors = {
-                          action: 'bg-blue-500',
-                          dialogue: 'bg-purple-500',
-                          transition: 'bg-gray-400',
-                        };
-                        return (
-                          <div
-                            key={idx}
-                            className={cn(
-                              'absolute top-0 h-full rounded-full',
-                              colors[event.type],
-                            )}
-                            style={{ left: `${left}%`, width: `${width}%` }}
-                            title={`${event.type}: ${event.startTime}-${event.endTime}`}
-                          />
-                        );
-                      })}
-                    </div>
-
-                    {/* Event List */}
-                    {veoPrompt.timeline.map((event, idx) => (
-                      <div
-                        key={idx}
-                        className={cn(
-                          'rounded-lg border p-2.5 backdrop-blur-sm',
-                          event.type === 'dialogue'
-                            ? 'border-purple-200/50 bg-purple-50/50 dark:border-purple-800/50 dark:bg-purple-900/20'
-                            : event.type === 'action'
-                              ? 'border-blue-200/50 bg-blue-50/50 dark:border-blue-800/50 dark:bg-blue-900/20'
-                              : 'border-gray-200/50 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/30',
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1">
-                            <div className="mb-1 flex items-center gap-2">
-                              <Badge
-                                variant="secondary"
+                  <div className="space-y-1.5">
+                    {/* Event List - simplified without visual timeline bar */}
+                    {veoPrompt.timeline.map((event, idx) => {
+                      // Convert time strings to seconds for cleaner display
+                      const startSec = parseTimeToSeconds(event.startTime);
+                      const endSec = parseTimeToSeconds(event.endTime);
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-white/30 bg-white/40 p-2.5 backdrop-blur-sm dark:border-white/10 dark:bg-white/5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <div className="mb-1 flex items-center gap-2">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-xs capitalize',
+                                    event.type === 'dialogue' &&
+                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+                                    event.type === 'action' &&
+                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                  )}
+                                >
+                                  {event.type}
+                                </Badge>
+                                {event.character && (
+                                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                                    {event.character}
+                                  </span>
+                                )}
+                                {event.emotion && (
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs capitalize"
+                                  >
+                                    {event.emotion}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p
                                 className={cn(
-                                  'text-xs capitalize',
-                                  event.type === 'dialogue' &&
-                                  'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
-                                  event.type === 'action' &&
-                                  'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                  'text-sm',
+                                  event.type === 'dialogue'
+                                    ? 'font-medium text-gray-800 dark:text-gray-200'
+                                    : 'text-gray-600 dark:text-gray-400',
                                 )}
                               >
-                                {event.type}
-                              </Badge>
-                              {event.character && (
-                                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300">
-                                  {event.character}
-                                </span>
-                              )}
-                              {event.emotion && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs capitalize"
-                                >
-                                  {event.emotion}
-                                </Badge>
-                              )}
+                                {event.type === 'dialogue'
+                                  ? `"${event.content}"`
+                                  : event.content}
+                              </p>
                             </div>
-                            <p
-                              className={cn(
-                                'text-sm',
-                                event.type === 'dialogue'
-                                  ? 'font-medium text-gray-800 dark:text-gray-200'
-                                  : 'text-gray-600 dark:text-gray-400',
-                              )}
-                            >
-                              {event.type === 'dialogue'
-                                ? `"${event.content}"`
-                                : event.content}
-                            </p>
-                          </div>
-                          <div className="flex-shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                            {event.startTime}-{event.endTime}
+                            {/* Show time as seconds: "0s-4s" instead of "00:00-04:00" */}
+                            <div className="flex-shrink-0 rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                              {startSec}s-{endSec}s
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -723,7 +794,7 @@ export function ShotDetailsSidebar({
               </>
             )}
 
-            {/* Full VEO Prompt - Copy Ready */}
+            {/* Full VEO Prompt - Copy Ready (assembled at runtime for V2) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
@@ -732,9 +803,18 @@ export function ShotDetailsSidebar({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() =>
-                    copyToClipboard(veoPrompt.fullPrompt, 'Full prompt')
-                  }
+                  onClick={() => {
+                    // Use runtime-assembled prompt for V2, fallback to stored for V1
+                    const prompt = isVeoPromptV2(veoPrompt)
+                      ? assembleVeoPrompt(veoPrompt, {
+                        projectVideoStyle,
+                        projectAestheticStyle,
+                        characterDetails,
+                        characterNames: shotCharacters,
+                      })
+                      : veoPrompt.fullPrompt;
+                    copyToClipboard(prompt, 'Full prompt');
+                  }}
                   className="h-7 gap-1.5 text-xs"
                 >
                   {copiedField === 'Full prompt' ? (
@@ -745,8 +825,16 @@ export function ShotDetailsSidebar({
                   {copiedField === 'Full prompt' ? 'Copied!' : 'Copy'}
                 </Button>
               </div>
-              <div className="max-h-40 overflow-y-auto rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
-                {veoPrompt.fullPrompt}
+              <div className="rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
+                {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
+                {isVeoPromptV2(veoPrompt)
+                  ? assembleVeoPrompt(veoPrompt, {
+                    projectVideoStyle,
+                    projectAestheticStyle,
+                    characterDetails,
+                    characterNames: shotCharacters,
+                  })
+                  : veoPrompt.fullPrompt}
               </div>
             </div>
 
@@ -936,127 +1024,6 @@ export function ShotDetailsSidebar({
             />
           </div>
         )}
-
-        {/* Settings Grid */}
-        <div className="grid grid-cols-2 gap-4 border-b border-white/20 p-4 dark:border-white/10">
-          {/* Movement */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Movement
-            </label>
-            <Select
-              value={movement}
-              onValueChange={(v) => setMovement(v as typeof movement)}
-            >
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MOVEMENTS.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Angle */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Angle
-            </label>
-            <Select
-              value={angle}
-              onValueChange={(v) => setAngle(v as typeof angle)}
-            >
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ANGLES.map((a) => (
-                  <SelectItem key={a.value} value={a.value}>
-                    {a.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Lighting */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Lighting
-            </label>
-            <Select value={lighting} onValueChange={setLighting}>
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LIGHTING.map((l) => (
-                  <SelectItem key={l.value} value={l.value}>
-                    {l.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Style */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-              Style
-            </label>
-            <Select value={style} onValueChange={setStyle}>
-              <SelectTrigger className="bg-white/40 backdrop-blur-sm dark:bg-white/5">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {STYLES.map((s) => (
-                  <SelectItem key={s.value} value={s.value}>
-                    {s.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        {/* Negative Prompt */}
-        <div className="border-b border-white/20 p-4 dark:border-white/10">
-          <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-            Negative Prompt
-          </label>
-          <Input
-            value={negativePrompt}
-            onChange={(e) => setNegativePrompt(e.target.value)}
-            placeholder="blurry, low quality, distorted hands..."
-            className="bg-white/50 text-sm dark:bg-gray-800/50"
-          />
-        </div>
-
-        {/* Seed */}
-        <div className="p-4">
-          <label className="mb-1.5 block text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
-            Seed
-          </label>
-          <div className="flex gap-2">
-            <Input
-              value={seed}
-              onChange={(e) => setSeed(e.target.value)}
-              placeholder="Random"
-              className="flex-1 bg-white/50 font-mono text-sm dark:bg-gray-800/50"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleCopySeed}
-              className="shrink-0 bg-white/40 backdrop-blur-sm dark:bg-white/5"
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
       </div>
 
       {/* Footer */}

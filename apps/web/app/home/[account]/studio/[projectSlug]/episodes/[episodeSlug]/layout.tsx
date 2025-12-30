@@ -175,6 +175,8 @@ async function EpisodeWorkspaceLayout({
         number: seasonData.number,
       }
       : null,
+    // Include project metadata for shot prompts (projectAestheticStyle, videoStyle, etc.)
+    projectMetadata: (project.metadata as Record<string, unknown>) ?? {},
   };
 
   return (

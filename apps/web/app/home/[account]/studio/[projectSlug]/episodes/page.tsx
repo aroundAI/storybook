@@ -67,11 +67,11 @@ interface Episode {
   duration_seconds: number | null;
   thumbnail_url: string | null;
   final_video_url: string | null;
-  localized_videos?: Record<string, string> | null;
-  story_data: unknown;
-  screenplay_data: unknown;
-  shot_list: unknown;
-  metadata: unknown;
+  localized_videos?: Record<string, string>;
+  story_data: Record<string, unknown> | null;
+  screenplay_data: Record<string, unknown> | null;
+  shot_list: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
   version: number;
   created_at: string;
   updated_at: string;
@@ -109,7 +109,8 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   ]);
 
   const { data: seasons } = seasonsResult;
-  const { data: episodes, error: episodesError } = episodesResult;
+  const episodes = episodesResult.data as Episode[] | null;
+  const episodesError = episodesResult.error;
 
   if (episodesError) {
     throw new Error('Failed to load episodes');

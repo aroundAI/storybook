@@ -279,7 +279,8 @@ describe('ScreenplayViewer', () => {
         <ScreenplayViewer episode={mockEpisode} onApprove={mockOnApprove} />,
       );
 
-      expect(screen.getByText(/2 scenes/)).toBeDefined();
+      // The header format is "2 Scenes • ~1 min"
+      expect(screen.getByText(/2 Scenes/)).toBeDefined();
     });
 
     it('should display estimated duration in minutes', () => {
@@ -298,7 +299,7 @@ describe('ScreenplayViewer', () => {
         <ScreenplayViewer episode={mockEpisode} onApprove={mockOnApprove} />,
       );
 
-      expect(screen.getByText(/Approve & Continue/)).toBeDefined();
+      expect(screen.getByText(/Approve Screenplay/)).toBeDefined();
     });
 
     it('should call onApprove when approve button is clicked', () => {
@@ -307,7 +308,7 @@ describe('ScreenplayViewer', () => {
       );
 
       const approveButton = screen
-        .getByText(/Approve & Continue/)
+        .getByText(/Approve Screenplay/)
         .closest('button');
       fireEvent.click(approveButton!);
 
@@ -469,31 +470,65 @@ describe('ScreenplayViewer', () => {
   });
 
   describe('Card Structure', () => {
-    it('should render within a Card component', () => {
+    it('should render Card in empty state', () => {
+      const episodeWithoutScreenplay = {
+        ...mockEpisode,
+        screenplayData: null,
+      };
+
       render(
-        <ScreenplayViewer episode={mockEpisode} onApprove={mockOnApprove} />,
+        <ScreenplayViewer
+          episode={episodeWithoutScreenplay}
+          onApprove={mockOnApprove}
+        />,
       );
 
       expect(screen.getByTestId('card')).toBeDefined();
     });
 
-    it('should have card header with title', () => {
+    it('should have card header with title in empty state', () => {
+      const episodeWithoutScreenplay = {
+        ...mockEpisode,
+        screenplayData: null,
+      };
+
       render(
-        <ScreenplayViewer episode={mockEpisode} onApprove={mockOnApprove} />,
+        <ScreenplayViewer
+          episode={episodeWithoutScreenplay}
+          onApprove={mockOnApprove}
+        />,
       );
 
       expect(screen.getByTestId('card-header')).toBeDefined();
       expect(screen.getByText('Screenplay')).toBeDefined();
     });
-  });
 
-  describe('Icons', () => {
-    it('should render Film icon in header', () => {
+    it('should not render Card when screenplay exists', () => {
       render(
         <ScreenplayViewer episode={mockEpisode} onApprove={mockOnApprove} />,
       );
 
-      expect(screen.getByTestId('icon-film')).toBeDefined();
+      // Card is only rendered in empty state
+      expect(screen.queryByTestId('card')).toBeNull();
+    });
+  });
+
+  describe('Icons', () => {
+    it('should render Film icon in empty state', () => {
+      const episodeWithoutScreenplay = {
+        ...mockEpisode,
+        screenplayData: null,
+      };
+
+      render(
+        <ScreenplayViewer
+          episode={episodeWithoutScreenplay}
+          onApprove={mockOnApprove}
+        />,
+      );
+
+      // There are two Film icons in empty state (header + content)
+      expect(screen.getAllByTestId('icon-film').length).toBeGreaterThanOrEqual(1);
     });
 
     it('should render Check icon in approve button', () => {

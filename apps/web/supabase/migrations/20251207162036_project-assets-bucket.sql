@@ -10,7 +10,8 @@
 insert into
   storage.buckets (id, name, public)
 values
-  ('project-assets', 'project-assets', true);
+  ('project-assets', 'project-assets', true)
+on conflict (id) do nothing;
 
 -- Helper function to extract project ID from storage path
 -- Path format: {projectId}/{assetId}/{filename} or {projectId}/{filename}

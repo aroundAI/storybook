@@ -4,10 +4,9 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { MapPin, Mic, Plus, User } from 'lucide-react';
+import { MapPin, Plus, User } from 'lucide-react';
 
 import { CharacterEditor, LocationEditor } from '@kit/assets/components';
-import { VoiceProfileEditor } from '@kit/assets/components';
 import { Button } from '@kit/ui/button';
 import {
   Dialog,
@@ -24,13 +23,15 @@ import {
 
 interface CreateAssetButtonProps {
   projectId: string;
+  accountId: string;
   account: string;
 }
 
-type AssetDialogType = 'character' | 'location' | 'voice' | null;
+type AssetDialogType = 'character' | 'location' | null;
 
 export function CreateAssetButton({
   projectId,
+  accountId,
   account: _account,
 }: CreateAssetButtonProps) {
   const router = useRouter();
@@ -67,10 +68,6 @@ export function CreateAssetButton({
             <MapPin className="mr-2 h-4 w-4" />
             Create Location
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => handleCreate('voice')}>
-            <Mic className="mr-2 h-4 w-4" />
-            Create Voice Profile
-          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -85,30 +82,14 @@ export function CreateAssetButton({
           </DialogHeader>
           <CharacterEditor
             projectId={projectId}
+            accountId={accountId}
             onSuccess={handleSuccess}
             onCancel={handleCancel}
           />
         </DialogContent>
       </Dialog>
 
-      {/* Voice Profile Dialog */}
-      <Dialog
-        open={openDialog === 'voice'}
-        onOpenChange={(open) => !open && handleCancel()}
-      >
-        <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Voice Profile</DialogTitle>
-          </DialogHeader>
-          <VoiceProfileEditor
-            projectId={projectId}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* Location Dialog - Placeholder for now */}
+      {/* Location Dialog */}
       <Dialog
         open={openDialog === 'location'}
         onOpenChange={(open) => !open && handleCancel()}

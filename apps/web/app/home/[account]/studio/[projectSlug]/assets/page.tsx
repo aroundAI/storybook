@@ -19,7 +19,7 @@ interface AssetLibraryPageProps {
     projectSlug: string;
   }>;
   searchParams: Promise<{
-    tab?: 'character' | 'location' | 'voice';
+    tab?: 'character' | 'location';
   }>;
 }
 
@@ -40,9 +40,7 @@ export async function generateMetadata({
   const tabTitle =
     tab === 'location'
       ? 'Story World'
-      : tab === 'voice'
-        ? 'Voice Library'
-        : 'Cast';
+      : 'Cast';
 
   return {
     title: project ? `${project.name} - ${tabTitle}` : tabTitle,
@@ -60,6 +58,13 @@ async function AssetLibraryPage({
 
   const client = getSupabaseServerClient();
 
+  // Fetch account ID from slug
+  const { data: accountRecord } = await client
+    .from('accounts')
+    .select('id')
+    .eq('slug', account)
+    .single();
+
   // Fetch project by slug
   const { data: project, error } = await client
     .from('projects')
@@ -67,7 +72,7 @@ async function AssetLibraryPage({
     .eq('slug', projectSlug)
     .single();
 
-  if (error || !project) {
+  if (error || !project || !accountRecord) {
     notFound();
   }
 
@@ -79,9 +84,6 @@ async function AssetLibraryPage({
   if (activeTab === 'location') {
     title = 'Story World';
     description = 'Locations and settings where your story takes place';
-  } else if (activeTab === 'voice') {
-    title = 'Voice Library';
-    description = 'Voice profiles for your characters';
   }
 
   return (
@@ -98,11 +100,19 @@ async function AssetLibraryPage({
       </div>
 
       <PageHeader title={title} description={description}>
-        <CreateAssetButton projectId={project.id} account={account} />
+        <CreateAssetButton
+          projectId={project.id}
+          accountId={accountRecord.id}
+          account={account}
+        />
       </PageHeader>
 
       <PageBody>
-        <AssetGallery projectId={project.id} initialTab={tab ?? 'character'} />
+        <AssetGallery
+          projectId={project.id}
+          accountId={accountRecord.id}
+          initialTab={tab ?? 'character'}
+        />
       </PageBody>
     </>
   );

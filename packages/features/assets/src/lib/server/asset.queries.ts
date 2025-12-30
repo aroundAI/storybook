@@ -141,7 +141,7 @@ export async function isAssetInUse(assetId: string): Promise<boolean> {
   const { count: characterCount } = await client
     .from('character_details')
     .select('asset_id', { count: 'exact', head: true })
-    .eq('voice_asset_id', assetId);
+    .eq('elevenlabs_voice_id', assetId);
 
   if (characterCount && characterCount > 0) {
     logger.info(

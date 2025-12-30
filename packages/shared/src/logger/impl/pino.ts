@@ -3,17 +3,28 @@ import pino from 'pino';
 /**
  * @name Logger
  * @description A logger implementation using Pino
+ * 
+ * Uses synchronous logging in development to avoid worker exit errors.
+ * In production, uses async transport for better performance.
  */
 const isBrowser = typeof window !== 'undefined';
+const isDevelopment = process.env.NODE_ENV === 'development';
 
-const transport =
-  !isBrowser && process.env.ENABLE_FILE_LOGGING === 'true'
-    ? pino.transport({
+// In development, avoid async transports to prevent "worker has exited" errors
+// In production with file logging, use async transport for performance
+const getDestination = () => {
+  // Browser has no destination
+  if (isBrowser) return undefined;
+
+  // In development, use sync destination to stdout
+  if (isDevelopment) {
+    return pino.destination({ sync: true });
+  }
+
+  // In production with file logging, use async transport
+  if (process.env.ENABLE_FILE_LOGGING === 'true') {
+    return pino.transport({
       targets: [
-        // Write to stdout (but we rely on nextjs piping usually, so this might duplicate)
-        // Actually, standard pino writes to stdout by default.
-        // If we provide a transport, it TAKES OVER.
-        // So we need to ensure we still write to stdout if we want to see it there.
         {
           target: 'pino/file',
           options: { destination: 1 }, // 1 = stdout
@@ -28,8 +39,11 @@ const transport =
           },
         },
       ],
-    })
-    : undefined;
+    });
+  }
+
+  return undefined;
+};
 
 const Logger = pino({
   browser: {
@@ -40,6 +54,6 @@ const Logger = pino({
     env: process.env.NODE_ENV,
   },
   errorKey: 'error',
-}, transport);
+}, getDestination());
 
 export { Logger };

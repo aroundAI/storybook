@@ -14,7 +14,6 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import {
   ArrowLeft,
-  AudioLines,
   BarChart3,
   Check,
   ChevronDown,
@@ -24,6 +23,7 @@ import {
   FolderOpen,
   LayoutDashboard,
   MapPin,
+  Music,
   Search,
   Settings,
   Users,
@@ -454,14 +454,13 @@ export function StudioSidebar({
                 isCollapsed={isCollapsed}
               />
               <NavItem
-                href={`${basePath}/assets?tab=voice`}
-                icon={<AudioLines className="h-4 w-4" />}
-                label="Voices"
-                isActive={
-                  pathname.includes('/assets') && pathname.includes('voice')
-                }
+                href={`${basePath}/audio-library`}
+                icon={<Music className="h-4 w-4" />}
+                label="Audio Library"
+                isActive={pathname.includes('/audio-library')}
                 isCollapsed={isCollapsed}
               />
+
             </nav>
           </div>
 

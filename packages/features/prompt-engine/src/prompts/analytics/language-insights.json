@@ -1,0 +1,50 @@
+{
+    "slug": "language-insights",
+    "name": "Multi-Language Analytics Insights",
+    "version": 1,
+    "category": "analytics",
+    "description": "Generate AI-powered insights for multi-language content performance and recommendations.",
+    "exported_at": "2025-01-01T00:00:00.000Z",
+    "llm": {
+        "provider": "gemini",
+        "model": "gemini-3-pro-preview",
+        "max_tokens": 8000,
+        "temperature": 0.7,
+        "response_format": {
+            "type": "json_object"
+        }
+    },
+    "system_prompts": [
+        {
+            "slug": "role",
+            "name": "Multi-Language Content Strategist Role",
+            "content": "You are an expert multi-language content strategist specializing in global content distribution. Your role is to analyze content performance across different languages, platforms, and regions to provide actionable insights for maximizing reach and engagement across multilingual audiences.",
+            "layer_type": "role",
+            "scope": "template",
+            "order": 1
+        },
+        {
+            "slug": "format",
+            "name": "JSON Output Format",
+            "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+            "layer_type": "format",
+            "scope": "template",
+            "order": 2
+        }
+    ],
+    "user_prompt": "Analyze the following multi-language content performance data and provide strategic recommendations.\n\n## Language Analytics Data\n{{language_data}}\n\n## Analysis Requirements\nProvide insights in the following categories:\n\n1. **Language Performance Summary**: Which languages are performing best and why\n2. **Language Expansion Recommendations**: Which new languages to invest in based on data\n3. **Platform-Language Optimization**: Best platform × language combinations\n4. **Content Type Insights**: How shorts vs long-form perform across languages\n5. **Geographic Opportunities**: Regions showing growth potential by language\n6. **Priority Actions**: Ranked list of actions to maximize multilingual reach\n\nConsider:\n- View trends and engagement rates per language\n- Diaspora audiences (e.g., Hindi speakers in US)\n- Platform-specific language preferences\n- Shorts performance as growth driver\n- Revenue per language\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"languageSummary\": \"string (2-3 sentences summarizing language performance)\",\n  \"topLanguage\": \"string (language code of best performer)\",\n  \"languageRecommendations\": [\"string\", \"string\", \"...\"],\n  \"platformOptimization\": [\"string\", \"string\", \"...\"],\n  \"contentTypeInsights\": [\"string\", \"string\", \"...\"],\n  \"geographicOpportunities\": [\"string\", \"string\", \"...\"],\n  \"priorityActions\": [\"string\", \"string\", \"...\"]\n}\n```",
+    "variables": {
+        "language_data": {
+            "type": "text",
+            "required": true,
+            "description": "JSON string of language analytics data including performance by language, platform matrix, content type comparison, shorts data, and geography breakdown."
+        }
+    },
+    "output": {
+        "type": "object",
+        "schema": {
+            "type": "zod",
+            "definition": "z.object({ languageSummary: z.string(), topLanguage: z.string(), languageRecommendations: z.array(z.string()), platformOptimization: z.array(z.string()), contentTypeInsights: z.array(z.string()), geographicOpportunities: z.array(z.string()), priorityActions: z.array(z.string()) })"
+        }
+    }
+}

@@ -45,19 +45,20 @@ describe('SceneContent', () => {
     it('should render scene location', () => {
       render(<SceneContent scene={mockScene} />);
 
-      expect(screen.getByText(/Location: Coffee Shop/)).toBeDefined();
+      expect(screen.getByText('Coffee Shop')).toBeDefined();
     });
 
     it('should render time of day', () => {
       render(<SceneContent scene={mockScene} />);
 
-      expect(screen.getByText(/Time: day/)).toBeDefined();
+      expect(screen.getByText('day')).toBeDefined();
     });
 
     it('should render estimated duration', () => {
       render(<SceneContent scene={mockScene} />);
 
-      expect(screen.getByText(/Duration: ~30s/)).toBeDefined();
+      // Duration is displayed as ~30s without label
+      expect(screen.getByText('~30s')).toBeDefined();
     });
 
     it('should render scene description', () => {
@@ -127,9 +128,11 @@ describe('SceneContent', () => {
       );
 
       const sceneElement = container.querySelector('#scene-1');
-      expect(sceneElement?.className).toContain('bg-accent/20');
+      // Active state uses bg-accent/10, rounded-lg, and px-6 py-4
+      expect(sceneElement?.className).toContain('bg-accent/10');
       expect(sceneElement?.className).toContain('rounded-lg');
-      expect(sceneElement?.className).toContain('p-4');
+      expect(sceneElement?.className).toContain('px-6');
+      expect(sceneElement?.className).toContain('py-4');
     });
 
     it('should not apply active styling when isActive is false', () => {
@@ -138,14 +141,14 @@ describe('SceneContent', () => {
       );
 
       const sceneElement = container.querySelector('#scene-1');
-      expect(sceneElement?.className).not.toContain('bg-accent/20');
+      expect(sceneElement?.className).not.toContain('bg-accent/10');
     });
 
     it('should default to inactive when isActive is not provided', () => {
       const { container } = render(<SceneContent scene={mockScene} />);
 
       const sceneElement = container.querySelector('#scene-1');
-      expect(sceneElement?.className).not.toContain('bg-accent/20');
+      expect(sceneElement?.className).not.toContain('bg-accent/10');
     });
   });
 

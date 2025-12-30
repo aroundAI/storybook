@@ -1,4 +1,7 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
+
+import { ArrowLeft, Settings } from 'lucide-react';
 
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
 import {
@@ -9,7 +12,6 @@ import {
 } from '@kit/projects/queries';
 import type { ProjectMemberWithUser } from '@kit/projects/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import { Button } from '@kit/ui/button';
 import {
   Card,
   CardContent,
@@ -108,41 +110,52 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   }
 
   return (
-    <div className="bg-background min-h-screen">
-      <div className="mx-auto max-w-4xl p-8">
-        <div className="flex flex-col space-y-6">
-          {/* Project Header */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">{project.name}</h1>
-              {project.description && (
-                <p className="text-muted-foreground mt-2">
-                  {project.description}
-                </p>
-              )}
-              {userRole && (
-                <div className="mt-2">
-                  <span className="bg-muted text-muted-foreground rounded-md px-2 py-1 text-sm font-medium capitalize">
-                    {userRole}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <If condition={canEdit}>
-                <EditProjectDialog project={project} />
-              </If>
-
-              <If condition={canDelete}>
-                <DeleteProjectDialog
-                  projectId={project.id}
-                  projectName={project.name}
-                  accountSlug={account}
-                />
-              </If>
-            </div>
+    <>
+      {/* Fixed Header - matching Episodes page pattern */}
+      <header className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+        <div className="mb-2">
+          <Link
+            href={`/home/${account}/studio/${project.slug}`}
+            className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Project
+          </Link>
+        </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Settings className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+              Project Settings
+            </h1>
           </div>
+          <div className="flex gap-2">
+            <If condition={canEdit}>
+              <EditProjectDialog project={project} />
+            </If>
+
+            <If condition={canDelete}>
+              <DeleteProjectDialog
+                projectId={project.id}
+                projectName={project.name}
+                accountSlug={account}
+              />
+            </If>
+          </div>
+        </div>
+      </header>
+
+      {/* Scrollable Content - let parent main handle scrolling */}
+      <div className="flex-1">
+        <div className="mx-auto max-w-4xl space-y-6 p-6">
+          {/* User Role Badge */}
+          {userRole && (
+            <div>
+              <span className="bg-muted text-muted-foreground rounded-md px-2 py-1 text-sm font-medium capitalize">
+                Your role: {userRole}
+              </span>
+            </div>
+          )}
 
           {/* Project Details Card */}
           <Card>
@@ -217,6 +230,18 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   | undefined,
                 language: (project.metadata as Record<string, unknown>)
                   ?.language as string | undefined,
+                projectAestheticStyle: (project.metadata as Record<string, unknown>)
+                  ?.projectAestheticStyle as string | undefined,
+                recurringElement: (project.metadata as Record<string, unknown>)
+                  ?.recurringElement as
+                  | {
+                    enabled?: boolean;
+                    location?: string;
+                    purpose?: string;
+                    placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+                    dialogueHints?: string;
+                  }
+                  | undefined,
               }}
             />
           </If>
@@ -277,18 +302,9 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               </div>
             </CardContent>
           </Card>
-
-          {/* Back to Project Overview Link */}
-          <div>
-            <Button variant="link" asChild>
-              <a href={`/home/${account}/studio/${project.slug}`}>
-                ← Back to Project Overview
-              </a>
-            </Button>
-          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 

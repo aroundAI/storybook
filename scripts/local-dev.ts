@@ -75,13 +75,14 @@ async function main() {
     console.log(`   - Workers: Active (via Next.js Instrumentation)`);
     console.log(`   - Scheduler: Handled by Workers (BullMQ Repeatable Jobs)`);
 
-    // 2. Start Next.js Dev Server
-    console.log('\x1b[32m%s\x1b[0m', '\n🌐 Starting Next.js Dev Server...');
+    // 2. Start Next.js Dev Server with .env.localprod (already loaded by dotenv above)
+    console.log('\x1b[32m%s\x1b[0m', '\n🌐 Starting Next.js Dev Server with .env.localprod...');
     console.log('\x1b[90m%s\x1b[0m', '(Workers and scheduled jobs are started automatically by Next.js instrumentation)');
 
+    // Run next dev directly from apps/web directory, passing inherited env vars from dotenv
     const nextDev = spawn('pnpm', ['dev'], {
         stdio: 'inherit',
-        shell: true,
+        cwd: path.resolve(process.cwd(), 'apps/web'),
         env: { ...process.env }
     });
 

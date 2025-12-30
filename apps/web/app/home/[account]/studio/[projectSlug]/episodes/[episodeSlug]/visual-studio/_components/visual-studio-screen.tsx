@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 
 import { Download, Filter, Play, PlusCircle, Search, X } from 'lucide-react';
 
+import { useAssets } from '@kit/assets/hooks';
 import type { EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
@@ -91,6 +92,18 @@ export function VisualStudioScreen({
   const [_isPending, _startTransition] = useTransition();
   const [filter, setFilter] = useState<ShotFilter>({});
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
+
+  // Fetch project characters to get descriptions for shot prompts
+  const { assets: projectCharacters, fetchAssets: fetchCharacters } = useAssets({
+    projectId: episode.projectId,
+    type: 'character',
+    limit: 100,
+  });
+
+  // Fetch characters on mount
+  useEffect(() => {
+    fetchCharacters();
+  }, [fetchCharacters]);
 
   const shots = episode.shots;
 
@@ -441,6 +454,30 @@ export function VisualStudioScreen({
             <ShotDetailsSidebar
               shot={selectedShot}
               projectId={episode.projectId}
+              projectVideoStyle={episode.projectMetadata?.videoStyle}
+              projectAestheticStyle={episode.projectMetadata?.projectAestheticStyle}
+              characterDetails={(() => {
+                // Build characterDetails from project characters matching shot's character names
+                const shotMetadata = selectedShot.metadata as { characters?: string[] } | undefined;
+                const shotCharacterNames = shotMetadata?.characters ?? [];
+
+                if (shotCharacterNames.length === 0 || projectCharacters.length === 0) {
+                  return undefined;
+                }
+
+                return shotCharacterNames
+                  .map((name) => {
+                    const asset = projectCharacters.find(
+                      (c) => c.name.toLowerCase() === name.toLowerCase()
+                    );
+                    if (!asset) return null;
+                    return {
+                      name: asset.name,
+                      description: asset.description || asset.name,
+                    };
+                  })
+                  .filter((c): c is { name: string; description: string } => c !== null);
+              })()}
               onClose={() => setSelectedShot(null)}
               onUpdate={refetchEpisode}
             />

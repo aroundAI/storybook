@@ -43,7 +43,16 @@ export function ConditionalSidebarLayout({
     pathname.startsWith(studioPath) && pathname.length > studioPath.length; // Has content after /studio/
 
   return (
-    <Page style={'sidebar'}>
+    <Page
+      style={'sidebar'}
+      // When in studio project mode, use h-full with overflow-hidden
+      // This contains the studio layout's h-screen and prevents double scroll
+      contentContainerClassName={
+        isStudioProject
+          ? 'mx-auto flex h-full w-full flex-col overflow-hidden bg-inherit'
+          : undefined
+      }
+    >
       {!isStudioProject && (
         <PageNavigation>
           <TeamAccountLayoutSidebar

@@ -84,6 +84,12 @@ export const updateStudioSettingsAction = enhanceAction(
     if (data.language !== undefined) {
       updatedMetadata.language = data.language;
     }
+    if (data.recurringElement !== undefined) {
+      updatedMetadata.recurringElement = data.recurringElement;
+    }
+    if (data.projectAestheticStyle !== undefined) {
+      updatedMetadata.projectAestheticStyle = data.projectAestheticStyle;
+    }
 
     // Update project metadata
     const { data: updatedProject, error: updateError } = await client

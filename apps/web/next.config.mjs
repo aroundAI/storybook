@@ -24,6 +24,7 @@ const INTERNAL_PACKAGES = [
   '@kit/llm',
   '@kit/content-analytics',
   '@kit/jobs',
+  '@kit/storage',
 ];
 
 /** @type {import('next').NextConfig} */
@@ -93,8 +94,8 @@ const config = {
     process.env.NEXT_PUBLIC_CI === 'true'
       ? false
       : {
-          position: 'bottom-right',
-        },
+        position: 'bottom-right',
+      },
   experimental: {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
@@ -130,15 +131,15 @@ function getRemotePatterns() {
   return IS_PRODUCTION
     ? remotePatterns
     : [
-        {
-          protocol: 'http',
-          hostname: '127.0.0.1',
-        },
-        {
-          protocol: 'http',
-          hostname: 'localhost',
-        },
-      ];
+      {
+        protocol: 'http',
+        hostname: '127.0.0.1',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+    ];
 }
 
 async function getRedirects() {

@@ -78,7 +78,7 @@ export const CreateCharacterSchema = z.object({
   backstory: z.string().max(5000).optional(),
   elementPrompt: z.string().max(2000).optional(),
   referenceImages: z.array(z.string().url()).max(10).optional(),
-  voiceAssetId: z.string().uuid().nullable().optional(),
+  voiceAssetId: z.string().nullable().optional(),
 });
 
 /**
@@ -99,7 +99,7 @@ export const UpdateCharacterSchema = z.object({
   backstory: z.string().max(5000).nullable().optional(),
   elementPrompt: z.string().max(2000).nullable().optional(),
   referenceImages: z.array(z.string().url()).max(10).nullable().optional(),
-  voiceAssetId: z.string().uuid().nullable().optional(),
+  voiceAssetId: z.string().nullable().optional(),
 });
 
 /**
@@ -141,7 +141,7 @@ export const CharacterFormSchema = z.object({
   backstory: z.string().max(5000).optional().or(z.literal('')),
   elementPrompt: z.string().max(2000).optional().or(z.literal('')),
   referenceImages: z.array(z.string().url()).max(10).optional(),
-  voiceAssetId: z.string().uuid().nullable().optional(),
+  voiceAssetId: z.string().nullable().optional(),
 });
 
 // Type exports

@@ -3,7 +3,15 @@
 import { useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Clock, Film, Loader2, MessageSquare, Zap } from 'lucide-react';
+import {
+  Clock,
+  Film,
+  Loader2,
+  MapPin,
+  MessageSquare,
+  RefreshCw,
+  Zap,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
@@ -34,6 +42,8 @@ import {
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
+import { Switch } from '@kit/ui/switch';
+import { Textarea } from '@kit/ui/textarea';
 
 import {
   type UpdateStudioSettingsInput,
@@ -51,6 +61,14 @@ interface StudioSettingsFormProps {
     defaultEpisodeDuration?: number;
     contentRating?: 'G' | 'PG' | 'PG-13' | 'R' | 'NR';
     language?: string;
+    projectAestheticStyle?: string;
+    recurringElement?: {
+      enabled?: boolean;
+      location?: string;
+      purpose?: string;
+      placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+      dialogueHints?: string;
+    };
   };
 }
 
@@ -86,25 +104,25 @@ const CONTENT_STYLES: Array<{
   description: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  {
-    value: 'dialogue-heavy',
-    label: 'Dialogue Heavy',
-    description: 'More dialogue lines per scene (kids cartoons, comedies)',
-    icon: MessageSquare,
-  },
-  {
-    value: 'balanced',
-    label: 'Balanced',
-    description: 'Mix of dialogue and action (dramas, documentaries)',
-    icon: Film,
-  },
-  {
-    value: 'action-heavy',
-    label: 'Action Heavy',
-    description: 'Fewer dialogue lines, more visual storytelling',
-    icon: Zap,
-  },
-];
+    {
+      value: 'dialogue-heavy',
+      label: 'Dialogue Heavy',
+      description: 'More dialogue lines per scene (kids cartoons, comedies)',
+      icon: MessageSquare,
+    },
+    {
+      value: 'balanced',
+      label: 'Balanced',
+      description: 'Mix of dialogue and action (dramas, documentaries)',
+      icon: Film,
+    },
+    {
+      value: 'action-heavy',
+      label: 'Action Heavy',
+      description: 'Fewer dialogue lines, more visual storytelling',
+      icon: Zap,
+    },
+  ];
 
 const DURATION_PRESETS = [
   { value: 60, label: '1 min' },
@@ -127,6 +145,13 @@ const CONTENT_RATINGS = [
   { value: 'NR', label: 'NR - Not Rated' },
 ];
 
+const PLACEMENT_OPTIONS = [
+  { value: 'beginning', label: 'Beginning' },
+  { value: 'middle', label: 'Middle' },
+  { value: 'end', label: 'End' },
+  { value: 'throughout', label: 'Throughout' },
+];
+
 export function StudioSettingsForm({
   projectId,
   currentSettings,
@@ -144,6 +169,14 @@ export function StudioSettingsForm({
       defaultEpisodeDuration: currentSettings.defaultEpisodeDuration ?? 300,
       contentRating: currentSettings.contentRating,
       language: currentSettings.language ?? 'en',
+      projectAestheticStyle: currentSettings.projectAestheticStyle ?? '',
+      recurringElement: {
+        enabled: currentSettings.recurringElement?.enabled ?? false,
+        location: currentSettings.recurringElement?.location ?? '',
+        purpose: currentSettings.recurringElement?.purpose ?? '',
+        placement: currentSettings.recurringElement?.placement ?? 'end',
+        dialogueHints: currentSettings.recurringElement?.dialogueHints ?? '',
+      },
     },
   });
 
@@ -163,19 +196,18 @@ export function StudioSettingsForm({
     });
   });
 
+  // TEST 3: With Form wrapper + FormField + Select components
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit}>
         <Card>
           <CardHeader>
             <CardTitle>Content Generation Settings</CardTitle>
             <CardDescription>
-              These settings affect how stories, screenplays, and dialogue are
-              generated for episodes in this project.
+              Testing with Select components.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Target Audience */}
+          <CardContent className="space-y-4">
             <FormField
               control={form.control}
               name="targetAudience"
@@ -184,20 +216,15 @@ export function StudioSettingsForm({
                   <FormLabel>Target Audience</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="e.g., Children ages 4-8, Young adults, General audience"
+                      placeholder="e.g., Children ages 4-8"
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    Describe who this content is for. Affects tone and
-                    complexity.
-                  </FormDescription>
+                  <FormDescription>Test description</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            {/* Genre */}
             <FormField
               control={form.control}
               name="genre"
@@ -221,15 +248,11 @@ export function StudioSettingsForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Primary genre affects story themes and tone.
-                  </FormDescription>
+                  <FormDescription>Genre affects story themes.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
-
-            {/* Video Style */}
             <FormField
               control={form.control}
               name="videoStyle"
@@ -253,22 +276,20 @@ export function StudioSettingsForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Visual style for generated video content.
-                  </FormDescription>
+                  <FormDescription>Visual style.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Content Style */}
+            {/* Content Style - button grid */}
             <FormField
               control={form.control}
               name="contentStyle"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Content Style</FormLabel>
-                  <div className="grid grid-cols-3 gap-3 pt-2">
+                  <div className="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-3">
                     {CONTENT_STYLES.map((style) => {
                       const StyleIcon = style.icon;
                       return (
@@ -279,7 +300,7 @@ export function StudioSettingsForm({
                           className={cn(
                             'border-input hover:bg-accent flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors',
                             field.value === style.value &&
-                              'bg-primary/10 border-primary ring-primary/20 ring-2',
+                            'bg-primary/10 border-primary ring-primary/20 ring-2',
                           )}
                         >
                           <StyleIcon
@@ -305,7 +326,7 @@ export function StudioSettingsForm({
               )}
             />
 
-            {/* Default Episode Duration */}
+            {/* Default Episode Duration - button list */}
             <FormField
               control={form.control}
               name="defaultEpisodeDuration"
@@ -324,7 +345,7 @@ export function StudioSettingsForm({
                         className={cn(
                           'border-input hover:bg-accent rounded-md border px-3 py-1.5 text-sm transition-colors',
                           field.value === preset.value &&
-                            'bg-primary text-primary-foreground border-primary',
+                          'bg-primary text-primary-foreground border-primary',
                         )}
                       >
                         {preset.label}
@@ -332,8 +353,7 @@ export function StudioSettingsForm({
                     ))}
                   </div>
                   <FormDescription>
-                    Default duration for new episodes. Can be overridden per
-                    episode.
+                    Default duration for new episodes.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -364,9 +384,7 @@ export function StudioSettingsForm({
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>
-                    Target content rating for this project.
-                  </FormDescription>
+                  <FormDescription>Target content rating.</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -392,21 +410,155 @@ export function StudioSettingsForm({
                       <SelectItem value="en">English</SelectItem>
                       <SelectItem value="es">Spanish</SelectItem>
                       <SelectItem value="fr">French</SelectItem>
-                      <SelectItem value="de">German</SelectItem>
-                      <SelectItem value="pt">Portuguese</SelectItem>
-                      <SelectItem value="ja">Japanese</SelectItem>
-                      <SelectItem value="ko">Korean</SelectItem>
-                      <SelectItem value="zh">Chinese</SelectItem>
                     </SelectContent>
                   </Select>
+                  <FormDescription>Primary language.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Project Aesthetic Style */}
+            <FormField
+              control={form.control}
+              name="projectAestheticStyle"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="flex items-center gap-2">
+                    <Film className="h-4 w-4" />
+                    Project Aesthetic Style
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="e.g., Noir-inspired with saturated colors, dramatic shadows, and whimsical undertones"
+                      className="resize-none"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
                   <FormDescription>
-                    Primary language for generated content.
+                    Visual aesthetic applied to all shot prompts for consistency across the project.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
           </CardContent>
+        </Card>
+
+        {/* Recurring Story Element Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  Recurring Story Element
+                </CardTitle>
+                <CardDescription>
+                  Add a signature scene that appears in every episode.
+                </CardDescription>
+              </div>
+              <FormField
+                control={form.control}
+                name="recurringElement.enabled"
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+          </CardHeader>
+          {form.watch('recurringElement.enabled') && (
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="recurringElement.location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Location / Context
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., The family dinner table"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>Where does this scene take place?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="recurringElement.purpose"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purpose</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g., The character reflects on their day"
+                        className="resize-none"
+                        rows={2}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>What happens in this scene?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="recurringElement.placement"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Placement in Episode</FormLabel>
+                    <div className="flex flex-wrap gap-2 pt-2">
+                      {PLACEMENT_OPTIONS.map((option) => (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => field.onChange(option.value)}
+                          className={cn(
+                            'border-input hover:bg-accent rounded-md border px-3 py-1.5 text-sm transition-colors',
+                            field.value === option.value &&
+                            'bg-primary text-primary-foreground border-primary',
+                          )}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="recurringElement.dialogueHints"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Dialogue Hints (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g., Use phrases like 'You know what I learned today...'"
+                        className="resize-none"
+                        rows={2}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>Specific phrases or dialogue patterns to use.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          )}
         </Card>
 
         <div className="flex justify-end">

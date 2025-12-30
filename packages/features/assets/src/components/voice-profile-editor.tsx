@@ -3,10 +3,12 @@
 import { useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { AlertCircle, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import {
   Form,
@@ -17,12 +19,17 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
+import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 
 import {
   createAssetAction,
   updateAssetAction,
 } from '../lib/server/asset.mutations';
+import {
+  getElevenLabsVoicesAction,
+  type ElevenLabsVoice,
+} from '../lib/server/voice.actions';
 import type { Asset, VoiceMetadata } from '../lib/types';
 import type { VoiceOption } from './voice-card';
 import { VoicePreview } from './voice-preview';
@@ -43,7 +50,7 @@ const VoiceProfileFormSchema = z.object({
 });
 
 // Sample voices for demo (in production, these would come from ElevenLabs API)
-const SAMPLE_VOICES: VoiceOption[] = [
+const _SAMPLE_VOICES: VoiceOption[] = [
   {
     id: 'voice-1',
     name: 'Adam',
@@ -84,6 +91,7 @@ const SAMPLE_VOICES: VoiceOption[] = [
 
 interface VoiceProfileEditorProps {
   projectId: string;
+  accountId: string;
   voiceProfile?: Asset;
   onSuccess?: (voiceProfileId: string) => void;
   onCancel?: () => void;
@@ -91,13 +99,33 @@ interface VoiceProfileEditorProps {
 
 export function VoiceProfileEditor({
   projectId,
+  accountId,
   voiceProfile,
   onSuccess,
   onCancel,
 }: VoiceProfileEditorProps) {
   const [isPending, startTransition] = useTransition();
-  const [previewAudioUrl, _setPreviewAudioUrl] = useState<string | null>(null);
+  const [previewAudioUrl, setPreviewAudioUrl] = useState<string | null>(null);
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
+
+  // Fetch voices from ElevenLabs
+  const { data: voicesData, isLoading: voicesLoading, error: voicesError } = useQuery({
+    queryKey: ['elevenlabs-voices', accountId],
+    queryFn: () => getElevenLabsVoicesAction({ accountId }),
+    enabled: !!accountId,
+  });
+
+  // Transform API voices to VoiceOption format
+  const voices: VoiceOption[] = voicesData?.voices?.map((v: ElevenLabsVoice) => ({
+    id: v.id,
+    name: v.name,
+    gender: v.gender === 'male' ? 'Male' : v.gender === 'female' ? 'Female' : 'Neutral',
+    age: v.age || 'Unknown',
+    accent: v.accent || 'Neutral',
+    description: v.description,
+    category: v.isCloned ? 'cloned' : 'premade',
+    previewUrl: v.previewUrl,
+  })) ?? [];
 
   const isEditMode = !!voiceProfile;
   const existingMetadata = voiceProfile?.metadata as VoiceMetadata | null;
@@ -121,7 +149,7 @@ export function VoiceProfileEditor({
   const selectedVoiceId = form.watch('voiceId');
   const settings = form.watch('settings');
 
-  // Generate preview (placeholder - in production, this would call ElevenLabs API)
+  // Generate preview using the selected voice's preview URL
   const handleGeneratePreview = async () => {
     if (!selectedVoiceId) {
       toast.error('Please select a voice first');
@@ -130,12 +158,14 @@ export function VoiceProfileEditor({
 
     setIsGeneratingPreview(true);
 
-    // Simulate preview generation delay
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-
-    // In production, this would be a real audio URL from ElevenLabs
-    // For now, we just show a placeholder message
-    toast.info('Voice preview would be generated here with ElevenLabs API');
+    // Find the selected voice and use its preview URL
+    const selectedVoice = voices.find((v) => v.id === selectedVoiceId);
+    if (selectedVoice?.previewUrl) {
+      setPreviewAudioUrl(selectedVoice.previewUrl);
+      toast.success('Preview loaded');
+    } else {
+      toast.info('No preview available for this voice');
+    }
     setIsGeneratingPreview(false);
   };
 
@@ -205,11 +235,28 @@ export function VoiceProfileEditor({
         {/* Voice Selection */}
         <div className="space-y-2">
           <FormLabel>Select Voice *</FormLabel>
-          <VoiceSelector
-            voices={SAMPLE_VOICES}
-            selectedVoiceId={selectedVoiceId}
-            onSelect={(voiceId) => form.setValue('voiceId', voiceId)}
-          />
+          {voicesLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : voicesError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                {voicesError instanceof Error
+                  ? voicesError.message
+                  : 'Failed to load voices. Please check your ElevenLabs API key.'}
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <VoiceSelector
+              voices={voices}
+              selectedVoiceId={selectedVoiceId}
+              onSelect={(voiceId) => form.setValue('voiceId', voiceId)}
+            />
+          )}
           {form.formState.errors.voiceId && (
             <p className="text-destructive text-sm">
               {form.formState.errors.voiceId.message}

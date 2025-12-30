@@ -102,7 +102,8 @@ create policy "scheduled_reports_delete" on public.scheduled_reports for delete
 insert into
   storage.buckets (id, name, public)
 values
-  ('reports', 'reports', false);
+  ('reports', 'reports', false)
+on conflict (id) do nothing;
 
 -- Helper function to extract account ID from report path
 -- Path format: exports/{timestamp}-{filename} or scheduled/{reportId}/{timestamp}-{filename}

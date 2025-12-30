@@ -48,6 +48,8 @@ export const PlatformConfigSchema = z.object({
   thumbnailUrl: z.string().url().optional().nullable(),
   scheduledAt: z.string().datetime().optional().nullable(),
   platformSpecific: PlatformSpecificSettingsSchema.default({}),
+  // Language for multi-language analytics (en, hi, es, pt, etc.)
+  language: z.string().min(2).max(5).default('en'),
 });
 
 /**

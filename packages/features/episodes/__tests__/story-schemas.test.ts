@@ -9,8 +9,11 @@ import {
 
 describe('Story Schemas', () => {
   describe('GenerateStoryIdeasSchema', () => {
+    const validEpisodeId = '123e4567-e89b-12d3-a456-426614174000';
+
     it('should accept valid input with all fields', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise:
           'A detective investigates a mysterious disappearance in a small town',
         genre: 'mystery',
@@ -23,6 +26,7 @@ describe('Story Schemas', () => {
 
     it('should accept valid input with only required fields', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise: 'A simple story about friendship',
       });
       expect(result.success).toBe(true);
@@ -33,30 +37,33 @@ describe('Story Schemas', () => {
 
     it('should reject premise shorter than 10 characters', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise: 'Too short',
       });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toContain(
-          'at least 10 characters',
+          'at least 10 character',
         );
       }
     });
 
     it('should reject premise longer than 500 characters', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise: 'a'.repeat(501),
       });
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error.issues[0]?.message).toContain(
-          'at most 500 characters',
+          'at most 500 character',
         );
       }
     });
 
     it('should reject numberOfIdeas less than 1', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise: 'A valid premise here',
         numberOfIdeas: 0,
       });
@@ -65,6 +72,7 @@ describe('Story Schemas', () => {
 
     it('should reject numberOfIdeas greater than 5', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise: 'A valid premise here',
         numberOfIdeas: 6,
       });
@@ -73,6 +81,7 @@ describe('Story Schemas', () => {
 
     it('should reject non-integer numberOfIdeas', () => {
       const result = GenerateStoryIdeasSchema.safeParse({
+        episodeId: validEpisodeId,
         premise: 'A valid premise here',
         numberOfIdeas: 2.5,
       });
@@ -207,10 +216,10 @@ describe('Story Schemas', () => {
       expect(result.success).toBe(false);
     });
 
-    it('should reject targetDuration greater than 600 seconds', () => {
+    it('should reject targetDuration greater than 7200 seconds (2 hours)', () => {
       const result = GenerateFullStorySchema.safeParse({
         ...validInput,
-        targetDuration: 601,
+        targetDuration: 7201,
       });
       expect(result.success).toBe(false);
     });

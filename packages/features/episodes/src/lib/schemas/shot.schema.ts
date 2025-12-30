@@ -114,8 +114,8 @@ export const ShotMetadataSchema = z.object({
       viralScore: z.number().min(1).max(10),
       hookType: z
         .enum(['question', 'reveal', 'conflict', 'visual', 'humor', 'cliffhanger'])
-        .optional(),
-      standaloneSummary: z.string().optional(),
+        .nullish(),
+      standaloneSummary: z.string().nullish(),
     })
     .optional(),
 });

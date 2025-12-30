@@ -61,7 +61,33 @@ export {
   getProjectAnalyticsAction,
 } from './dashboard-actions';
 
-// Types
+// Account-level dashboard actions
+export {
+  getAccountDashboardData,
+  type AccountDashboardData,
+} from './account-dashboard-actions';
+
+// Language and content type analytics
+export {
+  getLanguagePerformance,
+  getPlatformLanguageMatrix,
+  getContentTypeComparison,
+  getShortsSourcePerformance,
+  getGeographyByLanguage,
+  getLanguageTrend,
+  type LanguagePerformance,
+  type PlatformLanguageEntry,
+  type ContentTypeComparison,
+  type ShortsSourcePerformance,
+  type GeographyByLanguage,
+  type LanguageTrendEntry,
+} from './language-analytics';
+
+// Language AI insights
+export {
+  generateLanguageInsightsAction,
+  type LanguageInsightsResult,
+} from './language-insights-actions';
 export type {
   NormalizedAnalytics,
   PublishForSync,

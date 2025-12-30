@@ -191,20 +191,46 @@ function extractJSON<T = unknown>(
  * Get API key for LLM provider from environment variables
  */
 function getApiKeyForProvider(provider: LLMProvider | string): string {
+  let apiKey = '';
+  let source = '';
+
   switch (provider) {
     case 'openai':
-      return process.env.OPENAI_API_KEY || '';
+      apiKey = process.env.OPENAI_API_KEY || '';
+      source = 'OPENAI_API_KEY';
+      break;
     case 'anthropic':
-      return process.env.ANTHROPIC_API_KEY || '';
+      apiKey = process.env.ANTHROPIC_API_KEY || '';
+      source = 'ANTHROPIC_API_KEY';
+      break;
     case 'gemini':
-      return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+      if (process.env.GEMINI_API_KEY) {
+        apiKey = process.env.GEMINI_API_KEY;
+        source = 'GEMINI_API_KEY';
+      } else if (process.env.GOOGLE_API_KEY) {
+        apiKey = process.env.GOOGLE_API_KEY;
+        source = 'GOOGLE_API_KEY';
+      }
+      break;
     case 'deepseek':
-      return process.env.DEEPSEEK_API_KEY || '';
+      apiKey = process.env.DEEPSEEK_API_KEY || '';
+      source = 'DEEPSEEK_API_KEY';
+      break;
     case 'local':
       return 'not-needed';
     default:
       return '';
   }
+
+  // Log API key prefix for debugging (first 10 chars only for security)
+  if (apiKey) {
+    const prefix = apiKey.substring(0, 10);
+    console.log(`[LLM] Using ${source} for ${provider}: ${prefix}...`);
+  } else {
+    console.warn(`[LLM] No API key found for ${provider}`);
+  }
+
+  return apiKey;
 }
 
 /**

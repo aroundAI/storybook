@@ -22,9 +22,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { formatNumber } from '../lib/format';
 import {
   getContentListAction,
+  getContentTypeComparisonAction,
+  getGeographyByLanguageAction,
+  getLanguagePerformanceAction,
+  getLanguageTrendAction,
+  getPlatformLanguageMatrixAction,
   getProjectAnalyticsAction,
   getProjectAudienceDataAction,
   getProjectDailyMetricsAction,
+  getShortsSourcePerformanceAction,
 } from '../server/dashboard-actions';
 import type {
   AggregateAnalytics,
@@ -37,6 +43,7 @@ import { ContentGrid } from './content';
 import type { DateRangeValue } from './date-range-picker';
 import { DateRangePicker } from './date-range-picker';
 import { ExportReports } from './export-reports';
+import { LanguageAnalyticsDashboard, LanguageAnalyticsDashboardSkeleton } from './language-analytics-dashboard';
 import { MetricCards } from './metric-cards';
 import { OverviewGrid } from './overview';
 import { PerformanceChart } from './performance-chart';
@@ -138,6 +145,108 @@ export function AnalyticsDashboard({
     enabled: activeTab === 'audience',
   });
 
+  // Fetch language performance for Language tab
+  const { data: languagePerformance, isLoading: isLanguageLoading } = useQuery({
+    queryKey: [
+      'language-performance',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getLanguagePerformanceAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch platform × language matrix for Language tab
+  const { data: platformLanguageMatrix, isLoading: isMatrixLoading } = useQuery({
+    queryKey: [
+      'platform-language-matrix',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getPlatformLanguageMatrixAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch content type comparison for Language tab
+  const { data: contentTypeComparison, isLoading: isContentTypeLoading } = useQuery({
+    queryKey: [
+      'content-type-comparison',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getContentTypeComparisonAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch shorts source performance for Language tab (Phase 3)
+  const { data: shortsPerformance, isLoading: isShortsLoading } = useQuery({
+    queryKey: [
+      'shorts-performance',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getShortsSourcePerformanceAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch geography by language for Language tab (Phase 4)
+  const { data: geographyByLanguage, isLoading: isGeographyLoading } = useQuery({
+    queryKey: [
+      'geography-by-language',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getGeographyByLanguageAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
+  // Fetch language trend for trend chart
+  const { data: languageTrend, isLoading: isTrendLoading } = useQuery({
+    queryKey: [
+      'language-trend',
+      projectId,
+      dateRange.from?.toISOString(),
+      dateRange.to?.toISOString(),
+    ],
+    queryFn: () =>
+      getLanguageTrendAction({
+        projectId,
+        from: dateRange.from,
+        to: dateRange.to,
+      }),
+    enabled: activeTab === 'language',
+  });
+
   // Filter data by selected platforms
   // projectData.platformTotals has { platform, views, likes, comments, shares, percentage }
   const filteredPlatformTotals = projectData?.platformTotals?.filter((p) =>
@@ -149,15 +258,15 @@ export function AnalyticsDashboard({
   // but MetricCards expects nested structure (views, likes, etc.)
   const totals: AnalyticsTotals | null = projectData
     ? {
-        views: projectData.totalViews,
-        likes: projectData.totalLikes,
-        comments: projectData.totalComments,
-        shares: projectData.totalShares,
-        watchTimeSeconds: 0, // Not available at project level
-        subscribersGained: 0, // Not available at project level
-        revenueCents: projectData.totalRevenueCents,
-        contentCount: projectData.contentCount,
-      }
+      views: projectData.totalViews,
+      likes: projectData.totalLikes,
+      comments: projectData.totalComments,
+      shares: projectData.totalShares,
+      watchTimeSeconds: 0, // Not available at project level
+      subscribersGained: 0, // Not available at project level
+      revenueCents: projectData.totalRevenueCents,
+      contentCount: projectData.contentCount,
+    }
     : null;
 
   // Build aggregate analytics object for AIInsights
@@ -172,14 +281,14 @@ export function AnalyticsDashboard({
 
   const aggregateAnalytics: AggregateAnalytics | null = projectData
     ? {
-        totals: totals!,
-        previousPeriodTotals: undefined, // Not currently fetched
-        platformMetrics,
-        topContent: undefined, // Not currently fetched
-        audience: undefined, // Not currently fetched
-        contentCount: projectData.contentCount ?? 0,
-        avgEngagementRate: projectData.avgEngagementRate ?? 0,
-      }
+      totals: totals!,
+      previousPeriodTotals: undefined, // Not currently fetched
+      platformMetrics,
+      topContent: undefined, // Not currently fetched
+      audience: undefined, // Not currently fetched
+      contentCount: projectData.contentCount ?? 0,
+      avgEngagementRate: projectData.avgEngagementRate ?? 0,
+    }
     : null;
 
   // Filter daily metrics by selected platforms
@@ -255,6 +364,7 @@ export function AnalyticsDashboard({
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="content">Content</TabsTrigger>
           <TabsTrigger value="audience">Audience</TabsTrigger>
+          <TabsTrigger value="language">Language</TabsTrigger>
           <TabsTrigger value="insights">AI Insights</TabsTrigger>
         </TabsList>
 
@@ -314,6 +424,22 @@ export function AnalyticsDashboard({
 
         <TabsContent value="insights" className="mt-6">
           <AIInsights projectId={projectId} analytics={aggregateAnalytics} />
+        </TabsContent>
+
+        <TabsContent value="language" className="mt-6">
+          {isLanguageLoading || isMatrixLoading || isContentTypeLoading || isShortsLoading || isGeographyLoading || isTrendLoading ? (
+            <LanguageAnalyticsDashboardSkeleton />
+          ) : (
+            <LanguageAnalyticsDashboard
+              projectId={projectId}
+              languageData={languagePerformance ?? null}
+              matrixData={platformLanguageMatrix ?? null}
+              contentTypeData={contentTypeComparison ?? null}
+              shortsData={shortsPerformance ?? null}
+              geographyData={geographyByLanguage ?? null}
+              trendData={languageTrend ?? null}
+            />
+          )}
         </TabsContent>
       </Tabs>
 

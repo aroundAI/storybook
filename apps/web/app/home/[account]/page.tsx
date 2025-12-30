@@ -1,13 +1,18 @@
-import { use } from 'react';
+import { Suspense } from 'react';
 
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { PageBody } from '@kit/ui/page';
 import { Trans } from '@kit/ui/trans';
+import {
+  CompanyDashboard,
+  CompanyDashboardSkeleton,
+} from '@kit/content-analytics/components';
+import { getAccountDashboardData } from '@kit/content-analytics/server';
 
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import { loadTeamWorkspace } from './_lib/server/team-account-workspace.loader';
 
-import { DashboardDemo } from './_components/dashboard-demo';
 import { TeamAccountLayoutPageHeader } from './_components/team-account-layout-page-header';
 
 interface TeamAccountHomePageProps {
@@ -23,8 +28,17 @@ export const generateMetadata = async () => {
   };
 };
 
-function TeamAccountHomePage({ params }: TeamAccountHomePageProps) {
-  const account = use(params).account;
+async function DashboardContent({ accountId }: { accountId: string }) {
+  const data = await getAccountDashboardData(accountId);
+  return <CompanyDashboard accountId={accountId} data={data} />;
+}
+
+async function TeamAccountHomePage({ params }: TeamAccountHomePageProps) {
+  const account = (await params).account;
+
+  // Load workspace to get accountId
+  const workspace = await loadTeamWorkspace(account);
+  const accountId = workspace.account.id;
 
   return (
     <>
@@ -35,7 +49,9 @@ function TeamAccountHomePage({ params }: TeamAccountHomePageProps) {
       />
 
       <PageBody>
-        <DashboardDemo />
+        <Suspense fallback={<CompanyDashboardSkeleton />}>
+          <DashboardContent accountId={accountId} />
+        </Suspense>
       </PageBody>
     </>
   );

@@ -1,10 +1,10 @@
 'use client';
 
-import { MapPin, Mic, User } from 'lucide-react';
+import { MapPin, User } from 'lucide-react';
 
 import { Tabs, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
-type TabType = 'character' | 'location' | 'voice';
+type TabType = 'character' | 'location';
 
 interface AssetTabsProps {
   activeTab: TabType;
@@ -12,7 +12,6 @@ interface AssetTabsProps {
   counts?: {
     character?: number;
     location?: number;
-    voice?: number;
   };
 }
 
@@ -41,16 +40,8 @@ export function AssetTabs({ activeTab, onTabChange, counts }: AssetTabsProps) {
             </span>
           )}
         </TabsTrigger>
-        <TabsTrigger value="voice" className="gap-2">
-          <Mic className="h-4 w-4" />
-          Voices
-          {counts?.voice !== undefined && (
-            <span className="bg-muted ml-1 rounded-full px-2 py-0.5 text-xs">
-              {counts.voice}
-            </span>
-          )}
-        </TabsTrigger>
       </TabsList>
     </Tabs>
   );
 }
+

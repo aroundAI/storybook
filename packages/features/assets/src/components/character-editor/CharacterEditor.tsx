@@ -34,7 +34,7 @@ import {
   createCharacterAction,
   updateCharacterAction,
 } from '../../lib/server/character.mutations';
-import type { CharacterWithDetails, VoiceAssetOption } from '../../lib/types';
+import type { CharacterWithDetails } from '../../lib/types';
 import { CharacterEditorForm } from './CharacterEditorForm';
 
 /**
@@ -89,10 +89,10 @@ import { CharacterEditorForm } from './CharacterEditorForm';
 interface CharacterEditorProps {
   /** Project ID for new characters */
   projectId: string;
+  /** Account ID for ElevenLabs voice fetching */
+  accountId: string;
   /** Existing character data for editing mode */
   character?: CharacterWithDetails | null;
-  /** Available voice assets for the project */
-  voiceAssets?: VoiceAssetOption[];
   /** Callback after successful save */
   onSuccess?: (character: CharacterWithDetails) => void;
   /** Callback to cancel/close the editor */
@@ -145,8 +145,8 @@ function getDefaultFormValues(): CharacterFormData {
 
 export function CharacterEditor({
   projectId,
+  accountId,
   character,
-  voiceAssets = [],
   onSuccess,
   onCancel,
 }: CharacterEditorProps) {
@@ -263,8 +263,7 @@ export function CharacterEditor({
         }
       } catch (error) {
         toast.error(
-          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${
-            error instanceof Error ? error.message : 'Unknown error'
+          `Failed to ${mode === 'edit' ? 'update' : 'create'} character: ${error instanceof Error ? error.message : 'Unknown error'
           }`,
         );
       }
@@ -318,7 +317,7 @@ export function CharacterEditor({
             <CharacterEditorForm
               form={form}
               disabled={isPending}
-              voiceAssets={voiceAssets}
+              accountId={accountId}
               projectId={projectId}
               assetId={character?.id}
             />

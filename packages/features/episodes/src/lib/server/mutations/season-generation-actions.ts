@@ -13,17 +13,34 @@ import {
 } from '../../schemas/season-generation.schema';
 import { generateEpisodeSlug } from '../../slug-utils';
 
+
+interface EpisodeBeat {
+  label: string;
+  content: string;
+}
+
+interface ExtractedEpisode {
+  number: number;
+  title: string;
+  synopsis: string;
+  beats: EpisodeBeat[];
+  moral?: string | null;
+  signature_line?: string | null;
+  character_names?: string[];
+  location_names?: string[];
+  characterNames?: string[];
+  locationNames?: string[];
+  tags?: string[];
+  description?: string;  // Legacy support
+}
+
 interface AnalysisResult {
   premise: string;
+  tone?: string | null;
+  target_audience?: string | null;
   characters: Array<{ name: string; role: string; description: string }>;
   locations: Array<{ name: string; setting: string; description: string }>;
-  episodes: Array<{
-    number: number;
-    title: string;
-    description: string;
-    character_names: string[];
-    location_names: string[];
-  }>;
+  episodes: ExtractedEpisode[];
 }
 
 /**
@@ -43,17 +60,41 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
       roadmap: data.roadmap,
     });
 
-    // 2. Call LLM
-    const { createLLMClient } = await import('@kit/llm');
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    // 2. Determine API key based on provider from prompt template
+    const provider = renderedPrompt.llmConfig.provider || 'deepseek';
+    let apiKey: string | undefined;
+
+    switch (provider) {
+      case 'gemini':
+        apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+        break;
+      case 'deepseek':
+        apiKey = process.env.DEEPSEEK_API_KEY;
+        break;
+      case 'openai':
+        apiKey = process.env.OPENAI_API_KEY;
+        break;
+      case 'anthropic':
+        apiKey = process.env.ANTHROPIC_API_KEY;
+        break;
+      default:
+        apiKey = process.env.DEEPSEEK_API_KEY;
+    }
+
+    // Log which key is being used for debugging
+    if (apiKey) {
+      logger.info({ ...ctx, provider, keyPrefix: apiKey.substring(0, 10) + '...' }, 'Using API key');
+    }
 
     if (!apiKey) {
-      throw new Error('LLM API key not configured');
+      throw new Error(`API key not configured for provider: ${provider}`);
     }
+
+    const { createLLMClient } = await import('@kit/llm');
 
     const llm = createLLMClient({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      provider: renderedPrompt.llmConfig.provider as any,
+      provider: provider as any,
       model: renderedPrompt.llmConfig.model,
       apiKey,
       temperature: renderedPrompt.llmConfig.temperature,
@@ -301,31 +342,57 @@ export const generateSeasonEpisodesAction = enhanceAction(
 
     // 5. Create Episodes (linked to season)
     const episodesToInsert = data.episodes.map((ep) => {
+      // Handle both naming conventions from LLM output
+      const charNames = ep.characterNames || ep.character_names || [];
+      const locNames = ep.locationNames || ep.location_names || [];
+
       const characterIds =
-        (ep.characterNames
-          ?.map((name) => finalCharacterMap[name])
+        (charNames
+          .map((name) => finalCharacterMap[name])
           .filter(Boolean) as string[]) ?? [];
 
       const locationIds =
-        (ep.locationNames
-          ?.map((name) => finalLocationMap[name])
+        (locNames
+          .map((name) => finalLocationMap[name])
           .filter(Boolean) as string[]) ?? [];
+
+      // Use synopsis as primary description, fallback to legacy description
+      const description = ep.synopsis || ep.description || '';
+
+      // Build premise from beats if synopsis is empty
+      const buildPremiseFromBeats = () => {
+        if (ep.beats && ep.beats.length > 0) {
+          return ep.beats.map(b => `${b.label}: ${b.content}`).join(' | ');
+        }
+        return description;
+      };
 
       return {
         project_id: data.projectId,
-        season_id: seasonId, // Link to the newly created season
+        season_id: seasonId,
         number: ep.number,
         title: ep.title,
         slug: generateEpisodeSlug(ep.number, ep.title),
-        description: ep.description,
+        description,
         status: 'draft',
         story_data: {
-          premise: ep.description, // Use episode-specific description as premise
+          // Synopsis as primary premise
+          premise: ep.synopsis || buildPremiseFromBeats(),
+          // Store flexible beats array (preserves original labels)
+          beats: ep.beats || [],
+          // Store moral if present
+          moral: ep.moral || null,
+          // Store signature line (catchphrase) if present
+          signature_line: ep.signature_line || null,
+          // Store tags for genre/mood
+          tags: ep.tags || [],
         },
         metadata: {
           character_ids: characterIds,
           location_ids: locationIds,
-          season_premise: data.premise, // Store season premise in metadata for reference
+          season_premise: data.premise,
+          season_tone: data.tone || null,
+          target_audience: data.targetAudience || null,
         },
       };
     });

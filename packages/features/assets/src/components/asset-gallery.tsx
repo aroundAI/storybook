@@ -22,12 +22,12 @@ import { AssetTabs } from './asset-tabs';
 import { CharacterEditor } from './character-editor';
 import { EmptyAssetState } from './empty-asset-state';
 import { LocationEditor } from './location-editor';
-import { VoiceProfileEditor } from './voice-profile-editor';
 
-type TabType = 'character' | 'location' | 'voice';
+type TabType = 'character' | 'location';
 
 interface AssetGalleryProps {
   projectId: string;
+  accountId: string;
   initialTab?: TabType;
   onAssetSelect?: (asset: Asset) => void;
   onCreateAsset?: (type: TabType) => void;
@@ -35,6 +35,7 @@ interface AssetGalleryProps {
 
 export function AssetGallery({
   projectId,
+  accountId,
   initialTab = 'character',
   onAssetSelect,
   onCreateAsset,
@@ -272,18 +273,14 @@ export function AssetGallery({
         <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Edit{' '}
-              {editingAsset?.type === 'voice'
-                ? 'Voice Profile'
-                : editingAsset?.type === 'location'
-                  ? 'Location'
-                  : 'Character'}
+              Edit {editingAsset?.type === 'location' ? 'Location' : 'Character'}
             </DialogTitle>
           </DialogHeader>
 
           {editingAsset?.type === 'character' && (
             <CharacterEditor
               projectId={projectId}
+              accountId={accountId}
               character={editingAsset as CharacterWithDetails}
               onSuccess={handleEditSuccess}
               onCancel={() => setEditingAsset(null)}
@@ -294,15 +291,6 @@ export function AssetGallery({
             <LocationEditor
               projectId={projectId}
               location={editingAsset}
-              onSuccess={handleEditSuccess}
-              onCancel={() => setEditingAsset(null)}
-            />
-          )}
-
-          {editingAsset?.type === 'voice' && (
-            <VoiceProfileEditor
-              projectId={projectId}
-              voiceProfile={editingAsset}
               onSuccess={handleEditSuccess}
               onCancel={() => setEditingAsset(null)}
             />

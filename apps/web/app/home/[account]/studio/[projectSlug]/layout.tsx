@@ -7,6 +7,7 @@ import { requireUserInServerComponent } from '~/lib/server/require-user-in-serve
 
 import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.loader';
 import { MobileStudioHeader } from './_components/mobile-studio-header';
+import { StudioModeProvider } from './_components/studio-mode-provider';
 import { StudioSidebar } from './_components/studio-sidebar';
 
 interface StudioProjectLayoutProps {
@@ -89,19 +90,21 @@ export default async function StudioProjectLayout({
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      {/* Mobile Header - visible only on mobile */}
-      <MobileStudioHeader {...sidebarProps} />
+    <StudioModeProvider>
+      <div className="flex h-screen flex-col">
+        {/* Mobile Header - visible only on mobile */}
+        <MobileStudioHeader {...sidebarProps} />
 
-      <div className="flex min-h-0 flex-1">
-        {/* Desktop Sidebar - hidden on mobile */}
-        <div className="hidden md:block">
-          <StudioSidebar {...sidebarProps} />
+        <div className="flex min-h-0 flex-1">
+          {/* Desktop Sidebar - hidden on mobile */}
+          <div className="hidden md:block">
+            <StudioSidebar {...sidebarProps} />
+          </div>
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
-
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
-    </div>
+    </StudioModeProvider>
   );
 }

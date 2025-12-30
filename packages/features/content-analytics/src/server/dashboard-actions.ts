@@ -10,6 +10,11 @@ import {
   getProjectAudienceData,
   getProjectDailyMetrics,
 } from './aggregation-queries';
+import {
+  getContentTypeComparison,
+  getLanguagePerformance,
+  getPlatformLanguageMatrix,
+} from './language-analytics';
 
 /**
  * Schema for getProjectAnalyticsAction
@@ -109,6 +114,115 @@ export const getProjectAudienceDataAction = enhanceAction(
   },
   {
     schema: GetProjectAudienceDataSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Schema for getLanguageAnalyticsAction
+ */
+const GetLanguageAnalyticsSchema = z.object({
+  projectId: z.string().uuid(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
+});
+
+/**
+ * Get language performance data for the Language tab
+ */
+export const getLanguagePerformanceAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getLanguagePerformance(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get platform × language matrix for the Language tab
+ */
+export const getPlatformLanguageMatrixAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getPlatformLanguageMatrix(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get content type comparison for the Language tab
+ */
+export const getContentTypeComparisonAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    return getContentTypeComparison(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get shorts source performance for Phase 3
+ */
+export const getShortsSourcePerformanceAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    const { getShortsSourcePerformance } = await import('./language-analytics');
+    return getShortsSourcePerformance(projectId, {
+      startDate: from,
+      endDate: to,
+      limit: 10,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get geography by language for Phase 4
+ */
+export const getGeographyByLanguageAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    const { getGeographyByLanguage } = await import('./language-analytics');
+    return getGeographyByLanguage(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Get language trend over time for trend chart
+ */
+export const getLanguageTrendAction = enhanceAction(
+  async ({ projectId, from, to }) => {
+    const { getLanguageTrend } = await import('./language-analytics');
+    return getLanguageTrend(projectId, {
+      startDate: from,
+      endDate: to,
+    });
+  },
+  {
+    schema: GetLanguageAnalyticsSchema,
     auth: true,
   },
 );

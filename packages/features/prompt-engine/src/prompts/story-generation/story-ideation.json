@@ -7,7 +7,7 @@
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
     "provider": "gemini",
-    "model": "gemini-3-flash-preview",
+    "model": "gemini-3-pro-preview",
     "max_tokens": 8000,
     "temperature": 0.8,
     "response_format": {
@@ -32,7 +32,7 @@
       "order": 2
     }
   ],
-  "user_prompt": "Generate {{number_of_ideas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: ALL story ideas MUST feature ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: ALL story ideas MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Be aware of previous episodes. Don't repeat plot points.\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{target_audience}}\n- Visual Style: {{visual_style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5 **Visual Potential**: Why this story works well for video\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\"\n    }\n  ]\n}\n```",
+  "user_prompt": "Generate {{number_of_ideas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n{{recurring_element}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: ALL story ideas MUST feature ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: ALL story ideas MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Be aware of previous episodes. Don't repeat plot points.\n4. **Recurring Element**: If a recurring element is specified above, each story idea MUST naturally incorporate it.\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{target_audience}}\n- Visual Style: {{visual_style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5 **Visual Potential**: Why this story works well for video\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\"\n    }\n  ]\n}\n```",
   "variables": {
     "premise": {
       "type": "text",
@@ -78,6 +78,11 @@
       "type": "text",
       "required": false,
       "description": "Visual style (e.g., cinematic, animated, documentary). Defaults to 'balanced'"
+    },
+    "recurring_element": {
+      "type": "text",
+      "required": false,
+      "description": "Recurring story element to incorporate in each episode (e.g., signature scene, moral message)"
     }
   },
   "output": {

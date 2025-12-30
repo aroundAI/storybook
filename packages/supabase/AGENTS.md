@@ -1,6 +1,30 @@
 # Database & Authentication Instructions
 
-This file contains instructions for working with Supabase, database security, and authentication.
+This file contains instructions for working with Supabase, database security, and authentication (vendor-agnostic).
+
+## Provider Abstraction
+
+This package provides **vendor-agnostic database access** via environment variables:
+
+```bash
+# Supabase (recommended)
+DATABASE_PROVIDER=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-key
+
+# PostgreSQL (AWS RDS, self-hosted)
+DATABASE_PROVIDER=postgresql
+POSTGRES_HOST=your-endpoint.amazonaws.com
+# ... PostgreSQL config
+
+# MySQL (alternative)
+DATABASE_PROVIDER=mysql
+# ... MySQL config
+```
+
+**Zero code changes** to switch providers - handled by `@kit/providers-database`.
+
+**See**: `DEPLOYMENT.md` and `SUPABASE_VENDOR_LOCKIN_REPORT.md` for migration guides.
 
 ## Schemas and Migrations ⚠️
 

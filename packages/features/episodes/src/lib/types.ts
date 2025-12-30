@@ -323,6 +323,7 @@ export interface Episode {
     videoStyle?: string;
     targetAudience?: string;
     description?: string;
+    projectAestheticStyle?: string;
     [key: string]: unknown;
   };
 }

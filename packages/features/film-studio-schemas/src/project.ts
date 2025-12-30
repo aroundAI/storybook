@@ -80,6 +80,21 @@ export const StudioProjectSettingsSchema = z.object({
   contentRating: z.enum(['G', 'PG', 'PG-13', 'R', 'NR']).optional(),
   language: z.string().default('en'),
   subtitlesEnabled: z.boolean().default(false),
+  // Recurring story element (appears in every episode)
+  // Examples: moral message for kids shows, signature scene location (deli, coffee shop)
+  recurringElement: z
+    .object({
+      enabled: z.boolean().default(false),
+      // What/where is the recurring scene
+      location: z.string().max(200).optional(), // e.g., "Murray's Deli - corner booth"
+      // Purpose/function of the scene
+      purpose: z.string().max(500).optional(), // e.g., "Characters debrief and gain new perspective"
+      // Placement in episode
+      placement: z.enum(['beginning', 'middle', 'end', 'throughout']).default('end'),
+      // Specific dialogue patterns or phrases
+      dialogueHints: z.string().max(500).optional(), // e.g., "Use phrases like 'You know what I learned...'"
+    })
+    .optional(),
   // Cover image for project cards in studio view
   coverImageUrl: z.string().url().optional(),
 });

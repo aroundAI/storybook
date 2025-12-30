@@ -12,9 +12,14 @@ import { existsSync, readFileSync } from 'fs';
 import mime from 'mime-types';
 import { join } from 'path';
 
+import { homedir } from 'os';
+
 // Default storage path - same as LocalStorageAdapter
-const STORAGE_PATH =
-  process.env.STORAGE_LOCAL_PATH || join(process.cwd(), '.storage');
+// Expand ~ to home directory if present
+const rawStoragePath = process.env.STORAGE_LOCAL_PATH || join(process.cwd(), '.storage');
+const STORAGE_PATH = rawStoragePath.startsWith('~')
+  ? rawStoragePath.replace('~', homedir())
+  : rawStoragePath;
 
 export async function GET(
   _request: Request,

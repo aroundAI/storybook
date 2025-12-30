@@ -9,12 +9,40 @@ import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type {
+  CharacterRole,
   CharacterRow,
   CharacterWithDetails,
   ListCharactersResponse,
   VoiceAssetOption,
 } from '../types';
 import { mapRowToCharacterWithDetails } from '../types';
+
+/**
+ * Role priority for sorting (lower = higher priority)
+ */
+const ROLE_PRIORITY: Record<CharacterRole, number> = {
+  protagonist: 1,
+  deuteragonist: 2,
+  supporting: 3,
+  narrator: 4,
+  creature: 5,
+  object: 6,
+  background: 7,
+};
+
+/**
+ * Sort characters by role priority, then by name
+ */
+function sortCharactersByRole(characters: CharacterWithDetails[]): CharacterWithDetails[] {
+  return [...characters].sort((a, b) => {
+    const priorityA = ROLE_PRIORITY[a.role] ?? 99;
+    const priorityB = ROLE_PRIORITY[b.role] ?? 99;
+    if (priorityA !== priorityB) {
+      return priorityA - priorityB;
+    }
+    return a.name.localeCompare(b.name);
+  });
+}
 
 /**
  * Get a single character with full details
@@ -36,11 +64,12 @@ export async function getCharacter(
       `
       *,
       character_details!asset_id (
+        role,
         physical_attributes,
         personality,
         element_prompt,
         reference_images,
-        voice_asset_id
+        elevenlabs_voice_id
       )
     `,
     )
@@ -84,11 +113,12 @@ export async function listCharacters(
       `
       *,
       character_details!asset_id (
+        role,
         physical_attributes,
         personality,
         element_prompt,
         reference_images,
-        voice_asset_id
+        elevenlabs_voice_id
       )
     `,
       { count: 'exact' },
@@ -96,7 +126,6 @@ export async function listCharacters(
     .eq('project_id', projectId)
     .eq('type', 'character')
     .is('deleted_at', null)
-    .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error) {
@@ -104,7 +133,10 @@ export async function listCharacters(
     throw new Error(`Failed to list characters: ${error.message}`);
   }
 
-  const characters = (data as CharacterRow[]).map(mapRowToCharacterWithDetails);
+  // Map to CharacterWithDetails and sort by role priority
+  const characters = sortCharactersByRole(
+    (data as CharacterRow[]).map(mapRowToCharacterWithDetails)
+  );
   const total = count ?? 0;
 
   logger.info(

@@ -82,6 +82,27 @@ export const publishToAllAction = enhanceAction(
             throw new Error('Platform connection not found');
           }
 
+          // Get connection language as fallback (if explicit language not provided)
+          // Using separate query to handle both typed and untyped scenarios
+          let connectionLanguage = 'en';
+          try {
+            const { data: langData } = await client
+              .from('platform_connections')
+              .select('language')
+              .eq('id', platform.connectionId)
+              .single();
+            // Cast through unknown to handle untyped column
+            const langRecord = langData as unknown as Record<string, unknown> | null;
+            if (langRecord && typeof langRecord.language === 'string') {
+              connectionLanguage = langRecord.language;
+            }
+          } catch {
+            // Column may not exist yet, use default
+          }
+
+          // Use explicit language from request, or fall back to connection language
+          const publishLanguage = platform.language || connectionLanguage;
+
           // Create publish record
           // Determine if this is a server-side scheduled publish
           // YouTube and Facebook have native scheduling, others don't
@@ -104,6 +125,8 @@ export const publishToAllAction = enhanceAction(
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
               metadata: JSON.parse(JSON.stringify(platform.platformSpecific)),
+              // Language from explicit request or connection fallback
+              language: publishLanguage,
             })
             .select()
             .single();
