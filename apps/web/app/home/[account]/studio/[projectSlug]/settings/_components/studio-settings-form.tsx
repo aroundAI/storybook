@@ -358,8 +358,143 @@ export function StudioSettingsForm({
                 </FormItem>
               )}
             />
+
+            {/* Content Rating */}
+            <FormField
+              control={form.control}
+              name="contentRating"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Content Rating</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a rating" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CONTENT_RATINGS.map((rating) => (
+                        <SelectItem key={rating.value} value={rating.value}>
+                          {rating.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Target content rating.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Language */}
+            <FormField
+              control={form.control}
+              name="language"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Language</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a language" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="en">English</SelectItem>
+                      <SelectItem value="es">Spanish</SelectItem>
+                      <SelectItem value="fr">French</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Primary language.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </CardContent>
         </Card>
+
+        {/* Recurring Story Element Card */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  Recurring Story Element
+                </CardTitle>
+                <CardDescription>
+                  Add a signature scene that appears in every episode.
+                </CardDescription>
+              </div>
+              <FormField
+                control={form.control}
+                name="recurringElement.enabled"
+                render={({ field }) => (
+                  <Switch
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
+              />
+            </div>
+          </CardHeader>
+          {form.watch('recurringElement.enabled') && (
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="recurringElement.location"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      Location / Context
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., The family dinner table"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>Where does this scene take place?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="recurringElement.purpose"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purpose</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="e.g., The character reflects on their day"
+                        className="resize-none"
+                        rows={2}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>What happens in this scene?</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          )}
+        </Card>
+
+        <div className="flex justify-end">
+          <Button type="submit" disabled={isPending}>
+            {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Settings
+          </Button>
+        </div>
       </form>
     </Form>
   );
