@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useState,
   useTransition,
 } from 'react';
@@ -61,8 +62,13 @@ export function EpisodeContextProvider({
 }: EpisodeContextProviderProps) {
   const router = useRouter();
   const [isRefetching, startRefetchTransition] = useTransition();
-  const [episode] = useState(initialEpisode);
+  const [episode, setEpisode] = useState(initialEpisode);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Update episode when initialEpisode changes (after router.refresh)
+  useEffect(() => {
+    setEpisode(initialEpisode);
+  }, [initialEpisode]);
 
   const refetchEpisode = useCallback(() => {
     startRefetchTransition(() => {

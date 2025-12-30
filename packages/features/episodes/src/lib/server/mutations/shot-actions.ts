@@ -293,6 +293,12 @@ export const updateShotAction = enhanceAction(
     if (data.thumbnailUrl !== undefined) {
       updates.thumbnail_url = data.thumbnailUrl;
     }
+    if (data.firstFrameUrl !== undefined) {
+      updates.first_frame_url = data.firstFrameUrl;
+    }
+    if (data.lastFrameUrl !== undefined) {
+      updates.last_frame_url = data.lastFrameUrl;
+    }
     if (data.metadata !== undefined)
       updates.generation_metadata = data.metadata;
 

@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1"
+  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -213,6 +218,7 @@ export type Database = {
           prompt_hash: string
           provider: string
           provider_job_id: string | null
+          source: string
           status: string
           updated_at: string
           usage_count: number | null
@@ -235,6 +241,7 @@ export type Database = {
           prompt_hash: string
           provider?: string
           provider_job_id?: string | null
+          source?: string
           status?: string
           updated_at?: string
           usage_count?: number | null
@@ -257,6 +264,7 @@ export type Database = {
           prompt_hash?: string
           provider?: string
           provider_job_id?: string | null
+          source?: string
           status?: string
           updated_at?: string
           usage_count?: number | null
@@ -335,7 +343,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -354,7 +362,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           object_id: string
           object_name?: string | null
@@ -373,7 +381,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           object_id?: string
           object_name?: string | null
@@ -1524,7 +1532,7 @@ export type Database = {
           expires_at: string
           id: string
           last_verification_at: string | null
-          last_verification_ip: unknown | null
+          last_verification_ip: unknown
           last_verification_user_agent: string | null
           metadata: Json | null
           nonce: string
@@ -1542,7 +1550,7 @@ export type Database = {
           expires_at: string
           id?: string
           last_verification_at?: string | null
-          last_verification_ip?: unknown | null
+          last_verification_ip?: unknown
           last_verification_user_agent?: string | null
           metadata?: Json | null
           nonce: string
@@ -1560,7 +1568,7 @@ export type Database = {
           expires_at?: string
           id?: string
           last_verification_at?: string | null
-          last_verification_ip?: unknown | null
+          last_verification_ip?: unknown
           last_verification_user_agent?: string | null
           metadata?: Json | null
           nonce?: string
@@ -2516,9 +2524,11 @@ export type Database = {
           deleted_at: string | null
           duration_seconds: number
           episode_id: string
+          first_frame_url: string | null
           generation_job_id: string | null
           generation_metadata: Json | null
           id: string
+          last_frame_url: string | null
           prompt: string
           scene_description: string | null
           scene_number: number | null
@@ -2538,9 +2548,11 @@ export type Database = {
           deleted_at?: string | null
           duration_seconds?: number
           episode_id: string
+          first_frame_url?: string | null
           generation_job_id?: string | null
           generation_metadata?: Json | null
           id?: string
+          last_frame_url?: string | null
           prompt: string
           scene_description?: string | null
           scene_number?: number | null
@@ -2560,9 +2572,11 @@ export type Database = {
           deleted_at?: string | null
           duration_seconds?: number
           episode_id?: string
+          first_frame_url?: string | null
           generation_job_id?: string | null
           generation_metadata?: Json | null
           id?: string
+          last_frame_url?: string | null
           prompt?: string
           scene_description?: string | null
           scene_number?: number | null
@@ -2725,7 +2739,7 @@ export type Database = {
           consenter_name: string
           created_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           updated_at: string
           voice_profile_id: string
         }
@@ -2738,7 +2752,7 @@ export type Database = {
           consenter_name: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           updated_at?: string
           voice_profile_id: string
         }
@@ -2751,7 +2765,7 @@ export type Database = {
           consenter_name?: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           updated_at?: string
           voice_profile_id?: string
         }
@@ -2851,10 +2865,6 @@ export type Database = {
         Args: { p_episode_id: string; p_shots: Json }
         Returns: string[]
       }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
       can_action_account_member: {
         Args: { target_team_account_id: string; target_user_id: string }
         Returns: boolean
@@ -2874,10 +2884,7 @@ export type Database = {
         Args: { p_account_id: string; p_estimated_cost_cents?: number }
         Returns: boolean
       }
-      cleanup_expired_oauth_states: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_expired_oauth_states: { Args: never; Returns: number }
       create_character_with_details: {
         Args: {
           p_description: string
@@ -2903,6 +2910,12 @@ export type Database = {
           invited_by: string
           role: string
           updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invitations"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       create_nonce: {
@@ -2933,6 +2946,12 @@ export type Database = {
           slug: string | null
           updated_at: string | null
           updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "accounts"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       get_account_invitations: {
@@ -2996,7 +3015,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3006,6 +3025,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_by_user: {
         Args: {
@@ -3022,7 +3047,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3032,6 +3057,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_for_object: {
         Args: {
@@ -3048,7 +3079,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3058,6 +3089,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_for_scope: {
         Args: { limit_count?: number; scope_id: string; scope_type: string }
@@ -3070,7 +3107,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3080,6 +3117,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_change_summary: {
         Args: {
@@ -3092,18 +3135,9 @@ export type Database = {
           field_name: string
         }[]
       }
-      get_config: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_current_account_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_nonce_status: {
-        Args: { p_id: string }
-        Returns: Json
-      }
+      get_config: { Args: never; Returns: Json }
+      get_current_account_id: { Args: never; Returns: string }
+      get_nonce_status: { Args: { p_id: string }; Returns: Json }
       get_project_generation_costs: {
         Args: {
           p_end_date?: string
@@ -3144,7 +3178,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3154,31 +3188,15 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      get_upper_system_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      has_account_access: {
-        Args: { p_account_id: string }
-        Returns: boolean
-      }
+      get_upper_system_role: { Args: never; Returns: string }
+      has_account_access: { Args: { p_account_id: string }; Returns: boolean }
       has_active_subscription: {
         Args: { target_account_id: string }
         Returns: boolean
@@ -3218,22 +3236,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       increment_account_usage: {
         Args: { p_account_id: string; p_amount_cents: number }
         Returns: {
@@ -3246,62 +3248,24 @@ export type Database = {
         Args: { template_id: string }
         Returns: undefined
       }
-      is_aal2: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_account_owner: {
-        Args: { account_id: string }
-        Returns: boolean
-      }
+      is_aal2: { Args: never; Returns: boolean }
+      is_account_owner: { Args: { account_id: string }; Returns: boolean }
       is_account_team_member: {
         Args: { target_account_id: string }
         Returns: boolean
       }
-      is_mfa_compliant: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_mfa_compliant: { Args: never; Returns: boolean }
       is_project_owner: {
         Args: { target_project_id: string }
         Returns: boolean
       }
-      is_set: {
-        Args: { field_name: string }
-        Returns: boolean
-      }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_set: { Args: { field_name: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       is_team_member: {
         Args: { account_id: string; user_id: string }
         Returns: boolean
       }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
-      }
-      reset_monthly_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      reset_monthly_usage: { Args: never; Returns: number }
       revoke_nonce: {
         Args: { p_id: string; p_reason?: string }
         Returns: boolean
@@ -3337,22 +3301,7 @@ export type Database = {
           title: string
         }[]
       }
-      soft_delete_episode: {
-        Args: { p_episode_id: string }
-        Returns: boolean
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
       team_account_workspace: {
         Args: { account_slug: string }
         Returns: {
@@ -3409,6 +3358,12 @@ export type Database = {
           total_amount: number
           updated_at: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       upsert_subscription: {
         Args: {
@@ -3442,35 +3397,14 @@ export type Database = {
           trial_starts_at: string | null
           updated_at: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      user_owns_account: {
-        Args: { p_account_id: string }
-        Returns: boolean
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      user_owns_account: { Args: { p_account_id: string }; Returns: boolean }
       verify_nonce: {
         Args: {
           p_ip?: unknown
@@ -3587,103 +3521,53 @@ export type Database = {
       buckets_analytics: {
         Row: {
           created_at: string
+          deleted_at: string | null
           format: string
+          id: string
+          name: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      buckets_vectors: {
+        Row: {
+          created_at: string
           id: string
           type: Database["storage"]["Enums"]["buckettype"]
           updated_at: string
         }
         Insert: {
           created_at?: string
-          format?: string
           id: string
           type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string
         }
         Update: {
           created_at?: string
-          format?: string
           id?: string
           type?: Database["storage"]["Enums"]["buckettype"]
           updated_at?: string
         }
         Relationships: []
-      }
-      iceberg_namespaces: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id?: string
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          name?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "iceberg_namespaces_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_analytics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      iceberg_tables: {
-        Row: {
-          bucket_id: string
-          created_at: string
-          id: string
-          location: string
-          name: string
-          namespace_id: string
-          updated_at: string
-        }
-        Insert: {
-          bucket_id: string
-          created_at?: string
-          id?: string
-          location: string
-          name: string
-          namespace_id: string
-          updated_at?: string
-        }
-        Update: {
-          bucket_id?: string
-          created_at?: string
-          id?: string
-          location?: string
-          name?: string
-          namespace_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "iceberg_tables_bucket_id_fkey"
-            columns: ["bucket_id"]
-            isOneToOne: false
-            referencedRelation: "buckets_analytics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "iceberg_tables_namespace_id_fkey"
-            columns: ["namespace_id"]
-            isOneToOne: false
-            referencedRelation: "iceberg_namespaces"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       migrations: {
         Row: {
@@ -3892,6 +3776,50 @@ export type Database = {
           },
         ]
       }
+      vector_indexes: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id: string
+          metadata_configuration: Json | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id?: string
+          metadata_configuration?: Json | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          data_type?: string
+          dimension?: number
+          distance_metric?: string
+          id?: string
+          metadata_configuration?: Json | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vector_indexes_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_vectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -3905,36 +3833,22 @@ export type Database = {
         Args: { bucketid: string; metadata: Json; name: string; owner: string }
         Returns: undefined
       }
+      delete_leaf_prefixes: {
+        Args: { bucket_ids: string[]; names: string[] }
+        Returns: undefined
+      }
       delete_prefix: {
         Args: { _bucket_id: string; _name: string }
         Returns: boolean
       }
-      extension: {
-        Args: { name: string }
-        Returns: string
-      }
-      filename: {
-        Args: { name: string }
-        Returns: string
-      }
-      foldername: {
-        Args: { name: string }
-        Returns: string[]
-      }
-      get_level: {
-        Args: { name: string }
-        Returns: number
-      }
-      get_prefix: {
-        Args: { name: string }
-        Returns: string
-      }
-      get_prefixes: {
-        Args: { name: string }
-        Returns: string[]
-      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
+      get_level: { Args: { name: string }; Returns: number }
+      get_prefix: { Args: { name: string }; Returns: string }
+      get_prefixes: { Args: { name: string }; Returns: string[] }
       get_size_by_bucket: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           bucket_id: string
           size: number
@@ -3971,10 +3885,11 @@ export type Database = {
           updated_at: string
         }[]
       }
-      operation: {
-        Args: Record<PropertyKey, never>
-        Returns: string
+      lock_top_prefixes: {
+        Args: { bucket_ids: string[]; names: string[] }
+        Returns: undefined
       }
+      operation: { Args: never; Returns: string }
       search: {
         Args: {
           bucketname: string
@@ -4041,12 +3956,16 @@ export type Database = {
           levels?: number
           limits?: number
           prefix: string
+          sort_column?: string
+          sort_column_after?: string
+          sort_order?: string
           start_after?: string
         }
         Returns: {
           created_at: string
           id: string
           key: string
+          last_accessed_at: string
           metadata: Json
           name: string
           updated_at: string
@@ -4054,7 +3973,7 @@ export type Database = {
       }
     }
     Enums: {
-      buckettype: "STANDARD" | "ANALYTICS"
+      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4240,8 +4159,7 @@ export const Constants = {
   },
   storage: {
     Enums: {
-      buckettype: ["STANDARD", "ANALYTICS"],
+      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
     },
   },
 } as const
-

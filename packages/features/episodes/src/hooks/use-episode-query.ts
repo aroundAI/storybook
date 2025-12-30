@@ -57,6 +57,8 @@ interface DatabaseShot {
   prompt: string | null;
   video_url: string | null;
   thumbnail_url: string | null;
+  first_frame_url: string | null;
+  last_frame_url: string | null;
   metadata: unknown;
   generation_settings: unknown;
   generation_job_id: string | null;
@@ -80,6 +82,8 @@ function transformShot(shot: DatabaseShot): Shot {
     prompt: shot.prompt,
     videoUrl: shot.video_url,
     thumbnailUrl: shot.thumbnail_url,
+    firstFrameUrl: shot.first_frame_url,
+    lastFrameUrl: shot.last_frame_url,
     metadata: shot.metadata as Shot['metadata'],
     generationSettings: shot.generation_settings as Shot['generationSettings'],
     generationJobId: shot.generation_job_id,

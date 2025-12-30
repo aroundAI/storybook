@@ -186,6 +186,8 @@ export const UpdateShotSchema = z.object({
   status: ShotStatusSchema.optional(),
   videoUrl: z.string().url().optional(),
   thumbnailUrl: z.string().url().optional(),
+  firstFrameUrl: z.string().url().optional().or(z.literal('')),
+  lastFrameUrl: z.string().url().optional().or(z.literal('')),
   metadata: z.record(z.unknown()).optional(),
 });
 

@@ -159,6 +159,8 @@ async function EpisodeWorkspaceLayout({
           | 'failed',
         videoUrl: shot.video_url,
         thumbnailUrl: shot.thumbnail_url,
+        firstFrameUrl: (shot as { first_frame_url?: string | null }).first_frame_url ?? null,
+        lastFrameUrl: (shot as { last_frame_url?: string | null }).last_frame_url ?? null,
         generationJobId: shot.generation_job_id,
         metadata: (shot.generation_metadata as Record<string, unknown>) ?? null,
         generationSettings: null,

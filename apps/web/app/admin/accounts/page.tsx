@@ -24,6 +24,9 @@ export const metadata = {
 
 async function AccountsPage(props: AdminAccountsPageProps) {
   const client = getSupabaseServerClient();
+  // Cast client for ServerDataLoader compatibility (PostgrestVersion mismatch)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const loaderClient = client as any;
   const searchParams = await props.searchParams;
   const page = searchParams.page ? parseInt(searchParams.page) : 1;
 
@@ -40,7 +43,7 @@ async function AccountsPage(props: AdminAccountsPageProps) {
       <PageBody>
         <ServerDataLoader
           table={'accounts'}
-          client={client}
+          client={loaderClient}
           page={page}
           where={(queryBuilder) => {
             const { account_type: type, query } = searchParams;
