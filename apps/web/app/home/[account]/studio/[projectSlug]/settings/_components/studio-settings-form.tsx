@@ -195,20 +195,32 @@ export function StudioSettingsForm({
     });
   });
 
-  // TEMPORARY: Minimal version to test if form fields cause the scroll issue
+  // TEST 1: Just a simple Input field (no Form wrapper)
   return (
     <Card>
       <CardHeader>
         <CardTitle>Content Generation Settings</CardTitle>
         <CardDescription>
-          Settings form temporarily simplified for debugging scroll issue.
+          Testing with just one simple Input field (no Form wrapper).
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <p className="text-muted-foreground text-sm">
-          The form has been temporarily replaced with this placeholder to test
-          if the scroll issue is caused by the form fields.
-        </p>
+      <CardContent className="space-y-4">
+        <div>
+          <label className="text-sm font-medium">Target Audience</label>
+          <Input
+            placeholder="e.g., Children ages 4-8"
+            defaultValue={currentSettings.targetAudience}
+          />
+          <p className="text-muted-foreground text-sm mt-1">Test input</p>
+        </div>
+        <div>
+          <label className="text-sm font-medium">Another Field</label>
+          <Input
+            placeholder="Another test"
+            defaultValue=""
+          />
+          <p className="text-muted-foreground text-sm mt-1">Second test input</p>
+        </div>
       </CardContent>
     </Card>
   );
