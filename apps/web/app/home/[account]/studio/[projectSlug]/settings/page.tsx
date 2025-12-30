@@ -108,7 +108,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   }
 
   return (
-    <div className="bg-background h-full">
+    <div className="bg-background">
       <div className="mx-auto max-w-4xl p-8">
         <div className="flex flex-col space-y-6">
           {/* Project Header */}

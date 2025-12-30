@@ -45,5 +45,5 @@ export function getFontsClassName(theme?: string) {
         ? { light: true }
         : {};
 
-  return cn('bg-background min-h-screen antialiased', ...font, themeClasses);
+  return cn('bg-background antialiased', ...font, themeClasses);
 }
