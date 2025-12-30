@@ -136,14 +136,37 @@ function parseTimeToSeconds(timeStr: string): number {
  * This ensures the fullPrompt always reflects the current state of all parts.
  * Format matches the LLM-generated structure from scene-shot-generation.json
  */
-function assembleVeoPrompt(veoPrompt: VeoPromptDataV2): string {
+function assembleVeoPrompt(
+  veoPrompt: VeoPromptDataV2,
+  options?: {
+    projectVideoStyle?: string;
+    characterNames?: string[];
+  },
+): string {
   const lines: string[] = [];
 
   // 1. Shot line (camera info)
   lines.push(veoPrompt.shotLine);
   lines.push('');
 
-  // 2. Timeline events formatted as [start-end] content
+  // 2. Characters section (for image identification)
+  const characters = options?.characterNames ?? [];
+  // Also extract from timeline if not provided
+  if (characters.length === 0) {
+    const charSet = new Set<string>();
+    for (const event of veoPrompt.timeline) {
+      if (event.character) {
+        charSet.add(event.character);
+      }
+    }
+    characters.push(...charSet);
+  }
+  if (characters.length > 0) {
+    lines.push(`CHARACTERS: ${characters.join(', ')} (identify from reference images)`);
+    lines.push('');
+  }
+
+  // 3. Timeline events formatted as [start-end] content
   for (const event of veoPrompt.timeline) {
     const startSec = parseTimeToSeconds(event.startTime);
     const endSec = parseTimeToSeconds(event.endTime);
@@ -159,15 +182,19 @@ function assembleVeoPrompt(veoPrompt: VeoPromptDataV2): string {
   }
   lines.push('');
 
-  // 3. Audio section
+  // 4. Audio section
   lines.push(`AUDIO: ${veoPrompt.audio}`);
   lines.push('');
 
-  // 4. Style section
-  lines.push(`STYLE: ${veoPrompt.style}`);
+  // 5. Style section (include project style if provided)
+  let styleText = veoPrompt.style;
+  if (options?.projectVideoStyle) {
+    styleText = `${veoPrompt.style}. Project aesthetic: ${options.projectVideoStyle}`;
+  }
+  lines.push(`STYLE: ${styleText}`);
   lines.push('');
 
-  // 5. Avoid section
+  // 6. Avoid section
   lines.push(`AVOID: ${veoPrompt.avoid}`);
 
   return lines.join('\n');
@@ -176,6 +203,7 @@ function assembleVeoPrompt(veoPrompt: VeoPromptDataV2): string {
 interface ShotDetailsSidebarProps {
   shot: Shot;
   projectId: string;
+  projectVideoStyle?: string;
   onClose: () => void;
   onUpdate: () => void;
 }
@@ -204,6 +232,7 @@ function useCopyToClipboard() {
 export function ShotDetailsSidebar({
   shot,
   projectId,
+  projectVideoStyle,
   onClose,
   onUpdate,
 }: ShotDetailsSidebarProps) {
@@ -226,7 +255,7 @@ export function ShotDetailsSidebar({
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
     if (veoPrompt && isVeoPromptV2(veoPrompt)) {
-      return assembleVeoPrompt(veoPrompt);
+      return assembleVeoPrompt(veoPrompt, { projectVideoStyle });
     }
     return veoPrompt?.fullPrompt ?? shot.prompt ?? '';
   });
@@ -737,7 +766,7 @@ export function ShotDetailsSidebar({
                   onClick={() => {
                     // Use runtime-assembled prompt for V2, fallback to stored for V1
                     const prompt = isVeoPromptV2(veoPrompt)
-                      ? assembleVeoPrompt(veoPrompt)
+                      ? assembleVeoPrompt(veoPrompt, { projectVideoStyle })
                       : veoPrompt.fullPrompt;
                     copyToClipboard(prompt, 'Full prompt');
                   }}
@@ -754,7 +783,7 @@ export function ShotDetailsSidebar({
               <div className="rounded-lg bg-white/30 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
                 {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
                 {isVeoPromptV2(veoPrompt)
-                  ? assembleVeoPrompt(veoPrompt)
+                  ? assembleVeoPrompt(veoPrompt, { projectVideoStyle })
                   : veoPrompt.fullPrompt}
               </div>
             </div>
