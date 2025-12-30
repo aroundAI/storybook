@@ -94,14 +94,19 @@ export function VisualStudioScreen({
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
 
   // Sync selectedShot with updated episode data after refetch
+  // We intentionally only depend on episode.shots because we want to update
+  // the selectedShot when the episode data changes, not when selectedShot changes
   useEffect(() => {
-    if (selectedShot) {
-      const updatedShot = episode.shots.find((s) => s.id === selectedShot.id);
-      if (updatedShot) {
-        setSelectedShot(updatedShot);
+    setSelectedShot((currentShot) => {
+      if (currentShot) {
+        const updatedShot = episode.shots.find((s) => s.id === currentShot.id);
+        if (updatedShot) {
+          return updatedShot;
+        }
       }
-    }
-  }, [episode.shots, selectedShot?.id]);
+      return currentShot;
+    });
+  }, [episode.shots]);
 
   // Fetch project characters to get descriptions for shot prompts
   const { assets: projectCharacters, fetchAssets: fetchCharacters } = useAssets({
