@@ -197,7 +197,7 @@ export function StudioSettingsForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-6">
+      <form onSubmit={onSubmit} className="min-h-0 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Content Generation Settings</CardTitle>
