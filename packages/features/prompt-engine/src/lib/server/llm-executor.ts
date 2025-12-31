@@ -190,7 +190,7 @@ function extractJSON<T = unknown>(
 /**
  * Get API key for LLM provider from environment variables
  */
-function getApiKeyForProvider(provider: LLMProvider | string): string {
+export function getApiKeyForProvider(provider: LLMProvider | string): string {
   let apiKey = '';
   let source = '';
 

@@ -7,4 +7,4 @@ export type {
   LLMExecutionResult,
 } from '../types';
 
-export { executeLLM } from './llm-executor';
+export { executeLLM, getApiKeyForProvider } from './llm-executor';

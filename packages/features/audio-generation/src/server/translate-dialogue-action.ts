@@ -207,7 +207,7 @@ async function translateWithLLM(
 
     try {
         // Load LLM config from prompt template (provider, model, temperature from JSON)
-        const { loadAndRenderPrompt } = await import('@kit/prompt-engine/server');
+        const { loadAndRenderPrompt, getApiKeyForProvider } = await import('@kit/prompt-engine/server');
         const { createLLMClient } = await import('@kit/llm');
 
         const rendered = await loadAndRenderPrompt('dialogue-translation', {
@@ -216,23 +216,9 @@ async function translateWithLLM(
             preserve_timing: preserveTiming,
         });
 
-        // Get API key based on provider from template
+        // Get API key using shared utility
         const provider = rendered.llmConfig.provider;
-        let apiKey = '';
-        switch (provider) {
-            case 'gemini':
-                apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
-                break;
-            case 'openai':
-                apiKey = process.env.OPENAI_API_KEY || '';
-                break;
-            case 'anthropic':
-                apiKey = process.env.ANTHROPIC_API_KEY || '';
-                break;
-            case 'deepseek':
-                apiKey = process.env.DEEPSEEK_API_KEY || '';
-                break;
-        }
+        const apiKey = getApiKeyForProvider(provider);
 
         if (!apiKey) {
             throw new Error(`No API key found for provider: ${provider}`);
