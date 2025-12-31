@@ -4,7 +4,6 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import { executeLLM } from '@kit/prompt-engine/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -185,8 +184,9 @@ export const translateDialogueToLanguageAction = enhanceAction(
 );
 
 /**
- * Translate dialogue lines using LLM via prompt-engine
+ * Translate dialogue lines using LLM
  * Preserves ElevenLabs audio tags like [excited], [sigh] in the output
+ * Uses Gemini directly since translation returns plain text, not JSON
  */
 async function translateWithLLM(
     lines: DialogueLineRow[],
@@ -206,18 +206,59 @@ async function translateWithLLM(
         .join('\n');
 
     try {
-        // Use prompt-engine with dialogue-translation template
-        const result = await executeLLM<string>({
-            templateSlug: 'dialogue-translation',
-            variables: {
-                target_language: targetLanguage,
-                dialogue_lines: linesText,
-                preserve_timing: preserveTiming,
-            },
-            context: ctx,
+        // Load LLM config from prompt template (provider, model, temperature from JSON)
+        const { loadAndRenderPrompt } = await import('@kit/prompt-engine/server');
+        const { createLLMClient } = await import('@kit/llm');
+
+        const rendered = await loadAndRenderPrompt('dialogue-translation', {
+            target_language: targetLanguage,
+            dialogue_lines: linesText,
+            preserve_timing: preserveTiming,
         });
 
-        const content = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
+        // Get API key based on provider from template
+        const provider = rendered.llmConfig.provider;
+        let apiKey = '';
+        switch (provider) {
+            case 'gemini':
+                apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+                break;
+            case 'openai':
+                apiKey = process.env.OPENAI_API_KEY || '';
+                break;
+            case 'anthropic':
+                apiKey = process.env.ANTHROPIC_API_KEY || '';
+                break;
+            case 'deepseek':
+                apiKey = process.env.DEEPSEEK_API_KEY || '';
+                break;
+        }
+
+        if (!apiKey) {
+            throw new Error(`No API key found for provider: ${provider}`);
+        }
+
+        const llm = createLLMClient({
+            provider: provider as 'gemini' | 'openai' | 'anthropic' | 'deepseek',
+            model: rendered.llmConfig.model,
+            apiKey,
+        });
+
+        const response = await llm.createChatCompletion({
+            messages: [
+                {
+                    role: 'system',
+                    content: rendered.systemPrompt,
+                },
+                {
+                    role: 'user',
+                    content: rendered.userPrompt,
+                },
+            ],
+            temperature: rendered.llmConfig.temperature,
+        });
+
+        const content = response.message.content ?? '';
 
         // Parse numbered translations
         const translations = parseNumberedTranslations(content, lines.length);
