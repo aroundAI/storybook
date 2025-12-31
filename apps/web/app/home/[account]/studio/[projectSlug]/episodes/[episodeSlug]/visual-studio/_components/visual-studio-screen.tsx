@@ -173,10 +173,25 @@ export function VisualStudioScreen({
   };
 
   /**
+   * Parse time string to seconds
+   * Format: SS:FF where SS=seconds, FF=frames
+   */
+  const parseTimeToSeconds = (timeStr: string): number => {
+    const parts = timeStr.split(':');
+    if (parts.length !== 2) return 0;
+    const seconds = parseInt(parts[0] ?? '0', 10);
+    const frames = parseInt(parts[1] ?? '0', 10);
+    return seconds + frames / 100;
+  };
+
+  /**
    * Generate prompt.md content for a shot
+   * Uses the same assembled format as displayed in the app
    */
   const generatePromptMd = (shot: Shot): string => {
     const metadata = shot.metadata as {
+      characters?: string[];
+      locations?: string[];
       veoPrompt?: {
         shotLine?: string;
         timeline?: Array<{
@@ -191,13 +206,6 @@ export function VisualStudioScreen({
         style?: string;
         avoid?: string;
         fullPrompt?: string;
-        // Legacy V1 format fields
-        subject?: string;
-        action?: string;
-        scene?: string;
-        dialogue?: string;
-        sounds?: string;
-        negativePrompt?: string;
       };
       referenceImages?: {
         characters: Array<{ name: string; url: string }>;
@@ -206,7 +214,7 @@ export function VisualStudioScreen({
     } | null;
 
     const veo = metadata?.veoPrompt;
-    const refImages = metadata?.referenceImages;
+    const shotCharacters = metadata?.characters ?? [];
 
     let md = `# Shot ${shot.sceneNumber}.${shot.shotNumber}\n\n`;
     md += `**Duration:** ${shot.duration} seconds\n\n`;
@@ -216,64 +224,112 @@ export function VisualStudioScreen({
       md += `## Description\n${shot.description}\n\n`;
     }
 
-    // Full VEO Prompt
-    if (veo?.fullPrompt) {
-      md += `## VEO Prompt\n\`\`\`\n${veo.fullPrompt}\n\`\`\`\n\n`;
-    } else if (shot.prompt) {
-      md += `## Prompt\n\`\`\`\n${shot.prompt}\n\`\`\`\n\n`;
-    }
-
-    // V2 Timeline format
+    // Build assembled VEO prompt (matching what app displays)
     if (veo?.timeline && veo.timeline.length > 0) {
-      md += `## Timeline\n`;
+      md += `## VEO Prompt\n\`\`\`\n`;
+
+      // 1. Characters section with descriptions
+      // Get character details from project assets
+      const charDetails: Array<{ name: string; description: string }> = [];
+      for (const charName of shotCharacters) {
+        const asset = projectCharacters.find(
+          (c) => c.name.toLowerCase() === charName.toLowerCase()
+        );
+        if (asset) {
+          charDetails.push({
+            name: asset.name,
+            description: asset.description || asset.name,
+          });
+        }
+      }
+
+      if (charDetails.length > 0) {
+        md += 'CHARACTERS:\n';
+        for (const char of charDetails) {
+          md += `- ${char.name}: ${char.description}\n`;
+        }
+        md += '(Identify from provided reference images)\n\n';
+      } else if (shotCharacters.length > 0) {
+        md += `CHARACTERS: ${shotCharacters.join(', ')} (identify from reference images)\n\n`;
+      }
+
+      // 2. Shot line (camera info)
+      if (veo.shotLine) {
+        md += `SHOT: ${veo.shotLine.replace(/^SHOT:\s*/i, '')}\n\n`;
+      }
+
+      // 3. Timeline events formatted as [start-end] content (in seconds)
       for (const event of veo.timeline) {
-        const char = event.character ? ` [${event.character}]` : '';
-        const emotion = event.emotion ? ` *(${event.emotion})*` : '';
-        md += `- **${event.startTime}-${event.endTime}** (${event.type})${char}: ${event.content}${emotion}\n`;
+        const startSec = parseTimeToSeconds(event.startTime);
+        const endSec = parseTimeToSeconds(event.endTime);
+
+        if (event.type === 'dialogue' && event.character) {
+          const emotionPart = event.emotion ? ` (Tone: ${event.emotion})` : '';
+          md += `[${startSec}s-${endSec}s] ${event.character}: "${event.content}"${emotionPart}\n`;
+        } else {
+          md += `[${startSec}s-${endSec}s] ${event.content}\n`;
+        }
       }
       md += '\n';
-    }
 
-    // Shot Line (V2)
-    if (veo?.shotLine) {
-      md += `## Shot Line\n${veo.shotLine}\n\n`;
-    }
+      // 4. Audio section
+      if (veo.audio) {
+        md += `AUDIO: ${veo.audio}\n\n`;
+      }
 
-    // Style
-    if (veo?.style) {
-      md += `## Style\n${veo.style}\n\n`;
-    }
+      // 5. Style section (include project aesthetic style)
+      if (veo.style) {
+        let styleText = veo.style;
+        const projectAesthetic = episode.projectMetadata?.projectAestheticStyle;
+        const projectVideoStyle = episode.projectMetadata?.videoStyle;
+        if (projectAesthetic) {
+          styleText = `${veo.style}. ${projectAesthetic}`;
+        } else if (projectVideoStyle) {
+          styleText = `${veo.style}. ${projectVideoStyle}`;
+        }
+        md += `STYLE: ${styleText}\n\n`;
+      }
 
-    // Audio
-    if (veo?.audio) {
-      md += `## Audio\n${veo.audio}\n\n`;
-    } else if (veo?.sounds) {
-      md += `## Sounds\n${veo.sounds}\n\n`;
-    }
+      // 6. Avoid section
+      if (veo.avoid) {
+        md += `AVOID: ${veo.avoid}\n`;
+      }
 
-    // Avoid / Negative Prompt
-    if (veo?.avoid) {
-      md += `## Avoid\n${veo.avoid}\n\n`;
-    } else if (veo?.negativePrompt) {
-      md += `## Negative Prompt\n${veo.negativePrompt}\n\n`;
+      md += '```\n\n';
+    } else if (shot.prompt) {
+      // Fallback to raw prompt if no V2 timeline
+      md += `## VEO Prompt\n\`\`\`\n${shot.prompt}\n\`\`\`\n\n`;
     }
 
     // Reference Images listing
+    const refImages = metadata?.referenceImages;
     if (refImages) {
       if (refImages.characters && refImages.characters.length > 0) {
-        md += `## Characters\n`;
+        md += `## Reference Images - Characters\n`;
         for (const char of refImages.characters) {
           md += `- ${char.name} → \`character-${sanitizeName(char.name)}.png\`\n`;
         }
         md += '\n';
       }
       if (refImages.locations && refImages.locations.length > 0) {
-        md += `## Locations\n`;
+        md += `## Reference Images - Locations\n`;
         for (const loc of refImages.locations) {
           md += `- ${loc.name} → \`location-${sanitizeName(loc.name)}.png\`\n`;
         }
         md += '\n';
       }
+    }
+
+    // List storyboard frames if present
+    if (shot.firstFrameUrl || shot.lastFrameUrl) {
+      md += `## Storyboard Frames\n`;
+      if (shot.firstFrameUrl) {
+        md += `- First frame → \`first-frame.png\`\n`;
+      }
+      if (shot.lastFrameUrl) {
+        md += `- Last frame → \`last-frame.png\`\n`;
+      }
+      md += '\n';
     }
 
     return md;
