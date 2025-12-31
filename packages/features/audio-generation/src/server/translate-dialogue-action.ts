@@ -88,7 +88,6 @@ export const translateDialogueToLanguageAction = enhanceAction(
         `)
                 .eq('episode_id', input.episodeId)
                 .eq('language', 'en')
-                .is('deleted_at', null)
                 .order('sequence_number', { ascending: true });
 
             if (fetchError) {
@@ -107,8 +106,7 @@ export const translateDialogueToLanguageAction = enhanceAction(
                 .from('dialogue_lines')
                 .select('source_dialogue_id')
                 .eq('episode_id', input.episodeId)
-                .eq('language', input.targetLanguage)
-                .is('deleted_at', null);
+                .eq('language', input.targetLanguage);
 
             const existingSourceIds = new Set(
                 (existing ?? []).map((e: { source_dialogue_id: string }) => e.source_dialogue_id)
