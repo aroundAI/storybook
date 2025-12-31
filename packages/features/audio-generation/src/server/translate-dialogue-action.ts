@@ -4,7 +4,7 @@ import 'server-only';
 
 import { z } from 'zod';
 
-import { createLLMClient } from '@kit/llm';
+import { executeLLM } from '@kit/prompt-engine/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -54,21 +54,34 @@ interface DialogueLineRow {
 export const translateDialogueToLanguageAction = enhanceAction(
     async (input): Promise<LocalizeDialogueResult> => {
         const logger = await getLogger();
-        const ctx = {
-            name: 'translate-dialogue',
-            episodeId: input.episodeId,
-            targetLanguage: input.targetLanguage,
-        };
-
-        logger.info(ctx, 'Starting dialogue translation');
 
         const client = getSupabaseServerClient();
         const { data: user, error: authError } = await requireUser(client);
 
         if (authError || !user) {
-            logger.warn(ctx, 'Unauthorized translation attempt');
+            logger.warn({ name: 'translate-dialogue', episodeId: input.episodeId }, 'Unauthorized translation attempt');
             throw new Error('Authentication required');
         }
+
+        // Get episode to retrieve accountId
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: episode } = await (client as any)
+            .from('episodes')
+            .select('id, project:projects(account_id)')
+            .eq('id', input.episodeId)
+            .single();
+
+        const accountId = episode?.project?.account_id ?? 'unknown';
+
+        const ctx = {
+            name: 'translate-dialogue',
+            episodeId: input.episodeId,
+            targetLanguage: input.targetLanguage,
+            accountId,
+            userId: user.id,
+        };
+
+        logger.info(ctx, 'Starting dialogue translation');
 
         try {
             // 1. Fetch English dialogue lines for this episode
@@ -172,7 +185,7 @@ export const translateDialogueToLanguageAction = enhanceAction(
 );
 
 /**
- * Translate dialogue lines using LLM
+ * Translate dialogue lines using LLM via prompt-engine
  * Preserves ElevenLabs audio tags like [excited], [sigh] in the output
  */
 async function translateWithLLM(
@@ -180,11 +193,9 @@ async function translateWithLLM(
     targetLanguage: string,
     preserveTiming: boolean,
     logger: Awaited<ReturnType<typeof getLogger>>,
-    ctx: Record<string, unknown>,
+    ctx: { name: string; accountId: string; userId?: string;[key: string]: string | number | undefined },
 ): Promise<string[]> {
-    const llm = createLLMClient();
-
-    // Build prompt with all lines for batch translation
+    // Build dialogue lines text
     const linesText = lines
         .map((l, i) => {
             const timing = preserveTiming && l.estimated_duration_seconds
@@ -194,59 +205,19 @@ async function translateWithLLM(
         })
         .join('\n');
 
-    const timingInstruction = preserveTiming
-        ? `IMPORTANT: Keep each translation roughly the same speaking duration as the original. 
-       Shorten or rephrase if needed to maintain similar timing.`
-        : '';
-
-    const prompt = `Translate the following dialogue lines to ${targetLanguage}.
-${timingInstruction}
-
-Return ONLY the translations, one per line, numbered to match the input.
-Do not include any explanation or the original text.
-
-Dialogue to translate:
-${linesText}`;
-
     try {
-        const response = await llm.createChatCompletion({
-            messages: [
-                {
-                    role: 'system',
-                    content: `You are a professional translator for ${targetLanguage} film/TV dialogue.
-
-TRANSLATION STYLE - CRITICAL:
-- Use MODERN COLLOQUIAL language - how young urban speakers actually talk TODAY
-- Match the casual, natural energy of the original English
-- Avoid formal/literary/textbook translations - these sound unnatural in dialogue
-- Use contractions, slang, and natural speech patterns common in the target language
-- Code-mixing is acceptable where natural (e.g., Hindi speakers mix English words)
-
-AUDIO TAGS - CRITICAL:
-1. PRESERVE all [audio tags] exactly as written - these are ElevenLabs TTS instructions
-2. Tags like [excited], [sigh], [whispers], [pauses], [laughs] must STAY IN ENGLISH
-3. Only translate the dialogue text AROUND the tags
-4. Do not translate, modify, or remove ANY text inside square brackets
-
-EXAMPLES (Modern Colloquial vs Formal):
-English: "[nervous] Are you sure about this? [gulps] I don't think I can."
-Hindi GOOD: "[nervous] यार, तू sure है? [gulps] मुझसे नहीं होगा।"
-Hindi BAD (too formal): "[nervous] क्या आप इसके बारे में सुनिश्चित हैं? [gulps] मुझे नहीं लगता मैं कर सकता।"
-
-Spanish GOOD: "[nervous] ¿Estás seguro de esto? [gulps] No creo que pueda, wey."
-Portuguese GOOD: "[nervous] Cara, tu tem certeza? [gulps] Acho que não consigo."
-
-Translate naturally while preserving emotion, character voice, and timing.`,
-                },
-                {
-                    role: 'user',
-                    content: prompt,
-                },
-            ],
-            temperature: 0.3,
+        // Use prompt-engine with dialogue-translation template
+        const result = await executeLLM<string>({
+            templateSlug: 'dialogue-translation',
+            variables: {
+                target_language: targetLanguage,
+                dialogue_lines: linesText,
+                preserve_timing: preserveTiming,
+            },
+            context: ctx,
         });
 
-        const content = response.message.content ?? '';
+        const content = typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
 
         // Parse numbered translations
         const translations = parseNumberedTranslations(content, lines.length);
