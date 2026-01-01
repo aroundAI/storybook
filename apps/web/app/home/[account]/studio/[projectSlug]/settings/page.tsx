@@ -272,7 +272,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   projectId={project.id}
                   configs={publishingConfigs}
                   availableConnections={platformConnections}
-                  addConnectionUrl={`/home/${account}/settings/connections`}
+                  addConnectionUrl={`/home/${account}/settings/platforms`}
                 />
               </CardContent>
             </Card>
