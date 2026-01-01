@@ -190,7 +190,7 @@ function extractJSON<T = unknown>(
 /**
  * Get API key for LLM provider from environment variables
  */
-export function getApiKeyForProvider(provider: LLMProvider | string): string {
+export async function getApiKeyForProvider(provider: LLMProvider | string): Promise<string> {
   let apiKey = '';
   let source = '';
 
@@ -339,7 +339,7 @@ export async function executeLLM<T = unknown>(
     const llm = createLLMClient({
       provider: provider as LLMProvider,
       model,
-      apiKey: getApiKeyForProvider(provider),
+      apiKey: await getApiKeyForProvider(provider),
     });
 
     // 4. Execute LLM call (use config from JSON or override)
