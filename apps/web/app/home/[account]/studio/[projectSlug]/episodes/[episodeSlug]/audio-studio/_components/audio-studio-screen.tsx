@@ -15,7 +15,6 @@ import {
   Minus,
   Play,
   Plus,
-  Settings,
   Volume2,
 } from 'lucide-react';
 
@@ -315,16 +314,7 @@ export function AudioStudioScreen({
           {/* Spacer to push action buttons right */}
           <div className="flex-1 min-w-4" />
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-300"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </Button>
-
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               onClick={handleGenerateAll}
               disabled={isPending || stats.pending === 0}
