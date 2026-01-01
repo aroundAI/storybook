@@ -26,7 +26,7 @@ interface ProjectPublishingConfigsProps {
     projectId: string;
     configs: ProjectPublishingConfig[];
     availableConnections: PlatformConnection[];
-    onAddConnection?: () => void;
+    addConnectionUrl?: string;
 }
 
 const PLATFORM_ICONS = {
@@ -60,7 +60,7 @@ export function ProjectPublishingConfigs({
     projectId,
     configs,
     availableConnections,
-    onAddConnection,
+    addConnectionUrl,
 }: ProjectPublishingConfigsProps) {
     const [isPending, startTransition] = useTransition();
     const [isSaving, setIsSaving] = useState(false);
@@ -209,8 +209,8 @@ export function ProjectPublishingConfigs({
                                         onClick={() => handleToggle(config.connectionId, config.language)}
                                         disabled={isPending}
                                         className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${config.isEnabled
-                                                ? 'border-indigo-600 bg-indigo-600 text-white'
-                                                : 'border-gray-300 dark:border-gray-600'
+                                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                                            : 'border-gray-300 dark:border-gray-600'
                                             }`}
                                     >
                                         {config.isEnabled && <Check className="h-3 w-3" />}
@@ -281,13 +281,15 @@ export function ProjectPublishingConfigs({
                 )}
 
                 <div className="border-t border-gray-200 p-3 dark:border-gray-700">
-                    <button
-                        onClick={onAddConnection}
+                    <a
+                        href={addConnectionUrl ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
                     >
                         <Plus className="h-4 w-4" />
                         Add New Platform Connection
-                    </button>
+                    </a>
                 </div>
             </div>
         </div>

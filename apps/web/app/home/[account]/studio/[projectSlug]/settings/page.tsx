@@ -272,10 +272,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   projectId={project.id}
                   configs={publishingConfigs}
                   availableConnections={platformConnections}
-                  onAddConnection={() => {
-                    // Open connections page in new tab
-                    window.open(`/home/${account}/settings/connections`, '_blank');
-                  }}
+                  addConnectionUrl={`/home/${account}/settings/connections`}
                 />
               </CardContent>
             </Card>
