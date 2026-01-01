@@ -41,7 +41,6 @@ export interface PlatformConnection {
     platformAccountName: string | null;
     language: string | null;
     isActive: boolean;
-    metadata: Record<string, unknown> | null;
 }
 
 // =============================================================================
@@ -144,8 +143,7 @@ export async function getAccountPlatformConnections(
       platform_account_id,
       platform_account_name,
       language,
-      is_active,
-      metadata
+      is_active
     `,
         )
         .eq('account_id', accountId)
@@ -164,7 +162,6 @@ export async function getAccountPlatformConnections(
             platform_account_name: string | null;
             language: string | null;
             is_active: boolean;
-            metadata: Record<string, unknown> | null;
         }) => ({
             id: row.id,
             platform: row.platform,
@@ -172,7 +169,6 @@ export async function getAccountPlatformConnections(
             platformAccountName: row.platform_account_name,
             language: row.language,
             isActive: row.is_active,
-            metadata: row.metadata,
         }),
     );
 }
