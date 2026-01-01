@@ -3,7 +3,10 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Share2 } from 'lucide-react';
 
-import { ProjectPublishingConfigs } from '@kit/publishing/components';
+import {
+    PlatformConnections,
+    ProjectPublishingConfigs,
+} from '@kit/publishing/components';
 import {
     getAccountPlatformConnections,
     getProjectPublishingConfigs,
@@ -16,6 +19,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@kit/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -57,8 +61,9 @@ export const generateMetadata = async ({ params }: PlatformsPageProps) => {
 async function PlatformsPage({ params }: PlatformsPageProps) {
     const { account, projectSlug } = await params;
 
-    // Load workspace to verify access
-    await loadTeamWorkspace(account);
+    // Load workspace to verify access and get account ID
+    const workspace = await loadTeamWorkspace(account);
+    const accountId = workspace.account.id;
 
     const client = getSupabaseServerClient();
 
@@ -99,55 +104,50 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
                     </h1>
                 </div>
                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Configure publishing destinations for episodes in this project
+                    Connect and configure publishing platforms for this project
                 </p>
             </header>
 
             {/* Content */}
             <div className="flex-1">
                 <div className="mx-auto max-w-4xl space-y-6 p-6">
-                    {/* Publishing Destinations Card */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Publishing Destinations</CardTitle>
-                            <CardDescription>
-                                Select which platforms to publish episodes to. Each platform can
-                                be configured to receive a specific language version of your
-                                content.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <ProjectPublishingConfigs
-                                projectId={project.id}
-                                configs={publishingConfigs}
-                                availableConnections={platformConnections}
-                                addConnectionUrl={`/home/${account}/settings/platforms`}
-                            />
-                        </CardContent>
-                    </Card>
+                    <Tabs defaultValue="connections" className="space-y-6">
+                        <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="connections">Connect Platforms</TabsTrigger>
+                            <TabsTrigger value="destinations">Project Destinations</TabsTrigger>
+                        </TabsList>
 
-                    {/* Help Card */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>How it works</CardTitle>
-                        </CardHeader>
-                        <CardContent className="text-sm text-gray-600 dark:text-gray-400">
-                            <ol className="list-inside list-decimal space-y-2">
-                                <li>
-                                    <strong>Connect platforms</strong> at the account level (YouTube, TikTok, etc.)
-                                </li>
-                                <li>
-                                    <strong>Add destinations</strong> for this project from your connected platforms
-                                </li>
-                                <li>
-                                    <strong>Select language</strong> version to publish (en, hi, es, pt)
-                                </li>
-                                <li>
-                                    <strong>Publish episodes</strong> with one click from the Publish tab
-                                </li>
-                            </ol>
-                        </CardContent>
-                    </Card>
+                        {/* Tab 1: Connect Platforms */}
+                        <TabsContent value="connections" className="space-y-4">
+                            <div className="text-sm text-gray-600 dark:text-gray-400">
+                                Connect your YouTube, TikTok, and Instagram accounts to enable publishing.
+                            </div>
+                            <PlatformConnections
+                                accountSlug={account}
+                                accountId={accountId}
+                            />
+                        </TabsContent>
+
+                        {/* Tab 2: Project Destinations */}
+                        <TabsContent value="destinations" className="space-y-6">
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Publishing Destinations</CardTitle>
+                                    <CardDescription>
+                                        Select which connected platforms to use for this project.
+                                        Each platform can publish a specific language version.
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <ProjectPublishingConfigs
+                                        projectId={project.id}
+                                        configs={publishingConfigs}
+                                        availableConnections={platformConnections}
+                                    />
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
                 </div>
             </div>
         </>
@@ -155,3 +155,4 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
 }
 
 export default withI18n(PlatformsPage);
+

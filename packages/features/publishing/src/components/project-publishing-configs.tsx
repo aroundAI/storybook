@@ -280,17 +280,19 @@ export function ProjectPublishingConfigs({
                     </div>
                 )}
 
-                <div className="border-t border-gray-200 p-3 dark:border-gray-700">
-                    <a
-                        href={addConnectionUrl ?? '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add New Platform Connection
-                    </a>
-                </div>
+                {addConnectionUrl && (
+                    <div className="border-t border-gray-200 p-3 dark:border-gray-700">
+                        <a
+                            href={addConnectionUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 dark:text-indigo-400"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add New Platform Connection
+                        </a>
+                    </div>
+                )}
             </div>
         </div>
     );
