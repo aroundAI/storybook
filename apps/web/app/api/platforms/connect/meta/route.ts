@@ -26,7 +26,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
-  const accountId = request.nextUrl.searchParams.get('accountId');
+  // Support both accountId (UUID) and account (slug)
+  let accountId = request.nextUrl.searchParams.get('accountId');
+  const accountSlug = request.nextUrl.searchParams.get('account');
   const returnUrl =
     request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
   const platformsParam = request.nextUrl.searchParams.get('platforms');
@@ -34,6 +36,27 @@ export async function GET(request: NextRequest) {
     'facebook',
     'instagram',
   ]) as ('facebook' | 'instagram')[];
+
+  // If we got a slug instead of UUID, resolve it
+  if (!accountId && accountSlug) {
+    const { data: account, error: accountError } = await client
+      .from('accounts')
+      .select('id')
+      .eq('slug', accountSlug)
+      .single();
+
+    if (accountError || !account) {
+      logger.error(
+        { ...ctx, slug: accountSlug, error: accountError },
+        'Failed to resolve account slug',
+      );
+      return NextResponse.json(
+        { error: 'Account not found' },
+        { status: 404 },
+      );
+    }
+    accountId = account.id;
+  }
 
   if (!accountId) {
     return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
