@@ -38,6 +38,14 @@
       "layer_type": "format",
       "scope": "template",
       "order": 3
+    },
+    {
+      "slug": "audio-cues",
+      "name": "Audio Cues Generation",
+      "content": "AUDIO CUE GENERATION:\n\nFor each scene, generate audio cues for sound effects, ambient sounds, and music. These will be converted to audio using ElevenLabs APIs.\n\nCUE TYPES:\n1. **sfx**: Short sound effects (0.1-30s)\n   - Examples: 'Heavy door creaking open', 'Glass shattering on concrete', 'Footsteps on gravel'\n   - Terminology: whoosh, braam, impact, glitch, drone\n\n2. **ambient**: Background atmosphere (loopable, 10-30s)\n   - Examples: 'Quiet park with birds chirping', 'Busy coffee shop chatter', 'Rain on windows'\n\n3. **music**: Background score (30-300s)\n   - Include BPM and key: 'Gentle piano melody, 90 BPM, in C major'\n   - Include mood: 'Suspenseful orchestral, builds to climax'\n   - Add 'instrumental only' for no vocals\n\nRULES:\n- startOffset: seconds from scene start when audio should begin\n- duration: length in seconds\n- isLoopable: true for ambient sounds only\n- Generate 1-3 audio cues per scene\n- Match audio to the scene's mood and action",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 4
     }
   ],
   "user_prompt": "Convert this story into a screenplay:\n\n**Story**:\n{{story}}\n\n**Target Duration**: {{target_duration}} seconds ({{duration_description}})\n**Content Style**: {{content_style}}\n**Locations**: {{location_names}}\n\n{{characters}}\n\n{{recurring_element}}\n\n**Character Names for Dialogue**: {{character_names}}\n\nUse the character descriptions above to write dialogue that matches each character's personality and role.\n\n**Guidelines**:\n\n1. **Scene Structure**:\n   - Target {{scene_count_min}}-{{scene_count_max}} scenes (for {{target_duration}} seconds total)\n   - Average scene duration: approximately {{avg_scene_duration}} seconds\n   - Use standard scene headings: INT/EXT. LOCATION - TIME OF DAY\n   - Include clear action lines describing what we see\n\n2. **Dialogue** (CRITICAL - Must Meet Targets):\n   - Style: {{style}}\n   - Generate {{dialogue_lines_per_scene_min}}-{{dialogue_lines_per_scene_max}} dialogue lines PER SCENE\n   - Total dialogue lines target: {{total_dialogue_lines_min}}-{{total_dialogue_lines_max}} lines\n   - For dialogue-heavy content (kids' cartoons), prioritize character interactions\n   - Keep dialogue natural and purposeful\n   - Use dialogue to advance story and reveal character\n   - Include parentheticals for emotion/action only when necessary\n   - Each character should have meaningful dialogue exchanges\n\n3. **Action Lines**:\n   - Write in present tense\n   - Be concise and visual\n   - Focus on what camera can capture\n   - Break up long paragraphs for readability\n\n4. **Scene Types**:\n   - Vary scene locations for visual interest\n   - For dialogue-heavy style: emphasize character conversations\n   - Include establishing shots where needed\n\n5. **Character Names**:\n   - CAPITALIZE character names in action lines (first appearance)\n   - Character names in dialogue are always capitalized\n   - Use ONLY the characters provided: {{character_names}}\n\n6. **Recurring Element** (if specified above):\n   - Include the recurring scene/element with appropriate dialogue\n   - Place it according to the specified placement (beginning/middle/end)\n   - Use any dialogue hints provided for authentic phrasing\n\n**Screenplay Format Example**:\n\nINT. COFFEE SHOP - DAY\n\nJAKE (30s, disheveled) stares at his laptop screen, fingers frozen over the keyboard.\n\n                    SARAH (O.S.)\n            Jake?\n\nJake looks up. SARAH (20s, confident) stands at his table with two coffees.\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"screenplay\": {\n    \"scenes\": [\n      {\n        \"number\": 1,\n        \"heading\": \"INT. LOCATION - DAY\",\n        \"location\": \"string\",\n        \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\",\n        \"description\": \"string (action lines)\",\n        \"dialogue\": [\n          {\n            \"character\": \"string\",\n            \"text\": \"string\",\n            \"parenthetical\": \"string (optional)\"\n          }\n        ],\n        \"estimatedDuration\": number\n      }\n    ],\n    \"metadata\": {\n      \"totalScenes\": number,\n      \"estimatedDuration\": number,\n      \"totalDialogueLines\": number,\n      \"locations\": [\"string\"],\n      \"characters\": [\"string\"]\n    }\n  }\n}\n```",
@@ -127,9 +135,9 @@
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ screenplay: z.object({ scenes: z.array(z.object({ number: z.number(), heading: z.string(), location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), description: z.string(), dialogue: z.array(z.object({ character: z.string(), text: z.string(), parenthetical: z.string().nullish() })), estimatedDuration: z.number() })), metadata: z.object({ totalScenes: z.number(), estimatedDuration: z.number(), totalDialogueLines: z.number().optional(), locations: z.array(z.string()), characters: z.array(z.string()) }) }) })"
+      "definition": "z.object({ screenplay: z.object({ scenes: z.array(z.object({ number: z.number(), heading: z.string(), location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), description: z.string(), dialogue: z.array(z.object({ character: z.string(), text: z.string(), parenthetical: z.string().nullish() })), audioCues: z.array(z.object({ type: z.enum(['sfx', 'ambient', 'music']), prompt: z.string(), startOffset: z.number(), duration: z.number(), isLoopable: z.boolean().optional() })).optional(), estimatedDuration: z.number() })), metadata: z.object({ totalScenes: z.number(), estimatedDuration: z.number(), totalDialogueLines: z.number().optional(), locations: z.array(z.string()), characters: z.array(z.string()) }) }) })"
     },
-    "schema_for_llm": "Return JSON: { \"screenplay\": { \"scenes\": [{ \"number\": 1, \"heading\": \"INT. LOCATION - DAY\", \"location\": \"string\", \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\", \"description\": \"string\", \"dialogue\": [{ \"character\": \"string\", \"text\": \"string\", \"parenthetical\": \"optional string\" }], \"estimatedDuration\": number }], \"metadata\": { \"totalScenes\": number, \"estimatedDuration\": number, \"totalDialogueLines\": number, \"locations\": [\"string\"], \"characters\": [\"string\"] } } }",
+    "schema_for_llm": "Return JSON: { \"screenplay\": { \"scenes\": [{ \"number\": 1, \"heading\": \"INT. LOCATION - DAY\", \"location\": \"string\", \"timeOfDay\": \"dawn|morning|midday|afternoon|golden-hour|dusk|night|day\", \"description\": \"string\", \"dialogue\": [{ \"character\": \"string\", \"text\": \"string\", \"parenthetical\": \"optional string\" }], \"audioCues\": [{ \"type\": \"sfx|ambient|music\", \"prompt\": \"string\", \"startOffset\": number, \"duration\": number, \"isLoopable\": boolean }], \"estimatedDuration\": number }], \"metadata\": { \"totalScenes\": number, \"estimatedDuration\": number, \"totalDialogueLines\": number, \"locations\": [\"string\"], \"characters\": [\"string\"] } } }",
     "example_output": {
       "screenplay": {
         "scenes": [
@@ -149,6 +157,27 @@
                 "character": "HOUSTON",
                 "text": "[calmly] Relay One, we're picking up an anomalous signal on your frequency. [short pause] Can you verify source?",
                 "parenthetical": "over comm, distorted"
+              }
+            ],
+            "audioCues": [
+              {
+                "type": "ambient",
+                "prompt": "Quiet hum of space station electronics, distant ventilation",
+                "startOffset": 0,
+                "duration": 30,
+                "isLoopable": true
+              },
+              {
+                "type": "sfx",
+                "prompt": "Static burst from radio comm panel",
+                "startOffset": 8,
+                "duration": 2
+              },
+              {
+                "type": "music",
+                "prompt": "Suspenseful ambient synth, 70 BPM, in D minor, instrumental only",
+                "startOffset": 0,
+                "duration": 45
               }
             ],
             "estimatedDuration": 45
