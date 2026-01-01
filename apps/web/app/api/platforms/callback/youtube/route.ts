@@ -75,10 +75,11 @@ export async function GET(request: NextRequest) {
   // Note: State deletion moved to after successful connection storage
   // to allow retry on token exchange failure
 
-  const clientId = process.env.YOUTUBE_CLIENT_ID;
-  const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
+  // Get OAuth credentials from database (account-scoped)
+  const { getAccountOAuthApp } = await import('@kit/publishing/server');
+  const oauthApp = await getAccountOAuthApp(state.accountId, 'youtube');
 
-  if (!clientId || !clientSecret) {
+  if (!oauthApp) {
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=youtube_not_configured`,
     );
@@ -90,8 +91,8 @@ export async function GET(request: NextRequest) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: oauthApp.clientId,
+      client_secret: oauthApp.clientSecret,
       redirect_uri: `${appUrl}/api/platforms/callback/youtube`,
       grant_type: 'authorization_code',
     }),
