@@ -1126,6 +1126,75 @@ export type Database = {
           },
         ]
       }
+      episode_publishing_configs: {
+        Row: {
+          created_at: string
+          description_override: string | null
+          episode_id: string
+          id: string
+          is_enabled: boolean | null
+          language: string
+          last_published_at: string | null
+          last_published_video_id: string | null
+          platform_connection_id: string
+          publish_immediately: boolean | null
+          scheduled_publish_at: string | null
+          tags_override: string[] | null
+          thumbnail_override_url: string | null
+          title_override: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description_override?: string | null
+          episode_id: string
+          id?: string
+          is_enabled?: boolean | null
+          language?: string
+          last_published_at?: string | null
+          last_published_video_id?: string | null
+          platform_connection_id: string
+          publish_immediately?: boolean | null
+          scheduled_publish_at?: string | null
+          tags_override?: string[] | null
+          thumbnail_override_url?: string | null
+          title_override?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description_override?: string | null
+          episode_id?: string
+          id?: string
+          is_enabled?: boolean | null
+          language?: string
+          last_published_at?: string | null
+          last_published_video_id?: string | null
+          platform_connection_id?: string
+          publish_immediately?: boolean | null
+          scheduled_publish_at?: string | null
+          tags_override?: string[] | null
+          thumbnail_override_url?: string | null
+          title_override?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episode_publishing_configs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "episode_publishing_configs_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       episodes: {
         Row: {
           created_at: string

@@ -15,3 +15,12 @@ export {
 } from './publish-actions';
 
 export { generateClipAction, getEpisodeClips } from './clip-actions';
+
+export {
+  getEpisodePublishingConfigs,
+  getAccountPlatformConnections,
+  updateEpisodePublishingConfigsAction,
+  togglePublishingConfigAction,
+  type EpisodePublishingConfig,
+  type PlatformConnection,
+} from './episode-publishing-actions';
