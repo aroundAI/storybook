@@ -1,0 +1,44 @@
+{
+    "name": "@kit/shorts",
+    "version": "0.0.1",
+    "private": true,
+    "sideEffects": false,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "import": "./dist/index.mjs",
+            "require": "./dist/index.js",
+            "types": "./dist/index.d.ts"
+        },
+        "./server": {
+            "import": "./dist/server/index.mjs",
+            "require": "./dist/server/index.js",
+            "types": "./dist/server/index.d.ts"
+        },
+        "./components": {
+            "import": "./dist/components/index.mjs",
+            "require": "./dist/components/index.js",
+            "types": "./dist/components/index.d.ts"
+        }
+    },
+    "scripts": {
+        "build": "tsup",
+        "dev": "tsup --watch",
+        "clean": "rm -rf dist node_modules",
+        "typecheck": "tsc --noEmit"
+    },
+    "dependencies": {
+        "@kit/next": "workspace:*",
+        "@kit/shared": "workspace:*",
+        "@kit/supabase": "workspace:*",
+        "@kit/ui": "workspace:*",
+        "next": "15.5.3",
+        "zod": "^3.25.74"
+    },
+    "devDependencies": {
+        "@types/node": "^24.5.0",
+        "tsup": "^8.0.1",
+        "typescript": "^5.9.2"
+    }
+}

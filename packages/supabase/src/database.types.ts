@@ -421,7 +421,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -440,7 +440,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           object_id: string
           object_name?: string | null
@@ -459,7 +459,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           metadata?: Json | null
           object_id?: string
           object_name?: string | null
@@ -1610,7 +1610,7 @@ export type Database = {
           expires_at: string
           id: string
           last_verification_at: string | null
-          last_verification_ip: unknown | null
+          last_verification_ip: unknown
           last_verification_user_agent: string | null
           metadata: Json | null
           nonce: string
@@ -1628,7 +1628,7 @@ export type Database = {
           expires_at: string
           id?: string
           last_verification_at?: string | null
-          last_verification_ip?: unknown | null
+          last_verification_ip?: unknown
           last_verification_user_agent?: string | null
           metadata?: Json | null
           nonce: string
@@ -1646,7 +1646,7 @@ export type Database = {
           expires_at?: string
           id?: string
           last_verification_at?: string | null
-          last_verification_ip?: unknown | null
+          last_verification_ip?: unknown
           last_verification_user_agent?: string | null
           metadata?: Json | null
           nonce?: string
@@ -2594,6 +2594,174 @@ export type Database = {
           },
         ]
       }
+      short_publications: {
+        Row: {
+          analytics_updated_at: string | null
+          caption_override: string | null
+          comments: number | null
+          created_at: string
+          hashtags_override: string[] | null
+          id: string
+          language: string
+          likes: number | null
+          platform: string
+          platform_connection_id: string | null
+          platform_url: string | null
+          platform_video_id: string | null
+          publish_error: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          shares: number | null
+          short_id: string
+          status: string
+          title_override: string | null
+          updated_at: string
+          views: number | null
+        }
+        Insert: {
+          analytics_updated_at?: string | null
+          caption_override?: string | null
+          comments?: number | null
+          created_at?: string
+          hashtags_override?: string[] | null
+          id?: string
+          language?: string
+          likes?: number | null
+          platform: string
+          platform_connection_id?: string | null
+          platform_url?: string | null
+          platform_video_id?: string | null
+          publish_error?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          shares?: number | null
+          short_id: string
+          status?: string
+          title_override?: string | null
+          updated_at?: string
+          views?: number | null
+        }
+        Update: {
+          analytics_updated_at?: string | null
+          caption_override?: string | null
+          comments?: number | null
+          created_at?: string
+          hashtags_override?: string[] | null
+          id?: string
+          language?: string
+          likes?: number | null
+          platform?: string
+          platform_connection_id?: string | null
+          platform_url?: string | null
+          platform_video_id?: string | null
+          publish_error?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          shares?: number | null
+          short_id?: string
+          status?: string
+          title_override?: string | null
+          updated_at?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_publications_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "short_publications_short_id_fkey"
+            columns: ["short_id"]
+            isOneToOne: false
+            referencedRelation: "shorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shorts: {
+        Row: {
+          caption: string | null
+          created_at: string
+          duration_seconds: number | null
+          end_seconds: number
+          episode_id: string
+          hashtags: string[] | null
+          hook_type: string | null
+          id: string
+          processing_error: string | null
+          source_shot_id: string | null
+          standalone_summary: string | null
+          start_seconds: number
+          status: string
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          video_url_9x16: string | null
+          video_url_original: string | null
+          viral_score: number | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          end_seconds: number
+          episode_id: string
+          hashtags?: string[] | null
+          hook_type?: string | null
+          id?: string
+          processing_error?: string | null
+          source_shot_id?: string | null
+          standalone_summary?: string | null
+          start_seconds: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_url_9x16?: string | null
+          video_url_original?: string | null
+          viral_score?: number | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          end_seconds?: number
+          episode_id?: string
+          hashtags?: string[] | null
+          hook_type?: string | null
+          id?: string
+          processing_error?: string | null
+          source_shot_id?: string | null
+          standalone_summary?: string | null
+          start_seconds?: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_url_9x16?: string | null
+          video_url_original?: string | null
+          viral_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shorts_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shorts_source_shot_id_fkey"
+            columns: ["source_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shots: {
         Row: {
           action_description: string | null
@@ -2817,7 +2985,7 @@ export type Database = {
           consenter_name: string
           created_at: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           updated_at: string
           voice_profile_id: string
         }
@@ -2830,7 +2998,7 @@ export type Database = {
           consenter_name: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           updated_at?: string
           voice_profile_id: string
         }
@@ -2843,7 +3011,7 @@ export type Database = {
           consenter_name?: string
           created_at?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           updated_at?: string
           voice_profile_id?: string
         }
@@ -2943,10 +3111,6 @@ export type Database = {
         Args: { p_episode_id: string; p_shots: Json }
         Returns: string[]
       }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
       can_action_account_member: {
         Args: { target_team_account_id: string; target_user_id: string }
         Returns: boolean
@@ -2966,10 +3130,7 @@ export type Database = {
         Args: { p_account_id: string; p_estimated_cost_cents?: number }
         Returns: boolean
       }
-      cleanup_expired_oauth_states: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      cleanup_expired_oauth_states: { Args: never; Returns: number }
       create_character_with_details: {
         Args: {
           p_description: string
@@ -2995,6 +3156,12 @@ export type Database = {
           invited_by: string
           role: string
           updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invitations"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       create_nonce: {
@@ -3025,6 +3192,12 @@ export type Database = {
           slug: string | null
           updated_at: string | null
           updated_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "accounts"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       get_account_invitations: {
@@ -3088,7 +3261,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3098,6 +3271,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_by_user: {
         Args: {
@@ -3114,7 +3293,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3124,6 +3303,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_for_object: {
         Args: {
@@ -3140,7 +3325,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3150,6 +3335,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_audit_logs_for_scope: {
         Args: { limit_count?: number; scope_id: string; scope_type: string }
@@ -3162,7 +3353,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3172,6 +3363,12 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       get_change_summary: {
         Args: {
@@ -3184,18 +3381,9 @@ export type Database = {
           field_name: string
         }[]
       }
-      get_config: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_current_account_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_nonce_status: {
-        Args: { p_id: string }
-        Returns: Json
-      }
+      get_config: { Args: never; Returns: Json }
+      get_current_account_id: { Args: never; Returns: string }
+      get_nonce_status: { Args: { p_id: string }; Returns: Json }
       get_project_generation_costs: {
         Args: {
           p_end_date?: string
@@ -3236,7 +3424,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           metadata: Json | null
           object_id: string
           object_name: string | null
@@ -3246,31 +3434,15 @@ export type Database = {
           user_agent: string | null
           user_id: string | null
         }[]
+        SetofOptions: {
+          from: "*"
+          to: "audit_logs"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
-      get_upper_system_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      has_account_access: {
-        Args: { p_account_id: string }
-        Returns: boolean
-      }
+      get_upper_system_role: { Args: never; Returns: string }
+      has_account_access: { Args: { p_account_id: string }; Returns: boolean }
       has_active_subscription: {
         Args: { target_account_id: string }
         Returns: boolean
@@ -3310,22 +3482,6 @@ export type Database = {
         }
         Returns: boolean
       }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       increment_account_usage: {
         Args: { p_account_id: string; p_amount_cents: number }
         Returns: {
@@ -3338,62 +3494,24 @@ export type Database = {
         Args: { template_id: string }
         Returns: undefined
       }
-      is_aal2: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      is_account_owner: {
-        Args: { account_id: string }
-        Returns: boolean
-      }
+      is_aal2: { Args: never; Returns: boolean }
+      is_account_owner: { Args: { account_id: string }; Returns: boolean }
       is_account_team_member: {
         Args: { target_account_id: string }
         Returns: boolean
       }
-      is_mfa_compliant: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_mfa_compliant: { Args: never; Returns: boolean }
       is_project_owner: {
         Args: { target_project_id: string }
         Returns: boolean
       }
-      is_set: {
-        Args: { field_name: string }
-        Returns: boolean
-      }
-      is_super_admin: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
+      is_set: { Args: { field_name: string }; Returns: boolean }
+      is_super_admin: { Args: never; Returns: boolean }
       is_team_member: {
         Args: { account_id: string; user_id: string }
         Returns: boolean
       }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
-      }
-      reset_monthly_usage: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      reset_monthly_usage: { Args: never; Returns: number }
       revoke_nonce: {
         Args: { p_id: string; p_reason?: string }
         Returns: boolean
@@ -3429,22 +3547,7 @@ export type Database = {
           title: string
         }[]
       }
-      soft_delete_episode: {
-        Args: { p_episode_id: string }
-        Returns: boolean
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
       team_account_workspace: {
         Args: { account_slug: string }
         Returns: {
@@ -3501,6 +3604,12 @@ export type Database = {
           total_amount: number
           updated_at: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       upsert_subscription: {
         Args: {
@@ -3534,35 +3643,14 @@ export type Database = {
           trial_starts_at: string | null
           updated_at: string
         }
+        SetofOptions: {
+          from: "*"
+          to: "subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
-      user_owns_account: {
-        Args: { p_account_id: string }
-        Returns: boolean
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
+      user_owns_account: { Args: { p_account_id: string }; Returns: boolean }
       verify_nonce: {
         Args: {
           p_ip?: unknown
@@ -4001,32 +4089,14 @@ export type Database = {
         Args: { _bucket_id: string; _name: string }
         Returns: boolean
       }
-      extension: {
-        Args: { name: string }
-        Returns: string
-      }
-      filename: {
-        Args: { name: string }
-        Returns: string
-      }
-      foldername: {
-        Args: { name: string }
-        Returns: string[]
-      }
-      get_level: {
-        Args: { name: string }
-        Returns: number
-      }
-      get_prefix: {
-        Args: { name: string }
-        Returns: string
-      }
-      get_prefixes: {
-        Args: { name: string }
-        Returns: string[]
-      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
+      get_level: { Args: { name: string }; Returns: number }
+      get_prefix: { Args: { name: string }; Returns: string }
+      get_prefixes: { Args: { name: string }; Returns: string[] }
       get_size_by_bucket: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           bucket_id: string
           size: number
@@ -4063,10 +4133,7 @@ export type Database = {
           updated_at: string
         }[]
       }
-      operation: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      operation: { Args: never; Returns: string }
       search: {
         Args: {
           bucketname: string
