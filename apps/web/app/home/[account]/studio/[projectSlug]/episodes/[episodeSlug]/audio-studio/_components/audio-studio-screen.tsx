@@ -214,13 +214,13 @@ export function AudioStudioScreen({
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-gray-200/50 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 border-b border-gray-200/50 bg-white/85 px-4 py-2.5 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85 overflow-x-auto">
+          <div className="flex items-center gap-3 min-w-max">
             {/* Tab Switcher */}
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
               <button
                 onClick={() => setActiveTab('dialogue')}
-                className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all ${activeTab === 'dialogue'
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition-all whitespace-nowrap ${activeTab === 'dialogue'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -232,7 +232,7 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('music')}
-                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'music'
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'music'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -241,7 +241,7 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('sfx')}
-                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'sfx'
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'sfx'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -253,7 +253,7 @@ export function AudioStudioScreen({
             {/* Language Selector (for Dialogue tab) */}
             {activeTab === 'dialogue' && (
               <>
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
                 <LanguageTabBar
                   episodeId={episode.id}
                   availableLanguages={availableLanguages}
@@ -264,58 +264,56 @@ export function AudioStudioScreen({
               </>
             )}
 
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
 
-            {/* Status badges */}
-            <div className="flex items-center gap-2">
-              <span className="rounded-md border border-green-100 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-                {stats.completed} completed
+            {/* Status badges - compact */}
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-md border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 whitespace-nowrap">
+                {stats.completed}
               </span>
-              <span className="rounded-md border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                {stats.pending} pending
+              <span className="rounded-md border border-orange-100 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400 whitespace-nowrap">
+                {stats.pending}
               </span>
-              {stats.generating > 0 && (
-                <span className="rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                  {stats.generating} generating
-                </span>
-              )}
             </div>
 
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
 
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1">
+            {/* Zoom Controls - compact */}
+            <div className="flex items-center gap-0.5">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={zoomOut}
-                className="h-7 w-7 p-0"
+                className="h-6 w-6 p-0"
                 title="Zoom out"
               >
-                <Minus className="h-3.5 w-3.5" />
+                <Minus className="h-3 w-3" />
               </Button>
-              <span className="w-14 text-center text-xs text-gray-500 dark:text-gray-400">
+              <span className="w-10 text-center text-[10px] text-gray-500 dark:text-gray-400">
                 {pixelsPerSecond}px/s
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={zoomIn}
-                className="h-7 w-7 p-0"
+                className="h-6 w-6 p-0"
                 title="Zoom in"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={fitToWindow}
-                className="ml-1 h-7 px-2 text-xs"
+                className="ml-0.5 h-6 px-1.5 text-[10px]"
               >
                 Fit
               </Button>
             </div>
           </div>
+
+          {/* Spacer to push action buttons right */}
+          <div className="flex-1 min-w-4" />
 
           <div className="flex items-center gap-2">
             <Button
