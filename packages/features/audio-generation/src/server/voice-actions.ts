@@ -5,6 +5,7 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -626,5 +627,99 @@ export const generateVoiceFromTextAction = enhanceAction(
   },
   {
     schema: GenerateVoiceFromTextSchema,
+  },
+);
+
+/**
+ * Update the text of a dialogue line
+ *
+ * This action allows users to edit dialogue text (e.g., fix translations).
+ * If the dialogue has existing audio, it will be marked as needing regeneration.
+ */
+export const updateDialogueTextAction = enhanceAction(
+  async (data: {
+    dialogueLineId: string;
+    text: string;
+  }): Promise<{ success: boolean; dialogueLineId: string }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'dialogue.updateText',
+      dialogueLineId: data.dialogueLineId,
+    };
+
+    logger.info(ctx, 'Updating dialogue text');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized dialogue update attempt');
+      throw new Error('Authentication required');
+    }
+
+    // Fetch dialogue line to verify access
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: dialogueLine, error: fetchError } = await (client as any)
+      .from('dialogue_lines')
+      .select(
+        `
+        id,
+        episode_id,
+        text,
+        audio_url,
+        episodes!inner(
+          id,
+          project_id,
+          projects!inner(
+            id,
+            account_id
+          )
+        )
+      `,
+      )
+      .eq('id', data.dialogueLineId)
+      .single();
+
+    if (fetchError || !dialogueLine) {
+      logger.error({ ...ctx, error: fetchError }, 'Dialogue line not found');
+      throw new Error('Dialogue line not found');
+    }
+
+    // Update the dialogue text
+    // If there was existing audio, mark as needing regeneration
+    const updatePayload: Record<string, unknown> = {
+      text: data.text,
+    };
+
+    // If audio exists, set status to 'text_modified' to indicate regeneration needed
+    if (dialogueLine.audio_url) {
+      updatePayload.status = 'text_modified';
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('dialogue_lines')
+      .update(updatePayload)
+      .eq('id', data.dialogueLineId);
+
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to update dialogue');
+      throw new Error('Failed to update dialogue text');
+    }
+
+    logger.info(ctx, 'Dialogue text updated successfully');
+
+    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
+    return {
+      success: true,
+      dialogueLineId: data.dialogueLineId,
+    };
+  },
+  {
+    schema: z.object({
+      dialogueLineId: z.string().uuid(),
+      text: z.string().min(1),
+    }),
   },
 );

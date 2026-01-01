@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from 'react';
 
-import { Mic, Play, RefreshCw, Volume2 } from 'lucide-react';
+import { Edit3, Mic, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
-import { generateDialogueVoiceAction } from '@kit/audio-generation/server';
+import { generateDialogueVoiceAction, updateDialogueTextAction } from '@kit/audio-generation/server';
+import { Button } from '@kit/ui/button';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
@@ -105,6 +106,9 @@ export function DialogueTimeline({
     useState<TimelineDialogue | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editText, setEditText] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Map character IDs to colors
   const characterColorMap = useMemo(() => {
@@ -253,6 +257,34 @@ export function DialogueTimeline({
     setSelectedDialogue(null);
   };
 
+  const handleEdit = () => {
+    if (!selectedDialogue) return;
+    setEditText(selectedDialogue.text ?? '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedDialogue || !editText.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await updateDialogueTextAction({
+        dialogueLineId: selectedDialogue.id,
+        text: editText.trim(),
+      });
+      toast.success('Dialogue updated');
+      setIsEditModalOpen(false);
+      setSelectedDialogue(null);
+      onRefresh();
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to update dialogue',
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getCharacterColor = (characterAssetId: string | null) => {
     return (
       characterColorMap[characterAssetId ?? ''] ?? {
@@ -364,7 +396,7 @@ export function DialogueTimeline({
                       colors.bg,
                       colors.border,
                       selectedDialogue?.id === dialogue.id &&
-                        'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
+                      'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
                     )}
                     style={{
                       left: `${leftPx}px`,
@@ -431,6 +463,12 @@ export function DialogueTimeline({
               <Play className="h-4 w-4" /> Play
             </button>
             <button
+              onClick={handleEdit}
+              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+            >
+              <Edit3 className="h-4 w-4" /> Edit
+            </button>
+            <button
               onClick={handleRegenerate}
               disabled={isGenerating}
               className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
@@ -449,6 +487,49 @@ export function DialogueTimeline({
           </div>
         </>
       )}
+
+      {/* Edit Modal */}
+      {isEditModalOpen && selectedDialogue && (
+        <>
+          {/* Modal Backdrop */}
+          <div
+            className="fixed inset-0 z-50 bg-black/50"
+            onClick={() => setIsEditModalOpen(false)}
+          />
+          {/* Modal Content */}
+          <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+              Edit Dialogue
+            </h3>
+            <p className="mb-2 text-xs text-gray-500 dark:text-gray-400">
+              {selectedDialogue.characterName}
+            </p>
+            <textarea
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              className="mb-4 h-32 w-full resize-none rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+              placeholder="Enter dialogue text..."
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={isSaving || !editText.trim()}
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
