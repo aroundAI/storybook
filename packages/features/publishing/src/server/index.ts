@@ -24,3 +24,9 @@ export {
   type EpisodePublishingConfig,
   type PlatformConnection,
 } from './episode-publishing-actions';
+
+export {
+  getProjectPublishingConfigs,
+  updateProjectPublishingConfigsAction,
+  type ProjectPublishingConfig,
+} from './project-publishing-actions';

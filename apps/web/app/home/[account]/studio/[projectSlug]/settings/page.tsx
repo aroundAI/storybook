@@ -11,6 +11,11 @@ import {
   getUserProjectRole,
 } from '@kit/projects/queries';
 import type { ProjectMemberWithUser } from '@kit/projects/types';
+import { ProjectPublishingConfigs } from '@kit/publishing/components';
+import {
+  getAccountPlatformConnections,
+  getProjectPublishingConfigs,
+} from '@kit/publishing/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import {
   Card,
@@ -108,6 +113,12 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
     console.error('Failed to load project:', error);
     notFound();
   }
+
+  // Fetch publishing configs
+  const [publishingConfigs, platformConnections] = await Promise.all([
+    getProjectPublishingConfigs(project.id),
+    getAccountPlatformConnections(project.account_id ?? ''),
+  ]);
 
   return (
     <>
@@ -244,6 +255,30 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   | undefined,
               }}
             />
+          </If>
+
+          {/* Publishing Destinations Card */}
+          <If condition={canEdit}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Publishing Destinations</CardTitle>
+                <CardDescription>
+                  Configure default platforms for all episodes in this project.
+                  Episodes will inherit these settings by default.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ProjectPublishingConfigs
+                  projectId={project.id}
+                  configs={publishingConfigs}
+                  availableConnections={platformConnections}
+                  onAddConnection={() => {
+                    // Open connections page in new tab
+                    window.open(`/home/${account}/settings/connections`, '_blank');
+                  }}
+                />
+              </CardContent>
+            </Card>
           </If>
 
           {/* Project Members Card */}

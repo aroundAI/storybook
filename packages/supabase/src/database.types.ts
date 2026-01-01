@@ -1132,6 +1132,7 @@ export type Database = {
           description_override: string | null
           episode_id: string
           id: string
+          inherit_from_project: boolean | null
           is_enabled: boolean | null
           language: string
           last_published_at: string | null
@@ -1149,6 +1150,7 @@ export type Database = {
           description_override?: string | null
           episode_id: string
           id?: string
+          inherit_from_project?: boolean | null
           is_enabled?: boolean | null
           language?: string
           last_published_at?: string | null
@@ -1166,6 +1168,7 @@ export type Database = {
           description_override?: string | null
           episode_id?: string
           id?: string
+          inherit_from_project?: boolean | null
           is_enabled?: boolean | null
           language?: string
           last_published_at?: string | null
@@ -2027,6 +2030,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_publishing_configs: {
+        Row: {
+          created_at: string
+          default_description_template: string | null
+          default_tags: string[] | null
+          default_title_suffix: string | null
+          id: string
+          is_enabled: boolean | null
+          language: string
+          platform_connection_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_description_template?: string | null
+          default_tags?: string[] | null
+          default_title_suffix?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          language?: string
+          platform_connection_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_description_template?: string | null
+          default_tags?: string[] | null
+          default_title_suffix?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          language?: string
+          platform_connection_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_publishing_configs_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_publishing_configs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
