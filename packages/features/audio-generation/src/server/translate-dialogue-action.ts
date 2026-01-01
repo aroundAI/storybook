@@ -206,45 +206,20 @@ async function translateWithLLM(
         .join('\n');
 
     try {
-        // Load LLM config from prompt template (provider, model, temperature from JSON)
-        const { loadAndRenderPrompt, getApiKeyForProvider } = await import('@kit/prompt-engine/server');
-        const { createLLMClient } = await import('@kit/llm');
+        // Use executeLLM following the standard codebase pattern
+        const { executeLLM } = await import('@kit/prompt-engine/server');
 
-        const rendered = await loadAndRenderPrompt('dialogue-translation', {
-            target_language: targetLanguage,
-            dialogue_lines: linesText,
-            preserve_timing: preserveTiming,
+        const result = await executeLLM<string>({
+            templateSlug: 'dialogue-translation',
+            variables: {
+                target_language: targetLanguage,
+                dialogue_lines: linesText,
+                preserve_timing: preserveTiming,
+            },
+            context: ctx,
         });
 
-        // Get API key using shared utility
-        const provider = rendered.llmConfig.provider;
-        const apiKey = getApiKeyForProvider(provider);
-
-        if (!apiKey) {
-            throw new Error(`No API key found for provider: ${provider}`);
-        }
-
-        const llm = createLLMClient({
-            provider: provider as 'gemini' | 'openai' | 'anthropic' | 'deepseek',
-            model: rendered.llmConfig.model,
-            apiKey,
-        });
-
-        const response = await llm.createChatCompletion({
-            messages: [
-                {
-                    role: 'system',
-                    content: rendered.systemPrompt,
-                },
-                {
-                    role: 'user',
-                    content: rendered.userPrompt,
-                },
-            ],
-            temperature: rendered.llmConfig.temperature,
-        });
-
-        const content = response.message.content ?? '';
+        const content = result.data;
 
         // Parse numbered translations
         const translations = parseNumberedTranslations(content, lines.length);
