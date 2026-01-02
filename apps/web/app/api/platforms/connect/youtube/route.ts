@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
   const returnUrl =
     request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
 
-  console.log('[YouTube Connect] Received params:', { accountId, accountSlug, returnUrl });
 
   // If we got a slug instead of UUID, resolve it
   if (!accountId && accountSlug) {
@@ -45,7 +44,6 @@ export async function GET(request: NextRequest) {
       .eq('slug', accountSlug)
       .single();
 
-    console.log('[YouTube Connect] Resolved slug to account:', { slug: accountSlug, resolvedId: account?.id, error: accountError?.message });
 
     if (accountError || !account) {
       logger.error(
@@ -64,13 +62,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
   }
 
-  console.log('[YouTube Connect] Using accountId:', accountId);
 
   // Get OAuth credentials from database (account-scoped)
   const oauthApp = await getAccountOAuthApp(accountId, 'youtube');
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
-  console.log('[YouTube Connect] OAuth lookup result:', { found: !!oauthApp, appUrl });
 
   if (!oauthApp) {
     logger.error(ctx, 'YouTube OAuth credentials not found for this account');

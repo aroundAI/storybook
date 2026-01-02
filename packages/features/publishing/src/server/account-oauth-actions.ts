@@ -34,10 +34,8 @@ export async function getAccountOAuthApp(
 
     // Verify auth context
     const { data: { user } } = await client.auth.getUser();
-    console.log('[getAccountOAuthApp] Auth context:', { userId: user?.id, accountId, platform });
 
     if (!user) {
-        console.log('[getAccountOAuthApp] No authenticated user - RLS will block');
         return null;
     }
 
@@ -47,8 +45,6 @@ export async function getAccountOAuthApp(
         .eq('account_id', accountId)
         .eq('platform', platform)
         .single();
-
-    console.log('[getAccountOAuthApp] Query result:', { found: !!data, error: error?.message });
 
     if (error || !data) {
         return null;
