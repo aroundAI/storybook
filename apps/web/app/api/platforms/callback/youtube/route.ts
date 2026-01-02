@@ -13,7 +13,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 /**
  * YouTube OAuth Callback Route
  * Handles the OAuth callback from Google, exchanges code for tokens,
- * and stores the connection
+ * and stores the connection (or redirects to channel picker if multiple channels)
  */
 export async function GET(request: NextRequest) {
   const logger = await getLogger();
@@ -72,9 +72,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Note: State deletion moved to after successful connection storage
-  // to allow retry on token exchange failure
-
   // Get OAuth credentials from database (account-scoped)
   const { getAccountOAuthApp } = await import('@kit/publishing/server');
   const oauthApp = await getAccountOAuthApp(state.accountId, 'youtube');
@@ -115,30 +112,84 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Get channel info using googleapis
+  // Get ALL channels (including brand channels) using googleapis
   const oauth2Client = new google.auth.OAuth2();
   oauth2Client.setCredentials({ access_token: tokens.access_token });
   const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
 
-  let channel;
+  interface ChannelInfo {
+    id: string;
+    title: string;
+    thumbnailUrl?: string;
+    subscriberCount?: string;
+  }
+
+  let channels: ChannelInfo[] = [];
+
   try {
     const channelResponse = await youtube.channels.list({
       part: ['snippet', 'statistics'],
       mine: true,
     });
 
-    channel = channelResponse.data.items?.[0];
-    if (!channel) {
+    channels = (channelResponse.data.items || []).map((ch) => ({
+      id: ch.id!,
+      title: ch.snippet?.title || 'Unknown Channel',
+      thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
+      subscriberCount: ch.statistics?.subscriberCount || undefined,
+    }));
+
+    if (channels.length === 0) {
       return NextResponse.redirect(
         `${appUrl}/settings/platforms?error=no_channel`,
       );
     }
   } catch (channelError) {
-    logger.error({ ...ctx, error: channelError }, 'Failed to get channel');
+    logger.error({ ...ctx, error: channelError }, 'Failed to get channels');
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=channel_fetch_failed`,
     );
   }
+
+  // Get account slug for redirect
+  const { data: accountData } = await client
+    .from('accounts')
+    .select('slug')
+    .eq('id', state.accountId)
+    .single();
+  const accountSlug = accountData?.slug || 'unknown';
+
+  // If multiple channels, store tokens in cookie and redirect to channel picker
+  if (channels.length > 1) {
+    const pendingConnection = {
+      accountId: state.accountId,
+      accessToken: tokens.access_token,
+      refreshToken: tokens.refresh_token,
+      expiresIn: tokens.expires_in,
+      channels,
+      returnUrl: state.returnUrl,
+      nonce: state.nonce,
+    };
+
+    // Store the pending connection data in an encrypted cookie
+    const encryptedPending = await encrypt(JSON.stringify(pendingConnection));
+
+    const response = NextResponse.redirect(
+      `${appUrl}/home/${accountSlug}/settings/platforms/youtube/select-channel`,
+    );
+
+    response.cookies.set('youtube_pending_connection', encryptedPending, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 600, // 10 minutes
+    });
+
+    return response;
+  }
+
+  // Single channel - save directly (original behavior)
+  const channel = channels[0]!;
 
   // Encrypt tokens before storage
   const encryptedAccessToken = await encrypt(tokens.access_token);
@@ -154,7 +205,7 @@ export async function GET(request: NextRequest) {
         account_id: state.accountId,
         platform: 'youtube',
         platform_account_id: channel.id,
-        platform_account_name: channel.snippet?.title,
+        platform_account_name: channel.title,
         access_token_encrypted: encryptedAccessToken,
         refresh_token_encrypted: encryptedRefreshToken,
         token_expires_at: new Date(
@@ -162,8 +213,8 @@ export async function GET(request: NextRequest) {
         ).toISOString(),
         scopes: [...YOUTUBE_OAUTH_CONFIG.scopes],
         metadata: {
-          thumbnail_url: channel.snippet?.thumbnails?.default?.url,
-          subscriber_count: channel.statistics?.subscriberCount,
+          thumbnail_url: channel.thumbnailUrl,
+          subscriber_count: channel.subscriberCount,
         },
         is_active: true,
         updated_at: new Date().toISOString(),
@@ -195,6 +246,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(
-    `${appUrl}${state.returnUrl}?success=youtube_connected&channel=${encodeURIComponent(channel.snippet?.title || '')}`,
+    `${appUrl}${state.returnUrl}?success=youtube_connected&channel=${encodeURIComponent(channel.title)}`,
   );
 }
