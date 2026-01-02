@@ -6,6 +6,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { decrypt, encrypt } from '@kit/shared/crypto';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -27,7 +28,10 @@ export async function getAccountOAuthApp(
     accountId: string,
     platform: 'youtube' | 'tiktok' | 'meta',
 ): Promise<{ clientId: string; clientSecret: string } | null> {
-    const client = getSupabaseServerClient();
+    // Use admin client to bypass RLS (API routes may not have user context)
+    const client = getSupabaseServerAdminClient();
+
+    console.log('[getAccountOAuthApp] Looking up credentials:', { accountId, platform });
 
     const { data, error } = await client
         .from('account_oauth_apps')
@@ -35,6 +39,8 @@ export async function getAccountOAuthApp(
         .eq('account_id', accountId)
         .eq('platform', platform)
         .single();
+
+    console.log('[getAccountOAuthApp] Query result:', { found: !!data, error: error?.message });
 
     if (error || !data) {
         return null;
