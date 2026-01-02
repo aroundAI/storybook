@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
+import { getAccountOAuthApp } from '@kit/publishing/server';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const stateParam = request.nextUrl.searchParams.get('state');
   const error = request.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
 
   if (error) {
     const errorDesc = request.nextUrl.searchParams.get('error_description');
@@ -84,10 +85,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const appId = process.env.FACEBOOK_APP_ID;
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  // Get OAuth credentials from database (account-scoped)
+  const oauthApp = await getAccountOAuthApp(state.accountId, 'meta');
 
-  if (!appId || !appSecret) {
+  if (!oauthApp) {
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=meta_not_configured`,
     );
@@ -95,8 +96,8 @@ export async function GET(request: NextRequest) {
 
   // Exchange code for short-lived token
   const tokenUrl = new URL(META_OAUTH_CONFIG.tokenUrl);
-  tokenUrl.searchParams.set('client_id', appId);
-  tokenUrl.searchParams.set('client_secret', appSecret);
+  tokenUrl.searchParams.set('client_id', oauthApp.clientId);
+  tokenUrl.searchParams.set('client_secret', oauthApp.clientSecret);
   tokenUrl.searchParams.set(
     'redirect_uri',
     `${appUrl}/api/platforms/callback/meta`,
@@ -121,8 +122,8 @@ export async function GET(request: NextRequest) {
     `${META_OAUTH_CONFIG.graphUrl}/oauth/access_token`,
   );
   longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
-  longLivedUrl.searchParams.set('client_id', appId);
-  longLivedUrl.searchParams.set('client_secret', appSecret);
+  longLivedUrl.searchParams.set('client_id', oauthApp.clientId);
+  longLivedUrl.searchParams.set('client_secret', oauthApp.clientSecret);
   longLivedUrl.searchParams.set(
     'fb_exchange_token',
     shortLivedToken.access_token,
