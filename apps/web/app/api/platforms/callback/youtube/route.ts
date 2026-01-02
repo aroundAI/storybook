@@ -195,6 +195,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(
-    `${state.returnUrl}?success=youtube_connected&channel=${encodeURIComponent(channel.snippet?.title || '')}`,
+    `${appUrl}${state.returnUrl}?success=youtube_connected&channel=${encodeURIComponent(channel.snippet?.title || '')}`,
   );
 }
