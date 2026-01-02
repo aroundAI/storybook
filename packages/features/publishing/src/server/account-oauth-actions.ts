@@ -28,10 +28,18 @@ export async function getAccountOAuthApp(
     accountId: string,
     platform: 'youtube' | 'tiktok' | 'meta',
 ): Promise<{ clientId: string; clientSecret: string } | null> {
-    // Use admin client to bypass RLS (API routes may not have user context)
-    const client = getSupabaseServerAdminClient();
+    // Use regular client which respects RLS
+    // The caller (API route) must have authenticated user context
+    const client = getSupabaseServerClient();
 
-    console.log('[getAccountOAuthApp] Looking up credentials:', { accountId, platform });
+    // Verify auth context
+    const { data: { user } } = await client.auth.getUser();
+    console.log('[getAccountOAuthApp] Auth context:', { userId: user?.id, accountId, platform });
+
+    if (!user) {
+        console.log('[getAccountOAuthApp] No authenticated user - RLS will block');
+        return null;
+    }
 
     const { data, error } = await client
         .from('account_oauth_apps')

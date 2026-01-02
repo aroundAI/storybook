@@ -68,13 +68,23 @@ export async function GET(request: NextRequest) {
 
   // Get OAuth credentials from database (account-scoped)
   const oauthApp = await getAccountOAuthApp(accountId, 'youtube');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
-  if (!oauthApp || !appUrl) {
-    logger.error(ctx, 'YouTube OAuth not configured for this account');
+  console.log('[YouTube Connect] OAuth lookup result:', { found: !!oauthApp, appUrl });
+
+  if (!oauthApp) {
+    logger.error(ctx, 'YouTube OAuth credentials not found for this account');
     return NextResponse.json(
       { error: 'YouTube OAuth not configured. Please add your Google OAuth credentials in Platforms settings.' },
       { status: 400 },
+    );
+  }
+
+  if (!appUrl) {
+    logger.error(ctx, 'Missing NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL');
+    return NextResponse.json(
+      { error: 'Application URL not configured' },
+      { status: 500 },
     );
   }
 
