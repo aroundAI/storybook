@@ -127,47 +127,19 @@ export async function GET(request: NextRequest) {
   let channels: ChannelInfo[] = [];
 
   try {
-    // Fetch personal channel with mine=true
-    const mineResponse = await youtube.channels.list({
+    // Fetch ALL channels (personal + brand) with mine=true
+    // This returns all channels the authenticated user owns, including brand channels
+    const channelResponse = await youtube.channels.list({
       part: ['snippet', 'statistics'],
       mine: true,
     });
 
-    const mineChannels = (mineResponse.data.items || []).map((ch) => ({
+    channels = (channelResponse.data.items || []).map((ch) => ({
       id: ch.id!,
       title: ch.snippet?.title || 'Unknown Channel',
       thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
       subscriberCount: ch.statistics?.subscriberCount || undefined,
     }));
-
-    // Try to fetch brand channels with managedByMe=true
-    // This may fail with 403 if user is not part of a Content ID / MCN program
-    let managedChannels: ChannelInfo[] = [];
-    try {
-      const managedResponse = await youtube.channels.list({
-        part: ['snippet', 'statistics'],
-        managedByMe: true,
-      });
-
-      managedChannels = (managedResponse.data.items || []).map((ch) => ({
-        id: ch.id!,
-        title: ch.snippet?.title || 'Unknown Channel',
-        thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
-        subscriberCount: ch.statistics?.subscriberCount || undefined,
-      }));
-    } catch (managedError) {
-      // managedByMe requires MCN/Content ID permissions - continue with just mine channels
-      logger.info({ ...ctx }, 'managedByMe not available (not a Content ID partner)');
-    }
-
-    // Combine and deduplicate by channel ID
-    const channelMap = new Map<string, ChannelInfo>();
-    [...mineChannels, ...managedChannels].forEach((ch) => {
-      if (!channelMap.has(ch.id)) {
-        channelMap.set(ch.id, ch);
-      }
-    });
-    channels = Array.from(channelMap.values());
 
     logger.info({ ...ctx, channelCount: channels.length, channelNames: channels.map(c => c.title) }, 'Found YouTube channels');
 
