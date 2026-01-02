@@ -127,17 +127,42 @@ export async function GET(request: NextRequest) {
   let channels: ChannelInfo[] = [];
 
   try {
-    const channelResponse = await youtube.channels.list({
+    // Fetch personal channel with mine=true
+    const mineResponse = await youtube.channels.list({
       part: ['snippet', 'statistics'],
       mine: true,
     });
 
-    channels = (channelResponse.data.items || []).map((ch) => ({
+    const mineChannels = (mineResponse.data.items || []).map((ch) => ({
       id: ch.id!,
       title: ch.snippet?.title || 'Unknown Channel',
       thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
       subscriberCount: ch.statistics?.subscriberCount || undefined,
     }));
+
+    // Fetch brand channels with managedByMe=true
+    const managedResponse = await youtube.channels.list({
+      part: ['snippet', 'statistics'],
+      managedByMe: true,
+    });
+
+    const managedChannels = (managedResponse.data.items || []).map((ch) => ({
+      id: ch.id!,
+      title: ch.snippet?.title || 'Unknown Channel',
+      thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
+      subscriberCount: ch.statistics?.subscriberCount || undefined,
+    }));
+
+    // Combine and deduplicate by channel ID
+    const channelMap = new Map<string, ChannelInfo>();
+    [...mineChannels, ...managedChannels].forEach((ch) => {
+      if (!channelMap.has(ch.id)) {
+        channelMap.set(ch.id, ch);
+      }
+    });
+    channels = Array.from(channelMap.values());
+
+    logger.info({ ...ctx, channelCount: channels.length, channelNames: channels.map(c => c.title) }, 'Found YouTube channels');
 
     if (channels.length === 0) {
       return NextResponse.redirect(
