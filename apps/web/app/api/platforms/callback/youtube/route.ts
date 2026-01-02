@@ -140,18 +140,25 @@ export async function GET(request: NextRequest) {
       subscriberCount: ch.statistics?.subscriberCount || undefined,
     }));
 
-    // Fetch brand channels with managedByMe=true
-    const managedResponse = await youtube.channels.list({
-      part: ['snippet', 'statistics'],
-      managedByMe: true,
-    });
+    // Try to fetch brand channels with managedByMe=true
+    // This may fail with 403 if user is not part of a Content ID / MCN program
+    let managedChannels: ChannelInfo[] = [];
+    try {
+      const managedResponse = await youtube.channels.list({
+        part: ['snippet', 'statistics'],
+        managedByMe: true,
+      });
 
-    const managedChannels = (managedResponse.data.items || []).map((ch) => ({
-      id: ch.id!,
-      title: ch.snippet?.title || 'Unknown Channel',
-      thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
-      subscriberCount: ch.statistics?.subscriberCount || undefined,
-    }));
+      managedChannels = (managedResponse.data.items || []).map((ch) => ({
+        id: ch.id!,
+        title: ch.snippet?.title || 'Unknown Channel',
+        thumbnailUrl: ch.snippet?.thumbnails?.default?.url || undefined,
+        subscriberCount: ch.statistics?.subscriberCount || undefined,
+      }));
+    } catch (managedError) {
+      // managedByMe requires MCN/Content ID permissions - continue with just mine channels
+      logger.info({ ...ctx }, 'managedByMe not available (not a Content ID partner)');
+    }
 
     // Combine and deduplicate by channel ID
     const channelMap = new Map<string, ChannelInfo>();
