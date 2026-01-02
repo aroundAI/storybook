@@ -246,6 +246,6 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.redirect(
-    `${appUrl}${state.returnUrl}?success=youtube_connected&channel=${encodeURIComponent(channel.title)}`,
+    `${appUrl}/home/${accountSlug}/settings/platforms?success=youtube_connected&channel=${encodeURIComponent(channel.title)}`,
   );
 }
