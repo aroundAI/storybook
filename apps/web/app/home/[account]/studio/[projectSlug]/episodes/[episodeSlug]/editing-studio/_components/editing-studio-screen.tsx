@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
+  ChevronDown,
+  ChevronUp,
   Download,
   Globe,
   Pause,
@@ -84,6 +86,7 @@ export function EditingStudioScreen({
   const [currentTime, setCurrentTime] = useState(0);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
 
   // Timeline state
   const [pixelsPerSecond, setPixelsPerSecond] = useState(40);
@@ -301,9 +304,15 @@ export function EditingStudioScreen({
 
   return (
     <div className="flex h-full flex-col bg-white dark:bg-gray-900">
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-gray-200 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-800/85">
+      {/* Header - Collapsible */}
+      <div className={`flex shrink-0 items-center justify-between border-b border-gray-200 bg-white/85 px-6 backdrop-blur-xl dark:border-gray-700 dark:bg-gray-800/85 transition-all ${isHeaderCollapsed ? 'py-1' : 'py-3'}`}>
         <div className="flex items-center gap-4">
+          <button
+            onClick={() => setIsHeaderCollapsed(!isHeaderCollapsed)}
+            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+          >
+            {isHeaderCollapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+          </button>
           <h2 className="font-semibold text-gray-900 dark:text-white">
             Editing Studio
           </h2>
@@ -314,58 +323,60 @@ export function EditingStudioScreen({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Tertiary: Language Selector (ghost style) */}
-          {availableLanguages.length > 1 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2 text-gray-600 dark:text-gray-400">
-                  <Globe className="h-4 w-4" />
-                  {SUPPORTED_LANGUAGES[selectedLanguage] ?? 'English'}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {availableLanguages.map((lang) => (
-                  <DropdownMenuItem
-                    key={lang}
-                    onClick={() => setSelectedLanguage(lang)}
-                    className={selectedLanguage === lang ? 'bg-gray-100 dark:bg-gray-800' : ''}
-                  >
-                    {SUPPORTED_LANGUAGES[lang] ?? lang}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+        {!isHeaderCollapsed && (
+          <div className="flex items-center gap-3">
+            {/* Tertiary: Language Selector (ghost style) */}
+            {availableLanguages.length > 1 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="gap-2 text-gray-600 dark:text-gray-400">
+                    <Globe className="h-4 w-4" />
+                    {SUPPORTED_LANGUAGES[selectedLanguage] ?? 'English'}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {availableLanguages.map((lang) => (
+                    <DropdownMenuItem
+                      key={lang}
+                      onClick={() => setSelectedLanguage(lang)}
+                      className={selectedLanguage === lang ? 'bg-gray-100 dark:bg-gray-800' : ''}
+                    >
+                      {SUPPORTED_LANGUAGES[lang] ?? lang}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
 
-          {/* Secondary: Export Video (outlined) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFinalizeDialog(true)}
-            disabled={completedShots.length === 0}
-            className="gap-2"
-          >
-            <Download className="h-4 w-4" />
-            Export Video
-          </Button>
+            {/* Secondary: Export Video (outlined) */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFinalizeDialog(true)}
+              disabled={completedShots.length === 0}
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export Video
+            </Button>
 
-          {/* Primary: Publish (filled green, unmistakable CTA) */}
-          <Button
-            size="sm"
-            onClick={() => {
-              const episodeSlug = episode.slug ?? episode.id;
-              router.push(
-                `/home/${accountSlug}/studio/${episode.projectId}/episodes/${episodeSlug}/publish`,
-              );
-            }}
-            disabled={!episode.finalVideoUrl}
-            className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
-          >
-            <Share2 className="h-4 w-4" />
-            Publish
-          </Button>
-        </div>
+            {/* Primary: Publish (filled green, unmistakable CTA) */}
+            <Button
+              size="sm"
+              onClick={() => {
+                const episodeSlug = episode.slug ?? episode.id;
+                router.push(
+                  `/home/${accountSlug}/studio/${episode.projectId}/episodes/${episodeSlug}/publish`,
+                );
+              }}
+              disabled={!episode.finalVideoUrl}
+              className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
+            >
+              <Share2 className="h-4 w-4" />
+              Publish
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Main Content: Video Preview */}
