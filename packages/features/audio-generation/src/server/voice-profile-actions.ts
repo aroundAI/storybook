@@ -325,6 +325,7 @@ export const listVoicesAction = enhanceAction(
 
 /**
  * Get voice profile for a character
+ * Simplified: reads directly from elevenlabs_voice_id column
  */
 export const getVoiceProfileAction = enhanceAction(
   async (
@@ -346,54 +347,31 @@ export const getVoiceProfileAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Get character details to find voice_asset_id
-    const { data: charDetails, error: charError } =
-      await filmStudioQueries.getCharacterDetails(
-        client,
-        data.characterAssetId,
-      );
+    // Get elevenlabs_voice_id directly from character_details
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: charDetails, error: charError } = await (client as any)
+      .from('character_details')
+      .select('elevenlabs_voice_id')
+      .eq('asset_id', data.characterAssetId)
+      .single();
 
     if (charError || !charDetails) {
       logger.info(ctx, 'No character details found');
       return null;
     }
 
-    if (!charDetails.voice_asset_id) {
+    if (!charDetails.elevenlabs_voice_id) {
       logger.info(ctx, 'Character has no voice assigned');
-      return null;
-    }
-
-    // Get voice profile
-    const { data: voiceProfile, error: profileError } =
-      await filmStudioQueries.getVoiceProfile(
-        client,
-        charDetails.voice_asset_id,
-      );
-
-    if (profileError || !voiceProfile) {
-      logger.info(ctx, 'No voice profile found for voice asset');
       return null;
     }
 
     logger.info(ctx, 'Voice profile fetched successfully');
 
     return {
-      assetId: voiceProfile.asset_id,
-      provider: voiceProfile.provider,
-      providerVoiceId: voiceProfile.provider_voice_id,
-      settings: voiceProfile.settings
-        ? {
-            stability: voiceProfile.settings.stability as number | undefined,
-            similarityBoost: voiceProfile.settings.similarityBoost as
-              | number
-              | undefined,
-            style: voiceProfile.settings.style as number | undefined,
-            speed: voiceProfile.settings.speed as number | undefined,
-            useSpeakerBoost: voiceProfile.settings.useSpeakerBoost as
-              | boolean
-              | undefined,
-          }
-        : null,
+      assetId: data.characterAssetId,
+      provider: 'elevenlabs',
+      providerVoiceId: charDetails.elevenlabs_voice_id,
+      settings: null, // Settings are now defaults, not stored per-character
     };
   },
   {
@@ -403,6 +381,7 @@ export const getVoiceProfileAction = enhanceAction(
 
 /**
  * Save voice profile to a character
+ * Simplified: writes directly to elevenlabs_voice_id column
  */
 export const saveVoiceProfileAction = enhanceAction(
   async (
@@ -425,7 +404,7 @@ export const saveVoiceProfileAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Get the character asset to verify access and get project_id/account_id
+    // Verify the character asset exists
     const { data: charAsset, error: assetError } =
       await filmStudioQueries.getAsset(
         client,
@@ -438,100 +417,31 @@ export const saveVoiceProfileAction = enhanceAction(
       throw new Error('Character not found');
     }
 
-    // Check if character already has a voice asset
-    const { data: existingDetails } =
-      await filmStudioQueries.getCharacterDetails(
-        client,
-        data.characterAssetId,
+    // Update character_details with the ElevenLabs voice ID directly
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('character_details')
+      .update({ elevenlabs_voice_id: data.providerVoiceId })
+      .eq('asset_id', data.characterAssetId);
+
+    if (updateError) {
+      logger.error(
+        { ...ctx, error: updateError },
+        'Failed to update character voice',
       );
-
-    const existingVoiceAssetId = existingDetails?.voice_asset_id;
-
-    let voiceAssetId: string;
-
-    if (existingVoiceAssetId) {
-      // Update existing voice profile
-      voiceAssetId = existingVoiceAssetId;
-
-      const { error: updateError } = await filmStudioQueries.updateVoiceProfile(
-        client,
-        voiceAssetId,
-        {
-          provider: data.provider,
-          provider_voice_id: data.providerVoiceId,
-          settings: data.settings ?? DEFAULT_VOICE_SETTINGS,
-          updated_at: new Date().toISOString(),
-        },
-      );
-
-      if (updateError) {
-        logger.error(
-          { ...ctx, error: updateError },
-          'Failed to update voice profile',
-        );
-        throw new Error('Failed to update voice profile');
-      }
-    } else {
-      // Create new voice asset
-      const { data: newAsset, error: createAssetError } =
-        await filmStudioQueries.insertAsset(client, {
-          project_id: charAsset.project_id,
-          account_id: charAsset.account_id,
-          type: 'voice',
-          name: 'Voice for character',
-        });
-
-      if (createAssetError || !newAsset) {
-        logger.error(
-          { ...ctx, error: createAssetError },
-          'Failed to create voice asset',
-        );
-        throw new Error('Failed to create voice asset');
-      }
-
-      voiceAssetId = newAsset.id;
-
-      // Create voice profile
-      const { error: profileError } =
-        await filmStudioQueries.insertVoiceProfile(client, {
-          asset_id: voiceAssetId,
-          provider: data.provider,
-          provider_voice_id: data.providerVoiceId,
-          settings: data.settings ?? DEFAULT_VOICE_SETTINGS,
-        });
-
-      if (profileError) {
-        logger.error(
-          { ...ctx, error: profileError },
-          'Failed to create voice profile',
-        );
-        throw new Error('Failed to create voice profile');
-      }
-
-      // Update character_details with voice_asset_id
-      const { error: linkError } =
-        await filmStudioQueries.updateCharacterDetails(
-          client,
-          data.characterAssetId,
-          { voice_asset_id: voiceAssetId },
-        );
-
-      if (linkError) {
-        logger.error(
-          { ...ctx, error: linkError },
-          'Failed to link voice to character',
-        );
-        throw new Error('Failed to link voice to character');
-      }
+      throw new Error('Failed to save voice profile');
     }
 
-    logger.info({ ...ctx, voiceAssetId }, 'Voice profile saved successfully');
+    logger.info(
+      { ...ctx, voiceId: data.providerVoiceId },
+      'Voice profile saved successfully',
+    );
 
     revalidatePath('/home/[account]/studio/[projectId]', 'page');
 
     return {
       success: true,
-      voiceAssetId,
+      voiceAssetId: data.providerVoiceId, // Return the voice ID for compatibility
     };
   },
   {
@@ -773,8 +683,8 @@ export const autoAssignVoicesAction = enhanceAction(
       if (!matchedVoice && voicesResult.voices.length > 0) {
         matchedVoice =
           voicesResult.voices[
-            (maleIndex + femaleIndex + neutralIndex) %
-              voicesResult.voices.length
+          (maleIndex + femaleIndex + neutralIndex) %
+          voicesResult.voices.length
           ];
         reason = `Assigned first available voice (no character gender specified)`;
       }
