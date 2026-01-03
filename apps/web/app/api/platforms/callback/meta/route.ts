@@ -294,12 +294,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Get account slug for redirect
+  const { data: accountData } = await client
+    .from('accounts')
+    .select('slug')
+    .eq('id', state.accountId)
+    .single();
+  const accountSlug = accountData?.slug || 'unknown';
+
   const connectedCount = connections.length;
   const platformNames = connections
     .map((c) => c.platform_account_name)
     .join(', ');
 
   return NextResponse.redirect(
-    `${state.returnUrl}?success=meta_connected&count=${connectedCount}&accounts=${encodeURIComponent(platformNames)}`,
+    `${appUrl}/home/${accountSlug}/settings/platforms?success=meta_connected&count=${connectedCount}&accounts=${encodeURIComponent(platformNames)}`,
   );
 }
