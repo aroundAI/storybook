@@ -25,17 +25,16 @@ export default async function StudioProjectLayout({
   const { account, projectSlug } = await params;
   const client = getSupabaseServerClient();
 
-  // Get user data for the unified footer
-  const user = await requireUserInServerComponent();
+  // Parallel fetch: user and workspace (no dependencies)
+  const [user, workspace] = await Promise.all([
+    requireUserInServerComponent(),
+    loadTeamWorkspace(account),
+  ]);
 
-  // Load the team workspace to get the account UUID
-  const workspace = await loadTeamWorkspace(account);
   const accountId = workspace.account.id;
 
-  // Fetch all projects for this account using the shared query
-  const allProjects = await getAccountProjects(accountId);
-
-  // First fetch the project by slug to get its ID
+  // Parallel fetch: all project data and counts
+  // We first need the project ID for counts, so we fetch project first
   const { data: project, error: projectError } = await client
     .from('projects')
     .select('id, name, slug, account_id')
@@ -47,30 +46,28 @@ export default async function StudioProjectLayout({
     notFound();
   }
 
-  // Now fetch counts using the project ID
-  const [
-    { count: episodesCount },
-    { count: charactersCount },
-    { count: locationsCount },
-  ] = await Promise.all([
-    client
-      .from('episodes')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', project.id)
-      .is('deleted_at', null),
-    client
-      .from('assets')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', project.id)
-      .eq('type', 'character')
-      .is('deleted_at', null),
-    client
-      .from('assets')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', project.id)
-      .eq('type', 'location')
-      .is('deleted_at', null),
-  ]);
+  // Parallel fetch: projects list and all counts
+  const [allProjects, episodesResult, charactersResult, locationsResult] =
+    await Promise.all([
+      getAccountProjects(accountId),
+      client
+        .from('episodes')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', project.id)
+        .is('deleted_at', null),
+      client
+        .from('assets')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', project.id)
+        .eq('type', 'character')
+        .is('deleted_at', null),
+      client
+        .from('assets')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', project.id)
+        .eq('type', 'location')
+        .is('deleted_at', null),
+    ]);
 
   const sidebarProps = {
     project,
@@ -83,9 +80,9 @@ export default async function StudioProjectLayout({
     })),
     user,
     counts: {
-      episodes: episodesCount ?? undefined,
-      characters: charactersCount ?? undefined,
-      locations: locationsCount ?? undefined,
+      episodes: episodesResult.count ?? undefined,
+      characters: charactersResult.count ?? undefined,
+      locations: locationsResult.count ?? undefined,
     },
   };
 

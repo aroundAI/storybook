@@ -5,10 +5,9 @@ import { ArrowLeft, Settings } from 'lucide-react';
 
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
 import {
-  canPerformProjectAction,
   getAvailableProjectMembers,
   getProjectMembers,
-  getUserProjectRole,
+  getProjectPermissions,
 } from '@kit/projects/queries';
 import type { ProjectMemberWithUser } from '@kit/projects/types';
 import { ProjectPublishingConfigs } from '@kit/publishing/components';
@@ -91,24 +90,21 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   }
 
   let members;
-  let userRole;
   let availableMembers;
-  let canEdit = false;
-  let canDelete = false;
-  let canAddMembers = false;
+  let permissions = {
+    canView: false,
+    canEdit: false,
+    canDelete: false,
+    canAddMembers: false,
+    role: null as string | null,
+  };
 
   try {
-    [members, userRole, availableMembers] = await Promise.all([
+    // Fetch all data in parallel - single permission call instead of 3
+    [members, availableMembers, permissions] = await Promise.all([
       getProjectMembers(project.id),
-      getUserProjectRole(project.id),
       getAvailableProjectMembers(project.id, account),
-    ]);
-
-    // Check permissions
-    [canEdit, canDelete, canAddMembers] = await Promise.all([
-      canPerformProjectAction(project.id, 'project.edit'),
-      canPerformProjectAction(project.id, 'project.delete'),
-      canPerformProjectAction(project.id, 'project.members.add'),
+      getProjectPermissions(project.id),
     ]);
   } catch (error) {
     console.error('Failed to load project:', error);
@@ -142,11 +138,11 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             </h1>
           </div>
           <div className="flex gap-2">
-            <If condition={canEdit}>
+            <If condition={permissions.canEdit}>
               <EditProjectDialog project={project} />
             </If>
 
-            <If condition={canDelete}>
+            <If condition={permissions.canDelete}>
               <DeleteProjectDialog
                 projectId={project.id}
                 projectName={project.name}
@@ -161,10 +157,10 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
       <div className="flex-1">
         <div className="mx-auto max-w-4xl space-y-6 p-6">
           {/* User Role Badge */}
-          {userRole && (
+          {permissions.role && (
             <div>
               <span className="bg-muted text-muted-foreground rounded-md px-2 py-1 text-sm font-medium capitalize">
-                Your role: {userRole}
+                Your role: {permissions.role}
               </span>
             </div>
           )}
@@ -216,7 +212,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
           </Card>
 
           {/* Studio Content Generation Settings */}
-          <If condition={canEdit}>
+          <If condition={permissions.canEdit}>
             <StudioSettingsForm
               projectId={project.id}
               currentSettings={{
@@ -259,12 +255,12 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
           </If>
 
           {/* Episode Intro Videos */}
-          <If condition={canEdit}>
+          <If condition={permissions.canEdit}>
             <ProjectIntroSettings projectId={project.id} />
           </If>
 
           {/* Publishing Destinations Card */}
-          <If condition={canEdit}>
+          <If condition={permissions.canEdit}>
             <Card>
               <CardHeader>
                 <CardTitle>Publishing Destinations</CardTitle>
@@ -296,7 +292,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                     <Trans i18nKey={'projects:projectMembersDescription'} />
                   </CardDescription>
                 </div>
-                <If condition={canAddMembers}>
+                <If condition={permissions.canAddMembers}>
                   <AddProjectMemberDialog
                     projectId={project.id}
                     availableMembers={

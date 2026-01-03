@@ -25,6 +25,7 @@
   "devDependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@kit/audit-logs": "workspace:*",
+    "@kit/cache": "workspace:*",
     "@kit/eslint-config": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",
     "@kit/monitoring": "workspace:*",
