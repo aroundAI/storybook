@@ -189,6 +189,10 @@ export const UpdateShotSchema = z.object({
   firstFrameUrl: z.string().url().optional().or(z.literal('')),
   lastFrameUrl: z.string().url().optional().or(z.literal('')),
   metadata: z.record(z.unknown()).optional(),
+  // Video clip trimming fields (Phase 1: Video Clip Trimming)
+  trimInPoint: z.number().min(0).optional().nullable(),
+  trimOutPoint: z.number().min(0).optional().nullable(),
+  sourceDuration: z.number().positive().optional().nullable(),
 });
 
 /**

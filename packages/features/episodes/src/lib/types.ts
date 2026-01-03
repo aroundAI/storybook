@@ -416,6 +416,15 @@ export interface Shot {
   shortsCandidate?: boolean;
   /** Shorts/clips metadata: viralScore, hookType, etc. */
   shortsMetadata?: ShortsMetadata | null;
+
+  // Video trimming fields (Phase 1: Video Clip Trimming)
+  /** In-point for video trimming in seconds (start of clip) */
+  trimInPoint?: number | null;
+  /** Out-point for video trimming in seconds (end of clip) */
+  trimOutPoint?: number | null;
+  /** Original source video duration in seconds */
+  sourceDuration?: number | null;
+
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;
