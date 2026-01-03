@@ -34,7 +34,6 @@ import {
   type SupportedLanguage,
 } from './language-tab-bar';
 import { MusicTimeline } from './music-timeline';
-import { VoiceAssignmentPanel } from './voice-assignment-panel';
 
 interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
@@ -201,14 +200,6 @@ export function AudioStudioScreen({
 
   return (
     <div className="flex h-full">
-      {/* Left Sidebar - Voice Assignment */}
-      <div className="w-[280px] shrink-0 border-r border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900/50">
-        <VoiceAssignmentPanel
-          characters={characters}
-          episodeId={episode.id}
-          isLoading={isLoading}
-        />
-      </div>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
