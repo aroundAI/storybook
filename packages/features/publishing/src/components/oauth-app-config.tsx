@@ -93,16 +93,16 @@ const PLATFORMS: PlatformOAuthConfig[] = [
 
 interface OAuthAppConfigProps {
     accountId: string;
-    configuredApps: AccountOAuthApp[];
+    existingApps?: AccountOAuthApp[];
 }
 
-export function OAuthAppConfig({ accountId, configuredApps }: OAuthAppConfigProps) {
+export function OAuthAppConfig({ accountId, existingApps = [] }: OAuthAppConfigProps) {
     const appUrl = typeof window !== 'undefined' ? window.location.origin : '';
 
     return (
         <div className="space-y-6">
             {PLATFORMS.map((platform) => {
-                const existingApp = configuredApps.find((a) => a.platform === platform.id);
+                const existingApp = existingApps.find((a) => a.platform === platform.id);
                 return (
                     <PlatformCredentialsCard
                         key={platform.id}
