@@ -419,6 +419,9 @@ importers:
       babel-plugin-react-compiler:
         specifier: 19.1.0-rc.3
         version: 19.1.0-rc.3
+      croner:
+        specifier: ^9.1.0
+        version: 9.1.0
       cssnano:
         specifier: ^7.1.1
         version: 7.1.1(postcss@8.5.6)
