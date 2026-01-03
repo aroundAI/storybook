@@ -88,28 +88,25 @@ async function uploadAudioToStorage(
     audioBuffer: Buffer,
     audioType: 'music' | 'sfx',
 ): Promise<{ url: string; path: string }> {
-    const fileName = `${assetId}.mp3`;
-    const storagePath = `audio/${projectId}/${audioType}/${fileName}`;
+    // Dynamic import to avoid circular dependency
+    const { getStorageAdapter } = await import('@kit/storage');
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (client as any).storage
-        .from('film-studio')
-        .upload(storagePath, audioBuffer, {
+    const fileName = `${assetId}.mp3`;
+    const storagePath = `${projectId}/${audioType}/${fileName}`;
+    const storage = getStorageAdapter(client);
+
+    const { url } = await storage.upload(
+        'audio',
+        storagePath,
+        audioBuffer,
+        {
             contentType: 'audio/mpeg',
             upsert: true,
-        });
-
-    if (error) {
-        throw new Error(`Failed to upload audio: ${error.message}`);
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: urlData } = (client as any).storage
-        .from('film-studio')
-        .getPublicUrl(storagePath);
+        },
+    );
 
     return {
-        url: urlData.publicUrl,
+        url,
         path: storagePath,
     };
 }

@@ -9,6 +9,7 @@ import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
+import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -276,24 +277,19 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 12. Upload to Supabase Storage
+      // 12. Upload to storage (local or Supabase based on STORAGE_PROVIDER)
       const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}.mp3`;
+      const storage = getStorageAdapter(adminClient);
 
-      const { error: uploadError } = await adminClient.storage
-        .from('audio')
-        .upload(audioPath, result.audioBuffer, {
+      const { url: audioUrl } = await storage.upload(
+        'audio',
+        audioPath,
+        result.audioBuffer,
+        {
           contentType: 'audio/mpeg',
           upsert: overwriteExisting,
-        });
-
-      if (uploadError) {
-        throw new Error(`Failed to upload audio: ${uploadError.message}`);
-      }
-
-      // 13. Get public URL
-      const { data: urlData } = adminClient.storage
-        .from('audio')
-        .getPublicUrl(audioPath);
+        },
+      );
 
       // 14. Prepare metadata
       const metadata: VoiceGenerationMetadata = {
@@ -316,7 +312,7 @@ export const generateDialogueVoiceAction = enhanceAction(
       const { error: updateError } = await (client as any)
         .from('dialogue_lines')
         .update({
-          audio_url: urlData.publicUrl,
+          audio_url: audioUrl,
           status: 'completed',
           generation_metadata: metadata,
         })
@@ -335,7 +331,7 @@ export const generateDialogueVoiceAction = enhanceAction(
           status: 'completed',
           cost_cents: actualCost,
           output_data: {
-            audioUrl: urlData.publicUrl,
+            audioUrl: audioUrl,
             duration: result.duration,
           },
           completed_at: new Date().toISOString(),
@@ -346,7 +342,7 @@ export const generateDialogueVoiceAction = enhanceAction(
       await incrementAccountUsage(client, accountId, actualCost);
 
       logger.info(
-        { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
+        { ...ctx, audioUrl, duration: result.duration },
         'Dialogue voice generation completed',
       );
 
@@ -354,7 +350,7 @@ export const generateDialogueVoiceAction = enhanceAction(
 
       return {
         dialogueLineId: data.dialogueLineId,
-        audioUrl: urlData.publicUrl,
+        audioUrl: audioUrl,
         duration: result.duration,
         cost: actualCost,
         status: 'completed',
@@ -555,23 +551,18 @@ export const generateVoiceFromTextAction = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 8. Upload to temporary storage location
+      // 8. Upload to temporary storage location (local or Supabase based on STORAGE_PROVIDER)
       const tempPath = `temp/${user.id}/${Date.now()}.mp3`;
+      const storage = getStorageAdapter(adminClient);
 
-      const { error: uploadError } = await adminClient.storage
-        .from('audio')
-        .upload(tempPath, result.audioBuffer, {
+      const { url: audioUrl } = await storage.upload(
+        'audio',
+        tempPath,
+        result.audioBuffer,
+        {
           contentType: 'audio/mpeg',
-        });
-
-      if (uploadError) {
-        throw new Error(`Failed to upload audio: ${uploadError.message}`);
-      }
-
-      // 9. Get public URL
-      const { data: urlData } = adminClient.storage
-        .from('audio')
-        .getPublicUrl(tempPath);
+        },
+      );
 
       // 10. Update generation job as completed
       const actualCost = result.cost ?? estimatedCost;
@@ -582,7 +573,7 @@ export const generateVoiceFromTextAction = enhanceAction(
           status: 'completed',
           cost_cents: actualCost,
           output_data: {
-            audioUrl: urlData.publicUrl,
+            audioUrl: audioUrl,
             duration: result.duration,
           },
           completed_at: new Date().toISOString(),
@@ -593,12 +584,12 @@ export const generateVoiceFromTextAction = enhanceAction(
       await incrementAccountUsage(client, accountId, actualCost);
 
       logger.info(
-        { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
+        { ...ctx, audioUrl, duration: result.duration },
         'Text-to-voice generation completed',
       );
 
       return {
-        audioUrl: urlData.publicUrl,
+        audioUrl: audioUrl,
         duration: result.duration,
         cost: actualCost,
         format: result.format,
