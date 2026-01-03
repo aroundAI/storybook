@@ -37,6 +37,7 @@ import { TimelinePanel } from './timeline/timeline-panel';
 import { VideoPreview, type VideoPreviewHandle } from './video-preview';
 import { FinalizeDialog } from './finalize-dialog';
 import { StatusBar } from './status-bar';
+import { AudioMixer } from './audio-mixer';
 
 interface EditingStudioScreenProps {
   episode: EpisodeWithShots;
@@ -438,6 +439,17 @@ export function EditingStudioScreen({
             {formatTime(timelineData.totalDuration)}
           </span>
         </div>
+
+        {/* Audio Mixer - syncs dialogue/music/sfx with video */}
+        <AudioMixer
+          dialogueLines={dialogueLines}
+          characters={characters}
+          musicTracks={musicTracks}
+          sfxTracks={sfxTracks}
+          currentTime={currentTime}
+          isPlaying={isPlaying}
+          isMuted={isMuted}
+        />
       </div>
 
       {/* Timeline Panel */}
