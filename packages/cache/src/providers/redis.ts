@@ -56,8 +56,8 @@ export class RedisCache implements CacheClient {
       maxRetriesPerRequest: 3,
       // Enable automatic pipelining for better performance
       enableAutoPipelining: true,
-      // Disable offline queue to fail fast when Redis is unavailable
-      enableOfflineQueue: false,
+      // Enable offline queue so commands wait during connection
+      enableOfflineQueue: true,
       // Connection name for debugging in Redis
       connectionName: `${stage}-cache`,
       // Reconnect on error
