@@ -23,6 +23,7 @@ export interface AccountOAuthApp {
 
 /**
  * Get OAuth app credentials for an account and platform
+ * Requires authenticated user context (for API routes/server components)
  */
 export async function getAccountOAuthApp(
     accountId: string,
@@ -38,6 +39,36 @@ export async function getAccountOAuthApp(
     if (!user) {
         return null;
     }
+
+    const { data, error } = await client
+        .from('account_oauth_apps')
+        .select('client_id, client_secret_encrypted')
+        .eq('account_id', accountId)
+        .eq('platform', platform)
+        .single();
+
+    if (error || !data) {
+        return null;
+    }
+
+    const clientSecret = await decrypt(data.client_secret_encrypted);
+
+    return {
+        clientId: data.client_id,
+        clientSecret,
+    };
+}
+
+/**
+ * Get OAuth app credentials for an account and platform
+ * Uses admin client - for cron jobs and background tasks (no request context)
+ */
+export async function getAccountOAuthAppAdmin(
+    accountId: string,
+    platform: 'youtube' | 'tiktok' | 'meta',
+): Promise<{ clientId: string; clientSecret: string } | null> {
+    // Use admin client for background jobs (no cookies/request context)
+    const client = getSupabaseServerAdminClient();
 
     const { data, error } = await client
         .from('account_oauth_apps')

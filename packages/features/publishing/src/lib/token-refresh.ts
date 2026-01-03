@@ -227,9 +227,9 @@ async function refreshYouTubeToken(
   refreshToken: string,
   accountId: string,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database
-  const { getAccountOAuthApp } = await import('../server/account-oauth-actions');
-  const oauthApp = await getAccountOAuthApp(accountId, 'youtube');
+  // Fetch credentials from database (using admin client for background jobs)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'youtube');
 
   if (!oauthApp) {
     throw new Error('YouTube OAuth credentials not configured for this account');
@@ -268,9 +268,9 @@ async function refreshTikTokToken(
   refreshToken: string,
   accountId: string,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database
-  const { getAccountOAuthApp } = await import('../server/account-oauth-actions');
-  const oauthApp = await getAccountOAuthApp(accountId, 'tiktok');
+  // Fetch credentials from database (using admin client for background jobs)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'tiktok');
 
   if (!oauthApp) {
     throw new Error('TikTok OAuth credentials not configured for this account');
@@ -315,9 +315,9 @@ async function refreshMetaToken(
   _platform: 'instagram' | 'facebook',
   accountId: string,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database
-  const { getAccountOAuthApp } = await import('../server/account-oauth-actions');
-  const oauthApp = await getAccountOAuthApp(accountId, 'meta');
+  // Fetch credentials from database (using admin client for background jobs)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'meta');
 
   if (!oauthApp) {
     throw new Error('Meta OAuth credentials not configured for this account');
@@ -351,9 +351,11 @@ async function refreshLinkedInToken(
   refreshToken: string,
   accountId: string,
 ): Promise<TokenRefreshResult> {
-  // Fetch credentials from database
-  const { getAccountOAuthApp } = await import('../server/account-oauth-actions');
-  const oauthApp = await getAccountOAuthApp(accountId, 'linkedin');
+  // Fetch credentials from database (using admin client for background jobs)
+  // LinkedIn uses 'meta' credentials as fallback (or add linkedin to platform type)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  // @ts-expect-error linkedin not in type yet
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'linkedin');
 
   if (!oauthApp) {
     throw new Error('LinkedIn OAuth credentials not configured for this account');
