@@ -14,6 +14,8 @@ import {
 import { Button } from '@kit/ui/button';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
+import { EpisodeThumbnailSettings } from '../_components/episode-thumbnail-settings';
+import { getEpisodeThumbnailsAction, type EpisodeThumbnail } from '@kit/episodes/server';
 
 type SupportedLanguage = 'en' | 'hi' | 'es' | 'pt';
 
@@ -29,9 +31,13 @@ export default function PublishPage() {
 
   // Publishing configs state
   const [showDestinations, setShowDestinations] = useState(false);
+  const [showThumbnailSettings, setShowThumbnailSettings] = useState(false);
   const [configs, setConfigs] = useState<EpisodePublishingConfig[]>([]);
   const [connections, setConnections] = useState<PlatformConnection[]>([]);
   const [loadingConfigs, setLoadingConfigs] = useState(false);
+
+  // Episode thumbnails state
+  const [thumbnails, setThumbnails] = useState<EpisodeThumbnail[]>([]);
 
   // Load publishing configs when destinations panel opens
   useEffect(() => {
@@ -50,6 +56,17 @@ export default function PublishPage() {
     }
   }, [showDestinations, episode.id, accountId, configs.length]);
 
+  // Load thumbnails on mount
+  useEffect(() => {
+    getEpisodeThumbnailsAction({ episodeId: episode.id })
+      .then((result) => {
+        if (result.success && result.thumbnails) {
+          setThumbnails(result.thumbnails);
+        }
+      })
+      .catch(console.error);
+  }, [episode.id]);
+
   // Get available localized videos
   const localizedVideos = (episode.localizedVideos ?? {}) as Record<string, string>;
   const availableLanguages = Object.keys(localizedVideos) as SupportedLanguage[];
@@ -66,7 +83,22 @@ export default function PublishPage() {
     availableLanguages[0] ?? 'en'
   );
 
+  // Get the thumbnail for the selected language (with fallback)
+  const getThumbnailForLanguage = (lang: string): string | undefined => {
+    // Try language-specific thumbnail
+    const langThumbnail = thumbnails.find((t) => t.language === lang);
+    if (langThumbnail) return langThumbnail.thumbnailUrl;
+
+    // Try default thumbnail
+    const defaultThumbnail = thumbnails.find((t) => t.isDefault);
+    if (defaultThumbnail) return defaultThumbnail.thumbnailUrl;
+
+    // Fallback to episode thumbnail
+    return episode.thumbnailUrl ?? undefined;
+  };
+
   const currentVideoUrl = localizedVideos[selectedLanguage] ?? episode.finalVideoUrl;
+  const currentThumbnailUrl = getThumbnailForLanguage(selectedLanguage);
   const hasFinalVideo = currentVideoUrl !== null && currentVideoUrl !== undefined;
 
   if (!hasFinalVideo) {
@@ -119,15 +151,25 @@ export default function PublishPage() {
           )}
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowDestinations(!showDestinations)}
-          className="gap-2"
-        >
-          <Settings className="h-4 w-4" />
-          {showDestinations ? 'Hide' : 'Configure'} Destinations
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowThumbnailSettings(!showThumbnailSettings)}
+            className="gap-2"
+          >
+            {showThumbnailSettings ? 'Hide' : 'Manage'} Thumbnails
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowDestinations(!showDestinations)}
+            className="gap-2"
+          >
+            <Settings className="h-4 w-4" />
+            {showDestinations ? 'Hide' : 'Configure'} Destinations
+          </Button>
+        </div>
       </div>
 
       {/* Current Language Badge */}
@@ -135,6 +177,13 @@ export default function PublishPage() {
         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300">
           <span>{LANG_INFO[selectedLanguage]?.flag}</span>
           Publishing {LANG_INFO[selectedLanguage]?.name ?? selectedLanguage} version
+        </div>
+      )}
+
+      {/* Episode Thumbnails Panel */}
+      {showThumbnailSettings && (
+        <div className="mb-6">
+          <EpisodeThumbnailSettings episodeId={episode.id} />
         </div>
       )}
 
@@ -165,7 +214,7 @@ export default function PublishPage() {
         accountSlug={accountSlug}
         accountId={accountId}
         videoUrl={currentVideoUrl!}
-        thumbnailUrl={episode.thumbnailUrl ?? undefined}
+        thumbnailUrl={currentThumbnailUrl}
         defaultTitle={episode.title}
         defaultDescription={episode.description ?? ''}
         duration={episode.durationSeconds ?? 0}

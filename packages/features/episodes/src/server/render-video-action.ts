@@ -18,6 +18,8 @@ import { getStorageAdapter } from '@kit/storage';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { requireUser } from '@kit/supabase/require-user';
 
+import { getIntroForLanguage } from './intro-actions';
+
 const execAsync = promisify(exec);
 
 // ============================================================================
@@ -70,6 +72,11 @@ interface AudioTrackData {
     timeline_start_seconds: number;
     duration_seconds: number | null;
     volume: number;
+}
+
+interface IntroData {
+    videoUrl: string;
+    durationSeconds: number;
 }
 
 // ============================================================================
@@ -215,6 +222,7 @@ interface EpisodeData {
     shots: ShotData[];
     dialogueLines: DialogueData[];
     musicTracks: AudioTrackData[];
+    intro: IntroData | null;
 }
 
 async function fetchEpisodeData(
@@ -276,6 +284,12 @@ async function fetchEpisodeData(
 
     logger.info(ctx, `Found ${completedShots.length} shots, ${(dialogueLines ?? []).length} dialogue lines, ${(audioTracks ?? []).length} audio tracks`);
 
+    // Fetch project intro for this language
+    const intro = await getIntroForLanguage(episode.project_id, language);
+    if (intro) {
+        logger.info({ ...ctx, introDuration: intro.durationSeconds }, 'Found project intro for language');
+    }
+
     return {
         episode,
         shots: completedShots,
@@ -283,6 +297,7 @@ async function fetchEpisodeData(
         musicTracks: ((audioTracks ?? []) as AudioTrackData[]).filter(
             (t) => t.type === 'music' && t.file_url,
         ),
+        intro,
     };
 }
 
@@ -307,7 +322,7 @@ async function renderWithFFmpeg(
         );
     }
 
-    const { shots, dialogueLines, musicTracks } = data;
+    const { shots, dialogueLines, musicTracks, intro } = data;
 
     // Create temporary directory for rendering
     const renderDir = join(tmpdir(), `storybook-render-${Date.now()}`);
@@ -320,6 +335,7 @@ async function renderWithFFmpeg(
         shots,
         dialogueLines,
         musicTracks,
+        intro,
         outputFile: localOutputFile,
         quality: input.quality,
         dialogueVolume: input.dialogueVolume,
@@ -440,16 +456,49 @@ function buildCloudTimeline(
     input: RenderVideoActionInput,
     data: EpisodeData,
 ) {
-    const { shots, dialogueLines, musicTracks } = data;
+    const { shots, dialogueLines, musicTracks, intro } = data;
 
-    // Calculate total duration
-    let totalDuration = 0;
-    const videoClips = shots.map((shot, _i) => {
+    // Calculate intro offset (if intro exists, all other clips start after it)
+    const introOffset = intro?.durationSeconds ?? 0;
+
+    // Calculate total duration starting after intro
+    let totalDuration = introOffset;
+
+    // Build video clips - prepend intro if available
+    const videoClips: Array<{
+        id: string;
+        trackId: string;
+        assetId: string;
+        assetUrl: string;
+        name: string;
+        startTime: number;
+        duration: number;
+        volume: number;
+        isPlaceholder: boolean;
+    }> = [];
+
+    // Add intro clip first if available
+    if (intro) {
+        videoClips.push({
+            id: uuidv4(),
+            trackId: 'video-track',
+            assetId: 'intro',
+            assetUrl: intro.videoUrl,
+            name: 'Intro',
+            startTime: 0,
+            duration: intro.durationSeconds,
+            volume: 1,
+            isPlaceholder: false,
+        });
+    }
+
+    // Add shot clips (offset by intro duration)
+    shots.forEach((shot) => {
         const startTime = totalDuration;
         const duration = shot.duration_seconds || 5;
         totalDuration += duration;
 
-        return {
+        videoClips.push({
             id: uuidv4(),
             trackId: 'video-track',
             assetId: shot.id,
@@ -459,30 +508,30 @@ function buildCloudTimeline(
             duration,
             volume: 1,
             isPlaceholder: false,
-        };
+        });
     });
 
-    // Dialogue clips
+    // Dialogue clips (offset by intro duration)
     const dialogueClips = dialogueLines.map((d) => ({
         id: uuidv4(),
         trackId: 'dialogue-track',
         assetId: d.id,
         assetUrl: d.audio_url,
         name: 'Dialogue',
-        startTime: d.timeline_start_seconds ?? 0,
+        startTime: (d.timeline_start_seconds ?? 0) + introOffset,
         duration: d.generation_metadata?.durationSeconds ?? 3,
         volume: input.dialogueVolume,
         isPlaceholder: false,
     }));
 
-    // Music clips
+    // Music clips (offset by intro duration)
     const musicClips = musicTracks.map((m) => ({
         id: uuidv4(),
         trackId: 'music-track',
         assetId: m.id,
         assetUrl: m.file_url,
         name: m.type,
-        startTime: m.timeline_start_seconds ?? 0,
+        startTime: (m.timeline_start_seconds ?? 0) + introOffset,
         duration: m.duration_seconds ?? totalDuration,
         volume: (m.volume ?? 1) * input.musicVolume,
         isPlaceholder: false,
@@ -544,6 +593,7 @@ function buildFFmpegCommand(params: {
     shots: ShotData[];
     dialogueLines: DialogueData[];
     musicTracks: AudioTrackData[];
+    intro: IntroData | null;
     outputFile: string;
     quality: 'draft' | 'standard' | 'high';
     dialogueVolume: number;
@@ -553,11 +603,15 @@ function buildFFmpegCommand(params: {
         shots,
         dialogueLines,
         musicTracks,
+        intro,
         outputFile,
         quality,
         dialogueVolume,
         musicVolume,
     } = params;
+
+    // Calculate intro offset for audio timing
+    const introOffset = intro?.durationSeconds ?? 0;
 
     // Quality settings
     const qualitySettings = {
@@ -570,47 +624,61 @@ function buildFFmpegCommand(params: {
     // Build input list
     const inputs: string[] = [];
     const videoInputs: string[] = [];
+    let inputIndex = 0;
 
-    // Add video inputs
-    shots.forEach((shot, i) => {
+    // Add intro video input first (if available)
+    if (intro) {
+        inputs.push(`-i "${intro.videoUrl}"`);
+        videoInputs.push(`[${inputIndex}:v]`);
+        inputIndex++;
+    }
+
+    // Add shot video inputs
+    shots.forEach((shot) => {
         inputs.push(`-i "${shot.video_url}"`);
-        videoInputs.push(`[${i}:v]`);
+        videoInputs.push(`[${inputIndex}:v]`);
+        inputIndex++;
     });
 
-    const videoCount = shots.length;
+    const videoCount = inputIndex;
 
-    // Add dialogue audio inputs
+    // Add dialogue audio inputs (with intro offset applied to delay)
     const dialogueInputIndices: { index: number; delay: number }[] = [];
-    dialogueLines.forEach((d, i) => {
+    dialogueLines.forEach((d) => {
         inputs.push(`-i "${d.audio_url}"`);
         dialogueInputIndices.push({
-            index: videoCount + i,
-            delay: d.timeline_start_seconds ?? 0,
+            index: inputIndex,
+            delay: (d.timeline_start_seconds ?? 0) + introOffset,
         });
+        inputIndex++;
     });
 
     const dialogueCount = dialogueLines.length;
 
-    // Add music audio inputs
+
+    // Add music audio inputs (with intro offset applied to delay)
     const musicInputIndices: { index: number; delay: number; volume: number }[] = [];
-    musicTracks.forEach((m, i) => {
+    musicTracks.forEach((m) => {
         inputs.push(`-i "${m.file_url}"`);
         musicInputIndices.push({
-            index: videoCount + dialogueCount + i,
-            delay: m.timeline_start_seconds ?? 0,
+            index: inputIndex,
+            delay: (m.timeline_start_seconds ?? 0) + introOffset,
             volume: (m.volume ?? 1) * musicVolume,
         });
+        inputIndex++;
     });
 
     // Build filter_complex
     const filters: string[] = [];
 
-    // 1. Concat video streams
-    if (shots.length > 1) {
-        filters.push(`${videoInputs.join('')}concat=n=${shots.length}:v=1:a=0[vout]`);
+    // 1. Concat video streams (including intro if present)
+    const totalVideoCount = videoInputs.length;
+    if (totalVideoCount > 1) {
+        filters.push(`${videoInputs.join('')}concat=n=${totalVideoCount}:v=1:a=0[vout]`);
     } else {
         filters.push(`[0:v]copy[vout]`);
     }
+
 
     // 2. Process dialogue audio with delays
     const dialogueLabels: string[] = [];

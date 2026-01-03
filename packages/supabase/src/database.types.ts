@@ -1255,6 +1255,65 @@ export type Database = {
           },
         ]
       }
+      episode_thumbnails: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          episode_id: string
+          file_name: string | null
+          file_size_bytes: number | null
+          height: number | null
+          id: string
+          is_default: boolean | null
+          language: string
+          language_label: string | null
+          mime_type: string | null
+          thumbnail_url: string
+          updated_at: string | null
+          width: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          episode_id: string
+          file_name?: string | null
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          is_default?: boolean | null
+          language: string
+          language_label?: string | null
+          mime_type?: string | null
+          thumbnail_url: string
+          updated_at?: string | null
+          width?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          episode_id?: string
+          file_name?: string | null
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          is_default?: boolean | null
+          language?: string
+          language_label?: string | null
+          mime_type?: string | null
+          thumbnail_url?: string
+          updated_at?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episode_thumbnails_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       episodes: {
         Row: {
           created_at: string
@@ -2052,6 +2111,65 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_intros: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          duration_seconds: number
+          file_name: string | null
+          file_size_bytes: number | null
+          id: string
+          is_active: boolean | null
+          language: string
+          language_label: string | null
+          mime_type: string | null
+          project_id: string
+          thumbnail_url: string | null
+          updated_at: string | null
+          video_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          duration_seconds: number
+          file_name?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          is_active?: boolean | null
+          language: string
+          language_label?: string | null
+          mime_type?: string | null
+          project_id: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_url: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          duration_seconds?: number
+          file_name?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          is_active?: boolean | null
+          language?: string
+          language_label?: string | null
+          mime_type?: string | null
+          project_id?: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_intros_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]

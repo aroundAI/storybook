@@ -34,6 +34,7 @@ import { AddProjectMemberDialog } from '../../../_components/add-project-member-
 import { DeleteProjectDialog } from '../../../_components/delete-project-dialog';
 import { EditProjectDialog } from '../../../_components/edit-project-dialog';
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
+import { ProjectIntroSettings } from './_components/project-intro-settings';
 import { StudioSettingsForm } from './_components/studio-settings-form';
 
 interface ProjectSettingsPageProps {
@@ -255,6 +256,11 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   | undefined,
               }}
             />
+          </If>
+
+          {/* Episode Intro Videos */}
+          <If condition={canEdit}>
+            <ProjectIntroSettings projectId={project.id} />
           </If>
 
           {/* Publishing Destinations Card */}

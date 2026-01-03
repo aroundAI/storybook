@@ -26,3 +26,8 @@ export * from '../lib/server/mutations/season-generation-actions';
 // Timeline Planning
 export * from './timeline-actions';
 
+// Project Intro actions
+export * from './intro-actions';
+
+// Episode Thumbnail actions
+export * from './thumbnail-actions';
