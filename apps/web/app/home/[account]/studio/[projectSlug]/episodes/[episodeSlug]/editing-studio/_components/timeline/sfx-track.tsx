@@ -66,7 +66,7 @@ export function SfxTrack({
     };
 
     return (
-        <div className="relative flex h-12 border-b border-gray-200 bg-orange-50/30 dark:border-gray-700 dark:bg-orange-900/5">
+        <div className="relative flex h-16 border-b border-gray-200 bg-orange-50/30 dark:border-gray-700 dark:bg-orange-900/10">
             {/* Track Label */}
             <div
                 data-track-label

@@ -36,6 +36,7 @@ import {
 import { TimelinePanel } from './timeline/timeline-panel';
 import { VideoPreview, type VideoPreviewHandle } from './video-preview';
 import { FinalizeDialog } from './finalize-dialog';
+import { StatusBar } from './status-bar';
 
 interface EditingStudioScreenProps {
   episode: EpisodeWithShots;
@@ -312,12 +313,12 @@ export function EditingStudioScreen({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Language Selector */}
+        <div className="flex items-center gap-3">
+          {/* Tertiary: Language Selector (ghost style) */}
           {availableLanguages.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="gap-2 text-gray-600 dark:text-gray-400">
                   <Globe className="h-4 w-4" />
                   {SUPPORTED_LANGUAGES[selectedLanguage] ?? 'English'}
                 </Button>
@@ -336,8 +337,10 @@ export function EditingStudioScreen({
             </DropdownMenu>
           )}
 
+          {/* Secondary: Export Video (outlined) */}
           <Button
             variant="outline"
+            size="sm"
             onClick={() => setShowFinalizeDialog(true)}
             disabled={completedShots.length === 0}
             className="gap-2"
@@ -346,7 +349,9 @@ export function EditingStudioScreen({
             Export Video
           </Button>
 
+          {/* Primary: Publish (filled green, unmistakable CTA) */}
           <Button
+            size="sm"
             onClick={() => {
               const episodeSlug = episode.slug ?? episode.id;
               router.push(
@@ -354,7 +359,7 @@ export function EditingStudioScreen({
               );
             }}
             disabled={!episode.finalVideoUrl}
-            className="gap-2 bg-blue-600 text-white hover:bg-blue-700"
+            className="gap-2 bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-gray-400"
           >
             <Share2 className="h-4 w-4" />
             Publish
@@ -454,6 +459,12 @@ export function EditingStudioScreen({
           isAudioLoading={isAudioLoading}
         />
       </div>
+
+      {/* Status Bar */}
+      <StatusBar
+        saveState="saved"
+        lastSavedSecondsAgo={2}
+      />
 
       {/* Finalize Dialog */}
       <FinalizeDialog
