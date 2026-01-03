@@ -143,58 +143,67 @@ export const VideoPreview = forwardRef<VideoPreviewHandle, VideoPreviewProps>(
         return (
             <div
                 className={cn(
-                    'relative flex items-center justify-center overflow-hidden rounded-xl bg-gray-900',
+                    'group relative flex flex-col items-center justify-center overflow-hidden rounded-xl bg-gray-900',
                     className,
                 )}
             >
-                {/* 
-                  Video element - VIDEO AUDIO IS ALWAYS MUTED
-                  Audio comes from synced dialogue/music/sfx tracks instead.
-                  The isMuted prop controls overall audio (affects audio mixer).
-                */}
-                <video
-                    ref={videoRef}
-                    src={shot.videoUrl}
-                    poster={shot.thumbnailUrl ?? undefined}
-                    className="max-h-full max-w-full object-contain"
-                    autoPlay={isPlaying}
-                    muted // Always mute video audio - we use mixed audio tracks instead
-                    onEnded={onEnded}
-                    onTimeUpdate={handleTimeUpdate}
-                    onLoadedMetadata={handleLoadedMetadata}
-                />
+                {/* Video Container */}
+                <div className="relative flex-1 flex items-center justify-center w-full">
+                    {/* 
+                      Video element - VIDEO AUDIO IS ALWAYS MUTED
+                      Audio comes from synced dialogue/music/sfx tracks instead.
+                      The isMuted prop controls overall audio (affects audio mixer).
+                    */}
+                    <video
+                        ref={videoRef}
+                        src={shot.videoUrl}
+                        poster={shot.thumbnailUrl ?? undefined}
+                        className="max-h-full max-w-full object-contain"
+                        autoPlay={isPlaying}
+                        muted // Always mute video audio - we use mixed audio tracks instead
+                        onEnded={onEnded}
+                        onTimeUpdate={handleTimeUpdate}
+                        onLoadedMetadata={handleLoadedMetadata}
+                    />
 
-                {/* Shot Info Overlay */}
-                <div className="absolute top-3 left-3 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white">
-                    Shot {shot.sceneNumber}.{shot.shotNumber}
-                </div>
-
-                {/* Trim Info (if trimmed) */}
-                {(shot.trimInPoint !== null || shot.trimOutPoint !== null) && (
-                    <div className="absolute top-3 left-24 rounded-md bg-orange-500/80 px-2 py-1 text-xs font-medium text-white">
-                        Trimmed
+                    {/* Shot Info Overlay */}
+                    <div className="absolute top-3 left-3 rounded-md bg-black/70 px-2 py-1 text-xs font-medium text-white">
+                        Shot {shot.sceneNumber}.{shot.shotNumber}
                     </div>
-                )}
 
-                {/* Fullscreen Button */}
-                <button
-                    onClick={handleFullscreen}
-                    className="absolute top-3 right-3 rounded-md bg-black/70 p-1.5 text-white transition-colors hover:bg-black/90"
-                >
-                    <Maximize2 className="h-4 w-4" />
-                </button>
-
-                {/* Center Play Button (when paused) */}
-                {!isPlaying && (
-                    <button
-                        onClick={onPlayPause}
-                        className="absolute inset-0 flex items-center justify-center"
-                    >
-                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform hover:scale-110">
-                            <Play className="ml-1 h-6 w-6 text-gray-900" />
+                    {/* Trim Info (if trimmed) */}
+                    {(shot.trimInPoint !== null || shot.trimOutPoint !== null) && (
+                        <div className="absolute top-3 left-24 rounded-md bg-orange-500/80 px-2 py-1 text-xs font-medium text-white">
+                            Trimmed
                         </div>
+                    )}
+
+                    {/* Fullscreen Button */}
+                    <button
+                        onClick={handleFullscreen}
+                        className="absolute top-3 right-3 rounded-md bg-black/70 p-1.5 text-white transition-colors hover:bg-black/90"
+                    >
+                        <Maximize2 className="h-4 w-4" />
                     </button>
-                )}
+
+                    {/* Resolution indicator - bottom left */}
+                    <div className="absolute bottom-3 left-3 flex items-center gap-2 text-[10px] text-white/70">
+                        <span className="rounded bg-black/50 px-1.5 py-0.5">1080p</span>
+                        <span className="rounded bg-black/50 px-1.5 py-0.5">16:9</span>
+                    </div>
+
+                    {/* Center Play Button (hover-only when paused) */}
+                    {!isPlaying && (
+                        <button
+                            onClick={onPlayPause}
+                            className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/90 shadow-lg transition-transform hover:scale-110">
+                                <Play className="ml-1 h-6 w-6 text-gray-900" />
+                            </div>
+                        </button>
+                    )}
+                </div>
             </div>
         );
     },
