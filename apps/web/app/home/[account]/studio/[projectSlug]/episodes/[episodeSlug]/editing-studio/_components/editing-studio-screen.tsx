@@ -26,7 +26,8 @@ import {
   getCharactersForEpisodeAction,
   getDialogueLinesAction,
 } from '@kit/audio-generation/server';
-import type { EpisodeWithShots } from '@kit/episodes/types';
+import type { EpisodeWithShots, Shot } from '@kit/episodes/types';
+import { reorderShotsAction } from '@kit/episodes/server';
 import { Button } from '@kit/ui/button';
 import {
   DropdownMenu,
@@ -472,6 +473,11 @@ export function EditingStudioScreen({
           totalDuration={timelineData.totalDuration}
           pixelsPerSecond={pixelsPerSecond}
           onShotClick={handleShotClick}
+          onShotsReorder={async (newOrder: Shot[]) => {
+            const shotIds = newOrder.map(s => s.id);
+            await reorderShotsAction({ shotIds, episodeId: episode.id });
+            refetchEpisode();
+          }}
           onZoomIn={handleZoomIn}
           onZoomOut={handleZoomOut}
           onTimelineClick={handleTimelineClick}
