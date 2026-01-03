@@ -252,10 +252,6 @@ export function DialogueTimeline({
     }
   };
 
-  const handleAssignVoice = () => {
-    toast.info('Voice assignment coming soon');
-    setSelectedDialogue(null);
-  };
 
   const handleEdit = () => {
     if (!selectedDialogue) return;
@@ -478,12 +474,7 @@ export function DialogueTimeline({
               />
               {isGenerating ? 'Generating...' : 'Regenerate'}
             </button>
-            <button
-              onClick={handleAssignVoice}
-              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
-            >
-              <Mic className="h-4 w-4" /> Assign Voice
-            </button>
+
           </div>
         </>
       )}
