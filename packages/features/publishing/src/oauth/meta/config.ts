@@ -13,9 +13,6 @@ export const META_OAUTH_CONFIG = {
     'pages_read_engagement',
     'pages_manage_posts',
 
-    // Video publishing
-    'publish_video',
-
     // Instagram
     'instagram_basic',
     'instagram_content_publish',
