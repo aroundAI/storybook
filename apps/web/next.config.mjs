@@ -68,10 +68,8 @@ const config = {
     '@aws-sdk/lib-storage',
     '@aws-sdk/s3-request-presigner',
     'ws',
-    // Local-first job queue packages - excluded due to Turbopack compatibility
+    // Local-first job queue packages
     'node-cron',
-    'bullmq',
-    'ioredis',
   ],
   // needed for supporting dynamic imports for local content
   outputFileTracingIncludes: {
