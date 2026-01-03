@@ -36,42 +36,43 @@ export function MusicTrack({
     onMuteToggle,
 }: MusicTrackProps) {
     return (
-        <div className="flex h-16 border-b border-gray-200 bg-purple-50/30 dark:border-gray-700 dark:bg-purple-900/10">\n            <div
-            data-track-label
-            className="z-10 flex h-full shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-800/50"
-            style={{ width: `${leftPadding}px` }}
-        >
-            <div className="flex items-center gap-2 w-full">
-                <div className="flex h-5 w-5 items-center justify-center rounded bg-purple-100 dark:bg-purple-900/50">
-                    <Music className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+        <div className="flex h-16 border-b border-gray-200 bg-purple-50/30 dark:border-gray-700 dark:bg-purple-900/10">
+            <div
+                data-track-label
+                className="z-10 flex h-full shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-800/50"
+                style={{ width: `${leftPadding}px` }}
+            >
+                <div className="flex items-center gap-2 w-full">
+                    <div className="flex h-5 w-5 items-center justify-center rounded bg-purple-100 dark:bg-purple-900/50">
+                        <Music className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-[11px] font-medium text-gray-700 dark:text-gray-200">
+                            Music
+                        </p>
+                        <p className="text-[9px] text-gray-400">{tracks.length} tracks</p>
+                    </div>
+                    {/* Mute toggle */}
+                    {onMuteToggle && (
+                        <button
+                            onClick={onMuteToggle}
+                            className={cn(
+                                'rounded p-1 transition-colors',
+                                isMuted
+                                    ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                                    : 'hover:bg-gray-200 text-gray-500 dark:hover:bg-gray-600'
+                            )}
+                            title={isMuted ? 'Unmute music' : 'Mute music'}
+                        >
+                            {isMuted ? (
+                                <VolumeX className="h-3 w-3" />
+                            ) : (
+                                <Volume2 className="h-3 w-3" />
+                            )}
+                        </button>
+                    )}
                 </div>
-                <div className="flex-1">
-                    <p className="text-[11px] font-medium text-gray-700 dark:text-gray-200">
-                        Music
-                    </p>
-                    <p className="text-[9px] text-gray-400">{tracks.length} tracks</p>
-                </div>
-                {/* Mute toggle */}
-                {onMuteToggle && (
-                    <button
-                        onClick={onMuteToggle}
-                        className={cn(
-                            'rounded p-1 transition-colors',
-                            isMuted
-                                ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                                : 'hover:bg-gray-200 text-gray-500 dark:hover:bg-gray-600'
-                        )}
-                        title={isMuted ? 'Unmute music' : 'Mute music'}
-                    >
-                        {isMuted ? (
-                            <VolumeX className="h-3 w-3" />
-                        ) : (
-                            <Volume2 className="h-3 w-3" />
-                        )}
-                    </button>
-                )}
             </div>
-        </div>
 
             {/* Music clips container */}
             <div className="relative flex-1 bg-purple-50/20 dark:bg-purple-900/10">

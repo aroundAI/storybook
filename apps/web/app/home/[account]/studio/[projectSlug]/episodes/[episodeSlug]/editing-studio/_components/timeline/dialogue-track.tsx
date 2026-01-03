@@ -94,7 +94,8 @@ export function DialogueTrack({
     };
 
     return (
-        <div className="flex h-16 border-b border-gray-200 bg-green-50/30 dark:border-gray-700 dark:bg-green-900/10">\n            {/* Track label */}
+        <div className="flex h-16 border-b border-gray-200 bg-green-50/30 dark:border-gray-700 dark:bg-green-900/10">
+            {/* Track label */}
             <div
                 data-track-label
                 className="z-10 flex h-full shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-800/50"
