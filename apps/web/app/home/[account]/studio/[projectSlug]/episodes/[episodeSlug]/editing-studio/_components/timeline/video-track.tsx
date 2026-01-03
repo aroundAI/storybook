@@ -32,6 +32,7 @@ interface VideoTrackProps {
     leftPadding?: number;
     onShotClick: (index: number) => void;
     onShotsReorder?: (newOrder: Shot[]) => void;
+    onShotResize?: (shotId: string, trimInPoint: number | null, trimOutPoint: number | null) => void;
     isMuted?: boolean;
     onMuteToggle?: () => void;
 }
@@ -49,6 +50,8 @@ function SortableVideoClip({
     widthPx,
     isActive,
     onShotClick,
+    pixelsPerSecond,
+    onResize,
 }: {
     shot: TimelineShot;
     index: number;
@@ -56,6 +59,8 @@ function SortableVideoClip({
     widthPx: number;
     isActive: boolean;
     onShotClick: (index: number) => void;
+    pixelsPerSecond: number;
+    onResize?: (trimInDelta: number, trimOutDelta: number) => void;
 }) {
     const {
         attributes,
@@ -145,6 +150,7 @@ export function VideoTrack({
     leftPadding = 120,
     onShotClick,
     onShotsReorder,
+    onShotResize,
     isMuted = false,
     onMuteToggle,
 }: VideoTrackProps) {
@@ -273,6 +279,19 @@ export function VideoTrack({
                                     widthPx={widthPx}
                                     isActive={isActive}
                                     onShotClick={onShotClick}
+                                    pixelsPerSecond={pixelsPerSecond}
+                                    onResize={(trimInDelta, trimOutDelta) => {
+                                        // Convert pixel delta to seconds
+                                        const trimInSeconds = trimInDelta / pixelsPerSecond;
+                                        const trimOutSeconds = trimOutDelta / pixelsPerSecond;
+                                        const currentTrimIn = shot.trimInPoint ?? 0;
+                                        const currentTrimOut = shot.trimOutPoint ?? (shot.sourceDuration ?? shot.duration ?? 5);
+                                        onShotResize?.(
+                                            shot.id,
+                                            Math.max(0, currentTrimIn + trimInSeconds),
+                                            Math.max(currentTrimIn + 0.5, currentTrimOut + trimOutSeconds)
+                                        );
+                                    }}
                                 />
                             );
                         })}

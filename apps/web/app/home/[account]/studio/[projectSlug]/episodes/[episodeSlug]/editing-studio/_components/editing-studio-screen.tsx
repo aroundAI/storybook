@@ -87,7 +87,7 @@ export function EditingStudioScreen({
   const [currentTime, setCurrentTime] = useState(0);
   const [currentShotIndex, setCurrentShotIndex] = useState(0);
   const [showFinalizeDialog, setShowFinalizeDialog] = useState(false);
-  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(true); // Default collapsed for more space
 
   // Timeline state
   const [pixelsPerSecond, setPixelsPerSecond] = useState(40);
@@ -464,8 +464,8 @@ export function EditingStudioScreen({
         />
       </div>
 
-      {/* Timeline Panel */}
-      <div className="h-[220px] shrink-0 border-t border-gray-200 dark:border-gray-700">
+      {/* Timeline Panel - taller for better editing */}
+      <div className="h-[280px] shrink-0 border-t border-gray-200 dark:border-gray-700">
         <TimelinePanel
           shots={completedShots}
           currentShotIndex={currentShotIndex}
