@@ -43,6 +43,7 @@ interface TimelinePanelProps {
     totalDuration: number;
     pixelsPerSecond: number;
     onShotClick: (index: number) => void;
+    onShotsReorder?: (newOrder: Shot[]) => void;
     onZoomIn: () => void;
     onZoomOut: () => void;
     onTimelineClick?: (time: number) => void;
@@ -63,6 +64,7 @@ export function TimelinePanel({
     totalDuration,
     pixelsPerSecond,
     onShotClick,
+    onShotsReorder,
     onZoomIn,
     onZoomOut,
     onTimelineClick,
@@ -175,6 +177,7 @@ export function TimelinePanel({
                                 pixelsPerSecond={pixelsPerSecond}
                                 leftPadding={TRACK_LEFT_PADDING}
                                 onShotClick={onShotClick}
+                                onShotsReorder={onShotsReorder}
                             />
                         </div>
 
