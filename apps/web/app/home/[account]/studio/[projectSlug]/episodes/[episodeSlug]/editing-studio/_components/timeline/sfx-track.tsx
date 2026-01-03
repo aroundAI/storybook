@@ -1,6 +1,6 @@
 'use client';
 
-import { Volume2, Zap } from 'lucide-react';
+import { Volume2, VolumeX, Zap } from 'lucide-react';
 
 import { Skeleton } from '@kit/ui/skeleton';
 import { cn } from '@kit/ui/utils';
@@ -20,6 +20,8 @@ interface SfxTrackProps {
     leftPadding: number;
     isLoading?: boolean;
     onPlayTrack?: (track: SfxTrackData) => void;
+    isMuted?: boolean;
+    onMuteToggle?: () => void;
 }
 
 /**
@@ -32,6 +34,8 @@ export function SfxTrack({
     leftPadding,
     isLoading = false,
     onPlayTrack,
+    isMuted = false,
+    onMuteToggle,
 }: SfxTrackProps) {
     if (isLoading) {
         return (
@@ -69,12 +73,33 @@ export function SfxTrack({
                 className="flex h-full w-[120px] shrink-0 items-center gap-2 border-r border-gray-200 bg-white px-3 dark:border-gray-700 dark:bg-gray-800"
             >
                 <Zap className="h-3.5 w-3.5 text-orange-500" />
-                <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                    SFX
-                </span>
-                <span className="ml-auto text-[10px] text-gray-400">
+                <div className="flex-1">
+                    <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
+                        SFX
+                    </span>
+                </div>
+                <span className="text-[10px] text-gray-400">
                     {completedTracks.length}
                 </span>
+                {/* Mute toggle */}
+                {onMuteToggle && (
+                    <button
+                        onClick={onMuteToggle}
+                        className={cn(
+                            'rounded p-1 transition-colors',
+                            isMuted
+                                ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                                : 'hover:bg-gray-200 text-gray-500 dark:hover:bg-gray-600'
+                        )}
+                        title={isMuted ? 'Unmute SFX' : 'Mute SFX'}
+                    >
+                        {isMuted ? (
+                            <VolumeX className="h-3 w-3" />
+                        ) : (
+                            <Volume2 className="h-3 w-3" />
+                        )}
+                    </button>
+                )}
             </div>
 
             {/* Track Content */}

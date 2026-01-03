@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 
 import Image from 'next/image';
 
-import { Film, Play } from 'lucide-react';
+import { Film, Play, Volume2, VolumeX } from 'lucide-react';
 
 import type { Shot } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
@@ -15,6 +15,8 @@ interface VideoTrackProps {
     pixelsPerSecond: number;
     leftPadding?: number;
     onShotClick: (index: number) => void;
+    isMuted?: boolean;
+    onMuteToggle?: () => void;
 }
 
 interface TimelineShot extends Shot {
@@ -28,6 +30,8 @@ export function VideoTrack({
     pixelsPerSecond,
     leftPadding = 120,
     onShotClick,
+    isMuted = false,
+    onMuteToggle,
 }: VideoTrackProps) {
     const timelineShots: TimelineShot[] = useMemo(() => {
         let cumulativeTime = 0;
@@ -42,7 +46,7 @@ export function VideoTrack({
 
     if (shots.length === 0) {
         return (
-            <div className="flex h-16 items-center">
+            <div className="flex h-20 items-center">
                 {/* Track label */}
                 <div
                     className="flex h-full shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-800/50"
@@ -66,22 +70,42 @@ export function VideoTrack({
     }
 
     return (
-        <div className="flex h-16">
+        <div className="flex h-20">
             {/* Track label - fixed left */}
             <div
-                className="z-10 flex h-full shrink-0 items-center border-r border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-800/50"
+                data-track-label
+                className="z-10 flex h-full shrink-0 flex-col justify-center border-r border-gray-200 bg-gray-50 px-3 dark:border-gray-700 dark:bg-gray-800/50"
                 style={{ width: `${leftPadding}px` }}
             >
                 <div className="flex items-center gap-2">
                     <div className="flex h-6 w-6 items-center justify-center rounded bg-indigo-100 dark:bg-indigo-900/50">
                         <Film className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                         <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
                             Video
                         </p>
                         <p className="text-[10px] text-gray-400">{shots.length} shots</p>
                     </div>
+                    {/* Mute toggle */}
+                    {onMuteToggle && (
+                        <button
+                            onClick={onMuteToggle}
+                            className={cn(
+                                'rounded p-1 transition-colors',
+                                isMuted
+                                    ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                                    : 'hover:bg-gray-200 text-gray-500 dark:hover:bg-gray-600'
+                            )}
+                            title={isMuted ? 'Unmute video audio' : 'Mute video audio'}
+                        >
+                            {isMuted ? (
+                                <VolumeX className="h-3.5 w-3.5" />
+                            ) : (
+                                <Volume2 className="h-3.5 w-3.5" />
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -100,7 +124,7 @@ export function VideoTrack({
                             key={shot.id}
                             onClick={() => onShotClick(index)}
                             className={cn(
-                                'absolute top-1 h-14 overflow-hidden rounded-md border transition-all hover:shadow-md',
+                                'absolute top-1 h-[72px] overflow-hidden rounded-md border transition-all hover:shadow-md',
                                 isActive
                                     ? 'z-10 border-indigo-500 shadow-lg ring-2 ring-indigo-500/30'
                                     : 'border-gray-300 bg-gray-200 hover:border-indigo-400 dark:border-gray-600 dark:bg-gray-700',
