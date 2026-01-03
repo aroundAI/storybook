@@ -129,7 +129,7 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
                             </div>
                             <OAuthAppConfig
                                 accountId={accountId}
-                                configuredApps={oauthApps}
+                                existingApps={oauthApps}
                             />
                         </TabsContent>
 
