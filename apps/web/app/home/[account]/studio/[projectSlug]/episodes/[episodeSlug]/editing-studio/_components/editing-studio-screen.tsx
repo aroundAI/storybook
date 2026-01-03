@@ -56,6 +56,15 @@ interface MusicTrackData {
   } | null;
 }
 
+interface SfxTrackData {
+  id: string;
+  name: string | null;
+  fileUrl: string | null;
+  durationSeconds: number | null;
+  timelineStartSeconds: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+}
+
 const ZOOM_LEVELS = [10, 20, 40, 60, 80, 100, 120, 160, 200];
 
 export function EditingStudioScreen({
@@ -81,6 +90,7 @@ export function EditingStudioScreen({
   const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
   const [characters, setCharacters] = useState<CharacterAsset[]>([]);
   const [musicTracks, setMusicTracks] = useState<MusicTrackData[]>([]);
+  const [sfxTracks, setSfxTracks] = useState<SfxTrackData[]>([]);
   const [isAudioLoading, setIsAudioLoading] = useState(true);
 
   // Language selection state
@@ -92,10 +102,11 @@ export function EditingStudioScreen({
     async function fetchAudioData() {
       setIsAudioLoading(true);
       try {
-        const [dialogueResult, chars, musicResult] = await Promise.all([
+        const [dialogueResult, chars, musicResult, sfxResult] = await Promise.all([
           getDialogueLinesAction({ episodeId: episode.id }),
           getCharactersForEpisodeAction({ episodeId: episode.id }),
           getAudioTracksAction({ episodeId: episode.id, type: 'music' }),
+          getAudioTracksAction({ episodeId: episode.id, type: 'sfx' }),
         ]);
 
         const allLines = Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [];
@@ -125,6 +136,16 @@ export function EditingStudioScreen({
             timelineStartSeconds: t.timelineStartSeconds,
             status: t.status,
             metadata: t.metadata as MusicTrackData['metadata'],
+          })),
+        );
+        setSfxTracks(
+          sfxResult.tracks.map((t) => ({
+            id: t.id,
+            name: t.name,
+            fileUrl: t.fileUrl,
+            durationSeconds: t.durationSeconds,
+            timelineStartSeconds: t.timelineStartSeconds,
+            status: t.status,
           })),
         );
       } catch (error) {
@@ -429,6 +450,7 @@ export function EditingStudioScreen({
           dialogueLines={dialogueLines}
           characters={characters}
           musicTracks={musicTracks}
+          sfxTracks={sfxTracks}
           isAudioLoading={isAudioLoading}
         />
       </div>

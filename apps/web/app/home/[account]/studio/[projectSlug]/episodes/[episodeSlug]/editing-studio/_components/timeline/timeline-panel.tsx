@@ -11,6 +11,7 @@ import { Button } from '@kit/ui/button';
 import { DialogueTrack } from './dialogue-track';
 import { MusicTrack } from './music-track';
 import { Playhead } from './playhead';
+import { SfxTrack } from './sfx-track';
 import { TimelineRuler } from './timeline-ruler';
 import { VideoTrack } from './video-track';
 
@@ -24,6 +25,15 @@ interface MusicTrackData {
     metadata: {
         sceneNumber?: number;
     } | null;
+}
+
+interface SfxTrackData {
+    id: string;
+    name: string | null;
+    fileUrl: string | null;
+    durationSeconds: number | null;
+    timelineStartSeconds: number;
+    status: 'pending' | 'processing' | 'completed' | 'failed';
 }
 
 interface TimelinePanelProps {
@@ -40,6 +50,7 @@ interface TimelinePanelProps {
     dialogueLines?: DialogueLine[];
     characters?: CharacterAsset[];
     musicTracks?: MusicTrackData[];
+    sfxTracks?: SfxTrackData[];
     isAudioLoading?: boolean;
 }
 
@@ -58,6 +69,7 @@ export function TimelinePanel({
     dialogueLines = [],
     characters = [],
     musicTracks = [],
+    sfxTracks = [],
     isAudioLoading = false,
 }: TimelinePanelProps) {
     const timelineWidth = useMemo(() => {
@@ -80,6 +92,13 @@ export function TimelinePanel({
     };
 
     const handlePlayMusicTrack = (track: MusicTrackData) => {
+        if (track.fileUrl) {
+            const audio = new Audio(track.fileUrl);
+            audio.play();
+        }
+    };
+
+    const handlePlaySfxTrack = (track: SfxTrackData) => {
         if (track.fileUrl) {
             const audio = new Audio(track.fileUrl);
             audio.play();
@@ -175,6 +194,15 @@ export function TimelinePanel({
                             leftPadding={TRACK_LEFT_PADDING}
                             isLoading={isAudioLoading}
                             onPlayTrack={handlePlayMusicTrack}
+                        />
+
+                        {/* SFX Track */}
+                        <SfxTrack
+                            tracks={sfxTracks}
+                            pixelsPerSecond={pixelsPerSecond}
+                            leftPadding={TRACK_LEFT_PADDING}
+                            isLoading={isAudioLoading}
+                            onPlayTrack={handlePlaySfxTrack}
                         />
                     </div>
                 </div>
