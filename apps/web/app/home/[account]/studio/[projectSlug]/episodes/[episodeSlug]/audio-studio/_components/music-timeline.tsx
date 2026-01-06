@@ -196,7 +196,7 @@ export function MusicTimeline({
 
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-full flex-col bg-background">
         <div className="h-10 border-b bg-gray-100 dark:bg-black/20" />
         <div className="flex-1 space-y-4 p-4">
           {[...Array(3)].map((_, i) => (
