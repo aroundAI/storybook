@@ -172,7 +172,7 @@ export function IdeationScreen({
           {/* Collapsible Settings Panel */}
           <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
             <CollapsibleContent className="mb-6">
-              <div className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
+              <div className="space-y-6 rounded-xl border border-gray-200 bg-card p-6">
                 {/* Duration and Content Style */}
                 <DurationSelector
                   duration={targetDuration}
@@ -237,7 +237,7 @@ export function IdeationScreen({
 
           {/* Draft Concept Card */}
           <div className="group relative mb-8">
-            <div className="relative rounded-2xl border border-gray-200 bg-white p-8 shadow-sm transition-all hover:border-blue-200 hover:shadow-lg dark:border-gray-700 dark:bg-gray-800 dark:hover:border-blue-800">
+            <div className="relative rounded-2xl border border-gray-200 bg-card p-8 shadow-sm transition-all hover:border-primary/50 hover:shadow-lg dark:hover:border-blue-800">
               {/* Label above card */}
               <div className="absolute -top-3 left-6 bg-gray-50 px-2 text-xs font-semibold tracking-wide text-blue-600 uppercase dark:bg-gray-900 dark:text-blue-400">
                 Draft Concept

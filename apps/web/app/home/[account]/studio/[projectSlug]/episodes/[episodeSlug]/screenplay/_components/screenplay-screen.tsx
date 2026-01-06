@@ -120,7 +120,7 @@ export function ScreenplayScreen({
   if (!scenes.length) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             No Screenplay
           </h2>
@@ -135,7 +135,7 @@ export function ScreenplayScreen({
   return (
     <div className="relative flex h-full flex-col">
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-black/5 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-white/5 dark:bg-gray-800/85">
+      <div className="flex items-center justify-between border-b border-black/5 bg-card/85 px-6 py-3 backdrop-blur-xl">
         <div className="flex items-center gap-4">
           <h2 className="font-semibold text-gray-900 dark:text-white">
             Screenplay
@@ -211,7 +211,7 @@ export function ScreenplayScreen({
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           className={cn(
-            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-white/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-white/90 dark:border-gray-700/50 dark:bg-gray-800/70 dark:hover:bg-gray-800/90',
+            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',
           )}
         >
@@ -229,7 +229,7 @@ export function ScreenplayScreen({
         {/* Sidebar Panel */}
         <div
           className={cn(
-            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-white/60 shadow-2xl backdrop-blur-xl transition-transform duration-300 dark:border-gray-700/30 dark:bg-gray-800/60',
+            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-card/60 shadow-2xl backdrop-blur-xl transition-transform duration-300',
             isSidebarExpanded ? 'translate-x-0' : 'translate-x-full',
           )}
         >
@@ -249,7 +249,7 @@ export function ScreenplayScreen({
               <div className="space-y-4">
                 {/* Screenplay Details */}
                 {metadata && (
-                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Screenplay Details
                     </h3>
@@ -275,7 +275,7 @@ export function ScreenplayScreen({
                 )}
 
                 {/* Characters */}
-                <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                     <Users className="h-4 w-4" />
                     Characters
@@ -303,7 +303,7 @@ export function ScreenplayScreen({
 
                 {/* Locations */}
                 {metadata?.locations && metadata.locations.length > 0 && (
-                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                       <MapPin className="h-4 w-4" />
                       Locations

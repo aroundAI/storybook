@@ -216,7 +216,7 @@ export function MusicTimeline({
   );
 
   return (
-    <div className="relative flex h-full flex-col bg-white dark:bg-gray-900">
+    <div className="relative flex h-full flex-col bg-card">
       {/* Header with actions */}
       <div className="flex shrink-0 items-center justify-between border-b border-gray-200/50 px-4 py-2 dark:border-gray-700/50">
         <div className="flex items-center gap-2">
@@ -320,7 +320,7 @@ export function MusicTimeline({
                   return (
                     <div
                       key={scene.number}
-                      className="absolute top-0 h-full border-l border-gray-200 dark:border-gray-700"
+                      className="absolute top-0 h-full border-l border-border"
                       style={{
                         left: `${leftPx}px`,
                         width: `${widthPx}px`,

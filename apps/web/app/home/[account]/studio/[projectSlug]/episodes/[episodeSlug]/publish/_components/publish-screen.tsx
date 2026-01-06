@@ -766,7 +766,7 @@ export function PublishScreen({
             <TooltipProvider>
                 <Tooltip>
                     <TooltipTrigger asChild>
-                        <div className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${size === 'md' ? 'px-3 py-1.5' : ''} ${conn.tokenValid ? 'border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'}`}>
+                        <div className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${size === 'md' ? 'px-3 py-1.5' : ''} ${conn.tokenValid ? 'border-gray-200 bg-card' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'}`}>
                             <Avatar className={size === 'md' ? 'h-5 w-5' : 'h-4 w-4'}>
                                 <AvatarImage src={conn.avatarUrl ?? undefined} />
                                 <AvatarFallback className={`${config?.bgColor} text-white text-[10px]`}>
@@ -1296,9 +1296,9 @@ export function PublishScreen({
                                     </button>
                                 ) : (
                                     shortsGroups.map((group, groupIndex) => (
-                                        <div key={group.id} className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                        <div key={group.id} className="rounded-lg border border-border overflow-hidden">
                                             {/* Group Header */}
-                                            <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 p-3 border-b border-gray-200 dark:border-gray-700">
+                                            <div className="bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-900/20 dark:to-purple-900/20 p-3 border-b border-border">
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-sm font-semibold text-pink-600 dark:text-pink-400">
@@ -1338,7 +1338,7 @@ export function PublishScreen({
                                                     <textarea
                                                         value={group.description}
                                                         onChange={(e) => updateGroupMetadata(group.id, { description: e.target.value })}
-                                                        className="w-full min-h-[60px] text-sm rounded-md border border-gray-200 dark:border-gray-700 p-2 bg-white dark:bg-gray-800"
+                                                        className="w-full min-h-[60px] text-sm rounded-md border border-border p-2 bg-card"
                                                         placeholder="Description for this group (will be translated per language)"
                                                     />
                                                 </div>
@@ -1349,7 +1349,7 @@ export function PublishScreen({
                                                 <div className="grid gap-3 sm:grid-cols-2">
                                                     {Object.entries(group.videos).map(([lang, url]) => (
                                                         url && (
-                                                            <div key={lang} className="relative rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                                                            <div key={lang} className="relative rounded-lg overflow-hidden border border-border">
                                                                 <video
                                                                     src={url}
                                                                     className="w-full aspect-[9/16] object-cover bg-black"
@@ -1418,7 +1418,7 @@ export function PublishScreen({
                                             return (
                                                 <div
                                                     key={pub.id}
-                                                    className="flex items-center justify-between rounded-lg border p-3 bg-white dark:bg-gray-800"
+                                                    className="flex items-center justify-between rounded-lg border p-3 bg-card"
                                                 >
                                                     <div className="flex items-center gap-3">
                                                         <PlatformIcon platform={pub.platform} size="lg" />
