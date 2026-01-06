@@ -661,7 +661,7 @@ function buildFFmpegCommand(params: {
         currentTimelineTime = Math.max(currentTimelineTime, shotStart + shot.duration_seconds);
     });
 
-    const videoCount = inputIndex;
+    const _videoCount = inputIndex;
 
     // Add dialogue audio inputs (with intro offset applied to delay)
     const dialogueInputIndices: { index: number; delay: number }[] = [];
@@ -674,7 +674,7 @@ function buildFFmpegCommand(params: {
         inputIndex++;
     });
 
-    const dialogueCount = dialogueLines.length;
+    const _dialogueCount = dialogueLines.length;
 
     // Add music audio inputs (with intro offset applied to delay)
     const musicInputIndices: { index: number; delay: number; volume: number }[] = [];

@@ -2,8 +2,6 @@
 
 import 'server-only';
 
-import { revalidatePath } from 'next/cache';
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';

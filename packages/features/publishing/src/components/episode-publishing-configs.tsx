@@ -221,7 +221,7 @@ export function EpisodePublishingConfigs({
                                 PLATFORM_ICONS[
                                 connection.platform as keyof typeof PLATFORM_ICONS
                                 ] ?? Youtube;
-                            const langInfo = LANGUAGE_FLAGS[config.language];
+                            const _langInfo = LANGUAGE_FLAGS[config.language];
 
                             return (
                                 <div
@@ -235,8 +235,8 @@ export function EpisodePublishingConfigs({
                                         }
                                         disabled={isPending}
                                         className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded border-2 transition-colors ${config.isEnabled
-                                                ? 'border-indigo-600 bg-indigo-600 text-white'
-                                                : 'border-gray-300 dark:border-gray-600'
+                                            ? 'border-indigo-600 bg-indigo-600 text-white'
+                                            : 'border-gray-300 dark:border-gray-600'
                                             }`}
                                     >
                                         {config.isEnabled && <Check className="h-3 w-3" />}

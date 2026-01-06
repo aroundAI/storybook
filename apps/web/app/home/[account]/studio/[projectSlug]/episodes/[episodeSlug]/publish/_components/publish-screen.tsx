@@ -304,7 +304,7 @@ export function PublishScreen({
     });
 
     // Group connections by platform type (full video vs shorts)
-    const { fullVideoChannels, shortsChannels } = useMemo(() => {
+    const { fullVideoChannels, shortsChannels: _shortsChannels } = useMemo(() => {
         const conns = (connections ?? []) as PlatformConnection[];
         return {
             fullVideoChannels: conns.filter(c => ['youtube', 'facebook'].includes(c.platform)),
@@ -1414,7 +1414,7 @@ export function PublishScreen({
                                 <CardContent>
                                     <div className="space-y-3">
                                         {(publishes ?? []).map((pub) => {
-                                            const config = PLATFORM_CONFIG[pub.platform];
+                                            const _config = PLATFORM_CONFIG[pub.platform];
                                             return (
                                                 <div
                                                     key={pub.id}

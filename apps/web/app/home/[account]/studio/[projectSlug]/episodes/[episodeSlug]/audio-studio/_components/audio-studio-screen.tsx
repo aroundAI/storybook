@@ -210,7 +210,7 @@ export function AudioStudioScreen({
   /**
    * Format seconds to SRT timestamp (HH:MM:SS,ms)
    */
-  const formatSrtTime = (seconds: number): string => {
+  const _formatSrtTime = (seconds: number): string => {
     const date = new Date(0);
     date.setMilliseconds(seconds * 1000);
     const iso = date.toISOString();
@@ -222,7 +222,7 @@ export function AudioStudioScreen({
   /**
    * Export all audio assets and SRTs
    */
-  const [isExporting, setIsExporting] = useState(false);
+  const [_isExporting, setIsExporting] = useState(false);
 
   const handleExport = async () => {
     if (dialogueLines.length === 0) {
@@ -246,10 +246,6 @@ export function AudioStudioScreen({
 
       // Track fetched audio to avoid duplicates
       const fetchedAudio = new Map<string, Blob>();
-
-      // SRT Content Builder
-      let srtContent = '';
-      let srtIndex = 1;
 
       // Sort lines by execution order
       const sortedLines = [...dialogueLines].sort((a, b) => {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-import { Edit3, Mic, Play, RefreshCw, Volume2 } from 'lucide-react';
+import { Edit3, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
 import { generateDialogueVoiceAction, updateDialogueTextAction } from '@kit/audio-generation/server';

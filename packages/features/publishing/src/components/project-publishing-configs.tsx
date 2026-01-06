@@ -198,7 +198,7 @@ export function ProjectPublishingConfigs({
 
                             const PlatformIcon =
                                 PLATFORM_ICONS[connection.platform as keyof typeof PLATFORM_ICONS] ?? Youtube;
-                            const langInfo = LANGUAGE_FLAGS[config.language];
+                            const _langInfo = LANGUAGE_FLAGS[config.language];
 
                             return (
                                 <div

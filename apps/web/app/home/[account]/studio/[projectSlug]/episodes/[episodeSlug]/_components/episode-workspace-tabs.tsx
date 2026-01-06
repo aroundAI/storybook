@@ -10,7 +10,6 @@ import {
   ListOrdered,
   Lock,
   Music,
-  Scissors,
   Share2,
 } from 'lucide-react';
 
