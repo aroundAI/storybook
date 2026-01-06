@@ -4,7 +4,7 @@ import { getFontsClassName } from '../fonts';
 
 // Mock next/font/google
 vi.mock('next/font/google', () => ({
-  Inter: vi.fn(() => ({
+  DM_Sans: vi.fn(() => ({
     variable: '--font-sans',
     className: 'font-sans',
   })),
