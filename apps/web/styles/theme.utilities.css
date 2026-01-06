@@ -3,3 +3,49 @@
 
   @apply xl:max-w-[80rem] px-4 lg:px-8;
 }
+
+@utility bg-gradient-radial {
+  background: radial-gradient(circle, var(--tw-gradient-stops));
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1);
+  }
+}
+
+@utility animate-glow {
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+
+@utility glass {
+  @apply bg-white/[0.03] backdrop-blur-md;
+}
+
+@utility glass-hover {
+  @apply hover:bg-white/[0.05] hover:border-white/[0.12];
+}
+
+@utility glass-border {
+  @apply border-white/[0.08];
+}
+
+@utility gradient-primary {
+  @apply bg-gradient-to-r from-blue-500 to-indigo-500;
+}
+
+@utility gradient-purple {
+  @apply bg-gradient-to-r from-indigo-500 to-purple-500;
+}
+
+@utility gradient-text {
+  @apply bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent;
+}
