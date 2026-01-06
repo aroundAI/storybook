@@ -72,7 +72,6 @@ export function SiteFooter() {
                 href: '/docs',
                 label: <Trans i18nKey="marketing:documentation" />,
               },
-              { href: '/pricing', label: 'Pricing' },
               { href: '/faq', label: 'FAQ' },
             ],
           },
