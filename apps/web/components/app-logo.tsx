@@ -16,8 +16,8 @@ function LogoContent({ className }: { className?: string }) {
 
   // Use image type by default with direct imports
   if (logo.type === 'image' || !logo.type) {
-    const width = logo.width ?? 120;
-    const height = logo.height ?? 40;
+    const width = logo.width ?? 160;
+    const height = logo.height ?? 50;
 
     return (
       <>
