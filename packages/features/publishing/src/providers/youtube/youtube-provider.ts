@@ -219,6 +219,16 @@ export class YouTubeProvider {
   }
 
   /**
+   * Deletes a video from YouTube
+   * Note: This permanently deletes the video and cannot be undone
+   */
+  async deleteVideo(videoId: string): Promise<void> {
+    await this.youtube.videos.delete({
+      id: videoId,
+    });
+  }
+
+  /**
    * Gets a readable stream for the video file
    */
   private async getVideoStream(path: string): Promise<Readable> {

@@ -4,8 +4,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Film } from 'lucide-react';
-
-import { getSeasonAnalytics } from '@kit/content-analytics/server';
 import type {
   EpisodeMetadata,
   EpisodeStatus,
@@ -121,32 +119,6 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const hasSeasons = (seasons?.length ?? 0) > 0;
   const unassignedEpisodes = episodes?.filter((ep) => !ep.season_id) ?? [];
 
-  // Fetch analytics for each season (in parallel)
-  const seasonAnalyticsMap: Record<
-    string,
-    { totalViews: number; avgEngagementRate: number }
-  > = {};
-  if (hasSeasons && seasons) {
-    const analyticsResults = await Promise.all(
-      seasons.map(async (season) => {
-        try {
-          const analytics = await getSeasonAnalytics(season.id);
-          return { seasonId: season.id, analytics };
-        } catch {
-          return { seasonId: season.id, analytics: null };
-        }
-      }),
-    );
-    analyticsResults.forEach(({ seasonId, analytics }) => {
-      if (analytics) {
-        seasonAnalyticsMap[seasonId] = {
-          totalViews: analytics.totalViews,
-          avgEngagementRate: analytics.avgEngagementRate,
-        };
-      }
-    });
-  }
-
   return (
     <>
       {/* Compact Header */}
@@ -194,7 +166,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       episodes={seasonEpisodes.map(mapEpisode)}
                       account={account}
                       projectSlug={project.slug ?? project.id}
-                      analytics={seasonAnalyticsMap[season.id] || null}
+                      analytics={null}
                     />
                   ),
                 )}

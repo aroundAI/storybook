@@ -4,6 +4,7 @@ import {
   YOUTUBE_OAUTH_CONFIG,
   YouTubeOAuthState,
 } from '@kit/publishing/oauth/youtube';
+import { getAccountOAuthApp } from '@kit/publishing/server';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -12,7 +13,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * Initiates the OAuth flow by redirecting to Google's consent screen
  *
  * Query params:
- * - accountId: The account to connect the YouTube channel to
+ * - accountId or account: The account to connect the YouTube channel to
  * - returnUrl: Where to redirect after OAuth completes
  */
 export async function GET(request: NextRequest) {
@@ -28,12 +29,59 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/auth/sign-in', request.url));
   }
 
-  const accountId = request.nextUrl.searchParams.get('accountId');
+  // Support both accountId (UUID) and account (slug)
+  let accountId = request.nextUrl.searchParams.get('accountId');
+  const accountSlug = request.nextUrl.searchParams.get('account');
   const returnUrl =
     request.nextUrl.searchParams.get('returnUrl') || '/settings/platforms';
 
+
+  // If we got a slug instead of UUID, resolve it
+  if (!accountId && accountSlug) {
+    const { data: account, error: accountError } = await client
+      .from('accounts')
+      .select('id')
+      .eq('slug', accountSlug)
+      .single();
+
+
+    if (accountError || !account) {
+      logger.error(
+        { ...ctx, slug: accountSlug, error: accountError },
+        'Failed to resolve account slug',
+      );
+      return NextResponse.json(
+        { error: 'Account not found' },
+        { status: 404 },
+      );
+    }
+    accountId = account.id;
+  }
+
   if (!accountId) {
     return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
+  }
+
+
+  // Get OAuth credentials from database (account-scoped)
+  const oauthApp = await getAccountOAuthApp(accountId, 'youtube');
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+
+
+  if (!oauthApp) {
+    logger.error(ctx, 'YouTube OAuth credentials not found for this account');
+    return NextResponse.json(
+      { error: 'YouTube OAuth not configured. Please add your Google OAuth credentials in Platforms settings.' },
+      { status: 400 },
+    );
+  }
+
+  if (!appUrl) {
+    logger.error(ctx, 'Missing NEXT_PUBLIC_SITE_URL or NEXT_PUBLIC_APP_URL');
+    return NextResponse.json(
+      { error: 'Application URL not configured' },
+      { status: 500 },
+    );
   }
 
   // Generate state with nonce for CSRF protection
@@ -57,19 +105,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const clientId = process.env.YOUTUBE_CLIENT_ID;
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-  if (!clientId || !appUrl) {
-    logger.error(ctx, 'Missing YOUTUBE_CLIENT_ID or NEXT_PUBLIC_APP_URL');
-    return NextResponse.json(
-      { error: 'YouTube OAuth not configured' },
-      { status: 500 },
-    );
-  }
-
   const params = new URLSearchParams({
-    client_id: clientId,
+    client_id: oauthApp.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/youtube`,
     response_type: 'code',
     scope: YOUTUBE_OAUTH_CONFIG.scopes.join(' '),
@@ -82,3 +119,4 @@ export async function GET(request: NextRequest) {
     `${YOUTUBE_OAUTH_CONFIG.authUrl}?${params.toString()}`,
   );
 }
+

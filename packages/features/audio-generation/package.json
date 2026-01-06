@@ -25,10 +25,11 @@
     "./webhooks": "./src/webhooks/index.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^4.1.3",
     "@kit/assets": "workspace:*",
     "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
+    "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/storage": "workspace:*",
     "@kit/supabase": "workspace:*",

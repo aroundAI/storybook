@@ -2,19 +2,37 @@ import 'server-only';
 
 import { cache } from 'react';
 
+import { createCacheClient } from '@kit/cache';
 import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerClient } from '@kit/supabase/server-client'
 
+import { projectCacheKeys, projectCacheTTL } from '../cache-keys';
 import type { ProjectMemberWithUser, ProjectWithRole } from '../types';
 
 /**
  * Get all projects for an account with the user's role
+ * Results are cached in Redis for performance
  */
 export const getAccountProjects = cache(async (accountId: string) => {
   const logger = await getLogger();
   const ctx = { name: 'projects.getAccountProjects', accountId };
 
-  logger.info(ctx, 'Fetching account projects');
+  // Check Redis cache first
+  const cacheClient = createCacheClient();
+  const cacheKey = projectCacheKeys.accountProjects(accountId);
+
+  try {
+    const cached = await cacheClient.get<ProjectWithRole[]>(cacheKey);
+    if (cached) {
+      logger.info({ ...ctx, cached: true }, 'Account projects fetched from cache');
+      return cached;
+    }
+  } catch (cacheError) {
+    // Log but don't fail - cache miss is acceptable
+    logger.warn({ ...ctx, error: cacheError }, 'Cache read failed, fetching from DB');
+  }
+
+  logger.info(ctx, 'Fetching account projects from DB');
 
   const client = getSupabaseServerClient();
 
@@ -27,9 +45,18 @@ export const getAccountProjects = cache(async (accountId: string) => {
     throw new Error(`Failed to fetch projects: ${error.message}`);
   }
 
-  logger.info({ ...ctx, count: data?.length || 0 }, 'Account projects fetched');
+  const projects = data as ProjectWithRole[];
 
-  return data as ProjectWithRole[];
+  // Cache result
+  try {
+    await cacheClient.set(cacheKey, projects, projectCacheTTL.projects);
+  } catch (cacheError) {
+    logger.warn({ ...ctx, error: cacheError }, 'Failed to cache projects');
+  }
+
+  logger.info({ ...ctx, count: projects?.length || 0 }, 'Account projects fetched');
+
+  return projects;
 });
 
 /**
@@ -220,6 +247,27 @@ export const getUserProjectRole = cache(async (projectId: string) => {
   logger.info({ ...ctx, role: data.role }, 'User project role fetched');
 
   return data.role;
+});
+
+/**
+ * Get all project permissions for the current user
+ * Computes permissions from role in memory to avoid multiple RPC calls
+ */
+export const getProjectPermissions = cache(async (projectId: string) => {
+  const role = await getUserProjectRole(projectId);
+
+  // Compute all permissions from role in memory (no additional DB calls)
+  return {
+    canView: !!role,
+    canEdit: role === 'owner' || role === 'admin',
+    canDelete: role === 'owner',
+    canViewMembers: !!role,
+    canAddMembers: role === 'owner' || role === 'admin',
+    canRemoveMembers: role === 'owner' || role === 'admin',
+    canViewSettings: !!role,
+    canEditSettings: role === 'owner' || role === 'admin',
+    role,
+  };
 });
 
 /**

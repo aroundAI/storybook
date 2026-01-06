@@ -10,7 +10,6 @@ import {
   ListOrdered,
   Lock,
   Music,
-  Scissors,
   Share2,
 } from 'lucide-react';
 
@@ -66,13 +65,6 @@ const STORY_TABS: TabConfig[] = [
 
 const POST_TABS: TabConfig[] = [
   {
-    id: 'editing',
-    label: 'Editing',
-    icon: Scissors,
-    path: 'editing-studio',
-    studioMode: 'post',
-  },
-  {
     id: 'publish',
     label: 'Publish',
     icon: Share2,
@@ -94,7 +86,6 @@ function getTabUnlockState(
   const hasStoryData = episode.storyData !== null;
   const hasScreenplayData = episode.screenplayData !== null;
   const hasShotList = episode.shotList !== null;
-  const hasFinalVideo = episode.finalVideoUrl !== null;
 
   return {
     ideation: true, // Always accessible
@@ -102,8 +93,7 @@ function getTabUnlockState(
     screenplay: hasStoryData, // Unlocked when story exists
     'shot-list': hasScreenplayData, // Unlocked when screenplay exists
     audio: hasShotList, // Unlocked when shot list exists
-    editing: hasCompletedShots, // Unlocked when shots have videos
-    publish: hasFinalVideo, // Unlocked when final video exists
+    publish: hasCompletedShots, // Unlocked when shots are completed (ready to export/upload)
   };
 }
 
@@ -129,7 +119,6 @@ export function EpisodeWorkspaceTabs() {
     if (pathname.endsWith('/screenplay')) return 'screenplay';
     if (pathname.endsWith('/visual-studio')) return 'shot-list';
     if (pathname.endsWith('/audio-studio')) return 'audio';
-    if (pathname.endsWith('/editing-studio')) return 'editing';
     if (pathname.endsWith('/publish')) return 'publish';
     return 'ideation';
   };

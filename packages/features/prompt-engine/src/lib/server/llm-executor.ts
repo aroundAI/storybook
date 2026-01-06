@@ -190,7 +190,7 @@ function extractJSON<T = unknown>(
 /**
  * Get API key for LLM provider from environment variables
  */
-function getApiKeyForProvider(provider: LLMProvider | string): string {
+export async function getApiKeyForProvider(provider: LLMProvider | string): Promise<string> {
   let apiKey = '';
   let source = '';
 
@@ -339,7 +339,7 @@ export async function executeLLM<T = unknown>(
     const llm = createLLMClient({
       provider: provider as LLMProvider,
       model,
-      apiKey: getApiKeyForProvider(provider),
+      apiKey: await getApiKeyForProvider(provider),
     });
 
     // 4. Execute LLM call (use config from JSON or override)
@@ -459,8 +459,16 @@ export async function executeLLM<T = unknown>(
           provider,
           model,
         },
-        'LLM response received - attempting JSON extraction',
+        responseType === 'text'
+          ? 'LLM response received - returning as plain text'
+          : 'LLM response received - attempting JSON extraction',
       );
+
+      // For text output type, skip JSON extraction and return raw content
+      if (responseType === 'text') {
+        fullData = responseContent;
+        break;
+      }
 
       // Try to extract JSON
       try {

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
-import { Download, Filter, Play, PlusCircle, Search, X } from 'lucide-react';
+import { Download, Filter, Loader2, Play, PlusCircle, Search, X } from 'lucide-react';
 
 import { useAssets } from '@kit/assets/hooks';
 import type { EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
@@ -19,48 +19,6 @@ import { toast } from '@kit/ui/sonner';
 
 import { ShotCard } from './shot-card';
 import { ShotDetailsSidebar } from './shot-details-sidebar';
-
-/**
- * VEO export data structure
- */
-interface VeoExportData {
-  episodeId: string;
-  episodeTitle: string;
-  exportedAt: string;
-  totalShots: number;
-  shots: Array<{
-    sequenceNumber: number;
-    sceneNumber: number;
-    shotNumber: number;
-    duration: number;
-    prompt: string;
-    veoPrompt?: {
-      subject: string;
-      action: string;
-      scene: string;
-      style: string;
-      dialogue?: string;
-      sounds: string;
-      negativePrompt: string;
-      fullPrompt: string;
-    };
-    referenceImages?: {
-      characters: Array<{ name: string; url: string }>;
-      locations: Array<{ name: string; url: string }>;
-    };
-    dialogueTiming?: Array<{
-      startSeconds: number;
-      durationSeconds: number;
-      characterName: string;
-      text: string;
-      emotion: string | null;
-    }>;
-  }>;
-  referenceImages: {
-    characters: Array<{ name: string; url: string }>;
-    locations: Array<{ name: string; url: string }>;
-  };
-}
 
 interface VisualStudioScreenProps {
   episode: EpisodeWithShots;
@@ -115,10 +73,18 @@ export function VisualStudioScreen({
     limit: 100,
   });
 
-  // Fetch characters on mount
+  // Fetch project locations for export
+  const { assets: projectLocations, fetchAssets: fetchLocations } = useAssets({
+    projectId: episode.projectId,
+    type: 'location',
+    limit: 100,
+  });
+
+  // Fetch assets on mount
   useEffect(() => {
     fetchCharacters();
-  }, [fetchCharacters]);
+    fetchLocations();
+  }, [fetchCharacters, fetchLocations]);
 
   const shots = episode.shots;
 
@@ -184,95 +150,414 @@ export function VisualStudioScreen({
   };
 
   /**
-   * Export all shot data for VEO 3.1 manual generation workflow
-   * Downloads JSON with prompts, reference images, and dialogue timing
+   * Fetch an image as a blob for ZIP inclusion
    */
-  const handleExportVeo = () => {
+  const fetchImageAsBlob = async (url: string): Promise<Blob | null> => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return await response.blob();
+    } catch {
+      return null;
+    }
+  };
+
+  /**
+   * Sanitize a name for use as a filename
+   */
+  const sanitizeName = (name: string): string => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  /**
+   * Parse time string to seconds
+   * Format: SS:FF where SS=seconds, FF=frames
+   */
+  const parseTimeToSeconds = (timeStr: string): number => {
+    const parts = timeStr.split(':');
+    if (parts.length !== 2) return 0;
+    const seconds = parseInt(parts[0] ?? '0', 10);
+    const frames = parseInt(parts[1] ?? '0', 10);
+    return seconds + frames / 100;
+  };
+
+  /**
+   * Generate prompt.md content for a shot
+   * Uses the same assembled format as displayed in the app
+   */
+  const generatePromptMd = (shot: Shot): string => {
+    const metadata = shot.metadata as {
+      characters?: string[];
+      locations?: string[];
+      veoPrompt?: {
+        shotLine?: string;
+        timeline?: Array<{
+          startTime: string;
+          endTime: string;
+          type: string;
+          character?: string | null;
+          content: string;
+          emotion?: string | null;
+        }>;
+        audio?: string;
+        style?: string;
+        avoid?: string;
+        fullPrompt?: string;
+      };
+      referenceImages?: {
+        characters: Array<{ name: string; url: string }>;
+        locations: Array<{ name: string; url: string }>;
+      };
+    } | null;
+
+    const veo = metadata?.veoPrompt;
+    const shotCharacters = metadata?.characters ?? [];
+
+    let md = `# Shot ${shot.sceneNumber}.${shot.shotNumber}\n\n`;
+    md += `**Duration:** ${shot.duration} seconds\n\n`;
+
+    // Description
+    if (shot.description) {
+      md += `## Description\n${shot.description}\n\n`;
+    }
+
+    // Build assembled VEO prompt (matching what app displays)
+    if (veo?.timeline && veo.timeline.length > 0) {
+      md += `## VEO Prompt\n\`\`\`\n`;
+
+      // 1. Characters section with descriptions
+      // Get character details from project assets
+      const charDetails: Array<{ name: string; description: string }> = [];
+      for (const charName of shotCharacters) {
+        const asset = projectCharacters.find(
+          (c) => c.name.toLowerCase() === charName.toLowerCase()
+        );
+        if (asset) {
+          charDetails.push({
+            name: asset.name,
+            description: asset.description || asset.name,
+          });
+        }
+      }
+
+      if (charDetails.length > 0) {
+        md += 'CHARACTERS:\n';
+        for (const char of charDetails) {
+          md += `- ${char.name}: ${char.description}\n`;
+        }
+        md += '(Identify from provided reference images)\n\n';
+      } else if (shotCharacters.length > 0) {
+        md += `CHARACTERS: ${shotCharacters.join(', ')} (identify from reference images)\n\n`;
+      }
+
+      // 2. Shot line (camera info)
+      if (veo.shotLine) {
+        md += `SHOT: ${veo.shotLine.replace(/^SHOT:\s*/i, '')}\n\n`;
+      }
+
+      // 3. Timeline events formatted as [start-end] content (in seconds)
+      for (const event of veo.timeline) {
+        const startSec = parseTimeToSeconds(event.startTime);
+        const endSec = parseTimeToSeconds(event.endTime);
+
+        if (event.type === 'dialogue' && event.character) {
+          const emotionPart = event.emotion ? ` (Tone: ${event.emotion})` : '';
+          md += `[${startSec}s-${endSec}s] ${event.character}: "${event.content}"${emotionPart}\n`;
+        } else {
+          md += `[${startSec}s-${endSec}s] ${event.content}\n`;
+        }
+      }
+      md += '\n';
+
+      // 4. Audio section
+      if (veo.audio) {
+        md += `AUDIO: ${veo.audio}\n\n`;
+      }
+
+      // 5. Style section (include project aesthetic style)
+      if (veo.style) {
+        let styleText = veo.style;
+        const projectAesthetic = episode.projectMetadata?.projectAestheticStyle;
+        const projectVideoStyle = episode.projectMetadata?.videoStyle;
+        if (projectAesthetic) {
+          styleText = `${veo.style}. ${projectAesthetic}`;
+        } else if (projectVideoStyle) {
+          styleText = `${veo.style}. ${projectVideoStyle}`;
+        }
+        md += `STYLE: ${styleText}\n\n`;
+      }
+
+      // 6. Avoid section
+      if (veo.avoid) {
+        md += `AVOID: ${veo.avoid}\n`;
+      }
+
+      md += '```\n\n';
+    } else if (shot.prompt) {
+      // Fallback to raw prompt if no V2 timeline
+      md += `## VEO Prompt\n\`\`\`\n${shot.prompt}\n\`\`\`\n\n`;
+    }
+
+    // Reference Images listing
+    const refImages = metadata?.referenceImages;
+    if (refImages) {
+      if (refImages.characters && refImages.characters.length > 0) {
+        md += `## Reference Images - Characters\n`;
+        for (const char of refImages.characters) {
+          md += `- ${char.name} → \`character-${sanitizeName(char.name)}.png\`\n`;
+        }
+        md += '\n';
+      }
+      if (refImages.locations && refImages.locations.length > 0) {
+        md += `## Reference Images - Locations\n`;
+        for (const loc of refImages.locations) {
+          md += `- ${loc.name} → \`location-${sanitizeName(loc.name)}.png\`\n`;
+        }
+        md += '\n';
+      }
+    }
+
+    // List storyboard frames if present
+    if (shot.firstFrameUrl || shot.lastFrameUrl) {
+      md += `## Storyboard Frames\n`;
+      if (shot.firstFrameUrl) {
+        md += `- First frame → \`first-frame.png\`\n`;
+      }
+      if (shot.lastFrameUrl) {
+        md += `- Last frame → \`last-frame.png\`\n`;
+      }
+      md += '\n';
+    }
+
+    return md;
+  };
+
+  /**
+   * Export all shot data for VEO 3.1 as a structured ZIP
+   * Structure: Episode/Scene-X/Shot-X.Y/ with prompt.md and reference images
+   */
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportVeo = async () => {
     if (shots.length === 0) {
       toast.warning('No shots to export');
       return;
     }
 
-    // Collect all unique reference images across shots
-    const allCharacterImages = new Map<string, { name: string; url: string }>();
-    const allLocationImages = new Map<string, { name: string; url: string }>();
+    setIsExporting(true);
+    toast.info('Preparing VEO export...');
 
-    const exportShots = shots.map((shot) => {
-      // Extract VEO data from shot metadata
-      const metadata = shot.metadata as {
-        veoPrompt?: {
-          subject: string;
-          action: string;
-          scene: string;
-          style: string;
-          dialogue?: string;
-          sounds: string;
-          negativePrompt: string;
-          fullPrompt: string;
-        };
-        referenceImages?: {
-          characters: Array<{ name: string; url: string }>;
-          locations: Array<{ name: string; url: string }>;
-        };
-        dialogueTiming?: Array<{
-          startSeconds: number;
-          durationSeconds: number;
-          characterName: string;
-          text: string;
-          emotion: string | null;
-        }>;
-      } | null;
+    try {
+      // Dynamic import of JSZip
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
 
-      // Aggregate reference images
-      if (metadata?.referenceImages?.characters) {
-        for (const img of metadata.referenceImages.characters) {
-          allCharacterImages.set(img.name, img);
+      // Group shots by scene
+      const shotsBySceneMap: Record<number, Shot[]> = {};
+      for (const shot of shots) {
+        const sceneNum = shot.sceneNumber;
+        if (!shotsBySceneMap[sceneNum]) {
+          shotsBySceneMap[sceneNum] = [];
         }
-      }
-      if (metadata?.referenceImages?.locations) {
-        for (const img of metadata.referenceImages.locations) {
-          allLocationImages.set(img.name, img);
-        }
+        shotsBySceneMap[sceneNum]!.push(shot);
       }
 
-      return {
-        sequenceNumber: shot.sequenceNumber ?? shot.shotNumber,
-        sceneNumber: shot.sceneNumber,
-        shotNumber: shot.shotNumber,
-        duration: shot.duration,
-        prompt: shot.prompt ?? '',
-        veoPrompt: metadata?.veoPrompt,
-        referenceImages: metadata?.referenceImages,
-        dialogueTiming: metadata?.dialogueTiming,
-      };
-    });
+      // Sort scenes
+      const sortedScenes = Object.entries(shotsBySceneMap).sort(
+        ([a], [b]) => parseInt(a) - parseInt(b)
+      );
 
-    const exportData: VeoExportData = {
-      episodeId: episode.id,
-      episodeTitle: episode.title,
-      exportedAt: new Date().toISOString(),
-      totalShots: shots.length,
-      shots: exportShots,
-      referenceImages: {
-        characters: Array.from(allCharacterImages.values()),
-        locations: Array.from(allLocationImages.values()),
-      },
-    };
+      // Track fetched images to avoid duplicates or 429s
+      const fetchedAssets = new Map<string, Blob>();
 
-    // Create and download JSON file
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: 'application/json',
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `veo-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      // Metadata for FCP import
+      const fcpMetadata: Array<{
+        scene: number;
+        shot: number;
+        duration: number;
+        filename: string;
+      }> = [];
 
-    toast.success(`Exported ${shots.length} shots for VEO 3.1`);
+      for (const [sceneNum, sceneShots] of sortedScenes) {
+        const sceneFolder = zip.folder(`Scene-${sceneNum}`);
+        if (!sceneFolder) continue;
+
+        // Sort shots within scene
+        const sortedShots = [...sceneShots].sort(
+          (a, b) => a.shotNumber - b.shotNumber
+        );
+
+        for (const shot of sortedShots) {
+          const shotFolder = sceneFolder.folder(
+            `Shot-${sceneNum}.${shot.shotNumber}`
+          );
+          if (!shotFolder) continue;
+
+          // Add prompt.md
+          const promptMd = generatePromptMd(shot);
+          shotFolder.file('prompt.md', promptMd);
+
+          // 1. DOWNLOAD VIDEO (Critical for FCP)
+          if (shot.videoUrl) {
+            let blob = fetchedAssets.get(shot.videoUrl);
+            if (!blob) {
+              blob = (await fetchImageAsBlob(shot.videoUrl)) ?? undefined;
+              if (blob) {
+                fetchedAssets.set(shot.videoUrl, blob);
+              }
+            }
+            if (blob) {
+              const videoFilename = `shot-${sceneNum}-${shot.shotNumber}.mp4`;
+              shotFolder.file(videoFilename, blob);
+
+              fcpMetadata.push({
+                scene: Number(sceneNum),
+                shot: Number(shot.shotNumber),
+                duration: Number(shot.duration),
+                filename: videoFilename,
+              });
+            }
+          }
+
+          // Add storyboard frames (first and last frame images)
+          if (shot.firstFrameUrl) {
+            let blob = fetchedAssets.get(shot.firstFrameUrl);
+            if (!blob) {
+              blob = (await fetchImageAsBlob(shot.firstFrameUrl)) ?? undefined;
+              if (blob) {
+                fetchedAssets.set(shot.firstFrameUrl, blob);
+              }
+            }
+            if (blob) {
+              shotFolder.file('first-frame.png', blob);
+            }
+          }
+
+          if (shot.lastFrameUrl) {
+            let blob = fetchedAssets.get(shot.lastFrameUrl);
+            if (!blob) {
+              blob = (await fetchImageAsBlob(shot.lastFrameUrl)) ?? undefined;
+              if (blob) {
+                fetchedAssets.set(shot.lastFrameUrl, blob);
+              }
+            }
+            if (blob) {
+              shotFolder.file('last-frame.png', blob);
+            }
+          }
+
+          // Get metadata for reference images
+          const metadata = shot.metadata as {
+            characters?: string[];
+            locations?: string[];
+            referenceImages?: {
+              characters: Array<{ name: string; url: string }>;
+              locations: Array<{ name: string; url: string }>;
+            };
+          } | null;
+
+          // Add character images - try metadata.referenceImages first, then fall back to project assets
+          if (metadata?.referenceImages?.characters && metadata.referenceImages.characters.length > 0) {
+            // Use reference images from metadata
+            for (const img of metadata.referenceImages.characters) {
+              const filename = `character-${sanitizeName(img.name)}.png`;
+              let blob = fetchedAssets.get(img.url);
+              if (!blob) {
+                blob = (await fetchImageAsBlob(img.url)) ?? undefined;
+                if (blob) {
+                  fetchedAssets.set(img.url, blob);
+                }
+              }
+              if (blob) {
+                shotFolder.file(filename, blob);
+              }
+            }
+          } else if (metadata?.characters && metadata.characters.length > 0) {
+            // Fall back to looking up characters from project assets
+            for (const charName of metadata.characters) {
+              const asset = projectCharacters.find(
+                (c) => c.name.toLowerCase() === charName.toLowerCase()
+              );
+              if (asset?.fileUrl) {
+                const filename = `character-${sanitizeName(charName)}.png`;
+                let blob = fetchedAssets.get(asset.fileUrl);
+                if (!blob) {
+                  blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
+                  if (blob) {
+                    fetchedAssets.set(asset.fileUrl, blob);
+                  }
+                }
+                if (blob) {
+                  shotFolder.file(filename, blob);
+                }
+              }
+            }
+          }
+
+          // Add location images - try metadata.referenceImages first, then fall back to project assets
+          if (metadata?.referenceImages?.locations && metadata.referenceImages.locations.length > 0) {
+            // Use reference images from metadata
+            for (const img of metadata.referenceImages.locations) {
+              const filename = `location-${sanitizeName(img.name)}.png`;
+              let blob = fetchedAssets.get(img.url);
+              if (!blob) {
+                blob = (await fetchImageAsBlob(img.url)) ?? undefined;
+                if (blob) {
+                  fetchedAssets.set(img.url, blob);
+                }
+              }
+              if (blob) {
+                shotFolder.file(filename, blob);
+              }
+            }
+          } else if (metadata?.locations && metadata.locations.length > 0) {
+            // Fall back to looking up locations from project assets
+            for (const locName of metadata.locations) {
+              const asset = projectLocations.find(
+                (l) => l.name.toLowerCase() === locName.toLowerCase()
+              );
+              if (asset?.fileUrl) {
+                const filename = `location-${sanitizeName(locName)}.png`;
+                let blob = fetchedAssets.get(asset.fileUrl);
+                if (!blob) {
+                  blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
+                  if (blob) {
+                    fetchedAssets.set(asset.fileUrl, blob);
+                  }
+                }
+                if (blob) {
+                  shotFolder.file(filename, blob);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // Add Metadata Manifest for FCP automation
+      zip.file('fcp-import-manifest.json', JSON.stringify(fcpMetadata, null, 2));
+
+      // Generate and download ZIP
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `veo-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${shots.length} shots as structured ZIP`);
+    } catch (error) {
+      console.error('Export failed:', error);
+      toast.error('Failed to export VEO data');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -315,11 +600,15 @@ export function VisualStudioScreen({
             <Button
               variant="outline"
               onClick={handleExportVeo}
-              disabled={stats.total === 0}
+              disabled={stats.total === 0 || isExporting}
               className="gap-2"
             >
-              <Download className="h-4 w-4" />
-              Export VEO
+              {isExporting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Download className="h-4 w-4" />
+              )}
+              {isExporting ? 'Exporting...' : 'Export VEO'}
             </Button>
 
             <Button

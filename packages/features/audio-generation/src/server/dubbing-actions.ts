@@ -7,6 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { createLLMClient } from '@kit/llm';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
+import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -546,30 +547,26 @@ export const generateDubbedAudioAction = enhanceAction(
             throw new Error('No audio generated');
           }
 
-          // Upload to storage
+          // Upload to storage (local or Supabase based on STORAGE_PROVIDER)
           const audioPath = `dubbed/${episodeId}/${version.language}/${line.id}.mp3`;
-          const { error: uploadError } = await adminClient.storage
-            .from('audio')
-            .upload(audioPath, result.audioBuffer, {
+          const storage = getStorageAdapter(adminClient);
+
+          const { url: audioUrl } = await storage.upload(
+            'audio',
+            audioPath,
+            result.audioBuffer,
+            {
               contentType: 'audio/mpeg',
               upsert: true,
-            });
-
-          if (uploadError) {
-            throw new Error(`Upload failed: ${uploadError.message}`);
-          }
-
-          // Get public URL
-          const { data: urlData } = adminClient.storage
-            .from('audio')
-            .getPublicUrl(audioPath);
+            },
+          );
 
           // Update dubbed line
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (client as any)
             .from('dubbed_dialogue_lines')
             .update({
-              audio_url: urlData.publicUrl,
+              audio_url: audioUrl,
               duration_seconds: result.duration,
               status: 'voiced',
               generation_metadata: {

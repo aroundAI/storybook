@@ -297,6 +297,19 @@ export interface ShotListData {
 /**
  * Episode entity with all fields from database
  */
+/**
+ * A group of shorts with shared metadata that gets translated per language
+ */
+export interface ShortsGroup {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  tags: string[];
+  /** Video URLs by language: { en: "url", hi: "url" } */
+  videos: Record<string, string>;
+}
+
 export interface Episode {
   id: string;
   slug: string | null;
@@ -311,6 +324,10 @@ export interface Episode {
   finalVideoUrl: string | null;
   /** Localized video URLs by language: { en: "url", hi: "url", es: "url", pt: "url" } */
   localizedVideos?: Record<string, string> | null;
+  /** @deprecated Use shortsGroups instead */
+  localizedShorts?: Record<string, string> | null;
+  /** Grouped shorts with per-group metadata */
+  shortsGroups?: ShortsGroup[] | null;
   storyData: StoryData | null;
   screenplayData: ScreenplayData | null;
   shotList: ShotListData | null;
@@ -327,6 +344,7 @@ export interface Episode {
     [key: string]: unknown;
   };
 }
+
 
 /**
  * Episode with related shots and season info
@@ -416,6 +434,17 @@ export interface Shot {
   shortsCandidate?: boolean;
   /** Shorts/clips metadata: viralScore, hookType, etc. */
   shortsMetadata?: ShortsMetadata | null;
+
+  // Video trimming fields (Phase 1: Video Clip Trimming)
+  /** In-point for video trimming in seconds (start of clip) */
+  trimInPoint?: number | null;
+  /** Out-point for video trimming in seconds (end of clip) */
+  trimOutPoint?: number | null;
+  /** Original source video duration in seconds */
+  sourceDuration?: number | null;
+  /** Timeline start time in seconds */
+  timelineStartSeconds?: number | null;
+
   createdAt: string;
   updatedAt: string;
   deletedAt?: string | null;

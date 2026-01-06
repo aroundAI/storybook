@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS public.oauth_states (
 
   -- Platform must be one of the supported values
   CONSTRAINT oauth_states_platform_check
-    CHECK (platform IN ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin'))
+    CHECK (platform IN ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin', 'meta'))
 );
 
 -- Enable RLS

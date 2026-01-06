@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
+import { getAccountOAuthApp } from '@kit/publishing/server';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const stateParam = request.nextUrl.searchParams.get('state');
   const error = request.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
 
   if (error) {
     const errorDesc = request.nextUrl.searchParams.get('error_description');
@@ -84,10 +85,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const appId = process.env.FACEBOOK_APP_ID;
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  // Get OAuth credentials from database (account-scoped)
+  const oauthApp = await getAccountOAuthApp(state.accountId, 'meta');
 
-  if (!appId || !appSecret) {
+  if (!oauthApp) {
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=meta_not_configured`,
     );
@@ -95,8 +96,8 @@ export async function GET(request: NextRequest) {
 
   // Exchange code for short-lived token
   const tokenUrl = new URL(META_OAUTH_CONFIG.tokenUrl);
-  tokenUrl.searchParams.set('client_id', appId);
-  tokenUrl.searchParams.set('client_secret', appSecret);
+  tokenUrl.searchParams.set('client_id', oauthApp.clientId);
+  tokenUrl.searchParams.set('client_secret', oauthApp.clientSecret);
   tokenUrl.searchParams.set(
     'redirect_uri',
     `${appUrl}/api/platforms/callback/meta`,
@@ -121,8 +122,8 @@ export async function GET(request: NextRequest) {
     `${META_OAUTH_CONFIG.graphUrl}/oauth/access_token`,
   );
   longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
-  longLivedUrl.searchParams.set('client_id', appId);
-  longLivedUrl.searchParams.set('client_secret', appSecret);
+  longLivedUrl.searchParams.set('client_id', oauthApp.clientId);
+  longLivedUrl.searchParams.set('client_secret', oauthApp.clientSecret);
   longLivedUrl.searchParams.set(
     'fb_exchange_token',
     shortLivedToken.access_token,
@@ -183,7 +184,7 @@ export async function GET(request: NextRequest) {
     token_expires_at: string;
     scopes: string[];
     is_active: boolean;
-    metadata: Record<string, unknown>;
+    metadata: { [key: string]: string | number | boolean | null };
     updated_at: string;
   }> = [];
 
@@ -205,7 +206,7 @@ export async function GET(request: NextRequest) {
         is_active: true,
         metadata: {
           category: page.category,
-          picture_url: page.picture?.data?.url,
+          picture_url: page.picture?.data?.url ?? null,
           user_token_expires_at: expiresAt.toISOString(),
         },
         updated_at: new Date().toISOString(),
@@ -252,8 +253,8 @@ export async function GET(request: NextRequest) {
         is_active: true,
         metadata: {
           linked_page_id: page.id,
-          profile_picture_url: igAccount.profile_picture_url,
-          followers_count: igAccount.followers_count,
+          profile_picture_url: igAccount.profile_picture_url ?? null,
+          followers_count: igAccount.followers_count ?? null,
           user_token_expires_at: expiresAt.toISOString(),
         },
         updated_at: new Date().toISOString(),
@@ -293,12 +294,20 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // Get account slug for redirect
+  const { data: accountData } = await client
+    .from('accounts')
+    .select('slug')
+    .eq('id', state.accountId)
+    .single();
+  const accountSlug = accountData?.slug || 'unknown';
+
   const connectedCount = connections.length;
   const platformNames = connections
     .map((c) => c.platform_account_name)
     .join(', ');
 
   return NextResponse.redirect(
-    `${state.returnUrl}?success=meta_connected&count=${connectedCount}&accounts=${encodeURIComponent(platformNames)}`,
+    `${appUrl}/home/${accountSlug}/settings/platforms?success=meta_connected&count=${connectedCount}&accounts=${encodeURIComponent(platformNames)}`,
   );
 }

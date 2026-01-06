@@ -5,9 +5,11 @@ import 'server-only';
 import { revalidatePath } from 'next/cache';
 
 import { v4 as uuidv4 } from 'uuid';
+import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
+import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -275,24 +277,19 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 12. Upload to Supabase Storage
+      // 12. Upload to storage (local or Supabase based on STORAGE_PROVIDER)
       const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}.mp3`;
+      const storage = getStorageAdapter(adminClient);
 
-      const { error: uploadError } = await adminClient.storage
-        .from('audio')
-        .upload(audioPath, result.audioBuffer, {
+      const { url: audioUrl } = await storage.upload(
+        'audio',
+        audioPath,
+        result.audioBuffer,
+        {
           contentType: 'audio/mpeg',
           upsert: overwriteExisting,
-        });
-
-      if (uploadError) {
-        throw new Error(`Failed to upload audio: ${uploadError.message}`);
-      }
-
-      // 13. Get public URL
-      const { data: urlData } = adminClient.storage
-        .from('audio')
-        .getPublicUrl(audioPath);
+        },
+      );
 
       // 14. Prepare metadata
       const metadata: VoiceGenerationMetadata = {
@@ -315,7 +312,7 @@ export const generateDialogueVoiceAction = enhanceAction(
       const { error: updateError } = await (client as any)
         .from('dialogue_lines')
         .update({
-          audio_url: urlData.publicUrl,
+          audio_url: audioUrl,
           status: 'completed',
           generation_metadata: metadata,
         })
@@ -334,7 +331,7 @@ export const generateDialogueVoiceAction = enhanceAction(
           status: 'completed',
           cost_cents: actualCost,
           output_data: {
-            audioUrl: urlData.publicUrl,
+            audioUrl: audioUrl,
             duration: result.duration,
           },
           completed_at: new Date().toISOString(),
@@ -345,7 +342,7 @@ export const generateDialogueVoiceAction = enhanceAction(
       await incrementAccountUsage(client, accountId, actualCost);
 
       logger.info(
-        { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
+        { ...ctx, audioUrl, duration: result.duration },
         'Dialogue voice generation completed',
       );
 
@@ -353,7 +350,7 @@ export const generateDialogueVoiceAction = enhanceAction(
 
       return {
         dialogueLineId: data.dialogueLineId,
-        audioUrl: urlData.publicUrl,
+        audioUrl: audioUrl,
         duration: result.duration,
         cost: actualCost,
         status: 'completed',
@@ -554,23 +551,18 @@ export const generateVoiceFromTextAction = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 8. Upload to temporary storage location
+      // 8. Upload to temporary storage location (local or Supabase based on STORAGE_PROVIDER)
       const tempPath = `temp/${user.id}/${Date.now()}.mp3`;
+      const storage = getStorageAdapter(adminClient);
 
-      const { error: uploadError } = await adminClient.storage
-        .from('audio')
-        .upload(tempPath, result.audioBuffer, {
+      const { url: audioUrl } = await storage.upload(
+        'audio',
+        tempPath,
+        result.audioBuffer,
+        {
           contentType: 'audio/mpeg',
-        });
-
-      if (uploadError) {
-        throw new Error(`Failed to upload audio: ${uploadError.message}`);
-      }
-
-      // 9. Get public URL
-      const { data: urlData } = adminClient.storage
-        .from('audio')
-        .getPublicUrl(tempPath);
+        },
+      );
 
       // 10. Update generation job as completed
       const actualCost = result.cost ?? estimatedCost;
@@ -581,7 +573,7 @@ export const generateVoiceFromTextAction = enhanceAction(
           status: 'completed',
           cost_cents: actualCost,
           output_data: {
-            audioUrl: urlData.publicUrl,
+            audioUrl: audioUrl,
             duration: result.duration,
           },
           completed_at: new Date().toISOString(),
@@ -592,12 +584,12 @@ export const generateVoiceFromTextAction = enhanceAction(
       await incrementAccountUsage(client, accountId, actualCost);
 
       logger.info(
-        { ...ctx, audioUrl: urlData.publicUrl, duration: result.duration },
+        { ...ctx, audioUrl, duration: result.duration },
         'Text-to-voice generation completed',
       );
 
       return {
-        audioUrl: urlData.publicUrl,
+        audioUrl: audioUrl,
         duration: result.duration,
         cost: actualCost,
         format: result.format,
@@ -626,5 +618,152 @@ export const generateVoiceFromTextAction = enhanceAction(
   },
   {
     schema: GenerateVoiceFromTextSchema,
+  },
+);
+
+/**
+ * Update the text of a dialogue line
+ *
+ * This action allows users to edit dialogue text (e.g., fix translations).
+ * If the dialogue has existing audio, it will be marked as needing regeneration.
+ */
+export const updateDialogueTextAction = enhanceAction(
+  async (data: {
+    dialogueLineId: string;
+    text: string;
+  }): Promise<{ success: boolean; dialogueLineId: string }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'dialogue.updateText',
+      dialogueLineId: data.dialogueLineId,
+    };
+
+    logger.info(ctx, 'Updating dialogue text');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized dialogue update attempt');
+      throw new Error('Authentication required');
+    }
+
+    // Fetch dialogue line to verify access
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: dialogueLine, error: fetchError } = await (client as any)
+      .from('dialogue_lines')
+      .select(
+        `
+        id,
+        episode_id,
+        text,
+        audio_url,
+        episodes!inner(
+          id,
+          project_id,
+          projects!inner(
+            id,
+            account_id
+          )
+        )
+      `,
+      )
+      .eq('id', data.dialogueLineId)
+      .single();
+
+    if (fetchError || !dialogueLine) {
+      logger.error({ ...ctx, error: fetchError }, 'Dialogue line not found');
+      throw new Error('Dialogue line not found');
+    }
+
+    // Update the dialogue text
+    // If there was existing audio, mark as needing regeneration
+    const updatePayload: Record<string, unknown> = {
+      text: data.text,
+    };
+
+    // If audio exists, set status to 'text_modified' to indicate regeneration needed
+    if (dialogueLine.audio_url) {
+      updatePayload.status = 'text_modified';
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('dialogue_lines')
+      .update(updatePayload)
+      .eq('id', data.dialogueLineId);
+
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to update dialogue');
+      throw new Error('Failed to update dialogue text');
+    }
+
+    logger.info(ctx, 'Dialogue text updated successfully');
+
+    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
+    return {
+      success: true,
+      dialogueLineId: data.dialogueLineId,
+    };
+  },
+  {
+    schema: z.object({
+      dialogueLineId: z.string().uuid(),
+      text: z.string().min(1),
+    }),
+  },
+);
+/**
+ * Update the timing of a dialogue line (timeline position and duration)
+ */
+export const updateDialogueTimingAction = enhanceAction(
+  async (data: {
+    dialogueLineId: string;
+    timelineStartSeconds?: number;
+    durationSeconds?: number;
+  }): Promise<{ success: boolean; dialogueLineId: string }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'dialogue.updateTiming',
+      dialogueLineId: data.dialogueLineId,
+    };
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    const updatePayload: Record<string, unknown> = {};
+    if (data.timelineStartSeconds !== undefined) {
+      updatePayload.timeline_start_seconds = data.timelineStartSeconds;
+    }
+    // Note: duration is usually determined by generation, but we might want to override or store estimated
+    if (data.durationSeconds !== undefined) {
+      updatePayload.estimated_duration_seconds = data.durationSeconds;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('dialogue_lines')
+      .update(updatePayload)
+      .eq('id', data.dialogueLineId);
+
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to update dialogue timing');
+      throw new Error('Failed to update dialogue timing');
+    }
+
+    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+    return { success: true, dialogueLineId: data.dialogueLineId };
+  },
+  {
+    schema: z.object({
+      dialogueLineId: z.string().uuid(),
+      timelineStartSeconds: z.number().min(0).optional(),
+      durationSeconds: z.number().positive().optional(),
+    }),
   },
 );

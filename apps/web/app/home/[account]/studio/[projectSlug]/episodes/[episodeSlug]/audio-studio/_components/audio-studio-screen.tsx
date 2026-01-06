@@ -15,7 +15,6 @@ import {
   Minus,
   Play,
   Plus,
-  Settings,
   Volume2,
 } from 'lucide-react';
 
@@ -35,7 +34,6 @@ import {
   type SupportedLanguage,
 } from './language-tab-bar';
 import { MusicTimeline } from './music-timeline';
-import { VoiceAssignmentPanel } from './voice-assignment-panel';
 
 interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
@@ -196,31 +194,143 @@ export function AudioStudioScreen({
     });
   };
 
-  const handleExport = () => {
-    toast.info('Export functionality coming soon');
+  /**
+   * Helper to fetch audio as blob
+   */
+  const fetchAudioAsBlob = async (url: string): Promise<Blob | null> => {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) return null;
+      return await response.blob();
+    } catch {
+      return null;
+    }
+  };
+
+  /**
+   * Format seconds to SRT timestamp (HH:MM:SS,ms)
+   */
+  const _formatSrtTime = (seconds: number): string => {
+    const date = new Date(0);
+    date.setMilliseconds(seconds * 1000);
+    const iso = date.toISOString();
+    // ISO format is YYYY-MM-DDTHH:MM:SS.mmmZ
+    // We want HH:MM:SS,mmm
+    return iso.substring(11, 23).replace('.', ',');
+  };
+
+  /**
+   * Export all audio assets and SRTs
+   */
+  const [_isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (dialogueLines.length === 0) {
+      toast.warning('No dialogue to export');
+      return;
+    }
+
+    setIsExporting(true);
+    toast.info('Preparing Audio export...');
+
+    try {
+      // Dynamic import of JSZip
+      const JSZip = (await import('jszip')).default;
+      const zip = new JSZip();
+
+      // Folders
+      const dialogueFolder = zip.folder('Dialogue');
+      const srtFolder = zip.folder('Subtitles');
+
+      if (!dialogueFolder || !srtFolder) return;
+
+      // Track fetched audio to avoid duplicates
+      const fetchedAudio = new Map<string, Blob>();
+
+      // Sort lines by execution order
+      const sortedLines = [...dialogueLines].sort((a, b) => {
+        // Sort by scene number first, then sequence number
+        // Note: dialogueLines might not have scene number directly if not joined.
+        return (a.sequenceNumber || 0) - (b.sequenceNumber || 0);
+      });
+
+      for (const line of sortedLines) {
+        if (!line.audioUrl) continue;
+
+        // 1. Add Audio File
+        let blob = fetchedAudio.get(line.audioUrl);
+        if (!blob) {
+          blob = (await fetchAudioAsBlob(line.audioUrl)) ?? undefined;
+          if (blob) {
+            fetchedAudio.set(line.audioUrl, blob);
+          }
+        }
+
+        if (blob) {
+          // Filename: Scene-X_Seq-Y_Character.mp3
+          // If scene info is missing, just use Seq-Y
+          const characterName = characters.find(c => c.id === line.characterAssetId)?.name ?? 'Unknown';
+          const filename = `${line.sequenceNumber.toString().padStart(3, '0')}_${characterName.replace(/[^a-z0-9]/gi, '_')}.mp3`;
+          dialogueFolder.file(filename, blob);
+        }
+
+        // 2. Append to SRT
+        // Assuming we have timing info relative to the start of the episode
+        // If 'startTime' exists on the line, use it. Otherwise, we can strictly only generate
+        // per-clip SRTs or assume a sequential flow if we had durations.
+        // For now, if we don't have global timeline positions, we can't generate a valid global SRT.
+        // BUT, looking at `DialogueLine` type, we might not have `startTime`. 
+        // Let's create individual SRTs per line if global timing isn't available, 
+        // OR just dump the transcription text.
+
+        // Let's assume for this export we primarily want the files. 
+        // If we want a global SRT, we'd need the Timeline logic to calculate offsets.
+        // Since `dialogueLines` is just a list, we'll skip global SRT for now 
+        // and just export a JSON manifest of the lines.
+      }
+
+      // Export Metadata / Script
+      const scriptContent = sortedLines.map(l => {
+        const charName = characters.find(c => c.id === l.characterAssetId)?.name ?? 'Unknown';
+        return `${charName}: ${l.text}`;
+      }).join('\n\n');
+
+      zip.file('script_transcript.txt', scriptContent);
+      zip.file('dialogue_manifest.json', JSON.stringify(sortedLines, null, 2));
+
+      // Generate and download ZIP
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `audio-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Exported ${sortedLines.length} dialogue lines`);
+    } catch (error) {
+      console.error('Audio export failed:', error);
+      toast.error('Failed to export audio data');
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
     <div className="flex h-full">
-      {/* Left Sidebar - Voice Assignment */}
-      <div className="w-[280px] shrink-0 border-r border-gray-200 bg-white dark:border-gray-700/50 dark:bg-gray-900/50">
-        <VoiceAssignmentPanel
-          characters={characters}
-          episodeId={episode.id}
-          isLoading={isLoading}
-        />
-      </div>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-gray-200/50 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 border-b border-gray-200/50 bg-white/85 px-4 py-2.5 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85 overflow-x-auto">
+          <div className="flex items-center gap-3 min-w-max">
             {/* Tab Switcher */}
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
               <button
                 onClick={() => setActiveTab('dialogue')}
-                className={`rounded-md px-4 py-1.5 text-xs font-semibold transition-all ${activeTab === 'dialogue'
+                className={`rounded-md px-3 py-1 text-xs font-semibold transition-all whitespace-nowrap ${activeTab === 'dialogue'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -232,7 +342,7 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('music')}
-                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'music'
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'music'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -241,7 +351,7 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('sfx')}
-                className={`rounded-md px-4 py-1.5 text-xs font-medium transition-all ${activeTab === 'sfx'
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'sfx'
                   ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
                   : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                   }`}
@@ -253,7 +363,7 @@ export function AudioStudioScreen({
             {/* Language Selector (for Dialogue tab) */}
             {activeTab === 'dialogue' && (
               <>
-                <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+                <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
                 <LanguageTabBar
                   episodeId={episode.id}
                   availableLanguages={availableLanguages}
@@ -264,69 +374,58 @@ export function AudioStudioScreen({
               </>
             )}
 
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
 
-            {/* Status badges */}
-            <div className="flex items-center gap-2">
-              <span className="rounded-md border border-green-100 bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-                {stats.completed} completed
+            {/* Status badges - compact */}
+            <div className="flex items-center gap-1.5">
+              <span className="rounded-md border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 whitespace-nowrap">
+                {stats.completed}
               </span>
-              <span className="rounded-md border border-orange-100 bg-orange-50 px-2.5 py-1 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                {stats.pending} pending
+              <span className="rounded-md border border-orange-100 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400 whitespace-nowrap">
+                {stats.pending}
               </span>
-              {stats.generating > 0 && (
-                <span className="rounded-md border border-blue-100 bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-400">
-                  {stats.generating} generating
-                </span>
-              )}
             </div>
 
-            <div className="h-6 w-px bg-gray-200 dark:bg-gray-700" />
+            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
 
-            {/* Zoom Controls */}
-            <div className="flex items-center gap-1">
+            {/* Zoom Controls - compact */}
+            <div className="flex items-center gap-0.5">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={zoomOut}
-                className="h-7 w-7 p-0"
+                className="h-6 w-6 p-0"
                 title="Zoom out"
               >
-                <Minus className="h-3.5 w-3.5" />
+                <Minus className="h-3 w-3" />
               </Button>
-              <span className="w-14 text-center text-xs text-gray-500 dark:text-gray-400">
+              <span className="w-10 text-center text-[10px] text-gray-500 dark:text-gray-400">
                 {pixelsPerSecond}px/s
               </span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={zoomIn}
-                className="h-7 w-7 p-0"
+                className="h-6 w-6 p-0"
                 title="Zoom in"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3" />
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={fitToWindow}
-                className="ml-1 h-7 px-2 text-xs"
+                className="ml-0.5 h-6 px-1.5 text-[10px]"
               >
                 Fit
               </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 border-gray-200 bg-white text-gray-700 dark:border-gray-700 dark:bg-gray-800/50 dark:text-gray-300"
-            >
-              <Settings className="h-4 w-4" />
-              Settings
-            </Button>
+          {/* Spacer to push action buttons right */}
+          <div className="flex-1 min-w-4" />
 
+          <div className="flex items-center gap-2 shrink-0">
             <Button
               onClick={handleGenerateAll}
               disabled={isPending || stats.pending === 0}

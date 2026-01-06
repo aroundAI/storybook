@@ -9,8 +9,8 @@ import type { LLMProvider } from '@kit/llm';
  * Output schema configuration for prompt responses
  */
 export interface PromptOutputConfig {
-  /** Type of JSON response structure */
-  type: 'object' | 'array';
+  /** Type of response structure: 'object', 'array', or 'text' for plain text */
+  type: 'object' | 'array' | 'text';
 
   /** For objects wrapping arrays, the key containing the array */
   wrapper_key?: string;

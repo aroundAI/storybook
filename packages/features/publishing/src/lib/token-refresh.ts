@@ -22,11 +22,11 @@ export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
-    | 'EXPIRED'
-    | 'REFRESH_FAILED'
-    | 'CONNECTION_INACTIVE'
-    | 'NOT_FOUND'
-    | 'NO_REFRESH_TOKEN';
+  | 'EXPIRED'
+  | 'REFRESH_FAILED'
+  | 'CONNECTION_INACTIVE'
+  | 'NOT_FOUND'
+  | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 
@@ -132,6 +132,7 @@ async function doEnsureValidToken(
     const refreshed = await refreshTokenForPlatform(
       connection.platform as Platform,
       refreshToken,
+      connection.account_id,
     );
 
     // 5. Update stored tokens
@@ -202,17 +203,18 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
 async function refreshTokenForPlatform(
   platform: Platform,
   refreshToken: string,
+  accountId: string,
 ): Promise<TokenRefreshResult> {
   switch (platform) {
     case 'youtube':
-      return refreshYouTubeToken(refreshToken);
+      return refreshYouTubeToken(refreshToken, accountId);
     case 'tiktok':
-      return refreshTikTokToken(refreshToken);
+      return refreshTikTokToken(refreshToken, accountId);
     case 'instagram':
     case 'facebook':
-      return refreshMetaToken(refreshToken, platform);
+      return refreshMetaToken(refreshToken, platform, accountId);
     case 'linkedin':
-      return refreshLinkedInToken(refreshToken);
+      return refreshLinkedInToken(refreshToken, accountId);
     default:
       throw new Error(`Unknown platform: ${platform}`);
   }
@@ -223,20 +225,22 @@ async function refreshTokenForPlatform(
  */
 async function refreshYouTubeToken(
   refreshToken: string,
+  accountId: string,
 ): Promise<TokenRefreshResult> {
-  const clientId = process.env.YOUTUBE_CLIENT_ID;
-  const clientSecret = process.env.YOUTUBE_CLIENT_SECRET;
+  // Fetch credentials from database (using admin client for background jobs)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'youtube');
 
-  if (!clientId || !clientSecret) {
-    throw new Error('YouTube OAuth credentials not configured');
+  if (!oauthApp) {
+    throw new Error('YouTube OAuth credentials not configured for this account');
   }
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
+      client_id: oauthApp.clientId,
+      client_secret: oauthApp.clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
@@ -262,20 +266,22 @@ async function refreshYouTubeToken(
  */
 async function refreshTikTokToken(
   refreshToken: string,
+  accountId: string,
 ): Promise<TokenRefreshResult> {
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  // Fetch credentials from database (using admin client for background jobs)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'tiktok');
 
-  if (!clientKey || !clientSecret) {
-    throw new Error('TikTok OAuth credentials not configured');
+  if (!oauthApp) {
+    throw new Error('TikTok OAuth credentials not configured for this account');
   }
 
   const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
-      client_key: clientKey,
-      client_secret: clientSecret,
+      client_key: oauthApp.clientId,
+      client_secret: oauthApp.clientSecret,
       refresh_token: refreshToken,
       grant_type: 'refresh_token',
     }),
@@ -307,18 +313,20 @@ async function refreshTikTokToken(
 async function refreshMetaToken(
   accessToken: string,
   _platform: 'instagram' | 'facebook',
+  accountId: string,
 ): Promise<TokenRefreshResult> {
-  const appId = process.env.FACEBOOK_APP_ID;
-  const appSecret = process.env.FACEBOOK_APP_SECRET;
+  // Fetch credentials from database (using admin client for background jobs)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'meta');
 
-  if (!appId || !appSecret) {
-    throw new Error('Meta OAuth credentials not configured');
+  if (!oauthApp) {
+    throw new Error('Meta OAuth credentials not configured for this account');
   }
 
   const url = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
   url.searchParams.set('grant_type', 'fb_exchange_token');
-  url.searchParams.set('client_id', appId);
-  url.searchParams.set('client_secret', appSecret);
+  url.searchParams.set('client_id', oauthApp.clientId);
+  url.searchParams.set('client_secret', oauthApp.clientSecret);
   url.searchParams.set('fb_exchange_token', accessToken);
 
   const response = await fetch(url.toString());
@@ -341,12 +349,16 @@ async function refreshMetaToken(
  */
 async function refreshLinkedInToken(
   refreshToken: string,
+  accountId: string,
 ): Promise<TokenRefreshResult> {
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  // Fetch credentials from database (using admin client for background jobs)
+  // LinkedIn uses 'meta' credentials as fallback (or add linkedin to platform type)
+  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  // @ts-expect-error linkedin not in type yet
+  const oauthApp = await getAccountOAuthAppAdmin(accountId, 'linkedin');
 
-  if (!clientId || !clientSecret) {
-    throw new Error('LinkedIn OAuth credentials not configured');
+  if (!oauthApp) {
+    throw new Error('LinkedIn OAuth credentials not configured for this account');
   }
 
   const response = await fetch(
@@ -357,8 +369,8 @@ async function refreshLinkedInToken(
       body: new URLSearchParams({
         grant_type: 'refresh_token',
         refresh_token: refreshToken,
-        client_id: clientId,
-        client_secret: clientSecret,
+        client_id: oauthApp.clientId,
+        client_secret: oauthApp.clientSecret,
       }),
     },
   );

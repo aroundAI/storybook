@@ -24,6 +24,11 @@ import type {
   UpdateProjectMemberParams,
   UpdateProjectParams,
 } from '../types';
+import {
+  invalidateAccountProjectsCache,
+  invalidateProjectCache,
+  invalidateProjectMembersCache,
+} from './cache-invalidation';
 
 /**
  * Create a new project
@@ -83,6 +88,9 @@ export const createProjectAction = enhanceAction(
       ],
       ...networkContext,
     });
+
+    // Invalidate cache
+    await invalidateAccountProjectsCache(data.account_id);
 
     // Revalidate the projects list
     revalidatePath(`/home/[account]/projects`, 'page');
@@ -163,6 +171,9 @@ export const updateProjectAction = enhanceAction(
       });
     }
 
+    // Invalidate cache
+    await invalidateProjectCache(data.id, project.account_id);
+
     // Revalidate the projects list and detail pages
     revalidatePath(`/home/[account]/projects`, 'page');
     revalidatePath(`/home/(user)/projects`, 'page');
@@ -223,6 +234,11 @@ export const deleteProjectAction = enhanceAction(
         scopes: [{ type: 'account', id: project.account_id }],
         ...networkContext,
       });
+    }
+
+    // Invalidate cache
+    if (project) {
+      await invalidateProjectCache(data.id, project.account_id);
     }
 
     // Revalidate the projects list
@@ -299,6 +315,9 @@ export const addProjectMemberAction = enhanceAction(
         ...networkContext,
       });
     }
+
+    // Invalidate cache
+    await invalidateProjectMembersCache(data.project_id);
 
     // Revalidate the project detail pages
     revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
@@ -381,6 +400,9 @@ export const updateProjectMemberAction = enhanceAction(
       });
     }
 
+    // Invalidate cache
+    await invalidateProjectMembersCache(data.project_id);
+
     // Revalidate the project detail pages
     revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');
     revalidatePath(`/home/(user)/projects/${data.project_id}`, 'page');
@@ -458,6 +480,9 @@ export const removeProjectMemberAction = enhanceAction(
         ...networkContext,
       });
     }
+
+    // Invalidate cache
+    await invalidateProjectMembersCache(data.project_id);
 
     // Revalidate the project detail pages
     revalidatePath(`/home/[account]/projects/${data.project_id}`, 'page');

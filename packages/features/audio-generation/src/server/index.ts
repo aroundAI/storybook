@@ -17,3 +17,4 @@ export * from './audio-asset-actions';
 export * from './sfx-actions';
 export * from './elevenlabs-music-actions';
 export * from './episode-audio-actions';
+export * from './audio-cue-actions';

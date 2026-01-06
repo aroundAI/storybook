@@ -39,6 +39,58 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_oauth_apps: {
+        Row: {
+          account_id: string
+          client_id: string
+          client_secret_encrypted: string
+          created_at: string
+          id: string
+          platform: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          client_id: string
+          client_secret_encrypted: string
+          created_at?: string
+          id?: string
+          platform: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          client_id?: string
+          client_secret_encrypted?: string
+          created_at?: string
+          id?: string
+          platform?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_oauth_apps_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_oauth_apps_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_account_workspace"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "account_oauth_apps_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       accounts: {
         Row: {
           created_at: string | null
@@ -210,6 +262,7 @@ export type Database = {
           file_size_bytes: number | null
           file_url: string | null
           id: string
+          is_loopable: boolean | null
           last_used_at: string | null
           metadata: Json | null
           name: string | null
@@ -220,6 +273,7 @@ export type Database = {
           provider_job_id: string | null
           source: string
           status: string
+          tags: string[] | null
           updated_at: string
           usage_count: number | null
         }
@@ -233,6 +287,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_url?: string | null
           id?: string
+          is_loopable?: boolean | null
           last_used_at?: string | null
           metadata?: Json | null
           name?: string | null
@@ -243,6 +298,7 @@ export type Database = {
           provider_job_id?: string | null
           source?: string
           status?: string
+          tags?: string[] | null
           updated_at?: string
           usage_count?: number | null
         }
@@ -256,6 +312,7 @@ export type Database = {
           file_size_bytes?: number | null
           file_url?: string | null
           id?: string
+          is_loopable?: boolean | null
           last_used_at?: string | null
           metadata?: Json | null
           name?: string | null
@@ -266,6 +323,7 @@ export type Database = {
           provider_job_id?: string | null
           source?: string
           status?: string
+          tags?: string[] | null
           updated_at?: string
           usage_count?: number | null
         }
@@ -286,8 +344,76 @@ export type Database = {
           },
         ]
       }
+      audio_cues: {
+        Row: {
+          audio_asset_id: string | null
+          audio_track_id: string | null
+          created_at: string
+          cue_type: string
+          duration_seconds: number | null
+          episode_id: string
+          id: string
+          is_loopable: boolean | null
+          prompt: string
+          scene_number: number
+          start_offset_seconds: number | null
+          status: string | null
+        }
+        Insert: {
+          audio_asset_id?: string | null
+          audio_track_id?: string | null
+          created_at?: string
+          cue_type: string
+          duration_seconds?: number | null
+          episode_id: string
+          id?: string
+          is_loopable?: boolean | null
+          prompt: string
+          scene_number: number
+          start_offset_seconds?: number | null
+          status?: string | null
+        }
+        Update: {
+          audio_asset_id?: string | null
+          audio_track_id?: string | null
+          created_at?: string
+          cue_type?: string
+          duration_seconds?: number | null
+          episode_id?: string
+          id?: string
+          is_loopable?: boolean | null
+          prompt?: string
+          scene_number?: number
+          start_offset_seconds?: number | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audio_cues_audio_asset_id_fkey"
+            columns: ["audio_asset_id"]
+            isOneToOne: false
+            referencedRelation: "audio_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_cues_audio_track_id_fkey"
+            columns: ["audio_track_id"]
+            isOneToOne: false
+            referencedRelation: "audio_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audio_cues_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audio_tracks: {
         Row: {
+          audio_asset_id: string | null
           created_at: string
           duration_seconds: number | null
           episode_id: string
@@ -300,6 +426,7 @@ export type Database = {
           volume: number
         }
         Insert: {
+          audio_asset_id?: string | null
           created_at?: string
           duration_seconds?: number | null
           episode_id: string
@@ -312,6 +439,7 @@ export type Database = {
           volume?: number
         }
         Update: {
+          audio_asset_id?: string | null
           created_at?: string
           duration_seconds?: number | null
           episode_id?: string
@@ -324,6 +452,13 @@ export type Database = {
           volume?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "audio_tracks_audio_asset_id_fkey"
+            columns: ["audio_asset_id"]
+            isOneToOne: false
+            referencedRelation: "audio_assets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "audio_tracks_episode_id_fkey"
             columns: ["episode_id"]
@@ -1048,6 +1183,137 @@ export type Database = {
           },
         ]
       }
+      episode_publishing_configs: {
+        Row: {
+          created_at: string
+          description_override: string | null
+          episode_id: string
+          id: string
+          inherit_from_project: boolean | null
+          is_enabled: boolean | null
+          language: string
+          last_published_at: string | null
+          last_published_video_id: string | null
+          platform_connection_id: string
+          publish_immediately: boolean | null
+          scheduled_publish_at: string | null
+          tags_override: string[] | null
+          thumbnail_override_url: string | null
+          title_override: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description_override?: string | null
+          episode_id: string
+          id?: string
+          inherit_from_project?: boolean | null
+          is_enabled?: boolean | null
+          language?: string
+          last_published_at?: string | null
+          last_published_video_id?: string | null
+          platform_connection_id: string
+          publish_immediately?: boolean | null
+          scheduled_publish_at?: string | null
+          tags_override?: string[] | null
+          thumbnail_override_url?: string | null
+          title_override?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description_override?: string | null
+          episode_id?: string
+          id?: string
+          inherit_from_project?: boolean | null
+          is_enabled?: boolean | null
+          language?: string
+          last_published_at?: string | null
+          last_published_video_id?: string | null
+          platform_connection_id?: string
+          publish_immediately?: boolean | null
+          scheduled_publish_at?: string | null
+          tags_override?: string[] | null
+          thumbnail_override_url?: string | null
+          title_override?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episode_publishing_configs_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "episode_publishing_configs_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      episode_thumbnails: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          episode_id: string
+          file_name: string | null
+          file_size_bytes: number | null
+          height: number | null
+          id: string
+          is_default: boolean | null
+          language: string
+          language_label: string | null
+          mime_type: string | null
+          thumbnail_url: string
+          updated_at: string | null
+          width: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          episode_id: string
+          file_name?: string | null
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          is_default?: boolean | null
+          language: string
+          language_label?: string | null
+          mime_type?: string | null
+          thumbnail_url: string
+          updated_at?: string | null
+          width?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          episode_id?: string
+          file_name?: string | null
+          file_size_bytes?: number | null
+          height?: number | null
+          id?: string
+          is_default?: boolean | null
+          language?: string
+          language_label?: string | null
+          mime_type?: string | null
+          thumbnail_url?: string
+          updated_at?: string | null
+          width?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "episode_thumbnails_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       episodes: {
         Row: {
           created_at: string
@@ -1056,6 +1322,7 @@ export type Database = {
           duration_seconds: number | null
           final_video_url: string | null
           id: string
+          localized_shorts: Json | null
           localized_videos: Json | null
           metadata: Json
           number: number
@@ -1079,6 +1346,7 @@ export type Database = {
           duration_seconds?: number | null
           final_video_url?: string | null
           id?: string
+          localized_shorts?: Json | null
           localized_videos?: Json | null
           metadata?: Json
           number: number
@@ -1102,6 +1370,7 @@ export type Database = {
           duration_seconds?: number | null
           final_video_url?: string | null
           id?: string
+          localized_shorts?: Json | null
           localized_videos?: Json | null
           metadata?: Json
           number?: number
@@ -1784,6 +2053,7 @@ export type Database = {
           id: string
           is_active: boolean
           language: string
+          metadata: Json | null
           platform: string
           platform_account_id: string | null
           platform_account_name: string | null
@@ -1799,6 +2069,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           language?: string
+          metadata?: Json | null
           platform: string
           platform_account_id?: string | null
           platform_account_name?: string | null
@@ -1814,6 +2085,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           language?: string
+          metadata?: Json | null
           platform?: string
           platform_account_id?: string | null
           platform_account_name?: string | null
@@ -1842,6 +2114,65 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "user_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_intros: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          duration_seconds: number
+          file_name: string | null
+          file_size_bytes: number | null
+          id: string
+          is_active: boolean | null
+          language: string
+          language_label: string | null
+          mime_type: string | null
+          project_id: string
+          thumbnail_url: string | null
+          updated_at: string | null
+          video_url: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          duration_seconds: number
+          file_name?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          is_active?: boolean | null
+          language: string
+          language_label?: string | null
+          mime_type?: string | null
+          project_id: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_url: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          duration_seconds?: number
+          file_name?: string | null
+          file_size_bytes?: number | null
+          id?: string
+          is_active?: boolean | null
+          language?: string
+          language_label?: string | null
+          mime_type?: string | null
+          project_id?: string
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          video_url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_intros_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1880,6 +2211,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "project_members_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_publishing_configs: {
+        Row: {
+          created_at: string
+          default_description_template: string | null
+          default_tags: string[] | null
+          default_title_suffix: string | null
+          id: string
+          is_enabled: boolean | null
+          language: string
+          platform_connection_id: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_description_template?: string | null
+          default_tags?: string[] | null
+          default_title_suffix?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          language?: string
+          platform_connection_id: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_description_template?: string | null
+          default_tags?: string[] | null
+          default_title_suffix?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          language?: string
+          platform_connection_id?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_publishing_configs_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_publishing_configs_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2516,6 +2901,232 @@ export type Database = {
           },
         ]
       }
+      short_publications: {
+        Row: {
+          analytics_updated_at: string | null
+          caption_override: string | null
+          comments: number | null
+          created_at: string
+          hashtags_override: string[] | null
+          id: string
+          language: string
+          likes: number | null
+          platform: string
+          platform_connection_id: string | null
+          platform_url: string | null
+          platform_video_id: string | null
+          publish_error: string | null
+          published_at: string | null
+          scheduled_at: string | null
+          shares: number | null
+          short_id: string
+          status: string
+          title_override: string | null
+          updated_at: string
+          views: number | null
+        }
+        Insert: {
+          analytics_updated_at?: string | null
+          caption_override?: string | null
+          comments?: number | null
+          created_at?: string
+          hashtags_override?: string[] | null
+          id?: string
+          language?: string
+          likes?: number | null
+          platform: string
+          platform_connection_id?: string | null
+          platform_url?: string | null
+          platform_video_id?: string | null
+          publish_error?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          shares?: number | null
+          short_id: string
+          status?: string
+          title_override?: string | null
+          updated_at?: string
+          views?: number | null
+        }
+        Update: {
+          analytics_updated_at?: string | null
+          caption_override?: string | null
+          comments?: number | null
+          created_at?: string
+          hashtags_override?: string[] | null
+          id?: string
+          language?: string
+          likes?: number | null
+          platform?: string
+          platform_connection_id?: string | null
+          platform_url?: string | null
+          platform_video_id?: string | null
+          publish_error?: string | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          shares?: number | null
+          short_id?: string
+          status?: string
+          title_override?: string | null
+          updated_at?: string
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_publications_platform_connection_id_fkey"
+            columns: ["platform_connection_id"]
+            isOneToOne: false
+            referencedRelation: "platform_connections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "short_publications_short_id_fkey"
+            columns: ["short_id"]
+            isOneToOne: false
+            referencedRelation: "shorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shorts: {
+        Row: {
+          caption: string | null
+          created_at: string
+          duration_seconds: number | null
+          end_seconds: number
+          episode_id: string
+          hashtags: string[] | null
+          hook_type: string | null
+          id: string
+          processing_error: string | null
+          source_shot_id: string | null
+          standalone_summary: string | null
+          start_seconds: number
+          status: string
+          thumbnail_url: string | null
+          title: string | null
+          updated_at: string
+          video_url_9x16: string | null
+          video_url_original: string | null
+          viral_score: number | null
+        }
+        Insert: {
+          caption?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          end_seconds: number
+          episode_id: string
+          hashtags?: string[] | null
+          hook_type?: string | null
+          id?: string
+          processing_error?: string | null
+          source_shot_id?: string | null
+          standalone_summary?: string | null
+          start_seconds: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_url_9x16?: string | null
+          video_url_original?: string | null
+          viral_score?: number | null
+        }
+        Update: {
+          caption?: string | null
+          created_at?: string
+          duration_seconds?: number | null
+          end_seconds?: number
+          episode_id?: string
+          hashtags?: string[] | null
+          hook_type?: string | null
+          id?: string
+          processing_error?: string | null
+          source_shot_id?: string | null
+          standalone_summary?: string | null
+          start_seconds?: number
+          status?: string
+          thumbnail_url?: string | null
+          title?: string | null
+          updated_at?: string
+          video_url_9x16?: string | null
+          video_url_original?: string | null
+          viral_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shorts_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shorts_source_shot_id_fkey"
+            columns: ["source_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shot_transitions: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          episode_id: string
+          from_shot_id: string | null
+          id: string
+          parameters: Json | null
+          to_shot_id: string
+          transition_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          episode_id: string
+          from_shot_id?: string | null
+          id?: string
+          parameters?: Json | null
+          to_shot_id: string
+          transition_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          episode_id?: string
+          from_shot_id?: string | null
+          id?: string
+          parameters?: Json | null
+          to_shot_id?: string
+          transition_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shot_transitions_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_transitions_from_shot_id_fkey"
+            columns: ["from_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_transitions_to_shot_id_fkey"
+            columns: ["to_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shots: {
         Row: {
           action_description: string | null
@@ -2536,8 +3147,12 @@ export type Database = {
           shorts_candidate: boolean | null
           shorts_metadata: Json | null
           shot_number: number | null
+          source_duration: number | null
           status: string
           thumbnail_url: string | null
+          timeline_start_seconds: number | null
+          trim_in_point: number | null
+          trim_out_point: number | null
           updated_at: string
           video_url: string | null
         }
@@ -2560,8 +3175,12 @@ export type Database = {
           shorts_candidate?: boolean | null
           shorts_metadata?: Json | null
           shot_number?: number | null
+          source_duration?: number | null
           status?: string
           thumbnail_url?: string | null
+          timeline_start_seconds?: number | null
+          trim_in_point?: number | null
+          trim_out_point?: number | null
           updated_at?: string
           video_url?: string | null
         }
@@ -2584,8 +3203,12 @@ export type Database = {
           shorts_candidate?: boolean | null
           shorts_metadata?: Json | null
           shot_number?: number | null
+          source_duration?: number | null
           status?: string
           thumbnail_url?: string | null
+          timeline_start_seconds?: number | null
+          trim_in_point?: number | null
+          trim_out_point?: number | null
           updated_at?: string
           video_url?: string | null
         }
@@ -2725,94 +3348,6 @@ export type Database = {
             columns: ["billing_customer_id"]
             isOneToOne: false
             referencedRelation: "billing_customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      voice_consent: {
-        Row: {
-          consent_signature: string | null
-          consent_text: string
-          consent_type: string
-          consented_at: string
-          consenter_email: string | null
-          consenter_name: string
-          created_at: string
-          id: string
-          ip_address: unknown
-          updated_at: string
-          voice_profile_id: string
-        }
-        Insert: {
-          consent_signature?: string | null
-          consent_text: string
-          consent_type: string
-          consented_at?: string
-          consenter_email?: string | null
-          consenter_name: string
-          created_at?: string
-          id?: string
-          ip_address?: unknown
-          updated_at?: string
-          voice_profile_id: string
-        }
-        Update: {
-          consent_signature?: string | null
-          consent_text?: string
-          consent_type?: string
-          consented_at?: string
-          consenter_email?: string | null
-          consenter_name?: string
-          created_at?: string
-          id?: string
-          ip_address?: unknown
-          updated_at?: string
-          voice_profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voice_consent_voice_profile_id_fkey"
-            columns: ["voice_profile_id"]
-            isOneToOne: true
-            referencedRelation: "voice_profiles"
-            referencedColumns: ["asset_id"]
-          },
-        ]
-      }
-      voice_profiles: {
-        Row: {
-          asset_id: string
-          clone_metadata: Json | null
-          clone_samples: string[] | null
-          clone_status: string | null
-          provider: string
-          provider_voice_id: string | null
-          settings: Json
-        }
-        Insert: {
-          asset_id: string
-          clone_metadata?: Json | null
-          clone_samples?: string[] | null
-          clone_status?: string | null
-          provider: string
-          provider_voice_id?: string | null
-          settings?: Json
-        }
-        Update: {
-          asset_id?: string
-          clone_metadata?: Json | null
-          clone_samples?: string[] | null
-          clone_status?: string | null
-          provider?: string
-          provider_voice_id?: string | null
-          settings?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voice_profiles_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: true
-            referencedRelation: "assets"
             referencedColumns: ["id"]
           },
         ]

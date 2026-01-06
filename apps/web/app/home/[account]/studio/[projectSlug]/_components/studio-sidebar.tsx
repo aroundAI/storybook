@@ -26,6 +26,7 @@ import {
   Music,
   Search,
   Settings,
+  Share2,
   Users,
 } from 'lucide-react';
 
@@ -473,6 +474,13 @@ export function StudioSidebar({
                 icon={<BarChart3 className="h-4 w-4" />}
                 label="Analytics"
                 isActive={isActive(`${basePath}/analytics`)}
+                isCollapsed={isCollapsed}
+              />
+              <NavItem
+                href={`${basePath}/platforms`}
+                icon={<Share2 className="h-4 w-4" />}
+                label="Platforms"
+                isActive={isActive(`${basePath}/platforms`)}
                 isCollapsed={isCollapsed}
               />
               <NavItem

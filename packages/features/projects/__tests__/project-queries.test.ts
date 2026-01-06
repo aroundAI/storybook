@@ -31,6 +31,16 @@ vi.mock('react', () => ({
   cache: (fn: unknown) => fn,
 }));
 
+// Mock cache to always return cache miss
+vi.mock('@kit/cache', () => ({
+  createCacheClient: vi.fn(() => ({
+    get: vi.fn().mockResolvedValue(null), // Always cache miss
+    set: vi.fn().mockResolvedValue(undefined),
+    delete: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 // Valid UUIDs for testing
 const ACCOUNT_ID = '550e8400-e29b-41d4-a716-446655440000';
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440001';
@@ -315,25 +325,25 @@ describe('Project Queries', () => {
   describe('canPerformProjectAction', () => {
     const testCases: Array<{
       action:
-        | 'project.view'
-        | 'project.edit'
-        | 'project.delete'
-        | 'project.members.view'
-        | 'project.members.add'
-        | 'project.members.remove'
-        | 'project.settings.view'
-        | 'project.settings.edit';
+      | 'project.view'
+      | 'project.edit'
+      | 'project.delete'
+      | 'project.members.view'
+      | 'project.members.add'
+      | 'project.members.remove'
+      | 'project.settings.view'
+      | 'project.settings.edit';
       canPerform: boolean;
     }> = [
-      { action: 'project.view', canPerform: true },
-      { action: 'project.edit', canPerform: true },
-      { action: 'project.delete', canPerform: false },
-      { action: 'project.members.view', canPerform: true },
-      { action: 'project.members.add', canPerform: true },
-      { action: 'project.members.remove', canPerform: false },
-      { action: 'project.settings.view', canPerform: true },
-      { action: 'project.settings.edit', canPerform: false },
-    ];
+        { action: 'project.view', canPerform: true },
+        { action: 'project.edit', canPerform: true },
+        { action: 'project.delete', canPerform: false },
+        { action: 'project.members.view', canPerform: true },
+        { action: 'project.members.add', canPerform: true },
+        { action: 'project.members.remove', canPerform: false },
+        { action: 'project.settings.view', canPerform: true },
+        { action: 'project.settings.edit', canPerform: false },
+      ];
 
     testCases.forEach(({ action, canPerform }) => {
       it(`should return ${canPerform} for ${action}`, async () => {
