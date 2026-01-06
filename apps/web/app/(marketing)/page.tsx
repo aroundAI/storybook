@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 
 import {
@@ -12,7 +11,6 @@ import {
   Users,
 } from 'lucide-react';
 
-import { PricingTable } from '@kit/billing-gateway/marketing';
 import { Button } from '@kit/ui/button';
 import {
   CtaButton,
@@ -25,8 +23,7 @@ import {
 } from '@kit/ui/marketing';
 import { Trans } from '@kit/ui/trans';
 
-import billingConfig from '~/config/billing.config';
-import pathsConfig from '~/config/paths.config';
+
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { RotatingText } from './_components/rotating-text';
@@ -168,20 +165,6 @@ function Home() {
               </div>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Dashboard Preview Section */}
-      <section className="border-b border-slate-200/50 bg-white py-12 lg:py-16 dark:border-white/[0.08] dark:bg-slate-950">
-        <div className="container mx-auto px-4">
-          <Image
-            priority
-            className="dark:border-primary/10 rounded-xl border border-gray-200 shadow-2xl"
-            width={3558}
-            height={2222}
-            src={`/images/dashboard.webp`}
-            alt={`StoryBook Dashboard`}
-          />
         </div>
       </section>
 
@@ -351,33 +334,6 @@ function Home() {
               <div className="pt-12">
                 <MainCallToActionButton />
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section className="border-t border-slate-200/50 bg-white py-12 lg:py-16 dark:border-white/[0.08] dark:bg-slate-950">
-        <div className={'container mx-auto px-4'}>
-          <div
-            className={
-              'flex flex-col items-center justify-center space-y-16 py-16'
-            }
-          >
-            <SecondaryHero
-              pill={<Pill label="Start for free">No credit card required.</Pill>}
-              heading="Flexible pricing for Indie Creators & Studios"
-              subheading="Start with a free Pilot project and upgrade when you get Greenlit."
-            />
-
-            <div className={'w-full'}>
-              <PricingTable
-                config={billingConfig}
-                paths={{
-                  signUp: pathsConfig.auth.signUp,
-                  return: pathsConfig.app.home,
-                }}
-              />
             </div>
           </div>
         </div>
