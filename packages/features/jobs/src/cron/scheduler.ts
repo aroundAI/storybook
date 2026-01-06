@@ -98,6 +98,25 @@ function getCronJobs(): CronJob[] {
             },
             enabled: false, // Disabled by default
         },
+        {
+            name: 'scheduled-publish',
+            schedule: '*/5 * * * *', // Every 5 minutes
+            handler: async () => {
+                console.log('[Cron] Processing scheduled publishes...');
+                try {
+                    const { processScheduledPublishes } = await import(
+                        '@kit/publishing/jobs'
+                    );
+                    const result = await processScheduledPublishes();
+                    console.log(
+                        `[Cron] Scheduled publish complete: ${result.processed} processed, ${result.published} published`,
+                    );
+                } catch (error) {
+                    console.warn('[Cron] Scheduled publish skipped:', error);
+                }
+            },
+            enabled: true,
+        },
     ];
 }
 

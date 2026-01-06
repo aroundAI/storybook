@@ -616,6 +616,66 @@ export default $config({
 
     console.log(`✓ Analytics sync cron configured (hourly)`);
 
+    // Token Refresh Cron - Refreshes OAuth tokens before they expire
+    // Runs every 30 minutes to catch tokens expiring within the hour
+    const tokenRefreshCron = new sst.aws.Cron("TokenRefreshCron", {
+      job: {
+        handler: "apps/web/lambda/token-refresh/index.handler",
+        timeout: "2 minutes",
+        memory: "256 MB",
+        architecture: "arm64",
+        link: [web],
+        environment: {
+          API_URL: web.url,
+          CRON_SECRET: process.env.CRON_SECRET || '',
+        },
+        transform: {
+          function: {
+            kmsKeyArn: kmsKey.arn,
+          },
+        },
+        permissions: [
+          {
+            actions: ["kms:Decrypt"],
+            resources: [kmsKey.arn],
+          },
+        ],
+      },
+      schedule: "rate(30 minutes)",
+    });
+
+    console.log(`✓ Token refresh cron configured (every 30 minutes)`);
+
+    // Scheduled Publish Cron - Processes videos scheduled for publishing
+    // Runs every 5 minutes to publish videos at their scheduled time
+    const scheduledPublishCron = new sst.aws.Cron("ScheduledPublishCron", {
+      job: {
+        handler: "apps/web/lambda/scheduled-publish/index.handler",
+        timeout: "5 minutes",
+        memory: "512 MB",
+        architecture: "arm64",
+        link: [web],
+        environment: {
+          API_URL: web.url,
+          CRON_SECRET: process.env.CRON_SECRET || '',
+        },
+        transform: {
+          function: {
+            kmsKeyArn: kmsKey.arn,
+          },
+        },
+        permissions: [
+          {
+            actions: ["kms:Decrypt"],
+            resources: [kmsKey.arn],
+          },
+        ],
+      },
+      schedule: "rate(5 minutes)",
+    });
+
+    console.log(`✓ Scheduled publish cron configured (every 5 minutes)`);
+
     // SNS Topic for CloudWatch Alarm Notifications (optional)
     // Configure email subscription via ALARM_EMAIL environment variable
     let alarmTopic: aws.sns.Topic | undefined;
