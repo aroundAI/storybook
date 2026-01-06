@@ -6,9 +6,9 @@ import { cn } from '@kit/ui/utils';
 
 import { generateLogoStyle } from '~/lib/branding-styles';
 
-// Direct imports for logo images - works in both local and production
-import logoLight from '~/public/images/logo-light.png';
-import logoDark from '~/public/images/logo-dark.png';
+// Logo paths from public folder - works in both local and production
+const LOGO_LIGHT_PATH = '/images/logo-light.png';
+const LOGO_DARK_PATH = '/images/logo-dark.png';
 
 function LogoContent({ className }: { className?: string }) {
   const config = getBrandingConfig();
@@ -22,7 +22,7 @@ function LogoContent({ className }: { className?: string }) {
     return (
       <>
         <Image
-          src={logoLight}
+          src={LOGO_LIGHT_PATH}
           alt={logo.text ?? 'Logo'}
           width={width}
           height={height}
@@ -30,7 +30,7 @@ function LogoContent({ className }: { className?: string }) {
           priority
         />
         <Image
-          src={logoDark}
+          src={LOGO_DARK_PATH}
           alt={logo.text ?? 'Logo'}
           width={width}
           height={height}
