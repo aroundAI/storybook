@@ -1,56 +1,22 @@
-import Link from 'next/link';
-
 import { Menu } from 'lucide-react';
 
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 import { NavigationMenu, NavigationMenuList } from '@kit/ui/navigation-menu';
-import { Trans } from '@kit/ui/trans';
 
-import { SiteNavigationItem } from './site-navigation-item';
-
-const links = {
-  Blog: {
-    label: 'marketing:blog',
-    path: '/blog',
-  },
-  Docs: {
-    label: 'marketing:documentation',
-    path: '/docs',
-  },
-  Pricing: {
-    label: 'marketing:pricing',
-    path: '/pricing',
-  },
-  FAQ: {
-    label: 'marketing:faq',
-    path: '/faq',
-  },
-  Contact: {
-    label: 'marketing:contact',
-    path: '/contact',
-  },
-};
+// Navigation links disabled for invite-only launch
+// To add links back, define them here and they will automatically appear
 
 export function SiteNavigation() {
-  const NavItems = Object.values(links).map((item) => {
-    return (
-      <SiteNavigationItem key={item.path} path={item.path}>
-        <Trans i18nKey={item.label} />
-      </SiteNavigationItem>
-    );
-  });
-
   return (
     <>
       <div className={'hidden items-center justify-center md:flex'}>
         <NavigationMenu>
           <NavigationMenuList className={'gap-x-2.5'}>
-            {NavItems}
+            {/* Navigation items will go here when ready */}
           </NavigationMenuList>
         </NavigationMenu>
       </div>
@@ -70,17 +36,7 @@ function MobileDropdown() {
       </DropdownMenuTrigger>
 
       <DropdownMenuContent className={'w-full'}>
-        {Object.values(links).map((item) => {
-          const className = 'flex w-full h-full items-center';
-
-          return (
-            <DropdownMenuItem key={item.path} asChild>
-              <Link className={className} href={item.path}>
-                <Trans i18nKey={item.label} />
-              </Link>
-            </DropdownMenuItem>
-          );
-        })}
+        {/* Mobile navigation items will go here when ready */}
       </DropdownMenuContent>
     </DropdownMenu>
   );

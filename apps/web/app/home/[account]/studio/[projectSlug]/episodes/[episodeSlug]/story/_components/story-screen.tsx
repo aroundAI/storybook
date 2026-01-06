@@ -70,7 +70,7 @@ export function StoryScreen({
   if (!storyData?.fullStory) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             No Story Generated
           </h2>
@@ -267,7 +267,7 @@ export function StoryScreen({
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           className={cn(
-            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-white/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-white/90 dark:border-gray-700/50 dark:bg-gray-800/70 dark:hover:bg-gray-800/90',
+            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',
           )}
         >
@@ -285,7 +285,7 @@ export function StoryScreen({
         {/* Sidebar Panel */}
         <div
           className={cn(
-            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-white/60 shadow-2xl backdrop-blur-xl transition-transform duration-300 dark:border-gray-700/30 dark:bg-gray-800/60',
+            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-card/60 shadow-2xl backdrop-blur-xl transition-transform duration-300',
             isSidebarExpanded ? 'translate-x-0' : 'translate-x-full',
           )}
         >
@@ -304,7 +304,7 @@ export function StoryScreen({
             <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-4">
                 {/* Story Details */}
-                <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                   <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                     Story Details
                   </h3>
@@ -354,7 +354,7 @@ export function StoryScreen({
 
                 {/* Act Breakdown */}
                 {storyData.actBreakdown && (
-                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Act Breakdown
                     </h3>
@@ -389,7 +389,7 @@ export function StoryScreen({
 
                 {/* Themes */}
                 {storyData.themes && storyData.themes.length > 0 && (
-                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Themes
                     </h3>
@@ -408,7 +408,7 @@ export function StoryScreen({
 
                 {/* Characters */}
                 {storyData.characters && storyData.characters.length > 0 && (
-                  <div className="rounded-xl bg-white/80 p-4 shadow-sm backdrop-blur-sm dark:bg-gray-800/80">
+                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                       <Users className="h-4 w-4" />
                       Characters

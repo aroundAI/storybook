@@ -284,8 +284,8 @@ export function DialogueTimeline({
   const getCharacterColor = (characterAssetId: string | null) => {
     return (
       characterColorMap[characterAssetId ?? ''] ?? {
-        bg: 'bg-gray-100 dark:bg-gray-800',
-        border: 'border-gray-200 dark:border-gray-700',
+        bg: 'bg-muted',
+        border: 'border-border',
         text: 'text-gray-900 dark:text-gray-100',
         dot: 'bg-gray-500',
       }
@@ -294,7 +294,7 @@ export function DialogueTimeline({
 
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-full flex-col bg-background">
         <div className="h-10 border-b bg-gray-100 dark:bg-black/20" />
         <div className="flex-1 space-y-4 p-4">
           {[...Array(5)].map((_, i) => (
@@ -326,7 +326,7 @@ export function DialogueTimeline({
   );
 
   return (
-    <div className="relative flex h-full flex-col bg-white dark:bg-gray-900">
+    <div className="relative flex h-full flex-col bg-card">
       {/* Playhead - fixed position */}
       <div className="pointer-events-none absolute top-0 bottom-0 left-[20px] z-20 flex w-0.5 flex-col items-center bg-black dark:bg-white">
         <div className="-mt-1.5 h-3 w-3 rotate-45 rounded-sm bg-black dark:bg-white" />

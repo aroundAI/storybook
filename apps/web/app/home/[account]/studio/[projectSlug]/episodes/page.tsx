@@ -122,7 +122,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   return (
     <>
       {/* Compact Header */}
-      <header className="border-b border-gray-200 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900">
+      <header className="border-b border-gray-200 bg-card px-6 py-4">
         <div className="mb-2">
           <Link
             href={`/home/${account}/studio/${project.slug}`}

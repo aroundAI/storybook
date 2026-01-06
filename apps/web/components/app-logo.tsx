@@ -6,9 +6,40 @@ import { cn } from '@kit/ui/utils';
 
 import { generateLogoStyle } from '~/lib/branding-styles';
 
+// Logo paths from public folder - works in both local and production
+const LOGO_LIGHT_PATH = '/images/logo-light.png';
+const LOGO_DARK_PATH = '/images/logo-dark.png';
+
 function LogoContent({ className }: { className?: string }) {
   const config = getBrandingConfig();
   const { logo } = config;
+
+  // Use image type by default with direct imports
+  if (logo.type === 'image' || !logo.type) {
+    const width = logo.width ?? 208;
+    const height = logo.height ?? 69;
+
+    return (
+      <>
+        <Image
+          src={LOGO_LIGHT_PATH}
+          alt={logo.text ?? 'Logo'}
+          width={width}
+          height={height}
+          className={cn('dark:hidden', className)}
+          priority
+        />
+        <Image
+          src={LOGO_DARK_PATH}
+          alt={logo.text ?? 'Logo'}
+          width={width}
+          height={height}
+          className={cn('hidden dark:block', className)}
+          priority
+        />
+      </>
+    );
+  }
 
   if (logo.type === 'text') {
     const logoStyles = generateLogoStyle(config);
@@ -24,46 +55,6 @@ function LogoContent({ className }: { className?: string }) {
         {logo.icon && <span className="text-3xl">{logo.icon}</span>}
         <span>{logo.text}</span>
       </span>
-    );
-  }
-
-  if (logo.type === 'image' && logo.imageUrl) {
-    const width = logo.width ?? 120;
-    const height = logo.height ?? 40;
-
-    return (
-      <>
-        {logo.imageUrl && (
-          <Image
-            src={logo.imageUrl}
-            alt={logo.text ?? 'Logo'}
-            width={width}
-            height={height}
-            className={cn('dark:hidden', className)}
-            priority
-          />
-        )}
-        {logo.imageDarkUrl && (
-          <Image
-            src={logo.imageDarkUrl}
-            alt={logo.text ?? 'Logo'}
-            width={width}
-            height={height}
-            className={cn('hidden dark:block', className)}
-            priority
-          />
-        )}
-        {!logo.imageDarkUrl && logo.imageUrl && (
-          <Image
-            src={logo.imageUrl}
-            alt={logo.text ?? 'Logo'}
-            width={width}
-            height={height}
-            className={cn('hidden dark:block', className)}
-            priority
-          />
-        )}
-      </>
     );
   }
 

@@ -565,7 +565,7 @@ export function VisualStudioScreen({
       {/* Main Content - Full width always */}
       <div className="flex h-full flex-col overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-black/5 bg-white/85 px-6 py-3 backdrop-blur-xl dark:border-white/5 dark:bg-gray-800/85">
+        <div className="flex items-center justify-between border-b border-black/5 bg-card/85 px-6 py-3 backdrop-blur-xl">
           <div className="flex items-center gap-4">
             <h2 className="font-semibold text-gray-900 dark:text-white">
               Visual Studio
@@ -623,7 +623,7 @@ export function VisualStudioScreen({
         </div>
 
         {/* Filters Bar */}
-        <div className="flex items-center gap-4 border-b border-black/5 bg-white/50 px-6 py-3 backdrop-blur-sm dark:border-white/5 dark:bg-gray-800/50">
+        <div className="flex items-center gap-4 border-b border-black/5 bg-card/50 px-6 py-3 backdrop-blur-sm">
           {/* Search */}
           <div className="relative max-w-xs flex-1">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />

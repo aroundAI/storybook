@@ -34,8 +34,8 @@ export const DEFAULT_LOGO = {
   fontWeight: 700,
   textColorLight: '#1a1a1a' as HexColor,
   textColorDark: '#ffffff' as HexColor,
-  width: 120,
-  height: 40,
+  width: 208,
+  height: 69,
 } as const;
 
 /**
