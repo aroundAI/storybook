@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef } from 'react';
  * @param callback The callback to debounce
  * @param delay Delay in milliseconds
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
     callback: T,
     delay: number
