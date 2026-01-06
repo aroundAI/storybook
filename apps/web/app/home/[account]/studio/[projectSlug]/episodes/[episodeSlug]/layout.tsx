@@ -130,6 +130,7 @@ async function EpisodeWorkspaceLayout({
     thumbnailUrl: episodeData.thumbnail_url,
     finalVideoUrl: episodeData.final_video_url,
     localizedVideos: (episodeData as { localized_videos?: Record<string, string> | null }).localized_videos ?? null,
+    localizedShorts: (episodeData as { localized_shorts?: Record<string, string> | null }).localized_shorts ?? null,
     storyData: episodeData.story_data as StoryData | null,
     screenplayData: episodeData.screenplay_data as ScreenplayData | null,
     shotList: episodeData.shot_list as ShotListData | null,

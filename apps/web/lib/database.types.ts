@@ -1322,6 +1322,7 @@ export type Database = {
           duration_seconds: number | null
           final_video_url: string | null
           id: string
+          localized_shorts: Json | null
           localized_videos: Json | null
           metadata: Json
           number: number
@@ -1345,6 +1346,7 @@ export type Database = {
           duration_seconds?: number | null
           final_video_url?: string | null
           id?: string
+          localized_shorts?: Json | null
           localized_videos?: Json | null
           metadata?: Json
           number: number
@@ -1368,6 +1370,7 @@ export type Database = {
           duration_seconds?: number | null
           final_video_url?: string | null
           id?: string
+          localized_shorts?: Json | null
           localized_videos?: Json | null
           metadata?: Json
           number?: number
@@ -3066,6 +3069,64 @@ export type Database = {
           },
         ]
       }
+      shot_transitions: {
+        Row: {
+          created_at: string
+          duration_seconds: number
+          episode_id: string
+          from_shot_id: string | null
+          id: string
+          parameters: Json | null
+          to_shot_id: string
+          transition_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number
+          episode_id: string
+          from_shot_id?: string | null
+          id?: string
+          parameters?: Json | null
+          to_shot_id: string
+          transition_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number
+          episode_id?: string
+          from_shot_id?: string | null
+          id?: string
+          parameters?: Json | null
+          to_shot_id?: string
+          transition_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shot_transitions_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_transitions_from_shot_id_fkey"
+            columns: ["from_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shot_transitions_to_shot_id_fkey"
+            columns: ["to_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shots: {
         Row: {
           action_description: string | null
@@ -3086,8 +3147,12 @@ export type Database = {
           shorts_candidate: boolean | null
           shorts_metadata: Json | null
           shot_number: number | null
+          source_duration: number | null
           status: string
           thumbnail_url: string | null
+          timeline_start_seconds: number | null
+          trim_in_point: number | null
+          trim_out_point: number | null
           updated_at: string
           video_url: string | null
         }
@@ -3110,8 +3175,12 @@ export type Database = {
           shorts_candidate?: boolean | null
           shorts_metadata?: Json | null
           shot_number?: number | null
+          source_duration?: number | null
           status?: string
           thumbnail_url?: string | null
+          timeline_start_seconds?: number | null
+          trim_in_point?: number | null
+          trim_out_point?: number | null
           updated_at?: string
           video_url?: string | null
         }
@@ -3134,8 +3203,12 @@ export type Database = {
           shorts_candidate?: boolean | null
           shorts_metadata?: Json | null
           shot_number?: number | null
+          source_duration?: number | null
           status?: string
           thumbnail_url?: string | null
+          timeline_start_seconds?: number | null
+          trim_in_point?: number | null
+          trim_out_point?: number | null
           updated_at?: string
           video_url?: string | null
         }
@@ -3275,94 +3348,6 @@ export type Database = {
             columns: ["billing_customer_id"]
             isOneToOne: false
             referencedRelation: "billing_customers"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      voice_consent: {
-        Row: {
-          consent_signature: string | null
-          consent_text: string
-          consent_type: string
-          consented_at: string
-          consenter_email: string | null
-          consenter_name: string
-          created_at: string
-          id: string
-          ip_address: unknown
-          updated_at: string
-          voice_profile_id: string
-        }
-        Insert: {
-          consent_signature?: string | null
-          consent_text: string
-          consent_type: string
-          consented_at?: string
-          consenter_email?: string | null
-          consenter_name: string
-          created_at?: string
-          id?: string
-          ip_address?: unknown
-          updated_at?: string
-          voice_profile_id: string
-        }
-        Update: {
-          consent_signature?: string | null
-          consent_text?: string
-          consent_type?: string
-          consented_at?: string
-          consenter_email?: string | null
-          consenter_name?: string
-          created_at?: string
-          id?: string
-          ip_address?: unknown
-          updated_at?: string
-          voice_profile_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voice_consent_voice_profile_id_fkey"
-            columns: ["voice_profile_id"]
-            isOneToOne: true
-            referencedRelation: "voice_profiles"
-            referencedColumns: ["asset_id"]
-          },
-        ]
-      }
-      voice_profiles: {
-        Row: {
-          asset_id: string
-          clone_metadata: Json | null
-          clone_samples: string[] | null
-          clone_status: string | null
-          provider: string
-          provider_voice_id: string | null
-          settings: Json
-        }
-        Insert: {
-          asset_id: string
-          clone_metadata?: Json | null
-          clone_samples?: string[] | null
-          clone_status?: string | null
-          provider: string
-          provider_voice_id?: string | null
-          settings?: Json
-        }
-        Update: {
-          asset_id?: string
-          clone_metadata?: Json | null
-          clone_samples?: string[] | null
-          clone_status?: string | null
-          provider?: string
-          provider_voice_id?: string | null
-          settings?: Json
-        }
-        Relationships: [
-          {
-            foreignKeyName: "voice_profiles_asset_id_fkey"
-            columns: ["asset_id"]
-            isOneToOne: true
-            referencedRelation: "assets"
             referencedColumns: ["id"]
           },
         ]

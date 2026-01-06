@@ -94,6 +94,7 @@ export function PublishHub({
         platforms: enabledPlatforms.map((p) => ({
           platform: p.platform,
           connectionId: p.connectionId,
+          contentType: 'full' as const, // Default to full video for legacy publish-hub
           title: p.title,
           description: p.description,
           tags: p.tags,

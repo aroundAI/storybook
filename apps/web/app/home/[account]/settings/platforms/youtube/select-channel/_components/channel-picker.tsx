@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 
 import { Youtube, Check, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@kit/ui/sonner';
 
 import { Button } from '@kit/ui/button';
 import { Card, CardContent } from '@kit/ui/card';
@@ -75,8 +75,8 @@ export function ChannelPicker({ channels, accountSlug }: ChannelPickerProps) {
                     <Card
                         key={channel.id}
                         className={`cursor-pointer transition-all ${selectedChannelId === channel.id
-                                ? 'ring-primary ring-2'
-                                : 'hover:border-primary/50'
+                            ? 'ring-primary ring-2'
+                            : 'hover:border-primary/50'
                             }`}
                         onClick={() => handleSelectChannel(channel.id)}
                     >

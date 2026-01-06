@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
     token_expires_at: string;
     scopes: string[];
     is_active: boolean;
-    metadata: Record<string, unknown>;
+    metadata: { [key: string]: string | number | boolean | null };
     updated_at: string;
   }> = [];
 
@@ -206,7 +206,7 @@ export async function GET(request: NextRequest) {
         is_active: true,
         metadata: {
           category: page.category,
-          picture_url: page.picture?.data?.url,
+          picture_url: page.picture?.data?.url ?? null,
           user_token_expires_at: expiresAt.toISOString(),
         },
         updated_at: new Date().toISOString(),
@@ -253,8 +253,8 @@ export async function GET(request: NextRequest) {
         is_active: true,
         metadata: {
           linked_page_id: page.id,
-          profile_picture_url: igAccount.profile_picture_url,
-          followers_count: igAccount.followers_count,
+          profile_picture_url: igAccount.profile_picture_url ?? null,
+          followers_count: igAccount.followers_count ?? null,
           user_token_expires_at: expiresAt.toISOString(),
         },
         updated_at: new Date().toISOString(),

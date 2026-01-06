@@ -12,6 +12,9 @@ export {
   publishToAllAction,
   getPublishStatusAction,
   retryPublishAction,
+  getEpisodePublishesAction,
+  deleteEpisodePublishesAction,
+  unpublishAction,
 } from './publish-actions';
 
 export { generateClipAction, getEpisodeClips } from './clip-actions';

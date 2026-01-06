@@ -3,6 +3,7 @@
 import 'server-only';
 
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -24,6 +25,37 @@ import { YouTubeProvider } from '../providers/youtube';
 import { getAccessToken } from './connection-actions';
 
 /**
+ * Replace localhost URLs with tunnel URL for external platform uploads.
+ * Platforms like Instagram, Facebook, and TikTok cannot fetch from localhost.
+ * Set TUNNEL_URL in .env.localprod (e.g., from ngrok or cloudflare tunnel).
+ */
+function getTunnelUrl(url: string): string {
+  const tunnelUrl = process.env.TUNNEL_URL;
+
+  if (!tunnelUrl) {
+    // No tunnel configured, return original URL
+    return url;
+  }
+
+  // Replace localhost URLs with tunnel URL
+  const localhostPatterns = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    'http://0.0.0.0:3000',
+  ];
+
+  for (const pattern of localhostPatterns) {
+    if (url.startsWith(pattern)) {
+      const newUrl = url.replace(pattern, tunnelUrl);
+      console.log(`[Tunnel] Replaced ${pattern} with ${tunnelUrl}`);
+      return newUrl;
+    }
+  }
+
+  return url;
+}
+
+/**
  * Publish video to all selected platforms
  */
 export const publishToAllAction = enhanceAction(
@@ -39,10 +71,10 @@ export const publishToAllAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    // Get episode video
+    // Get episode video - fetch localized videos for multi-language support
     const { data: episode, error: episodeError } = await client
       .from('episodes')
-      .select('final_video_url, thumbnail_url, project_id')
+      .select('final_video_url, thumbnail_url, project_id, localized_videos, localized_shorts')
       .eq('id', episodeId)
       .single();
 
@@ -51,12 +83,18 @@ export const publishToAllAction = enhanceAction(
       throw new Error('Episode not found');
     }
 
-    if (!episode.final_video_url) {
-      logger.error(ctx, 'Episode video not ready');
-      throw new Error('Episode video not ready for publishing');
-    }
+    // Support both legacy final_video_url and new localized_videos
+    const localizedVideos = (episode.localized_videos as Record<string, string> | null) ?? {};
+    const localizedShorts = (episode.localized_shorts as Record<string, string> | null) ?? {};
+    const hasAnyVideos =
+      !!episode.final_video_url ||
+      Object.keys(localizedVideos).length > 0 ||
+      Object.keys(localizedShorts).length > 0;
 
-    const finalVideoUrl = episode.final_video_url;
+    if (!hasAnyVideos) {
+      logger.error(ctx, 'Episode video not ready');
+      throw new Error('No videos available for publishing. Upload videos first.');
+    }
 
     // Publish to all platforms in parallel
     const results = await Promise.allSettled(
@@ -154,6 +192,37 @@ export const publishToAllAction = enhanceAction(
             'Created publish record, starting upload',
           );
 
+          // Determine which video URL to use based on contentType from client
+          // Client explicitly tells us if this is a full video or shorts publish
+          const isShortsPreferred = platform.contentType === 'short';
+
+          let videoUrl: string | null = null;
+          const lang = publishLanguage;
+
+          if (isShortsPreferred) {
+            // Try shorts first, fall back to full video
+            videoUrl = localizedShorts[lang] ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+          } else {
+            // Try full video first, fall back to shorts
+            videoUrl = localizedVideos[lang] ?? localizedShorts[lang] ?? episode.final_video_url ?? null;
+          }
+
+          if (!videoUrl) {
+            throw new Error(`No video available for language: ${lang}`);
+          }
+
+          // Update content_type based on what we're actually publishing
+          const actualContentType = (localizedShorts[lang] && isShortsPreferred) ? 'short' : 'full';
+          await client
+            .from('publishes')
+            .update({ content_type: actualContentType })
+            .eq('id', publish.id);
+
+          // Apply tunnel URL for external platforms (Instagram, Facebook, TikTok)
+          // YouTube uses direct byte upload so doesn't need tunneling
+          const needsTunnel = ['instagram', 'facebook', 'tiktok'].includes(platform.platform);
+          const finalVideoUrl = needsTunnel ? getTunnelUrl(videoUrl) : videoUrl;
+
           // Upload to platform (immediately or with native scheduling)
           const uploadResult = await uploadToPlatform(
             platform.platform,
@@ -168,6 +237,7 @@ export const publishToAllAction = enhanceAction(
               scheduledAt: platform.scheduledAt
                 ? new Date(platform.scheduledAt)
                 : undefined,
+              isShort: isShortsPreferred,
               platformSpecific: platform.platformSpecific,
             },
           );
@@ -244,8 +314,8 @@ export const publishToAllAction = enhanceAction(
       };
     });
 
-    // Revalidate episode page
-    revalidatePath(`/home/[account]/studio/[projectId]/episodes/${episodeId}`);
+    // Revalidate episode page - use 'page' type for dynamic routes
+    revalidatePath('/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish', 'page');
 
     logger.info(
       {
@@ -469,12 +539,13 @@ async function uploadToPlatform(
     tags: string[];
     thumbnailUrl?: string | null;
     scheduledAt?: Date;
+    isShort?: boolean;
     platformSpecific: Record<string, unknown>;
   },
 ): Promise<{ contentId: string; url: string }> {
   switch (platform) {
     case 'youtube':
-      return uploadToYouTube(accessToken, options);
+      return uploadToYouTube(accessToken, { ...options, isShort: options.isShort ?? false });
     case 'tiktok':
       return uploadToTikTok(accessToken, options);
     case 'instagram':
@@ -499,14 +570,28 @@ async function uploadToYouTube(
     tags: string[];
     thumbnailUrl?: string | null;
     scheduledAt?: Date;
+    isShort?: boolean;
     platformSpecific: Record<string, unknown>;
   },
 ): Promise<{ contentId: string; url: string }> {
   const provider = new YouTubeProvider(accessToken);
+
+  // For YouTube Shorts, add #Shorts hashtag to title and description
+  let title = options.title;
+  let description = options.description;
+  if (options.isShort) {
+    if (!title.toLowerCase().includes('#shorts')) {
+      title = `${title} #Shorts`;
+    }
+    if (!description.toLowerCase().includes('#shorts')) {
+      description = `${description}\n\n#Shorts`;
+    }
+  }
+
   const result = await provider.uploadVideo({
     videoPath: options.videoUrl,
-    title: options.title,
-    description: options.description,
+    title,
+    description,
     tags: options.tags,
     categoryId: (options.platformSpecific.categoryId as string) ?? '22',
     privacy:
@@ -586,7 +671,17 @@ async function uploadToFacebook(
     scheduledPublishTime: options.scheduledAt,
   });
 
-  return { contentId: result.videoId, url: result.videoUrl ?? '' };
+  // Fetch the video URL from Facebook after upload
+  let videoUrl = '';
+  try {
+    const status = await provider.getVideoStatus(result.videoId);
+    videoUrl = status.videoUrl ?? `https://www.facebook.com/watch/?v=${result.videoId}`;
+  } catch {
+    // Fallback to constructed URL if status fetch fails
+    videoUrl = `https://www.facebook.com/watch/?v=${result.videoId}`;
+  }
+
+  return { contentId: result.videoId, url: videoUrl };
 }
 
 async function uploadToTwitter(
@@ -625,3 +720,282 @@ async function uploadToLinkedIn(
 
   return { contentId: result.postUrn, url: result.postUrl ?? '' };
 }
+
+/**
+ * Get all publishes for an episode with analytics
+ */
+export const getEpisodePublishesAction = enhanceAction(
+  async ({ episodeId }, _user) => {
+    const client = getSupabaseServerClient();
+
+    const { data: publishes, error } = await client
+      .from('publishes')
+      .select(`
+        id,
+        platform,
+        content_type,
+        status,
+        title,
+        description,
+        platform_content_id,
+        platform_url,
+        language,
+        scheduled_at,
+        published_at,
+        created_at,
+        metadata,
+        platform_connections (
+          platform_account_name
+        ),
+        content_analytics (
+          views,
+          likes,
+          comments,
+          shares,
+          watch_time_seconds
+        )
+      `)
+      .eq('episode_id', episodeId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw new Error(`Failed to fetch episode publishes: ${error.message}`);
+    }
+
+    return (publishes ?? []).map((p) => {
+      // Get latest analytics snapshot
+      const analytics = (p.content_analytics as Array<{
+        views: number;
+        likes: number;
+        comments: number;
+        shares: number;
+        watch_time_seconds: number;
+      }> | null)?.[0];
+
+      return {
+        id: p.id,
+        platform: p.platform as Platform,
+        contentType: p.content_type as 'full' | 'short' | 'teaser' | 'trailer',
+        status: p.status as 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed',
+        title: p.title,
+        platformContentId: p.platform_content_id,
+        platformUrl: p.platform_url,
+        language: (p as Record<string, unknown>).language as string ?? 'en',
+        channelName: (p.platform_connections as { platform_account_name: string } | null)?.platform_account_name ?? 'Unknown',
+        scheduledAt: p.scheduled_at,
+        publishedAt: p.published_at,
+        createdAt: p.created_at,
+        analytics: analytics ? {
+          views: analytics.views,
+          likes: analytics.likes,
+          comments: analytics.comments,
+          shares: analytics.shares,
+          watchTimeSeconds: analytics.watch_time_seconds,
+        } : null,
+        error: (p.metadata as { error?: string } | null)?.error,
+      };
+    });
+  },
+  {
+    schema: GetPublishStatusSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Deletes all publish records for an episode AND removes content from platforms
+ * Used for cleanup/testing purposes
+ */
+export const deleteEpisodePublishesAction = enhanceAction(
+  async ({ episodeId }, _user) => {
+    const logger = await getLogger();
+    const ctx = { name: 'publishing.deleteEpisodePublishes', episodeId };
+
+    logger.info(ctx, 'Deleting all publish records for episode');
+
+    const client = getSupabaseServerClient();
+
+    // Fetch all publishes with platform details for deletion
+    const { data: publishes } = await client
+      .from('publishes')
+      .select('id, platform, platform_content_id, platform_connection_id')
+      .eq('episode_id', episodeId);
+
+    if (!publishes || publishes.length === 0) {
+      logger.info(ctx, 'No publish records to delete');
+      return { success: true, deletedCount: 0, platformErrors: [] };
+    }
+
+    const platformErrors: string[] = [];
+
+    // Delete from each platform before removing database records
+    for (const pub of publishes) {
+      const contentId = pub.platform_content_id;
+      const platform = pub.platform as Platform;
+
+      if (contentId && pub.platform_connection_id) {
+        try {
+          const tokenResult = await getAccessToken(pub.platform_connection_id);
+          if (tokenResult.accessToken) {
+            const accessToken = tokenResult.accessToken;
+
+            switch (platform) {
+              case 'youtube': {
+                const yt = new YouTubeProvider(accessToken);
+                await yt.deleteVideo(contentId);
+                logger.info({ ...ctx, platform, contentId }, 'Deleted from YouTube');
+                break;
+              }
+              case 'facebook': {
+                // Get page ID from connection
+                const { data: conn } = await client
+                  .from('platform_connections')
+                  .select('platform_account_id')
+                  .eq('id', pub.platform_connection_id)
+                  .single();
+                const pageId = conn?.platform_account_id ?? '';
+                const fb = new FacebookProvider(accessToken, pageId);
+                await fb.deleteVideo(contentId);
+                logger.info({ ...ctx, platform, contentId }, 'Deleted from Facebook');
+                break;
+              }
+              case 'instagram':
+              case 'tiktok':
+              case 'twitter':
+              case 'linkedin':
+                // These platforms may not support deletion via API
+                logger.warn(
+                  { ...ctx, platform },
+                  'Platform may not support API deletion',
+                );
+                break;
+            }
+          }
+        } catch (deleteError) {
+          const errorMsg = `Failed to delete ${platform} content ${contentId}: ${deleteError instanceof Error ? deleteError.message : 'Unknown error'}`;
+          logger.warn({ ...ctx, error: deleteError, platform }, errorMsg);
+          platformErrors.push(errorMsg);
+          // Continue - we still want to remove from database
+        }
+      }
+    }
+
+    // Delete analytics for these publishes
+    const publishIds = publishes.map((p) => p.id);
+    await client.from('content_analytics').delete().in('publish_id', publishIds);
+
+    // Delete publish records
+    const { error } = await client
+      .from('publishes')
+      .delete()
+      .eq('episode_id', episodeId);
+
+    if (error) {
+      logger.error({ ...ctx, error }, 'Failed to delete publish records');
+      throw new Error(`Failed to delete publish records: ${error.message}`);
+    }
+
+    logger.info({ ...ctx, count: publishes.length, platformErrors: platformErrors.length }, 'Deleted publish records');
+
+    return { success: true, deletedCount: publishes.length, platformErrors };
+  },
+  {
+    schema: GetPublishStatusSchema,
+    auth: true,
+  },
+);
+
+/**
+ * Unpublish a single publish record - deletes from platform AND database
+ */
+export const unpublishAction = enhanceAction(
+  async ({ publishId }, _user) => {
+    const logger = await getLogger();
+    const ctx = { name: 'publishing.unpublish', publishId };
+
+    logger.info(ctx, 'Unpublishing content from platform');
+
+    const client = getSupabaseServerClient();
+
+    // Get the publish record with connection info
+    const { data: publish, error: fetchError } = await client
+      .from('publishes')
+      .select('*, platform_connections(id, platform_account_id)')
+      .eq('id', publishId)
+      .single();
+
+    if (fetchError || !publish) {
+      logger.error({ ...ctx, error: fetchError }, 'Publish record not found');
+      throw new Error('Publish record not found');
+    }
+
+    const platform = publish.platform as Platform;
+    const contentId = publish.platform_content_id;
+
+    // Try to delete from platform if we have a content ID
+    if (contentId && publish.platform_connection_id) {
+      try {
+        const tokenResult = await getAccessToken(publish.platform_connection_id);
+        if (tokenResult.accessToken) {
+          const accessToken = tokenResult.accessToken;
+
+          switch (platform) {
+            case 'youtube': {
+              const yt = new YouTubeProvider(accessToken);
+              await yt.deleteVideo(contentId);
+              logger.info({ ...ctx, platform }, 'Deleted from YouTube');
+              break;
+            }
+            case 'facebook': {
+              const pageId =
+                (publish.platform_connections as { platform_account_id?: string })
+                  ?.platform_account_id ?? '';
+              const fb = new FacebookProvider(accessToken, pageId);
+              await fb.deleteVideo(contentId);
+              logger.info({ ...ctx, platform }, 'Deleted from Facebook');
+              break;
+            }
+            case 'instagram':
+            case 'tiktok':
+            case 'twitter':
+            case 'linkedin':
+              // These platforms may not support deletion via API or have different flows
+              logger.warn(
+                { ...ctx, platform },
+                'Platform may not support API deletion, removing from database only',
+              );
+              break;
+          }
+        }
+      } catch (deleteError) {
+        // Log but continue - we still want to remove from our database
+        logger.warn(
+          { ...ctx, error: deleteError, platform },
+          'Failed to delete from platform, removing from database only',
+        );
+      }
+    }
+
+    // Delete analytics first
+    await client.from('content_analytics').delete().eq('publish_id', publishId);
+
+    // Delete publish record
+    const { error: deleteError } = await client
+      .from('publishes')
+      .delete()
+      .eq('id', publishId);
+
+    if (deleteError) {
+      logger.error({ ...ctx, error: deleteError }, 'Failed to delete publish record');
+      throw new Error(`Failed to delete publish record: ${deleteError.message}`);
+    }
+
+    logger.info(ctx, 'Unpublished successfully');
+
+    return { success: true };
+  },
+  {
+    schema: z.object({ publishId: z.string().uuid() }),
+    auth: true,
+  },
+);

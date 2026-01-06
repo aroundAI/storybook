@@ -307,6 +307,11 @@ export const updateShotAction = enhanceAction(
     if (data.trimOutPoint !== undefined) updates.trim_out_point = data.trimOutPoint;
     if (data.sourceDuration !== undefined) updates.source_duration = data.sourceDuration;
 
+    // Timeline positioning
+    if (data.timelineStartSeconds !== undefined) {
+      updates.timeline_start_seconds = data.timelineStartSeconds;
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: shot, error } = await (client as any)
       .from('shots')

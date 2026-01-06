@@ -13,7 +13,7 @@ export * from '../lib/server/mutations/shot-list-actions';
 
 // Season CRUD actions (FILM-302)
 export * from '../lib/server/mutations/season-actions';
-
+export * from './captions-actions';
 // Auto-stitch action (FILM-604)
 export * from './auto-stitch-action';
 
@@ -31,3 +31,6 @@ export * from './intro-actions';
 
 // Episode Thumbnail actions
 export * from './thumbnail-actions';
+
+// Publish actions
+export * from '../lib/server/mutations/publish-actions';

@@ -142,11 +142,11 @@ export const updateProjectPublishingConfigsAction = enhanceAction(
                 .select('id')
                 .eq('project_id', input.projectId);
 
-            const existingIds = new Set((existing ?? []).map((e: { id: string }) => e.id));
+            const existingIds = new Set<string>((existing ?? []).map((e: { id: string }) => e.id));
             const inputIds = new Set(input.configs.filter((c) => c.id).map((c) => c.id));
 
             // Delete removed configs
-            const toDelete = [...existingIds].filter((id) => !inputIds.has(id));
+            const toDelete = [...existingIds].filter((id) => !inputIds.has(id)) as string[];
             if (toDelete.length > 0) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 await (client as any)

@@ -714,3 +714,56 @@ export const updateDialogueTextAction = enhanceAction(
     }),
   },
 );
+/**
+ * Update the timing of a dialogue line (timeline position and duration)
+ */
+export const updateDialogueTimingAction = enhanceAction(
+  async (data: {
+    dialogueLineId: string;
+    timelineStartSeconds?: number;
+    durationSeconds?: number;
+  }): Promise<{ success: boolean; dialogueLineId: string }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'dialogue.updateTiming',
+      dialogueLineId: data.dialogueLineId,
+    };
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    const updatePayload: Record<string, unknown> = {};
+    if (data.timelineStartSeconds !== undefined) {
+      updatePayload.timeline_start_seconds = data.timelineStartSeconds;
+    }
+    // Note: duration is usually determined by generation, but we might want to override or store estimated
+    if (data.durationSeconds !== undefined) {
+      updatePayload.estimated_duration_seconds = data.durationSeconds;
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('dialogue_lines')
+      .update(updatePayload)
+      .eq('id', data.dialogueLineId);
+
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to update dialogue timing');
+      throw new Error('Failed to update dialogue timing');
+    }
+
+    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+    return { success: true, dialogueLineId: data.dialogueLineId };
+  },
+  {
+    schema: z.object({
+      dialogueLineId: z.string().uuid(),
+      timelineStartSeconds: z.number().min(0).optional(),
+      durationSeconds: z.number().positive().optional(),
+    }),
+  },
+);

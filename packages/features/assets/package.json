@@ -30,7 +30,7 @@
     "./character/queries": "./src/lib/server/character.queries.ts"
   },
   "devDependencies": {
-    "@hookform/resolvers": "^5.2.2",
+    "@hookform/resolvers": "^4.1.3",
     "@kit/eslint-config": "workspace:*",
     "@kit/prettier-config": "workspace:*",
     "@kit/tsconfig": "workspace:*",

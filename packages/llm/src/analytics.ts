@@ -106,6 +106,14 @@ export interface LLMUsageEvent {
 }
 
 /**
+ * Check if a string is a valid UUID
+ */
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+/**
  * Log LLM usage to database for analytics
  *
  * Non-blocking - analytics failure won't break LLM operations.
@@ -134,9 +142,13 @@ export async function logLLMUsage(
   event: LLMUsageEvent,
 ): Promise<void> {
   try {
+    // Validate UUIDs - if invalid, use null to avoid database errors
+    const accountId = isValidUUID(event.accountId) ? event.accountId : null;
+    const userId = event.userId && isValidUUID(event.userId) ? event.userId : null;
+
     const { error } = await client.from('llm_usage_analytics').insert({
-      account_id: event.accountId,
-      user_id: event.userId,
+      account_id: accountId,
+      user_id: userId,
       template_slug: event.templateSlug,
       operation_name: event.operationName,
       llm_provider: event.llmProvider,

@@ -193,6 +193,8 @@ export const UpdateShotSchema = z.object({
   trimInPoint: z.number().min(0).optional().nullable(),
   trimOutPoint: z.number().min(0).optional().nullable(),
   sourceDuration: z.number().positive().optional().nullable(),
+  // Timeline positioning
+  timelineStartSeconds: z.number().min(0).optional(),
 });
 
 /**

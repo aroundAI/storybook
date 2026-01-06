@@ -213,13 +213,57 @@ export const getEpisodeWithShotsAction = enhanceAction(
 
     logger.info(ctx, 'Episode fetched with shots');
 
+    // Transform snake_case database fields to camelCase TypeScript properties
+    const transformedEpisode: EpisodeWithShots = {
+      id: episode.id,
+      slug: episode.slug,
+      projectId: episode.project_id,
+      seasonId: episode.season_id,
+      number: episode.number,
+      title: episode.title,
+      description: episode.description,
+      status: episode.status,
+      durationSeconds: episode.duration_seconds,
+      thumbnailUrl: episode.thumbnail_url,
+      finalVideoUrl: episode.final_video_url,
+      localizedVideos: episode.localized_videos ?? null,
+      localizedShorts: episode.localized_shorts ?? null,
+      storyData: episode.story_data,
+      screenplayData: episode.screenplay_data,
+      shotList: episode.shot_list,
+      metadata: episode.metadata,
+      version: episode.version,
+      createdAt: episode.created_at,
+      updatedAt: episode.updated_at,
+      deletedAt: episode.deleted_at,
+      shots: (shots ?? []).map((shot: Record<string, unknown>) => ({
+        id: shot.id,
+        episodeId: shot.episode_id,
+        sceneNumber: shot.scene_number,
+        shotNumber: shot.shot_number,
+        sequenceNumber: shot.sequence_number,
+        durationSeconds: shot.duration_seconds,
+        sceneDescription: shot.scene_description,
+        actionDescription: shot.action_description,
+        prompt: shot.prompt,
+        cameraDirection: shot.camera_direction,
+        status: shot.status,
+        videoUrl: shot.video_url,
+        thumbnailUrl: shot.thumbnail_url,
+        firstFrameUrl: shot.first_frame_url,
+        lastFrameUrl: shot.last_frame_url,
+        generationJobId: shot.generation_job_id,
+        generationMetadata: shot.generation_metadata,
+        createdAt: shot.created_at,
+        updatedAt: shot.updated_at,
+        deletedAt: shot.deleted_at,
+      })),
+      season: episode.season?.[0] ?? null,
+    };
+
     return {
       success: true,
-      data: {
-        ...episode,
-        shots: shots ?? [],
-        season: episode.season?.[0] ?? null,
-      } as EpisodeWithShots,
+      data: transformedEpisode,
     };
   },
   {

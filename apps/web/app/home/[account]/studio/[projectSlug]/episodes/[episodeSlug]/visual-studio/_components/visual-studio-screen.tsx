@@ -370,8 +370,16 @@ export function VisualStudioScreen({
         ([a], [b]) => parseInt(a) - parseInt(b)
       );
 
-      // Track fetched images to avoid duplicates
-      const fetchedImages = new Map<string, Blob>();
+      // Track fetched images to avoid duplicates or 429s
+      const fetchedAssets = new Map<string, Blob>();
+
+      // Metadata for FCP import
+      const fcpMetadata: Array<{
+        scene: number;
+        shot: number;
+        duration: number;
+        filename: string;
+      }> = [];
 
       for (const [sceneNum, sceneShots] of sortedScenes) {
         const sceneFolder = zip.folder(`Scene-${sceneNum}`);
@@ -392,13 +400,35 @@ export function VisualStudioScreen({
           const promptMd = generatePromptMd(shot);
           shotFolder.file('prompt.md', promptMd);
 
+          // 1. DOWNLOAD VIDEO (Critical for FCP)
+          if (shot.videoUrl) {
+            let blob = fetchedAssets.get(shot.videoUrl);
+            if (!blob) {
+              blob = (await fetchImageAsBlob(shot.videoUrl)) ?? undefined;
+              if (blob) {
+                fetchedAssets.set(shot.videoUrl, blob);
+              }
+            }
+            if (blob) {
+              const videoFilename = `shot-${sceneNum}-${shot.shotNumber}.mp4`;
+              shotFolder.file(videoFilename, blob);
+
+              fcpMetadata.push({
+                scene: Number(sceneNum),
+                shot: Number(shot.shotNumber),
+                duration: Number(shot.duration),
+                filename: videoFilename,
+              });
+            }
+          }
+
           // Add storyboard frames (first and last frame images)
           if (shot.firstFrameUrl) {
-            let blob = fetchedImages.get(shot.firstFrameUrl);
+            let blob = fetchedAssets.get(shot.firstFrameUrl);
             if (!blob) {
               blob = (await fetchImageAsBlob(shot.firstFrameUrl)) ?? undefined;
               if (blob) {
-                fetchedImages.set(shot.firstFrameUrl, blob);
+                fetchedAssets.set(shot.firstFrameUrl, blob);
               }
             }
             if (blob) {
@@ -407,11 +437,11 @@ export function VisualStudioScreen({
           }
 
           if (shot.lastFrameUrl) {
-            let blob = fetchedImages.get(shot.lastFrameUrl);
+            let blob = fetchedAssets.get(shot.lastFrameUrl);
             if (!blob) {
               blob = (await fetchImageAsBlob(shot.lastFrameUrl)) ?? undefined;
               if (blob) {
-                fetchedImages.set(shot.lastFrameUrl, blob);
+                fetchedAssets.set(shot.lastFrameUrl, blob);
               }
             }
             if (blob) {
@@ -434,11 +464,11 @@ export function VisualStudioScreen({
             // Use reference images from metadata
             for (const img of metadata.referenceImages.characters) {
               const filename = `character-${sanitizeName(img.name)}.png`;
-              let blob = fetchedImages.get(img.url);
+              let blob = fetchedAssets.get(img.url);
               if (!blob) {
                 blob = (await fetchImageAsBlob(img.url)) ?? undefined;
                 if (blob) {
-                  fetchedImages.set(img.url, blob);
+                  fetchedAssets.set(img.url, blob);
                 }
               }
               if (blob) {
@@ -453,11 +483,11 @@ export function VisualStudioScreen({
               );
               if (asset?.fileUrl) {
                 const filename = `character-${sanitizeName(charName)}.png`;
-                let blob = fetchedImages.get(asset.fileUrl);
+                let blob = fetchedAssets.get(asset.fileUrl);
                 if (!blob) {
                   blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
                   if (blob) {
-                    fetchedImages.set(asset.fileUrl, blob);
+                    fetchedAssets.set(asset.fileUrl, blob);
                   }
                 }
                 if (blob) {
@@ -472,11 +502,11 @@ export function VisualStudioScreen({
             // Use reference images from metadata
             for (const img of metadata.referenceImages.locations) {
               const filename = `location-${sanitizeName(img.name)}.png`;
-              let blob = fetchedImages.get(img.url);
+              let blob = fetchedAssets.get(img.url);
               if (!blob) {
                 blob = (await fetchImageAsBlob(img.url)) ?? undefined;
                 if (blob) {
-                  fetchedImages.set(img.url, blob);
+                  fetchedAssets.set(img.url, blob);
                 }
               }
               if (blob) {
@@ -491,11 +521,11 @@ export function VisualStudioScreen({
               );
               if (asset?.fileUrl) {
                 const filename = `location-${sanitizeName(locName)}.png`;
-                let blob = fetchedImages.get(asset.fileUrl);
+                let blob = fetchedAssets.get(asset.fileUrl);
                 if (!blob) {
                   blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
                   if (blob) {
-                    fetchedImages.set(asset.fileUrl, blob);
+                    fetchedAssets.set(asset.fileUrl, blob);
                   }
                 }
                 if (blob) {
@@ -506,6 +536,9 @@ export function VisualStudioScreen({
           }
         }
       }
+
+      // Add Metadata Manifest for FCP automation
+      zip.file('fcp-import-manifest.json', JSON.stringify(fcpMetadata, null, 2));
 
       // Generate and download ZIP
       const content = await zip.generateAsync({ type: 'blob' });

@@ -347,15 +347,19 @@ function ConnectionRow({
               <ConnectionStatusBadge status={connection.status} />
             </div>
             <p className="text-muted-foreground text-xs">
-              <Trans
-                i18nKey="platforms:connectedTimeAgo"
-                defaults="Connected {time}"
-                values={{
-                  time: formatDistanceToNow(new Date(connection.createdAt), {
-                    addSuffix: true,
-                  }),
-                }}
-              />
+              {connection.createdAt && !isNaN(new Date(connection.createdAt).getTime()) ? (
+                <Trans
+                  i18nKey="platforms:connectedTimeAgo"
+                  defaults="Connected {time}"
+                  values={{
+                    time: formatDistanceToNow(new Date(connection.createdAt), {
+                      addSuffix: true,
+                    }),
+                  }}
+                />
+              ) : (
+                <Trans i18nKey="platforms:connected" defaults="Connected" />
+              )}
             </p>
           </div>
         </div>

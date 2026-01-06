@@ -1,120 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-
-import { Globe, Loader2, Settings, Share2 } from 'lucide-react';
-
-import { EpisodePublishingConfigs, PublishHub } from '@kit/publishing/components';
-import {
-  getAccountPlatformConnections,
-  getEpisodePublishingConfigs,
-  type EpisodePublishingConfig,
-  type PlatformConnection,
-} from '@kit/publishing/server';
-import { Button } from '@kit/ui/button';
-
 import { useEpisodeContext } from '../_components/episode-context-provider';
-import { EpisodeThumbnailSettings } from '../_components/episode-thumbnail-settings';
-import { getEpisodeThumbnailsAction, type EpisodeThumbnail } from '@kit/episodes/server';
-
-type SupportedLanguage = 'en' | 'hi' | 'es' | 'pt';
-
-const LANG_INFO: Record<SupportedLanguage, { name: string; flag: string }> = {
-  en: { name: 'English', flag: '🇺🇸' },
-  hi: { name: 'Hindi', flag: '🇮🇳' },
-  es: { name: 'Spanish', flag: '🇪🇸' },
-  pt: { name: 'Portuguese', flag: '🇧🇷' },
-};
+import { PublishScreen } from './_components/publish-screen';
 
 export default function PublishPage() {
-  const { episode, projectId, accountSlug, accountId } = useEpisodeContext();
+  const { episode, refetchEpisode, accountSlug, accountId } = useEpisodeContext();
 
-  // Publishing configs state
-  const [showDestinations, setShowDestinations] = useState(false);
-  const [showThumbnailSettings, setShowThumbnailSettings] = useState(false);
-  const [configs, setConfigs] = useState<EpisodePublishingConfig[]>([]);
-  const [connections, setConnections] = useState<PlatformConnection[]>([]);
-  const [loadingConfigs, setLoadingConfigs] = useState(false);
-
-  // Episode thumbnails state
-  const [thumbnails, setThumbnails] = useState<EpisodeThumbnail[]>([]);
-
-  // Load publishing configs when destinations panel opens
-  useEffect(() => {
-    if (showDestinations && configs.length === 0) {
-      setLoadingConfigs(true);
-      Promise.all([
-        getEpisodePublishingConfigs(episode.id),
-        getAccountPlatformConnections(accountId),
-      ])
-        .then(([configsData, connectionsData]) => {
-          setConfigs(configsData);
-          setConnections(connectionsData);
-        })
-        .catch(console.error)
-        .finally(() => setLoadingConfigs(false));
-    }
-  }, [showDestinations, episode.id, accountId, configs.length]);
-
-  // Load thumbnails on mount
-  useEffect(() => {
-    getEpisodeThumbnailsAction({ episodeId: episode.id })
-      .then((result) => {
-        if (result.success && result.thumbnails) {
-          setThumbnails(result.thumbnails);
-        }
-      })
-      .catch(console.error);
-  }, [episode.id]);
-
-  // Get available localized videos
-  const localizedVideos = (episode.localizedVideos ?? {}) as Record<string, string>;
-  const availableLanguages = Object.keys(localizedVideos) as SupportedLanguage[];
-
-  // Include English from finalVideoUrl if not in localizedVideos
-  if (episode.finalVideoUrl && !localizedVideos['en']) {
-    localizedVideos['en'] = episode.finalVideoUrl;
-    if (!availableLanguages.includes('en')) {
-      availableLanguages.unshift('en');
-    }
-  }
-
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>(
-    availableLanguages[0] ?? 'en'
+  // Unlock condition: Has completed shots (meaning assets are ready for export)
+  const hasCompletedShots = Boolean(
+    episode.shots && episode.shots.length > 0
   );
 
-  // Get the thumbnail for the selected language (with fallback)
-  const getThumbnailForLanguage = (lang: string): string | undefined => {
-    // Try language-specific thumbnail
-    const langThumbnail = thumbnails.find((t) => t.language === lang);
-    if (langThumbnail) return langThumbnail.thumbnailUrl;
-
-    // Try default thumbnail
-    const defaultThumbnail = thumbnails.find((t) => t.isDefault);
-    if (defaultThumbnail) return defaultThumbnail.thumbnailUrl;
-
-    // Fallback to episode thumbnail
-    return episode.thumbnailUrl ?? undefined;
-  };
-
-  const currentVideoUrl = localizedVideos[selectedLanguage] ?? episode.finalVideoUrl;
-  const currentThumbnailUrl = getThumbnailForLanguage(selectedLanguage);
-  const hasFinalVideo = currentVideoUrl !== null && currentVideoUrl !== undefined;
-
-  if (!hasFinalVideo) {
+  if (!hasCompletedShots) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
         <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-700">
-            <Share2 className="h-8 w-8 text-gray-400" />
-          </div>
+          <div className="mb-4 text-4xl">🔒</div>
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
-            Publish Hub Locked
+            Publishing Locked
           </h2>
           <p className="max-w-md text-gray-500 dark:text-gray-400">
-            Export your final video from the Editing Studio to unlock
-            multi-platform publishing. Once your video is ready, you can publish
-            it to YouTube, TikTok, Instagram, and more.
+            Generate your shots in Visual Studio to unlock exporting and publishing.
           </p>
         </div>
       </div>
@@ -122,103 +28,14 @@ export default function PublishPage() {
   }
 
   return (
-    <div className="h-full overflow-auto p-6">
-      {/* Publishing Destinations Toggle */}
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {/* Language Selector (when multiple localized videos exist) */}
-          {availableLanguages.length > 1 && (
-            <>
-              <Globe className="h-5 w-5 text-gray-500" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Select video language:
-              </span>
-              <div className="flex gap-2">
-                {availableLanguages.map((lang) => (
-                  <Button
-                    key={lang}
-                    variant={selectedLanguage === lang ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setSelectedLanguage(lang)}
-                    className="gap-1.5"
-                  >
-                    <span>{LANG_INFO[lang]?.flag ?? '🌐'}</span>
-                    {LANG_INFO[lang]?.name ?? lang}
-                  </Button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowThumbnailSettings(!showThumbnailSettings)}
-            className="gap-2"
-          >
-            {showThumbnailSettings ? 'Hide' : 'Manage'} Thumbnails
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowDestinations(!showDestinations)}
-            className="gap-2"
-          >
-            <Settings className="h-4 w-4" />
-            {showDestinations ? 'Hide' : 'Configure'} Destinations
-          </Button>
-        </div>
-      </div>
-
-      {/* Current Language Badge */}
-      {availableLanguages.length > 1 && (
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-indigo-50 px-3 py-1 text-sm text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300">
-          <span>{LANG_INFO[selectedLanguage]?.flag}</span>
-          Publishing {LANG_INFO[selectedLanguage]?.name ?? selectedLanguage} version
-        </div>
-      )}
-
-      {/* Episode Thumbnails Panel */}
-      {showThumbnailSettings && (
-        <div className="mb-6">
-          <EpisodeThumbnailSettings episodeId={episode.id} />
-        </div>
-      )}
-
-      {/* Publishing Destinations Panel */}
-      {showDestinations && (
-        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-          {loadingConfigs ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            </div>
-          ) : (
-            <EpisodePublishingConfigs
-              episodeId={episode.id}
-              configs={configs}
-              availableConnections={connections}
-              onAddConnection={() => {
-                // TODO: Open OAuth modal
-                window.open(`/home/${accountSlug}/settings/connections`, '_blank');
-              }}
-            />
-          )}
-        </div>
-      )}
-
-      <PublishHub
-        episodeId={episode.id}
-        projectId={projectId}
+    <div className="h-full overflow-hidden">
+      <PublishScreen
+        episode={episode}
+        refetchEpisode={refetchEpisode}
         accountSlug={accountSlug}
         accountId={accountId}
-        videoUrl={currentVideoUrl!}
-        thumbnailUrl={currentThumbnailUrl}
-        defaultTitle={episode.title}
-        defaultDescription={episode.description ?? ''}
-        duration={episode.durationSeconds ?? 0}
       />
     </div>
   );
 }
+

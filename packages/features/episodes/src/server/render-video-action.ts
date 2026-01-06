@@ -56,6 +56,7 @@ interface ShotData {
     video_url: string;
     duration_seconds: number;
     sequence_number: number;
+    timeline_start_seconds: number | null;
 }
 
 interface DialogueData {
@@ -247,7 +248,7 @@ async function fetchEpisodeData(
             .single(),
         client
             .from('shots')
-            .select('id, video_url, duration_seconds, sequence_number')
+            .select('id, video_url, duration_seconds, sequence_number, timeline_start_seconds')
             .eq('episode_id', episodeId)
             .eq('status', 'completed')
             .not('video_url', 'is', null)
@@ -633,11 +634,31 @@ function buildFFmpegCommand(params: {
         inputIndex++;
     }
 
-    // Add shot video inputs
-    shots.forEach((shot) => {
+    // Sort shots by timeline_start_seconds to handle timeline correctly
+    const sortedShots = [...shots].sort((a, b) =>
+        (a.timeline_start_seconds ?? 0) - (b.timeline_start_seconds ?? 0)
+    );
+
+    let currentTimelineTime = 0;
+
+    // Add shot video inputs with gaps
+    sortedShots.forEach((shot) => {
+        const shotStart = shot.timeline_start_seconds ?? currentTimelineTime;
+        const gap = shotStart - currentTimelineTime;
+
+        // If there is a significant gap (> 0.1s), insert black video
+        if (gap > 0.1) {
+            inputs.push(`-f lavfi -i color=c=black:s=1920x1080:d=${gap.toFixed(3)}`);
+            videoInputs.push(`[${inputIndex}:v]`);
+            inputIndex++;
+        }
+
         inputs.push(`-i "${shot.video_url}"`);
         videoInputs.push(`[${inputIndex}:v]`);
         inputIndex++;
+
+        // Update current time to end of this shot
+        currentTimelineTime = Math.max(currentTimelineTime, shotStart + shot.duration_seconds);
     });
 
     const videoCount = inputIndex;
@@ -654,7 +675,6 @@ function buildFFmpegCommand(params: {
     });
 
     const dialogueCount = dialogueLines.length;
-
 
     // Add music audio inputs (with intro offset applied to delay)
     const musicInputIndices: { index: number; delay: number; volume: number }[] = [];
@@ -675,8 +695,10 @@ function buildFFmpegCommand(params: {
     const totalVideoCount = videoInputs.length;
     if (totalVideoCount > 1) {
         filters.push(`${videoInputs.join('')}concat=n=${totalVideoCount}:v=1:a=0[vout]`);
+    } else if (totalVideoCount === 1) {
+        filters.push(`${videoInputs[0]}copy[vout]`);
     } else {
-        filters.push(`[0:v]copy[vout]`);
+        filters.push(`color=c=black:s=1920x1080:d=5[vout]`);
     }
 
 

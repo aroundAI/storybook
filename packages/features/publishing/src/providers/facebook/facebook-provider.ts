@@ -18,16 +18,22 @@ export class FacebookProvider {
   constructor(
     private accessToken: string,
     private pageId: string,
-  ) {}
+  ) { }
 
   /**
    * Uploads a video to Facebook Page
    * Automatically selects simple or resumable upload based on file size
+   * For Reels, uses the dedicated Reels API with 3-phase upload
    */
   async uploadVideo(
     input: FacebookUploadInput,
     onProgress?: FacebookUploadProgress,
   ): Promise<FacebookUploadResult> {
+    // Reels use a different API endpoint with required 3-phase upload
+    if (input.isReel) {
+      return this.uploadReel(input, onProgress);
+    }
+
     const fileSize = await this.getFileSize(input.videoPath);
 
     if (fileSize > FACEBOOK_CONSTRAINTS.maxFileSizeBytes) {
@@ -43,6 +49,107 @@ export class FacebookProvider {
 
     // Simple upload for smaller files
     return this.simpleUpload(input, onProgress);
+  }
+
+  /**
+   * Uploads a Reel to Facebook Page using the 2-phase protocol
+   * Phase 1: Initialize upload session (start) - returns upload_url and video_id
+   * Phase 2: Upload video to upload_url, then Finish/Publish
+   */
+  private async uploadReel(
+    input: FacebookUploadInput,
+    onProgress?: FacebookUploadProgress,
+  ): Promise<FacebookUploadResult> {
+    const endpoint = `${FACEBOOK_GRAPH_API_BASE}/${this.pageId}/video_reels`;
+
+    // Phase 1: Initialize upload session
+    const startResponse = await fetch(
+      `${endpoint}?access_token=${this.accessToken}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          upload_phase: 'start',
+        }),
+      },
+    );
+
+    if (!startResponse.ok) {
+      const errorText = await startResponse.text();
+      throw new Error(
+        `Facebook Reel start failed: ${startResponse.status} ${startResponse.statusText} - ${errorText}`,
+      );
+    }
+
+    const startData = await startResponse.json();
+    if (startData.error) {
+      throw new Error(`Facebook Reel start failed: ${startData.error.message}`);
+    }
+
+    const videoId = startData.video_id;
+    const uploadUrl = startData.upload_url;
+
+    onProgress?.(10);
+
+    // Phase 2: Upload video file to the upload_url using file_url header
+    // Facebook fetches the video from the provided URL
+    const uploadResponse = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `OAuth ${this.accessToken}`,
+        'file_url': input.videoPath,
+      },
+    });
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      throw new Error(
+        `Facebook Reel upload failed: ${uploadResponse.status} ${uploadResponse.statusText} - ${errorText}`,
+      );
+    }
+
+    // Check upload response for errors
+    const uploadData = await uploadResponse.json().catch(() => ({}));
+    if (uploadData.error) {
+      throw new Error(`Facebook Reel upload failed: ${uploadData.error.message}`);
+    }
+
+    onProgress?.(70);
+
+    // Phase 3: Publish the Reel (finish)
+    const finishResponse = await fetch(
+      `${endpoint}?access_token=${this.accessToken}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          upload_phase: 'finish',
+          video_id: videoId,
+          title: input.title,
+          description: input.description,
+          video_state: 'PUBLISHED',
+        }),
+      },
+    );
+
+    if (!finishResponse.ok) {
+      const errorText = await finishResponse.text();
+      throw new Error(
+        `Facebook Reel finish failed: ${finishResponse.status} ${finishResponse.statusText} - ${errorText}`,
+      );
+    }
+
+    const finishData = await finishResponse.json();
+    if (finishData.error) {
+      throw new Error(`Facebook Reel finish failed: ${finishData.error.message}`);
+    }
+
+    onProgress?.(100);
+
+    return {
+      videoId,
+      status: 'processing',
+    };
   }
 
   /**
@@ -350,7 +457,12 @@ export class FacebookProvider {
     return {
       videoId,
       status: this.mapVideoStatus(data.status?.video_status),
-      videoUrl: data.permalink_url,
+      // Ensure full URL (Facebook sometimes returns relative paths like /reel/123)
+      videoUrl: data.permalink_url?.startsWith('http')
+        ? data.permalink_url
+        : data.permalink_url
+          ? `https://www.facebook.com${data.permalink_url}`
+          : undefined,
     };
   }
 
@@ -406,23 +518,59 @@ export class FacebookProvider {
   }
 
   /**
+   * Deletes a video from Facebook
+   * Note: This permanently deletes the video and cannot be undone
+   */
+  async deleteVideo(videoId: string): Promise<void> {
+    const response = await fetch(
+      `${FACEBOOK_GRAPH_API_BASE}/${videoId}?access_token=${this.accessToken}`,
+      { method: 'DELETE' },
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Facebook delete failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
+    const data = await response.json();
+    if (data.error) {
+      throw new Error(`Facebook delete failed: ${data.error.message}`);
+    }
+  }
+
+  /**
    * Gets the file size for upload strategy selection
    */
   private async getFileSize(path: string): Promise<number> {
     if (path.startsWith('http')) {
-      const response = await fetch(path, { method: 'HEAD' });
-      if (!response.ok) {
+      // Try HEAD request first
+      const headResponse = await fetch(path, { method: 'HEAD' });
+      if (headResponse.ok) {
+        const contentLength = headResponse.headers.get('content-length');
+        if (contentLength) {
+          return parseInt(contentLength, 10);
+        }
+      }
+
+      // Fallback: Fetch the file to determine size (for local storage or servers without Content-Length)
+      const getResponse = await fetch(path);
+      if (!getResponse.ok) {
         throw new Error(
-          `Failed to get file size: ${response.status} ${response.statusText}`,
+          `Failed to get file: ${getResponse.status} ${getResponse.statusText}`,
         );
       }
-      const contentLength = response.headers.get('content-length');
-      if (!contentLength) {
-        throw new Error(
-          'Cannot determine file size: Content-Length header missing from URL. Please provide a local file path instead.',
-        );
+
+      // Check Content-Length from GET response
+      const getContentLength = getResponse.headers.get('content-length');
+      if (getContentLength) {
+        return parseInt(getContentLength, 10);
       }
-      return parseInt(contentLength, 10);
+
+      // Last resort: download and measure (expensive but works)
+      const buffer = await getResponse.arrayBuffer();
+      return buffer.byteLength;
     }
     const stats = await fsPromises.stat(path);
     return stats.size;
