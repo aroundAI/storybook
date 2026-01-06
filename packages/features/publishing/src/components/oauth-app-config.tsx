@@ -154,7 +154,7 @@ function PlatformCredentialsCard({
                 });
                 toast.success(`${platform.name} credentials saved!`);
                 setClientSecret(''); // Clear secret after save
-            } catch (_error) {
+            } catch {
                 toast.error('Failed to save credentials');
             }
         });
