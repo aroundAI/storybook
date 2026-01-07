@@ -20,4 +20,7 @@ export * from './episode-audio-actions';
 export * from './audio-cue-actions';
 // ElevenLabs Connection
 export * from './elevenlabs-connection.actions';
+// Project Audio Settings
+export * from './project-audio-settings';
+
 

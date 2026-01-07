@@ -163,12 +163,30 @@ export interface AudioGenerationJob {
 // Factory options
 export interface AudioProviderFactoryOptions {
   accountId: string;
+  projectId?: string;
   webhookBaseUrl?: string;
+}
+
+/**
+ * Project audio settings shape (stored in projects.audio_settings)
+ */
+export interface ProjectAudioSettings {
+  elevenlabs?: {
+    enabled?: boolean;
+    tts_model?: string;
+    sfx_model?: string;
+    music_model?: string;
+  };
+  voice_provider?: VoiceProviderName;
+  sfx_provider?: 'elevenlabs';
+  music_provider?: MusicProviderName;
 }
 
 export interface VoiceProviderFactoryOptions
   extends AudioProviderFactoryOptions {
   provider?: VoiceProviderName;
+  modelOverride?: string;
+  projectAudioSettings?: ProjectAudioSettings | null;
 }
 
 export interface MusicProviderFactoryOptions

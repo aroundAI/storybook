@@ -33,6 +33,7 @@ import {
   getVoiceSettings,
   incrementAccountUsage,
 } from './voice-queries';
+import { getProjectTTSModel } from './project-audio-settings';
 
 // Note: These actions use type assertions because the film studio tables
 // (dialogue_lines, episodes, generation_jobs) are not yet in the generated
@@ -258,7 +259,8 @@ export const generateDialogueVoiceAction = enhanceAction(
     const jobData = job as GenerationJobResponse;
 
     try {
-      // 10. Create provider and generate audio
+      // 10. Create provider and generate audio - use project TTS model
+      const ttsModel = await getProjectTTSModel(projectId);
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 60000,
@@ -269,6 +271,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         text: dialogueData.text,
         voiceId,
         settings: voiceSettings,
+        modelId: ttsModel,
         outputFormat: 'mp3',
       });
 
@@ -532,7 +535,8 @@ export const generateVoiceFromTextAction = enhanceAction(
     const jobData = job as GenerationJobResponse;
 
     try {
-      // 6. Create provider and generate audio
+      // 6. Create provider and generate audio - use project TTS model
+      const ttsModel = await getProjectTTSModel(projectId);
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 60000,
@@ -543,6 +547,7 @@ export const generateVoiceFromTextAction = enhanceAction(
         text: data.text,
         voiceId: data.voiceId,
         settings: data.settings,
+        modelId: ttsModel,
         outputFormat: 'mp3',
       });
 
