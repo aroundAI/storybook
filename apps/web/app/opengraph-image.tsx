@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 import appConfig from '~/config/app.config';
 
-export const runtime = 'edge';
+// Note: Edge runtime removed for OpenNext/AWS Lambda compatibility
 export const alt = 'StoryBook - AI-Powered Film Studio';
 export const size = {
     width: 1200,

@@ -1,6 +1,6 @@
 import { ImageResponse } from 'next/og';
 
-export const runtime = 'edge';
+// Note: Edge runtime removed for OpenNext/AWS Lambda compatibility
 export const alt = 'Blog Post';
 export const size = {
     width: 1200,
