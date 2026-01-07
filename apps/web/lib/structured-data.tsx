@@ -3,7 +3,7 @@ import appConfig from '~/config/app.config';
 // JSON-LD types (inline to avoid external dependencies)
 type JsonLdContext = 'https://schema.org';
 
-interface WithContext<T> {
+interface WithContext {
     '@context': JsonLdContext;
     '@type': string;
     [key: string]: unknown;
@@ -13,7 +13,7 @@ interface WithContext<T> {
  * Organization schema for global use
  * Helps Google understand the business entity
  */
-export function getOrganizationSchema(): WithContext<unknown> {
+export function getOrganizationSchema(): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'Organization',
@@ -32,7 +32,7 @@ export function getOrganizationSchema(): WithContext<unknown> {
 /**
  * WebSite schema with SearchAction for sitelinks search box
  */
-export function getWebSiteSchema(): WithContext<unknown> {
+export function getWebSiteSchema(): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'WebSite',
@@ -54,7 +54,7 @@ export function getWebSiteSchema(): WithContext<unknown> {
  * SoftwareApplication schema for the product
  * Shows rich snippets with ratings in search results
  */
-export function getSoftwareApplicationSchema(): WithContext<unknown> {
+export function getSoftwareApplicationSchema(): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'SoftwareApplication',
@@ -81,7 +81,7 @@ export function getWebPageSchema(options: {
     url: string;
     datePublished?: string;
     dateModified?: string;
-}): WithContext<unknown> {
+}): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'WebPage',
@@ -109,7 +109,7 @@ export function getArticleSchema(options: {
     datePublished: string;
     dateModified?: string;
     authorName?: string;
-}): WithContext<unknown> {
+}): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'Article',
@@ -144,7 +144,7 @@ export function getArticleSchema(options: {
  */
 export function getFAQPageSchema(
     faqs: Array<{ question: string; answer: string }>,
-): WithContext<unknown> {
+): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'FAQPage',
@@ -164,7 +164,7 @@ export function getFAQPageSchema(
  */
 export function getBreadcrumbSchema(
     items: Array<{ name: string; url: string }>,
-): WithContext<unknown> {
+): WithContext {
     return {
         '@context': 'https://schema.org',
         '@type': 'BreadcrumbList',
