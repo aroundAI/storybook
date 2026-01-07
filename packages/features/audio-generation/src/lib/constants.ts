@@ -122,6 +122,24 @@ export const ELEVENLABS = {
     REQUESTS_PER_MINUTE: 100,
     CONCURRENT_REQUESTS: 10,
   },
+
+  // SFX Models - hardcoded for now, swap to API when available
+  SFX_MODELS: [
+    {
+      model_id: 'eleven_text_to_sound_v2',
+      name: 'Text to Sound v2',
+      description: 'Latest sound effects generation model',
+    },
+  ],
+
+  // Music Models - hardcoded for now, swap to API when available
+  MUSIC_MODELS: [
+    {
+      model_id: 'music_v1',
+      name: 'Music v1',
+      description: 'AI music generation with vocals and instruments',
+    },
+  ],
 } as const;
 
 // PlayHT specific constants

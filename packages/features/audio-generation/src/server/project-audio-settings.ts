@@ -1,5 +1,6 @@
 'use server';
 
+import { decrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { ProjectAudioSettings } from '../lib/types';
@@ -49,7 +50,8 @@ export async function getAccountElevenLabsApiKey(
         );
     }
 
-    return storedKey.encrypted_key;
+    // Decrypt the stored key before returning
+    return await decrypt(storedKey.encrypted_key);
 }
 
 /**

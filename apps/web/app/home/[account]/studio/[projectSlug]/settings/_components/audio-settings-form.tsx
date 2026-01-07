@@ -8,6 +8,7 @@ import { Check, Loader2, Music, Speaker, Volume2 } from 'lucide-react';
 import {
     getElevenLabsAccountInfoAction,
     getElevenLabsModelsAction,
+    ELEVENLABS,
 } from '@kit/audio-generation/server';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
@@ -52,6 +53,9 @@ export function AudioSettingsForm({
     const [sfxModel, setSfxModel] = useState(
         currentSettings?.elevenlabs?.sfx_model || '',
     );
+    const [musicModel, setMusicModel] = useState(
+        currentSettings?.elevenlabs?.music_model || '',
+    );
     const [voiceProvider, setVoiceProvider] = useState<'elevenlabs' | 'playht' | 'azure' | 'google'>(
         currentSettings?.voice_provider || 'elevenlabs',
     );
@@ -83,6 +87,7 @@ export function AudioSettingsForm({
                         enabled: true,
                         tts_model: ttsModel,
                         sfx_model: sfxModel,
+                        music_model: musicModel,
                     },
                     voice_provider: voiceProvider,
                 },
@@ -241,22 +246,18 @@ export function AudioSettingsForm({
                         <Select
                             value={sfxModel}
                             onValueChange={setSfxModel}
-                            disabled={!isConnected || isLoadingModels}
+                            disabled={!isConnected}
                         >
                             <SelectTrigger id="sfx-model" className="w-full sm:w-1/2">
-                                {isLoadingModels ? (
-                                    <div className="flex items-center gap-2">
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        Loading models...
-                                    </div>
-                                ) : (
-                                    <SelectValue placeholder="Select model" />
-                                )}
+                                <SelectValue placeholder="Select model" />
                             </SelectTrigger>
                             <SelectContent>
-                                {availableModels.map((model) => (
+                                {ELEVENLABS.SFX_MODELS.map((model: { model_id: string; name: string; description: string }) => (
                                     <SelectItem key={model.model_id} value={model.model_id}>
-                                        {model.name}
+                                        <div className="flex flex-col">
+                                            <span>{model.name}</span>
+                                            <span className="text-xs text-muted-foreground">{model.description}</span>
+                                        </div>
                                     </SelectItem>
                                 ))}
                             </SelectContent>
@@ -266,16 +267,35 @@ export function AudioSettingsForm({
 
                 <Separator />
 
-                {/* Music Settings (Future) */}
-                <div className="space-y-4 opacity-50">
+                {/* Music Settings */}
+                <div className="space-y-4">
                     <div className="flex items-center gap-2">
                         <Music className="h-4 w-4 text-muted-foreground" />
                         <Label className="font-medium">Music Generation</Label>
-                        <Badge variant="outline">Coming Soon</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                        Music generation settings will be available in a future update.
-                    </p>
+
+                    <div className="space-y-2">
+                        <Label htmlFor="music-model">Music Model</Label>
+                        <Select
+                            value={musicModel}
+                            onValueChange={setMusicModel}
+                            disabled={!isConnected}
+                        >
+                            <SelectTrigger id="music-model" className="w-full sm:w-1/2">
+                                <SelectValue placeholder="Select model" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ELEVENLABS.MUSIC_MODELS.map((model: { model_id: string; name: string; description: string }) => (
+                                    <SelectItem key={model.model_id} value={model.model_id}>
+                                        <div className="flex flex-col">
+                                            <span>{model.name}</span>
+                                            <span className="text-xs text-muted-foreground">{model.description}</span>
+                                        </div>
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 {/* Save Button */}

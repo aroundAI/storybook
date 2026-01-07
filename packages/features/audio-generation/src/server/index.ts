@@ -22,5 +22,5 @@ export * from './audio-cue-actions';
 export * from './elevenlabs-connection.actions';
 // Project Audio Settings
 export * from './project-audio-settings';
-
-
+// Constants (for UI dropdowns)
+export { ELEVENLABS } from '../lib/constants';

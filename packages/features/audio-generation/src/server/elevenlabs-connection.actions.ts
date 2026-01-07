@@ -3,6 +3,7 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { decrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { ELEVENLABS } from '../lib/constants';
@@ -84,11 +85,14 @@ export const getElevenLabsModelsAction = enhanceAction(
             );
         }
 
+        // Decrypt the stored key before use
+        const decryptedKey = await decrypt(storedKey.encrypted_key);
+
         try {
             const response = await fetch(`${ELEVENLABS.BASE_URL}/models`, {
                 method: 'GET',
                 headers: {
-                    'xi-api-key': storedKey.encrypted_key,
+                    'xi-api-key': decryptedKey,
                 },
             });
 
@@ -146,7 +150,8 @@ export const testElevenLabsConnectionAction = enhanceAction(
                 };
             }
 
-            apiKey = storedKey.encrypted_key;
+            // Decrypt the stored key before use
+            apiKey = await decrypt(storedKey.encrypted_key);
         }
 
         try {
@@ -239,11 +244,14 @@ export const getElevenLabsAccountInfoAction = enhanceAction(
             } as ElevenLabsAccountInfo;
         }
 
+        // Decrypt the stored key before use
+        const decryptedKey = await decrypt(storedKey.encrypted_key);
+
         try {
             const response = await fetch(`${ELEVENLABS.BASE_URL}/user`, {
                 method: 'GET',
                 headers: {
-                    'xi-api-key': storedKey.encrypted_key,
+                    'xi-api-key': decryptedKey,
                 },
             });
 
