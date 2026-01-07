@@ -344,7 +344,7 @@ echo ""
 echo -e "${YELLOW}📊 Fetching deployment information...${NC}"
 
 # Get stack outputs
-STACK_NAME="base-saas-${STAGE}"
+STACK_NAME="storybook-${STAGE}"
 
 # Try to get CloudFront URL
 CLOUDFRONT_URL=$(aws cloudformation describe-stacks \

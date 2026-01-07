@@ -15,7 +15,7 @@
 export default $config({
   app(input) {
     return {
-      name: process.env.SST_APP_NAME || "base-saas",
+      name: process.env.SST_APP_NAME || "storybook",
       removal: input?.stage === "production" ? "retain" : "remove",
       home: "aws",
     };
@@ -44,6 +44,10 @@ export default $config({
 
     console.log(`🌍 Deploying to region(s): ${deployRegions.join(', ')}`);
     console.log(`📦 Stage: ${stage}`);
+
+    // Get AWS account ID for IAM policies
+    const callerIdentity = aws.getCallerIdentityOutput();
+    const awsAccountId = callerIdentity.accountId;
 
     /**
      * Auto-resolve Route53 hosted zone ID from domain name
@@ -220,7 +224,7 @@ export default $config({
 
       // 7. Create SES configuration set for tracking metrics
       const configSet = new aws.sesv2.ConfigurationSet("EmailConfigSet", {
-        configurationSetName: `${stage}-email-tracking`,
+        configurationSetName: `storybook-${stage}-email-tracking`,
       });
 
       sesConfigSetName = configSet.configurationSetName;
@@ -280,17 +284,15 @@ export default $config({
     const queue = new sst.aws.Queue("EmailQueue", {
       fifo: false,
       transform: {
-        queue: {
+        queue: (args) => {
           // Visibility timeout must be >= Lambda timeout (60s)
           // AWS best practice: 6x function timeout for retries
-          visibilityTimeoutSeconds: 360, // 6 minutes
+          args.visibilityTimeoutSeconds = 360; // 6 minutes
 
           // Configure Dead Letter Queue
           // After 3 failed attempts, move message to DLQ for investigation
-          redrivePolicy: JSON.stringify({
-            deadLetterTargetArn: emailDLQ.arn,
-            maxReceiveCount: 3, // Match maxRetries in email-worker/index.ts
-          }),
+          // Use $transform to properly handle the Output value
+          args.redrivePolicy = $interpolate`{"deadLetterTargetArn":"${emailDLQ.arn}","maxReceiveCount":3}`;
         },
       },
     });
@@ -307,6 +309,51 @@ export default $config({
       },
       ttl: "ttl", // Auto-cleanup stale connections
     });
+
+    // KMS Key for Lambda Environment Variable Encryption
+    // Encrypts sensitive environment variables at rest
+    // NOTE: Defined early because websocket routes need it
+    const kmsKey = new aws.kms.Key("LambdaEnvEncryptionKey", {
+      description: `KMS key for encrypting Lambda environment variables in ${stage}`,
+      enableKeyRotation: false, // Disabled - requires kms:EnableKeyRotation permission
+      deletionWindowInDays: 30, // Recovery window if accidentally deleted
+      policy: $jsonStringify({
+        Version: "2012-10-17",
+        Statement: [
+          {
+            Sid: "Enable IAM User Permissions",
+            Effect: "Allow",
+            Principal: {
+              AWS: $interpolate`arn:aws:iam::${awsAccountId}:root`,
+            },
+            Action: "kms:*",
+            Resource: "*",
+          },
+          {
+            Sid: "Allow Lambda to decrypt",
+            Effect: "Allow",
+            Principal: {
+              Service: "lambda.amazonaws.com",
+            },
+            Action: ["kms:Decrypt", "kms:DescribeKey"],
+            Resource: "*",
+            Condition: {
+              StringEquals: {
+                "kms:ViaService": `lambda.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`,
+              },
+            },
+          },
+        ],
+      }),
+    });
+
+    // Create alias for easier management
+    new aws.kms.Alias("LambdaEnvEncryptionKeyAlias", {
+      name: `alias/${stage}-lambda-env-encryption`,
+      targetKeyId: kmsKey.keyId,
+    });
+
+    console.log(`✓ KMS encryption key created for Lambda environment variables`);
 
     // API Gateway WebSocket for real-time features
     const websocket = new sst.aws.ApiGatewayWebSocket("RealtimeWebSocket", {
@@ -498,12 +545,9 @@ export default $config({
         AWS_WEBSOCKET_ENDPOINT: websocket.url,
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
 
-        // Cache configuration
+        // Cache configuration (pass through from env)
         CACHE_PROVIDER: process.env.CACHE_PROVIDER || "memory",
-        ...(redisEndpoint && {
-          REDIS_URL: $interpolate`redis://${redisEndpoint}:6379`,
-        }),
-        ...(process.env.REDIS_URL && !redisEndpoint && {
+        ...(process.env.REDIS_URL && {
           REDIS_URL: process.env.REDIS_URL,
         }),
       },
@@ -570,7 +614,7 @@ export default $config({
               "ssm:GetParameters",
               "ssm:GetParametersByPath",
             ],
-            Resource: `arn:aws:ssm:${process.env.AWS_REGION || 'us-east-1'}:${$aws.accountId}:parameter/${stage}/*`,
+            Resource: $interpolate`arn:aws:ssm:${process.env.AWS_REGION || 'us-east-1'}:${awsAccountId}:parameter/${stage}/*`,
           },
           {
             Effect: "Allow",
@@ -778,7 +822,7 @@ export default $config({
       alarmDescription: `Alert when S3 storage exceeds 100GB for ${stage} (review storage costs)`,
       alarmName: `${stage}-s3-storage-alarm`,
       dimensions: {
-        BucketName: bucket.name,
+        BucketName: buckets.get('storage')?.name || 'storybook-storage',
         StorageType: "StandardStorage",
       },
       treatMissingData: "notBreaching",
@@ -953,50 +997,6 @@ export default $config({
 
     console.log(`✓ CloudWatch cost monitoring dashboard created: ${stage}-cost-monitoring`);
     console.log(`  View at: https://console.aws.amazon.com/cloudwatch/home?region=${awsRegion}#dashboards:name=${stage}-cost-monitoring`);
-
-    // KMS Key for Lambda Environment Variable Encryption
-    // Encrypts sensitive environment variables at rest
-    const kmsKey = new aws.kms.Key("LambdaEnvEncryptionKey", {
-      description: `KMS key for encrypting Lambda environment variables in ${stage}`,
-      enableKeyRotation: true, // Enable automatic annual rotation
-      deletionWindowInDays: 30, // Recovery window if accidentally deleted
-      policy: $jsonStringify({
-        Version: "2012-10-17",
-        Statement: [
-          {
-            Sid: "Enable IAM User Permissions",
-            Effect: "Allow",
-            Principal: {
-              AWS: `arn:aws:iam::${$aws.accountId}:root`,
-            },
-            Action: "kms:*",
-            Resource: "*",
-          },
-          {
-            Sid: "Allow Lambda to decrypt",
-            Effect: "Allow",
-            Principal: {
-              Service: "lambda.amazonaws.com",
-            },
-            Action: ["kms:Decrypt", "kms:DescribeKey"],
-            Resource: "*",
-            Condition: {
-              StringEquals: {
-                "kms:ViaService": `lambda.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com`,
-              },
-            },
-          },
-        ],
-      }),
-    });
-
-    // Create alias for easier management
-    new aws.kms.Alias("LambdaEnvEncryptionKeyAlias", {
-      name: `alias/${stage}-lambda-env-encryption`,
-      targetKeyId: kmsKey.keyId,
-    });
-
-    console.log(`✓ KMS encryption key created for Lambda environment variables`);
 
     // CloudWatch Log Retention Policies
     // Set retention to prevent unlimited log storage costs

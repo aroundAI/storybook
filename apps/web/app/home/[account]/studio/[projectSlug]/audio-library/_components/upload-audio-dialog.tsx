@@ -113,34 +113,22 @@ export function UploadAudioDialog({
         setError(null);
         startTransition(async () => {
             try {
-                // 1. Upload file to storage
-                const { getStorageAdapter } = await import('@kit/storage');
-                const storage = getStorageAdapter();
-
-                const fileName = `${audioType}/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
-
-                // Convert File to Buffer
+                // Convert file to base64
                 const arrayBuffer = await file.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
+                const base64 = Buffer.from(arrayBuffer).toString('base64');
 
-                const uploadResult = await storage.upload(
-                    'audio-assets',
-                    fileName,
-                    buffer,
-                    { contentType: file.type },
-                );
-
-                // 2. Create audio asset record
-                const { uploadAudioAssetAction } = await import(
+                // Call server action that handles upload + asset creation
+                const { uploadAudioFileAndCreateAssetAction } = await import(
                     '@kit/audio-generation/server'
                 );
 
-                await uploadAudioAssetAction({
+                await uploadAudioFileAndCreateAssetAction({
                     projectId,
                     audioType,
                     name: name.trim(),
-                    fileUrl: uploadResult.url,
-                    filePath: fileName,
+                    fileBase64: base64,
+                    fileName: file.name,
+                    contentType: file.type,
                     fileSizeBytes: file.size,
                 });
 

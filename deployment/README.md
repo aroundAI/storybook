@@ -452,7 +452,7 @@ pnpm sst deploy --stage staging --verbose
 pnpm sst logs --stage staging --tail
 
 # Check CloudWatch logs
-aws logs tail /aws/lambda/base-saas-staging-Web --follow
+aws logs tail /aws/lambda/storybook-staging-Web --follow
 ```
 
 ### Clean Up
