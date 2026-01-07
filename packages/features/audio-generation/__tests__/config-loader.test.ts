@@ -40,8 +40,7 @@ describe('Config Loader', () => {
     vi.clearAllMocks();
     // Reset env vars
     process.env = { ...originalEnv };
-    // Clear platform keys
-    delete process.env.ELEVENLABS_API_KEY;
+    // Clear platform keys (ElevenLabs NOT included - uses stored keys only)
     delete process.env.PLAYHT_API_KEY;
     delete process.env.PLAYHT_USER_ID;
     delete process.env.DEEPGRAM_API_KEY;
@@ -100,37 +99,32 @@ describe('Config Loader', () => {
       });
     });
 
-    describe('Platform key fallback', () => {
-      it('should use platform key when no BYOK key exists', async () => {
+    describe('Platform key fallback (non-ElevenLabs only)', () => {
+      it('should use platform key when no BYOK key exists for supported providers', async () => {
         // Mock database returns no key (PGRST116 error)
         mockSingle.mockResolvedValue({
           data: null,
           error: { code: 'PGRST116', message: 'no rows found' },
         });
-        process.env.ELEVENLABS_API_KEY = 'platform-elevenlabs-key';
+        process.env.PLAYHT_API_KEY = 'platform-playht-key';
 
         const config = await loadVoiceProviderConfig(
           'account-123',
-          'elevenlabs',
+          'playht',
         );
 
-        expect(config.apiKey).toBe('platform-elevenlabs-key');
+        expect(config.apiKey).toBe('platform-playht-key');
         expect(mockedDecrypt).not.toHaveBeenCalled();
       });
 
-      it('should use correct env var for each provider', async () => {
+      it('should use correct env var for non-ElevenLabs providers', async () => {
         mockSingle.mockResolvedValue({
           data: null,
           error: { code: 'PGRST116', message: 'no rows found' },
         });
 
-        // Test each provider's env var mapping
+        // Test each provider's env var mapping (ElevenLabs excluded - uses stored keys only)
         const providers = [
-          {
-            name: 'elevenlabs',
-            envVar: 'ELEVENLABS_API_KEY',
-            key: 'elevenlabs-key',
-          },
           { name: 'playht', envVar: 'PLAYHT_API_KEY', key: 'playht-key' },
           { name: 'deepgram', envVar: 'DEEPGRAM_API_KEY', key: 'deepgram-key' },
           { name: 'azure', envVar: 'AZURE_TTS_API_KEY', key: 'azure-key' },
@@ -143,6 +137,21 @@ describe('Config Loader', () => {
           expect(config.apiKey).toBe(key);
           delete process.env[envVar];
         }
+      });
+    });
+
+    describe('ElevenLabs requires stored keys', () => {
+      it('should throw when no stored key for ElevenLabs', async () => {
+        // Mock database returns no key
+        mockSingle.mockResolvedValue({
+          data: null,
+          error: { code: 'PGRST116', message: 'no rows found' },
+        });
+        // Note: No env fallback for ElevenLabs
+
+        await expect(
+          loadVoiceProviderConfig('account-123', 'elevenlabs'),
+        ).rejects.toThrow(NoAPIKeyError);
       });
     });
 
@@ -160,22 +169,6 @@ describe('Config Loader', () => {
         expect(config.apiKey).toBe('playht-key');
         expect(config.userId).toBe('playht-user-123');
       });
-
-      it('should not include userId for non-PlayHT providers', async () => {
-        mockSingle.mockResolvedValue({
-          data: null,
-          error: { code: 'PGRST116', message: 'no rows found' },
-        });
-        process.env.ELEVENLABS_API_KEY = 'elevenlabs-key';
-
-        const config = await loadVoiceProviderConfig(
-          'account-123',
-          'elevenlabs',
-        );
-
-        expect(config.apiKey).toBe('elevenlabs-key');
-        expect(config.userId).toBeUndefined();
-      });
     });
 
     describe('Error handling', () => {
@@ -185,11 +178,11 @@ describe('Config Loader', () => {
           data: null,
           error: { code: 'PGRST116', message: 'no rows found' },
         });
-        // No platform key in env
-        delete process.env.ELEVENLABS_API_KEY;
+        // No platform key in env for deepgram
+        delete process.env.DEEPGRAM_API_KEY;
 
         await expect(
-          loadVoiceProviderConfig('account-123', 'elevenlabs'),
+          loadVoiceProviderConfig('account-123', 'deepgram'),
         ).rejects.toThrow(NoAPIKeyError);
       });
 
@@ -366,30 +359,30 @@ describe('Config Loader', () => {
       });
     });
 
-    describe('Platform key detection', () => {
-      it('should return true when platform key exists', async () => {
+    describe('Platform key detection (non-ElevenLabs)', () => {
+      it('should return true when platform key exists for supported providers', async () => {
         mockSingle.mockResolvedValue({
           data: null,
           error: { code: 'PGRST116', message: 'no rows found' },
         });
-        process.env.ELEVENLABS_API_KEY = 'platform-key';
+        process.env.PLAYHT_API_KEY = 'platform-key';
 
         const hasKey = await hasVoiceProviderApiKey(
           'account-123',
-          'elevenlabs',
+          'playht',
         );
 
         expect(hasKey).toBe(true);
       });
 
-      it('should check correct env var for each provider', async () => {
+      it('should check correct env var for non-ElevenLabs providers', async () => {
         mockSingle.mockResolvedValue({
           data: null,
           error: { code: 'PGRST116', message: 'no rows found' },
         });
 
+        // ElevenLabs excluded - uses stored keys only
         const testCases = [
-          { provider: 'elevenlabs', envVar: 'ELEVENLABS_API_KEY' },
           { provider: 'playht', envVar: 'PLAYHT_API_KEY' },
           { provider: 'deepgram', envVar: 'DEEPGRAM_API_KEY' },
           { provider: 'azure', envVar: 'AZURE_TTS_API_KEY' },
@@ -398,7 +391,6 @@ describe('Config Loader', () => {
 
         for (const { provider, envVar } of testCases) {
           // Clear all env vars
-          delete process.env.ELEVENLABS_API_KEY;
           delete process.env.PLAYHT_API_KEY;
           delete process.env.DEEPGRAM_API_KEY;
           delete process.env.AZURE_TTS_API_KEY;
@@ -413,6 +405,19 @@ describe('Config Loader', () => {
       });
     });
 
+    describe('ElevenLabs stored keys only', () => {
+      it('should return false for ElevenLabs when no stored key exists', async () => {
+        mockSingle.mockResolvedValue({
+          data: null,
+          error: { code: 'PGRST116', message: 'no rows found' },
+        });
+        // Note: No env fallback for ElevenLabs
+
+        const hasKey = await hasVoiceProviderApiKey('account-123', 'elevenlabs');
+        expect(hasKey).toBe(false);
+      });
+    });
+
     describe('No key available', () => {
       it('should return false when no key exists', async () => {
         mockSingle.mockResolvedValue({
@@ -423,23 +428,6 @@ describe('Config Loader', () => {
         const hasKey = await hasVoiceProviderApiKey('account-123', 'deepgram');
 
         expect(hasKey).toBe(false);
-      });
-
-      it('should prioritize BYOK over platform key check', async () => {
-        // BYOK key exists
-        mockSingle.mockResolvedValue({
-          data: { id: 'byok-key' },
-          error: null,
-        });
-        // Platform key also exists
-        process.env.ELEVENLABS_API_KEY = 'platform-key';
-
-        const hasKey = await hasVoiceProviderApiKey(
-          'account-123',
-          'elevenlabs',
-        );
-
-        expect(hasKey).toBe(true);
       });
 
       it('should throw on database error (non-PGRST116)', async () => {

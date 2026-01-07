@@ -72,7 +72,9 @@ export function isValidLanguageCode(code: string): code is LanguageCode {
 
 /**
  * ElevenLabs multilingual model for dubbed audio generation
- * Supports all 12 languages in SUPPORTED_DUBBING_LANGUAGES
+ * NOTE: This should be fetched from project audio settings
+ * This export is kept for backward compatibility but should not be used in new code
+ * @deprecated Use getProjectTTSModel() from project-audio-settings.ts instead
  */
 export const MULTILINGUAL_VOICE_MODEL = 'eleven_multilingual_v2';
 

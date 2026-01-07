@@ -15,6 +15,8 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { z } from 'zod';
 
+import { getProjectElevenLabsApiKey } from './project-audio-settings';
+
 // =============================================================================
 // Types
 // =============================================================================
@@ -525,10 +527,7 @@ export const generateMusicAssetAction = enhanceAction(
             // Import provider dynamically to avoid circular deps
             const { ElevenLabsMusicProvider } = await import('../providers/elevenlabs-music');
 
-            const apiKey = process.env.ELEVENLABS_API_KEY;
-            if (!apiKey) {
-                throw new Error('ELEVENLABS_API_KEY is not configured');
-            }
+            const apiKey = await getProjectElevenLabsApiKey(data.projectId);
 
             const provider = new ElevenLabsMusicProvider({ apiKey });
 
@@ -635,10 +634,7 @@ export const generateSfxAssetAction = enhanceAction(
         try {
             const { ElevenLabsSfxProvider } = await import('../providers/elevenlabs-sfx');
 
-            const apiKey = process.env.ELEVENLABS_API_KEY;
-            if (!apiKey) {
-                throw new Error('ELEVENLABS_API_KEY is not configured');
-            }
+            const apiKey = await getProjectElevenLabsApiKey(data.projectId);
 
             const provider = new ElevenLabsSfxProvider({ apiKey });
 

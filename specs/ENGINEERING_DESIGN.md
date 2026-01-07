@@ -3937,7 +3937,7 @@ RUNWAY_API_KEY=
 HAILUO_API_KEY=
 
 # Audio Generation API Keys
-ELEVENLABS_API_KEY=
+# ElevenLabs: Keys stored in external_api_keys table via Settings > API Keys
 SUNO_API_KEY=
 
 # Webhook Secrets (for signature verification)

@@ -46,6 +46,7 @@ import {
   getDubbedVersionWithContext,
 } from './dubbing-queries';
 import { checkAccountBudget, incrementAccountUsage } from './voice-queries';
+import { getAccountElevenLabsApiKey } from './project-audio-settings';
 
 // Note: These actions use type assertions because the film studio tables
 // (dubbed_versions, dubbed_dialogue_lines, etc.) are not yet in the generated
@@ -477,11 +478,8 @@ export const generateDubbedAudioAction = enhanceAction(
       throw new Error('Monthly budget exceeded');
     }
 
-    // 4. Get API key
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      throw new Error('Voice generation service not configured');
-    }
+    // 4. Get API key from stored keys
+    const apiKey = await getAccountElevenLabsApiKey(accountId);
 
     // 5. Update version status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

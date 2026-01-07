@@ -580,7 +580,6 @@ export default $config({
         ...(process.env.GOOGLE_API_KEY && { GOOGLE_API_KEY: process.env.GOOGLE_API_KEY }),
         ...(process.env.OPENAI_API_KEY && { OPENAI_API_KEY: process.env.OPENAI_API_KEY }),
         ...(process.env.ANTHROPIC_API_KEY && { ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY }),
-        ...(process.env.ELEVENLABS_API_KEY && { ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY }),
         ...(process.env.VOYAGE_API_KEY && { VOYAGE_API_KEY: process.env.VOYAGE_API_KEY }),
         ...(process.env.EMBEDDING_PROVIDER && { EMBEDDING_PROVIDER: process.env.EMBEDDING_PROVIDER }),
         ...(process.env.EMBEDDING_MODEL && { EMBEDDING_MODEL: process.env.EMBEDDING_MODEL }),

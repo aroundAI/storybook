@@ -1,3 +1,4 @@
+import { ApiKeysSettings } from '@kit/film-studio/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
 import { TeamAccountSettingsContainer } from '@kit/team-accounts/components';
@@ -55,12 +56,23 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
       />
 
       <PageBody>
-        <div className={'flex max-w-2xl flex-1 flex-col'}>
+        <div className={'flex max-w-2xl flex-1 flex-col space-y-8'}>
           <TeamAccountSettingsContainer
             account={account}
             paths={paths}
             features={features}
           />
+
+          {/* API Keys Section */}
+          <div className="border-t pt-8">
+            <h2 className="text-xl font-semibold mb-2">
+              <Trans i18nKey="teams:apiKeys.pageTitle" defaults="API Keys" />
+            </h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              <Trans i18nKey="teams:apiKeys.pageDescription" defaults="Manage API keys for external services like ElevenLabs" />
+            </p>
+            <ApiKeysSettings accountSlug={account.slug} />
+          </div>
         </div>
       </PageBody>
     </>
@@ -68,3 +80,4 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
 }
 
 export default TeamAccountSettingsPage;
+

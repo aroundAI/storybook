@@ -15,9 +15,10 @@ import { NoAPIKeyError } from './errors';
 
 /**
  * Environment variable names for platform API keys
+ * NOTE: ElevenLabs is NOT included - it uses stored keys only via external_api_keys table
  */
 const VOICE_PLATFORM_KEY_ENV_MAP: Record<VoiceProviderName, string> = {
-  elevenlabs: 'ELEVENLABS_API_KEY',
+  elevenlabs: '', // No env fallback - must use stored keys
   playht: 'PLAYHT_API_KEY',
   deepgram: 'DEEPGRAM_API_KEY',
   azure: 'AZURE_TTS_API_KEY',

@@ -18,6 +18,7 @@ import {
     findOrCreateAudioAsset,
     updateAudioAssetAction,
 } from './audio-asset-actions';
+import { getProjectElevenLabsApiKey } from './project-audio-settings';
 
 // =============================================================================
 // Schemas
@@ -61,16 +62,7 @@ interface GenerateMusicResult {
 // Helpers
 // =============================================================================
 
-/**
- * Get ElevenLabs API key
- */
-async function getElevenLabsApiKey(): Promise<string> {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-        throw new Error('ELEVENLABS_API_KEY environment variable is not set');
-    }
-    return apiKey;
-}
+
 
 /**
  * Upload audio buffer to storage and return URL
@@ -177,7 +169,7 @@ export const generateMusicElevenLabsAction = enhanceAction(
             });
 
             // Get API key and create provider
-            const apiKey = await getElevenLabsApiKey();
+            const apiKey = await getProjectElevenLabsApiKey(data.projectId);
             const provider = new ElevenLabsMusicProvider({ apiKey });
 
             // Generate music

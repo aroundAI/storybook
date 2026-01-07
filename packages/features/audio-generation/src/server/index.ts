@@ -18,3 +18,9 @@ export * from './sfx-actions';
 export * from './elevenlabs-music-actions';
 export * from './episode-audio-actions';
 export * from './audio-cue-actions';
+// ElevenLabs Connection
+export * from './elevenlabs-connection.actions';
+// Project Audio Settings
+export * from './project-audio-settings';
+// Constants (for UI dropdowns)
+export { ELEVENLABS } from '../lib/constants';

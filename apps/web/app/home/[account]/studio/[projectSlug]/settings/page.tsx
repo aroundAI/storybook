@@ -33,6 +33,7 @@ import { AddProjectMemberDialog } from '../../../_components/add-project-member-
 import { DeleteProjectDialog } from '../../../_components/delete-project-dialog';
 import { EditProjectDialog } from '../../../_components/edit-project-dialog';
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
+import { AudioSettingsForm } from './_components/audio-settings-form';
 import { ProjectIntroSettings } from './_components/project-intro-settings';
 import { StudioSettingsForm } from './_components/studio-settings-form';
 
@@ -251,6 +252,26 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   }
                   | undefined,
               }}
+            />
+          </If>
+
+          {/* Audio Generation Settings */}
+          <If condition={permissions.canEdit}>
+            <AudioSettingsForm
+              projectId={project.id}
+              accountId={project.account_id ?? ''}
+              currentSettings={
+                (project as Record<string, unknown>).audio_settings as
+                | {
+                  elevenlabs?: {
+                    enabled?: boolean;
+                    tts_model?: string;
+                    sfx_model?: string;
+                  };
+                  voice_provider?: 'elevenlabs' | 'playht' | 'azure' | 'google';
+                }
+                | null
+              }
             />
           </If>
 
