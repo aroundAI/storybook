@@ -486,7 +486,9 @@ function ConnectionStatusBadge({ status }: { status: ConnectionStatus }) {
     },
   };
 
-  const { icon: Icon, label, i18nKey, className } = variants[status];
+  // Defensive check for unknown status values
+  const variant = variants[status] ?? variants.error;
+  const { icon: Icon, label, i18nKey, className } = variant;
 
   return (
     <Badge variant="outline" className={className}>

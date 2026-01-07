@@ -141,14 +141,9 @@ function getRemotePatterns() {
 }
 
 async function getRedirects() {
-  return [
-    {
-      source: '/server-sitemap.xml',
-      destination: '/sitemap.xml',
-      permanent: true,
-    },
-  ];
+  return [];
 }
+
 
 /**
  * @description Aliases modules based on the environment variables

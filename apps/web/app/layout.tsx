@@ -12,6 +12,11 @@ import { getFontsClassName } from '~/lib/fonts';
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { generateRootMetadata } from '~/lib/root-metdata';
 import { getRootTheme } from '~/lib/root-theme';
+import {
+  getOrganizationSchema,
+  getWebSiteSchema,
+  JsonLd,
+} from '~/lib/structured-data';
 
 import '../styles/branding.css';
 import '../styles/globals.css';
@@ -40,6 +45,10 @@ export default async function RootLayout({
   const brandingConfig = getBrandingConfig();
   const customFontUrl = brandingConfig.logo.customFont?.url;
 
+  // Generate structured data for SEO
+  const organizationSchema = getOrganizationSchema();
+  const webSiteSchema = getWebSiteSchema();
+
   return (
     <html lang={language} className={className}>
       <head>
@@ -52,6 +61,10 @@ export default async function RootLayout({
         <link rel="stylesheet" href={googleFontsUrl} />
         {customFontUrl && <link rel="stylesheet" href={customFontUrl} />}
         <style dangerouslySetInnerHTML={{ __html: brandingStyles }} />
+
+        {/* SEO: Structured Data */}
+        <JsonLd data={organizationSchema} />
+        <JsonLd data={webSiteSchema} />
       </head>
       <body>
         <RootProviders theme={theme} lang={language} nonce={nonce}>
@@ -63,6 +76,7 @@ export default async function RootLayout({
     </html>
   );
 }
+
 
 async function getCspNonce() {
   const headersStore = await headers();

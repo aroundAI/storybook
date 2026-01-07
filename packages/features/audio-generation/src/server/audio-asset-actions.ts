@@ -752,3 +752,66 @@ export const uploadAudioAssetAction = enhanceAction(
     },
     { schema: UploadAudioSchema }
 );
+
+// =============================================================================
+// Upload File Action (for client components)
+// =============================================================================
+
+const UploadAudioFileSchema = z.object({
+    projectId: z.string().uuid(),
+    audioType: z.enum(['music', 'sfx']),
+    name: z.string().min(1).max(100),
+    fileBase64: z.string().min(1),
+    fileName: z.string().min(1),
+    contentType: z.string().min(1),
+    fileSizeBytes: z.number().int().positive(),
+});
+
+/**
+ * Upload an audio file as an asset (accepts base64 data)
+ * Use this from client components instead of directly accessing storage
+ */
+export const uploadAudioFileAndCreateAssetAction = enhanceAction(
+    async (data): Promise<AudioAsset> => {
+        const logger = await getLogger();
+        const ctx = { name: 'audioAsset.uploadFile', projectId: data.projectId };
+
+        const client = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(client);
+
+        if (authError || !user) {
+            throw new Error('Authentication required');
+        }
+
+        logger.info({ ...ctx, name: data.name, size: data.fileSizeBytes }, 'Uploading audio file');
+
+        // Convert base64 to Buffer
+        const buffer = Buffer.from(data.fileBase64, 'base64');
+
+        // Upload to storage
+        const { getStorageAdapter } = await import('@kit/storage');
+        const storage = getStorageAdapter();
+
+        const filePath = `${data.audioType}/${Date.now()}-${data.fileName.replace(/\s+/g, '_')}`;
+
+        const uploadResult = await storage.upload(
+            'audio-assets',
+            filePath,
+            buffer,
+            { contentType: data.contentType },
+        );
+
+        logger.info({ ...ctx, url: uploadResult.url }, 'File uploaded, creating asset record');
+
+        // Create the asset record
+        return uploadAudioAssetAction({
+            projectId: data.projectId,
+            audioType: data.audioType,
+            name: data.name,
+            fileUrl: uploadResult.url,
+            filePath,
+            fileSizeBytes: data.fileSizeBytes,
+        });
+    },
+    { schema: UploadAudioFileSchema }
+);

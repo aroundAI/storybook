@@ -1,5 +1,4 @@
 import { createReadStream, promises as fsPromises } from 'fs';
-import { Readable } from 'stream';
 
 import type {
   TikTokUploadInit,

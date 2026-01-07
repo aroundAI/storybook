@@ -64,7 +64,7 @@ REDIS_URL=redis://upstash-or-elasticache...
 ## Monorepo Structure
 
 ```
-base-saas/
+storybook/
 ├── apps/
 │   ├── web/                    # Main Next.js SaaS application
 │   │   ├── app/               # Next.js App Router

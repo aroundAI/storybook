@@ -6,7 +6,9 @@ import { notFound } from 'next/navigation';
 
 import { createCmsClient } from '@kit/cms';
 
+import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import { getArticleSchema, JsonLd } from '~/lib/structured-data';
 
 import { Post } from '../../blog/_components/post';
 
@@ -37,6 +39,9 @@ export async function generateMetadata({
   return Promise.resolve({
     title,
     description,
+    alternates: {
+      canonical: `${appConfig.url}/blog/${slug}`,
+    },
     openGraph: {
       title,
       description,
@@ -45,10 +50,10 @@ export async function generateMetadata({
       url: post.url,
       images: image
         ? [
-            {
-              url: image,
-            },
-          ]
+          {
+            url: image,
+          },
+        ]
         : [],
     },
     twitter: {
@@ -68,11 +73,22 @@ async function BlogPost({ params }: BlogPageProps) {
     notFound();
   }
 
+  // Generate Article structured data for SEO
+  const articleSchema = getArticleSchema({
+    title: post.title,
+    description: post.description ?? '',
+    url: `${appConfig.url}/blog/${slug}`,
+    imageUrl: post.image,
+    datePublished: post.publishedAt,
+  });
+
   return (
     <div className={'container sm:max-w-none sm:p-0'}>
+      <JsonLd data={articleSchema} />
       <Post post={post} content={post.content} />
     </div>
   );
 }
 
 export default withI18n(BlogPost);
+

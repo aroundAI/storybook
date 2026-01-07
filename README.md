@@ -57,7 +57,7 @@ StoryBook is the complete AI-powered film studio for creators and production tea
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/aroundAI/base-saas.git storybook
+git clone https://github.com/aroundAI/storybook.git storybook
 cd storybook
 pnpm install
 
@@ -643,8 +643,8 @@ MIT License - see [LICENSE](./LICENSE) for details.
 ## 🆘 Support
 
 - **Documentation**: Check the guides above
-- **Issues**: [GitHub Issues](https://github.com/aroundAI/base-saas/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/aroundAI/base-saas/discussions)
+- **Issues**: [GitHub Issues](https://github.com/aroundAI/storybook/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/aroundAI/storybook/discussions)
 
 ---
 
