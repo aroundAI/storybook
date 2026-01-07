@@ -516,21 +516,46 @@ export default $config({
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
         NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+        ...(process.env.SUPABASE_DB_WEBHOOK_SECRET && {
+          SUPABASE_DB_WEBHOOK_SECRET: process.env.SUPABASE_DB_WEBHOOK_SECRET,
+        }),
 
         // Site configuration
         NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || `https://${domainName || `${stage}.example.com`}`,
         NEXT_PUBLIC_PRODUCT_NAME: process.env.NEXT_PUBLIC_PRODUCT_NAME || "SaaS",
+        NEXT_PUBLIC_SITE_TITLE: process.env.NEXT_PUBLIC_SITE_TITLE || "",
         NEXT_PUBLIC_SITE_DESCRIPTION: process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "SaaS Application",
+
+        // Authentication settings
+        NEXT_PUBLIC_AUTH_PASSWORD: process.env.NEXT_PUBLIC_AUTH_PASSWORD || "true",
+        NEXT_PUBLIC_AUTH_MAGIC_LINK: process.env.NEXT_PUBLIC_AUTH_MAGIC_LINK || "true",
+        NEXT_PUBLIC_AUTH_OAUTH: process.env.NEXT_PUBLIC_AUTH_OAUTH || "true",
+        NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS: process.env.NEXT_PUBLIC_ENABLE_PERSONAL_ACCOUNTS || "false",
+        NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS: process.env.NEXT_PUBLIC_ENABLE_TEAM_ACCOUNTS || "true",
+
+        // Branding (pass through all branding vars)
+        ...(process.env.NEXT_PUBLIC_BRAND_PRIMARY && { NEXT_PUBLIC_BRAND_PRIMARY: process.env.NEXT_PUBLIC_BRAND_PRIMARY }),
+        ...(process.env.NEXT_PUBLIC_BRAND_PRIMARY_DARK && { NEXT_PUBLIC_BRAND_PRIMARY_DARK: process.env.NEXT_PUBLIC_BRAND_PRIMARY_DARK }),
+        ...(process.env.NEXT_PUBLIC_FONT_HEADING && { NEXT_PUBLIC_FONT_HEADING: process.env.NEXT_PUBLIC_FONT_HEADING }),
+        ...(process.env.NEXT_PUBLIC_FONT_BODY && { NEXT_PUBLIC_FONT_BODY: process.env.NEXT_PUBLIC_FONT_BODY }),
 
         // Email configuration
         EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || "ses",
         EMAIL_SENDER: process.env.EMAIL_SENDER || `noreply@${domainName || 'example.com'}`,
+        ...(process.env.CONTACT_EMAIL && { CONTACT_EMAIL: process.env.CONTACT_EMAIL }),
         ...(sesConfigSetName && { AWS_SES_CONFIG_SET: sesConfigSetName }),
 
         // Infrastructure providers (use AWS for production)
         STORAGE_PROVIDER: process.env.STORAGE_PROVIDER || "s3",
         QUEUE_PROVIDER: process.env.QUEUE_PROVIDER || "sqs",
         REALTIME_PROVIDER: process.env.REALTIME_PROVIDER || "websocket",
+
+        // Cloudflare R2 storage (for video/audio - zero egress)
+        ...(process.env.R2_ACCOUNT_ID && { R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID }),
+        ...(process.env.R2_ACCESS_KEY_ID && { R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID }),
+        ...(process.env.R2_SECRET_ACCESS_KEY && { R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY }),
+        ...(process.env.R2_BUCKET_NAME && { R2_BUCKET_NAME: process.env.R2_BUCKET_NAME }),
+        ...(process.env.R2_PUBLIC_URL && { R2_PUBLIC_URL: process.env.R2_PUBLIC_URL }),
 
         // AWS resource ARNs and configuration
         // Dynamically add bucket environment variables
@@ -545,16 +570,41 @@ export default $config({
         AWS_WEBSOCKET_ENDPOINT: websocket.url,
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
 
-        // Cache configuration (pass through from env)
+        // Cache configuration
         CACHE_PROVIDER: process.env.CACHE_PROVIDER || "memory",
-        ...(process.env.REDIS_URL && {
-          REDIS_URL: process.env.REDIS_URL,
-        }),
+        ...(process.env.REDIS_URL && { REDIS_URL: process.env.REDIS_URL }),
 
-        // Encryption key for OAuth tokens (required for platform connections)
-        ...(process.env.ENCRYPTION_KEY && {
-          ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
-        }),
+        // LLM & AI Providers
+        ...(process.env.DEEPSEEK_API_KEY && { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY }),
+        ...(process.env.GEMINI_API_KEY && { GEMINI_API_KEY: process.env.GEMINI_API_KEY }),
+        ...(process.env.GOOGLE_API_KEY && { GOOGLE_API_KEY: process.env.GOOGLE_API_KEY }),
+        ...(process.env.OPENAI_API_KEY && { OPENAI_API_KEY: process.env.OPENAI_API_KEY }),
+        ...(process.env.ANTHROPIC_API_KEY && { ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY }),
+        ...(process.env.ELEVENLABS_API_KEY && { ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY }),
+        ...(process.env.VOYAGE_API_KEY && { VOYAGE_API_KEY: process.env.VOYAGE_API_KEY }),
+        ...(process.env.EMBEDDING_PROVIDER && { EMBEDDING_PROVIDER: process.env.EMBEDDING_PROVIDER }),
+        ...(process.env.EMBEDDING_MODEL && { EMBEDDING_MODEL: process.env.EMBEDDING_MODEL }),
+
+        // Security
+        ...(process.env.ENCRYPTION_KEY && { ENCRYPTION_KEY: process.env.ENCRYPTION_KEY }),
+        ...(process.env.CRON_SECRET && { CRON_SECRET: process.env.CRON_SECRET }),
+
+        // Billing (Stripe)
+        ...(process.env.NEXT_PUBLIC_BILLING_PROVIDER && { NEXT_PUBLIC_BILLING_PROVIDER: process.env.NEXT_PUBLIC_BILLING_PROVIDER }),
+        ...(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY && { NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }),
+        ...(process.env.STRIPE_SECRET_KEY && { STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY }),
+        ...(process.env.STRIPE_WEBHOOK_SECRET && { STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET }),
+
+        // CMS
+        ...(process.env.CMS_CLIENT && { CMS_CLIENT: process.env.CMS_CLIENT }),
+        ...(process.env.NEXT_PUBLIC_KEYSTATIC_CONTENT_PATH && { NEXT_PUBLIC_KEYSTATIC_CONTENT_PATH: process.env.NEXT_PUBLIC_KEYSTATIC_CONTENT_PATH }),
+
+        // Monitoring
+        ...(process.env.SENTRY_DSN && { SENTRY_DSN: process.env.SENTRY_DSN }),
+        ...(process.env.NEXT_PUBLIC_SENTRY_DSN && { NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN }),
+
+        // Misc
+        TZ: process.env.TZ || "UTC",
       },
 
       // CloudFront CDN configuration
