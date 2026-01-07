@@ -6,8 +6,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, Loader2, Music, Speaker, Volume2 } from 'lucide-react';
 
 import {
-    ELEVENLABS_MODELS,
     getElevenLabsAccountInfoAction,
+    getElevenLabsModelsAction,
 } from '@kit/audio-generation/server';
 import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
@@ -63,6 +63,16 @@ export function AudioSettingsForm({
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
+    // Fetch available models from ElevenLabs API
+    const { data: modelsData, isLoading: isLoadingModels } = useQuery({
+        queryKey: ['elevenlabs-models', accountId],
+        queryFn: () => getElevenLabsModelsAction({ accountId }),
+        staleTime: 1000 * 60 * 30, // 30 minutes - models don't change often
+        enabled: !!elevenLabsInfo?.isConnected,
+    });
+
+    const availableModels = modelsData?.models || [];
+
     // Update mutation
     const updateMutation = useMutation({
         mutationFn: async () => {
@@ -74,7 +84,7 @@ export function AudioSettingsForm({
                         tts_model: ttsModel,
                         sfx_model: sfxModel,
                     },
-                    voice_provider: voiceProvider as 'elevenlabs' | 'playht' | 'azure' | 'google',
+                    voice_provider: voiceProvider,
                 },
             });
         },
@@ -88,6 +98,9 @@ export function AudioSettingsForm({
     });
 
     const isConnected = elevenLabsInfo?.isConnected;
+
+    // Find current model description
+    const currentModelInfo = availableModels.find((m) => m.model_id === ttsModel);
 
     return (
         <Card>
@@ -178,19 +191,26 @@ export function AudioSettingsForm({
                             <Select
                                 value={ttsModel}
                                 onValueChange={setTtsModel}
-                                disabled={!isConnected || voiceProvider !== 'elevenlabs'}
+                                disabled={!isConnected || voiceProvider !== 'elevenlabs' || isLoadingModels}
                             >
                                 <SelectTrigger id="tts-model">
-                                    <SelectValue placeholder="Select model" />
+                                    {isLoadingModels ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader2 className="h-3 w-3 animate-spin" />
+                                            Loading models...
+                                        </div>
+                                    ) : (
+                                        <SelectValue placeholder="Select model" />
+                                    )}
                                 </SelectTrigger>
                                 <SelectContent>
-                                    {ELEVENLABS_MODELS.map((model) => (
-                                        <SelectItem key={model.id} value={model.id}>
+                                    {availableModels.map((model) => (
+                                        <SelectItem key={model.model_id} value={model.model_id}>
                                             <div className="flex items-center gap-2">
                                                 <span>{model.name}</span>
-                                                {model.recommended && (
+                                                {model.languages && model.languages.length > 0 && (
                                                     <Badge variant="outline" className="text-xs">
-                                                        Recommended
+                                                        {model.languages.length} languages
                                                     </Badge>
                                                 )}
                                             </div>
@@ -198,9 +218,9 @@ export function AudioSettingsForm({
                                     ))}
                                 </SelectContent>
                             </Select>
-                            {ttsModel && (
+                            {currentModelInfo?.description && (
                                 <p className="text-xs text-muted-foreground">
-                                    {ELEVENLABS_MODELS.find((m) => m.id === ttsModel)?.description}
+                                    {currentModelInfo.description}
                                 </p>
                             )}
                         </div>
@@ -221,14 +241,21 @@ export function AudioSettingsForm({
                         <Select
                             value={sfxModel}
                             onValueChange={setSfxModel}
-                            disabled={!isConnected}
+                            disabled={!isConnected || isLoadingModels}
                         >
                             <SelectTrigger id="sfx-model" className="w-full sm:w-1/2">
-                                <SelectValue placeholder="Select model" />
+                                {isLoadingModels ? (
+                                    <div className="flex items-center gap-2">
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Loading models...
+                                    </div>
+                                ) : (
+                                    <SelectValue placeholder="Select model" />
+                                )}
                             </SelectTrigger>
                             <SelectContent>
-                                {ELEVENLABS_MODELS.map((model) => (
-                                    <SelectItem key={model.id} value={model.id}>
+                                {availableModels.map((model) => (
+                                    <SelectItem key={model.model_id} value={model.model_id}>
                                         {model.name}
                                     </SelectItem>
                                 ))}

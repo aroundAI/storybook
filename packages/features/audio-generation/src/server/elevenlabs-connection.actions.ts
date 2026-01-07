@@ -23,44 +23,56 @@ const GetAccountInfoSchema = z.object({
 });
 
 /**
- * Available ElevenLabs TTS models
+ * ElevenLabs model info - fetched dynamically from API
  */
-export const ELEVENLABS_MODELS = [
+export interface ElevenLabsModelInfo {
+    model_id: string;
+    name: string;
+    description?: string;
+    can_be_finetuned?: boolean;
+    can_do_text_to_speech?: boolean;
+    can_do_voice_conversion?: boolean;
+    can_use_style?: boolean;
+    can_use_speaker_boost?: boolean;
+    serves_pro_voices?: boolean;
+    token_cost_factor?: number;
+    concurrency_group?: string;
+    max_characters_request_free_user?: number;
+    max_characters_request_subscribed_user?: number;
+    languages?: Array<{
+        language_id: string;
+        name: string;
+    }>;
+}
+
+/**
+ * Fallback models used when API fetch fails
+ * These are kept as defaults but should not be used in production
+ */
+export const ELEVENLABS_FALLBACK_MODELS = [
     {
-        id: 'eleven_multilingual_v2',
-        name: 'Multilingual v2',
-        description: 'High quality, 29 languages, ~500ms latency',
-        languages: 29,
-        latency: 'medium',
-        recommended: true,
+        model_id: 'eleven_multilingual_v2',
+        name: 'Eleven Multilingual v2',
+        description: 'High quality, 29 languages',
+        can_do_text_to_speech: true,
     },
     {
-        id: 'eleven_flash_v2_5',
-        name: 'Flash v2.5',
-        description: 'Ultra-fast, 32 languages, ~75ms latency',
-        languages: 32,
-        latency: 'low',
-        recommended: false,
+        model_id: 'eleven_flash_v2_5',
+        name: 'Eleven Flash v2.5',
+        description: 'Ultra-fast, 32 languages',
+        can_do_text_to_speech: true,
     },
     {
-        id: 'eleven_turbo_v2_5',
-        name: 'Turbo v2.5',
-        description: 'Balanced quality/speed, 32 languages, ~250ms latency',
-        languages: 32,
-        latency: 'medium',
-        recommended: false,
-    },
-    {
-        id: 'eleven_monolingual_v1',
-        name: 'Monolingual v1',
-        description: 'English only, legacy model',
-        languages: 1,
-        latency: 'medium',
-        recommended: false,
+        model_id: 'eleven_turbo_v2_5',
+        name: 'Eleven Turbo v2.5',
+        description: 'Balanced quality/speed, 32 languages',
+        can_do_text_to_speech: true,
     },
 ] as const;
 
-export type ElevenLabsModel = (typeof ELEVENLABS_MODELS)[number];
+// Keep old export for backward compatibility
+export const ELEVENLABS_MODELS = ELEVENLABS_FALLBACK_MODELS;
+export type ElevenLabsModel = ElevenLabsModelInfo;
 
 /**
  * ElevenLabs account info response type
@@ -77,6 +89,83 @@ export interface ElevenLabsAccountInfo {
     voiceLimit?: number;
     canExtendCharacterLimit?: boolean;
 }
+
+/**
+ * Fetch available TTS models from ElevenLabs API
+ * Fetches directly from /v1/models endpoint for up-to-date model list
+ */
+export const getElevenLabsModelsAction = enhanceAction(
+    async (data) => {
+        const client = getSupabaseServerClient();
+
+        // Get stored API key
+        const { data: storedKey } = await client
+            .from('external_api_keys')
+            .select('encrypted_key, is_active')
+            .eq('account_id', data.accountId)
+            .eq('provider', 'elevenlabs')
+            .single();
+
+        // If no API key, use platform key from env
+        const apiKey = storedKey?.encrypted_key || process.env.ELEVENLABS_API_KEY;
+
+        if (!apiKey) {
+            // Return fallback models if no API key available
+            return {
+                models: ELEVENLABS_FALLBACK_MODELS.map((m) => ({
+                    ...m,
+                    languages: [],
+                })) as ElevenLabsModelInfo[],
+                fromApi: false,
+            };
+        }
+
+        try {
+            const response = await fetch(`${ELEVENLABS.BASE_URL}/models`, {
+                method: 'GET',
+                headers: {
+                    'xi-api-key': apiKey,
+                },
+            });
+
+            if (!response.ok) {
+                console.error('[ElevenLabs] Failed to fetch models:', response.statusText);
+                return {
+                    models: ELEVENLABS_FALLBACK_MODELS.map((m) => ({
+                        ...m,
+                        languages: [],
+                    })) as ElevenLabsModelInfo[],
+                    fromApi: false,
+                };
+            }
+
+            const allModels = (await response.json()) as ElevenLabsModelInfo[];
+
+            // Filter to only TTS models (can_do_text_to_speech = true)
+            const ttsModels = allModels.filter(
+                (model) => model.can_do_text_to_speech === true,
+            );
+
+            return {
+                models: ttsModels,
+                fromApi: true,
+            };
+        } catch (error) {
+            console.error('[ElevenLabs] Error fetching models:', error);
+            return {
+                models: ELEVENLABS_FALLBACK_MODELS.map((m) => ({
+                    ...m,
+                    languages: [],
+                })) as ElevenLabsModelInfo[],
+                fromApi: false,
+            };
+        }
+    },
+    {
+        auth: true,
+        schema: GetAccountInfoSchema,
+    },
+);
 
 /**
  * Test ElevenLabs API key connection
@@ -250,3 +339,4 @@ export const getElevenLabsAccountInfoAction = enhanceAction(
         schema: GetAccountInfoSchema,
     },
 );
+
