@@ -494,3 +494,84 @@ export const removeProjectMemberAction = enhanceAction(
     schema: RemoveProjectMemberSchema,
   },
 );
+
+/**
+ * Update project audio settings
+ * Used to configure per-project audio generation models (TTS, SFX, Music)
+ */
+import { z } from 'zod';
+
+const UpdateProjectAudioSettingsSchema = z.object({
+  projectId: z.string().uuid(),
+  audioSettings: z.object({
+    elevenlabs: z
+      .object({
+        enabled: z.boolean().optional(),
+        tts_model: z.string().optional(),
+        sfx_model: z.string().optional(),
+        music_model: z.string().optional(),
+      })
+      .optional(),
+    voice_provider: z
+      .enum(['elevenlabs', 'playht', 'azure', 'google'])
+      .optional(),
+    sfx_provider: z.enum(['elevenlabs']).optional(),
+    music_provider: z.enum(['suno', 'udio', 'elevenlabs']).optional(),
+  }),
+});
+
+export type ProjectAudioSettings = z.infer<
+  typeof UpdateProjectAudioSettingsSchema
+>['audioSettings'];
+
+export const updateProjectAudioSettingsAction = enhanceAction(
+  async (data: z.infer<typeof UpdateProjectAudioSettingsSchema>) => {
+    const logger = await getLogger();
+    const ctx = { name: 'projects.updateAudioSettings', projectId: data.projectId };
+
+    logger.info(ctx, 'Updating project audio settings');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Get current project for account_id
+    const { data: project, error: fetchError } = await client
+      .from('projects')
+      .select('account_id')
+      .eq('id', data.projectId)
+      .single();
+
+    if (fetchError || !project) {
+      throw new Error('Project not found');
+    }
+
+    // Update audio_settings column
+    const { error } = await client
+      .from('projects')
+      .update({ audio_settings: data.audioSettings as Json })
+      .eq('id', data.projectId);
+
+    if (error) {
+      logger.error({ ...ctx, error }, 'Failed to update audio settings');
+      throw new Error(`Failed to update audio settings: ${error.message}`);
+    }
+
+    logger.info(ctx, 'Audio settings updated successfully');
+
+    // Invalidate cache
+    await invalidateProjectCache(data.projectId, project.account_id);
+
+    // Revalidate project settings page
+    revalidatePath(`/home/[account]/studio/[projectSlug]/settings`, 'page');
+
+    return { success: true };
+  },
+  {
+    schema: UpdateProjectAudioSettingsSchema,
+  },
+);
+
