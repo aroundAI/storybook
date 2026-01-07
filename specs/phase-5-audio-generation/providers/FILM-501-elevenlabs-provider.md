@@ -904,20 +904,20 @@ describe('ElevenLabsProvider', () => {
 import { describe, it, expect } from 'vitest';
 import { ElevenLabsProvider } from '@kit/audio-generation/providers';
 
-// These tests require a valid ElevenLabs API key
-// Set ELEVENLABS_API_KEY in environment for integration tests
+// These tests require a valid ElevenLabs API key stored in external_api_keys table
+// API keys are no longer read from environment variables
 
 describe('ElevenLabs Provider Integration', () => {
-  const apiKey = process.env.ELEVENLABS_API_KEY;
+  // Integration tests require a stored API key via getAccountElevenLabsApiKey
+  // See project-audio-settings.ts for key lookup
 
-  // Skip if no API key
-  const describeIf = apiKey ? describe : describe.skip;
-
-  describeIf('with real API', () => {
+  describe('with stored API key', () => {
     let provider: ElevenLabsProvider;
 
-    beforeEach(() => {
-      provider = new ElevenLabsProvider({ apiKey: apiKey! });
+    beforeEach(async () => {
+      // In real integration tests, fetch API key from test account
+      const apiKey = await getAccountElevenLabsApiKey('test-account-id');
+      provider = new ElevenLabsProvider({ apiKey });
     });
 
     it('should list real voices', async () => {
@@ -947,9 +947,8 @@ describe('ElevenLabs Provider Integration', () => {
 ### Manual Testing
 
 1. **Voice Generation**
-   - Create ElevenLabs account and get API key
-   - Set API key in environment: `ELEVENLABS_API_KEY=xxx`
-   - Run: `pnpm test:integration elevenlabs-provider.test.ts`
+   - Add ElevenLabs API key via Settings > API Keys
+   - Configure project audio settings with TTS model
    - Verify audio file is generated
    - Play audio to verify quality
 
@@ -1016,9 +1015,10 @@ describe('ElevenLabs Provider Integration', () => {
 import { toast } from '@kit/ui/sonner';
 import { ElevenLabsProvider } from '@kit/audio-generation/providers';
 
-async function handleGenerateVoice(text: string, voiceId: string) {
+async function handleGenerateVoice(text: string, voiceId: string, apiKey: string) {
   try {
-    const provider = new ElevenLabsProvider({ apiKey: process.env.ELEVENLABS_API_KEY! });
+    // API key must be fetched from stored keys via getAccountElevenLabsApiKey
+    const provider = new ElevenLabsProvider({ apiKey });
     const result = await provider.generateVoice({ text, voiceId });
     toast.success('Voice generated successfully');
     return result;

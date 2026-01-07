@@ -142,7 +142,7 @@ describe('Voice Clone Actions', () => {
         });
 
         // Mock platform key
-        process.env.ELEVENLABS_API_KEY = 'test-api-key';
+        // API key mocked via external_api_keys table mock
 
         // Mock fetch for audio sample
         mockFetch.mockResolvedValue({
@@ -242,7 +242,7 @@ describe('Voice Clone Actions', () => {
       });
 
       it('should throw error when no API key is configured', async () => {
-        delete process.env.ELEVENLABS_API_KEY;
+        // No env key - tests require stored key mock
 
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'assets') {
@@ -286,7 +286,7 @@ describe('Voice Clone Actions', () => {
       });
 
       it('should update status to failed when ElevenLabs API fails', async () => {
-        process.env.ELEVENLABS_API_KEY = 'test-api-key';
+        // API key mocked via external_api_keys table mock
 
         const updateMock = vi.fn().mockReturnThis();
         const eqMock = vi.fn().mockResolvedValue({ error: null });
@@ -347,7 +347,7 @@ describe('Voice Clone Actions', () => {
       });
 
       it('should throw error when sample download fails', async () => {
-        process.env.ELEVENLABS_API_KEY = 'test-api-key';
+        // API key mocked via external_api_keys table mock
 
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'assets') {
@@ -398,7 +398,7 @@ describe('Voice Clone Actions', () => {
 
     describe('Return Values', () => {
       it('should return success with voiceId and status on success', async () => {
-        process.env.ELEVENLABS_API_KEY = 'test-api-key';
+        // API key mocked via external_api_keys table mock
 
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'assets') {
@@ -498,7 +498,7 @@ describe('Voice Clone Actions', () => {
       });
 
       it('should continue even when ElevenLabs deletion fails', async () => {
-        process.env.ELEVENLABS_API_KEY = 'test-api-key';
+        // API key mocked via external_api_keys table mock
 
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'voice_profiles') {
@@ -543,7 +543,7 @@ describe('Voice Clone Actions', () => {
 
     describe('Return Values', () => {
       it('should return success when deletion completes', async () => {
-        process.env.ELEVENLABS_API_KEY = 'test-api-key';
+        // API key mocked via external_api_keys table mock
 
         mockSupabaseClient.from.mockImplementation((table: string) => {
           if (table === 'voice_profiles') {

@@ -63,7 +63,8 @@ pnpm install
 
 # 2. Configure environment
 cp apps/web/.env.example apps/web/.env
-# Add API keys: DEEPSEEK_API_KEY, KLING_API_KEY, ELEVENLABS_API_KEY
+# Add API keys: DEEPSEEK_API_KEY, KLING_API_KEY
+# ElevenLabs API key is added via Settings > API Keys in the app
 # Add Supabase credentials
 
 # 3. Start development server

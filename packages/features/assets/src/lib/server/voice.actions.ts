@@ -30,38 +30,35 @@ const GetElevenLabsVoicesSchema = z.object({
 });
 
 /**
+ * Get ElevenLabs API key from stored external_api_keys
+ * Throws if no API key is configured - requires explicit setup
+ */
+async function getAccountElevenLabsApiKey(accountId: string): Promise<string> {
+    const client = getSupabaseServerClient();
+
+    const { data: apiKeyRecord } = await client
+        .from('external_api_keys')
+        .select('encrypted_key')
+        .eq('account_id', accountId)
+        .eq('provider', 'elevenlabs')
+        .eq('is_active', true)
+        .single();
+
+    if (!apiKeyRecord?.encrypted_key) {
+        throw new Error(
+            'ElevenLabs API key not configured. Please add your API key in Settings > API Keys.'
+        );
+    }
+
+    return apiKeyRecord.encrypted_key;
+}
+
+/**
  * Fetch voices from ElevenLabs using the user's stored API key
  */
 export const getElevenLabsVoicesAction = enhanceAction(
-    async ({ accountId }, _user) => {
-        // First check environment variable
-        let apiKey = process.env.ELEVENLABS_API_KEY;
-
-        // Debug: log env var status
-        console.log('[ElevenLabs] ELEVENLABS_API_KEY from env:', apiKey ? `${apiKey.substring(0, 10)}...` : 'NOT SET');
-
-        // Fall back to database if no env var
-        if (!apiKey) {
-            const client = getSupabaseServerClient();
-            const { data: apiKeyRecord } = await client
-                .from('external_api_keys')
-                .select('encrypted_key')
-                .eq('account_id', accountId)
-                .eq('provider', 'elevenlabs')
-                .eq('is_active', true)
-                .single();
-
-            if (apiKeyRecord) {
-                const keyRecord = apiKeyRecord as unknown as { encrypted_key: string };
-                apiKey = keyRecord.encrypted_key;
-            }
-        }
-
-        if (!apiKey) {
-            throw new Error(
-                'ElevenLabs API key not found. Set ELEVENLABS_API_KEY in env or add in Settings > API Keys.'
-            );
-        }
+    async ({ accountId }) => {
+        const apiKey = await getAccountElevenLabsApiKey(accountId);
 
         // Fetch voices directly from ElevenLabs API
         const response = await fetch('https://api.elevenlabs.io/v1/voices', {
@@ -121,7 +118,7 @@ const AssignVoiceToCharacterSchema = z.object({
  * Save voice profile assignment to a character
  */
 export const assignVoiceToCharacterAction = enhanceAction(
-    async ({ characterId, voiceAssetId }, _user) => {
+    async ({ characterId, voiceAssetId }) => {
         const client = getSupabaseServerClient();
 
         // Update character_details with voice assignment
