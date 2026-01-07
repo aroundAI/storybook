@@ -1,4 +1,5 @@
-import { promises as fsPromises } from 'fs';
+import { createReadStream, promises as fsPromises } from 'fs';
+import { Readable } from 'stream';
 
 import type {
   TikTokUploadInit,
@@ -13,14 +14,17 @@ const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
 
 /**
  * TikTok Provider
- * Handles video uploads using TikTok's Content Posting API with chunked upload
+ * Handles video uploads using TikTok's Content Posting API with streaming chunked upload
+ * 
+ * Memory-optimized: Uses streaming to avoid loading entire video into memory.
+ * This allows uploading large videos (up to 4GB) without running out of memory.
  */
 export class TikTokProvider {
-  constructor(private accessToken: string) {}
+  constructor(private accessToken: string) { }
 
   /**
    * Uploads a video to TikTok using the Content Posting API
-   * Uses chunked upload for large files
+   * Uses streaming chunked upload for memory efficiency
    */
   async uploadVideo(
     input: TikTokUploadInput,
@@ -55,21 +59,14 @@ export class TikTokProvider {
 
     const { uploadId, uploadUrl } = initResponse;
 
-    // 3. Upload chunks
-    const videoBuffer = await this.getVideoBuffer(input.videoPath);
-    let uploadedBytes = 0;
-
-    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-      const start = chunkIndex * chunkSize;
-      const end = Math.min(start + chunkSize, videoSize);
-      const chunk = videoBuffer.subarray(start, end);
-
-      await this.uploadChunk(uploadUrl, chunk, start, end - 1, videoSize);
-
-      uploadedBytes += chunk.length;
-      const progress = Math.round((uploadedBytes / videoSize) * 100);
-      onProgress?.(progress);
-    }
+    // 3. Upload chunks using streaming (memory-efficient)
+    await this.uploadChunksStreaming(
+      input.videoPath,
+      uploadUrl,
+      videoSize,
+      chunkSize,
+      onProgress,
+    );
 
     // 4. Complete upload and create post
     const postResponse = await this.createPost(uploadId, input);
@@ -78,6 +75,80 @@ export class TikTokProvider {
       publishId: postResponse.publishId,
       status: 'PROCESSING',
     };
+  }
+
+  /**
+   * Uploads video chunks using streaming - reads and uploads one chunk at a time
+   * Memory usage stays constant regardless of video size (only ~10MB per chunk)
+   */
+  private async uploadChunksStreaming(
+    videoPath: string,
+    uploadUrl: string,
+    videoSize: number,
+    chunkSize: number,
+    onProgress?: TikTokUploadProgress,
+  ): Promise<void> {
+    let uploadedBytes = 0;
+
+    if (videoPath.startsWith('http')) {
+      // For remote URLs: stream and process chunks on-the-fly
+      const response = await fetch(videoPath);
+      if (!response.ok || !response.body) {
+        throw new Error(`Failed to fetch video: ${response.status}`);
+      }
+
+      const reader = response.body.getReader();
+      let buffer = new Uint8Array(0);
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (value) {
+          // Append new data to buffer
+          const newBuffer = new Uint8Array(buffer.length + value.length);
+          newBuffer.set(buffer);
+          newBuffer.set(value, buffer.length);
+          buffer = newBuffer;
+        }
+
+        // Process complete chunks from buffer
+        while (buffer.length >= chunkSize || (done && buffer.length > 0)) {
+          const currentChunkSize = Math.min(chunkSize, buffer.length);
+          const chunk = buffer.slice(0, currentChunkSize);
+          const startByte = uploadedBytes;
+          const endByte = uploadedBytes + chunk.length - 1;
+
+          await this.uploadChunk(uploadUrl, chunk, startByte, endByte, videoSize);
+
+          uploadedBytes += chunk.length;
+          const progress = Math.round((uploadedBytes / videoSize) * 100);
+          onProgress?.(progress);
+
+          // Remove processed chunk from buffer
+          buffer = buffer.slice(currentChunkSize);
+
+          // If done and buffer is empty, we're finished
+          if (done && buffer.length === 0) break;
+        }
+
+        if (done) break;
+      }
+    } else {
+      // For local files: use Node.js streams for efficient reading
+      const stream = createReadStream(videoPath, { highWaterMark: chunkSize });
+
+      for await (const data of stream) {
+        const chunk = data instanceof Buffer ? new Uint8Array(data) : data;
+        const startByte = uploadedBytes;
+        const endByte = uploadedBytes + chunk.length - 1;
+
+        await this.uploadChunk(uploadUrl, chunk, startByte, endByte, videoSize);
+
+        uploadedBytes += chunk.length;
+        const progress = Math.round((uploadedBytes / videoSize) * 100);
+        onProgress?.(progress);
+      }
+    }
   }
 
   /**
@@ -301,28 +372,6 @@ export class TikTokProvider {
     }
     const stats = await fsPromises.stat(path);
     return stats.size;
-  }
-
-  /**
-   * Gets the video file as a buffer for chunked upload
-   */
-  private async getVideoBuffer(path: string): Promise<Uint8Array> {
-    if (path.startsWith('http')) {
-      const response = await fetch(path);
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch video: ${response.status} ${response.statusText}`,
-        );
-      }
-      if (!response.body) {
-        throw new Error('Failed to fetch video');
-      }
-      const arrayBuffer = await response.arrayBuffer();
-      return new Uint8Array(arrayBuffer);
-    }
-
-    const buffer = await fsPromises.readFile(path);
-    return new Uint8Array(buffer);
   }
 }
 
