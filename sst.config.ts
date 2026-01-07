@@ -550,6 +550,11 @@ export default $config({
         ...(process.env.REDIS_URL && {
           REDIS_URL: process.env.REDIS_URL,
         }),
+
+        // Encryption key for OAuth tokens (required for platform connections)
+        ...(process.env.ENCRYPTION_KEY && {
+          ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+        }),
       },
 
       // CloudFront CDN configuration
