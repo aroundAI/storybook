@@ -1,3 +1,4 @@
+import { Metadata } from 'next';
 import Link from 'next/link';
 
 import {
@@ -23,15 +24,60 @@ import {
 } from '@kit/ui/marketing';
 import { Trans } from '@kit/ui/trans';
 
-
+import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
+import { getSoftwareApplicationSchema, JsonLd } from '~/lib/structured-data';
 
 import { RotatingText } from './_components/rotating-text';
 
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: `${appConfig.name} - AI-Powered Film Studio for Content Creators`,
+    description:
+      'Create professional video content with AI. Generate stories, screenplays, visuals, and audio. Publish to YouTube, TikTok, Instagram, and more.',
+    keywords: [
+      'AI video generation',
+      'content creation',
+      'film production',
+      'screenplay writing',
+      'video editing',
+      'AI storytelling',
+      'YouTube automation',
+      'TikTok content',
+      'social media publishing',
+    ],
+    authors: [{ name: 'StoryBook Team' }],
+    alternates: {
+      canonical: appConfig.url,
+    },
+    openGraph: {
+      title: `${appConfig.name} - AI-Powered Film Studio`,
+      description:
+        'Create professional video content with AI. Generate stories, screenplays, visuals, and audio.',
+      url: appConfig.url,
+      siteName: appConfig.name,
+      type: 'website',
+      locale: appConfig.locale,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${appConfig.name} - AI-Powered Film Studio`,
+      description:
+        'Create professional video content with AI. Generate stories, screenplays, visuals, and audio.',
+    },
+  };
+}
+
 function Home() {
+  const softwareSchema = getSoftwareApplicationSchema();
+
   return (
     <div className={'flex flex-col'}>
+      {/* SEO: Product structured data */}
+      <JsonLd data={softwareSchema} />
+
       {/* Hero Section with Gradient Background */}
+
       <section className="relative overflow-hidden bg-gradient-to-b from-slate-50 via-white to-slate-50/50 py-12 lg:py-16 dark:from-slate-950 dark:via-slate-900 dark:to-black">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
