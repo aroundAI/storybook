@@ -18,6 +18,7 @@ import {
     findOrCreateAudioAsset,
     updateAudioAssetAction,
 } from './audio-asset-actions';
+import { getProjectElevenLabsApiKey } from './project-audio-settings';
 
 // =============================================================================
 // Schemas
@@ -60,21 +61,6 @@ interface GenerateSfxResult {
     duration?: number;
     error?: string;
     wasReused: boolean;
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/**
- * Get ElevenLabs API key
- */
-async function getElevenLabsApiKey(): Promise<string> {
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-        throw new Error('ELEVENLABS_API_KEY environment variable is not set');
-    }
-    return apiKey;
 }
 
 /**
@@ -179,7 +165,7 @@ export const generateSfxAction = enhanceAction(
             });
 
             // Get API key and create provider
-            const apiKey = await getElevenLabsApiKey();
+            const apiKey = await getProjectElevenLabsApiKey(data.projectId);
             const provider = new ElevenLabsSfxProvider({ apiKey });
 
             // Generate SFX

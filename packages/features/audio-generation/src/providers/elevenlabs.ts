@@ -54,7 +54,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
           },
           body: JSON.stringify({
             text: request.text,
-            model_id: request.modelId ?? 'eleven_monolingual_v1',
+            model_id: this.requireModelId(request.modelId),
             voice_settings: {
               stability: settings.stability,
               similarity_boost: settings.similarityBoost,
@@ -81,7 +81,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         cost,
         metadata: {
           voiceId: request.voiceId,
-          modelId: request.modelId ?? 'eleven_monolingual_v1',
+          modelId: request.modelId,
           settings,
           requestId: `el_${Date.now()}`,
         },
@@ -111,7 +111,7 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         },
         body: JSON.stringify({
           text: request.text,
-          model_id: request.modelId ?? 'eleven_monolingual_v1',
+          model_id: this.requireModelId(request.modelId),
           voice_settings: {
             stability: settings.stability,
             similarity_boost: settings.similarityBoost,
@@ -177,11 +177,11 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         isCloned: voice.category === 'cloned',
         settings: voice.settings
           ? {
-              stability: voice.settings.stability,
-              similarityBoost: voice.settings.similarity_boost,
-              style: voice.settings.style,
-              useSpeakerBoost: voice.settings.use_speaker_boost,
-            }
+            stability: voice.settings.stability,
+            similarityBoost: voice.settings.similarity_boost,
+            style: voice.settings.style,
+            useSpeakerBoost: voice.settings.use_speaker_boost,
+          }
           : undefined,
       }));
 
@@ -286,6 +286,18 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
       requestsPerMinute: ELEVENLABS.RATE_LIMITS.REQUESTS_PER_MINUTE,
       concurrentRequests: ELEVENLABS.RATE_LIMITS.CONCURRENT_REQUESTS,
     };
+  }
+
+  /**
+   * Require modelId to be explicitly provided - no defaults
+   */
+  private requireModelId(modelId: string | undefined): string {
+    if (!modelId) {
+      throw new Error(
+        'modelId is required. Configure project audio settings or pass modelId explicitly.',
+      );
+    }
+    return modelId;
   }
 
   /**

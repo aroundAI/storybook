@@ -33,7 +33,7 @@ import {
   getVoiceSettings,
   incrementAccountUsage,
 } from './voice-queries';
-import { getProjectTTSModel } from './project-audio-settings';
+import { getProjectTTSModel, getAccountElevenLabsApiKey } from './project-audio-settings';
 
 // Note: These actions use type assertions because the film studio tables
 // (dialogue_lines, episodes, generation_jobs) are not yet in the generated
@@ -190,14 +190,8 @@ export const generateDialogueVoiceAction = enhanceAction(
       );
     }
 
-    // 8. Get API key from environment
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      logger.error(ctx, 'Missing ELEVENLABS_API_KEY');
-      throw new Error(
-        'Voice generation service not configured. Please configure ELEVENLABS_API_KEY.',
-      );
-    }
+    // 8. Get API key from stored external_api_keys
+    const apiKey = await getAccountElevenLabsApiKey(accountId);
 
     // 9. Update status to 'generating'
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -474,14 +468,8 @@ export const generateVoiceFromTextAction = enhanceAction(
       throw new Error('Could not determine account for episode');
     }
 
-    // 2. Get API key
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-    if (!apiKey) {
-      logger.error(ctx, 'Missing ELEVENLABS_API_KEY');
-      throw new Error(
-        'Voice generation service not configured. Please configure ELEVENLABS_API_KEY.',
-      );
-    }
+    // 2. Get API key from stored external_api_keys
+    const apiKey = await getAccountElevenLabsApiKey(accountId);
 
     // 3. Estimate cost
     const estimatedCost = estimateVoiceCost(data.text.length);

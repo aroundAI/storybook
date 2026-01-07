@@ -46,35 +46,6 @@ export interface ElevenLabsModelInfo {
 }
 
 /**
- * Fallback models used when API fetch fails
- * These are kept as defaults but should not be used in production
- */
-export const ELEVENLABS_FALLBACK_MODELS = [
-    {
-        model_id: 'eleven_multilingual_v2',
-        name: 'Eleven Multilingual v2',
-        description: 'High quality, 29 languages',
-        can_do_text_to_speech: true,
-    },
-    {
-        model_id: 'eleven_flash_v2_5',
-        name: 'Eleven Flash v2.5',
-        description: 'Ultra-fast, 32 languages',
-        can_do_text_to_speech: true,
-    },
-    {
-        model_id: 'eleven_turbo_v2_5',
-        name: 'Eleven Turbo v2.5',
-        description: 'Balanced quality/speed, 32 languages',
-        can_do_text_to_speech: true,
-    },
-] as const;
-
-// Keep old export for backward compatibility
-export const ELEVENLABS_MODELS = ELEVENLABS_FALLBACK_MODELS;
-export type ElevenLabsModel = ElevenLabsModelInfo;
-
-/**
  * ElevenLabs account info response type
  */
 export interface ElevenLabsAccountInfo {
@@ -92,51 +63,37 @@ export interface ElevenLabsAccountInfo {
 
 /**
  * Fetch available TTS models from ElevenLabs API
- * Fetches directly from /v1/models endpoint for up-to-date model list
+ * Throws if no API key configured - requires explicit setup
  */
 export const getElevenLabsModelsAction = enhanceAction(
     async (data) => {
         const client = getSupabaseServerClient();
 
-        // Get stored API key
+        // Get stored API key - required, no fallback
         const { data: storedKey } = await client
             .from('external_api_keys')
             .select('encrypted_key, is_active')
             .eq('account_id', data.accountId)
             .eq('provider', 'elevenlabs')
+            .eq('is_active', true)
             .single();
 
-        // If no API key, use platform key from env
-        const apiKey = storedKey?.encrypted_key || process.env.ELEVENLABS_API_KEY;
-
-        if (!apiKey) {
-            // Return fallback models if no API key available
-            return {
-                models: ELEVENLABS_FALLBACK_MODELS.map((m) => ({
-                    ...m,
-                    languages: [],
-                })) as ElevenLabsModelInfo[],
-                fromApi: false,
-            };
+        if (!storedKey?.encrypted_key) {
+            throw new Error(
+                'ElevenLabs API key not configured. Please add your API key in Settings → API Keys.',
+            );
         }
 
         try {
             const response = await fetch(`${ELEVENLABS.BASE_URL}/models`, {
                 method: 'GET',
                 headers: {
-                    'xi-api-key': apiKey,
+                    'xi-api-key': storedKey.encrypted_key,
                 },
             });
 
             if (!response.ok) {
-                console.error('[ElevenLabs] Failed to fetch models:', response.statusText);
-                return {
-                    models: ELEVENLABS_FALLBACK_MODELS.map((m) => ({
-                        ...m,
-                        languages: [],
-                    })) as ElevenLabsModelInfo[],
-                    fromApi: false,
-                };
+                throw new Error(`Failed to fetch models: ${response.statusText}`);
             }
 
             const allModels = (await response.json()) as ElevenLabsModelInfo[];
@@ -151,14 +108,9 @@ export const getElevenLabsModelsAction = enhanceAction(
                 fromApi: true,
             };
         } catch (error) {
-            console.error('[ElevenLabs] Error fetching models:', error);
-            return {
-                models: ELEVENLABS_FALLBACK_MODELS.map((m) => ({
-                    ...m,
-                    languages: [],
-                })) as ElevenLabsModelInfo[],
-                fromApi: false,
-            };
+            throw new Error(
+                `Failed to fetch ElevenLabs models: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            );
         }
     },
     {
@@ -339,4 +291,3 @@ export const getElevenLabsAccountInfoAction = enhanceAction(
         schema: GetAccountInfoSchema,
     },
 );
-

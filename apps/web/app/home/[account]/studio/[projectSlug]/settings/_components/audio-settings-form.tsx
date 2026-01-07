@@ -45,12 +45,12 @@ export function AudioSettingsForm({
 }: AudioSettingsFormProps) {
     const queryClient = useQueryClient();
 
-    // Local state for form
+    // Local state for form - no defaults, must be configured
     const [ttsModel, setTtsModel] = useState(
-        currentSettings?.elevenlabs?.tts_model || 'eleven_multilingual_v2',
+        currentSettings?.elevenlabs?.tts_model || '',
     );
     const [sfxModel, setSfxModel] = useState(
-        currentSettings?.elevenlabs?.sfx_model || 'eleven_multilingual_v2',
+        currentSettings?.elevenlabs?.sfx_model || '',
     );
     const [voiceProvider, setVoiceProvider] = useState<'elevenlabs' | 'playht' | 'azure' | 'google'>(
         currentSettings?.voice_provider || 'elevenlabs',

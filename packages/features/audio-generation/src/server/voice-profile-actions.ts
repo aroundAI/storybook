@@ -36,34 +36,33 @@ import { ElevenLabsProvider } from '../providers/elevenlabs';
 
 /**
  * Helper to get ElevenLabs API key for an account.
- * Tries BYOK (Bring Your Own Key) first, then falls back to platform key.
+ * Only uses stored keys - no platform fallback.
  */
-async function getElevenLabsApiKey(accountId?: string): Promise<string> {
+async function getElevenLabsApiKey(accountId: string): Promise<string> {
   const client = getSupabaseServerClient();
 
-  // Try BYOK first if accountId is provided
-  if (accountId) {
-    const { data: userKey } = await client
-      .from('external_api_keys')
-      .select('encrypted_key')
-      .eq('account_id', accountId)
-      .eq('provider', 'elevenlabs')
-      .eq('is_active', true)
-      .single();
-
-    if (userKey?.encrypted_key) {
-      return decrypt(userKey.encrypted_key);
-    }
-  }
-
-  // Fall back to platform key
-  const platformKey = process.env.ELEVENLABS_API_KEY;
-  if (!platformKey) {
+  // BYOK only - accountId is required
+  if (!accountId) {
     throw new Error(
-      'No ElevenLabs API key configured. Please add your API key in Settings > API Keys.',
+      'Account ID required for API key lookup. Please add your API key in Settings > API Keys.',
     );
   }
-  return platformKey;
+
+  const { data: userKey } = await client
+    .from('external_api_keys')
+    .select('encrypted_key')
+    .eq('account_id', accountId)
+    .eq('provider', 'elevenlabs')
+    .eq('is_active', true)
+    .single();
+
+  if (userKey?.encrypted_key) {
+    return decrypt(userKey.encrypted_key);
+  }
+
+  throw new Error(
+    'No ElevenLabs API key configured. Please add your API key in Settings > API Keys.',
+  );
 }
 
 /**
@@ -84,19 +83,25 @@ export const listVoicesAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Get account ID from project if provided (for BYOK support)
-    let accountId: string | undefined;
-    if (data.projectId) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: project } = await (client as any)
-        .from('projects')
-        .select('account_id')
-        .eq('id', data.projectId)
-        .single();
-      accountId = project?.account_id;
+
+    // Get account ID from project - projectId is required for API key lookup
+    if (!data.projectId) {
+      throw new Error('Project ID is required to list voices');
     }
 
-    // Get API key with BYOK support
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: project } = await (client as any)
+      .from('projects')
+      .select('account_id')
+      .eq('id', data.projectId)
+      .single();
+
+    const accountId = project?.account_id;
+    if (!accountId) {
+      throw new Error('Could not find project account');
+    }
+
+    // Get API key - stored keys only, no fallback
     const apiKey = await getElevenLabsApiKey(accountId);
 
     // Create provider and fetch voices

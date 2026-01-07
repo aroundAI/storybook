@@ -25,12 +25,11 @@ import { ElevenLabsProvider } from '../providers/elevenlabs';
 
 /**
  * Helper to get ElevenLabs API key for an account
- * Tries BYOK first, then falls back to platform key
+ * Only uses stored keys - no platform fallback
  */
 async function getElevenLabsApiKey(accountId: string): Promise<string> {
   const client = getSupabaseServerClient();
 
-  // Try BYOK first
   const { data: userKey } = await client
     .from('external_api_keys')
     .select('encrypted_key')
@@ -43,14 +42,9 @@ async function getElevenLabsApiKey(accountId: string): Promise<string> {
     return decrypt(userKey.encrypted_key);
   }
 
-  // Fall back to platform key
-  const platformKey = process.env.ELEVENLABS_API_KEY;
-  if (!platformKey) {
-    throw new Error(
-      'No ElevenLabs API key configured. Please add your API key in Settings > API Keys.',
-    );
-  }
-  return platformKey;
+  throw new Error(
+    'No ElevenLabs API key configured. Please add your API key in Settings > API Keys.',
+  );
 }
 
 /**
