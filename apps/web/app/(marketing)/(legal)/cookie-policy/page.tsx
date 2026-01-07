@@ -28,7 +28,6 @@ async function CookiePolicyPage() {
   const { t } = await createI18nServerInstance();
   const lastUpdated = 'January 7, 2025';
   const productName = 'StoryBook';
-  const website = 'storybook.digital';
   const contactEmail = 'privacy@storybook.digital';
 
   return (

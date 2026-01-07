@@ -29,7 +29,6 @@ async function TermsOfServicePage() {
   const lastUpdated = 'January 7, 2025';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
-  const website = 'storybook.digital';
   const contactEmail = 'legal@storybook.digital';
 
   return (

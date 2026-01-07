@@ -31,7 +31,6 @@ async function PrivacyPolicyPage() {
   const lastUpdated = 'January 7, 2025';
   const companyName = 'Around AI Limited';
   const productName = 'StoryBook';
-  const website = 'storybook.digital';
   const contactEmail = 'privacy@storybook.digital';
 
   return (
