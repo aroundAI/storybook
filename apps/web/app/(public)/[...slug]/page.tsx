@@ -102,7 +102,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
                 />
-                <CompanyPage company={company} projects={projects} />
+                <CompanyPage company={company} projects={projects as any} />
             </>
         );
     }
@@ -122,7 +122,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
                 />
-                <ProjectPage project={project} episodes={episodes} baseUrl={BASE_URL} />
+                <ProjectPage project={project} episodes={episodes as any} baseUrl={BASE_URL} />
             </>
         );
     }
