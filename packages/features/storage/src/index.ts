@@ -7,7 +7,7 @@
  */
 
 // Types
-export type { StorageAdapter, UploadOptions, UploadResult } from './types';
+export type { SignedUploadResult, StorageAdapter, UploadOptions, UploadResult } from './types';
 export type { StorageProvider } from './factory';
 export type { AssetType } from './routing';
 

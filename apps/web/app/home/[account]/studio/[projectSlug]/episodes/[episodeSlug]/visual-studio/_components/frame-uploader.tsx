@@ -5,10 +5,11 @@ import { useCallback, useState } from 'react';
 import { Image as ImageIcon, Trash2, Upload } from 'lucide-react';
 
 import { updateShotAction } from '@kit/episodes/server';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
+
+import { uploadWithPresignedUrl } from '~/lib/presigned-upload';
 
 interface FrameUploaderProps {
     projectId: string;
@@ -20,7 +21,7 @@ interface FrameUploaderProps {
 
 /**
  * Image uploader component for first/last frame storyboard images.
- * Uploads to Supabase Storage and updates the shot record.
+ * Uploads to R2 Storage using presigned URLs and updates the shot record.
  */
 export function FrameUploader({
     projectId,
@@ -51,39 +52,27 @@ export function FrameUploader({
             setIsUploading(true);
 
             try {
-                const supabase = getSupabaseBrowserClient();
-
                 // Generate unique filename
                 const fileExt = file.name.split('.').pop();
                 const fileName = `${frameType}-frame-${Date.now()}.${fileExt}`;
                 const storagePath = `projects/${projectId}/shots/${shotId}/frames/${fileName}`;
 
-                // Upload to Supabase Storage
-                const { error: uploadError } = await supabase.storage
-                    .from('project-assets')
-                    .upload(storagePath, file, {
-                        cacheControl: '3600',
-                        upsert: true,
-                    });
-
-                if (uploadError) {
-                    throw new Error(uploadError.message);
-                }
-
-                // Get public URL
-                const {
-                    data: { publicUrl },
-                } = supabase.storage.from('project-assets').getPublicUrl(storagePath);
+                // Upload to R2 via presigned URL
+                const result = await uploadWithPresignedUrl(
+                    file,
+                    'project-assets',
+                    storagePath
+                );
 
                 // Update shot record
                 const updateData =
                     frameType === 'first'
-                        ? { shotId, firstFrameUrl: publicUrl }
-                        : { shotId, lastFrameUrl: publicUrl };
+                        ? { shotId, firstFrameUrl: result.url }
+                        : { shotId, lastFrameUrl: result.url };
 
-                const result = await updateShotAction(updateData);
+                const updateResult = await updateShotAction(updateData);
 
-                if (!result.success) {
+                if (!updateResult.success) {
                     throw new Error('Failed to update shot');
                 }
 

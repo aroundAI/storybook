@@ -69,6 +69,7 @@ import {
     translateMetadataAction,
 } from '@kit/episodes/server';
 import type { EpisodeWithShots, ShortsGroup } from '@kit/episodes/types';
+import { uploadPublishVideo } from '~/lib/presigned-upload';
 
 interface PublishScreenProps {
     episode: EpisodeWithShots;
@@ -375,21 +376,12 @@ export function PublishScreen({
         setIsUploading(true);
 
         try {
-            const formData = new FormData();
-            formData.append('file', selectedFile);
-            formData.append('episodeId', episode.id);
-            formData.append('language', selectedLanguage);
-
-            const response = await fetch('/api/publish/upload', {
-                method: 'POST',
-                body: formData,
-            });
-
-            const result = await response.json();
-
-            if (!response.ok) {
-                throw new Error(result.error || 'Upload failed');
-            }
+            // Use presigned URL upload to bypass Lambda 6MB limit
+            const result = await uploadPublishVideo(
+                selectedFile,
+                episode.id,
+                selectedLanguage,
+            );
 
             startTransition(async () => {
                 try {

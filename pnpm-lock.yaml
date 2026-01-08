@@ -177,7 +177,7 @@ importers:
         version: 3.2.2(react@19.1.1)
       '@edge-csrf/nextjs':
         specifier: 2.5.3-cloudflare-rc1
-        version: 2.5.3-cloudflare-rc1(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
+        version: 2.5.3-cloudflare-rc1(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
       '@hookform/resolvers':
         specifier: ^4.1.3
         version: 4.1.3(react-hook-form@7.62.0(react@19.1.1))
@@ -294,13 +294,13 @@ importers:
         version: 0.0.10(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)
       '@makerkit/data-loader-supabase-nextjs':
         specifier: ^1.2.5
-        version: 1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)
+        version: 1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)
       '@marsidev/react-turnstile':
         specifier: ^1.3.1
         version: 1.3.1(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       '@nosecone/next':
         specifier: 1.0.0-beta.11
-        version: 1.0.0-beta.11(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
+        version: 1.0.0-beta.11(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
       '@radix-ui/react-icons':
         specifier: ^1.3.2
         version: 1.3.2(react@19.1.1)
@@ -339,10 +339,10 @@ importers:
         version: 2.1.35
       next:
         specifier: 15.5.3
-        version: 15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       next-sitemap:
         specifier: ^4.2.3
-        version: 4.2.3(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
+        version: 4.2.3(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))
       next-themes:
         specifier: 0.4.6
         version: 0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
@@ -1058,7 +1058,7 @@ importers:
         version: 0.0.10(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)
       '@makerkit/data-loader-supabase-nextjs':
         specifier: ^1.2.5
-        version: 1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)
+        version: 1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)
       '@supabase/supabase-js':
         specifier: 2.57.4
         version: 2.57.4
@@ -1252,7 +1252,7 @@ importers:
         version: 0.544.0(react@19.1.1)
       next:
         specifier: 15.5.3
-        version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+        version: 15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       react:
         specifier: 19.1.1
         version: 19.1.1
@@ -2013,6 +2013,9 @@ importers:
       '@aws-sdk/client-s3':
         specifier: ^3.964.0
         version: 3.964.0
+      '@aws-sdk/s3-request-presigner':
+        specifier: ^3.965.0
+        version: 3.965.0
       mime-types:
         specifier: ^2.1.35
         version: 2.1.35
@@ -2973,6 +2976,10 @@ packages:
     resolution: {integrity: sha512-1gIfbt0KRxI8am1UYFcIxQ5QKb22JyN3k52sxyrKXJYC8Knn/rTUAZbYti45CfETe5PLadInGvWqClwGRlZKNg==}
     engines: {node: '>=18.0.0'}
 
+  '@aws-sdk/core@3.965.0':
+    resolution: {integrity: sha512-aq9BhQxdHit8UUJ9C0im9TtuKeK0pT6NXmNJxMTCFeStI7GG7ImIsSislg3BZTIifVg1P6VLdzMyz9de85iutQ==}
+    engines: {node: '>=18.0.0'}
+
   '@aws-sdk/crc64-nvme@3.957.0':
     resolution: {integrity: sha512-qSwSfI+qBU9HDsd6/4fM9faCxYJx2yDuHtj+NVOQ6XYDWQzFab/hUdwuKZ77Pi6goLF1pBZhJ2azaC2w7LbnTA==}
     engines: {node: '>=18.0.0'}
@@ -3107,6 +3114,10 @@ packages:
     resolution: {integrity: sha512-SeFcLo3tUdI3amzoIiArd9O0i7vAB0n5fgbQHBu137s3SbSLO5tPspE25rrUITwlc5HTbHMK6UzBq+3hITmImA==}
     engines: {node: '>=18.0.0'}
 
+  '@aws-sdk/middleware-sdk-s3@3.965.0':
+    resolution: {integrity: sha512-dXEgnojaaVRl+OlOx35mg3rYEbfffIN4X6tLmIfDnaKz0hMaDMvsE9jJXb/vBvokbdO1sVB27/2FEM4ttLSLnw==}
+    engines: {node: '>=18.0.0'}
+
   '@aws-sdk/middleware-ssec@3.957.0':
     resolution: {integrity: sha512-qwkmrK0lizdjNt5qxl4tHYfASh8DFpHXM1iDVo+qHe+zuslfMqQEGRkzxS8tJq/I+8F0c6v3IKOveKJAfIvfqQ==}
     engines: {node: '>=18.0.0'}
@@ -3135,12 +3146,20 @@ packages:
     resolution: {integrity: sha512-V8iY3blh8l2iaOqXWW88HbkY5jDoWjH56jonprG/cpyqqCnprvpMUZWPWYJoI8rHRf2bqzZeql1slxG6EnKI7A==}
     engines: {node: '>=18.0.0'}
 
+  '@aws-sdk/s3-request-presigner@3.965.0':
+    resolution: {integrity: sha512-aQ9vvXjeoQsAaRHS18l8doY+E/6mmNMSDMU6eJsSUDgvgGRMHhsKjiVh7DJGbZRRogdrES4KAfx6raIB4kBz5Q==}
+    engines: {node: '>=18.0.0'}
+
   '@aws-sdk/signature-v4-multi-region@3.911.0':
     resolution: {integrity: sha512-SJ4dUcY9+HPDIMCHiskT8F7JrRVZF2Y1NUN0Yiy6VUHSULgq2MDlIzSQpNICnmXhk1F1E1B2jJG9XtPYrvtqUg==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/signature-v4-multi-region@3.964.0':
     resolution: {integrity: sha512-ASQmO9EB2ukSTGpO7B2ZceSbNVivCLqWh89o/JJtcIdGpOu8p9XHpeK3hiUz2OQo2Igw03/n8s+DNvP+N9krpw==}
+    engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/signature-v4-multi-region@3.965.0':
+    resolution: {integrity: sha512-hgbAThbsUrWtNpFBQxzXevIfd5Qgr4TLbXY1AIbmpSX9fPVC114pdieRMpopJ0fYaJ7v5/blTiS6wzVdXleZ/w==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/token-providers@3.911.0':
@@ -3159,12 +3178,20 @@ packages:
     resolution: {integrity: sha512-wzWC2Nrt859ABk6UCAVY/WYEbAd7FjkdrQL6m24+tfmWYDNRByTJ9uOgU/kw9zqLCAwb//CPvrJdhqjTznWXAg==}
     engines: {node: '>=18.0.0'}
 
+  '@aws-sdk/types@3.965.0':
+    resolution: {integrity: sha512-jvodoJdMavvg8faN7co58vVJRO5MVep4JFPRzUNCzpJ98BDqWDk/ad045aMJcmxkLzYLS2UAnUmqjJ/tUPNlzQ==}
+    engines: {node: '>=18.0.0'}
+
   '@aws-sdk/util-arn-parser@3.893.0':
     resolution: {integrity: sha512-u8H4f2Zsi19DGnwj5FSZzDMhytYF/bCh37vAtBsn3cNDL3YG578X5oc+wSX54pM3tOxS+NY7tvOAo52SW7koUA==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/util-arn-parser@3.957.0':
     resolution: {integrity: sha512-Aj6m+AyrhWyg8YQ4LDPg2/gIfGHCEcoQdBt5DeSFogN5k9mmJPOJ+IAmNSWmWRjpOxEy6eY813RNDI6qS97M0g==}
+    engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/util-arn-parser@3.965.0':
+    resolution: {integrity: sha512-bNGKr5Tct28jGLkL8xIkGu7swpDgBpkTVbGaofhzr/X80iclbOv656RGxhMpDvmc4S9UuQnqLRXyceNFNF2V7Q==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/util-dynamodb@3.913.0':
@@ -3179,6 +3206,10 @@ packages:
 
   '@aws-sdk/util-endpoints@3.957.0':
     resolution: {integrity: sha512-xwF9K24mZSxcxKS3UKQFeX/dPYkEps9wF1b+MGON7EvnbcucrJGyQyK1v1xFPn1aqXkBTFi+SZaMRx5E5YCVFw==}
+    engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/util-format-url@3.965.0':
+    resolution: {integrity: sha512-KiplV4xYGXdNCcz5eRP8WfAejT5EkE2gQxC4IY6WsuxYprzQKsnGaAzEQ+giR5GgQLIRBkPaWT0xHEYkMiCQ1Q==}
     engines: {node: '>=18.0.0'}
 
   '@aws-sdk/util-locate-window@3.873.0':
@@ -3215,6 +3246,10 @@ packages:
 
   '@aws-sdk/xml-builder@3.957.0':
     resolution: {integrity: sha512-Ai5iiQqS8kJ5PjzMhWcLKN0G2yasAkvpnPlq2EnqlIMdB48HsizElt62qcktdxp4neRMyGkFq4NzgmDbXnhRiA==}
+    engines: {node: '>=18.0.0'}
+
+  '@aws-sdk/xml-builder@3.965.0':
+    resolution: {integrity: sha512-Tcod25/BTupraQwtb+Q+GX8bmEZfxIFjjJ/AvkhUZsZlkPeVluzq1uu3Oeqf145DCdMjzLIN6vab5MrykbDP+g==}
     engines: {node: '>=18.0.0'}
 
   '@aws/lambda-invoke-store@0.0.1':
@@ -12683,15 +12718,15 @@ snapshots:
       '@smithy/hash-node': 4.2.3
       '@smithy/invalid-dependency': 4.2.3
       '@smithy/middleware-content-length': 4.2.3
-      '@smithy/middleware-endpoint': 4.3.4
+      '@smithy/middleware-endpoint': 4.4.1
       '@smithy/middleware-retry': 4.4.4
       '@smithy/middleware-serde': 4.2.3
       '@smithy/middleware-stack': 4.2.3
       '@smithy/node-config-provider': 4.3.3
       '@smithy/node-http-handler': 4.4.2
-      '@smithy/protocol-http': 5.3.3
-      '@smithy/smithy-client': 4.9.0
-      '@smithy/types': 4.8.0
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
       '@smithy/url-parser': 4.2.3
       '@smithy/util-base64': 4.3.0
       '@smithy/util-body-length-browser': 4.2.0
@@ -12781,6 +12816,22 @@ snapshots:
       '@smithy/util-utf8': 4.2.0
       tslib: 2.8.1
 
+  '@aws-sdk/core@3.965.0':
+    dependencies:
+      '@aws-sdk/types': 3.965.0
+      '@aws-sdk/xml-builder': 3.965.0
+      '@smithy/core': 3.20.0
+      '@smithy/node-config-provider': 4.3.7
+      '@smithy/property-provider': 4.2.7
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/signature-v4': 5.3.7
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
+      '@smithy/util-base64': 4.3.0
+      '@smithy/util-middleware': 4.2.7
+      '@smithy/util-utf8': 4.2.0
+      tslib: 2.8.1
+
   '@aws-sdk/crc64-nvme@3.957.0':
     dependencies:
       '@smithy/types': 4.11.0
@@ -12791,7 +12842,7 @@ snapshots:
       '@aws-sdk/core': 3.911.0
       '@aws-sdk/types': 3.910.0
       '@smithy/property-provider': 4.2.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@aws-sdk/credential-provider-env@3.964.0':
@@ -12809,9 +12860,9 @@ snapshots:
       '@smithy/fetch-http-handler': 5.3.4
       '@smithy/node-http-handler': 4.4.2
       '@smithy/property-provider': 4.2.3
-      '@smithy/protocol-http': 5.3.3
-      '@smithy/smithy-client': 4.9.0
-      '@smithy/types': 4.8.0
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
       '@smithy/util-stream': 4.5.3
       tslib: 2.8.1
 
@@ -12841,7 +12892,7 @@ snapshots:
       '@smithy/credential-provider-imds': 4.2.3
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -12859,7 +12910,7 @@ snapshots:
       '@smithy/credential-provider-imds': 4.2.3
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -12953,7 +13004,7 @@ snapshots:
       '@aws-sdk/types': 3.910.0
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@aws-sdk/credential-provider-process@3.964.0':
@@ -12973,7 +13024,7 @@ snapshots:
       '@aws-sdk/types': 3.910.0
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -12998,7 +13049,7 @@ snapshots:
       '@aws-sdk/types': 3.910.0
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -13128,10 +13179,10 @@ snapshots:
       '@aws-sdk/util-arn-parser': 3.893.0
       '@smithy/core': 3.17.0
       '@smithy/node-config-provider': 4.3.3
-      '@smithy/protocol-http': 5.3.3
+      '@smithy/protocol-http': 5.3.7
       '@smithy/signature-v4': 5.3.3
-      '@smithy/smithy-client': 4.9.0
-      '@smithy/types': 4.8.0
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
       '@smithy/util-config-provider': 4.2.0
       '@smithy/util-middleware': 4.2.3
       '@smithy/util-stream': 4.5.3
@@ -13143,6 +13194,23 @@ snapshots:
       '@aws-sdk/core': 3.964.0
       '@aws-sdk/types': 3.957.0
       '@aws-sdk/util-arn-parser': 3.957.0
+      '@smithy/core': 3.20.0
+      '@smithy/node-config-provider': 4.3.7
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/signature-v4': 5.3.7
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
+      '@smithy/util-config-provider': 4.2.0
+      '@smithy/util-middleware': 4.2.7
+      '@smithy/util-stream': 4.5.8
+      '@smithy/util-utf8': 4.2.0
+      tslib: 2.8.1
+
+  '@aws-sdk/middleware-sdk-s3@3.965.0':
+    dependencies:
+      '@aws-sdk/core': 3.965.0
+      '@aws-sdk/types': 3.965.0
+      '@aws-sdk/util-arn-parser': 3.965.0
       '@smithy/core': 3.20.0
       '@smithy/node-config-provider': 4.3.7
       '@smithy/protocol-http': 5.3.7
@@ -13201,15 +13269,15 @@ snapshots:
       '@smithy/hash-node': 4.2.3
       '@smithy/invalid-dependency': 4.2.3
       '@smithy/middleware-content-length': 4.2.3
-      '@smithy/middleware-endpoint': 4.3.4
+      '@smithy/middleware-endpoint': 4.4.1
       '@smithy/middleware-retry': 4.4.4
       '@smithy/middleware-serde': 4.2.3
       '@smithy/middleware-stack': 4.2.3
       '@smithy/node-config-provider': 4.3.3
       '@smithy/node-http-handler': 4.4.2
-      '@smithy/protocol-http': 5.3.3
-      '@smithy/smithy-client': 4.9.0
-      '@smithy/types': 4.8.0
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
       '@smithy/url-parser': 4.2.3
       '@smithy/util-base64': 4.3.0
       '@smithy/util-body-length-browser': 4.2.0
@@ -13284,6 +13352,17 @@ snapshots:
       '@smithy/types': 4.11.0
       tslib: 2.8.1
 
+  '@aws-sdk/s3-request-presigner@3.965.0':
+    dependencies:
+      '@aws-sdk/signature-v4-multi-region': 3.965.0
+      '@aws-sdk/types': 3.965.0
+      '@aws-sdk/util-format-url': 3.965.0
+      '@smithy/middleware-endpoint': 4.4.1
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/smithy-client': 4.10.2
+      '@smithy/types': 4.11.0
+      tslib: 2.8.1
+
   '@aws-sdk/signature-v4-multi-region@3.911.0':
     dependencies:
       '@aws-sdk/middleware-sdk-s3': 3.911.0
@@ -13302,6 +13381,15 @@ snapshots:
       '@smithy/types': 4.11.0
       tslib: 2.8.1
 
+  '@aws-sdk/signature-v4-multi-region@3.965.0':
+    dependencies:
+      '@aws-sdk/middleware-sdk-s3': 3.965.0
+      '@aws-sdk/types': 3.965.0
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/signature-v4': 5.3.7
+      '@smithy/types': 4.11.0
+      tslib: 2.8.1
+
   '@aws-sdk/token-providers@3.911.0':
     dependencies:
       '@aws-sdk/core': 3.911.0
@@ -13309,7 +13397,7 @@ snapshots:
       '@aws-sdk/types': 3.910.0
       '@smithy/property-provider': 4.2.3
       '@smithy/shared-ini-file-loader': 4.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
     transitivePeerDependencies:
       - aws-crt
@@ -13336,11 +13424,20 @@ snapshots:
       '@smithy/types': 4.11.0
       tslib: 2.8.1
 
+  '@aws-sdk/types@3.965.0':
+    dependencies:
+      '@smithy/types': 4.11.0
+      tslib: 2.8.1
+
   '@aws-sdk/util-arn-parser@3.893.0':
     dependencies:
       tslib: 2.8.1
 
   '@aws-sdk/util-arn-parser@3.957.0':
+    dependencies:
+      tslib: 2.8.1
+
+  '@aws-sdk/util-arn-parser@3.965.0':
     dependencies:
       tslib: 2.8.1
 
@@ -13363,6 +13460,13 @@ snapshots:
       '@smithy/types': 4.11.0
       '@smithy/url-parser': 4.2.7
       '@smithy/util-endpoints': 3.2.7
+      tslib: 2.8.1
+
+  '@aws-sdk/util-format-url@3.965.0':
+    dependencies:
+      '@aws-sdk/types': 3.965.0
+      '@smithy/querystring-builder': 4.2.7
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@aws-sdk/util-locate-window@3.873.0':
@@ -13401,11 +13505,17 @@ snapshots:
 
   '@aws-sdk/xml-builder@3.911.0':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       fast-xml-parser: 5.2.5
       tslib: 2.8.1
 
   '@aws-sdk/xml-builder@3.957.0':
+    dependencies:
+      '@smithy/types': 4.11.0
+      fast-xml-parser: 5.2.5
+      tslib: 2.8.1
+
+  '@aws-sdk/xml-builder@3.965.0':
     dependencies:
       '@smithy/types': 4.11.0
       fast-xml-parser: 5.2.5
@@ -13592,9 +13702,9 @@ snapshots:
       react: 19.1.1
       tslib: 2.8.1
 
-  '@edge-csrf/nextjs@2.5.3-cloudflare-rc1(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))':
+  '@edge-csrf/nextjs@2.5.3-cloudflare-rc1(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))':
     dependencies:
-      next: 15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      next: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
 
   '@emnapi/core@1.5.0':
     dependencies:
@@ -14379,17 +14489,7 @@ snapshots:
       '@supabase/supabase-js': 2.57.4
       ts-case-convert: 2.1.0
 
-  '@makerkit/data-loader-supabase-nextjs@1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)':
-    dependencies:
-      '@makerkit/data-loader-supabase-core': 0.0.10(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)
-      '@supabase/supabase-js': 2.57.4
-      '@tanstack/react-query': 5.89.0(react@19.1.1)
-      next: 15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      react: 19.1.1
-    transitivePeerDependencies:
-      - '@supabase/postgrest-js'
-
-  '@makerkit/data-loader-supabase-nextjs@1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)':
+  '@makerkit/data-loader-supabase-nextjs@1.2.5(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)(@tanstack/react-query@5.89.0(react@19.1.1))(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))(react@19.1.1)':
     dependencies:
       '@makerkit/data-loader-supabase-core': 0.0.10(@supabase/postgrest-js@1.21.4)(@supabase/supabase-js@2.57.4)
       '@supabase/supabase-js': 2.57.4
@@ -14555,9 +14655,9 @@ snapshots:
 
   '@nolyfill/is-core-module@1.0.39': {}
 
-  '@nosecone/next@1.0.0-beta.11(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))':
+  '@nosecone/next@1.0.0-beta.11(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1))':
     dependencies:
-      next: 15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      next: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
       nosecone: 1.0.0-beta.11
 
   '@opentelemetry/api-logs@0.203.0':
@@ -17052,7 +17152,7 @@ snapshots:
 
   '@smithy/abort-controller@4.2.3':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@smithy/abort-controller@4.2.7':
@@ -17116,7 +17216,7 @@ snapshots:
     dependencies:
       '@smithy/node-config-provider': 4.3.3
       '@smithy/property-provider': 4.2.3
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       '@smithy/url-parser': 4.2.3
       tslib: 2.8.1
 
@@ -17350,7 +17450,7 @@ snapshots:
 
   '@smithy/property-provider@4.2.3':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@smithy/property-provider@4.2.7':
@@ -17370,7 +17470,7 @@ snapshots:
 
   '@smithy/querystring-builder@4.2.3':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       '@smithy/util-uri-escape': 4.2.0
       tslib: 2.8.1
 
@@ -17382,7 +17482,7 @@ snapshots:
 
   '@smithy/querystring-parser@4.2.3':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@smithy/querystring-parser@4.2.7':
@@ -17392,7 +17492,7 @@ snapshots:
 
   '@smithy/service-error-classification@4.2.3':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
 
   '@smithy/service-error-classification@4.2.7':
     dependencies:
@@ -17400,7 +17500,7 @@ snapshots:
 
   '@smithy/shared-ini-file-loader@4.3.3':
     dependencies:
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       tslib: 2.8.1
 
   '@smithy/shared-ini-file-loader@4.4.2':
@@ -17411,8 +17511,8 @@ snapshots:
   '@smithy/signature-v4@5.3.3':
     dependencies:
       '@smithy/is-array-buffer': 4.2.0
-      '@smithy/protocol-http': 5.3.3
-      '@smithy/types': 4.8.0
+      '@smithy/protocol-http': 5.3.7
+      '@smithy/types': 4.11.0
       '@smithy/util-hex-encoding': 4.2.0
       '@smithy/util-middleware': 4.2.3
       '@smithy/util-uri-escape': 4.2.0
@@ -17574,7 +17674,7 @@ snapshots:
     dependencies:
       '@smithy/fetch-http-handler': 5.3.4
       '@smithy/node-http-handler': 4.4.2
-      '@smithy/types': 4.8.0
+      '@smithy/types': 4.11.0
       '@smithy/util-base64': 4.3.0
       '@smithy/util-buffer-from': 4.2.0
       '@smithy/util-hex-encoding': 4.2.0
@@ -21628,20 +21728,20 @@ snapshots:
 
   netmask@2.0.2: {}
 
-  next-sitemap@4.2.3(next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)):
+  next-sitemap@4.2.3(next@15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)):
     dependencies:
       '@corex/deepmerge': 4.0.43
       '@next/env': 13.5.11
       fast-glob: 3.3.3
       minimist: 1.2.8
-      next: 15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
+      next: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
 
   next-themes@0.4.6(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
     dependencies:
       react: 19.1.1
       react-dom: 19.1.1(react@19.1.1)
 
-  next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
+  next@15.5.3(@babel/core@7.28.4)(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(react-dom@19.1.1(react@19.1.1))(react@19.1.1):
     dependencies:
       '@next/env': 15.5.3
       '@swc/helpers': 0.5.15
@@ -21661,7 +21761,6 @@ snapshots:
       '@next/swc-win32-x64-msvc': 15.5.3
       '@opentelemetry/api': 1.9.0
       '@playwright/test': 1.55.0
-      babel-plugin-react-compiler: 19.1.0-rc.3
       sharp: 0.34.3
     transitivePeerDependencies:
       - '@babel/core'
