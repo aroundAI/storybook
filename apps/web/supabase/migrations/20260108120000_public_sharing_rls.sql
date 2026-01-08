@@ -31,7 +31,6 @@ FOR SELECT
 TO anon, authenticated
 USING (
     visibility IN ('public', 'unlisted')
-    AND deleted_at IS NULL
 );
 
 -- ============================================
@@ -46,8 +45,7 @@ ON public.episodes
 FOR SELECT
 TO anon, authenticated
 USING (
-    deleted_at IS NULL
-    AND (
+    (
         -- Direct visibility
         visibility IN ('public', 'unlisted')
         -- OR inherit from project
@@ -57,7 +55,6 @@ USING (
                 SELECT 1 FROM public.projects p
                 WHERE p.id = project_id
                 AND p.visibility IN ('public', 'unlisted')
-                AND p.deleted_at IS NULL
             )
         )
     )

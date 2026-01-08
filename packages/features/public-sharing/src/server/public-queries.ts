@@ -77,17 +77,20 @@ export async function getPublicProject(accountId: string, projectSlug: string) {
  * List ALL public projects for a company.
  * Only returns 'public' visibility. 'Unlisted' are hidden from lists.
  */
-export async function getPublicProjects(accountId: string) {
+export async function getPublicProjects(accountId: string): Promise<PublicProject[]> {
     const client = getSupabaseServerClient();
     const { data, error } = await client
         .from('projects')
-        .select('*')
+        .select(`
+      *,
+      account:accounts!inner(id, name, slug)
+    `)
         .eq('account_id', accountId)
         .eq('visibility', 'public')
         .order('created_at', { ascending: false });
 
     if (error) return [];
-    return data;
+    return data as unknown as PublicProject[];
 }
 
 /**
@@ -137,23 +140,27 @@ export async function getPublicEpisode(projectId: string, episodeSlug: string): 
  * Only returns 'public' visibility (or 'inherit' where project is public).
  * Grouping by season is usually done in UI or via a transform, here we return flat list.
  */
-export async function getPublicEpisodes(projectId: string) {
+export async function getPublicEpisodes(projectId: string): Promise<PublicEpisode[]> {
     const client = getSupabaseServerClient();
     const { data, error } = await client
         .from('episodes')
-        .select('*')
+        .select(`
+      *,
+      project:projects!inner(
+        id,
+        name,
+        public_slug,
+        visibility,
+        account:accounts!inner(id, name, slug)
+      )
+    `)
         .eq('project_id', projectId)
-        .neq('visibility', 'private') // We fetch unlisted too? No, usually list only shows Public.
-        // Unlisted episodes should be hidden from the list.
-        // But 'inherit' depends on project. Since we already know the project (projectId), 
-        // IF the project is public, 'inherit' means public.
-        // So we allow 'public' AND 'inherit'.
-        // We exclude 'unlisted' and 'private'.
+        // Allow 'public' AND 'inherit' (exclude 'unlisted' and 'private')
         .in('visibility', ['public', 'inherit'])
         .order('number', { ascending: true });
 
     if (error) return [];
-    return data;
+    return data as unknown as PublicEpisode[];
 }
 
 /**
