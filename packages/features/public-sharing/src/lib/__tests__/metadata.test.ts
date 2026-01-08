@@ -23,24 +23,18 @@ describe('Metadata Generation', () => {
 
     describe('generateProjectMetadata', () => {
         it('should generate correct metadata for a project', () => {
-            const project: PublicProject = {
+            const project = {
                 id: 'p1',
                 name: 'My Series',
                 public_slug: 'my-series',
                 description: 'A great series',
                 visibility: 'public',
-                account_id: '123',
-                created_at: '',
-                updated_at: '',
-                deleted_at: null,
-                version: 1,
-                demo_url: null,
                 account: {
                     id: '123',
                     name: 'ACME Corp',
                     slug: 'acme',
                 },
-            };
+            } as PublicProject;
 
             const metadata = generateProjectMetadata(project);
 

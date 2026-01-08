@@ -136,3 +136,80 @@ export const updateEpisodePublicSettingsAction = enhanceAction(
         auth: true,
     }
 );
+
+// Separate Episode Visibility Action (simpler)
+const UpdateEpisodeVisibilitySchema = z.object({
+    episodeId: z.string().uuid(),
+    visibility: z.enum(['inherit', 'private', 'public', 'unlisted']),
+    publicSlug: z.string().regex(/^[a-z0-9-]+$/).min(3).max(50).optional(),
+});
+
+export const updateEpisodeVisibilityAction = enhanceAction(
+    async (data) => {
+        const client = getSupabaseServerClient();
+        const updateData: Record<string, unknown> = {
+            visibility: data.visibility,
+        };
+        if (data.publicSlug) {
+            updateData.public_slug = data.publicSlug;
+        }
+
+        const { error } = await client
+            .from('episodes')
+            .update(updateData)
+            .eq('id', data.episodeId);
+
+        if (error) {
+            throw new Error(`Failed to update episode visibility: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        schema: UpdateEpisodeVisibilitySchema,
+        auth: true,
+    }
+);
+
+// Separate Localized Videos Action
+const UpdateLocalizedVideosOnlySchema = z.object({
+    episodeId: z.string().uuid(),
+    localizedVideos: z.record(
+        z.string(),
+        z.object({
+            youtube: z.object({
+                video_id: z.string(),
+                url: z.string().url(),
+                channel_id: z.string(),
+            }).optional(),
+            facebook: z.object({
+                video_id: z.string(),
+                url: z.string().url(),
+                page_id: z.string(),
+            }).optional(),
+        })
+    ),
+});
+
+export const updateLocalizedVideosAction = enhanceAction(
+    async (data) => {
+        const client = getSupabaseServerClient();
+
+        const { error } = await client
+            .from('episodes')
+            .update({
+                localized_videos: data.localizedVideos,
+            })
+            .eq('id', data.episodeId);
+
+        if (error) {
+            throw new Error(`Failed to update localized videos: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        schema: UpdateLocalizedVideosOnlySchema,
+        auth: true,
+    }
+);

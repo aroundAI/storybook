@@ -16,10 +16,16 @@
         "./components/episode-page": "./src/components/episode-page.tsx",
         "./components/language-selector": "./src/components/language-selector.tsx",
         "./components/share-button": "./src/components/share-button.tsx",
+        "./components/video-player": "./src/components/video-player.tsx",
+        "./components/episode-list": "./src/components/episode-list.tsx",
+        "./components/project-grid": "./src/components/project-grid.tsx",
+        "./components/episode-visibility-settings": "./src/components/episode-visibility-settings.tsx",
+        "./components/video-link-manager": "./src/components/video-link-manager.tsx",
         "./server/visibility-actions": "./src/server/visibility-actions.ts",
         "./server/public-queries": "./src/server/public-queries.ts",
         "./lib/metadata": "./src/lib/metadata.ts",
-        "./lib/structured-data": "./src/lib/structured-data.ts"
+        "./lib/structured-data": "./src/lib/structured-data.ts",
+        "./lib/slug-validation": "./src/lib/slug-validation.ts"
     },
     "devDependencies": {
         "@hookform/resolvers": "^4.1.3",
