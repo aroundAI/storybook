@@ -12,7 +12,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@kit/ui/input';
 import { Switch } from '@kit/ui/switch';
 import { Textarea } from '@kit/ui/textarea';
-import { toast } from 'sonner';
+import { toast } from '@kit/ui/sonner';
 
 import { updatePublicProfileAction } from '@kit/public-sharing/server/visibility-actions';
 

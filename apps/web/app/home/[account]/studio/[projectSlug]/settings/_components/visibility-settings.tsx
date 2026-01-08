@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-import { toast } from 'sonner';
+import { toast } from '@kit/ui/sonner';
 import { Globe, Lock, Link as LinkIcon, Eye } from 'lucide-react';
 
 import { updateProjectVisibilityAction } from '@kit/public-sharing/server/visibility-actions';
@@ -88,7 +88,7 @@ export function ProjectVisibilitySettings({
                 await updateProjectVisibilityAction({
                     projectId,
                     visibility: values.visibility,
-                    publicSlug: values.public_slug || undefined,
+                    publicSlug: values.public_slug || 'default',
                 });
                 toast.success('Visibility settings updated');
                 router.refresh();
