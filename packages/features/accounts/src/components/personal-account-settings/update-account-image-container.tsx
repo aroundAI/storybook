@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 
 import { useTranslation } from 'react-i18next';
 
-import { uploadAvatar } from '@kit/storage';
+import { uploadAvatar } from '@kit/storage/client';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { ImageUploader } from '@kit/ui/image-uploader';
 import { toast } from '@kit/ui/sonner';

@@ -6,6 +6,7 @@
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
+        "./client": "./src/client.ts",
         "./adapters/local": "./src/adapters/local.ts",
         "./adapters/supabase": "./src/adapters/supabase.ts"
     },

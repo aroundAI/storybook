@@ -48,7 +48,7 @@ import {
   updateProjectCoverImage,
 } from '../_lib/server/create-film-project.action';
 import { CoverImageUpload } from './cover-image-upload';
-import { uploadProjectCover } from '@kit/storage';
+import { uploadProjectCover } from '@kit/storage/client';
 
 type FormData = z.infer<typeof CreateFilmProjectSchema>;
 

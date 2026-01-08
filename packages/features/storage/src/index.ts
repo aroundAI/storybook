@@ -1,9 +1,11 @@
 /**
- * Storage Adapter Package
+ * Storage Adapter Package (Server-Only)
  *
  * Provides a unified interface for file storage operations with
  * pluggable backends (local filesystem, Supabase Storage, R2, B2)
  * and smart routing based on content type.
+ *
+ * NOTE: For client-side uploads, import from '@kit/storage/client' instead.
  */
 
 // Types
@@ -37,10 +39,3 @@ export { LocalStorageAdapter } from './adapters/local';
 export { SupabaseStorageAdapter } from './adapters/supabase';
 export { R2StorageAdapter } from './adapters/r2';
 export { B2StorageAdapter } from './adapters/b2';
-
-// Client-side presigned upload utilities
-export {
-    uploadWithPresignedUrl,
-    uploadAvatar,
-    uploadProjectCover,
-} from './client/presigned-upload';
