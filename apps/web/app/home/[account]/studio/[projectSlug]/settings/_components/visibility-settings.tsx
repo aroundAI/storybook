@@ -92,7 +92,7 @@ export function ProjectVisibilitySettings({
                 });
                 toast.success('Visibility settings updated');
                 router.refresh();
-            } catch (_error) {
+            } catch {
                 toast.error('Failed to update visibility settings');
             }
         });

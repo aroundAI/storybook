@@ -80,7 +80,7 @@ export function PublicProfileSettingsForm({
                 });
                 toast.success('Public profile updated');
                 router.refresh();
-            } catch (_error) {
+            } catch {
                 toast.error('Failed to update public profile');
             }
         });

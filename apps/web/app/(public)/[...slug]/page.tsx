@@ -68,6 +68,7 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
         const episode = await getPublicEpisode(project.id, episodeSlug);
         if (!episode) return {};
         if (typeof lang !== 'string') return {};
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return generateEpisodeMetadata(episode as any, lang);
     }
 
@@ -102,6 +103,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
                 />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <CompanyPage company={company} projects={projects as any} />
             </>
         );
@@ -122,6 +124,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
                 />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <ProjectPage project={project} episodes={episodes as any} baseUrl={BASE_URL} />
             </>
         );
@@ -138,6 +141,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
         if (!episode) return notFound();
 
         if (typeof lang !== 'string') return notFound();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         structuredData = getTVEpisodeSchema(episode as any, lang, BASE_URL);
 
         return (
@@ -146,6 +150,7 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
                 />
+                {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                 <EpisodePage episode={episode as any} language={lang} baseUrl={BASE_URL} />
             </>
         );
