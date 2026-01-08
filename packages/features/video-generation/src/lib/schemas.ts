@@ -68,8 +68,8 @@ export type CancelVideoJobInput = z.infer<typeof CancelVideoJobSchema>;
 export const PollVideoStatusResponseSchema = z.object({
   status: z.enum(['queued', 'processing', 'completed', 'failed']),
   progress: z.number().optional(),
-  videoUrl: z.string().url().optional(),
-  thumbnailUrl: z.string().url().optional(),
+  videoUrl: z.string().url().optional().or(z.literal('')),
+  thumbnailUrl: z.string().url().optional().or(z.literal('')),
   errorMessage: z.string().optional(),
   estimatedTimeRemaining: z.number().optional(),
   queuePosition: z.number().optional(),

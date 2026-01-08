@@ -90,7 +90,7 @@ export const ClipSchema = z.object({
   fadeOut: z.number().nonnegative().optional(),
 
   /** Optional thumbnail URL for preview */
-  thumbnailUrl: z.string().url().optional(),
+  thumbnailUrl: z.string().url().optional().or(z.literal('')),
 
   /** Placeholder clip (no actual media yet) */
   isPlaceholder: z.boolean().default(false),
