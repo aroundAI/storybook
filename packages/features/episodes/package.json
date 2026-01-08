@@ -23,6 +23,7 @@
     "./hooks": "./src/hooks/index.ts"
   },
   "dependencies": {
+    "@kit/cache": "workspace:*",
     "@kit/film-studio": "workspace:*",
     "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
