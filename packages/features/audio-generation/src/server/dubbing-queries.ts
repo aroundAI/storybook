@@ -133,6 +133,7 @@ export async function getDubbedVersionsForEpisode(
 
 /**
  * Calculate progress for a dubbed version
+ * Uses single-pass loop for efficient status counting
  */
 export async function calculateDubbingProgress(
   client: SupabaseClient,
@@ -147,11 +148,21 @@ export async function calculateDubbingProgress(
   const lines = await getDubbedLinesWithOriginal(client, versionId);
 
   const total = lines.length;
-  const translated = lines.filter(
-    (l) => l.status === 'translated' || l.status === 'voiced',
-  ).length;
-  const voiced = lines.filter((l) => l.status === 'voiced').length;
-  const failed = lines.filter((l) => l.status === 'failed').length;
+  let translated = 0;
+  let voiced = 0;
+  let failed = 0;
+
+  // Single-pass counting instead of 4 separate filter() calls
+  for (const line of lines) {
+    if (line.status === 'voiced') {
+      voiced++;
+      translated++; // voiced implies translated
+    } else if (line.status === 'translated') {
+      translated++;
+    } else if (line.status === 'failed') {
+      failed++;
+    }
+  }
 
   const percentage =
     total > 0 ? Math.round(((translated + voiced) / (total * 2)) * 100) : 0;

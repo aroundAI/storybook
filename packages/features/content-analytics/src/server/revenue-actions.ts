@@ -66,30 +66,31 @@ export const getRevenueSummaryAction = enhanceAction(
 
     if (error) throw error;
 
-    // Calculate totals
-    const totalRevenueCents =
-      records?.reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
-
-    // Group by platform
+    // Calculate totals and group by platform/content in single pass
+    let totalRevenueCents = 0;
     const byPlatform: Record<string, number> = {};
-    records?.forEach((r) => {
-      const platform = r.platform || 'unknown';
-      byPlatform[platform] =
-        (byPlatform[platform] || 0) + (r.revenue_cents || 0);
-    });
-
-    // Group by content (episode)
     const byContent: Record<string, number> = {};
-    records?.forEach((r) => {
+    const publishIds: string[] = [];
+
+    for (const r of records ?? []) {
+      const revenueCents = r.revenue_cents || 0;
+      totalRevenueCents += revenueCents;
+
+      // Group by platform
+      const platform = r.platform || 'unknown';
+      byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
+
+      // Group by content (episode)
       const episodeId = r.publishes?.episode_id;
       if (episodeId) {
-        byContent[episodeId] =
-          (byContent[episodeId] || 0) + (r.revenue_cents || 0);
+        byContent[episodeId] = (byContent[episodeId] || 0) + revenueCents;
       }
-    });
+
+      // Collect publish IDs for view lookup
+      publishIds.push(r.publish_id);
+    }
 
     // Get view data for RPM calculation
-    const publishIds = records?.map((r) => r.publish_id) ?? [];
     let totalViews = 0;
 
     if (publishIds.length > 0) {
@@ -100,8 +101,10 @@ export const getRevenueSummaryAction = enhanceAction(
         .gte('snapshot_date', startDate)
         .lte('snapshot_date', endDate);
 
-      totalViews =
-        analyticsData?.reduce((sum, a) => sum + (a.views || 0), 0) ?? 0;
+      // Single-pass sum for views
+      for (const a of analyticsData ?? []) {
+        totalViews += a.views || 0;
+      }
     }
 
     const rpm = totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
@@ -325,8 +328,8 @@ export const getRevenueProjectionAction = enhanceAction(
     const trendImpact =
       firstHalfRevenue > 0
         ? Math.round(
-            ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
-          )
+          ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
+        )
         : 0;
 
     return {
