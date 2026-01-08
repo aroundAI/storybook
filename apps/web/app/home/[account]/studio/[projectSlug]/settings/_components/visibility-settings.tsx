@@ -12,7 +12,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@kit/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { Globe, Lock, Link as LinkIcon, Eye } from 'lucide-react';
+import { Globe, Lock, Link as LinkIcon, Eye, ExternalLink } from 'lucide-react';
 
 import { updateProjectVisibilityAction } from '@kit/public-sharing/server/visibility-actions';
 
@@ -162,11 +162,17 @@ export function ProjectVisibilitySettings({
                                                     {...field}
                                                 />
                                             </FormControl>
-                                            <FormDescription>
-                                                Your project will be available at:{' '}
-                                                <code className="bg-muted px-1 rounded text-xs">
+                                            <FormDescription className="flex items-center gap-2">
+                                                <span>Your project will be available at:</span>
+                                                <a
+                                                    href={`/@${accountSlug}/${publicSlug || 'your-slug'}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="inline-flex items-center gap-1 bg-muted px-2 py-0.5 rounded text-xs hover:bg-muted/80 transition-colors text-primary hover:underline"
+                                                >
                                                     /@{accountSlug}/{publicSlug || 'your-slug'}
-                                                </code>
+                                                    <ExternalLink className="h-3 w-3" />
+                                                </a>
                                             </FormDescription>
                                             <FormMessage />
                                         </FormItem>
