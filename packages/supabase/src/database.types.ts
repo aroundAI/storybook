@@ -98,6 +98,7 @@ export type Database = {
           current_usage_cents: number
           email: string | null
           id: string
+          public_profile: Json | null
           is_personal_account: boolean
           monthly_budget_cents: number | null
           name: string
@@ -120,6 +121,7 @@ export type Database = {
           picture_url?: string | null
           primary_owner_user_id?: string
           public_data?: Json
+          public_profile?: Json | null
           slug?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           picture_url?: string | null
           primary_owner_user_id?: string
           public_data?: Json
+          public_profile?: Json | null
           slug?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -1337,6 +1340,9 @@ export type Database = {
           thumbnail_url: string | null
           title: string
           updated_at: string
+          public_slug: string | null
+          seo_metadata: Json | null
+          visibility: string
           version: number
         }
         Insert: {
@@ -1361,6 +1367,9 @@ export type Database = {
           thumbnail_url?: string | null
           title: string
           updated_at?: string
+          public_slug?: string | null
+          seo_metadata?: Json | null
+          visibility?: string
           version?: number
         }
         Update: {
@@ -1385,6 +1394,9 @@ export type Database = {
           thumbnail_url?: string | null
           title?: string
           updated_at?: string
+          public_slug?: string | null
+          seo_metadata?: Json | null
+          visibility?: string
           version?: number
         }
         Relationships: [
@@ -2362,6 +2374,9 @@ export type Database = {
           status: string
           updated_at: string | null
           updated_by: string | null
+          public_slug: string | null
+          seo_metadata: Json | null
+          visibility: string
         }
         Insert: {
           account_id: string
@@ -2376,6 +2391,9 @@ export type Database = {
           status?: string
           updated_at?: string | null
           updated_by?: string | null
+          public_slug?: string | null
+          seo_metadata?: Json | null
+          visibility?: string
         }
         Update: {
           account_id?: string
@@ -2390,6 +2408,9 @@ export type Database = {
           status?: string
           updated_at?: string | null
           updated_by?: string | null
+          public_slug?: string | null
+          seo_metadata?: Json | null
+          visibility?: string
         }
         Relationships: [
           {

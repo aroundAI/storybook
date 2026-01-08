@@ -1,0 +1,138 @@
+'use server';
+
+import { z } from 'zod';
+import { enhanceAction } from '@kit/next/actions';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { revalidatePath } from 'next/cache';
+
+// Update Public Profile Schema
+const UpdatePublicProfileSchema = z.object({
+    accountId: z.string().uuid(),
+    publicProfile: z.object({
+        is_public: z.boolean(),
+        display_name: z.string().optional(),
+        bio: z.string().max(300).optional(),
+        website_url: z.string().url().optional().or(z.literal('')),
+        social_links: z.object({
+            youtube: z.string().optional(),
+            twitter: z.string().optional(),
+            instagram: z.string().optional(),
+            tiktok: z.string().optional(),
+        }).optional(),
+        custom_styles: z.object({
+            primary_color: z.string().optional(),
+            cover_image_url: z.string().optional(),
+        }).optional(),
+    }),
+});
+
+export const updatePublicProfileAction = enhanceAction(
+    async (data) => {
+        const client = getSupabaseServerClient();
+        const { error } = await client
+            .from('accounts')
+            .update({ public_profile: data.publicProfile })
+            .eq('id', data.accountId);
+
+        if (error) {
+            throw new Error(`Failed to update public profile: ${error.message}`);
+        }
+
+        revalidatePath('/', 'layout');
+        return { success: true };
+    },
+    {
+        schema: UpdatePublicProfileSchema,
+        auth: true,
+    }
+);
+
+// Update Project Visibility Schema
+const UpdateProjectVisibilitySchema = z.object({
+    projectId: z.string().uuid(),
+    visibility: z.enum(['private', 'public', 'unlisted']),
+    publicSlug: z.string().regex(/^[a-z0-9-]+$/).min(3),
+    seoMetadata: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        keywords: z.array(z.string()).optional(),
+    }).optional(),
+});
+
+export const updateProjectVisibilityAction = enhanceAction(
+    async (data) => {
+        const client = getSupabaseServerClient();
+        const { error } = await client
+            .from('projects')
+            .update({
+                visibility: data.visibility,
+                public_slug: data.publicSlug,
+                seo_metadata: data.seoMetadata ?? {},
+            })
+            .eq('id', data.projectId);
+
+        if (error) {
+            throw new Error(`Failed to update project visibility: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        schema: UpdateProjectVisibilitySchema,
+        auth: true,
+    }
+);
+
+
+// Update Localized Videos Schema
+const UpdateLocalizedVideosSchema = z.object({
+    episodeId: z.string().uuid(),
+    publicSlug: z.string().regex(/^[a-z0-9-]+$/).min(3),
+    visibility: z.enum(['inherit', 'private', 'public', 'unlisted']),
+    // Record of language code -> platforms
+    localizedVideos: z.record(
+        z.string(),
+        z.object({
+            youtube: z.object({
+                video_id: z.string(),
+                url: z.string().url(),
+                channel_id: z.string(),
+            }).optional(),
+            facebook: z.object({
+                video_id: z.string(),
+                url: z.string().url(),
+                page_id: z.string(),
+            }).optional(),
+        })
+    ),
+    seoMetadata: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+    }).optional(),
+});
+
+export const updateEpisodePublicSettingsAction = enhanceAction(
+    async (data) => {
+        const client = getSupabaseServerClient();
+
+        const { error } = await client
+            .from('episodes')
+            .update({
+                public_slug: data.publicSlug,
+                visibility: data.visibility,
+                localized_videos: data.localizedVideos,
+                seo_metadata: data.seoMetadata ?? {},
+            })
+            .eq('id', data.episodeId);
+
+        if (error) {
+            throw new Error(`Failed to update episode settings: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        schema: UpdateLocalizedVideosSchema,
+        auth: true,
+    }
+);

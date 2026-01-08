@@ -4,6 +4,7 @@ import { createCmsClient } from '@kit/cms';
 import { getLogger } from '@kit/shared/logger';
 
 import appConfig from '~/config/app.config';
+import { getSitemapData } from '@kit/public-sharing/server/public-queries';
 
 /**
  * Dynamic sitemap generation for SEO
@@ -72,7 +73,50 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Dynamic documentation pages
     const docPages = await getDocumentationUrls(baseUrl);
 
-    return [...staticPages, ...blogPosts, ...docPages];
+    // Public Sharing Pages
+    const { accounts, projects, episodes } = await getSitemapData();
+    const sharingPages: MetadataRoute.Sitemap = [];
+
+    // Companies
+    if (accounts) {
+        accounts.forEach((acc: { slug: string | null; updated_at: string | null }) => {
+            if (!acc.slug) return;
+            sharingPages.push({
+                url: `${baseUrl}/@${acc.slug}`,
+                lastModified: acc.updated_at ? new Date(acc.updated_at) : now,
+                changeFrequency: 'weekly',
+                priority: 0.8,
+            });
+        });
+    }
+
+    // Projects
+    if (projects) {
+        projects.forEach((proj: any) => {
+            if (!proj.account || !proj.account.slug || !proj.public_slug) return;
+            sharingPages.push({
+                url: `${baseUrl}/@${proj.account.slug}/${proj.public_slug}`,
+                lastModified: proj.updated_at ? new Date(proj.updated_at) : now,
+                changeFrequency: 'weekly',
+                priority: 0.7,
+            });
+        });
+    }
+
+    // Episodes
+    if (episodes) {
+        episodes.forEach((ep: any) => {
+            if (!ep.project || !ep.project.account || !ep.project.account.slug || !ep.project.public_slug || !ep.public_slug) return;
+            sharingPages.push({
+                url: `${baseUrl}/@${ep.project.account.slug}/${ep.project.public_slug}/e/${ep.public_slug}`,
+                lastModified: ep.updated_at ? new Date(ep.updated_at) : now,
+                changeFrequency: 'weekly',
+                priority: 0.6,
+            });
+        });
+    }
+
+    return [...staticPages, ...blogPosts, ...docPages, ...sharingPages];
 }
 
 /**

@@ -69,6 +69,7 @@
     "@kit/notifications": "workspace:*",
     "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
+    "@kit/public-sharing": "workspace:*",
     "@kit/publishing": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/shorts": "workspace:*",
