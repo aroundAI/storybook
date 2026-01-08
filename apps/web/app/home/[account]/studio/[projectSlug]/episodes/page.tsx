@@ -46,6 +46,9 @@ export async function generateMetadata({
   };
 }
 
+// ISR: Revalidate every 60 seconds
+export const revalidate = 60;
+
 interface Season {
   id: string;
   number: number;

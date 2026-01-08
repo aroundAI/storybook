@@ -35,6 +35,9 @@ export async function generateMetadata({
   };
 }
 
+// ISR: Revalidate every 60 seconds
+export const revalidate = 60;
+
 // Cache TTLs in seconds
 const CACHE_TTL = {
   project: 3600, // 1 hour
