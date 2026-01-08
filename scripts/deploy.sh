@@ -310,9 +310,22 @@ echo -e "${YELLOW}🔨 Building Next.js application...${NC}"
 # Increase Node.js memory for build
 export NODE_OPTIONS="--max-old-space-size=4096"
 
+# Temporarily move .env.local out of the way during production build
+# This ensures only shell-exported env vars from deployment/config/${STAGE}.env are used
+if [ -f "apps/web/.env.local" ]; then
+    echo "  Temporarily disabling apps/web/.env.local during build..."
+    mv "apps/web/.env.local" "apps/web/.env.local.bak"
+fi
+
 # Build the web app
 echo "  Building apps/web..."
 pnpm --filter web build
+
+# Restore .env.local after build
+if [ -f "apps/web/.env.local.bak" ]; then
+    mv "apps/web/.env.local.bak" "apps/web/.env.local"
+    echo "  Restored apps/web/.env.local"
+fi
 
 echo -e "${GREEN}✓ Build completed successfully${NC}"
 echo ""
