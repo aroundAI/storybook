@@ -100,7 +100,7 @@ export function ProjectCoverSettings({
                 setPreviewUrl(null);
 
                 toast.success('Cover image removed');
-            } catch (removeError) {
+            } catch {
                 toast.error('Failed to remove cover image');
             }
         });
