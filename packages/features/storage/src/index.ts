@@ -37,3 +37,10 @@ export { LocalStorageAdapter } from './adapters/local';
 export { SupabaseStorageAdapter } from './adapters/supabase';
 export { R2StorageAdapter } from './adapters/r2';
 export { B2StorageAdapter } from './adapters/b2';
+
+// Client-side presigned upload utilities
+export {
+    uploadWithPresignedUrl,
+    uploadAvatar,
+    uploadProjectCover,
+} from './client/presigned-upload';

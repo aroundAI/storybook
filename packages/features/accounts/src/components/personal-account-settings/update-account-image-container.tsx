@@ -2,19 +2,15 @@
 
 import { useCallback } from 'react';
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { useTranslation } from 'react-i18next';
 
-import { Database } from '@kit/supabase/database';
+import { uploadAvatar } from '@kit/storage';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { ImageUploader } from '@kit/ui/image-uploader';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
 
 import { useRevalidatePersonalAccountDataQuery } from '../../hooks/use-personal-account-data';
-
-const AVATARS_BUCKET = 'account_image';
 
 export function UpdateAccountImageContainer({
   user,
@@ -56,50 +52,36 @@ function UploadProfileAvatarForm(props: {
 
   const onValueChange = useCallback(
     (file: File | null) => {
-      const removeExistingStorageFile = () => {
-        if (props.pictureUrl) {
-          return (
-            deleteProfilePhoto(client, props.pictureUrl) ?? Promise.resolve()
-          );
-        }
-
-        return Promise.resolve();
-      };
-
       if (file) {
-        const promise = () =>
-          removeExistingStorageFile().then(() =>
-            uploadUserProfilePhoto(client, file, props.userId)
-              .then((pictureUrl) => {
-                return client
-                  .from('accounts')
-                  .update({
-                    picture_url: pictureUrl,
-                  })
-                  .eq('id', props.userId)
-                  .throwOnError();
-              })
-              .then(() => {
-                props.onAvatarUpdated();
-              }),
-          );
+        const promise = async () => {
+          // Upload to R2 via presigned URL
+          const result = await uploadAvatar(file, props.userId);
+
+          // Update the account record with new picture URL
+          await client
+            .from('accounts')
+            .update({
+              picture_url: result.url,
+            })
+            .eq('id', props.userId)
+            .throwOnError();
+
+          props.onAvatarUpdated();
+        };
 
         createToaster(promise);
       } else {
-        const promise = () =>
-          removeExistingStorageFile()
-            .then(() => {
-              return client
-                .from('accounts')
-                .update({
-                  picture_url: null,
-                })
-                .eq('id', props.userId)
-                .throwOnError();
+        const promise = async () => {
+          await client
+            .from('accounts')
+            .update({
+              picture_url: null,
             })
-            .then(() => {
-              props.onAvatarUpdated();
-            });
+            .eq('id', props.userId)
+            .throwOnError();
+
+          props.onAvatarUpdated();
+        };
 
         createToaster(promise);
       }
@@ -120,43 +102,4 @@ function UploadProfileAvatarForm(props: {
       </div>
     </ImageUploader>
   );
-}
-
-function deleteProfilePhoto(client: SupabaseClient<Database>, url: string) {
-  const bucket = client.storage.from(AVATARS_BUCKET);
-  const fileName = url.split('/').pop()?.split('?')[0];
-
-  if (!fileName) {
-    return;
-  }
-
-  return bucket.remove([fileName]);
-}
-
-async function uploadUserProfilePhoto(
-  client: SupabaseClient<Database>,
-  photoFile: File,
-  userId: string,
-) {
-  const bytes = await photoFile.arrayBuffer();
-  const bucket = client.storage.from(AVATARS_BUCKET);
-  const fileName = getAvatarFileName(userId);
-  const { nanoid } = await import('nanoid');
-  const cacheBuster = nanoid(16);
-
-  const result = await bucket.upload(fileName, bytes, {
-    contentType: photoFile.type,
-    upsert: true,
-  });
-
-  if (!result.error) {
-    const url = bucket.getPublicUrl(userId).data.publicUrl;
-    return `${url}?v=${cacheBuster}`;
-  }
-
-  throw result.error;
-}
-
-function getAvatarFileName(userId: string) {
-  return userId;
 }
