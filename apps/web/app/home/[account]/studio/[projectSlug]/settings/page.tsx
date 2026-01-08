@@ -118,11 +118,14 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
     notFound();
   }
 
-  // Fetch publishing configs
-  const [publishingConfigs, platformConnections] = await Promise.all([
+  // Fetch publishing configs and account public profile
+  const [publishingConfigs, platformConnections, accountData] = await Promise.all([
     getProjectPublishingConfigs(project.id),
     getAccountPlatformConnections(project.account_id ?? ''),
+    client.from('accounts').select('public_profile').eq('id', project.account_id ?? '').single(),
   ]);
+
+  const isAccountPublic = (accountData.data?.public_profile as Record<string, unknown>)?.is_public === true;
 
   return (
     <>
@@ -236,6 +239,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               accountSlug={account}
               currentVisibility={project.visibility ?? 'private'}
               currentPublicSlug={project.public_slug ?? null}
+              isAccountPublic={isAccountPublic}
             />
           </If>
 

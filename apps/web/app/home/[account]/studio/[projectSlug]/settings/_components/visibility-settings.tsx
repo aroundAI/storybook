@@ -12,7 +12,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from '@kit/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { Globe, Lock, Link as LinkIcon, Eye, ExternalLink } from 'lucide-react';
+import { Globe, Lock, Link as LinkIcon, Eye, ExternalLink, AlertTriangle } from 'lucide-react';
 
 import { updateProjectVisibilityAction } from '@kit/public-sharing/server/visibility-actions';
 
@@ -29,6 +29,7 @@ interface ProjectVisibilitySettingsProps {
     accountSlug: string;
     currentVisibility: string;
     currentPublicSlug: string | null;
+    isAccountPublic?: boolean;
 }
 
 const VISIBILITY_OPTIONS = [
@@ -66,6 +67,7 @@ export function ProjectVisibilitySettings({
     accountSlug,
     currentVisibility,
     currentPublicSlug,
+    isAccountPublic = true,
 }: ProjectVisibilitySettingsProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
@@ -179,7 +181,26 @@ export function ProjectVisibilitySettings({
                                     )}
                                 />
 
-                                {visibility === 'public' && (
+                                {visibility === 'public' && !isAccountPublic && (
+                                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded-lg p-4 text-sm">
+                                        <p className="font-medium text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                                            <AlertTriangle className="h-4 w-4" />
+                                            Public profile not enabled
+                                        </p>
+                                        <p className="text-amber-700 dark:text-amber-300 mt-1">
+                                            Your company&apos;s public profile must be enabled before public projects are visible.
+                                        </p>
+                                        <a
+                                            href={`/home/${accountSlug}/settings/public-profile`}
+                                            className="inline-flex items-center gap-1 mt-2 text-amber-800 dark:text-amber-200 font-medium hover:underline"
+                                        >
+                                            Enable public profile
+                                            <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                    </div>
+                                )}
+
+                                {visibility === 'public' && isAccountPublic && (
                                     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 text-sm">
                                         <p className="font-medium text-green-800 dark:text-green-200">
                                             🌍 This project will be publicly visible
