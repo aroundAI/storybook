@@ -37,6 +37,7 @@ import { AudioSettingsForm } from './_components/audio-settings-form';
 import { ProjectCoverSettings } from './_components/project-cover-settings';
 import { ProjectIntroSettings } from './_components/project-intro-settings';
 import { StudioSettingsForm } from './_components/studio-settings-form';
+import { ProjectVisibilitySettings } from './_components/visibility-settings';
 
 interface ProjectSettingsPageProps {
   params: Promise<{ account: string; projectSlug: string }>;
@@ -224,6 +225,17 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               currentCoverUrl={
                 (project.metadata as Record<string, unknown>)?.coverImageUrl as string | undefined
               }
+            />
+          </If>
+
+          {/* Public Sharing & Visibility Settings */}
+          <If condition={permissions.canEdit}>
+            <ProjectVisibilitySettings
+              projectId={project.id}
+              projectName={project.name}
+              accountSlug={account}
+              currentVisibility={project.visibility ?? 'private'}
+              currentPublicSlug={project.public_slug ?? null}
             />
           </If>
 
