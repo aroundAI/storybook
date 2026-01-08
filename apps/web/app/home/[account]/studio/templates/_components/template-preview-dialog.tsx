@@ -68,7 +68,8 @@ export function TemplatePreviewDialog({
         projectDescription: '',
       });
     }
-  }, [open, template?.id, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, template?.id]);
 
   if (!template) return null;
 

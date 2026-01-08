@@ -223,6 +223,7 @@ export function OverviewContent({
     <div className="space-y-8">
       {/* ============= HERO BANNER ============= */}
       <section className="group relative h-64 overflow-hidden rounded-2xl shadow-sm md:h-80">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           alt="Project background"
           className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
@@ -700,6 +701,7 @@ export function OverviewContent({
                         className={`h-16 w-24 rounded-lg bg-gradient-to-br ${gradient} relative flex-shrink-0 overflow-hidden shadow-sm`}
                       >
                         {episode.thumbnailUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
                           <img
                             alt=""
                             className="h-full w-full object-cover opacity-90 transition-opacity group-hover:opacity-100"

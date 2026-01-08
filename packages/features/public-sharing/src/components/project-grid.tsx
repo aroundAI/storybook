@@ -37,6 +37,7 @@ export function ProjectGrid({ projects, companySlug }: ProjectGridProps) {
                             {/* Cover Image */}
                             <div className="aspect-video bg-muted relative overflow-hidden">
                                 {project.cover_image_url ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
                                     <img
                                         src={project.cover_image_url}
                                         alt={project.name}

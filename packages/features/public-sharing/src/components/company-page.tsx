@@ -33,6 +33,7 @@ export function CompanyPage({ company, projects }: CompanyPageProps) {
                 <div className="flex flex-col md:flex-row gap-6 items-start">
                     {/* Avatar */}
                     <div className="bg-white p-1 rounded-full shadow-lg">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                             src={company.picture_url || '/placeholder-avatar.png'}
                             alt={company.name}

@@ -19,13 +19,13 @@ interface Episode {
   number: number;
   updated_at: string;
   stage?:
-    | 'draft'
-    | 'story'
-    | 'screenplay'
-    | 'shots'
-    | 'visual'
-    | 'audio'
-    | 'complete';
+  | 'draft'
+  | 'story'
+  | 'screenplay'
+  | 'shots'
+  | 'visual'
+  | 'audio'
+  | 'complete';
   thumbnailUrl?: string;
   seasonNumber?: number;
 }
@@ -185,6 +185,7 @@ export function RecentEpisodes({ episodes, baseUrl }: RecentEpisodesProps) {
                   )}
                 >
                   {episode.thumbnailUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img
                       src={episode.thumbnailUrl}
                       alt=""

@@ -88,6 +88,7 @@ export function EpisodeList({
                                                 {/* Thumbnail */}
                                                 <div className="relative w-32 h-20 bg-muted rounded-md overflow-hidden flex-shrink-0">
                                                     {episode.thumbnail_url ? (
+                                                        /* eslint-disable-next-line @next/next/no-img-element */
                                                         <img
                                                             src={episode.thumbnail_url}
                                                             alt={episode.title}

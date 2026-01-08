@@ -147,6 +147,7 @@ export function PreviewPlayer({
         )}
       >
         {clip.thumbnailUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={clip.thumbnailUrl}
             alt={clip.name}

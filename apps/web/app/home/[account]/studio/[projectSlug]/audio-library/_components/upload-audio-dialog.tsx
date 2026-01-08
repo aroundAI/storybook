@@ -91,6 +91,7 @@ export function UploadAudioDialog({
         if (droppedFile) {
             handleFile(droppedFile);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {

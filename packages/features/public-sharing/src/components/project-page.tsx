@@ -62,6 +62,7 @@ export function ProjectPage({ project, episodes, baseUrl }: ProjectPageProps) {
                                         {/* Thumbnail */}
                                         <div className="w-48 h-28 bg-gray-200 rounded-md flex-shrink-0 relative overflow-hidden">
                                             {episode.thumbnail_url ? (
+                                                /* eslint-disable-next-line @next/next/no-img-element */
                                                 <img src={episode.thumbnail_url} alt={episode.title} className="w-full h-full object-cover" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-gray-400">

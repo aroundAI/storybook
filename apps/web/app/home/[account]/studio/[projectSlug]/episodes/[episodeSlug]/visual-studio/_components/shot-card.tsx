@@ -92,18 +92,21 @@ export function ShotCard({
             muted
           />
         ) : shot.thumbnailUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={shot.thumbnailUrl}
             alt={`Shot ${shot.shotNumber}`}
             className="h-full w-full object-cover"
           />
         ) : shot.firstFrameUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={shot.firstFrameUrl}
             alt={`Shot ${shot.shotNumber} first frame`}
             className="h-full w-full object-cover"
           />
         ) : shot.lastFrameUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={shot.lastFrameUrl}
             alt={`Shot ${shot.shotNumber} last frame`}

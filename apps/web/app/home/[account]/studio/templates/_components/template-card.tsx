@@ -47,6 +47,7 @@ export function TemplateCard({
       {/* Thumbnail */}
       {template.thumbnailUrl ? (
         <div className="aspect-video overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={template.thumbnailUrl}
             alt={template.name}
