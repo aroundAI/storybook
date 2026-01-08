@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = 'Company Profile';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
