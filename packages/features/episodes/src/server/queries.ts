@@ -7,6 +7,9 @@ import type { Episode, EpisodeWithShots, Shot } from '../lib/types';
 /**
  * Get all episodes for a project (excluding soft-deleted)
  * Ordered by episode number ascending
+ * 
+ * NOTE: This fetches FULL episode data including large JSON blobs.
+ * For list views, prefer getEpisodeMetadataByProject() instead.
  */
 export async function getEpisodesByProject(projectId: string) {
   const client = getSupabaseServerClient();
@@ -30,6 +33,38 @@ export async function getEpisodesByProject(projectId: string) {
 
   return {
     data: data as Episode[],
+    error: null,
+  };
+}
+
+/**
+ * Get episode metadata for a project (excluding soft-deleted)
+ * Ordered by episode number ascending
+ * 
+ * LIGHTWEIGHT: Excludes large JSON blobs (story_data, screenplay_data, shot_list)
+ * Use this for list views to reduce data transfer by 90%+
+ */
+export async function getEpisodeMetadataByProject(projectId: string) {
+  const client = getSupabaseServerClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client as any)
+    .from('episodes')
+    .select(`
+      id, slug, project_id, season_id, number, title, description,
+      status, duration_seconds, thumbnail_url, final_video_url,
+      localized_videos, metadata, version, created_at, updated_at, deleted_at
+    `)
+    .eq('project_id', projectId)
+    .is('deleted_at', null)
+    .order('number', { ascending: true });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return {
+    data: data as Omit<Episode, 'story_data' | 'screenplay_data' | 'shot_list'>[],
     error: null,
   };
 }
