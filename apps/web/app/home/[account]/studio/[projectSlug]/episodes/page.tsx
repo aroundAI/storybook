@@ -122,7 +122,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   return (
     <>
       {/* Compact Header */}
-      <header className="border-b border-gray-200 bg-card px-6 py-4">
+      <header className="cinema-workspace border-b border-white/5 px-6 py-5">
         <div className="mb-2">
           <Link
             href={`/home/${account}/studio/${project.slug}`}
@@ -182,7 +182,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                         Episodes not assigned to any season
                       </p>
                     </div>
-                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+                    <div className="cinema-panel p-6">
                       <div className="relative space-y-0">
                         {unassignedEpisodes.map((episode, index) => (
                           <EpisodeListItem
@@ -201,7 +201,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
               </>
             ) : (
               /* No seasons - flat list of episodes */
-              <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="cinema-panel p-6">
                 <div className="relative space-y-0">
                   {episodes.map((episode, index) => (
                     <EpisodeListItem

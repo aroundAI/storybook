@@ -135,7 +135,7 @@ export function IdeationScreen({
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-normal text-gray-500 transition-colors hover:bg-gray-200 dark:bg-white/10 dark:text-gray-400 dark:hover:bg-white/20"
+                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-xs font-normal text-slate-400 backdrop-blur-sm transition-colors hover:bg-white/[0.08]"
                   >
                     <Sparkles className="h-3 w-3" />
                     {numberOfIdeas} variations
@@ -152,7 +152,7 @@ export function IdeationScreen({
               <Button
                 type="submit"
                 disabled={isPending || premiseLength < 10}
-                className="gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/20 transition-all hover:bg-blue-700 active:scale-95"
+                className="btn-cinema-primary gap-2 text-sm"
               >
                 {isPending ? (
                   <>
@@ -172,7 +172,7 @@ export function IdeationScreen({
           {/* Collapsible Settings Panel */}
           <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
             <CollapsibleContent className="mb-6">
-              <div className="space-y-6 rounded-xl border border-gray-200 bg-card p-6">
+              <div className="cinema-panel space-y-6 p-6">
                 {/* Duration and Content Style */}
                 <DurationSelector
                   duration={targetDuration}
@@ -184,7 +184,7 @@ export function IdeationScreen({
                 />
 
                 {/* Variations Slider */}
-                <div className="flex items-center gap-8 border-t border-gray-200 pt-4 dark:border-gray-700">
+                <div className="flex items-center gap-8 border-t border-white/10 pt-4">
                   <FormField
                     control={form.control}
                     name="numberOfIdeas"
@@ -237,9 +237,9 @@ export function IdeationScreen({
 
           {/* Draft Concept Card */}
           <div className="group relative mb-8">
-            <div className="relative rounded-2xl border border-gray-200 bg-card p-8 shadow-sm transition-all hover:border-primary/50 hover:shadow-lg dark:hover:border-blue-800">
+            <div className="cinema-focus relative p-8 transition-all hover:border-indigo-500/30">
               {/* Label above card */}
-              <div className="absolute -top-3 left-6 bg-gray-50 px-2 text-xs font-semibold tracking-wide text-blue-600 uppercase dark:bg-gray-900 dark:text-blue-400">
+              <div className="absolute -top-3 left-6 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold tracking-wide text-indigo-400 uppercase backdrop-blur-sm">
                 Draft Concept
               </div>
 
@@ -262,7 +262,7 @@ export function IdeationScreen({
                       <Textarea
                         id="premise"
                         placeholder="Once upon a time..."
-                        className="min-h-[200px] resize-none border-none bg-transparent p-0 font-serif text-xl leading-relaxed text-gray-900 shadow-none placeholder:text-gray-300 focus-visible:ring-0 sm:text-2xl dark:text-white dark:placeholder:text-gray-600"
+                        className="cinema-story-text min-h-[200px] resize-none border-none bg-transparent p-0 shadow-none placeholder:text-slate-600 focus-visible:ring-0 sm:text-2xl"
                         {...field}
                       />
                     </FormControl>

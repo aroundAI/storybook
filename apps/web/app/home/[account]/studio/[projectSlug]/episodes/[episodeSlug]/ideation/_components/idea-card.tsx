@@ -17,10 +17,10 @@ export function IdeaCard({ idea, index, isSelected, onSelect }: IdeaCardProps) {
     <div
       onClick={onSelect}
       className={cn(
-        'group relative cursor-pointer rounded-xl border p-6 transition-all',
+        'group relative cursor-pointer rounded-xl border p-6 backdrop-blur-sm transition-all',
         isSelected
-          ? 'border-blue-300 bg-blue-50 ring-2 ring-blue-500 dark:border-blue-600 dark:bg-blue-900/20'
-          : 'border-gray-200 bg-white/50 hover:border-gray-300 hover:bg-white dark:border-gray-700 dark:bg-white/5 dark:hover:bg-white/10',
+          ? 'border-indigo-500/50 bg-indigo-500/10 ring-2 ring-indigo-500/50'
+          : 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.12] hover:bg-white/[0.05]',
       )}
     >
       {/* Header */}

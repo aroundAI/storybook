@@ -18,13 +18,13 @@ interface Episode {
   thumbnailUrl?: string;
   seasonNumber?: number;
   stage?:
-    | 'draft'
-    | 'story'
-    | 'screenplay'
-    | 'shots'
-    | 'visual'
-    | 'audio'
-    | 'complete';
+  | 'draft'
+  | 'story'
+  | 'screenplay'
+  | 'shots'
+  | 'visual'
+  | 'audio'
+  | 'complete';
 }
 
 interface ProjectMetadata {
@@ -189,34 +189,34 @@ export function OverviewContent({
   const scriptPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-          (productionStatus.scriptsComplete / productionStatus.totalEpisodes) *
-            100,
-        )
+        (productionStatus.scriptsComplete / productionStatus.totalEpisodes) *
+        100,
+      )
       : 0;
   const storyboardPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-          (productionStatus.storyboardsComplete /
-            productionStatus.totalEpisodes) *
-            100,
-        )
+        (productionStatus.storyboardsComplete /
+          productionStatus.totalEpisodes) *
+        100,
+      )
       : 0;
   const visualPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-          (productionStatus.visualsComplete / productionStatus.totalEpisodes) *
-            100,
-        )
+        (productionStatus.visualsComplete / productionStatus.totalEpisodes) *
+        100,
+      )
       : 0;
   const overallPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-          ((productionStatus.scriptsComplete +
-            productionStatus.storyboardsComplete +
-            productionStatus.visualsComplete) /
-            (productionStatus.totalEpisodes * 3)) *
-            100,
-        )
+        ((productionStatus.scriptsComplete +
+          productionStatus.storyboardsComplete +
+          productionStatus.visualsComplete) /
+          (productionStatus.totalEpisodes * 3)) *
+        100,
+      )
       : 0;
 
   return (
@@ -276,7 +276,7 @@ export function OverviewContent({
         {/* Episodes stat */}
         <Link
           href={`${baseUrl}/episodes`}
-          className="group border-border bg-card rounded-2xl border p-6 shadow-sm transition-shadow duration-300 hover:shadow-lg"
+          className="group cinema-panel p-6"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -308,7 +308,7 @@ export function OverviewContent({
         {/* Characters stat */}
         <Link
           href={`${baseUrl}/assets`}
-          className="group border-border bg-card rounded-2xl border p-6 shadow-sm transition-shadow duration-300 hover:shadow-lg"
+          className="group cinema-panel p-6"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -343,7 +343,7 @@ export function OverviewContent({
         {/* Locations stat */}
         <Link
           href={`${baseUrl}/assets`}
-          className="group border-border bg-card rounded-2xl border p-6 shadow-sm transition-shadow duration-300 hover:shadow-lg"
+          className="group cinema-panel p-6"
         >
           <div className="flex items-start justify-between">
             <div>
@@ -393,7 +393,7 @@ export function OverviewContent({
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           {/* Choose Your Genesis */}
           <div className="space-y-6 lg:col-span-2">
-            <div className="border-border bg-card rounded-xl border p-6 shadow-sm sm:p-8">
+            <div className="cinema-panel p-6 sm:p-8">
               <div className="mb-6 flex items-center gap-3">
                 <svg
                   className="h-6 w-6 text-indigo-500"

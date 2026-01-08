@@ -70,11 +70,11 @@ export function StoryScreen({
   if (!storyData?.fullStory) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
-          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="cinema-panel p-12 text-center">
+          <h2 className="mb-2 text-xl font-semibold text-white">
             No Story Generated
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-slate-400">
             Select an idea from the Ideation tab to generate a full story.
           </p>
         </div>
@@ -119,7 +119,7 @@ export function StoryScreen({
         elements.push(
           <p
             key={index}
-            className="mb-4 font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-200"
+            className="cinema-story-text mb-4"
           >
             {line}
           </p>,
@@ -192,14 +192,14 @@ export function StoryScreen({
     <div className="relative min-h-full p-8">
       <div className="mx-auto max-w-5xl">
         {/* Story Card */}
-        <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="cinema-focus relative">
           {/* Label */}
-          <div className="absolute -top-3 left-6 bg-[#F5F5F7] px-2 text-xs font-semibold tracking-wide text-blue-600 uppercase dark:bg-gray-900 dark:text-blue-400">
+          <div className="absolute -top-3 left-6 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold tracking-wide text-indigo-400 uppercase backdrop-blur-sm">
             Story
           </div>
 
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-gray-100 p-6 dark:border-gray-700">
+          <div className="flex items-start justify-between border-b border-white/10 p-6">
             <div className="flex-1">
               <h2 className="font-serif text-2xl font-bold text-gray-900 dark:text-white">
                 {storyData.title ?? 'Untitled Story'}
@@ -224,7 +224,7 @@ export function StoryScreen({
                 <Button
                   onClick={handleConvertToScreenplay}
                   disabled={isPending}
-                  className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+                  className="btn-cinema-primary gap-2"
                 >
                   {isPending ? (
                     <>
@@ -243,7 +243,7 @@ export function StoryScreen({
               {hasScreenplay && (
                 <Button
                   onClick={onScreenplayComplete}
-                  className="gap-2 bg-green-600 text-white hover:bg-green-700"
+                  className="btn-cinema-primary gap-2 bg-gradient-to-r from-emerald-500 to-green-600"
                 >
                   View Screenplay
                   <ArrowRight className="h-4 w-4" />
@@ -433,7 +433,7 @@ export function StoryScreen({
                                 className={cn(
                                   'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
                                   ROLE_COLORS[character.role.toLowerCase()] ??
-                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                  'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
                                 )}
                               >
                                 {character.role}

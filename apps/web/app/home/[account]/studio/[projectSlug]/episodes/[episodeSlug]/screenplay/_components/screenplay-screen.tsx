@@ -120,11 +120,11 @@ export function ScreenplayScreen({
   if (!scenes.length) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
-          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="cinema-panel p-12 text-center">
+          <h2 className="mb-2 text-xl font-semibold text-white">
             No Screenplay
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-slate-400">
             Convert your story to screenplay format first.
           </p>
         </div>
@@ -135,7 +135,7 @@ export function ScreenplayScreen({
   return (
     <div className="relative flex h-full flex-col">
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-black/5 bg-card/85 px-6 py-3 backdrop-blur-xl">
+      <div className="cinema-workspace flex items-center justify-between border-b border-white/5 px-6 py-3">
         <div className="flex items-center gap-4">
           <h2 className="font-semibold text-gray-900 dark:text-white">
             Screenplay
@@ -155,7 +155,7 @@ export function ScreenplayScreen({
           {hasShotList ? (
             <Button
               onClick={onShotListComplete}
-              className="gap-2 bg-green-600 text-white hover:bg-green-700"
+              className="btn-cinema-primary gap-2 bg-gradient-to-r from-emerald-500 to-green-600"
             >
               View Shot List
               <ArrowRight className="h-4 w-4" />
@@ -164,7 +164,7 @@ export function ScreenplayScreen({
             <Button
               onClick={handleGenerateShotList}
               disabled={isPending}
-              className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+              className="btn-cinema-primary gap-2"
             >
               {isPending ? (
                 <>
@@ -185,7 +185,7 @@ export function ScreenplayScreen({
       {/* Main Content - Two Column Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Scene Index */}
-        <div className="w-56 shrink-0 border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+        <div className="w-56 shrink-0 border-r border-white/5 bg-white/[0.02]">
           <SceneIndexSidebar
             scenes={scenes}
             activeSceneNumber={activeSceneNumber}
@@ -193,10 +193,9 @@ export function ScreenplayScreen({
           />
         </div>
 
-        {/* Center - Screenplay Paper */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto bg-gray-100 p-8 dark:bg-gray-900"
+          className="flex-1 overflow-y-auto bg-slate-950 p-8"
         >
           <ScreenplayPaper
             scenes={scenes}

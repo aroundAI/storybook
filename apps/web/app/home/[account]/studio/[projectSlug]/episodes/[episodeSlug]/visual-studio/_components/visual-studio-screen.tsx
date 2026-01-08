@@ -562,10 +562,14 @@ export function VisualStudioScreen({
 
   return (
     <div className="relative h-full">
+      {/* Ambient Glow Background Effects */}
+      <div className="cinema-glow cinema-glow-indigo pointer-events-none fixed -top-48 -right-48 h-96 w-96 -z-10" />
+      <div className="cinema-glow cinema-glow-purple pointer-events-none fixed -bottom-40 -left-40 h-80 w-80 -z-10" />
+
       {/* Main Content - Full width always */}
       <div className="flex h-full flex-col overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-black/5 bg-card/85 px-6 py-3 backdrop-blur-xl">
+        <div className="cinema-workspace flex items-center justify-between border-b border-white/5 px-6 py-3">
           <div className="flex items-center gap-4">
             <h2 className="font-semibold text-gray-900 dark:text-white">
               Visual Studio
@@ -579,19 +583,19 @@ export function VisualStudioScreen({
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 text-xs">
-              <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+              <span className="cinema-badge cinema-badge-pending">
                 {stats.pending} pending
               </span>
               {stats.generating > 0 && (
-                <span className="rounded-full bg-blue-100 px-2 py-0.5 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                <span className="cinema-badge cinema-badge-processing">
                   {stats.generating} generating
                 </span>
               )}
-              <span className="rounded-full bg-green-100 px-2 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+              <span className="cinema-badge cinema-badge-complete">
                 {stats.completed} completed
               </span>
               {stats.failed > 0 && (
-                <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                <span className="cinema-badge cinema-badge-error">
                   {stats.failed} failed
                 </span>
               )}
@@ -614,7 +618,7 @@ export function VisualStudioScreen({
             <Button
               onClick={handleGenerateAll}
               disabled={stats.pending === 0}
-              className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+              className="btn-cinema-primary gap-2"
             >
               <Play className="h-4 w-4" />
               Generate All Pending
@@ -623,7 +627,7 @@ export function VisualStudioScreen({
         </div>
 
         {/* Filters Bar */}
-        <div className="flex items-center gap-4 border-b border-black/5 bg-card/50 px-6 py-3 backdrop-blur-sm">
+        <div className="flex items-center gap-4 border-b border-white/5 bg-white/[0.02] px-6 py-3 backdrop-blur-sm">
           {/* Search */}
           <div className="relative max-w-xs flex-1">
             <Search className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -701,7 +705,7 @@ export function VisualStudioScreen({
         </div>
 
         {/* Comic Strip Shot Grid */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto bg-slate-950/50 p-8">
           {Object.entries(shotsByScene).length === 0 ? (
             <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
               No shots match the current filters
