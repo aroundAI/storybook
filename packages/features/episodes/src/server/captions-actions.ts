@@ -28,7 +28,11 @@ export const getEpisodeCaptionsAction = enhanceAction(
         // Fetch dialogue lines
         const { data: dialogueLines, error: fetchError } = await client
             .from('dialogue_lines')
-            .select('*')
+            .select(`
+                id, episode_id, shot_id, sequence_number, character_asset_id,
+                text, audio_url, status, timeline_start_seconds,
+                estimated_duration_seconds, generation_metadata, created_at
+            `)
             .eq('episode_id', data.episodeId)
             .eq('status', 'completed')
             .not('timeline_start_seconds', 'is', null) // Only lines placed on timeline

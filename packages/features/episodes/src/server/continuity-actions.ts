@@ -225,7 +225,11 @@ export const fixContinuityIssueAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(id, account_id)')
+      .select(`
+        id, project_id, title, story_data, screenplay_data, shot_list,
+        created_at, updated_at, deleted_at,
+        project:projects(id, account_id)
+      `)
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();

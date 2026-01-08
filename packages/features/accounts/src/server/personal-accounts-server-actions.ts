@@ -83,7 +83,10 @@ export const deletePersonalAccountAction = enhanceAction(
     // Fetch account info before deletion for audit log
     const { data: account } = await client
       .from('accounts')
-      .select('*')
+      .select(`
+        id, name, slug, picture_url, email, is_personal_account,
+        primary_owner_user_id, public_data, created_at, updated_at
+      `)
       .eq('id', user.id)
       .eq('is_personal_account', true)
       .single();

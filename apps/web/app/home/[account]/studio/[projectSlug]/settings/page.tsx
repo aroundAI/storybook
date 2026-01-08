@@ -83,7 +83,11 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   // First fetch project by slug
   const { data: project, error: projectError } = await client
     .from('projects')
-    .select('*')
+    .select(`
+      id, name, slug, description, account_id, metadata, status, visibility,
+      audio_settings, created_by, updated_by, public_slug, seo_metadata,
+      created_at, updated_at
+    `)
     .eq('slug', projectSlug)
     .single();
 

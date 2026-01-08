@@ -39,7 +39,7 @@ export const cancelVideoJobAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
       .from('generation_jobs')
-      .select('*')
+      .select('id, status, provider, provider_job_id')
       .eq('id', data.jobId)
       .single();
 

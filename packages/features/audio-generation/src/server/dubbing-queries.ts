@@ -119,7 +119,11 @@ export async function getDubbedVersionsForEpisode(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client as any)
     .from('dubbed_versions')
-    .select('*')
+    .select(`
+      id, episode_id, target_language, status, speaker_mapping,
+      translation_status, voiceover_status, progress, metadata,
+      created_at, updated_at
+    `)
     .eq('episode_id', episodeId)
     .order('created_at', { ascending: true });
 

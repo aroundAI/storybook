@@ -90,7 +90,10 @@ async function EpisodeWorkspaceLayout({
     .from('episodes')
     .select(
       `
-        *,
+        id, slug, project_id, season_id, number, title, description,
+        status, duration_seconds, thumbnail_url, final_video_url,
+        localized_videos, localized_shorts, story_data, screenplay_data, shot_list,
+        metadata, version, created_at, updated_at, deleted_at,
         season:seasons(id, name, number)
       `,
     )
@@ -106,7 +109,13 @@ async function EpisodeWorkspaceLayout({
   // Now fetch shots using the episode ID
   const { data: shotsData } = await client
     .from('shots')
-    .select('*')
+    .select(`
+      id, episode_id, scene_number, shot_number, sequence_number,
+      duration_seconds, scene_description, action_description,
+      prompt, camera_direction, status, video_url, thumbnail_url,
+      first_frame_url, last_frame_url, generation_job_id, generation_metadata,
+      created_at, updated_at, deleted_at
+    `)
     .eq('episode_id', episodeData.id)
     .is('deleted_at', null)
     .order('sequence_number', { ascending: true });

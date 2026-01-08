@@ -21,12 +21,12 @@ interface DatabaseShot {
   prompt: string;
   camera_direction: string | null;
   status:
-    | 'pending'
-    | 'queued'
-    | 'generating'
-    | 'completed'
-    | 'failed'
-    | 'approved';
+  | 'pending'
+  | 'queued'
+  | 'generating'
+  | 'completed'
+  | 'failed'
+  | 'approved';
   video_url: string | null;
   thumbnail_url: string | null;
   generation_job_id: string | null;
@@ -84,7 +84,12 @@ export function useShotsQuery(episodeId: string) {
     queryFn: async (): Promise<ShotGridShot[]> => {
       const { data, error } = await supabase
         .from('shots')
-        .select('*')
+        .select(`
+          id, episode_id, scene_number, shot_number, sequence_number,
+          duration_seconds, scene_description, action_description,
+          prompt, camera_direction, status, video_url, thumbnail_url,
+          generation_job_id
+        `)
         .eq('episode_id', episodeId)
         .is('deleted_at', null)
         .order('sequence_number', { ascending: true });

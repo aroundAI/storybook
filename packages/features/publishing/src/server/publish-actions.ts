@@ -395,7 +395,12 @@ export const retryPublishAction = enhanceAction(
     // Get publish record
     const { data: publish, error: publishError } = await client
       .from('publishes')
-      .select('*, episodes(final_video_url, thumbnail_url)')
+      .select(`
+        id, episode_id, platform_connection_id, platform, content_type, status,
+        title, description, tags, thumbnail_url, platform_content_id, platform_url,
+        scheduled_at, published_at, language, metadata, created_at,
+        episodes(final_video_url, thumbnail_url)
+      `)
       .eq('id', publishId)
       .single();
 
@@ -920,7 +925,12 @@ export const unpublishAction = enhanceAction(
     // Get the publish record with connection info
     const { data: publish, error: fetchError } = await client
       .from('publishes')
-      .select('*, platform_connections(id, platform_account_id)')
+      .select(`
+        id, episode_id, platform_connection_id, platform, content_type, status,
+        title, description, tags, thumbnail_url, platform_content_id, platform_url,
+        scheduled_at, published_at, language, metadata, created_at,
+        platform_connections(id, platform_account_id)
+      `)
       .eq('id', publishId)
       .single();
 

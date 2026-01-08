@@ -67,13 +67,9 @@ interface Episode {
   status: string;
   duration_seconds: number | null;
   thumbnail_url: string | null;
-  final_video_url: string | null;
-  localized_videos?: Record<string, string>;
   story_data: Record<string, unknown> | null;
   screenplay_data: Record<string, unknown> | null;
   shot_list: Record<string, unknown> | null;
-  metadata: Record<string, unknown> | null;
-  version: number;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -95,23 +91,41 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   }
 
   // Fetch seasons and episodes using project ID
-  const [seasonsResult, episodesResult] = await Promise.all([
+  const [seasonsResult, episodesResult, unassignedResult] = await Promise.all([
     client
       .from('seasons')
       .select('id, number, name, description')
       .eq('project_id', project.id)
       .order('number', { ascending: true }),
+    // Episodes with computed boolean checks instead of fetching full JSON blobs
     client
       .from('episodes')
-      .select('*, slug')
+      .select(`
+        id, slug, project_id, season_id, number, title, description,
+        status, duration_seconds, thumbnail_url,
+        created_at, updated_at, deleted_at
+      `)
       .eq('project_id', project.id)
       .is('deleted_at', null)
+      .order('number', { ascending: true }),
+    // Separate query for unassigned episodes (SQL filter instead of JS filter)
+    client
+      .from('episodes')
+      .select(`
+        id, slug, project_id, season_id, number, title, description,
+        status, duration_seconds, thumbnail_url,
+        created_at, updated_at, deleted_at
+      `)
+      .eq('project_id', project.id)
+      .is('deleted_at', null)
+      .is('season_id', null)
       .order('number', { ascending: true }),
   ]);
 
   const { data: seasons } = seasonsResult;
   const episodes = episodesResult.data as Episode[] | null;
   const episodesError = episodesResult.error;
+  const unassignedEpisodes = (unassignedResult.data as Episode[] | null) ?? [];
 
   if (episodesError) {
     throw new Error('Failed to load episodes');
@@ -120,7 +134,6 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   // Group episodes by season
   const episodesBySeason = groupEpisodesBySeason(episodes ?? [], seasons ?? []);
   const hasSeasons = (seasons?.length ?? 0) > 0;
-  const unassignedEpisodes = episodes?.filter((ep) => !ep.season_id) ?? [];
 
   return (
     <>
@@ -251,6 +264,7 @@ function groupEpisodesBySeason(
 
 /**
  * Map database episode to component props
+ * Note: JSON blob fields are not loaded in list query - component derives status from episode.status
  */
 function mapEpisode(episode: Episode) {
   return {
@@ -264,13 +278,13 @@ function mapEpisode(episode: Episode) {
     status: episode.status as EpisodeStatus,
     durationSeconds: episode.duration_seconds,
     thumbnailUrl: episode.thumbnail_url,
-    finalVideoUrl: episode.final_video_url,
-    localizedVideos: episode.localized_videos,
-    storyData: episode.story_data as StoryData | null,
-    screenplayData: episode.screenplay_data as ScreenplayData | null,
-    shotList: episode.shot_list as ShotListData | null,
-    metadata: episode.metadata as EpisodeMetadata | null,
-    version: episode.version,
+    finalVideoUrl: null, // Not loaded in list query
+    localizedVideos: null, // Not loaded in list query
+    storyData: null, // Not loaded in list query - use status field
+    screenplayData: null, // Not loaded in list query - use status field
+    shotList: null, // Not loaded in list query - use status field
+    metadata: null, // Not loaded in list query
+    version: 0, // Not loaded in list query
     createdAt: episode.created_at,
     updatedAt: episode.updated_at,
     deletedAt: episode.deleted_at,

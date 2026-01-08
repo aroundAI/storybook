@@ -15,19 +15,22 @@ interface EpisodeListItemProps {
   isLast?: boolean;
 }
 
+/**
+ * Derive stage status from the episode.status field
+ * Status progression: draft → story → storyboard → visual-studio → audio-studio → review → published
+ * This avoids fetching large JSON blobs just for boolean presence checks
+ */
 function getStageStatus(episode: Episode) {
+  const status = episode.status;
+
+  // Status progression map
+  const statusOrder = ['draft', 'story', 'storyboard', 'visual-studio', 'audio-studio', 'review', 'published'];
+  const currentIndex = statusOrder.indexOf(status);
+
   return {
-    story: episode.storyData?.fullStory ? 'complete' : 'pending',
-    screenplay: episode.screenplayData?.scenes
-      ? 'complete'
-      : episode.storyData?.fullStory
-        ? 'in-progress'
-        : 'pending',
-    visuals: episode.shotList?.shots
-      ? 'complete'
-      : episode.screenplayData?.scenes
-        ? 'in-progress'
-        : 'pending',
+    story: currentIndex >= 1 ? 'complete' : currentIndex === 0 ? 'in-progress' : 'pending',
+    screenplay: currentIndex >= 2 ? 'complete' : currentIndex === 1 ? 'in-progress' : 'pending',
+    visuals: currentIndex >= 3 ? 'complete' : currentIndex === 2 ? 'in-progress' : 'pending',
   } as const;
 }
 

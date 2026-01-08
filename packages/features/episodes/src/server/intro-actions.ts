@@ -312,7 +312,11 @@ export const getProjectIntrosAction = enhanceAction(
         try {
             const { data: intros, error: fetchError } = await client
                 .from('project_intros')
-                .select('*')
+                .select(`
+                    id, project_id, language, language_label, video_url,
+                    duration_seconds, thumbnail_url, file_name, file_size_bytes,
+                    mime_type, is_active, created_at, updated_at
+                `)
                 .eq('project_id', data.projectId)
                 .order('language', { ascending: true });
 

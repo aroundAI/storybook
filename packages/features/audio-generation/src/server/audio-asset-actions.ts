@@ -196,7 +196,12 @@ export const findAudioAssetByPromptAction = enhanceAction(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: rows, error } = await (client as any)
             .from('audio_assets')
-            .select('*')
+            .select(`
+                id, asset_id, project_id, audio_type, prompt_hash, prompt,
+                name, file_url, file_path, duration_seconds, file_size_bytes,
+                provider, provider_job_id, status, metadata,
+                usage_count, last_used_at, created_at, updated_at
+            `)
             .eq('project_id', data.projectId)
             .eq('prompt_hash', hash)
             .eq('audio_type', data.audioType)
@@ -344,7 +349,12 @@ export const getAudioAssetsAction = enhanceAction(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let query = (client as any)
             .from('audio_assets')
-            .select('*', { count: 'exact' })
+            .select(`
+                id, asset_id, project_id, audio_type, prompt_hash, prompt,
+                name, file_url, file_path, duration_seconds, file_size_bytes,
+                provider, provider_job_id, status, metadata,
+                usage_count, last_used_at, created_at, updated_at
+            `, { count: 'exact' })
             .eq('project_id', data.projectId)
             .is('deleted_at', null)
             .order('created_at', { ascending: false })

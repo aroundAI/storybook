@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
   // Verify nonce
   const { data: storedState, error: stateError } = await client
     .from('oauth_states')
-    .select('*')
+    .select('id, nonce, user_id, platform, metadata, expires_at, created_at')
     .eq('nonce', state.nonce)
     .eq('user_id', user.id)
     .eq('platform', 'meta')

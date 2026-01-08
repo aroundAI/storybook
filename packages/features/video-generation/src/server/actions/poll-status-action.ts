@@ -52,7 +52,10 @@ export const pollVideoStatusAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
       .from('generation_jobs')
-      .select('*')
+      .select(`
+        id, status, provider, provider_job_id, reference_type, reference_id,
+        output_data, error_message, updated_at
+      `)
       .eq('id', data.generationJobId)
       .single();
 

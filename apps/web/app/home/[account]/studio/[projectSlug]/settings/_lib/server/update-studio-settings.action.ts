@@ -46,7 +46,10 @@ export const updateStudioSettingsAction = enhanceAction(
     // Fetch current project
     const { data: project, error: fetchError } = await client
       .from('projects')
-      .select('*')
+      .select(`
+        id, name, slug, description, account_id, metadata, status, visibility,
+        created_at, updated_at
+      `)
       .eq('id', data.projectId)
       .single();
 

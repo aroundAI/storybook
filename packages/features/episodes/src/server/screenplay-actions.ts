@@ -185,7 +185,12 @@ export const convertToScreenplayAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(id, account_id, metadata)')
+      .select(`
+        id, project_id, season_id, number, slug, title, description, status, version,
+        story_data, screenplay_data, target_duration_seconds,
+        created_at, updated_at, deleted_at,
+        project:projects(id, account_id, metadata)
+      `)
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();

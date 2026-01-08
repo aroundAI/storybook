@@ -226,7 +226,12 @@ export const generateFullStoryAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: fetchError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(id, account_id)')
+      .select(`
+        id, project_id, season_id, number, slug, title, description, status, version,
+        duration_seconds, thumbnail_url, story_data, screenplay_data, shot_list,
+        target_duration_seconds, created_at, updated_at, deleted_at,
+        project:projects(id, account_id)
+      `)
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
