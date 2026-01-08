@@ -83,6 +83,7 @@ const config = {
       'node_modules/terser/**',
     ],
   },
+  headers: getHeaders,
   redirects: getRedirects,
   turbopack: {
     resolveExtensions: ['.ts', '.tsx', '.js', '.jsx'],
@@ -144,7 +145,51 @@ async function getRedirects() {
   return [];
 }
 
-
+/**
+ * HTTP Cache-Control headers for performance
+ * - Static assets: Cache forever (fingerprinted by Next.js)
+ * - Manifest/icons: Cache 1 day, revalidate 1 week at CDN
+ * - API routes: No cache
+ */
+async function getHeaders() {
+  return [
+    // Static assets - cache forever (fingerprinted)
+    {
+      source: '/_next/static/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+      ],
+    },
+    // Manifest - cache 1 hour browser, 1 day CDN
+    {
+      source: '/manifest.webmanifest',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=3600, s-maxage=86400' },
+      ],
+    },
+    // Apple touch icons and favicons - cache 1 day browser, 1 week CDN
+    {
+      source: '/images/favicon/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800' },
+      ],
+    },
+    // Public images - cache 1 day browser, 1 week CDN
+    {
+      source: '/images/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800' },
+      ],
+    },
+    // API routes - no cache by default
+    {
+      source: '/api/:path*',
+      headers: [
+        { key: 'Cache-Control', value: 'no-store, must-revalidate' },
+      ],
+    },
+  ];
+}
 /**
  * @description Aliases modules based on the environment variables
  * This will speed up the development server by not loading the modules that are not needed

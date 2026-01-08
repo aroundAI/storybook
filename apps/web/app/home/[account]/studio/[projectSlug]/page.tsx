@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { getProjectAnalytics } from '@kit/content-analytics/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { cached } from '~/lib/cache/data-cache';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { OverviewContent } from './_components/overview-content';
@@ -34,65 +35,124 @@ export async function generateMetadata({
   };
 }
 
+// Cache TTLs in seconds
+const CACHE_TTL = {
+  project: 3600, // 1 hour
+  counts: 300, // 5 minutes
+  episodes: 300, // 5 minutes
+  analytics: 600, // 10 minutes
+};
+
 async function StudioProjectPage({ params }: StudioProjectPageProps) {
   const { account, projectSlug } = await params;
   const client = getSupabaseServerClient();
 
-  // First fetch project by slug to get its ID
-  const { data: project, error } = await client
-    .from('projects')
-    .select('id, name, slug, description, metadata, created_at')
-    .eq('slug', projectSlug)
-    .single();
+  // Fetch project with caching (1 hour TTL)
+  const projectResult = await cached(
+    `project:${projectSlug}`,
+    async () => {
+      const { data, error } = await client
+        .from('projects')
+        .select('id, name, slug, description, metadata, created_at')
+        .eq('slug', projectSlug)
+        .single();
+      return { data, error };
+    },
+    CACHE_TTL.project,
+  );
 
-  if (error || !project) {
+  if (projectResult.error || !projectResult.data) {
     notFound();
   }
 
-  // Fetch counts and episode status data in parallel using project ID
+  const project = projectResult.data;
+
+  // Fetch counts and episode status data in parallel with caching
   const [
     { count: characterCount },
     { count: locationCount },
     { count: episodeCount },
-    { data: recentEpisodes },
-    { data: episodeStatusData },
+    recentEpisodes,
+    episodeStatusData,
     analytics,
   ] = await Promise.all([
-    client
-      .from('assets')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', project.id)
-      .eq('type', 'character')
-      .is('deleted_at', null),
-    client
-      .from('assets')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', project.id)
-      .eq('type', 'location')
-      .is('deleted_at', null),
-    client
-      .from('episodes')
-      .select('*', { count: 'exact', head: true })
-      .eq('project_id', project.id)
-      .is('deleted_at', null),
-    // Fetch 3 most recent episodes with status data
-    client
-      .from('episodes')
-      .select(
-        'id, slug, title, number, updated_at, story_data, screenplay_data, shot_list',
-      )
-      .eq('project_id', project.id)
-      .is('deleted_at', null)
-      .order('updated_at', { ascending: false })
-      .limit(3),
-    // Fetch all episodes for production status calculation
-    client
-      .from('episodes')
-      .select('id, story_data, screenplay_data, shot_list')
-      .eq('project_id', project.id)
-      .is('deleted_at', null),
-    // Fetch analytics
-    getProjectAnalytics(project.id).catch(() => null),
+    // Character count (5 min cache)
+    cached(
+      `project:${project.id}:character-count`,
+      async () => {
+        const result = await client
+          .from('assets')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', project.id)
+          .eq('type', 'character')
+          .is('deleted_at', null);
+        return result;
+      },
+      CACHE_TTL.counts,
+    ),
+    // Location count (5 min cache)
+    cached(
+      `project:${project.id}:location-count`,
+      async () => {
+        const result = await client
+          .from('assets')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', project.id)
+          .eq('type', 'location')
+          .is('deleted_at', null);
+        return result;
+      },
+      CACHE_TTL.counts,
+    ),
+    // Episode count (5 min cache)
+    cached(
+      `project:${project.id}:episode-count`,
+      async () => {
+        const result = await client
+          .from('episodes')
+          .select('*', { count: 'exact', head: true })
+          .eq('project_id', project.id)
+          .is('deleted_at', null);
+        return result;
+      },
+      CACHE_TTL.counts,
+    ),
+    // Recent episodes (5 min cache)
+    cached(
+      `project:${project.id}:recent-episodes`,
+      async () => {
+        const { data } = await client
+          .from('episodes')
+          .select(
+            'id, slug, title, number, updated_at, story_data, screenplay_data, shot_list',
+          )
+          .eq('project_id', project.id)
+          .is('deleted_at', null)
+          .order('updated_at', { ascending: false })
+          .limit(3);
+        return data;
+      },
+      CACHE_TTL.episodes,
+    ),
+    // Episode status data (5 min cache)
+    cached(
+      `project:${project.id}:episode-status`,
+      async () => {
+        const { data } = await client
+          .from('episodes')
+          .select('id, story_data, screenplay_data, shot_list')
+          .eq('project_id', project.id)
+          .is('deleted_at', null);
+        return data;
+      },
+      CACHE_TTL.episodes,
+    ),
+    // Analytics (10 min cache)
+    cached(
+      `project:${project.id}:analytics`,
+      () => getProjectAnalytics(project.id).catch(() => null),
+      CACHE_TTL.analytics,
+    ),
   ]);
 
   // Extract metadata
