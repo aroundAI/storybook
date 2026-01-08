@@ -613,13 +613,40 @@ export default $config({
       transform: {
         server: {
           // Increase memory for better performance (reduce cold starts)
-          memory: "1024 MB",
+          // 1792MB gives ~1 vCPU worth of compute
+          memory: "1792 MB",
           // Increase timeout for long-running requests
           timeout: "30 seconds",
           // Architecture (arm64 is cheaper and often faster)
           architecture: "arm64",
           // Enable KMS encryption for environment variables
           kmsKeyArn: kmsKey.arn,
+        },
+        // CloudFront CDN cache behaviors for performance
+        cdn: (args) => {
+          // Add cache behaviors for static assets
+          args.orderedCacheBehaviors = [
+            // Static assets - cache for 1 year (immutable, fingerprinted)
+            {
+              pathPattern: "_next/static/*",
+              viewerProtocolPolicy: "redirect-to-https",
+              allowedMethods: ["GET", "HEAD"],
+              cachedMethods: ["GET", "HEAD"],
+              targetOriginId: "s3",
+              compress: true,
+              cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6", // CachingOptimized
+            },
+            // Public images - cache for 1 week
+            {
+              pathPattern: "images/*",
+              viewerProtocolPolicy: "redirect-to-https",
+              allowedMethods: ["GET", "HEAD"],
+              cachedMethods: ["GET", "HEAD"],
+              targetOriginId: "s3",
+              compress: true,
+              cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6", // CachingOptimized
+            },
+          ];
         },
       },
 
