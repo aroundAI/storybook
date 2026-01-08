@@ -22,6 +22,7 @@ type LocalizedVideoData = {
 };
 
 export function generateCompanyMetadata(company: PublicAccount): Metadata {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profile = company.public_profile as any;
     const title = profile?.display_name || company.name;
     const description = profile?.bio || `Public profile for ${company.name}`;
@@ -45,7 +46,7 @@ export function generateCompanyMetadata(company: PublicAccount): Metadata {
 }
 
 export function generateProjectMetadata(project: PublicProject): Metadata {
-    const accountSlug = project.account.slug;
+    const _accountSlug = project.account.slug;
     const seo = (project.seo_metadata || {}) as SeoMetadata;
 
     const title = seo.title || `${project.name} | ${project.account.name}`;

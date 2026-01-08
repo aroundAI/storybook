@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@kit/ui/form';
 import { Input } from '@kit/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-import { toast } from 'sonner';
+import { toast } from '@kit/ui/sonner';
 import { Globe, Lock, Link as LinkIcon, Eye, ArrowDownToLine } from 'lucide-react';
 
 import { updateEpisodeVisibilityAction } from '@kit/public-sharing/server/visibility-actions';
@@ -103,7 +103,7 @@ export function EpisodeVisibilitySettings({
                 });
                 toast.success('Episode visibility updated');
                 router.refresh();
-            } catch (error) {
+            } catch {
                 toast.error('Failed to update episode visibility');
             }
         });
@@ -117,7 +117,7 @@ export function EpisodeVisibilitySettings({
                     Episode Visibility
                 </CardTitle>
                 <CardDescription>
-                    Override the project's visibility setting for this episode
+                    Override the project&apos;s visibility setting for this episode
                 </CardDescription>
             </CardHeader>
             <CardContent>

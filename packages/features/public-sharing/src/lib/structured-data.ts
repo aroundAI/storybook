@@ -17,6 +17,7 @@ type LocalizedVideoData = {
  * Generate Organization schema for a Company Page
  */
 export function getOrganizationSchema(company: PublicAccount, baseUrl: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profile = company.public_profile as any; // Cast safely based on known structure
 
     return {
@@ -78,6 +79,7 @@ export function getTVEpisodeSchema(
     // If no video for this language, we might fallback to english or return without video object
     // But typically we want the video object if available.
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const schema: any = {
         '@context': 'https://schema.org',
         '@type': 'TVEpisode',

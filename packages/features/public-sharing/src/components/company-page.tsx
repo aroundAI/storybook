@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { PublicAccount, PublicProject } from '../server/public-queries';
-import { Button } from '@kit/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
 import { Twitter, Youtube, Instagram, Globe } from 'lucide-react';
 
 interface CompanyPageProps {
@@ -12,6 +11,7 @@ interface CompanyPageProps {
 }
 
 export function CompanyPage({ company, projects }: CompanyPageProps) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const profile = company.public_profile as any; // Cast safely
     const social = profile?.social_links || {};
     const customStyles = profile?.custom_styles || {};

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -92,7 +92,7 @@ export function ProjectVisibilitySettings({
                 });
                 toast.success('Visibility settings updated');
                 router.refresh();
-            } catch (error) {
+            } catch (_error) {
                 toast.error('Failed to update visibility settings');
             }
         });
@@ -190,7 +190,7 @@ export function ProjectVisibilitySettings({
                                             🔗 This project is link-only
                                         </p>
                                         <p className="text-yellow-700 dark:text-yellow-300 mt-1">
-                                            Only people with the direct link can view it. It won't appear in listings.
+                                            Only people with the direct link can view it. It won&apos;t appear in listings.
                                         </p>
                                     </div>
                                 )}

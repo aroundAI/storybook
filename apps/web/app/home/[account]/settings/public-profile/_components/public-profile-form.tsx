@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -80,7 +80,7 @@ export function PublicProfileSettingsForm({
                 });
                 toast.success('Public profile updated');
                 router.refresh();
-            } catch (error) {
+            } catch (_error) {
                 toast.error('Failed to update public profile');
             }
         });

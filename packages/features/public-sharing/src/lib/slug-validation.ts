@@ -170,7 +170,7 @@ export function generateUniqueSlug(
     baseName: string,
     existingSlugs: Set<string>
 ): string {
-    let slug = generateSlug(baseName);
+    const slug = generateSlug(baseName);
 
     if (!existingSlugs.has(slug)) {
         return slug;

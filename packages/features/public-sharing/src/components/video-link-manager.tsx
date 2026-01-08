@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@kit/
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@kit/ui/select';
-import { toast } from 'sonner';
+import { toast } from '@kit/ui/sonner';
 
 import { updateLocalizedVideosAction } from '@kit/public-sharing/server/visibility-actions';
 
@@ -136,7 +136,7 @@ export function VideoLinkManager({ episodeId, currentVideos }: VideoLinkManagerP
                 });
                 toast.success('Video links saved');
                 router.refresh();
-            } catch (error) {
+            } catch {
                 toast.error('Failed to save video links');
             }
         });

@@ -2,9 +2,8 @@
 
 import Link from 'next/link';
 import { PublicEpisode } from '../server/public-queries';
-import { Button } from '@kit/ui/button';
 import { Card } from '@kit/ui/card';
-import { ArrowLeft, PlayCircle } from 'lucide-react';
+import { PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ShareButton } from './share-button';
 import { LanguageSelector } from './language-selector';

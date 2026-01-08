@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Play, Clock } from 'lucide-react';
+import { Play } from 'lucide-react';
 import { Card, CardContent } from '@kit/ui/card';
 
 interface Episode {

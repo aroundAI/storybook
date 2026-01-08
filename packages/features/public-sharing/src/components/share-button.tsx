@@ -9,7 +9,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
-import { toast } from 'sonner';
+import { toast } from '@kit/ui/sonner';
 
 interface ShareButtonProps {
     url: string;
@@ -26,7 +26,7 @@ export function ShareButton({ url, title, className }: ShareButtonProps) {
             setCopied(true);
             toast.success('Link copied to clipboard');
             setTimeout(() => setCopied(false), 2000);
-        } catch (err) {
+        } catch {
             toast.error('Failed to copy link');
         }
     };

@@ -92,7 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Projects
     if (projects) {
-        projects.forEach((proj: any) => {
+        projects.forEach((proj: { account?: { slug: string | null }; public_slug?: string | null; updated_at: string | null }) => {
             if (!proj.account || !proj.account.slug || !proj.public_slug) return;
             sharingPages.push({
                 url: `${baseUrl}/@${proj.account.slug}/${proj.public_slug}`,
@@ -105,7 +105,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     // Episodes
     if (episodes) {
-        episodes.forEach((ep: any) => {
+        episodes.forEach((ep: { project?: { account?: { slug: string | null }; public_slug?: string | null }; public_slug?: string | null; updated_at: string }) => {
             if (!ep.project || !ep.project.account || !ep.project.account.slug || !ep.project.public_slug || !ep.public_slug) return;
             sharingPages.push({
                 url: `${baseUrl}/@${ep.project.account.slug}/${ep.project.public_slug}/e/${ep.public_slug}`,

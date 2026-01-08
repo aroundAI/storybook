@@ -3,8 +3,7 @@
 import Link from 'next/link';
 import { PublicProject, PublicEpisode } from '../server/public-queries';
 import { Card, CardContent } from '@kit/ui/card';
-import { Button } from '@kit/ui/button';
-import { ArrowLeft, PlayCircle } from 'lucide-react';
+import { PlayCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ShareButton } from './share-button';
 
