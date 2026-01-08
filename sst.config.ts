@@ -622,32 +622,8 @@ export default $config({
           // Enable KMS encryption for environment variables
           kmsKeyArn: kmsKey.arn,
         },
-        // CloudFront CDN cache behaviors for performance
-        cdn: (args) => {
-          // Add cache behaviors for static assets
-          args.orderedCacheBehaviors = [
-            // Static assets - cache for 1 year (immutable, fingerprinted)
-            {
-              pathPattern: "_next/static/*",
-              viewerProtocolPolicy: "redirect-to-https",
-              allowedMethods: ["GET", "HEAD"],
-              cachedMethods: ["GET", "HEAD"],
-              targetOriginId: "s3",
-              compress: true,
-              cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6", // CachingOptimized
-            },
-            // Public images - cache for 1 week
-            {
-              pathPattern: "images/*",
-              viewerProtocolPolicy: "redirect-to-https",
-              allowedMethods: ["GET", "HEAD"],
-              cachedMethods: ["GET", "HEAD"],
-              targetOriginId: "s3",
-              compress: true,
-              cachePolicyId: "658327ea-f89d-4fab-a63d-7e88639e58f6", // CachingOptimized
-            },
-          ];
-        },
+        // Note: CloudFront cache behaviors for _next/static/* and images/*
+        // are automatically configured by OpenNext with optimal settings
       },
 
       // OpenNext configuration
