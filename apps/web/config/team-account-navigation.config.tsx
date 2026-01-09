@@ -2,6 +2,7 @@ import {
   BarChart3,
   CreditCard,
   Film,
+  Globe,
   LayoutDashboard,
   Settings,
   Share2,
@@ -56,12 +57,17 @@ const getRoutes = (account: string) => [
         path: createPath(pathsConfig.app.accountMembers, account),
         Icon: <Users className={iconClasses} />,
       },
+      {
+        label: 'common:routes.publicProfile',
+        path: `/home/${account}/settings/public-profile`,
+        Icon: <Globe className={iconClasses} />,
+      },
       featureFlagsConfig.enableTeamAccountBilling
         ? {
-            label: 'common:routes.billing',
-            path: createPath(pathsConfig.app.accountBilling, account),
-            Icon: <CreditCard className={iconClasses} />,
-          }
+          label: 'common:routes.billing',
+          path: createPath(pathsConfig.app.accountBilling, account),
+          Icon: <CreditCard className={iconClasses} />,
+        }
         : undefined,
     ].filter(Boolean),
   },
