@@ -45,165 +45,168 @@ interface AnalysisResult {
 
 /**
  * Step 1: Analyze Roadmap
- * Extracts premise, characters, locations, and episodes using LLM
+ * Queues the roadmap analysis LLM call for background processing.
+ * Results are delivered via WebSocket.
  */
 export const analyzeSeasonRoadmapAction = enhanceAction(
   async (data) => {
     const logger = await getLogger();
     const ctx = { name: 'season.analyze', projectId: data.projectId };
 
-    logger.info(ctx, 'Analyzing roadmap for season generation');
+    logger.info(ctx, 'Queuing roadmap analysis for background processing');
 
-    // 1. Load and render prompt template
-    const { loadAndRenderPrompt } = await import('@kit/prompt-engine/server');
-    const renderedPrompt = await loadAndRenderPrompt('season-generation', {
-      roadmap: data.roadmap,
-    });
+    // Get the current user for WebSocket delivery
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
 
-    // 2. Determine API key based on provider from prompt template
-    const provider = renderedPrompt.llmConfig.provider || 'deepseek';
-    let apiKey: string | undefined;
-
-    switch (provider) {
-      case 'gemini':
-        apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-        break;
-      case 'deepseek':
-        apiKey = process.env.DEEPSEEK_API_KEY;
-        break;
-      case 'openai':
-        apiKey = process.env.OPENAI_API_KEY;
-        break;
-      case 'anthropic':
-        apiKey = process.env.ANTHROPIC_API_KEY;
-        break;
-      default:
-        apiKey = process.env.DEEPSEEK_API_KEY;
+    if (authError || !user) {
+      throw new Error('Authentication required');
     }
 
-    // Log which key is being used for debugging
-    if (apiKey) {
-      logger.info({ ...ctx, provider, keyPrefix: apiKey.substring(0, 10) + '...' }, 'Using API key');
-    }
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
 
-    if (!apiKey) {
-      throw new Error(`API key not configured for provider: ${provider}`);
-    }
-
-    const { createLLMClient } = await import('@kit/llm');
-
-    const llm = createLLMClient({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      provider: provider as any,
-      model: renderedPrompt.llmConfig.model,
-      apiKey,
-      temperature: renderedPrompt.llmConfig.temperature,
-      maxTokens: renderedPrompt.llmConfig.max_tokens,
-    });
-
-    const messages = [
-      { role: 'system', content: renderedPrompt.systemPrompt },
-      { role: 'user', content: renderedPrompt.userPrompt },
-    ];
-
-    try {
-      const response = await llm.createChatCompletion({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        messages: messages as any,
-      });
-      const content = response.message.content;
-
-      if (!content) throw new Error('Empty response from LLM');
-
-      // Enhanced JSON extraction: handle markdown fences and whitespace
-      let jsonString = content.trim();
-
-      // Remove markdown code fences if present
-      const codeBlockMatch = jsonString.match(
-        /```(?:json)?\s*\n([\s\S]*?)\n```/,
-      );
-      if (codeBlockMatch && codeBlockMatch[1]) {
-        jsonString = codeBlockMatch[1].trim();
-      }
-
-      // Attempt to parse JSON
-      let result: AnalysisResult;
-      try {
-        result = JSON.parse(jsonString) as AnalysisResult;
-      } catch (parseError) {
-        // Log the actual content for debugging
-        logger.error(
-          {
-            ...ctx,
-            error: parseError,
-            contentLength: content.length,
-            contentPreview: content.substring(0, 500),
-            contentSuffix: content.substring(Math.max(0, content.length - 200)),
-          },
-          'JSON parse error - logging content preview',
-        );
-
-        throw new Error(
-          'LLM returned invalid JSON. The response may have been truncated. Try a shorter roadmap or contact support.',
-        );
-      }
-
-      // Validate required fields
-      if (!result.episodes || !Array.isArray(result.episodes)) {
-        logger.error({ ...ctx, result }, 'Invalid response structure');
-        throw new Error('Invalid response format: missing episodes array');
-      }
-
-      if (!result.premise || typeof result.premise !== 'string') {
-        logger.warn({ ...ctx }, 'Missing premise in response, using default');
-        result.premise = 'Generated from roadmap';
-      }
-
-      if (!result.characters || !Array.isArray(result.characters)) {
-        logger.warn(
-          { ...ctx },
-          'Missing characters in response, using empty array',
-        );
-        result.characters = [];
-      }
-
-      if (!result.locations || !Array.isArray(result.locations)) {
-        logger.warn(
-          { ...ctx },
-          'Missing locations in response, using empty array',
-        );
-        result.locations = [];
-      }
-
-      logger.info(
-        {
-          ...ctx,
-          episodeCount: result.episodes.length,
-          characterCount: result.characters.length,
-          locationCount: result.locations.length,
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'season-analysis',
+        userId: user.id,
+        payload: {
+          projectId: data.projectId,
+          roadmap: data.roadmap,
         },
-        'Successfully analyzed roadmap',
-      );
+      });
 
-      return { success: true, data: result };
-    } catch (error) {
-      logger.error({ ...ctx, error }, 'Analysis failed');
+      logger.info(ctx, 'Job queued successfully');
 
-      // Provide more helpful error messages
-      if (error instanceof Error) {
-        if (error.message.includes('JSON')) {
+      return { success: true, queued: true };
+    } else {
+      // Local development: Run synchronously (no SQS available)
+      logger.info(ctx, 'Running synchronously (local dev mode)');
+
+      // 1. Load and render prompt template
+      const { loadAndRenderPrompt } = await import('@kit/prompt-engine/server');
+      const renderedPrompt = await loadAndRenderPrompt('season-generation', {
+        roadmap: data.roadmap,
+      });
+
+      // 2. Determine API key based on provider from prompt template
+      const provider = renderedPrompt.llmConfig.provider || 'deepseek';
+      let apiKey: string | undefined;
+
+      switch (provider) {
+        case 'gemini':
+          apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+          break;
+        case 'deepseek':
+          apiKey = process.env.DEEPSEEK_API_KEY;
+          break;
+        case 'openai':
+          apiKey = process.env.OPENAI_API_KEY;
+          break;
+        case 'anthropic':
+          apiKey = process.env.ANTHROPIC_API_KEY;
+          break;
+        default:
+          apiKey = process.env.DEEPSEEK_API_KEY;
+      }
+
+      if (!apiKey) {
+        throw new Error(`API key not configured for provider: ${provider}`);
+      }
+
+      const { createLLMClient } = await import('@kit/llm');
+
+      const llm = createLLMClient({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        provider: provider as any,
+        model: renderedPrompt.llmConfig.model,
+        apiKey,
+        temperature: renderedPrompt.llmConfig.temperature,
+        maxTokens: renderedPrompt.llmConfig.max_tokens,
+      });
+
+      const messages = [
+        { role: 'system', content: renderedPrompt.systemPrompt },
+        { role: 'user', content: renderedPrompt.userPrompt },
+      ];
+
+      try {
+        const response = await llm.createChatCompletion({
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          messages: messages as any,
+        });
+        const content = response.message.content;
+
+        if (!content) throw new Error('Empty response from LLM');
+
+        // Enhanced JSON extraction: handle markdown fences and whitespace
+        let jsonString = content.trim();
+
+        // Remove markdown code fences if present
+        const codeBlockMatch = jsonString.match(
+          /```(?:json)?\s*\n([\s\S]*?)\n```/,
+        );
+        if (codeBlockMatch && codeBlockMatch[1]) {
+          jsonString = codeBlockMatch[1].trim();
+        }
+
+        // Attempt to parse JSON
+        let result: AnalysisResult;
+        try {
+          result = JSON.parse(jsonString) as AnalysisResult;
+        } catch (parseError) {
+          logger.error(
+            {
+              ...ctx,
+              error: parseError,
+              contentLength: content.length,
+              contentPreview: content.substring(0, 500),
+            },
+            'JSON parse error',
+          );
+
           throw new Error(
-            'Failed to parse LLM response. The roadmap may be too long or complex. Try breaking it into smaller chunks.',
+            'LLM returned invalid JSON. Try a shorter roadmap.',
           );
         }
-        if (error.message.includes('truncated')) {
-          throw error; // Re-throw our custom message
-        }
-      }
 
-      throw new Error(
-        'Failed to analyze roadmap. Please try again or contact support if the issue persists.',
-      );
+        // Validate required fields
+        if (!result.episodes || !Array.isArray(result.episodes)) {
+          throw new Error('Invalid response format: missing episodes array');
+        }
+
+        if (!result.premise) {
+          result.premise = 'Generated from roadmap';
+        }
+
+        if (!result.characters) {
+          result.characters = [];
+        }
+
+        if (!result.locations) {
+          result.locations = [];
+        }
+
+        logger.info(
+          {
+            ...ctx,
+            episodeCount: result.episodes.length,
+            characterCount: result.characters.length,
+            locationCount: result.locations.length,
+          },
+          'Successfully analyzed roadmap',
+        );
+
+        return { success: true, data: result };
+      } catch (error) {
+        logger.error({ ...ctx, error }, 'Analysis failed');
+        throw new Error(
+          'Failed to analyze roadmap. Please try again.',
+        );
+      }
     }
   },
   { schema: AnalyzeSeasonSchema },

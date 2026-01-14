@@ -8,3 +8,6 @@ export type {
 } from '../types';
 
 export { executeLLM, getApiKeyForProvider } from './llm-executor';
+
+export { queueLlmJob, isLambdaEnvironment } from './sqs-helper';
+export type { LlmJobType } from './sqs-helper';

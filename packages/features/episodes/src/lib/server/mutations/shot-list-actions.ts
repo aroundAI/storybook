@@ -422,19 +422,15 @@ function aggregateSceneResults(
 
 /**
  * Generates a shot list from an episode's screenplay using parallel scene processing
- * This approach scales to any screenplay length by processing scenes in parallel batches
- * with filtered context (only characters/locations appearing in each scene).
- *
- * Processes PARALLEL_SCENE_CONCURRENCY scenes at a time (default: 10) to balance
- * speed and API rate limits. Each scene has independent retry logic with exponential backoff.
+ * In production, queues via SQS for background processing.
  */
 export const generateShotListAction = enhanceAction(
-  async (data): Promise<GenerateShotListResponse> => {
+  async (data): Promise<GenerateShotListResponse | { success: true; queued: true }> => {
     const logger = await getLogger();
     const ctx = { name: 'shot-list.generate', episodeId: data.episodeId };
     const startTime = Date.now();
 
-    logger.info(ctx, 'Starting scene-by-scene shot list generation');
+    logger.info(ctx, 'Processing shot list generation request');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -444,19 +440,7 @@ export const generateShotListAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // 1. BUILD GLOBAL CONTEXT (once) - contains all characters, locations, metadata
-    const globalContext = await buildGlobalShotContext(data.episodeId);
-
-    logger.info(
-      {
-        ...ctx,
-        characterCount: globalContext.characterRegistry.length,
-        locationCount: globalContext.locationRegistry.length,
-      },
-      'Built global context for scene processing',
-    );
-
-    // Fetch episode with screenplay_data
+    // Fetch episode with screenplay_data for validation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
@@ -472,15 +456,63 @@ export const generateShotListAction = enhanceAction(
       throw new Error('Episode not found');
     }
 
-    // 2. GET SCREENPLAY SCENES
+    // Validate screenplay exists
     const screenplayData = episode.screenplay_data as ScreenplayData | null;
-
     if (!screenplayData?.scenes?.length) {
       throw new Error(
         'Episode must have screenplay with scenes generated first',
       );
     }
 
+    // Get project for account context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: project } = await (client as any)
+      .from('projects')
+      .select('account_id')
+      .eq('id', episode.project_id)
+      .single();
+
+    const accountId = project?.account_id ?? 'unknown';
+
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'shot-generation',
+        userId: user.id,
+        payload: {
+          episodeId: data.episodeId,
+          version: episode.version,
+          accountId,
+          userId: user.id,
+          projectId: episode.project_id,
+        },
+      });
+
+      logger.info(ctx, 'Shot list generation job queued');
+      return { success: true, queued: true };
+    }
+
+    // Local development: Run synchronously
+    logger.info(ctx, 'Running synchronously (local dev mode)');
+
+    // 1. BUILD GLOBAL CONTEXT (once) - contains all characters, locations, metadata
+    const globalContext = await buildGlobalShotContext(data.episodeId);
+
+    logger.info(
+      {
+        ...ctx,
+        characterCount: globalContext.characterRegistry.length,
+        locationCount: globalContext.locationRegistry.length,
+      },
+      'Built global context for scene processing',
+    );
+
+    // Get scenes from already-fetched screenplay data
     const scenes = screenplayData.scenes;
     const totalScenes = scenes.length;
 
@@ -492,16 +524,6 @@ export const generateShotListAction = enhanceAction(
       },
       'Processing scenes in parallel batches',
     );
-
-    // Get project for account context (needed for LLM analytics)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project } = await (client as any)
-      .from('projects')
-      .select('account_id')
-      .eq('id', episode.project_id)
-      .single();
-
-    const accountId = project?.account_id ?? 'unknown';
 
     // 3. PROCESS SCENES IN PARALLEL BATCHES
     // Each scene gets filtered context containing only its characters/locations

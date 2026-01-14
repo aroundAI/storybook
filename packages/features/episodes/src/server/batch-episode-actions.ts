@@ -27,13 +27,12 @@ import { generateEpisodeSlug } from '../lib/slug-utils';
  *
  * Uses the season-outline prompt template to generate 2-24 episode outlines
  * with proper story structure distribution.
- *
- * @throws {Error} If LLM call fails or output validation fails
+ * In production, queues via SQS for background processing.
  */
 export const generateSeasonOutlineAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data: GenerateSeasonOutlineResponse }> => {
+  ): Promise<{ success: true; data?: GenerateSeasonOutlineResponse; queued?: boolean }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.generateSeasonOutline',
@@ -42,7 +41,7 @@ export const generateSeasonOutlineAction = enhanceAction(
       episodeCount: data.episodeCount,
     };
 
-    logger.info(ctx, 'Generating season outline');
+    logger.info(ctx, 'Processing season outline request');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -65,6 +64,36 @@ export const generateSeasonOutlineAction = enhanceAction(
 
     const accountId = project.account_id;
 
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'season-outline',
+        userId: user.id,
+        payload: {
+          projectId: data.projectId,
+          seasonId: data.seasonId,
+          seasonPremise: data.seasonPremise,
+          episodeCount: data.episodeCount,
+          startingNumber: data.startingNumber,
+          genre: data.genre,
+          style: data.style,
+          accountId,
+          userId: user.id,
+        },
+      });
+
+      logger.info(ctx, 'Season outline job queued');
+      return { success: true, queued: true };
+    }
+
+    // Local development: Run synchronously
+    logger.info(ctx, 'Running synchronously (local dev mode)');
+
     // Load project characters for context
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: characters } = await (client as any)
@@ -86,21 +115,21 @@ export const generateSeasonOutlineAction = enhanceAction(
     // Format characters for prompt
     const charactersFormatted = characters?.length
       ? characters
-          .map(
-            (c: { name: string; description: string }) =>
-              `- ${c.name}: ${c.description}`,
-          )
-          .join('\n')
+        .map(
+          (c: { name: string; description: string }) =>
+            `- ${c.name}: ${c.description}`,
+        )
+        .join('\n')
       : '';
 
     // Format locations for prompt
     const locationsFormatted = locations?.length
       ? locations
-          .map(
-            (l: { name: string; description: string }) =>
-              `- ${l.name}: ${l.description}`,
-          )
-          .join('\n')
+        .map(
+          (l: { name: string; description: string }) =>
+            `- ${l.name}: ${l.description}`,
+        )
+        .join('\n')
       : '';
 
     // Prepare variables for prompt template
@@ -113,15 +142,6 @@ export const generateSeasonOutlineAction = enhanceAction(
       characters: charactersFormatted,
       locations: locationsFormatted,
     };
-
-    logger.info(
-      {
-        ...ctx,
-        hasCharacters: !!charactersFormatted,
-        hasLocations: !!locationsFormatted,
-      },
-      'Executing season outline generation prompt',
-    );
 
     // Execute LLM with season-outline template
     const result = await executeLLM<SeasonOutlineOutput>({
@@ -318,13 +338,12 @@ export const batchCreateEpisodesAction = enhanceAction(
  * Regenerate a single episode outline with context (FILM-314)
  *
  * Uses surrounding episodes for narrative continuity when regenerating.
- *
- * @throws {Error} If LLM call fails
+ * In production, queues via SQS for background processing.
  */
 export const regenerateEpisodeOutlineAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data: RegenerateEpisodeOutlineResponse }> => {
+  ): Promise<{ success: true; data?: RegenerateEpisodeOutlineResponse; queued?: boolean }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.regenerateOutline',
@@ -332,7 +351,7 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
       episodeNumber: data.episodeNumber,
     };
 
-    logger.info(ctx, 'Regenerating episode outline');
+    logger.info(ctx, 'Processing episode regeneration request');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -355,14 +374,42 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
 
     const accountId = project.account_id;
 
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'season-outline', // Reuses season-outline handler for single episode
+        userId: user.id,
+        payload: {
+          projectId: data.projectId,
+          seasonPremise: data.seasonPremise,
+          episodeCount: 1,
+          startingNumber: data.episodeNumber,
+          surroundingEpisodes: data.surroundingEpisodes,
+          accountId,
+          userId: user.id,
+        },
+      });
+
+      logger.info(ctx, 'Episode regeneration job queued');
+      return { success: true, queued: true };
+    }
+
+    // Local development: Run synchronously
+    logger.info(ctx, 'Running synchronously (local dev mode)');
+
     // Format surrounding episodes for context
     const surroundingContext = data.surroundingEpisodes?.length
       ? `\n**Surrounding Episodes for Context**:\n${data.surroundingEpisodes
-          .map(
-            (ep) =>
-              `- Episode ${ep.number} "${ep.title}": ${ep.premise} (${ep.arcPosition})`,
-          )
-          .join('\n')}`
+        .map(
+          (ep) =>
+            `- Episode ${ep.number} "${ep.title}": ${ep.premise} (${ep.arcPosition})`,
+        )
+        .join('\n')}`
       : '';
 
     // Prepare variables for single episode regeneration
@@ -375,11 +422,6 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
       characters: '',
       locations: surroundingContext,
     };
-
-    logger.info(
-      { ...ctx, hasSurroundingContext: !!surroundingContext },
-      'Executing episode regeneration prompt',
-    );
 
     // Execute LLM with season-outline template (for single episode)
     const result = await executeLLM<SeasonOutlineOutput>({

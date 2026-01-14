@@ -97,9 +97,16 @@ const TranslateMetadataSchema = z.object({
 
 /**
  * Translate metadata (title, description) to target language using LLM
+ * In production, queues via SQS for background processing.
  */
 export const translateMetadataAction = enhanceAction(
-    async ({ title, description, targetLanguage }) => {
+    async ({ title, description, targetLanguage }): Promise<{
+        success: boolean;
+        translatedTitle: string;
+        translatedDescription: string;
+        targetLanguage: string;
+        queued?: boolean;
+    }> => {
         // Skip translation for English
         if (targetLanguage === 'en') {
             return {
@@ -110,6 +117,29 @@ export const translateMetadataAction = enhanceAction(
             };
         }
 
+        // Check if we're in Lambda environment (production)
+        const { isLambdaEnvironment, queueLlmJob } = await import(
+            '@kit/prompt-engine/server'
+        );
+
+        if (isLambdaEnvironment()) {
+            // Production: Queue for background processing
+            await queueLlmJob({
+                jobType: 'publish-metadata',
+                userId: 'system',
+                payload: { title, description, targetLanguage },
+            });
+
+            return {
+                success: true,
+                translatedTitle: title,
+                translatedDescription: description,
+                targetLanguage,
+                queued: true,
+            };
+        }
+
+        // Local development: Run synchronously
         try {
             const result = await executeLLM<{ title: string; description: string }>({
                 templateSlug: 'publishing/translate-metadata',

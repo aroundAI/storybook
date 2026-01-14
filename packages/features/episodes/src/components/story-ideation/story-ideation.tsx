@@ -107,10 +107,14 @@ export function StoryIdeation({
         const result = await generateStoryIdeasAction(data);
 
         if (result.success) {
-          setIdeas(result.data.ideas);
-          setSelectedIdea(null);
-          setHasGenerated(true);
-          toast.success(`Generated ${result.data.ideas.length} story ideas`);
+          if (result.queued) {
+            toast.info('Generating ideas in the background...');
+          } else if (result.data) {
+            setIdeas(result.data.ideas);
+            setSelectedIdea(null);
+            setHasGenerated(true);
+            toast.success(`Generated ${result.data.ideas.length} story ideas`);
+          }
         }
       } catch (error) {
         toast.error(

@@ -51,11 +51,11 @@ const STUDIO_TABS: Array<{
   label: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-  { id: 'ideation', label: 'Ideation', icon: Lightbulb },
-  { id: 'story', label: 'Story', icon: BookOpen },
-  { id: 'screenplay', label: 'Screenplay', icon: Film },
-  { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
-];
+    { id: 'ideation', label: 'Ideation', icon: Lightbulb },
+    { id: 'story', label: 'Story', icon: BookOpen },
+    { id: 'screenplay', label: 'Screenplay', icon: Film },
+    { id: 'shot-list', label: 'Shot List', icon: ListOrdered },
+  ];
 
 function getTabUnlockState(
   episode: Episode | undefined,
@@ -158,9 +158,13 @@ function StoryTabContent({ episode }: { episode: EpisodeWithShots }) {
         });
 
         if (result.success) {
-          toast.success(
-            `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
-          );
+          if (result.queued) {
+            toast.info('Converting to screenplay in the background...');
+          } else if (result.data) {
+            toast.success(
+              `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
+            );
+          }
           await refetchEpisode();
         }
       } catch (error) {

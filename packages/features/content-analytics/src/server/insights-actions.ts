@@ -91,10 +91,10 @@ interface InsightsLLMOutput {
  * Generate AI-powered analytics insights
  *
  * Uses LLM to analyze analytics data and provide actionable recommendations.
- * Results are intended to be cached client-side for 1 hour.
+ * In production, queues via SQS for background processing.
  */
 export const generateInsightsAction = enhanceAction(
-  async function ({ projectId, analytics }): Promise<InsightsResult> {
+  async function ({ projectId, analytics }): Promise<InsightsResult & { queued?: boolean }> {
     const logger = await getLogger();
     const ctx = { name: 'analytics.generateInsights' };
 
@@ -123,6 +123,36 @@ export const generateInsightsAction = enhanceAction(
       };
     }
 
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'analytics-insights',
+        userId: user.id,
+        payload: {
+          projectId,
+          analytics,
+          userId: user.id,
+        },
+      });
+
+      return {
+        summary: 'Generating insights in the background...',
+        trends: [],
+        contentRecommendations: [],
+        postingStrategy: [],
+        audienceInsights: [],
+        topPerformers: [],
+        actionItems: [],
+        queued: true,
+      };
+    }
+
+    // Local development: Run synchronously
     // Prepare analytics summary for LLM (only aggregate data, no PII)
     const analyticsSummary = {
       totals: analytics.totals,

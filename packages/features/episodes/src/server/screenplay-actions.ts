@@ -149,21 +149,12 @@ function extractDialogueLines(
 /**
  * Convert episode story to screenplay format using LLM
  *
- * This action:
- * 1. Validates the episode exists and has story_data
- * 2. Validates episode is in 'story' status
- * 3. Calls LLM with screenplay-conversion prompt template
- * 4. Extracts dialogue lines and stores them in dialogue_lines table
- * 5. Updates episode with screenplay_data and transitions to 'storyboard' status
- * 6. Creates audit log entry
- *
- * @param data - Input containing episodeId and optional conversion settings
- * @returns Screenplay data with metadata
+ * In production, queues via SQS for background processing.
  */
 export const convertToScreenplayAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data: ConvertToScreenplayResponse }> => {
+  ): Promise<{ success: true; data?: ConvertToScreenplayResponse; queued?: boolean }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.convertToScreenplay',
@@ -171,7 +162,7 @@ export const convertToScreenplayAction = enhanceAction(
     };
     const startTime = Date.now();
 
-    logger.info(ctx, 'Starting screenplay conversion');
+    logger.info(ctx, 'Processing screenplay conversion request');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -222,6 +213,34 @@ export const convertToScreenplayAction = enhanceAction(
     if (!accountId) {
       throw new Error('Unable to determine account for episode');
     }
+
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'screenplay-conversion',
+        userId: user.id,
+        payload: {
+          episodeId: data.episodeId,
+          dialogueStyle: data.dialogueStyle,
+          contentStyle: data.contentStyle,
+          version: episode.version,
+          accountId,
+          userId: user.id,
+          projectId: episode.project_id,
+        },
+      });
+
+      logger.info(ctx, 'Screenplay conversion job queued');
+      return { success: true, queued: true };
+    }
+
+    // Local development: Run synchronously
+    logger.info(ctx, 'Running synchronously (local dev mode)');
 
     // Build context for character/location names (Phase 4)
     const {

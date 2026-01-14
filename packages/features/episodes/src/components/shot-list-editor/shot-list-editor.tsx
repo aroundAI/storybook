@@ -215,7 +215,11 @@ export function ShotListEditor({
         });
 
         if (result.success) {
-          toast.success(`Generated ${result.shotsCreated} shots`);
+          if ('queued' in result && result.queued) {
+            toast.info('Generating shot list in the background...');
+          } else if ('shotsCreated' in result) {
+            toast.success(`Generated ${result.shotsCreated} shots`);
+          }
           refetchEpisode();
         }
       } catch (error) {

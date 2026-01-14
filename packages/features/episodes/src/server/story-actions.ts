@@ -52,18 +52,16 @@ export interface GenerateFullStoryResponse {
  * Generate multiple story ideas from a premise
  *
  * Uses the story-ideation prompt template to generate 1-5 diverse story concepts.
- * Does not modify any database records - purely generative.
- *
- * @throws {Error} If LLM call fails or output validation fails
+ * In production, queues via SQS for background processing.
  */
 export const generateStoryIdeasAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data: GenerateStoryIdeasResponse }> => {
+  ): Promise<{ success: true; data?: GenerateStoryIdeasResponse; queued?: boolean }> => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.generateStoryIdeas' };
 
-    logger.info(ctx, 'Generating story ideas');
+    logger.info(ctx, 'Processing story ideation request');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -74,7 +72,6 @@ export const generateStoryIdeasAction = enhanceAction(
     }
 
     // Get user's account for cost tracking and authorization
-    // User must belong to at least one account to use LLM features
     const { data: accountMemberships } = await client
       .from('accounts_memberships')
       .select('account_id')
@@ -82,7 +79,6 @@ export const generateStoryIdeasAction = enhanceAction(
       .limit(1);
 
     if (!accountMemberships?.length) {
-      // Fallback to personal account (where user is primary owner)
       const { data: personalAccount } = await client
         .from('accounts')
         .select('id')
@@ -99,6 +95,32 @@ export const generateStoryIdeasAction = enhanceAction(
 
     const accountId = accountMemberships?.[0]?.account_id ?? user.id;
 
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'story-ideation',
+        userId: user.id,
+        payload: {
+          episodeId: data.episodeId,
+          premise: data.premise,
+          numberOfIdeas: data.numberOfIdeas,
+          accountId,
+          userId: user.id,
+        },
+      });
+
+      logger.info(ctx, 'Story ideation job queued');
+      return { success: true, queued: true };
+    }
+
+    // Local development: Run synchronously
+    logger.info(ctx, 'Running synchronously (local dev mode)');
+
     // Build rich context for episode (Phase 1: Context Builder)
     const {
       buildEpisodeContext,
@@ -109,46 +131,27 @@ export const generateStoryIdeasAction = enhanceAction(
 
     const episodeContext = await buildEpisodeContext(data.episodeId);
 
-    // Prepare variables for prompt template (matching template variable names)
+    // Prepare variables for prompt template
     const variables = {
       premise: episodeContext.premise,
       number_of_ideas: data.numberOfIdeas,
-
-      // Characters MUST appear in all ideas
       characters: formatCharactersForPrompt(episodeContext.characters),
-
-      // Locations MUST be used
       locations: formatLocationsForPrompt(episodeContext.locations),
-
-      // Season arc for thematic alignment
       season_context: episodeContext.seasonPremise
         ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
         : '',
-
-      // Continuity constraints
       previous_episodes:
         episodeContext.previousEpisodes.length > 0
           ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
           : '',
-
       genre: episodeContext.genre,
       target_audience: episodeContext.targetAudience,
       visual_style: episodeContext.visualStyle,
-      style: 'balanced', // Default style
-
-      // Recurring story element (from project settings)
+      style: 'balanced',
       recurring_element: formatRecurringElementForPrompt(
         episodeContext.recurringElement,
       ),
     };
-
-    logger.info(
-      {
-        ...ctx,
-        variables: { ...variables, premise: data.premise.substring(0, 50) },
-      },
-      'Executing story ideation prompt',
-    );
 
     // Execute LLM with story-ideation template
     const result = await executeLLM<StoryIdeationOutput>({
@@ -161,7 +164,6 @@ export const generateStoryIdeasAction = enhanceAction(
       },
     });
 
-    // Cost is in USD, convert to cents
     const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
     const generatedAt = new Date().toISOString();
 
@@ -169,9 +171,6 @@ export const generateStoryIdeasAction = enhanceAction(
       {
         ...ctx,
         provider: result.metadata.provider,
-        model: result.metadata.model,
-        costCents,
-        tokensUsed: result.metadata.tokens,
         ideasGenerated: result.data.ideas.length,
       },
       'Story ideas generated successfully',
@@ -200,19 +199,17 @@ export const generateStoryIdeasAction = enhanceAction(
  * Generate a complete story from a selected idea and update the episode
  *
  * Uses the story-generation prompt template to create a 500-1000 word narrative.
- * Updates the episode's story_data JSONB field and changes status to 'story'.
- *
- * @throws {Error} If episode not found, LLM fails, validation fails, or optimistic lock fails
+ * In production, queues via SQS for background processing.
  */
 export const generateFullStoryAction = enhanceAction(
-  async (data): Promise<{ success: true; data: GenerateFullStoryResponse }> => {
+  async (data): Promise<{ success: true; data?: GenerateFullStoryResponse; queued?: boolean }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.generateFullStory',
       episodeId: data.episodeId,
     };
 
-    logger.info(ctx, 'Generating full story');
+    logger.info(ctx, 'Processing story generation request');
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -222,7 +219,7 @@ export const generateFullStoryAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Fetch current episode with project info
+    // Fetch current episode with project info for validation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: fetchError } = await (client as any)
       .from('episodes')
@@ -259,6 +256,37 @@ export const generateFullStoryAction = enhanceAction(
       throw new Error('Project not found or access denied');
     }
 
+    // Check if we're in Lambda environment (production)
+    const { isLambdaEnvironment, queueLlmJob } = await import(
+      '@kit/prompt-engine/server'
+    );
+
+    if (isLambdaEnvironment()) {
+      // Production: Queue for background processing
+      await queueLlmJob({
+        jobType: 'story-generation',
+        userId: user.id,
+        payload: {
+          episodeId: data.episodeId,
+          title: data.title,
+          logline: data.logline,
+          targetDuration: data.targetDuration,
+          contentStyle: data.contentStyle,
+          style: data.style,
+          version: data.version,
+          accountId,
+          userId: user.id,
+          projectId: episode.project_id,
+        },
+      });
+
+      logger.info(ctx, 'Story generation job queued');
+      return { success: true, queued: true };
+    }
+
+    // Local development: Run synchronously
+    logger.info(ctx, 'Running synchronously (local dev mode)');
+
     const {
       buildEpisodeContext,
       formatCharactersForPrompt,
@@ -285,45 +313,26 @@ export const generateFullStoryAction = enhanceAction(
       premise: episodeContext.premise,
       target_duration: data.targetDuration,
       duration_description: formatDuration(data.targetDuration),
-
-      // Content scaling - word count
       word_count_min: scaling.story.wordCountMin,
       word_count_max: scaling.story.wordCountMax,
-
-      // Content scaling - estimated scene count (for story generation)
       estimated_scene_count_min: scaling.screenplay.sceneCountMin,
       estimated_scene_count_max: scaling.screenplay.sceneCountMax,
-
-      // Content style
       content_style: contentStyle,
-
-      // Rich character context
       characters: formatCharactersForPrompt(episodeContext.characters),
-
-      // Rich location context
       locations: formatLocationsForPrompt(episodeContext.locations),
-
-      // Season arc
       season_context: episodeContext.seasonPremise
         ? `This is Episode ${episodeContext.episodeNumber} of Season ${episodeContext.seasonNumber}. Season Premise: ${episodeContext.seasonPremise}`
         : '',
-
-      // Continuity
       previous_episodes: formatPreviousEpisodesForPrompt(
         episodeContext.previousEpisodes,
       ),
-
       genre: episodeContext.genre,
       target_audience: episodeContext.targetAudience,
       visual_style: episodeContext.visualStyle,
       style: data.style ?? 'balanced',
-
-      // Recurring story element (from project settings)
       recurring_element: formatRecurringElementForPrompt(
         episodeContext.recurringElement,
       ),
-
-      // Plot beats from roadmap extraction (synopsis, beats, moral, signature line)
       plot_beats: formatBeatsForPrompt({
         synopsis: episodeContext.synopsis,
         beats: episodeContext.beats,
@@ -331,11 +340,6 @@ export const generateFullStoryAction = enhanceAction(
         signatureLine: episodeContext.signatureLine,
       }),
     };
-
-    logger.info(
-      { ...ctx, title: data.title, targetDuration: data.targetDuration },
-      'Executing story generation prompt',
-    );
 
     // Execute LLM with story-generation template
     const result = await executeLLM<StoryGenerationOutput>({
@@ -348,13 +352,11 @@ export const generateFullStoryAction = enhanceAction(
       },
     });
 
-    // Cost is in USD, convert to cents
     const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
     const generatedAt = new Date().toISOString();
 
-    // Prepare story_data for episode (matching StoryData interface)
+    // Prepare story_data for episode
     const storyData = {
-      // Core content from input and LLM output
       premise: data.logline,
       fullStory: result.data.story.fullText,
       generatedAt,
@@ -369,15 +371,11 @@ export const generateFullStoryAction = enhanceAction(
       themes: result.data.story.themes,
       tone: result.data.story.tone,
       estimatedSceneCount: result.data.story.estimatedSceneCount,
-
-      // Persist generation settings for downstream steps (screenplay, shot-list)
       targetDuration: data.targetDuration,
       contentStyle: contentStyle,
       genre: episodeContext.genre,
       targetAudience: episodeContext.targetAudience,
       videoStyle: episodeContext.visualStyle,
-
-      // SCORE Framework fields (for episode continuity)
       episodeSummary: result.data.story.episodeSummary,
       sentimentScore: result.data.story.sentimentScore,
       keyEvents: result.data.story.keyEvents,
@@ -390,7 +388,7 @@ export const generateFullStoryAction = enhanceAction(
       .update({
         story_data: storyData as Json,
         status: 'story',
-        target_duration_seconds: data.targetDuration, // Persist for screenplay/shot-list
+        target_duration_seconds: data.targetDuration,
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
@@ -437,11 +435,7 @@ export const generateFullStoryAction = enhanceAction(
       {
         ...ctx,
         provider: result.metadata.provider,
-        model: result.metadata.model,
-        costCents,
-        tokensUsed: result.metadata.tokens,
         wordCount: result.data.story.fullText.split(/\s+/).length,
-        newVersion: updatedEpisode.version,
       },
       'Full story generated and episode updated',
     );

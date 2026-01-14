@@ -44,14 +44,10 @@ interface DialogueLineRow {
 /**
  * Translate all English dialogue lines to a target language
  * 
- * Creates new dialogue_lines with:
- * - Same character, shot, timing as original
- * - Translated text
- * - language = target language
- * - source_dialogue_id = original line's ID
+ * In production, queues via SQS for background processing.
  */
 export const translateDialogueToLanguageAction = enhanceAction(
-    async (input): Promise<LocalizeDialogueResult> => {
+    async (input): Promise<LocalizeDialogueResult & { queued?: boolean }> => {
         const logger = await getLogger();
 
         const client = getSupabaseServerClient();
@@ -80,7 +76,33 @@ export const translateDialogueToLanguageAction = enhanceAction(
             userId: user.id,
         };
 
-        logger.info(ctx, 'Starting dialogue translation');
+        logger.info(ctx, 'Processing dialogue translation request');
+
+        // Check if we're in Lambda environment (production)
+        const { isLambdaEnvironment, queueLlmJob } = await import(
+            '@kit/prompt-engine/server'
+        );
+
+        if (isLambdaEnvironment()) {
+            // Production: Queue for background processing
+            await queueLlmJob({
+                jobType: 'translate-dialogue',
+                userId: user.id,
+                payload: {
+                    episodeId: input.episodeId,
+                    targetLanguage: input.targetLanguage,
+                    preserveTiming: input.preserveTiming,
+                    accountId,
+                    userId: user.id,
+                },
+            });
+
+            logger.info(ctx, 'Dialogue translation job queued');
+            return { success: true, translatedCount: 0, queued: true };
+        }
+
+        // Local development: Run synchronously
+        logger.info(ctx, 'Running synchronously (local dev mode)');
 
         try {
             // 1. Fetch English dialogue lines for this episode

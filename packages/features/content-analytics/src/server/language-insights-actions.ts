@@ -55,10 +55,10 @@ export interface LanguageInsightsResult {
 /**
  * Generate AI-powered multi-language analytics insights
  *
- * Fetches all language analytics data and uses LLM to generate strategic recommendations.
+ * In production, queues via SQS for background processing.
  */
 export const generateLanguageInsightsAction = enhanceAction(
-    async function ({ projectId }): Promise<LanguageInsightsResult> {
+    async function ({ projectId }): Promise<LanguageInsightsResult & { queued?: boolean }> {
         const logger = await getLogger();
         const ctx = { name: 'analytics.generateLanguageInsights' };
 
@@ -102,10 +102,44 @@ export const generateLanguageInsightsAction = enhanceAction(
             };
         }
 
+        // Check if we're in Lambda environment (production)
+        const { isLambdaEnvironment, queueLlmJob } = await import(
+            '@kit/prompt-engine/server'
+        );
+
+        if (isLambdaEnvironment()) {
+            // Production: Queue for background processing
+            await queueLlmJob({
+                jobType: 'language-insights',
+                userId: user.id,
+                payload: {
+                    projectId,
+                    languagePerformance,
+                    platformMatrix: platformMatrix.slice(0, 20),
+                    contentType,
+                    shorts,
+                    geography,
+                    userId: user.id,
+                },
+            });
+
+            return {
+                summary: 'Generating language insights in the background...',
+                topLanguage: 'en',
+                recommendations: [],
+                platformInsights: [],
+                contentInsights: [],
+                geographyInsights: [],
+                actions: [],
+                queued: true,
+            };
+        }
+
+        // Local development: Run synchronously
         // Prepare data for LLM
         const languageData = {
             languagePerformance,
-            platformMatrix: platformMatrix.slice(0, 20), // Limit for token efficiency
+            platformMatrix: platformMatrix.slice(0, 20),
             contentType,
             topShorts: shorts,
             geography,

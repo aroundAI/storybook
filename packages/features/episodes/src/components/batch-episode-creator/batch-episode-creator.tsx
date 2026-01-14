@@ -109,11 +109,15 @@ export function BatchEpisodeCreator({
         const result = await generateSeasonOutlineAction(data);
 
         if (result.success) {
-          setEpisodes(result.data.episodes);
-          setIsPreviewOpen(true);
-          toast.success(
-            `Generated ${result.data.episodes.length} episode outlines`,
-          );
+          if (result.queued) {
+            toast.info('Generating episodes in the background...');
+          } else if (result.data) {
+            setEpisodes(result.data.episodes);
+            setIsPreviewOpen(true);
+            toast.success(
+              `Generated ${result.data.episodes.length} episode outlines`,
+            );
+          }
         }
       } catch (error) {
         toast.error(
