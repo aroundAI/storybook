@@ -1,147 +1,183 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { PublicEpisode } from '../server/public-queries';
-import { Card } from '@kit/ui/card';
-import { PlayCircle } from 'lucide-react';
+import { PublicEpisode, EpisodePlatformUrlsByLanguage } from '../server/public-queries';
+import { ArrowLeft, Calendar, Globe } from 'lucide-react';
 import { format } from 'date-fns';
 import { ShareButton } from './share-button';
-import { LanguageSelector } from './language-selector';
+import { EmbedVideo, VideoPlatformBadge } from './embed-video';
+import { GradientBackground } from './ui/gradient-background';
+import { GlassCard, GlassCardContent } from './ui/glass-card';
+import { cn } from '@kit/ui/utils';
 
 interface EpisodePageProps {
     episode: PublicEpisode;
+    platformUrls: EpisodePlatformUrlsByLanguage;
     language: string;
     baseUrl: string;
 }
 
-type LocalizedVideoData = {
-    youtube?: {
-        video_id: string;
-        url: string;
-        channel_id: string;
-    };
-    facebook?: {
-        video_id: string;
-        url: string;
-        page_id: string;
-    };
+// Language display names
+const languageNames: Record<string, string> = {
+    en: 'English',
+    hi: 'हिन्दी',
+    es: 'Español',
+    fr: 'Français',
+    de: 'Deutsch',
+    pt: 'Português',
+    ja: '日本語',
+    ko: '한국어',
+    zh: '中文',
+    ar: 'العربية',
+    ru: 'Русский',
+    it: 'Italiano',
 };
 
-export function EpisodePage({ episode, language, baseUrl }: EpisodePageProps) {
+function getLanguageName(code: string): string {
+    return languageNames[code] || code.toUpperCase();
+}
+
+export function EpisodePage({ episode, platformUrls, language: initialLanguage, baseUrl }: EpisodePageProps) {
     const accountSlug = episode.project.account.slug;
     const projectSlug = episode.project.public_slug;
-    const episodeUrl = `${baseUrl}/@${accountSlug}/${projectSlug}/e/${episode.public_slug}`;
+    const episodeUrl = `${baseUrl}/@${accountSlug}/${projectSlug}/e/${episode.slug}`;
 
-    // Cast localized_videos safely
-    const localizedVideos = (episode.localized_videos || {}) as Record<string, LocalizedVideoData>;
-
-    // Resolve video for current language
-    // Fallback to 'en' if current not found? Or just show message?
-    // PRD implies we should let user select available languages.
-    // We should only show selector if there are multiple languages.
-
-    const videoData = localizedVideos[language];
-    const availableLanguages = Object.keys(localizedVideos);
-
-    // If language requested doesn't exist, maybe fallback to first available?
-    // But strictly we render what is asked. The Page route component might handle redirection or we just show "Select another language".
-    // Better UX: if videoData is missing, try english, then first available. BUT show alert "Content not available in {language}".
-
-    const effectiveVideoData = videoData || localizedVideos['en'] || Object.values(localizedVideos)[0];
-    const isFallback = !videoData && !!effectiveVideoData;
-
-    const embedUrl = (() => {
-        if (!effectiveVideoData) return null;
-        if (effectiveVideoData.youtube) {
-            return `https://www.youtube.com/embed/${effectiveVideoData.youtube.video_id}?autoplay=0&rel=0`;
+    // State for selected language
+    const [selectedLanguage, setSelectedLanguage] = useState(() => {
+        // If the requested language is available, use it; otherwise use default
+        if (platformUrls.languages.includes(initialLanguage)) {
+            return initialLanguage;
         }
-        if (effectiveVideoData.facebook) {
-            // FB needs encoded URL
-            return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(effectiveVideoData.facebook.url)}&show_text=0&width=560`;
-        }
-        return null;
-    })();
+        return platformUrls.defaultLanguage || platformUrls.languages[0] || 'en';
+    });
+
+    // Get current platform URLs for selected language
+    const currentUrls = platformUrls.urlsByLanguage[selectedLanguage] || { youtubeUrl: null, facebookUrl: null };
+
+    // Determine which platform is being used
+    const currentPlatform = currentUrls.youtubeUrl ? 'youtube' : currentUrls.facebookUrl ? 'facebook' : null;
+
+    const hasMultipleLanguages = platformUrls.languages.length > 1;
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
-            <div className="bg-white border-b">
-                <div className="container mx-auto px-4 py-4">
-                    <div className="flex items-center gap-2 mb-2 text-sm text-gray-500">
-                        <Link href={`/@${accountSlug}`} className="hover:text-gray-900">
-                            {episode.project.account.name}
-                        </Link>
-                        <span>/</span>
-                        <Link href={`/@${accountSlug}/${projectSlug}`} className="hover:text-gray-900">
-                            {episode.project.name}
-                        </Link>
-                    </div>
+        <GradientBackground>
+            <div className="container mx-auto px-4 py-6">
+                {/* Breadcrumb Navigation */}
+                <div className="flex items-center gap-4 mb-8">
+                    <Link
+                        href={`/@${accountSlug}/${projectSlug}`}
+                        className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                        Back to {episode.project.name}
+                    </Link>
                 </div>
-            </div>
 
-            <div className="flex-1 container mx-auto px-4 py-8">
                 <div className="max-w-5xl mx-auto">
-                    {/* Video Player Container */}
-                    <div className="aspect-video bg-black rounded-xl overflow-hidden shadow-2xl relative">
-                        {embedUrl ? (
-                            <iframe
-                                src={embedUrl}
-                                className="w-full h-full"
-                                allowFullScreen
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                title={episode.title}
-                            />
-                        ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center text-white bg-gray-900">
-                                <PlayCircle className="w-16 h-16 text-gray-700 mb-4" />
-                                <p className="text-gray-400">Video not available.</p>
-                            </div>
-                        )}
+                    {/* Video Player */}
+                    <div className="mb-8">
+                        <EmbedVideo
+                            youtubeUrl={currentUrls.youtubeUrl}
+                            facebookUrl={currentUrls.facebookUrl}
+                            title={episode.title}
+                            className="shadow-2xl"
+                        />
                     </div>
 
-                    <div className="mt-8 flex flex-col md:flex-row gap-8 items-start justify-between">
+                    {/* Episode Info */}
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        {/* Main Content */}
                         <div className="flex-1">
-                            <div className="flex items-center gap-4 mb-2">
-                                <h1 className="text-2xl font-bold text-gray-900 leading-tight">
-                                    {episode.number}. {episode.title}
-                                </h1>
-                                {isFallback && (
-                                    <span className="bg-amber-100 text-amber-800 text-xs px-2 py-1 rounded-full">
-                                        Language not available
-                                    </span>
+                            <div className="flex flex-wrap items-center gap-3 mb-4">
+                                <span className="px-2 py-1 rounded bg-slate-100 dark:bg-white/10 text-xs font-medium text-slate-700 dark:text-white">
+                                    Episode {episode.number}
+                                </span>
+                                {currentPlatform && (
+                                    <VideoPlatformBadge platform={currentPlatform} />
                                 )}
                             </div>
 
-                            <div className="text-sm text-gray-500 mb-6">
-                                Published on {format(new Date(episode.created_at), 'MMMM d, yyyy')}
+                            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">
+                                {episode.title}
+                            </h1>
+
+                            <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400 mb-6">
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4" />
+                                    {format(new Date(episode.created_at), 'MMMM d, yyyy')}
+                                </div>
                             </div>
 
-                            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                                {episode.description || 'No description provided.'}
-                            </p>
+                            {episode.description && (
+                                <div className="prose prose-slate dark:prose-invert max-w-none">
+                                    <p className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                                        {episode.description}
+                                    </p>
+                                </div>
+                            )}
                         </div>
 
-                        <div className="w-full md:w-72 flex flex-col gap-4">
-                            <Card className="p-4">
-                                <div className="flex flex-col gap-4">
+                        {/* Sidebar */}
+                        <div className="w-full lg:w-80 space-y-4">
+                            {/* Language Selector */}
+                            {hasMultipleLanguages && (
+                                <GlassCard hover={false}>
+                                    <GlassCardContent className="space-y-3">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Globe className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                                            <h3 className="text-sm font-medium text-slate-900 dark:text-white">Audio Language</h3>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {platformUrls.languages.map((lang) => (
+                                                <button
+                                                    key={lang}
+                                                    onClick={() => setSelectedLanguage(lang)}
+                                                    className={cn(
+                                                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                                                        selectedLanguage === lang
+                                                            ? 'bg-indigo-500 text-white'
+                                                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-white/10 dark:text-slate-300 dark:hover:bg-white/20'
+                                                    )}
+                                                >
+                                                    {getLanguageName(lang)}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </GlassCardContent>
+                                </GlassCard>
+                            )}
+
+                            {/* Share & Project Info */}
+                            <GlassCard hover={false}>
+                                <GlassCardContent className="space-y-4">
                                     <div>
-                                        <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 block">
-                                            Audio Language
-                                        </label>
-                                        <LanguageSelector
-                                            currentLanguage={videoData ? language : (effectiveVideoData ? (localizedVideos['en'] === effectiveVideoData ? 'en' : 'unknown') : language)}
-                                            availableLanguages={availableLanguages}
+                                        <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-2">Share Episode</h3>
+                                        <ShareButton
+                                            url={episodeUrl}
+                                            title={episode.title}
+                                            className="w-full border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
                                         />
                                     </div>
 
-                                    <div className="pt-4 border-t">
-                                        <ShareButton url={episodeUrl} title={episode.title} className="w-full" />
+                                    <div className="pt-4 border-t border-slate-200 dark:border-white/10">
+                                        <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-2">From</h3>
+                                        <Link
+                                            href={`/@${accountSlug}/${projectSlug}`}
+                                            className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 hover:bg-slate-100 dark:bg-white/5 dark:hover:bg-white/10 transition-colors"
+                                        >
+                                            <div>
+                                                <p className="font-medium text-slate-900 dark:text-white">{episode.project.name}</p>
+                                                <p className="text-sm text-slate-600 dark:text-slate-400">{episode.project.account.name}</p>
+                                            </div>
+                                        </Link>
                                     </div>
-                                </div>
-                            </Card>
+                                </GlassCardContent>
+                            </GlassCard>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </GradientBackground>
     );
 }

@@ -2,10 +2,11 @@
 
 import Link from 'next/link';
 import { PublicProject, PublicEpisode } from '../server/public-queries';
-import { Card, CardContent } from '@kit/ui/card';
-import { PlayCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { ShareButton } from './share-button';
+import { GradientBackground } from './ui/gradient-background';
+import { ShowHero } from './show-hero';
+import { EpisodeGrid } from './episode-grid';
+import { ArrowLeft, Sparkles } from 'lucide-react';
+import { Button } from '@kit/ui/button';
 
 interface ProjectPageProps {
     project: PublicProject;
@@ -17,83 +18,96 @@ export function ProjectPage({ project, episodes, baseUrl }: ProjectPageProps) {
     const accountSlug = project.account.slug;
     const projectUrl = `${baseUrl}/@${accountSlug}/${project.public_slug}`;
 
+    // Extract metadata from project
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const metadata = project.metadata as any || {};
+    const genre = metadata.genre || null;
+    const targetAudience = metadata.target_audience || null;
+    const coverImageUrl = metadata.cover_url || null;
+
+    // Get first episode for "Watch Episode 1" CTA
+    const firstEpisode = episodes.length > 0
+        ? episodes.sort((a, b) => (a.number || 0) - (b.number || 0))[0]
+        : null;
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="bg-white border-b">
-                <div className="container mx-auto px-4 py-8">
-                    <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
-                        <Link href={`/@${accountSlug}`} className="hover:text-gray-900">
-                            {project.account.name}
-                        </Link>
-                        <span>/</span>
-                        <span className="text-gray-900">{project.name}</span>
-                    </div>
+        <GradientBackground>
+            {/* Breadcrumb Navigation */}
+            <div className="container mx-auto px-4 pt-6">
+                <Link
+                    href={`/@${accountSlug}`}
+                    className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors"
+                >
+                    <ArrowLeft className="w-4 h-4" />
+                    {project.account.name}
+                </Link>
+            </div>
 
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-                            <p className="mt-2 text-gray-600 max-w-3xl">
-                                {project.description || 'No description provided.'}
-                            </p>
-                        </div>
+            {/* Show Hero Block */}
+            <ShowHero
+                title={project.name}
+                logline={project.description}
+                coverImageUrl={coverImageUrl}
+                genre={genre}
+                targetAudience={targetAudience}
+                episodeCount={episodes.length}
+                firstEpisodeSlug={firstEpisode?.slug}
+                accountSlug={accountSlug || ''}
+                projectSlug={project.public_slug || ''}
+                shareUrl={projectUrl}
+            />
 
-                        <ShareButton url={projectUrl} title={project.name} />
-                    </div>
+            {/* Episodes Section */}
+            <section className="container mx-auto px-4 py-12">
+                <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        Episodes
+                        <span className="text-slate-600 dark:text-slate-400 font-normal ml-2 text-lg">
+                            ({episodes.length})
+                        </span>
+                    </h2>
                 </div>
-            </div>
 
-            <div className="container mx-auto px-4 py-12">
-                <h2 className="text-2xl font-bold mb-6">Episodes ({episodes.length})</h2>
+                <EpisodeGrid
+                    episodes={episodes.map(ep => ({
+                        id: ep.id,
+                        title: ep.title,
+                        description: ep.description,
+                        slug: ep.slug,
+                        season_number: null, // Note: Could join with seasons table if needed
+                        number: ep.number,
+                        duration_seconds: ep.duration_seconds,
+                        thumbnail_url: ep.thumbnail_url,
+                    }))}
+                    companySlug={accountSlug || ''}
+                    projectSlug={project.public_slug || ''}
+                />
+            </section>
 
-                {episodes.length === 0 ? (
-                    <div className="text-center py-12 bg-white rounded-lg border border-dashed text-gray-500">
-                        No public episodes yet.
+            {/* CTA Section */}
+            <section className="border-t border-slate-200 dark:border-white/10 mt-12">
+                <div className="container mx-auto px-4 py-16 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-100 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400 text-sm mb-4 border border-indigo-200 dark:border-indigo-500/20">
+                        <Sparkles className="w-4 h-4" />
+                        Powered by StoryBook AI
                     </div>
-                ) : (
-                    <div className="space-y-4">
-                        {episodes.map((episode) => (
-                            <Link
-                                key={episode.id}
-                                href={`/@${accountSlug}/${project.public_slug}/e/${episode.public_slug}`}
-                                className="block group"
-                            >
-                                <Card className="hover:shadow-md transition-shadow">
-                                    <CardContent className="p-4 flex gap-6">
-                                        {/* Thumbnail */}
-                                        <div className="w-48 h-28 bg-gray-200 rounded-md flex-shrink-0 relative overflow-hidden">
-                                            {episode.thumbnail_url ? (
-                                                /* eslint-disable-next-line @next/next/no-img-element */
-                                                <img src={episode.thumbnail_url} alt={episode.title} className="w-full h-full object-cover" />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-gray-400">
-                                                    <PlayCircle className="w-8 h-8" />
-                                                </div>
-                                            )}
-                                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                                                <PlayCircle className="w-10 h-10 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-lg" />
-                                            </div>
-                                        </div>
-
-                                        <div className="flex-1 py-1">
-                                            <div className="flex justify-between items-start">
-                                                <h3 className="text-lg font-semibold group-hover:text-blue-600 transition-colors">
-                                                    {episode.number}. {episode.title}
-                                                </h3>
-                                                <span className="text-sm text-gray-500">
-                                                    {format(new Date(episode.created_at), 'MMM d, yyyy')}
-                                                </span>
-                                            </div>
-                                            <p className="text-gray-600 mt-2 line-clamp-2">
-                                                {episode.description || 'No description.'}
-                                            </p>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            </Link>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
+                    <h3 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
+                        Create Your Own Show
+                    </h3>
+                    <p className="text-slate-600 dark:text-slate-400 mb-6 max-w-md mx-auto">
+                        Use AI to generate stories, screenplays, and visual content for your next hit series.
+                    </p>
+                    <Button
+                        asChild
+                        size="lg"
+                        className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600"
+                    >
+                        <Link href="/auth/sign-up">
+                            Get Started Free
+                        </Link>
+                    </Button>
+                </div>
+            </section>
+        </GradientBackground>
     );
 }

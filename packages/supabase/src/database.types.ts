@@ -1300,7 +1300,6 @@ export type Database = {
           duration_seconds: number | null
           final_video_url: string | null
           id: string
-          localized_shorts: Json | null
           localized_videos: Json | null
           metadata: Json
           number: number
@@ -1328,7 +1327,6 @@ export type Database = {
           duration_seconds?: number | null
           final_video_url?: string | null
           id?: string
-          localized_shorts?: Json | null
           localized_videos?: Json | null
           metadata?: Json
           number: number
@@ -1356,7 +1354,6 @@ export type Database = {
           duration_seconds?: number | null
           final_video_url?: string | null
           id?: string
-          localized_shorts?: Json | null
           localized_videos?: Json | null
           metadata?: Json
           number?: number

@@ -71,10 +71,10 @@ export const publishToAllAction = enhanceAction(
 
     const client = getSupabaseServerClient();
 
-    // Get episode video - fetch localized videos for multi-language support
+    // Get episode video - fetch localized videos and shorts groups for multi-language support
     const { data: episode, error: episodeError } = await client
       .from('episodes')
-      .select('final_video_url, thumbnail_url, project_id, localized_videos, localized_shorts')
+      .select('final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number')
       .eq('id', episodeId)
       .single();
 
@@ -85,11 +85,12 @@ export const publishToAllAction = enhanceAction(
 
     // Support both legacy final_video_url and new localized_videos
     const localizedVideos = (episode.localized_videos as Record<string, string> | null) ?? {};
-    const localizedShorts = (episode.localized_shorts as Record<string, string> | null) ?? {};
+    const shortsGroups = (episode.shorts_groups as Array<{ videos: Record<string, string> }> | null) ?? [];
+    const hasAnyShortsVideos = shortsGroups.some(g => Object.keys(g.videos || {}).length > 0);
     const hasAnyVideos =
       !!episode.final_video_url ||
       Object.keys(localizedVideos).length > 0 ||
-      Object.keys(localizedShorts).length > 0;
+      hasAnyShortsVideos;
 
     if (!hasAnyVideos) {
       logger.error(ctx, 'Episode video not ready');
@@ -199,12 +200,23 @@ export const publishToAllAction = enhanceAction(
           let videoUrl: string | null = null;
           const lang = publishLanguage;
 
+          // Get shorts video URL from groups (first group that has this language)
+          const getShortsVideoUrl = (language: string): string | null => {
+            for (const group of shortsGroups) {
+              if (group.videos && group.videos[language]) {
+                return group.videos[language];
+              }
+            }
+            return null;
+          };
+          const shortsVideoUrl = getShortsVideoUrl(lang);
+
           if (isShortsPreferred) {
             // Try shorts first, fall back to full video
-            videoUrl = localizedShorts[lang] ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+            videoUrl = shortsVideoUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
           } else {
             // Try full video first, fall back to shorts
-            videoUrl = localizedVideos[lang] ?? localizedShorts[lang] ?? episode.final_video_url ?? null;
+            videoUrl = localizedVideos[lang] ?? shortsVideoUrl ?? episode.final_video_url ?? null;
           }
 
           if (!videoUrl) {
@@ -212,7 +224,7 @@ export const publishToAllAction = enhanceAction(
           }
 
           // Update content_type based on what we're actually publishing
-          const actualContentType = (localizedShorts[lang] && isShortsPreferred) ? 'short' : 'full';
+          const actualContentType = (shortsVideoUrl && isShortsPreferred) ? 'short' : 'full';
           await client
             .from('publishes')
             .update({ content_type: actualContentType })
@@ -252,6 +264,27 @@ export const publishToAllAction = enhanceAction(
               published_at: new Date().toISOString(),
             })
             .eq('id', publish.id);
+
+          // Auto-generate and set public_slug on episode if not already set
+          // This enables the episode to appear on public share pages
+          if (!episode.public_slug) {
+            const slugBase = episode.title
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, '-')
+              .replace(/(^-|-$)/g, '')
+              .slice(0, 40);
+            const publicSlug = `${slugBase}-ep${episode.number}`;
+
+            await client
+              .from('episodes')
+              .update({ public_slug: publicSlug })
+              .eq('id', episodeId);
+
+            logger.info(
+              { ...platformCtx, publicSlug },
+              'Auto-generated public_slug for published episode',
+            );
+          }
 
           logger.info(
             { ...platformCtx, publishId: publish.id, url: uploadResult.url },

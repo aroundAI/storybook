@@ -15,9 +15,10 @@ interface ShareButtonProps {
     url: string;
     title: string;
     className?: string;
+    variant?: 'outline' | 'ghost' | 'default';
 }
 
-export function ShareButton({ url, title, className }: ShareButtonProps) {
+export function ShareButton({ url, title, className, variant = 'outline' }: ShareButtonProps) {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = async () => {
@@ -54,7 +55,7 @@ export function ShareButton({ url, title, className }: ShareButtonProps) {
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className={className}>
+                <Button variant={variant} size="sm" className={className}>
                     <Share2 className="mr-2 h-4 w-4" />
                     Share
                 </Button>

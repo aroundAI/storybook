@@ -52,44 +52,41 @@ export const updatePublishedVideoAction = enhanceAction(
     { schema: PublishVideoSchema },
 );
 
+
+const ShortsGroupSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    title: z.string(),
+    description: z.string(),
+    tags: z.array(z.string()),
+    videos: z.record(z.string(), z.string()),
+});
+
+const UpdateShortsGroupsSchema = z.object({
+    episodeId: z.string().uuid(),
+    shortsGroups: z.array(ShortsGroupSchema),
+});
+
 /**
- * Update shorts URL for a specific language
+ * Update the entire shorts_groups array for an episode.
+ * This persists add/update/delete operations on shorts groups.
  */
-export const updatePublishedShortsAction = enhanceAction(
-    async ({ episodeId, language, videoUrl }) => {
+export const updateShortsGroupsAction = enhanceAction(
+    async ({ episodeId, shortsGroups }) => {
         const client = getSupabaseServerClient();
-
-        const { data: episode, error: fetchError } = await client
-            .from('episodes')
-            .select('localized_shorts')
-            .eq('id', episodeId)
-            .single();
-
-        if (fetchError) {
-            throw new Error(`Failed to fetch episode: ${fetchError.message}`);
-        }
-
-        const currentShorts = (episode.localized_shorts as Record<string, string>) || {};
-        const updatedShorts = { ...currentShorts };
-
-        if (videoUrl) {
-            updatedShorts[language] = videoUrl;
-        } else {
-            delete updatedShorts[language];
-        }
 
         const { error: updateError } = await client
             .from('episodes')
-            .update({ localized_shorts: updatedShorts })
+            .update({ shorts_groups: shortsGroups })
             .eq('id', episodeId);
 
         if (updateError) {
-            throw new Error(`Failed to update published shorts: ${updateError.message}`);
+            throw new Error(`Failed to update shorts groups: ${updateError.message}`);
         }
 
         return { success: true };
     },
-    { schema: PublishVideoSchema },
+    { schema: UpdateShortsGroupsSchema },
 );
 
 const TranslateMetadataSchema = z.object({

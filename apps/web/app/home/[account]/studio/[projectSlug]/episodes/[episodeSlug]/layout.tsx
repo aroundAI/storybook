@@ -9,6 +9,7 @@ import type {
   ScreenplayData,
   ShotListData,
   StoryData,
+  ShortsGroup,
 } from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -92,7 +93,7 @@ async function EpisodeWorkspaceLayout({
       `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url, final_video_url,
-        localized_videos, localized_shorts, story_data, screenplay_data, shot_list,
+        localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
         season:seasons(id, name, number)
       `,
@@ -139,7 +140,7 @@ async function EpisodeWorkspaceLayout({
     thumbnailUrl: episodeData.thumbnail_url,
     finalVideoUrl: episodeData.final_video_url,
     localizedVideos: (episodeData as { localized_videos?: Record<string, string> | null }).localized_videos ?? null,
-    localizedShorts: (episodeData as { localized_shorts?: Record<string, string> | null }).localized_shorts ?? null,
+    shortsGroups: (episodeData as { shorts_groups?: ShortsGroup[] | null }).shorts_groups ?? null,
     storyData: episodeData.story_data as StoryData | null,
     screenplayData: episodeData.screenplay_data as ScreenplayData | null,
     shotList: episodeData.shot_list as ShotListData | null,

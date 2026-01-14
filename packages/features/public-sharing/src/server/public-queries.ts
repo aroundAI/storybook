@@ -114,7 +114,7 @@ export async function getPublicEpisode(projectId: string, episodeSlug: string): 
       )
     `)
         .eq('project_id', projectId)
-        .eq('public_slug', episodeSlug)
+        .eq('slug', episodeSlug)
         .single();
 
     if (error || !episode) return null;
@@ -138,10 +138,24 @@ export async function getPublicEpisode(projectId: string, episodeSlug: string): 
 /**
  * List public episodes for a project.
  * Only returns 'public' visibility (or 'inherit' where project is public).
+ * Only returns RELEASED episodes (those with at least one successful publish to any platform).
  * Grouping by season is usually done in UI or via a transform, here we return flat list.
  */
 export async function getPublicEpisodes(projectId: string): Promise<PublicEpisode[]> {
     const client = getSupabaseServerClient();
+
+    // First, get episode IDs that have been successfully published
+    const { data: publishedEpisodeIds } = await client
+        .from('publishes')
+        .select('episode_id')
+        .eq('status', 'published');
+
+    const episodeIds = [...new Set(publishedEpisodeIds?.map(p => p.episode_id) || [])];
+
+    if (episodeIds.length === 0) {
+        return [];
+    }
+
     const { data, error } = await client
         .from('episodes')
         .select(`
@@ -157,10 +171,66 @@ export async function getPublicEpisodes(projectId: string): Promise<PublicEpisod
         .eq('project_id', projectId)
         // Allow 'public' AND 'inherit' (exclude 'unlisted' and 'private')
         .in('visibility', ['public', 'inherit'])
+        // Only show RELEASED episodes (those with at least one successful publish)
+        .in('id', episodeIds)
+        // Ensure episode has a slug (to prevent /e/null URLs)
+        .not('slug', 'is', null)
         .order('number', { ascending: true });
 
     if (error) return [];
     return data as unknown as PublicEpisode[];
+}
+
+export type LanguagePlatformUrls = {
+    youtubeUrl: string | null;
+    facebookUrl: string | null;
+};
+
+export type EpisodePlatformUrlsByLanguage = {
+    languages: string[];
+    defaultLanguage: string | null;
+    urlsByLanguage: Record<string, LanguagePlatformUrls>;
+};
+
+/**
+ * Get the platform URLs for an episode, grouped by language.
+ * Returns YouTube and Facebook URLs from the publishes table for each language.
+ * Priority for embedding: YouTube > Facebook
+ */
+export async function getEpisodePlatformUrls(episodeId: string): Promise<EpisodePlatformUrlsByLanguage> {
+    const client = getSupabaseServerClient();
+
+    const { data: publishes } = await client
+        .from('publishes')
+        .select('platform, platform_url, language')
+        .eq('episode_id', episodeId)
+        .eq('status', 'published')
+        .not('platform_url', 'is', null);
+
+    const urlsByLanguage: Record<string, LanguagePlatformUrls> = {};
+
+    if (publishes) {
+        for (const publish of publishes) {
+            const lang = publish.language || 'en';
+
+            if (!urlsByLanguage[lang]) {
+                urlsByLanguage[lang] = { youtubeUrl: null, facebookUrl: null };
+            }
+
+            if (publish.platform === 'youtube' && publish.platform_url && !urlsByLanguage[lang]!.youtubeUrl) {
+                urlsByLanguage[lang]!.youtubeUrl = publish.platform_url;
+            } else if (publish.platform === 'facebook' && publish.platform_url && !urlsByLanguage[lang]!.facebookUrl) {
+                urlsByLanguage[lang]!.facebookUrl = publish.platform_url;
+            }
+        }
+    }
+
+    const languages = Object.keys(urlsByLanguage).sort();
+
+    // Default to 'en' if available, otherwise first language
+    const defaultLanguage = languages.includes('en') ? 'en' : (languages[0] || null);
+
+    return { languages, defaultLanguage, urlsByLanguage };
 }
 
 /**

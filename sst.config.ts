@@ -609,21 +609,17 @@ export default $config({
       // CloudFront CDN configuration
       domain: domainConfig,
 
-      // Lambda function configuration
+      // Lambda configuration via transform
+      // Note: Using defaults until we can properly configure increased timeouts
       transform: {
         server: {
           // Increase memory for better performance (reduce cold starts)
-          // 1792MB gives ~1 vCPU worth of compute
           memory: "1792 MB",
-          // Increase timeout for long-running requests
-          timeout: "30 seconds",
           // Architecture (arm64 is cheaper and often faster)
           architecture: "arm64",
           // Enable KMS encryption for environment variables
           kmsKeyArn: kmsKey.arn,
         },
-        // Note: CloudFront cache behaviors for _next/static/* and images/*
-        // are automatically configured by OpenNext with optimal settings
       },
 
       // OpenNext configuration

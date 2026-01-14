@@ -324,8 +324,6 @@ export interface Episode {
   finalVideoUrl: string | null;
   /** Localized video URLs by language: { en: "url", hi: "url", es: "url", pt: "url" } */
   localizedVideos?: Record<string, string> | null;
-  /** @deprecated Use shortsGroups instead */
-  localizedShorts?: Record<string, string> | null;
   /** Grouped shorts with per-group metadata */
   shortsGroups?: ShortsGroup[] | null;
   storyData: StoryData | null;

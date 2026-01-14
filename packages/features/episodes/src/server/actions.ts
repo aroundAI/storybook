@@ -187,7 +187,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
         `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url, final_video_url,
-        localized_videos, localized_shorts, story_data, screenplay_data, shot_list,
+        localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
         season:seasons(id, name, number)
       `,
@@ -236,7 +236,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
       thumbnailUrl: episode.thumbnail_url,
       finalVideoUrl: episode.final_video_url,
       localizedVideos: episode.localized_videos ?? null,
-      localizedShorts: episode.localized_shorts ?? null,
+      shortsGroups: episode.shorts_groups ?? null,
       storyData: episode.story_data,
       screenplayData: episode.screenplay_data,
       shotList: episode.shot_list,

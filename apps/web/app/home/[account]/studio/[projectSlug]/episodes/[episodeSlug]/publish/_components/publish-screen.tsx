@@ -65,8 +65,8 @@ import {
 } from '@kit/publishing/server';
 import {
     updatePublishedVideoAction,
-    updatePublishedShortsAction,
     translateMetadataAction,
+    updateShortsGroupsAction,
 } from '@kit/episodes/server';
 import type { EpisodeWithShots, ShortsGroup } from '@kit/episodes/types';
 import { uploadPublishVideo } from '~/lib/presigned-upload';
@@ -235,27 +235,10 @@ export function PublishScreen({
         tags: '',
     });
 
-    // Shorts groups state - initialized from episode or migrated from legacy localizedShorts
-    const [shortsGroups, setShortsGroups] = useState<ShortsGroup[]>(() => {
-        // If we have new grouped structure, use it
-        if (episode.shortsGroups && episode.shortsGroups.length > 0) {
-            return episode.shortsGroups;
-        }
-        // Migrate from legacy localizedShorts
-        const legacyShorts = episode.localizedShorts ?? {};
-        if (Object.keys(legacyShorts).length > 0) {
-            return [{
-                id: 'group-1',
-                name: 'Default Group',
-                title: episode.title || '',
-                description: episode.description || '',
-                tags: [],
-                videos: legacyShorts as Record<string, string>,
-            }];
-        }
-        // Empty state
-        return [];
-    });
+    // Shorts groups state - use episode.shortsGroups directly (no legacy migration)
+    const [shortsGroups, setShortsGroups] = useState<ShortsGroup[]>(
+        episode.shortsGroups ?? []
+    );
 
     // Currently selected group for upload
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(
@@ -272,23 +255,81 @@ export function PublishScreen({
             tags: [],
             videos: {},
         };
-        setShortsGroups(prev => [...prev, newGroup]);
+        const updatedGroups = [...shortsGroups, newGroup];
+        setShortsGroups(updatedGroups);
         setSelectedGroupId(newGroup.id);
+
+        // Persist to database
+        startTransition(async () => {
+            try {
+                await updateShortsGroupsAction({ episodeId: episode.id, shortsGroups: updatedGroups });
+            } catch (error) {
+                console.error('Failed to save shorts group:', error);
+                toast.error('Failed to save group');
+            }
+        });
     };
 
     // Update a group's metadata
     const updateGroupMetadata = (groupId: string, updates: Partial<Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name'>>) => {
-        setShortsGroups(prev => prev.map(g =>
+        const updatedGroups = shortsGroups.map(g =>
             g.id === groupId ? { ...g, ...updates } : g
-        ));
+        );
+        setShortsGroups(updatedGroups);
+
+        // Persist to database
+        startTransition(async () => {
+            try {
+                await updateShortsGroupsAction({ episodeId: episode.id, shortsGroups: updatedGroups });
+            } catch (error) {
+                console.error('Failed to save shorts group:', error);
+                toast.error('Failed to save group changes');
+            }
+        });
     };
 
     // Delete a group
     const deleteGroup = (groupId: string) => {
-        setShortsGroups(prev => prev.filter(g => g.id !== groupId));
+        const updatedGroups = shortsGroups.filter(g => g.id !== groupId);
+        setShortsGroups(updatedGroups);
         if (selectedGroupId === groupId) {
-            setSelectedGroupId(shortsGroups[0]?.id ?? null);
+            setSelectedGroupId(updatedGroups[0]?.id ?? null);
         }
+
+        // Persist to database
+        startTransition(async () => {
+            try {
+                await updateShortsGroupsAction({ episodeId: episode.id, shortsGroups: updatedGroups });
+                toast.success('Group deleted');
+            } catch (error) {
+                console.error('Failed to delete shorts group:', error);
+                toast.error('Failed to delete group');
+            }
+        });
+    };
+
+    // Delete a video from a specific group
+    const deleteVideoFromGroup = (groupId: string, language: string) => {
+        const updatedGroups = shortsGroups.map(g => {
+            if (g.id === groupId) {
+                const updatedVideos = { ...g.videos };
+                delete updatedVideos[language];
+                return { ...g, videos: updatedVideos };
+            }
+            return g;
+        });
+        setShortsGroups(updatedGroups);
+
+        // Persist to database
+        startTransition(async () => {
+            try {
+                await updateShortsGroupsAction({ episodeId: episode.id, shortsGroups: updatedGroups });
+                toast.success(`Removed ${LANG_INFO[language as SupportedLanguage]?.name || language} video`);
+            } catch (error) {
+                console.error('Failed to delete video from group:', error);
+                toast.error('Failed to delete video');
+            }
+        });
     };
 
     // Fetch connected platforms
@@ -325,21 +366,26 @@ export function PublishScreen({
         return grouped;
     }, [connections]);
 
-    // Get current videos
+    // Get current videos (full videos only - shorts use groups)
     const localizedVideos = (episode.localizedVideos ?? {}) as Record<string, string>;
-    const localizedShorts = (episode.localizedShorts ?? {}) as Record<string, string>;
 
     const uploadedFullLanguages = Object.keys(localizedVideos).filter(
         (lang) => localizedVideos[lang]
     ) as SupportedLanguage[];
-    const uploadedShortsLanguages = Object.keys(localizedShorts).filter(
-        (lang) => localizedShorts[lang]
-    ) as SupportedLanguage[];
 
-    const getAvailableLanguages = (type: VideoType) => {
-        const uploaded = type === 'full' ? uploadedFullLanguages : uploadedShortsLanguages;
+    // Get available languages for full videos
+    const getAvailableLanguages = () => {
         return (Object.keys(LANG_INFO) as SupportedLanguage[]).filter(
-            (lang) => !uploaded.includes(lang)
+            (lang) => !uploadedFullLanguages.includes(lang)
+        );
+    };
+
+    // Get available languages for a specific shorts group
+    const getAvailableLanguagesForGroup = (groupId: string) => {
+        const group = shortsGroups.find(g => g.id === groupId);
+        const usedLanguages = group ? Object.keys(group.videos).filter(k => group.videos[k]) : [];
+        return (Object.keys(LANG_INFO) as SupportedLanguage[]).filter(
+            lang => !usedLanguages.includes(lang)
         );
     };
 
@@ -361,13 +407,23 @@ export function PublishScreen({
         maxSize: 500 * 1024 * 1024,
     });
 
-    const handleOpenUploadDialog = (type: VideoType) => {
+    const handleOpenUploadDialog = (type: VideoType, groupId?: string) => {
         setUploadType(type);
         setSelectedFile(null);
-        const available = getAvailableLanguages(type);
-        if (available.length > 0) {
-            setSelectedLanguage(available[0] ?? 'en');
+
+        if (type === 'shorts' && groupId) {
+            setSelectedGroupId(groupId);
+            const available = getAvailableLanguagesForGroup(groupId);
+            if (available.length > 0) {
+                setSelectedLanguage(available[0] ?? 'en');
+            }
+        } else {
+            const available = getAvailableLanguages();
+            if (available.length > 0) {
+                setSelectedLanguage(available[0] ?? 'en');
+            }
         }
+
         setUploadDialogOpen(true);
     };
 
@@ -385,18 +441,40 @@ export function PublishScreen({
 
             startTransition(async () => {
                 try {
-                    const action = uploadType === 'full' ? updatePublishedVideoAction : updatePublishedShortsAction;
-                    const updateResult = await action({
-                        episodeId: episode.id,
-                        language: selectedLanguage,
-                        videoUrl: result.url,
-                    });
-
-                    if (updateResult.success) {
-                        toast.success(`${uploadType === 'full' ? 'Video' : 'Short'} uploaded for ${LANG_INFO[selectedLanguage].name}`);
-                        setUploadDialogOpen(false);
-                        setSelectedFile(null);
-                        refetchEpisode();
+                    if (uploadType === 'full') {
+                        // Update full video
+                        const updateResult = await updatePublishedVideoAction({
+                            episodeId: episode.id,
+                            language: selectedLanguage,
+                            videoUrl: result.url,
+                        });
+                        if (updateResult.success) {
+                            toast.success(`Video uploaded for ${LANG_INFO[selectedLanguage].name}`);
+                            setUploadDialogOpen(false);
+                            setSelectedFile(null);
+                            refetchEpisode();
+                        }
+                    } else {
+                        // Update shorts group - add video to selected group
+                        if (!selectedGroupId) {
+                            toast.error('Please select a group first');
+                            return;
+                        }
+                        const updatedGroups = shortsGroups.map(g =>
+                            g.id === selectedGroupId
+                                ? { ...g, videos: { ...g.videos, [selectedLanguage]: result.url } }
+                                : g
+                        );
+                        const updateResult = await updateShortsGroupsAction({
+                            episodeId: episode.id,
+                            shortsGroups: updatedGroups,
+                        });
+                        if (updateResult.success) {
+                            setShortsGroups(updatedGroups);
+                            toast.success(`Short uploaded for ${LANG_INFO[selectedLanguage].name}`);
+                            setUploadDialogOpen(false);
+                            setSelectedFile(null);
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to update:', error);
@@ -411,18 +489,18 @@ export function PublishScreen({
         }
     };
 
-    const handleRemoveVideo = (type: VideoType, lang: SupportedLanguage) => {
+    // Remove a full video (shorts use deleteVideoFromGroup instead)
+    const handleRemoveVideo = (lang: SupportedLanguage) => {
         startTransition(async () => {
             try {
-                const action = type === 'full' ? updatePublishedVideoAction : updatePublishedShortsAction;
-                const result = await action({
+                const result = await updatePublishedVideoAction({
                     episodeId: episode.id,
                     language: lang,
                     videoUrl: '',
                 });
 
                 if (result.success) {
-                    toast.success(`Removed ${LANG_INFO[lang].name} ${type === 'full' ? 'video' : 'short'}`);
+                    toast.success(`Removed ${LANG_INFO[lang].name} video`);
                     refetchEpisode();
                 }
             } catch (error) {
@@ -813,7 +891,7 @@ export function PublishScreen({
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleRemoveVideo(type, lang)}
+                            onClick={() => handleRemoveVideo(lang)}
                             disabled={isPending}
                             className="text-red-500 opacity-0 transition-opacity group-hover:opacity-100"
                         >
@@ -1175,7 +1253,7 @@ export function PublishScreen({
                     </div>
                     <Button
                         onClick={handlePublish}
-                        disabled={uploadedFullLanguages.length === 0 && uploadedShortsLanguages.length === 0}
+                        disabled={uploadedFullLanguages.length === 0 && shortsGroups.length === 0}
                         className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white"
                     >
                         <Share2 className="mr-2 h-4 w-4" />
@@ -1238,7 +1316,7 @@ export function PublishScreen({
                                                 channels={channelsByLanguage[lang] ?? []}
                                             />
                                         ))}
-                                        {getAvailableLanguages('full').length > 0 && (
+                                        {getAvailableLanguages().length > 0 && (
                                             <button
                                                 onClick={() => handleOpenUploadDialog('full')}
                                                 className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50"
@@ -1341,7 +1419,7 @@ export function PublishScreen({
                                                 <div className="grid gap-3 sm:grid-cols-2">
                                                     {Object.entries(group.videos).map(([lang, url]) => (
                                                         url && (
-                                                            <div key={lang} className="relative rounded-lg overflow-hidden border border-border">
+                                                            <div key={lang} className="relative rounded-lg overflow-hidden border border-border group/video">
                                                                 <video
                                                                     src={url}
                                                                     className="w-full aspect-[9/16] object-cover bg-black"
@@ -1351,14 +1429,19 @@ export function PublishScreen({
                                                                     <span>{LANG_INFO[lang as SupportedLanguage]?.flag}</span>
                                                                     <span>{LANG_INFO[lang as SupportedLanguage]?.name}</span>
                                                                 </div>
+                                                                {/* Delete video button */}
+                                                                <button
+                                                                    onClick={() => deleteVideoFromGroup(group.id, lang)}
+                                                                    className="absolute top-2 right-2 h-7 w-7 flex items-center justify-center rounded-full bg-black/70 text-white hover:bg-red-600 transition-colors opacity-0 group-hover/video:opacity-100"
+                                                                    title={`Remove ${LANG_INFO[lang as SupportedLanguage]?.name || lang} video`}
+                                                                >
+                                                                    <X className="h-4 w-4" />
+                                                                </button>
                                                             </div>
                                                         )
                                                     ))}
                                                     <button
-                                                        onClick={() => {
-                                                            setSelectedGroupId(group.id);
-                                                            handleOpenUploadDialog('shorts');
-                                                        }}
+                                                        onClick={() => handleOpenUploadDialog('shorts', group.id)}
                                                         className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50"
                                                     >
                                                         <Plus className="h-6 w-6" />
@@ -1619,7 +1702,7 @@ export function PublishScreen({
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        {getAvailableLanguages(uploadType).map((lang) => (
+                                        {(uploadType === 'full' ? getAvailableLanguages() : getAvailableLanguagesForGroup(selectedGroupId ?? '')).map((lang) => (
                                             <SelectItem key={lang} value={lang}>
                                                 <span className="mr-2">{LANG_INFO[lang].flag}</span>
                                                 {LANG_INFO[lang].name}
