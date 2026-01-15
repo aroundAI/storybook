@@ -1,4 +1,44 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createLocalJWKSet, jwtVerify, type JWK } from 'jose';
+
+// Cache for JWKS to avoid fetching on every request
+let cachedJWKS: ReturnType<typeof createLocalJWKSet> | null = null;
+let cachedJWKSExpiry = 0;
+const JWKS_CACHE_TTL = 3600000; // 1 hour in milliseconds
+
+/**
+ * Fetch JWKS from Supabase with apikey header
+ */
+async function getSupabaseJWKS() {
+  const now = Date.now();
+  if (cachedJWKS && now < cachedJWKSExpiry) {
+    return cachedJWKS;
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY not set');
+  }
+
+  // Supabase JWKS endpoint requires apikey header
+  const jwksUrl = `${supabaseUrl}/auth/v1/.well-known/jwks.json`;
+  const response = await fetch(jwksUrl, {
+    headers: {
+      'apikey': supabaseAnonKey,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`);
+  }
+
+  const jwks = await response.json() as { keys: JWK[] };
+  cachedJWKS = createLocalJWKSet(jwks);
+  cachedJWKSExpiry = now + JWKS_CACHE_TTL;
+
+  return cachedJWKS;
+}
 
 /**
  * Verify Supabase JWT token and extract userId
@@ -30,14 +70,14 @@ export async function verifySupabaseToken(
       throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable not set');
     }
 
-    // Create JWKS endpoint for Supabase
-    // Supabase uses a JWKS endpoint at: https://<project-ref>.supabase.co/auth/v1/jwks
-    const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/jwks`));
+    // Get JWKS (fetched with apikey header, cached for 1 hour)
+    const JWKS = await getSupabaseJWKS();
 
     // Verify the JWT token with jose library
     // This automatically validates signature, expiration (exp), and not-before (nbf) claims
+    // Note: Supabase JWT issuer includes /auth/v1 path
     const { payload } = await jwtVerify(token, JWKS, {
-      issuer: supabaseUrl,
+      issuer: `${supabaseUrl}/auth/v1`,
       audience: 'authenticated',
       clockTolerance: 60, // Allow 60 seconds clock skew
     });
@@ -147,13 +187,14 @@ export async function extractAppMetadataFromToken(
       throw new Error('NEXT_PUBLIC_SUPABASE_URL environment variable not set');
     }
 
-    // Create JWKS endpoint for Supabase
-    const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/jwks`));
+    // Get JWKS (fetched with apikey header, cached for 1 hour)
+    const JWKS = await getSupabaseJWKS();
 
     // Verify the JWT token with jose library
     // This automatically validates signature, expiration (exp), and not-before (nbf) claims
+    // Note: Supabase JWT issuer includes /auth/v1 path
     const { payload } = await jwtVerify(token, JWKS, {
-      issuer: supabaseUrl,
+      issuer: `${supabaseUrl}/auth/v1`,
       audience: 'authenticated',
       clockTolerance: 60, // Allow 60 seconds clock skew
     });

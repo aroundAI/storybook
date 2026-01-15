@@ -1,6 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+
+import { useLlmWebSocket } from './llm-websocket-provider';
 
 type LlmJobStatus = 'idle' | 'pending' | 'success' | 'error';
 
@@ -12,90 +14,57 @@ interface LlmJobResult<T = unknown> {
     reset: () => void;
 }
 
-interface UseLlmJobOptions {
-    wsUrl?: string;
-    token?: string;
-}
-
 /**
- * Hook for handling async LLM job results via WebSocket
+ * Hook for handling async LLM job results via shared WebSocket
+ * 
+ * Uses the LlmWebSocketProvider for efficient connection sharing.
+ * Multiple components can use this hook without creating duplicate connections.
  *
- * @param jobType - The type of LLM job to listen for
- * @param options - Optional WebSocket URL and auth token
+ * @param jobType - The type of LLM job to listen for (e.g., 'season-analysis', 'shot-generation')
  * @returns LlmJobResult with status, result, error, trigger, and reset functions
  *
  * @example
  * ```tsx
- * const { status, result, error, trigger } = useLlmJob('season-analysis', {
- *   wsUrl: process.env.NEXT_PUBLIC_WEBSOCKET_URL,
- *   token: session?.access_token,
- * });
+ * const { status, result, error, trigger } = useLlmJob<AnalysisResult>('season-analysis');
+ * 
+ * const handleAnalyze = () => {
+ *   trigger(async () => {
+ *     const result = await someServerAction();
+ *     if (result.success) return { success: true, data: result.data };
+ *     if (result.queued) return { queued: true };
+ *     throw new Error('Failed');
+ *   });
+ * };
  * ```
  */
-export function useLlmJob<T = unknown>(
-    jobType: string,
-    options?: UseLlmJobOptions,
-): LlmJobResult<T> {
+export function useLlmJob<T = unknown>(jobType: string): LlmJobResult<T> {
     const [status, setStatus] = useState<LlmJobStatus>('idle');
     const [result, setResult] = useState<T | null>(null);
     const [error, setError] = useState<string | null>(null);
-    const wsRef = useRef<WebSocket | null>(null);
+    const { subscribe } = useLlmWebSocket();
 
-    // Connect to WebSocket and listen for job results
+    // Subscribe to job type messages
     useEffect(() => {
-        const wsUrl = options?.wsUrl;
-        const token = options?.token;
+        console.log(`[useLlmJob] Subscribing to ${jobType}`);
 
-        if (!wsUrl || !token) {
-            console.debug('[useLlmJob] Missing wsUrl or token, skipping WebSocket connection');
-            return;
-        }
+        const unsubscribe = subscribe(jobType, (message) => {
+            console.log(`[useLlmJob] Received message for ${jobType}:`, message.type);
 
-        const ws = new WebSocket(`${wsUrl}?token=${token}`);
-
-        ws.onopen = () => {
-            console.log('[useLlmJob] WebSocket connected');
-        };
-
-        ws.onmessage = (event) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                // Filter for this job type
-                if (data.jobType !== jobType) return;
-
-                if (data.type === 'llm-result') {
-                    console.log(`[useLlmJob] Received result for ${jobType}`);
-                    setStatus('success');
-                    setResult(data.result as T);
-                    setError(null);
-                } else if (data.type === 'llm-error') {
-                    console.log(`[useLlmJob] Received error for ${jobType}:`, data.error);
-                    setStatus('error');
-                    setError(data.error);
-                }
-            } catch (e) {
-                console.error('[useLlmJob] Error parsing WebSocket message:', e);
+            if (message.type === 'llm-result') {
+                setStatus('success');
+                setResult(message.result as T);
+                setError(null);
+            } else if (message.type === 'llm-error') {
+                setStatus('error');
+                setError(message.error || 'An error occurred');
             }
-        };
-
-        ws.onerror = (e) => {
-            console.error('[useLlmJob] WebSocket error:', e);
-        };
-
-        ws.onclose = () => {
-            console.log('[useLlmJob] WebSocket closed');
-        };
-
-        wsRef.current = ws;
+        });
 
         return () => {
-            if (wsRef.current) {
-                wsRef.current.close();
-                wsRef.current = null;
-            }
+            console.log(`[useLlmJob] Unsubscribing from ${jobType}`);
+            unsubscribe();
         };
-    }, [jobType, options?.wsUrl, options?.token]);
+    }, [jobType, subscribe]);
 
     // Trigger an LLM action
     const trigger = useCallback(async (
@@ -109,20 +78,23 @@ export function useLlmJob<T = unknown>(
 
             // If response has queued: true, wait for WebSocket result
             if (response.queued) {
+                console.log(`[useLlmJob] Job ${jobType} queued, waiting for WebSocket result`);
                 // Status will be updated by WebSocket message
                 return;
             }
 
             // For local dev (synchronous response), set result immediately
             if (response.success && response.data) {
+                console.log(`[useLlmJob] Job ${jobType} completed synchronously`);
                 setStatus('success');
                 setResult(response.data);
             }
         } catch (e) {
+            console.error(`[useLlmJob] Job ${jobType} failed:`, e);
             setStatus('error');
             setError(e instanceof Error ? e.message : 'An error occurred');
         }
-    }, []);
+    }, [jobType]);
 
     // Reset state
     const reset = useCallback(() => {

@@ -168,10 +168,6 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
             const { processTranslateDialogue } = await import('./handlers/translate-dialogue');
             return processTranslateDialogue(job.payload, supabase);
         }
-        case 'dubbing-translate': {
-            const { processDubbingTranslate } = await import('./handlers/dubbing-translate');
-            return processDubbingTranslate(job.payload, supabase);
-        }
         case 'continuity-analysis': {
             const { processContinuityAnalysis } = await import('./handlers/continuity-analysis');
             return processContinuityAnalysis(job.payload, supabase);

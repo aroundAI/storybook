@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -39,6 +39,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@kit/ui/dialog';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import {
@@ -226,6 +227,37 @@ export function PublishScreen({
     // Delete all dialog state
     const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
     const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+    // WebSocket for async LLM translation results (uses shared provider from layout)
+    const { status: llmStatus, result: llmResult, error: llmError } = useLlmJob<{
+        translatedTitle: string;
+        translatedDescription: string;
+        targetLanguage: string;
+    }>('publish-metadata');
+
+    // Handle async WebSocket translation result
+    useEffect(() => {
+        if (llmStatus === 'success' && llmResult && publishStage === 'translating') {
+            // llmResult is already the result object from message.result (contains {translatedTitle, etc.})
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const resultData = llmResult as any;
+            if (resultData?.translatedTitle) {
+                const lang = resultData.targetLanguage as SupportedLanguage;
+                setTranslationResults((prev) => [
+                    ...prev,
+                    {
+                        language: lang,
+                        title: resultData.translatedTitle,
+                        description: resultData.translatedDescription,
+                        status: 'success',
+                    },
+                ]);
+                toast.success(`Translated to ${LANG_INFO[lang]?.name || lang}`);
+            }
+        } else if (llmStatus === 'error' && publishStage === 'translating') {
+            toast.error(llmError || 'Translation failed');
+        }
+    }, [llmStatus, llmResult, llmError, publishStage]);
 
     // Metadata state
     // Metadata state

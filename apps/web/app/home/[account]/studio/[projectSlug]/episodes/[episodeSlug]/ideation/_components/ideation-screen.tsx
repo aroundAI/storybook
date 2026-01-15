@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -22,6 +22,7 @@ import {
 } from '@kit/episodes/schemas';
 import { generateStoryIdeasAction } from '@kit/episodes/server';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import {
   Collapsible,
@@ -36,6 +37,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@kit/ui/form';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Slider } from '@kit/ui/slider';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
@@ -74,6 +76,28 @@ export function IdeationScreen({
   const [contentStyle, setContentStyle] =
     useState<ContentStyle>(defaultContentStyle);
 
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ ideas: StoryIdea[] }>(
+    'story-ideation'
+  );
+
+  // Handle async WebSocket result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result (contains {success, data})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (llmResult as any)?.data;
+      if (resultData?.ideas) {
+        setIdeas(resultData.ideas);
+        setSelectedIdea(null);
+        setHasGenerated(true);
+        toast.success(`Generated ${resultData.ideas.length} story ideas`);
+      }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to generate story ideas');
+    }
+  }, [llmStatus, llmResult, llmError]);
+
   const form = useForm({
     resolver: zodResolver(GenerateStoryIdeasSchema),
     defaultValues: {
@@ -88,23 +112,22 @@ export function IdeationScreen({
   const numberOfIdeas = form.watch('numberOfIdeas');
 
   const onSubmit = form.handleSubmit((data: GenerateStoryIdeasInput) => {
-    startTransition(async () => {
-      try {
-        const result = await generateStoryIdeasAction(data);
-
-        if (result.success) {
-          setIdeas(result.data.ideas);
-          setSelectedIdea(null);
-          setHasGenerated(true);
-          toast.success(`Generated ${result.data.ideas.length} story ideas`);
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate story ideas',
-        );
+    triggerLlm(async () => {
+      const result = await generateStoryIdeasAction(data);
+      // If local dev (synchronous), process immediately
+      if (result.success && result.data) {
+        setIdeas(result.data.ideas);
+        setSelectedIdea(null);
+        setHasGenerated(true);
+        toast.success(`Generated ${result.data.ideas.length} story ideas`);
+        return { success: true, data: result.data };
       }
+      // If queued, return queued flag (WebSocket will deliver result)
+      if (result?.queued) {
+        toast.info('Generating story ideas in background...');
+        return { success: true, queued: true };
+      }
+      throw new Error('Failed to generate story ideas');
     });
   });
 
@@ -151,10 +174,10 @@ export function IdeationScreen({
               </span>
               <Button
                 type="submit"
-                disabled={isPending || premiseLength < 10}
+                disabled={isPending || llmStatus === 'pending' || premiseLength < 10}
                 className="btn-cinema-primary gap-2 text-sm"
               >
-                {isPending ? (
+                {isPending || llmStatus === 'pending' ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
                     Generating...

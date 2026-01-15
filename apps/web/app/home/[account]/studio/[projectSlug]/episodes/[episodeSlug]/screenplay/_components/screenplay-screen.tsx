@@ -17,7 +17,9 @@ import type {
   ScreenplayData,
   ScreenplayScene,
 } from '@kit/episodes/types';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
@@ -50,6 +52,28 @@ export function ScreenplayScreen({
   const scenes = parseScenes(episode.screenplayData);
   const metadata = episode.screenplayData?.metadata;
   const hasShotList = Boolean(episode.shotList) || episode.shots.length > 0;
+
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ shotsCreated: number }>(
+    'shot-generation'
+  );
+
+  // Handle async WebSocket result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result (contains {success, shotsCreated})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = llmResult as any;
+      const shotsCreated = resultData?.shotsCreated ?? 0;
+      if (resultData?.success) {
+        toast.success(`Shot list generated with ${shotsCreated} shots`);
+        refetchEpisode();
+        onShotListComplete();
+      }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to generate shot list');
+    }
+  }, [llmStatus, llmResult, llmError, refetchEpisode, onShotListComplete]);
 
   const scrollToScene = useCallback((sceneNumber: number) => {
     setActiveSceneNumber(sceneNumber);
@@ -91,29 +115,28 @@ export function ScreenplayScreen({
   }, [scenes]);
 
   const handleGenerateShotList = () => {
-    startTransition(async () => {
-      try {
-        const result = await generateShotListAction({
-          episodeId: episode.id,
-          shotDurationMin: 5,
-          shotDurationMax: 8,
-          videoProvider: 'kling',
-        });
-
-        if (result.success) {
-          toast.success(
-            `Shot list generated with ${result.shotsCreated} shots`,
-          );
-          refetchEpisode();
-          onShotListComplete();
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate shot list',
-        );
+    triggerLlm(async () => {
+      const result = await generateShotListAction({
+        episodeId: episode.id,
+        shotDurationMin: 5,
+        shotDurationMax: 8,
+        videoProvider: 'kling',
+      });
+      // If local dev (synchronous), process immediately
+      if (result.success) {
+        const shotsCreated = 'shotsCreated' in result ? result.shotsCreated : 0;
+        toast.success(`Shot list generated with ${shotsCreated} shots`);
+        refetchEpisode();
+        onShotListComplete();
+        return { success: true, data: { shotsCreated } };
       }
+      // If queued, return queued flag (WebSocket will deliver result)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((result as any)?.queued) {
+        toast.info('Generating shot list in background... This may take a few minutes.');
+        return { queued: true };
+      }
+      throw new Error('Failed to generate shot list');
     });
   };
 
@@ -163,10 +186,10 @@ export function ScreenplayScreen({
           ) : (
             <Button
               onClick={handleGenerateShotList}
-              disabled={isPending}
+              disabled={isPending || llmStatus === 'pending'}
               className="btn-cinema-primary gap-2"
             >
-              {isPending ? (
+              {isPending || llmStatus === 'pending' ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Generating Shot List...

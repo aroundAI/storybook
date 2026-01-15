@@ -7,25 +7,17 @@ type ZodOutputFor<T> = z.ZodType<T, z.ZodTypeDef, unknown>;
  * @name STORAGE_KIND
  * @description The kind of storage to use for the Keystatic reader.
  *
- * This can be provided through the `KEYSTATIC_STORAGE_KIND` environment variable or 'NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND'.
- * The previous environment variable `KEYSTATIC_STORAGE_KIND` is deprecated - as Keystatic may need this to be available in the client-side.
- *
+ * This is provided through the `NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND` environment variable.
  */
 const STORAGE_KIND =
-  process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND ??
-  /* @deprecated */
-  process.env.KEYSTATIC_STORAGE_KIND ??
-  'local';
+  process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND ?? 'local';
 
 /**
  * @name REPO
  * @description The repository to use for the GitHub storage.
- * This can be provided through the `NEXT_PUBLIC_KEYSTATIC_STORAGE_REPO` environment variable. The previous environment variable `KEYSTATIC_STORAGE_REPO` is deprecated.
+ * This is provided through the `NEXT_PUBLIC_KEYSTATIC_STORAGE_REPO` environment variable.
  */
-const REPO =
-  process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE_REPO ??
-  /* @deprecated */
-  process.env.KEYSTATIC_STORAGE_REPO;
+const REPO = process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE_REPO;
 
 const BRANCH_PREFIX = process.env.KEYSTATIC_STORAGE_BRANCH_PREFIX;
 const PATH_PREFIX = process.env.KEYSTATIC_PATH_PREFIX;

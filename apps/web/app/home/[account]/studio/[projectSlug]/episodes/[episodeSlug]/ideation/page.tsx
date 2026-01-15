@@ -1,10 +1,14 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import { useRouter } from 'next/navigation';
 
 import type { StoryIdeaWithSettings } from '@kit/episodes/components';
 import type { ContentStyle } from '@kit/episodes/lib';
 import { generateFullStoryAction } from '@kit/episodes/server';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
@@ -21,6 +25,31 @@ export default function IdeationPage() {
     setIsGenerating,
   } = useEpisodeContext();
 
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ storyData: unknown }>(
+    'story-generation'
+  );
+
+  // Handle async WebSocket result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result (contains {success})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = llmResult as any;
+      if (resultData?.success) {
+        toast.success('Story generated successfully');
+        refetchEpisode();
+        setIsGenerating(false);
+        router.push(
+          `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/story`,
+        );
+      }
+    } else if (llmStatus === 'error') {
+      setIsGenerating(false);
+      toast.error(llmError || 'Failed to generate story');
+    }
+  }, [llmStatus, llmResult, llmError, refetchEpisode, setIsGenerating, router, accountSlug, projectSlug, episode.slug, episode.id]);
+
   // Extract project defaults for duration and content style
   const defaultDuration =
     (projectMetadata?.defaultEpisodeDuration as number | undefined) ?? 300;
@@ -29,7 +58,7 @@ export default function IdeationPage() {
     'dialogue-heavy';
 
   const handleComplete = async (selection: StoryIdeaWithSettings) => {
-    try {
+    triggerLlm(async () => {
       // Generate the full story using the selected idea
       const result = await generateFullStoryAction({
         episodeId: episode.id,
@@ -40,20 +69,23 @@ export default function IdeationPage() {
         contentStyle: selection.contentStyle,
       });
 
+      // If local dev (synchronous), process immediately
       if (result.success) {
         toast.success('Story generated successfully');
         refetchEpisode();
         router.push(
           `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/story`,
         );
+        return { success: true, data: { storyData: result.data } };
       }
-    } catch (error) {
-      // Reset generating state on error
-      setIsGenerating(false);
-      toast.error(
-        error instanceof Error ? error.message : 'Failed to generate story',
-      );
-    }
+      // If queued, return queued flag (WebSocket will deliver result)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((result as any)?.queued) {
+        toast.info('Generating story in background... This may take a minute.');
+        return { queued: true };
+      }
+      throw new Error('Failed to generate story');
+    });
   };
 
   // Extract character and location IDs from episode metadata

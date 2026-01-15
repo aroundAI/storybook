@@ -31,7 +31,6 @@ interface ExtractedEpisode {
   characterNames?: string[];
   locationNames?: string[];
   tags?: string[];
-  description?: string;  // Legacy support
 }
 
 interface AnalysisResult {
@@ -360,7 +359,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
           .filter(Boolean) as string[]) ?? [];
 
       // Use synopsis as primary description, fallback to legacy description
-      const description = ep.synopsis || ep.description || '';
+      const description = ep.synopsis || '';
 
       // Build premise from beats if synopsis is empty
       const buildPremiseFromBeats = () => {

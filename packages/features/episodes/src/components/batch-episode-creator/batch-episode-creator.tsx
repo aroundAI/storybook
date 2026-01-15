@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Info, Loader2, Sparkles } from 'lucide-react';
@@ -34,6 +34,7 @@ import {
 import { Slider } from '@kit/ui/slider';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
+import { useLlmJob } from '@kit/ui/hooks';
 
 import {
   type EpisodeOutline,
@@ -85,6 +86,27 @@ export function BatchEpisodeCreator({
   const [isCreating, setIsCreating] = useState(false);
   const [episodes, setEpisodes] = useState<EpisodeOutline[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError } = useLlmJob<{ episodes: EpisodeOutline[] }>(
+    'season-outline'
+  );
+
+  // Handle async WebSocket result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result (contains {success, data: {episodes}})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (llmResult as any)?.data;
+      if (resultData?.episodes) {
+        setEpisodes(resultData.episodes);
+        setIsPreviewOpen(true);
+        toast.success(`Generated ${resultData.episodes.length} episode outlines`);
+      }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to generate episode outlines');
+    }
+  }, [llmStatus, llmResult, llmError]);
 
   const form = useForm({
     resolver: zodResolver(GenerateSeasonOutlineSchema),

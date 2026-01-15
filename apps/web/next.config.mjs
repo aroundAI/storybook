@@ -127,9 +127,17 @@ function getRemotePatterns() {
     });
   }
 
+  // Cloudflare R2 public bucket for project assets
+  // Allow all R2 public bucket subdomains (pub-*.r2.dev)
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: '*.r2.dev',
+  });
+
   return IS_PRODUCTION
     ? remotePatterns
     : [
+      ...remotePatterns, // Include R2 patterns in development too
       {
         protocol: 'http',
         hostname: '127.0.0.1',

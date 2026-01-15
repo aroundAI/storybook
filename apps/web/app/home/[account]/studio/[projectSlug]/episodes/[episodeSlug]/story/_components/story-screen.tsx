@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import {
   ArrowRight,
@@ -13,7 +13,9 @@ import {
 
 import { convertToScreenplayAction } from '@kit/episodes/server';
 import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
@@ -43,27 +45,49 @@ export function StoryScreen({
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const storyData = episode.storyData;
 
-  const handleConvertToScreenplay = () => {
-    startTransition(async () => {
-      try {
-        const result = await convertToScreenplayAction({
-          episodeId: episode.id,
-        });
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ screenplay: { scenes: unknown[] } }>(
+    'screenplay-conversion'
+  );
 
-        if (result.success) {
-          toast.success(
-            `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
-          );
-          refetchEpisode();
-          onScreenplayComplete();
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to convert to screenplay',
+  // Handle async WebSocket result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result (contains {success, data})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (llmResult as any)?.data;
+      if (resultData?.screenplay?.scenes?.length) {
+        toast.success(
+          `Screenplay generated with ${resultData.screenplay.scenes.length} scenes`,
         );
+        refetchEpisode();
+        onScreenplayComplete();
       }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to convert to screenplay');
+    }
+  }, [llmStatus, llmResult, llmError, refetchEpisode, onScreenplayComplete]);
+
+  const handleConvertToScreenplay = () => {
+    triggerLlm(async () => {
+      const result = await convertToScreenplayAction({
+        episodeId: episode.id,
+      });
+      // If local dev (synchronous), process immediately
+      if (result.success && result.data) {
+        toast.success(
+          `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
+        );
+        refetchEpisode();
+        onScreenplayComplete();
+        return { success: true, data: result.data };
+      }
+      // If queued, return queued flag (WebSocket will deliver result)
+      if (result?.queued) {
+        toast.info('Converting to screenplay in background...');
+        return { success: true, queued: true };
+      }
+      throw new Error('Failed to convert to screenplay');
     });
   };
 
@@ -223,10 +247,10 @@ export function StoryScreen({
               {!hasScreenplay && (
                 <Button
                   onClick={handleConvertToScreenplay}
-                  disabled={isPending}
+                  disabled={isPending || llmStatus === 'pending'}
                   className="btn-cinema-primary gap-2"
                 >
-                  {isPending ? (
+                  {isPending || llmStatus === 'pending' ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Converting...

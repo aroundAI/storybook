@@ -104,11 +104,3 @@ function interpolateVariables(
 
   return result;
 }
-
-/**
- * Clear the prompt cache (no-op, kept for API compatibility)
- * @deprecated No longer needed since prompts are bundled at build time
- */
-export async function clearPromptCache(): Promise<void> {
-  // No-op - prompts are now bundled at build time
-}

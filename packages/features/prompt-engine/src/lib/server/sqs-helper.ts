@@ -9,9 +9,25 @@ import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 // Initialize SQS client
 const sqs = new SQSClient({});
 
-// Queue URL is provided by SST via the link
-// In local dev, fall back to environment variable
-const QUEUE_URL = process.env.LLM_JOBS_QUEUE_URL || '';
+/**
+ * Get queue URL from SST Resource or environment variable
+ * SST v3 provides linked resources via the Resource object
+ */
+function getQueueUrl(): string {
+    // Try SST Resource binding first (production)
+    try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { Resource } = require('sst');
+        if (Resource?.StorybookLlmJobsQueue?.url) {
+            return Resource.StorybookLlmJobsQueue.url;
+        }
+    } catch {
+        // Resource not available - not in SST environment
+    }
+
+    // Fall back to environment variable
+    return process.env.LLM_JOBS_QUEUE_URL || '';
+}
 
 /**
  * LLM Job types for type safety
@@ -27,7 +43,6 @@ export type LlmJobType =
     | 'analytics-insights'
     | 'language-insights'
     | 'translate-dialogue'
-    | 'dubbing-translate'
     | 'continuity-analysis'
     | 'caption-generation';
 
@@ -54,7 +69,9 @@ export async function queueLlmJob(params: {
     userId: string;
     payload: Record<string, unknown>;
 }): Promise<void> {
-    if (!QUEUE_URL) {
+    const queueUrl = getQueueUrl();
+
+    if (!queueUrl) {
         throw new Error(
             'LLM_JOBS_QUEUE_URL not configured. Ensure the queue is linked in sst.config.ts',
         );
@@ -64,7 +81,7 @@ export async function queueLlmJob(params: {
 
     await sqs.send(
         new SendMessageCommand({
-            QueueUrl: QUEUE_URL,
+            QueueUrl: queueUrl,
             MessageBody: JSON.stringify({
                 jobType: params.jobType,
                 userId: params.userId,
@@ -87,5 +104,5 @@ export async function queueLlmJob(params: {
  * Check if we're in a Lambda environment where SQS is available
  */
 export function isLambdaEnvironment(): boolean {
-    return !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!QUEUE_URL;
+    return !!process.env.AWS_LAMBDA_FUNCTION_NAME || !!getQueueUrl();
 }

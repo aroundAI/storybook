@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -31,6 +31,7 @@ import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
+import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -40,6 +41,7 @@ import {
   DialogTrigger,
 } from '@kit/ui/dialog';
 import { Form, FormControl, FormField, FormItem } from '@kit/ui/form';
+import { useLlmJob } from '@kit/ui/hooks';
 import {
   Select,
   SelectContent,
@@ -213,6 +215,11 @@ export function SeasonGeneratorDialog({
   const [charMapping, setCharMapping] = useState<Record<string, string>>({});
   const [locMapping, setLocMapping] = useState<Record<string, string>>({});
 
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm, reset: resetLlm } = useLlmJob<{ data: AnalysisResult }>(
+    'season-analysis'
+  );
+
   const {
     assets: existingCharacters,
     fetchAssets: fetchCharacters,
@@ -234,12 +241,116 @@ export function SeasonGeneratorDialog({
   });
 
   // Fetch assets when dialog opens
+  // Note: Only depend on 'open' to avoid re-running when callbacks change
   useEffect(() => {
     if (open) {
       fetchCharacters();
       fetchLocations();
+      resetLlm();
     }
-  }, [open, fetchCharacters, fetchLocations]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Process analysis result (reusable for both sync and async)
+  const processAnalysisResult = useCallback((data: AnalysisResult) => {
+    // Post-process: Aggregate all unique locations from episodes into main list
+    const globalLocations = data.locations || [];
+    const globalLocationNames = new Set(globalLocations.map(l => l.name.toLowerCase()));
+
+    const episodeLocationNames = new Set<string>();
+    data.episodes.forEach(ep => {
+      ep.location_names?.forEach(name => {
+        if (!globalLocationNames.has(name.toLowerCase())) {
+          episodeLocationNames.add(name);
+        }
+      });
+    });
+
+    const allLocations = [
+      ...globalLocations,
+      ...Array.from(episodeLocationNames).map(name => ({
+        name,
+        description: `Location mentioned in episodes`,
+        setting: 'general',
+      })),
+    ];
+
+    const globalCharacters = data.characters || [];
+    const globalCharNames = new Set(globalCharacters.map(c => c.name.toLowerCase()));
+
+    const episodeCharNames = new Set<string>();
+    data.episodes.forEach(ep => {
+      ep.character_names?.forEach(name => {
+        if (!globalCharNames.has(name.toLowerCase())) {
+          episodeCharNames.add(name);
+        }
+      });
+    });
+
+    const allCharacters = [
+      ...globalCharacters,
+      ...Array.from(episodeCharNames).map(name => ({
+        name,
+        role: 'supporting',
+        description: `Character mentioned in episodes`,
+      })),
+    ];
+
+    const enrichedAnalysis = {
+      ...data,
+      characters: allCharacters,
+      locations: allLocations,
+    };
+
+    setAnalysis(enrichedAnalysis);
+    setPremise(enrichedAnalysis.premise);
+    setShowPremise(true);
+
+    // Auto-map Characters
+    const initialCharMapping: Record<string, string> = {};
+    enrichedAnalysis.characters.forEach((c) => {
+      const match = existingCharacters.find(
+        (ex) => ex.name.toLowerCase() === c.name.toLowerCase(),
+      );
+      initialCharMapping[c.name] = match ? match.id : 'NEW';
+    });
+    setCharMapping(initialCharMapping);
+
+    // Auto-map Locations
+    const initialLocMapping: Record<string, string> = {};
+    enrichedAnalysis.locations?.forEach((l) => {
+      const match = existingLocations.find(
+        (ex) => ex.name.toLowerCase() === l.name.toLowerCase(),
+      );
+      initialLocMapping[l.name] = match ? match.id : 'NEW';
+    });
+    setLocMapping(initialLocMapping);
+
+    toast.success('Roadmap analyzed successfully!');
+  }, [existingCharacters, existingLocations]);
+
+  // Handle async WebSocket result
+  // Track processed result to avoid re-processing when processAnalysisResult reference changes
+  const processedResultRef = useRef<unknown>(null);
+
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // Skip if we already processed this result
+      if (processedResultRef.current === llmResult) {
+        return;
+      }
+
+      // llmResult is already the result object from message.result
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (llmResult as any)?.data;
+      if (resultData) {
+        processedResultRef.current = llmResult;
+        processAnalysisResult(resultData);
+      }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Analysis failed');
+    }
+  }, [llmStatus, llmResult, llmError, processAnalysisResult]);
 
   const form = useForm({
     resolver: zodResolver(AnalyzeSeasonSchema),
@@ -250,105 +361,20 @@ export function SeasonGeneratorDialog({
   });
 
   const handleAnalyze = (data: { projectId: string; roadmap: string }) => {
-    startTransition(async () => {
-      try {
-        const result = await analyzeSeasonRoadmapAction(data);
-        if (result?.data) {
-          // Post-process: Aggregate all unique locations from episodes into main list
-          // This fixes the gap where episode-specific locations aren't in the global list
-          const globalLocations = result.data.locations || [];
-          const globalLocationNames = new Set(globalLocations.map(l => l.name.toLowerCase()));
-
-          // Collect all unique locations mentioned in episodes
-          const episodeLocationNames = new Set<string>();
-          result.data.episodes.forEach(ep => {
-            ep.location_names?.forEach(name => {
-              if (!globalLocationNames.has(name.toLowerCase())) {
-                episodeLocationNames.add(name);
-              }
-            });
-          });
-
-          // Add missing episode locations to the global list
-          const allLocations = [
-            ...globalLocations,
-            ...Array.from(episodeLocationNames).map(name => ({
-              name,
-              description: `Location mentioned in episodes`,
-              setting: 'general',
-            })),
-          ];
-
-          // Same for characters
-          const globalCharacters = result.data.characters || [];
-          const globalCharNames = new Set(globalCharacters.map(c => c.name.toLowerCase()));
-
-          const episodeCharNames = new Set<string>();
-          result.data.episodes.forEach(ep => {
-            ep.character_names?.forEach(name => {
-              if (!globalCharNames.has(name.toLowerCase())) {
-                episodeCharNames.add(name);
-              }
-            });
-          });
-
-          const allCharacters = [
-            ...globalCharacters,
-            ...Array.from(episodeCharNames).map(name => ({
-              name,
-              role: 'supporting',
-              description: `Character mentioned in episodes`,
-            })),
-          ];
-
-          // Update the analysis with merged lists
-          const enrichedAnalysis = {
-            ...result.data,
-            characters: allCharacters,
-            locations: allLocations,
-          };
-
-          setAnalysis(enrichedAnalysis);
-          setPremise(enrichedAnalysis.premise);
-          setShowPremise(true);
-
-          // Debug: log existing assets
-          console.log('Existing Characters:', existingCharacters);
-          console.log('Existing Locations:', existingLocations);
-          console.log('Extracted Characters:', enrichedAnalysis.characters);
-          console.log('Extracted Locations:', enrichedAnalysis.locations);
-
-          // Auto-map Characters
-          const initialCharMapping: Record<string, string> = {};
-          enrichedAnalysis.characters.forEach((c) => {
-            const match = existingCharacters.find(
-              (ex) => ex.name.toLowerCase() === c.name.toLowerCase(),
-            );
-            initialCharMapping[c.name] = match ? match.id : 'NEW';
-            console.log(
-              `Character "${c.name}" => ${match ? `LINKED to ${match.id}` : 'NEW'}`,
-            );
-          });
-          setCharMapping(initialCharMapping);
-
-          // Auto-map Locations
-          const initialLocMapping: Record<string, string> = {};
-          enrichedAnalysis.locations?.forEach((l) => {
-            const match = existingLocations.find(
-              (ex) => ex.name.toLowerCase() === l.name.toLowerCase(),
-            );
-            initialLocMapping[l.name] = match ? match.id : 'NEW';
-            console.log(
-              `Location "${l.name}" => ${match ? `LINKED to ${match.id}` : 'NEW'}`,
-            );
-          });
-          setLocMapping(initialLocMapping);
-        } else {
-          toast.error('Failed to analyze roadmap');
-        }
-      } catch {
-        toast.error('An error occurred during analysis');
+    // Use the LLM job hook to trigger and await WebSocket result
+    triggerLlm(async () => {
+      const result = await analyzeSeasonRoadmapAction(data);
+      // If local dev (synchronous), process immediately
+      if (result?.data) {
+        processAnalysisResult(result.data);
+        return { success: true, data: { data: result.data } };
       }
+      // If queued, return queued flag (WebSocket will deliver result)
+      if (result?.queued) {
+        toast.info('Analyzing roadmap in background... This may take 2-3 minutes.');
+        return { queued: true };
+      }
+      throw new Error('Failed to analyze roadmap');
     });
   };
 
@@ -593,15 +619,15 @@ export function SeasonGeneratorDialog({
                 <Button
                   type="submit"
                   form="analyze-form"
-                  disabled={isPending || !form.watch('roadmap')}
+                  disabled={isPending || llmStatus === 'pending' || !form.watch('roadmap')}
                   className="relative flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl dark:bg-white dark:text-zinc-900"
                 >
-                  {isPending ? (
+                  {isPending || llmStatus === 'pending' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Sparkles className="h-4 w-4" />
                   )}
-                  Analyze & Generate Premise
+                  {llmStatus === 'pending' ? 'Analyzing...' : 'Analyze & Generate Premise'}
                 </Button>
                 <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
               </div>
