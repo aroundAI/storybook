@@ -123,89 +123,29 @@ export const generateInsightsAction = enhanceAction(
       };
     }
 
-    // Check if we're in Lambda environment (production)
-    const { isLambdaEnvironment, queueLlmJob } = await import(
-      '@kit/prompt-engine/server'
-    );
+    // Always queue to Lambda for processing
+    const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-    if (isLambdaEnvironment()) {
-      // Production: Queue for background processing
-      await queueLlmJob({
-        jobType: 'analytics-insights',
+    await queueLlmJob({
+      jobType: 'analytics-insights',
+      userId: user.id,
+      payload: {
+        projectId,
+        analytics,
         userId: user.id,
-        payload: {
-          projectId,
-          analytics,
-          userId: user.id,
-        },
-      });
+      },
+    });
 
-      return {
-        summary: 'Generating insights in the background...',
-        trends: [],
-        contentRecommendations: [],
-        postingStrategy: [],
-        audienceInsights: [],
-        topPerformers: [],
-        actionItems: [],
-        queued: true,
-      };
-    }
-
-    // Local development: Run synchronously
-    // Prepare analytics summary for LLM (only aggregate data, no PII)
-    const analyticsSummary = {
-      totals: analytics.totals,
-      previousPeriodChange: calculateChanges(
-        analytics.totals,
-        analytics.previousPeriodTotals,
-      ),
-      platformBreakdown: analytics.platformMetrics,
-      topContent: analytics.topContent?.slice(0, 5),
-      audience: analytics.audience,
-      contentCount: analytics.contentCount,
-      avgEngagementRate: analytics.avgEngagementRate,
+    return {
+      summary: 'Generating insights in the background...',
+      trends: [],
+      contentRecommendations: [],
+      postingStrategy: [],
+      audienceInsights: [],
+      topPerformers: [],
+      actionItems: [],
+      queued: true,
     };
-
-    try {
-      const result = await executeLLM<InsightsLLMOutput>({
-        templateSlug: 'analytics/insights-generation',
-        variables: {
-          analytics_data: JSON.stringify(analyticsSummary, null, 2),
-        },
-        context: {
-          name: 'generate-analytics-insights',
-          accountId: projectId,
-          userId: user.id,
-        },
-      });
-
-      return {
-        summary:
-          result.data.performanceSummary ||
-          'Performance analysis complete. Review the trends and recommendations below.',
-        trends: [],
-        contentRecommendations: result.data.contentRecommendations || [],
-        postingStrategy: result.data.postingStrategy || [],
-        audienceInsights: result.data.audienceInsights || [],
-        topPerformers: [],
-        actionItems: result.data.actionItems || [],
-      };
-    } catch (error) {
-      // Return fallback response on error
-      logger.error({ error }, 'Error generating insights');
-
-      return {
-        summary:
-          'Unable to generate AI insights at this time. Please try again later.',
-        trends: [],
-        contentRecommendations: [],
-        postingStrategy: [],
-        audienceInsights: [],
-        topPerformers: [],
-        actionItems: [],
-      };
-    }
   },
   {
     auth: true,

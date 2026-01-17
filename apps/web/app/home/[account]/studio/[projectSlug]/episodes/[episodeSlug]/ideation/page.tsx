@@ -4,12 +4,18 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import type { StoryIdeaWithSettings } from '@kit/episodes/components';
 import type { ContentStyle } from '@kit/episodes/lib';
 import { generateFullStoryAction } from '@kit/episodes/server';
+import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
+
+/** Extended story idea with generation settings */
+interface StoryIdeaWithSettings extends StoryIdea {
+  targetDuration: number;
+  contentStyle: ContentStyle;
+}
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { IdeationScreen } from './_components/ideation-screen';
@@ -38,8 +44,8 @@ export default function IdeationPage() {
       const resultData = llmResult as any;
       if (resultData?.success) {
         toast.success('Story generated successfully');
-        refetchEpisode();
         setIsGenerating(false);
+        refetchEpisode();
         router.push(
           `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/story`,
         );
@@ -59,6 +65,9 @@ export default function IdeationPage() {
 
   const handleComplete = async (selection: StoryIdeaWithSettings) => {
     triggerLlm(async () => {
+
+      console.log('[story-actions] start here 1223');
+
       // Generate the full story using the selected idea
       const result = await generateFullStoryAction({
         episodeId: episode.id,
@@ -69,15 +78,8 @@ export default function IdeationPage() {
         contentStyle: selection.contentStyle,
       });
 
-      // If local dev (synchronous), process immediately
-      if (result.success) {
-        toast.success('Story generated successfully');
-        refetchEpisode();
-        router.push(
-          `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/story`,
-        );
-        return { success: true, data: { storyData: result.data } };
-      }
+      console.log('[story-actions] end here 1223');
+
       // If queued, return queued flag (WebSocket will deliver result)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {

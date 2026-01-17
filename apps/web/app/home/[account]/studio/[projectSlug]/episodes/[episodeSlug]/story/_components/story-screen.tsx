@@ -45,12 +45,17 @@ export function StoryScreen({
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const storyData = episode.storyData;
 
-  // WebSocket for async LLM results (uses shared provider from layout)
+  // WebSocket for screenplay-conversion async LLM results
   const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ screenplay: { scenes: unknown[] } }>(
     'screenplay-conversion'
   );
 
-  // Handle async WebSocket result
+  // WebSocket for story-generation results (when story is generated while on this tab)
+  const { status: storyGenStatus, result: storyGenResult, error: storyGenError } = useLlmJob<{ success: boolean }>(
+    'story-generation'
+  );
+
+  // Handle async screenplay-conversion result
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
       // llmResult is already the result object from message.result (contains {success, data})
@@ -67,6 +72,20 @@ export function StoryScreen({
       toast.error(llmError || 'Failed to convert to screenplay');
     }
   }, [llmStatus, llmResult, llmError, refetchEpisode, onScreenplayComplete]);
+
+  // Handle story-generation result (refresh to show generated story)
+  useEffect(() => {
+    if (storyGenStatus === 'success' && storyGenResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = storyGenResult as any;
+      if (resultData?.success) {
+        toast.success('Story generated successfully');
+        refetchEpisode();
+      }
+    } else if (storyGenStatus === 'error') {
+      toast.error(storyGenError || 'Failed to generate story');
+    }
+  }, [storyGenStatus, storyGenResult, storyGenError, refetchEpisode]);
 
   const handleConvertToScreenplay = () => {
     triggerLlm(async () => {

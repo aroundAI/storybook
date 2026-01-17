@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 
-import type { StoryIdeaWithSettings } from '@kit/episodes/components';
 import { DurationSelector } from '@kit/episodes/components';
 import type { ContentStyle } from '@kit/episodes/lib';
 import {
@@ -22,6 +21,12 @@ import {
 } from '@kit/episodes/schemas';
 import { generateStoryIdeasAction } from '@kit/episodes/server';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
+
+/** Extended story idea with generation settings */
+export interface StoryIdeaWithSettings extends StoryIdea {
+  targetDuration: number;
+  contentStyle: ContentStyle;
+}
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import {

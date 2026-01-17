@@ -248,6 +248,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <StudioSettingsForm
               projectId={project.id}
               currentSettings={{
+                description: project.description ?? undefined,
                 targetAudience: (project.metadata as Record<string, unknown>)
                   ?.targetAudience as string | undefined,
                 genre: (project.metadata as Record<string, unknown>)?.genre as

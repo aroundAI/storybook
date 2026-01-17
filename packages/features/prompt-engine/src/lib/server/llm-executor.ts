@@ -5,7 +5,6 @@ import { z } from 'zod';
 import type { LLMProvider } from '@kit/llm';
 import { LLMError, createLLMClient, logLLMUsage } from '@kit/llm';
 import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
 import { normalizeSceneShotData } from '../normalize-llm-output';
 import type { LLMExecutionConfig, LLMExecutionResult } from '../types';
@@ -616,8 +615,15 @@ export async function executeLLM<T = unknown>(
       data = fullData as T;
     }
 
-    // 11. Log analytics (success) - use admin client to bypass RLS
-    const client = getSupabaseServerAdminClient();
+    // 11. Log analytics (success) - use injected client or dynamic import for Next.js
+    let client;
+    if (config.supabaseClient) {
+      client = config.supabaseClient;
+    } else {
+      // Dynamic import to avoid server-only at module level (for Next.js context)
+      const { getSupabaseServerAdminClient } = await import('@kit/supabase/server-admin-client');
+      client = getSupabaseServerAdminClient();
+    }
 
     try {
       await logLLMUsage(client, {
@@ -679,11 +685,18 @@ export async function executeLLM<T = unknown>(
       `LLM execution failed: ${config.templateSlug}`,
     );
 
-    // Log analytics (failure) - use admin client to bypass RLS
-    const client = getSupabaseServerAdminClient();
+    // Log analytics (failure) - use injected client or dynamic import for Next.js
+    let failureClient;
+    if (config.supabaseClient) {
+      failureClient = config.supabaseClient;
+    } else {
+      // Dynamic import to avoid server-only at module level (for Next.js context)
+      const { getSupabaseServerAdminClient } = await import('@kit/supabase/server-admin-client');
+      failureClient = getSupabaseServerAdminClient();
+    }
 
     try {
-      await logLLMUsage(client, {
+      await logLLMUsage(failureClient, {
         accountId: config.context.accountId,
         userId: config.context.userId,
         templateSlug: config.templateSlug,

@@ -120,6 +120,7 @@ export async function processTranslateDialogue(
             accountId: data.accountId,
             userId: data.userId,
         },
+        supabaseClient: supabase,
     });
 
     // Parse translations from numbered output

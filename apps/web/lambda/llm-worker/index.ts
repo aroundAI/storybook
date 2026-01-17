@@ -33,6 +33,30 @@ const WEBSOCKET_ENDPOINT = process.env.WEBSOCKET_ENDPOINT || '';
 // Initialize Supabase client
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+// Debug: Log whether credentials are properly set (without exposing full key)
+console.log(`[Supabase Init] URL: ${supabaseUrl ? 'SET' : 'MISSING'}`);
+console.log(`[Supabase Init] Service Key: ${supabaseServiceKey ? `SET (${supabaseServiceKey.length} chars, starts with: ${supabaseServiceKey.substring(0, 10)}...)` : 'MISSING'}`);
+
+// Decode JWT to verify role (without external library)
+try {
+    const parts = supabaseServiceKey.split('.');
+    if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+        console.log(`[Supabase Init] JWT Role: ${payload.role}`);
+        console.log(`[Supabase Init] JWT Issued At: ${new Date(payload.iat * 1000).toISOString()}`);
+        if (payload.role !== 'service_role') {
+            console.error(`[Supabase Init] WARNING: Expected 'service_role' but got '${payload.role}'`);
+        }
+    }
+} catch (e) {
+    console.warn(`[Supabase Init] Could not decode JWT: ${e}`);
+}
+
+if (!supabaseUrl || !supabaseServiceKey) {
+    throw new Error(`Supabase credentials missing: URL=${!!supabaseUrl}, ServiceKey=${!!supabaseServiceKey}`);
+}
+
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
         autoRefreshToken: false,
@@ -168,14 +192,7 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
             const { processTranslateDialogue } = await import('./handlers/translate-dialogue');
             return processTranslateDialogue(job.payload, supabase);
         }
-        case 'continuity-analysis': {
-            const { processContinuityAnalysis } = await import('./handlers/continuity-analysis');
-            return processContinuityAnalysis(job.payload, supabase);
-        }
-        case 'caption-generation': {
-            const { processCaptionGeneration } = await import('./handlers/caption-generation');
-            return processCaptionGeneration(job.payload, supabase);
-        }
+        // NOTE: audio-cue-generation removed - audio cues now extracted directly in shot-generation
         default:
             throw new Error(`Unknown job type: ${job.jobType}`);
     }

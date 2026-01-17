@@ -364,13 +364,8 @@ export function SeasonGeneratorDialog({
     // Use the LLM job hook to trigger and await WebSocket result
     triggerLlm(async () => {
       const result = await analyzeSeasonRoadmapAction(data);
-      // If local dev (synchronous), process immediately
-      if (result?.data) {
-        processAnalysisResult(result.data);
-        return { success: true, data: { data: result.data } };
-      }
-      // If queued, return queued flag (WebSocket will deliver result)
-      if (result?.queued) {
+      // Job is always queued to Lambda - WebSocket will deliver result
+      if (result?.success && result?.queued) {
         toast.info('Analyzing roadmap in background... This may take 2-3 minutes.');
         return { queued: true };
       }

@@ -1,14 +1,54 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
 
+import { useLlmJob } from '@kit/ui/hooks';
+import { toast } from '@kit/ui/sonner';
+
+import { useActiveGenerationJob } from '@kit/episodes/hooks';
+
 import { useEpisodeContext } from '../_components/episode-context-provider';
+import { GeneratingState } from '../_components/generating-state';
 import { StoryScreen } from './_components/story-screen';
 
 export default function StoryPage() {
   const router = useRouter();
   const { episode, accountSlug, projectSlug, refetchEpisode } =
     useEpisodeContext();
+
+  // Check if story already has data - skip polling if so
+  const hasStory = Boolean(episode.storyData?.fullStory);
+
+  // Check for active story generation job (only if no data exists)
+  const { isGenerating } = useActiveGenerationJob(
+    episode.id,
+    'story',
+    { enabled: !hasStory }
+  );
+
+  // Subscribe to WebSocket for story-generation results
+  // This subscriber MUST be at page level so it's active during GeneratingState
+  const { status: wsStatus, result: wsResult, error: wsError } = useLlmJob<{ success: boolean }>(
+    'story-generation'
+  );
+
+  // Handle WebSocket completion - refetch episode data
+  useEffect(() => {
+    if (wsStatus === 'success' && wsResult) {
+      console.log('[StoryPage] WebSocket received completion, refetching episode');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = wsResult as any;
+      if (resultData?.success) {
+        toast.success('Story generated successfully');
+      }
+      refetchEpisode();
+    } else if (wsStatus === 'error') {
+      toast.error(wsError || 'Failed to generate story');
+      refetchEpisode();
+    }
+  }, [wsStatus, wsResult, wsError, refetchEpisode]);
 
   const handleScreenplayComplete = () => {
     refetchEpisode();
@@ -17,9 +57,19 @@ export default function StoryPage() {
     );
   };
 
+  // Show generating state if story is being generated
+  if (isGenerating && !hasStory) {
+    return (
+      <GeneratingState
+        title="Story"
+        description="Your story is being generated. This usually takes 15-30 seconds."
+      />
+    );
+  }
+
   // Check if story is unlocked (has story data or status >= 'story')
   const isUnlocked =
-    episode.status !== 'draft' || Boolean(episode.storyData?.fullStory);
+    episode.status !== 'draft' || hasStory;
 
   if (!isUnlocked) {
     return (
@@ -48,3 +98,4 @@ export default function StoryPage() {
     </div>
   );
 }
+

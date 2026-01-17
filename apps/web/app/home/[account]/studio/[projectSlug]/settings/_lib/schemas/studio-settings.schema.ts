@@ -34,6 +34,7 @@ const RecurringElementSchema = z.object({
  */
 export const UpdateStudioSettingsSchema = z.object({
   projectId: z.string().uuid(),
+  description: z.string().max(1000).optional(), // Project description
   targetAudience: z.string().max(200).optional(),
   genre: GenreSchema.optional(),
   videoStyle: VideoStyleSchema.optional(),

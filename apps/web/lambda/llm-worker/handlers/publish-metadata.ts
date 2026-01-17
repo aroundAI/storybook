@@ -23,7 +23,7 @@ interface PublishMetadataResult {
 
 export async function processPublishMetadata(
     payload: Record<string, unknown>,
-    _supabase: SupabaseClient,
+    supabase: SupabaseClient,
 ): Promise<PublishMetadataResult> {
     const data = payload as PublishMetadataPayload;
 
@@ -46,7 +46,7 @@ export async function processPublishMetadata(
 
     try {
         const result = await executeLLM<{ title: string; description: string }>({
-            templateSlug: 'publishing/translate-metadata',
+            templateSlug: 'translate-metadata',
             variables: {
                 title: data.title,
                 description: data.description,
@@ -56,6 +56,7 @@ export async function processPublishMetadata(
                 name: 'translate-metadata',
                 accountId: 'system',
             },
+            supabaseClient: supabase,
         });
 
         console.log('[Publish Metadata] Translation complete');

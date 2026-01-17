@@ -37,7 +37,7 @@ interface LanguageInsightsResult {
 
 export async function processLanguageInsights(
     payload: Record<string, unknown>,
-    _supabase: SupabaseClient,
+    supabase: SupabaseClient,
 ): Promise<LanguageInsightsResult> {
     const data = payload as LanguageInsightsPayload;
 
@@ -83,7 +83,7 @@ export async function processLanguageInsights(
 
     try {
         const result = await executeLLM<LanguageInsightsLLMOutput>({
-            templateSlug: 'analytics/language-insights',
+            templateSlug: 'language-insights',
             variables: {
                 language_data: JSON.stringify(languageData, null, 2),
             },
@@ -92,6 +92,7 @@ export async function processLanguageInsights(
                 accountId: data.projectId,
                 userId: data.userId,
             },
+            supabaseClient: supabase,
         });
 
         console.log('[Language Insights] Generated insights successfully');

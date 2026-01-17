@@ -31,3 +31,6 @@ export * from './thumbnail-actions';
 
 // Publish actions
 export * from '../lib/server/mutations/publish-actions';
+
+// Generation job tracking
+export * from '../lib/server/mutations/generation-job-actions';

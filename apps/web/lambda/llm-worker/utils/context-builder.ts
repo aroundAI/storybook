@@ -1,8 +1,18 @@
-import 'server-only';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
-import type { StoryData } from '../lib/types';
+/** StoryData interface for episode story content */
+export interface StoryData {
+  fullStory?: string;
+  episodeSummary?: string;
+  sentimentScore?: number;
+  keyEvents?: string[];
+  premise?: string;
+  synopsis?: string;
+  beats?: Array<{ label: string; content: string }>;
+  moral?: string;
+  signature_line?: string;
+  tags?: string[];
+}
 
 /**
  * Physical attributes for VEO 3.1 character descriptions (15+ attributes)
@@ -97,6 +107,7 @@ export interface EpisodeContext {
   genre: string;
   targetAudience: string;
   visualStyle: string;
+  aestheticStyle?: string; // Project Aesthetic Style for consistent visual descriptions
 
   // Recurring story element (signature scene, moral message, etc.)
   recurringElement?: {
@@ -113,14 +124,20 @@ export interface EpisodeContext {
  * Fetches characters, locations, season arc, and previous episodes
  *
  * @param episodeId - UUID of the episode
+ * @param supabase - Supabase client instance
  * @param useSemanticSearch - Whether to use semantic search for previous episodes (Phase 2.5)
  * @returns Complete episode context for prompt injection
  */
 export async function buildEpisodeContext(
   episodeId: string,
+  supabase: SupabaseClient,
   useSemanticSearch: boolean = false,
 ): Promise<EpisodeContext> {
-  const client = getSupabaseServerClient();
+  const client = supabase;
+
+  // Debug: Verify client is passed
+  console.log(`[buildEpisodeContext] Fetching episode ${episodeId}`);
+  console.log(`[buildEpisodeContext] Supabase client type: ${typeof client}`);
 
   // 1. Fetch episode with project metadata
   const { data: episode, error: episodeError } = await client
@@ -151,8 +168,16 @@ export async function buildEpisodeContext(
     .single();
 
   if (episodeError || !episode) {
-    throw new Error(`Episode not found: ${episodeId}`);
+    console.error(`[buildEpisodeContext] Query failed:`, {
+      errorCode: episodeError?.code,
+      errorMessage: episodeError?.message,
+      errorDetails: episodeError?.details,
+      errorHint: episodeError?.hint,
+    });
+    throw new Error(`Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'} [code: ${episodeError?.code}]`);
   }
+
+  console.log(`[buildEpisodeContext] Episode fetched successfully: ${episode.title}`);
 
   const metadata =
     (episode.metadata as {
@@ -184,11 +209,11 @@ export async function buildEpisodeContext(
 
   // 2. Fetch tagged characters
   const characterIds = metadata.character_ids ?? [];
-  const characters = await fetchCharactersByIds(characterIds);
+  const characters = await fetchCharactersByIds(characterIds, supabase);
 
   // 3. Fetch tagged locations
   const locationIds = metadata.location_ids ?? [];
-  const locations = await fetchLocationsByIds(locationIds);
+  const locations = await fetchLocationsByIds(locationIds, supabase);
 
   // 4. Fetch season context
   const seasonContext = episode.season
@@ -228,6 +253,7 @@ export async function buildEpisodeContext(
       previousEpisodes = await fetchSequentialEpisodes(
         episode.season_id,
         episode.number,
+        supabase,
       );
     }
   } else {
@@ -235,6 +261,7 @@ export async function buildEpisodeContext(
     previousEpisodes = await fetchSequentialEpisodes(
       episode.season_id,
       episode.number,
+      supabase,
     );
   }
 
@@ -261,6 +288,7 @@ export async function buildEpisodeContext(
     genre: projectMetadata.genre ?? 'general',
     targetAudience: projectMetadata.targetAudience ?? 'general',
     visualStyle: projectMetadata.videoStyle ?? 'balanced',
+    aestheticStyle: projectMetadata.projectAestheticStyle ?? undefined,
 
     // Recurring story element
     recurringElement:
@@ -290,12 +318,13 @@ interface CharacterMetadata {
 /**
  * Fetch character details by IDs with VEO 3.1 enhanced fields
  */
-async function fetchCharactersByIds(
+export async function fetchCharactersByIds(
   characterIds: string[],
+  supabase: SupabaseClient,
 ): Promise<EpisodeContext['characters']> {
   if (characterIds.length === 0) return [];
 
-  const client = getSupabaseServerClient();
+  const client = supabase;
 
   const { data, error } = await client
     .from('assets')
@@ -350,12 +379,13 @@ interface LocationMetadata {
 /**
  * Fetch location details by IDs with VEO 3.1 enhanced fields
  */
-async function fetchLocationsByIds(
+export async function fetchLocationsByIds(
   locationIds: string[],
+  supabase: SupabaseClient,
 ): Promise<EpisodeContext['locations']> {
   if (locationIds.length === 0) return [];
 
-  const client = getSupabaseServerClient();
+  const client = supabase;
 
   const { data, error } = await client
     .from('assets')
@@ -409,10 +439,11 @@ function buildPlotSummary(storyData: StoryData | null): string {
 async function fetchSequentialEpisodes(
   seasonId: string | null,
   currentNumber: number,
+  supabase: SupabaseClient,
 ): Promise<EpisodeContext['previousEpisodes']> {
   if (!seasonId) return [];
 
-  const client = getSupabaseServerClient();
+  const client = supabase;
 
   const { data, error } = await client
     .from('episodes')
@@ -883,12 +914,14 @@ export interface SceneFilteredContext {
  * This context is extracted ONCE and filtered per scene for efficiency
  *
  * @param episodeId - UUID of the episode
+ * @param supabase - Supabase client instance
  * @returns Complete global context with character/location registries
  */
 export async function buildGlobalShotContext(
   episodeId: string,
+  supabase: SupabaseClient,
 ): Promise<GlobalShotContext> {
-  const client = getSupabaseServerClient();
+  const client = supabase;
 
   // 1. Fetch episode with project metadata
   const { data: episode, error: episodeError } = await client
@@ -910,7 +943,7 @@ export async function buildGlobalShotContext(
     .single();
 
   if (episodeError || !episode) {
-    throw new Error(`Episode not found: ${episodeId}`);
+    throw new Error(`Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'}`);
   }
 
   const metadata =
@@ -928,11 +961,11 @@ export async function buildGlobalShotContext(
 
   // 2. Fetch tagged characters
   const characterIds = metadata.character_ids ?? [];
-  const characters = await fetchCharactersByIds(characterIds);
+  const characters = await fetchCharactersByIds(characterIds, supabase);
 
   // 3. Fetch tagged locations
   const locationIds = metadata.location_ids ?? [];
-  const locations = await fetchLocationsByIds(locationIds);
+  const locations = await fetchLocationsByIds(locationIds, supabase);
 
   // 4. Build character registry with VEO descriptions
   const characterRegistry: CharacterRegistryEntry[] = characters.map(

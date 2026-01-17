@@ -18,12 +18,20 @@ export function EpisodeWorkspaceHeader() {
   const characterIds = (episode.metadata?.character_ids as string[]) ?? [];
   const locationIds = (episode.metadata?.location_ids as string[]) ?? [];
 
-  // Extract character names from story data if available
-  const storyCharacters = episode.storyData?.characters ?? [];
-  const characterNames = storyCharacters.map((c) => c.name);
+  // Primary source: character/location names stored in metadata from season generation
+  const metadataCharacterNames = (episode.metadata?.character_names as string[]) ?? [];
+  const metadataLocationNames = (episode.metadata?.location_names as string[]) ?? [];
 
-  // Extract location names from screenplay data if available
+  // Fallback: Extract character names from story data if available
+  const storyCharacters = episode.storyData?.characters ?? [];
+  const storyCharacterNames = storyCharacters.map((c) => c.name);
+
+  // Fallback: Extract location names from screenplay data if available
   const screenplayLocations = episode.screenplayData?.metadata?.locations ?? [];
+
+  // Use metadata names first, then fallback to story/screenplay data
+  const characterNames = metadataCharacterNames.length > 0 ? metadataCharacterNames : storyCharacterNames;
+  const locationNames = metadataLocationNames.length > 0 ? metadataLocationNames : screenplayLocations;
 
   return (
     <header className="sticky top-0 z-20 px-6 py-2">
@@ -110,12 +118,12 @@ export function EpisodeWorkspaceHeader() {
 
           {/* Character/Location tags - smaller */}
           {(characterNames.length > 0 ||
-            screenplayLocations.length > 0 ||
+            locationNames.length > 0 ||
             characterIds.length > 0 ||
             locationIds.length > 0) && (
               <TaggedAssets
                 characterNames={characterNames}
-                locationNames={screenplayLocations}
+                locationNames={locationNames}
                 characterCount={characterIds.length}
                 locationCount={locationIds.length}
               />

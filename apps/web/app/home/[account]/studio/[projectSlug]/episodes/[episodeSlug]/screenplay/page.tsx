@@ -1,14 +1,54 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { useRouter } from 'next/navigation';
 
+import { useLlmJob } from '@kit/ui/hooks';
+import { toast } from '@kit/ui/sonner';
+
+import { useActiveGenerationJob } from '@kit/episodes/hooks';
+
 import { useEpisodeContext } from '../_components/episode-context-provider';
+import { GeneratingState } from '../_components/generating-state';
 import { ScreenplayScreen } from './_components/screenplay-screen';
 
 export default function ScreenplayPage() {
   const router = useRouter();
   const { episode, accountSlug, projectSlug, refetchEpisode } =
     useEpisodeContext();
+
+  // Check if screenplay already has data - skip polling if so
+  const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
+
+  // Check for active screenplay conversion job (only if no data exists)
+  const { isGenerating } = useActiveGenerationJob(
+    episode.id,
+    'screenplay',
+    { enabled: !hasScreenplay }
+  );
+
+  // Subscribe to WebSocket for screenplay-conversion results
+  // This subscriber MUST be at page level so it's active during GeneratingState
+  const { status: wsStatus, result: wsResult, error: wsError } = useLlmJob<{ success: boolean }>(
+    'screenplay-conversion'
+  );
+
+  // Handle WebSocket completion - refetch episode data
+  useEffect(() => {
+    if (wsStatus === 'success' && wsResult) {
+      console.log('[ScreenplayPage] WebSocket received completion, refetching episode');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = wsResult as any;
+      if (resultData?.success) {
+        toast.success('Screenplay generated successfully');
+      }
+      refetchEpisode();
+    } else if (wsStatus === 'error') {
+      toast.error(wsError || 'Failed to generate screenplay');
+      refetchEpisode();
+    }
+  }, [wsStatus, wsResult, wsError, refetchEpisode]);
 
   const handleShotListComplete = () => {
     refetchEpisode();
@@ -17,9 +57,17 @@ export default function ScreenplayPage() {
     );
   };
 
-  // Check if screenplay is unlocked (has screenplay data)
-  const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
+  // Show generating state if screenplay is being generated
+  if (isGenerating && !hasScreenplay) {
+    return (
+      <GeneratingState
+        title="Screenplay"
+        description="Your screenplay is being generated. This usually takes 20-40 seconds."
+      />
+    );
+  }
 
+  // Check if screenplay is unlocked (has screenplay data)
   if (!hasScreenplay) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
@@ -47,3 +95,4 @@ export default function ScreenplayPage() {
     </div>
   );
 }
+

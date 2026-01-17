@@ -101,13 +101,14 @@ export async function processSeasonOutline(
     const { executeLLM } = await import('@kit/prompt-engine/server');
 
     const result = await executeLLM<{ episodes: EpisodeOutline[] }>({
-        templateSlug: 'season-generation/season-outline',
+        templateSlug: 'season-outline',
         variables,
         context: {
             name: 'season-outline',
             accountId: data.accountId,
             userId: data.userId,
         },
+        supabaseClient: supabase,
     });
 
     const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);

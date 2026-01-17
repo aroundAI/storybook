@@ -102,107 +102,33 @@ export const generateLanguageInsightsAction = enhanceAction(
             };
         }
 
-        // Check if we're in Lambda environment (production)
-        const { isLambdaEnvironment, queueLlmJob } = await import(
-            '@kit/prompt-engine/server'
-        );
+        // Always queue to Lambda for processing
+        const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-        if (isLambdaEnvironment()) {
-            // Production: Queue for background processing
-            await queueLlmJob({
-                jobType: 'language-insights',
+        await queueLlmJob({
+            jobType: 'language-insights',
+            userId: user.id,
+            payload: {
+                projectId,
+                languagePerformance,
+                platformMatrix: platformMatrix.slice(0, 20),
+                contentType,
+                shorts,
+                geography,
                 userId: user.id,
-                payload: {
-                    projectId,
-                    languagePerformance,
-                    platformMatrix: platformMatrix.slice(0, 20),
-                    contentType,
-                    shorts,
-                    geography,
-                    userId: user.id,
-                },
-            });
+            },
+        });
 
-            return {
-                summary: 'Generating language insights in the background...',
-                topLanguage: 'en',
-                recommendations: [],
-                platformInsights: [],
-                contentInsights: [],
-                geographyInsights: [],
-                actions: [],
-                queued: true,
-            };
-        }
-
-        // Local development: Run synchronously
-        // Prepare data for LLM
-        const languageData = {
-            languagePerformance,
-            platformMatrix: platformMatrix.slice(0, 20),
-            contentType,
-            topShorts: shorts,
-            geography,
+        return {
+            summary: 'Generating language insights in the background...',
+            topLanguage: 'en',
+            recommendations: [],
+            platformInsights: [],
+            contentInsights: [],
+            geographyInsights: [],
+            actions: [],
+            queued: true,
         };
-
-        try {
-            const result = await executeLLM<LanguageInsightsLLMOutput>({
-                templateSlug: 'analytics/language-insights',
-                variables: {
-                    language_data: JSON.stringify(languageData, null, 2),
-                },
-                context: {
-                    name: 'generate-language-insights',
-                    accountId: projectId,
-                    userId: user.id,
-                },
-            });
-
-            return {
-                summary:
-                    result.data.languageSummary ||
-                    'Language analysis complete. Review recommendations below.',
-                topLanguage: result.data.topLanguage || 'en',
-                recommendations: result.data.languageRecommendations || [],
-                platformInsights: result.data.platformOptimization || [],
-                contentInsights: result.data.contentTypeInsights || [],
-                geographyInsights: result.data.geographicOpportunities || [],
-                actions: result.data.priorityActions || [],
-            };
-        } catch (error) {
-            logger.error({ error }, 'Error generating language insights');
-
-            // Return fallback with basic insights
-            const firstLang = languagePerformance[0];
-            if (!firstLang) {
-                return {
-                    summary: 'Unable to generate AI insights. Try again later.',
-                    topLanguage: 'en',
-                    recommendations: [],
-                    platformInsights: [],
-                    contentInsights: [],
-                    geographyInsights: [],
-                    actions: ['Unable to generate AI insights. Try again later.'],
-                };
-            }
-
-            const topLang = languagePerformance.reduce(
-                (best, curr) => (curr.views > best.views ? curr : best),
-                firstLang,
-            );
-
-            return {
-                summary: `Your top performing language is ${topLang.language.toUpperCase()} with ${topLang.views.toLocaleString()} views.`,
-                topLanguage: topLang.language,
-                recommendations: [
-                    `Focus on ${topLang.language.toUpperCase()} content which shows highest engagement`,
-                ],
-                platformInsights: [],
-                contentInsights: [],
-                geographyInsights: [],
-                actions: ['Unable to generate AI insights. Try again later.'],
-            };
-        }
     },
     {
         auth: true,

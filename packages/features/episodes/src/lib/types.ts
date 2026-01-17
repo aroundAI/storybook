@@ -91,6 +91,8 @@ export interface EpisodeMetadata {
   tags?: string[];
   character_ids?: string[]; // Asset IDs for tagged characters
   location_ids?: string[]; // Asset IDs for tagged locations
+  character_names?: string[]; // Character names for immediate display in header
+  location_names?: string[]; // Location names for immediate display in header
   season_premise?: string; // Season-level premise for context
 }
 

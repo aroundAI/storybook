@@ -7,6 +7,7 @@ import { Download, Filter, Loader2, Play, PlusCircle, Search, X } from 'lucide-r
 import { useAssets } from '@kit/assets/hooks';
 import type { EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Input } from '@kit/ui/input';
 import {
   Select,
@@ -50,6 +51,25 @@ export function VisualStudioScreen({
   const [_isPending, _startTransition] = useTransition();
   const [filter, setFilter] = useState<ShotFilter>({});
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
+
+  // WebSocket for shot-generation results (when shot list is generated while on this tab)
+  const { status: shotGenStatus, result: shotGenResult, error: shotGenError } = useLlmJob<{ success: boolean }>(
+    'shot-generation'
+  );
+
+  // Handle shot-generation result (refresh to show generated shots)
+  useEffect(() => {
+    if (shotGenStatus === 'success' && shotGenResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = shotGenResult as any;
+      if (resultData?.success) {
+        toast.success('Shot list generated successfully');
+        refetchEpisode();
+      }
+    } else if (shotGenStatus === 'error') {
+      toast.error(shotGenError || 'Failed to generate shot list');
+    }
+  }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode]);
 
   // Sync selectedShot with updated episode data after refetch
   // We intentionally only depend on episode.shots because we want to update

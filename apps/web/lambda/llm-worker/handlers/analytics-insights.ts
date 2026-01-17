@@ -71,7 +71,7 @@ function calculateChanges(
 
 export async function processAnalyticsInsights(
     payload: Record<string, unknown>,
-    _supabase: SupabaseClient,
+    supabase: SupabaseClient,
 ): Promise<InsightsResult> {
     const data = payload as AnalyticsInsightsPayload;
 
@@ -121,7 +121,7 @@ export async function processAnalyticsInsights(
 
     try {
         const result = await executeLLM<InsightsLLMOutput>({
-            templateSlug: 'analytics/insights-generation',
+            templateSlug: 'insights-generation',
             variables: {
                 analytics_data: JSON.stringify(analyticsSummary, null, 2),
             },
@@ -130,6 +130,7 @@ export async function processAnalyticsInsights(
                 accountId: data.projectId,
                 userId: data.userId,
             },
+            supabaseClient: supabase,
         });
 
         console.log('[Analytics Insights] Generated insights successfully');

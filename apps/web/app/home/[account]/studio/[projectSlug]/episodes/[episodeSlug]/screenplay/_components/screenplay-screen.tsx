@@ -53,20 +53,25 @@ export function ScreenplayScreen({
   const metadata = episode.screenplayData?.metadata;
   const hasShotList = Boolean(episode.shotList) || episode.shots.length > 0;
 
-  // WebSocket for async LLM results (uses shared provider from layout)
+  // WebSocket for shot-generation async LLM results
   const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ shotsCreated: number }>(
     'shot-generation'
   );
 
-  // Handle async WebSocket result
+  // WebSocket for screenplay-conversion results (when screenplay is generated while on this tab)
+  const { status: screenplayStatus, result: screenplayResult, error: screenplayError } = useLlmJob<{ success: boolean }>(
+    'screenplay-conversion'
+  );
+
+  // Handle shot-generation async result
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
-      // llmResult is already the result object from message.result (contains {success, shotsCreated})
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = llmResult as any;
-      const shotsCreated = resultData?.shotsCreated ?? 0;
       if (resultData?.success) {
-        toast.success(`Shot list generated with ${shotsCreated} shots`);
+        // Don't show count in toast - let UI refresh show actual count
+        // This avoids confusing "0 shots" message due to timing issues
+        toast.success('Shot list generated successfully');
         refetchEpisode();
         onShotListComplete();
       }
@@ -74,6 +79,20 @@ export function ScreenplayScreen({
       toast.error(llmError || 'Failed to generate shot list');
     }
   }, [llmStatus, llmResult, llmError, refetchEpisode, onShotListComplete]);
+
+  // Handle screenplay-conversion result (refresh to show generated screenplay)
+  useEffect(() => {
+    if (screenplayStatus === 'success' && screenplayResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = screenplayResult as any;
+      if (resultData?.success) {
+        toast.success('Screenplay converted successfully');
+        refetchEpisode();
+      }
+    } else if (screenplayStatus === 'error') {
+      toast.error(screenplayError || 'Failed to convert screenplay');
+    }
+  }, [screenplayStatus, screenplayResult, screenplayError, refetchEpisode]);
 
   const scrollToScene = useCallback((sceneNumber: number) => {
     setActiveSceneNumber(sceneNumber);
@@ -122,19 +141,21 @@ export function ScreenplayScreen({
         shotDurationMax: 8,
         videoProvider: 'kling',
       });
-      // If local dev (synchronous), process immediately
-      if (result.success) {
-        const shotsCreated = 'shotsCreated' in result ? result.shotsCreated : 0;
-        toast.success(`Shot list generated with ${shotsCreated} shots`);
-        refetchEpisode();
-        onShotListComplete();
-        return { success: true, data: { shotsCreated } };
-      }
       // If queued, return queued flag (WebSocket will deliver result)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
         toast.info('Generating shot list in background... This may take a few minutes.');
         return { queued: true };
+      }
+      // If local dev (synchronous), process immediately
+      if (result.success) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resultData = result as any;
+        const shotsCreated = resultData?.data?.shotsCreated ?? resultData?.shotsCreated ?? 0;
+        toast.success(`Shot list generated with ${shotsCreated} shots`);
+        refetchEpisode();
+        onShotListComplete();
+        return { success: true, data: { shotsCreated } };
       }
       throw new Error('Failed to generate shot list');
     });

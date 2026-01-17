@@ -58,8 +58,9 @@ export function LanguageTabBar({
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const resultData = llmResult as any;
             if (resultData?.success) {
+                const count = resultData?.data?.translatedCount ?? resultData?.translatedCount ?? 0;
                 toast.success(
-                    `Translated ${resultData.translatedCount ?? 0} lines to ${LANG_INFO[translatingTo].name}`
+                    `Translated ${count} lines to ${LANG_INFO[translatingTo].name}`
                 );
                 onLanguageAdded?.();
                 onLanguageChange(translatingTo);
@@ -84,6 +85,12 @@ export function LanguageTabBar({
                 preserveTiming: true,
             });
 
+            // If queued, return queued flag (WebSocket will deliver result)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((result as any)?.queued) {
+                toast.info('Translating dialogue in background...');
+                return { queued: true };
+            }
             // If local dev (synchronous), process immediately
             if (result.success) {
                 toast.success(
@@ -93,12 +100,6 @@ export function LanguageTabBar({
                 onLanguageChange(targetLang);
                 setTranslatingTo(null);
                 return { success: true, data: { translatedCount: result.translatedCount } };
-            }
-            // If queued, return queued flag (WebSocket will deliver result)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            if ((result as any)?.queued) {
-                toast.info('Translating dialogue in background...');
-                return { queued: true };
             }
             throw new Error(result.error ?? 'Translation failed');
         });

@@ -214,290 +214,51 @@ export const convertToScreenplayAction = enhanceAction(
       throw new Error('Unable to determine account for episode');
     }
 
-    // Check if we're in Lambda environment (production)
-    const { isLambdaEnvironment, queueLlmJob } = await import(
-      '@kit/prompt-engine/server'
-    );
+    // Always queue to Lambda for processing
+    const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-    if (isLambdaEnvironment()) {
-      // Production: Queue for background processing
-      await queueLlmJob({
-        jobType: 'screenplay-conversion',
-        userId: user.id,
-        payload: {
-          episodeId: data.episodeId,
-          dialogueStyle: data.dialogueStyle,
-          contentStyle: data.contentStyle,
-          version: episode.version,
-          accountId,
-          userId: user.id,
-          projectId: episode.project_id,
-        },
-      });
-
-      logger.info(ctx, 'Screenplay conversion job queued');
-      return { success: true, queued: true };
-    }
-
-    // Local development: Run synchronously
-    logger.info(ctx, 'Running synchronously (local dev mode)');
-
-    // Build context for character/location names (Phase 4)
-    const {
-      buildEpisodeContext,
-      formatCharactersForPrompt,
-      formatRecurringElementForPrompt,
-    } = await import('./context-builder');
-    const episodeContext = await buildEpisodeContext(data.episodeId);
-
-    const characterNames = episodeContext.characters.map((c) => c.name);
-    const locationNames = episodeContext.locations.map((l) => l.name);
-
-    // Get target duration - cascade through sources:
-    // 1. Episode column (set during story generation)
-    // 2. story_data (fallback from story generation)
-    // 3. Project default
-    // 4. Hardcoded default (5 minutes)
-    const projectMetadata = episode.project?.metadata as {
-      defaultEpisodeDuration?: number;
-      contentStyle?: ContentStyle;
-    } | null;
-    const targetDuration =
-      episode.target_duration_seconds ??
-      storyData?.targetDuration ??
-      projectMetadata?.defaultEpisodeDuration ??
-      300; // Default to 5 minutes
-
-    // Get content style - cascade through sources:
-    // 1. Action parameter (explicit override)
-    // 2. story_data (from story generation)
-    // 3. Project default
-    // 4. Hardcoded default (dialogue-heavy)
-    const contentStyle: ContentStyle =
-      data.contentStyle ??
-      storyData?.contentStyle ??
-      projectMetadata?.contentStyle ??
-      'dialogue-heavy';
-
-    // Calculate content scaling based on target duration
-    const scaling = calculateContentScaling({
-      targetDurationSeconds: targetDuration,
-      contentStyle,
-    });
-
-    // Calculate average scene duration
-    const avgSceneCount =
-      (scaling.screenplay.sceneCountMin + scaling.screenplay.sceneCountMax) / 2;
-    const avgSceneDuration = Math.round(targetDuration / avgSceneCount);
-
-    // Execute LLM prompt
-    logger.info(
-      {
-        ...ctx,
-        targetDuration,
-        contentStyle,
-        sceneCountRange: `${scaling.screenplay.sceneCountMin}-${scaling.screenplay.sceneCountMax}`,
-        dialogueTarget: `${scaling.screenplay.totalDialogueLinesMin}-${scaling.screenplay.totalDialogueLinesMax}`,
-      },
-      'Executing screenplay conversion LLM with scaling',
-    );
-
-    const result = await executeLLM<ScreenplayConversionOutput>({
-      templateSlug: 'screenplay-conversion',
-      variables: {
-        story: storyData.fullStory,
-
-        // Duration and scaling
-        target_duration: targetDuration,
-        duration_description: formatDuration(targetDuration),
-        content_style: contentStyle,
-
-        // Scene scaling
-        scene_count_min: scaling.screenplay.sceneCountMin,
-        scene_count_max: scaling.screenplay.sceneCountMax,
-        avg_scene_duration: avgSceneDuration,
-
-        // Dialogue scaling (CRITICAL for getting enough dialogue)
-        dialogue_lines_per_scene_min:
-          scaling.screenplay.dialogueLinesPerSceneMin,
-        dialogue_lines_per_scene_max:
-          scaling.screenplay.dialogueLinesPerSceneMax,
-        total_dialogue_lines_min: scaling.screenplay.totalDialogueLinesMin,
-        total_dialogue_lines_max: scaling.screenplay.totalDialogueLinesMax,
-
-        // Full character context (for personality-consistent dialogue)
-        characters: formatCharactersForPrompt(episodeContext.characters),
-
-        // Character and location names (for quick reference)
-        character_names:
-          characterNames.length > 0 ? characterNames.join(', ') : '',
-        location_names:
-          locationNames.length > 0 ? locationNames.join(', ') : '',
-
-        // Style
-        style: data.dialogueStyle ?? 'natural',
-
-        // Recurring story element (from project settings)
-        recurring_element: formatRecurringElementForPrompt(
-          episodeContext.recurringElement,
-        ),
-      },
-      context: {
-        name: 'screenplay-conversion',
-        accountId,
-        userId: user.id,
-      },
-    });
-
-    const screenplay = result.data.screenplay;
-    const costCents = Math.round((result.metadata.cost ?? 0) * 100);
-
-    const totalDialogueCount = screenplay.scenes.reduce(
-      (sum: number, scene) => sum + scene.dialogue.length,
-      0,
-    );
-
-    logger.info(
-      {
-        ...ctx,
-        sceneCount: screenplay.scenes.length,
-        dialogueCount: totalDialogueCount,
-        costCents,
-        tokens: result.metadata.tokens,
-      },
-      'Screenplay conversion completed',
-    );
-
-    // Extract and insert dialogue lines with character asset ID mapping
-    const dialogueLines = extractDialogueLines(
-      screenplay,
-      data.episodeId,
-      episodeContext.characters,
-    );
-
-    if (dialogueLines.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: dialogueError } = await (client as any)
-        .from('dialogue_lines')
-        .insert(dialogueLines);
-
-      if (dialogueError) {
-        logger.error(
-          { ...ctx, error: dialogueError },
-          'Failed to insert dialogue lines',
-        );
-        throw new Error(
-          `Failed to create dialogue lines: ${dialogueError.message}`,
-        );
-      }
-
-      logger.info(
-        { ...ctx, dialogueLineCount: dialogueLines.length },
-        'Dialogue lines inserted',
-      );
-    }
-
-    // Prepare screenplay_data for storage
-    const generatedAt = new Date().toISOString();
-    const screenplayData = {
-      scenes: screenplay.scenes,
-      metadata: screenplay.metadata,
-      generatedAt,
-      generatedBy: {
-        model: result.metadata.model,
-        provider: result.metadata.provider,
-        costCents,
-      },
+    // Create generation job entry for tracking
+    const jobData = {
+      reference_type: 'episode',
+      reference_id: data.episodeId,
+      job_type: 'screenplay',
+      status: 'queued',
+      account_id: accountId,
+      project_id: episode.project_id,
+      idempotency_key: `screenplay-${data.episodeId}-${Date.now()}`,
+      input_data: { episodeId: data.episodeId },
     };
-
-    // Update episode with optimistic locking
+    console.log('[screenplay-actions] Creating job:', JSON.stringify(jobData));
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: updatedEpisode, error: updateError } = await (client as any)
-      .from('episodes')
-      .update({
-        screenplay_data: screenplayData,
-        status: 'storyboard' as EpisodeStatus,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', data.episodeId)
-      .eq('version', episode.version)
-      .is('deleted_at', null)
-      .select()
+    const { data: insertedJob, error: jobError } = await (client as any)
+      .from('generation_jobs')
+      .insert(jobData)
+      .select('id')
       .single();
 
-    if (updateError) {
-      logger.error(
-        { ...ctx, error: updateError },
-        'Failed to update episode with screenplay data',
-      );
-      throw new Error(`Failed to update episode: ${updateError.message}`);
+    if (jobError) {
+      console.error('[screenplay-actions] FAILED:', jobError);
+      logger.warn({ ...ctx, error: jobError }, 'Failed to create generation job entry');
+    } else {
+      console.log('[screenplay-actions] SUCCESS:', insertedJob);
     }
 
-    if (!updatedEpisode) {
-      throw new OptimisticLockError('episode');
-    }
-
-    // Create audit log
-    const networkContext = await extractNetworkContext();
-
-    await createAuditLog({
-      accountId,
+    await queueLlmJob({
+      jobType: 'screenplay-conversion',
       userId: user.id,
-      action: 'update',
-      objectType: 'episode',
-      objectId: episode.id,
-      objectName: episode.title,
-      before: { status: episode.status, screenplay_data: null },
-      after: {
-        status: updatedEpisode.status,
-        screenplay_data: screenplayData,
-      },
-      scopes: [
-        { type: 'account', id: accountId },
-        { type: 'project', id: episode.project_id },
-        { type: 'episode', id: episode.id },
-      ],
-      ...networkContext,
-    });
-
-    const duration = Date.now() - startTime;
-
-    logger.info(
-      {
-        ...ctx,
+      payload: {
+        episodeId: data.episodeId,
+        dialogueStyle: data.dialogueStyle,
+        contentStyle: data.contentStyle,
+        version: episode.version,
+        accountId,
         userId: user.id,
         projectId: episode.project_id,
-        provider: result.metadata.provider,
-        model: result.metadata.model,
-        costCents,
-        duration,
-        sceneCount: screenplay.scenes.length,
-        dialogueLineCount: dialogueLines.length,
       },
-      'Screenplay conversion action completed',
-    );
+    });
 
-    revalidatePath('/home/[account]/projects/[id]', 'page');
-
-    return {
-      success: true,
-      data: {
-        screenplay,
-        dialogueLinesCreated: dialogueLines.length,
-        episode: {
-          id: updatedEpisode.id,
-          status: updatedEpisode.status,
-          version: updatedEpisode.version,
-        },
-        metadata: {
-          provider: result.metadata.provider,
-          model: result.metadata.model,
-          costCents,
-          tokensUsed: result.metadata.tokens,
-          generatedAt,
-        },
-      },
-    };
+    logger.info(ctx, 'Screenplay conversion job queued');
+    return { success: true, queued: true };
   },
   {
     schema: ConvertToScreenplaySchema,

@@ -117,52 +117,22 @@ export const translateMetadataAction = enhanceAction(
             };
         }
 
-        // Check if we're in Lambda environment (production)
-        const { isLambdaEnvironment, queueLlmJob } = await import(
-            '@kit/prompt-engine/server'
-        );
+        // Always queue to Lambda for processing
+        const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-        if (isLambdaEnvironment()) {
-            // Production: Queue for background processing
-            await queueLlmJob({
-                jobType: 'publish-metadata',
-                userId: 'system',
-                payload: { title, description, targetLanguage },
-            });
+        await queueLlmJob({
+            jobType: 'publish-metadata',
+            userId: 'system',
+            payload: { title, description, targetLanguage },
+        });
 
-            return {
-                success: true,
-                translatedTitle: title,
-                translatedDescription: description,
-                targetLanguage,
-                queued: true,
-            };
-        }
-
-        // Local development: Run synchronously
-        try {
-            const result = await executeLLM<{ title: string; description: string }>({
-                templateSlug: 'publishing/translate-metadata',
-                variables: { title, description, targetLanguage },
-                context: { name: 'translate-metadata', accountId: 'system' },
-            });
-
-            return {
-                success: true,
-                translatedTitle: result.data?.title || title,
-                translatedDescription: result.data?.description || description,
-                targetLanguage,
-            };
-        } catch (error) {
-            console.error('Translation failed, using original:', error);
-            // Fallback to original if translation fails
-            return {
-                success: false,
-                translatedTitle: title,
-                translatedDescription: description,
-                targetLanguage,
-            };
-        }
+        return {
+            success: true,
+            translatedTitle: title,
+            translatedDescription: description,
+            targetLanguage,
+            queued: true,
+        };
     },
     { schema: TranslateMetadataSchema },
 );

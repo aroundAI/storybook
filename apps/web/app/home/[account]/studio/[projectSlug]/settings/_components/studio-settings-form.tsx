@@ -54,6 +54,7 @@ import { updateStudioSettingsAction } from '../_lib/server/update-studio-setting
 interface StudioSettingsFormProps {
   projectId: string;
   currentSettings: {
+    description?: string;  // Project description
     targetAudience?: string;
     genre?: Genre;
     videoStyle?: VideoStyle;
@@ -162,6 +163,7 @@ export function StudioSettingsForm({
     resolver: zodResolver(UpdateStudioSettingsSchema),
     defaultValues: {
       projectId,
+      description: currentSettings.description ?? '',
       targetAudience: currentSettings.targetAudience ?? '',
       genre: currentSettings.genre,
       videoStyle: currentSettings.videoStyle,
@@ -208,6 +210,29 @@ export function StudioSettingsForm({
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Project Description */}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Project Description</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Describe your project..."
+                      className="resize-none"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    A brief description of your project shown on the overview page.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="targetAudience"
@@ -220,7 +245,7 @@ export function StudioSettingsForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>Test description</FormDescription>
+                  <FormDescription>Who is this content for?</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

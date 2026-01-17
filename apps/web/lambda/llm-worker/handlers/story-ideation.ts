@@ -2,9 +2,17 @@
  * Story Ideation Handler
  *
  * Generates story ideas based on a premise.
+ * Uses buildEpisodeContext for rich context (same as local server action).
  * No database writes - just returns ideas to frontend.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import {
+    buildEpisodeContext,
+    formatCharactersForPrompt,
+    formatLocationsForPrompt,
+    formatRecurringElementForPrompt,
+} from '../utils/context-builder';
 
 interface StoryIdeationPayload {
     episodeId: string;
@@ -45,89 +53,43 @@ export async function processStoryIdeation(
 
     console.log(`[Story Ideation] Processing for episode ${data.episodeId}`);
 
-    // 1. Fetch episode with project context
-    const { data: episode, error: episodeError } = await supabase
-        .from('episodes')
-        .select(`
-            id, number, title, description, season_id,
-            project:projects(
-                id, account_id, metadata,
-                seasons:seasons(id, number, premise)
-            ),
-            season:seasons(id, number, premise)
-        `)
-        .eq('id', data.episodeId)
-        .single();
+    // 1. Build rich context using shared context-builder (matches local server action)
+    const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
 
-    if (episodeError || !episode) {
-        throw new Error(`Episode not found: ${episodeError?.message}`);
-    }
-
-    // 2. Fetch characters and locations for this project
-    const projectId = episode.project?.id;
-
-    const [charactersResult, locationsResult] = await Promise.all([
-        supabase
-            .from('assets')
-            .select('id, name, description, metadata')
-            .eq('project_id', projectId)
-            .eq('type', 'character')
-            .is('deleted_at', null),
-        supabase
-            .from('assets')
-            .select('id, name, description, metadata')
-            .eq('project_id', projectId)
-            .eq('type', 'location')
-            .is('deleted_at', null),
-    ]);
-
-    const characters = charactersResult.data || [];
-    const locations = locationsResult.data || [];
-
-    // 3. Build prompt variables
-    const projectMetadata = episode.project?.metadata as Record<string, unknown> || {};
-    const seasonPremise = episode.season?.premise || '';
-
-    const formatCharacters = (chars: typeof characters) => {
-        if (chars.length === 0) return 'No specific characters defined yet.';
-        return chars.map(c => {
-            const meta = c.metadata as Record<string, unknown> || {};
-            return `- ${c.name}: ${c.description || ''}${meta.role ? ` (${meta.role})` : ''}`;
-        }).join('\n');
-    };
-
-    const formatLocations = (locs: typeof locations) => {
-        if (locs.length === 0) return 'No specific locations defined yet.';
-        return locs.map(l => `- ${l.name}: ${l.description || ''}`).join('\n');
-    };
-
+    // 2. Prepare variables for prompt template (same logic as local server action)
     const variables = {
-        premise: data.premise,
+        premise: episodeContext.premise,
         number_of_ideas: data.numberOfIdeas || 3,
-        characters: formatCharacters(characters),
-        locations: formatLocations(locations),
-        season_context: seasonPremise
-            ? `This is Episode ${episode.number}. Season Premise: ${seasonPremise}`
+        characters: formatCharactersForPrompt(episodeContext.characters),
+        locations: formatLocationsForPrompt(episodeContext.locations),
+        season_context: episodeContext.seasonPremise
+            ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
             : '',
-        previous_episodes: '', // Could fetch previous episodes if needed
-        genre: projectMetadata.genre || 'general',
-        target_audience: projectMetadata.targetAudience || 'general',
-        visual_style: projectMetadata.videoStyle || 'cinematic',
+        previous_episodes:
+            episodeContext.previousEpisodes.length > 0
+                ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
+                : '',
+        genre: episodeContext.genre,
+        target_audience: episodeContext.targetAudience,
+        visual_style: episodeContext.visualStyle,
         style: 'balanced',
-        recurring_element: '',
+        recurring_element: formatRecurringElementForPrompt(
+            episodeContext.recurringElement,
+        ),
     };
 
-    // 4. Execute LLM
+    // 3. Execute LLM
     const { executeLLM } = await import('@kit/prompt-engine/server');
 
     const result = await executeLLM<{ ideas: StoryIdea[] }>({
-        templateSlug: 'story-generation/story-ideation',
+        templateSlug: 'story-ideation',
         variables,
         context: {
             name: 'story-ideation',
             accountId: data.accountId,
             userId: data.userId,
         },
+        supabaseClient: supabase, // Required for Lambda execution
     });
 
     const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);

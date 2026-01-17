@@ -78,210 +78,26 @@ export const translateDialogueToLanguageAction = enhanceAction(
 
         logger.info(ctx, 'Processing dialogue translation request');
 
-        // Check if we're in Lambda environment (production)
-        const { isLambdaEnvironment, queueLlmJob } = await import(
-            '@kit/prompt-engine/server'
-        );
+        // Always queue to Lambda for processing
+        const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-        if (isLambdaEnvironment()) {
-            // Production: Queue for background processing
-            await queueLlmJob({
-                jobType: 'translate-dialogue',
+        await queueLlmJob({
+            jobType: 'translate-dialogue',
+            userId: user.id,
+            payload: {
+                episodeId: input.episodeId,
+                targetLanguage: input.targetLanguage,
+                preserveTiming: input.preserveTiming,
+                accountId,
                 userId: user.id,
-                payload: {
-                    episodeId: input.episodeId,
-                    targetLanguage: input.targetLanguage,
-                    preserveTiming: input.preserveTiming,
-                    accountId,
-                    userId: user.id,
-                },
-            });
-
-            logger.info(ctx, 'Dialogue translation job queued');
-            return { success: true, translatedCount: 0, queued: true };
-        }
-
-        // Local development: Run synchronously
-        logger.info(ctx, 'Running synchronously (local dev mode)');
-
-        try {
-            // 1. Fetch English dialogue lines for this episode
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: englishLines, error: fetchError } = await (client as any)
-                .from('dialogue_lines')
-                .select(`
-          id,
-          episode_id,
-          character_asset_id,
-          shot_id,
-          text,
-          sequence_number,
-          scene_number,
-          timeline_start_seconds,
-          estimated_duration_seconds
-        `)
-                .eq('episode_id', input.episodeId)
-                .eq('language', 'en')
-                .order('sequence_number', { ascending: true });
-
-            if (fetchError) {
-                throw new Error(`Failed to fetch dialogue: ${fetchError.message}`);
-            }
-
-            const lines = (englishLines ?? []) as DialogueLineRow[];
-
-            if (lines.length === 0) {
-                return { success: true, translatedCount: 0 };
-            }
-
-            // 2. Check if translations already exist
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { data: existing } = await (client as any)
-                .from('dialogue_lines')
-                .select('source_dialogue_id')
-                .eq('episode_id', input.episodeId)
-                .eq('language', input.targetLanguage);
-
-            const existingSourceIds = new Set(
-                (existing ?? []).map((e: { source_dialogue_id: string }) => e.source_dialogue_id)
-            );
-
-            // Filter out already translated lines
-            const linesToTranslate = lines.filter(l => !existingSourceIds.has(l.id));
-
-            if (linesToTranslate.length === 0) {
-                logger.info(ctx, 'All lines already translated');
-                return { success: true, translatedCount: 0 };
-            }
-
-            // 3. Translate using LLM
-            const targetLangName = SUPPORTED_LANGUAGES[input.targetLanguage as SupportedLanguage];
-            const translations = await translateWithLLM(
-                linesToTranslate,
-                targetLangName,
-                input.preserveTiming,
-                logger,
-                ctx,
-            );
-
-            // 4. Insert translated dialogue lines
-            const newLines = linesToTranslate.map((line, index) => ({
-                episode_id: line.episode_id,
-                character_asset_id: line.character_asset_id,
-                shot_id: line.shot_id,
-                text: translations[index] ?? line.text,
-                sequence_number: line.sequence_number,
-                scene_number: line.scene_number,
-                timeline_start_seconds: line.timeline_start_seconds,
-                estimated_duration_seconds: line.estimated_duration_seconds,
-                language: input.targetLanguage,
-                source_dialogue_id: line.id,
-                status: 'pending', // Needs TTS generation
-            }));
-
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const { error: insertError } = await (client as any)
-                .from('dialogue_lines')
-                .insert(newLines);
-
-            if (insertError) {
-                throw new Error(`Failed to insert translations: ${insertError.message}`);
-            }
-
-            logger.info(
-                { ...ctx, count: newLines.length },
-                'Dialogue translated successfully',
-            );
-
-            return { success: true, translatedCount: newLines.length };
-        } catch (error) {
-            const message = error instanceof Error ? error.message : 'Unknown error';
-            logger.error({ ...ctx, error: message }, 'Translation failed');
-            return { success: false, translatedCount: 0, error: message };
-        }
-    },
-    {
-        schema: TranslateDialogueSchema,
-    },
-);
-
-/**
- * Translate dialogue lines using LLM
- * Preserves ElevenLabs audio tags like [excited], [sigh] in the output
- * Uses Gemini directly since translation returns plain text, not JSON
- */
-async function translateWithLLM(
-    lines: DialogueLineRow[],
-    targetLanguage: string,
-    preserveTiming: boolean,
-    logger: Awaited<ReturnType<typeof getLogger>>,
-    ctx: { name: string; accountId: string; userId?: string;[key: string]: string | number | undefined },
-): Promise<string[]> {
-    // Build dialogue lines text
-    const linesText = lines
-        .map((l, i) => {
-            const timing = preserveTiming && l.estimated_duration_seconds
-                ? ` (max ${l.estimated_duration_seconds.toFixed(1)}s speaking time)`
-                : '';
-            return `${i + 1}. "${l.text}"${timing}`;
-        })
-        .join('\n');
-
-    try {
-        // Use executeLLM following the standard codebase pattern
-        const { executeLLM } = await import('@kit/prompt-engine/server');
-
-        const result = await executeLLM<string>({
-            templateSlug: 'dialogue-translation',
-            variables: {
-                target_language: targetLanguage,
-                dialogue_lines: linesText,
-                preserve_timing: preserveTiming,
             },
-            context: ctx,
         });
 
-        const content = result.data;
-
-        // Parse numbered translations
-        const translations = parseNumberedTranslations(content, lines.length);
-
-        // Validate audio tag preservation (warning only)
-        let tagsPreserved = 0;
-        let tagsLost = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const originalTags: string[] = lines[i]?.text.match(/\[[a-zA-Z\s]+\]/g) ?? [];
-            const translatedTags: string[] = translations[i]?.match(/\[[a-zA-Z\s]+\]/g) ?? [];
-
-            for (const tag of originalTags) {
-                if (translatedTags.includes(tag)) {
-                    tagsPreserved++;
-                } else {
-                    tagsLost++;
-                    logger.warn(
-                        { ...ctx, line: i + 1, tag, originalText: lines[i]?.text?.substring(0, 50) ?? '' },
-                        'Audio tag lost in translation'
-                    );
-                }
-            }
-        }
-
-        if (tagsLost > 0) {
-            logger.warn(
-                { ...ctx, tagsPreserved, tagsLost },
-                'Some audio tags were not preserved during translation'
-            );
-        }
-
-        logger.info({ ...ctx, translationCount: translations.length, tagsPreserved, tagsLost }, 'LLM translation complete');
-
-        return translations;
-    } catch (error) {
-        logger.error({ ...ctx, error }, 'LLM translation failed');
-        // Return original text as fallback
-        return lines.map(l => l.text);
-    }
-}
+        logger.info(ctx, 'Dialogue translation job queued');
+        return { success: true, translatedCount: 0, queued: true };
+    },
+    { schema: TranslateDialogueSchema },
+);
 
 
 /**

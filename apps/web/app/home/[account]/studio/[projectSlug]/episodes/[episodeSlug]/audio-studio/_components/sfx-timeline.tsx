@@ -1,0 +1,301 @@
+'use client';
+
+import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
+
+import {
+    getAudioCuesAction,
+    generateAudioForCueAction,
+} from '@kit/audio-generation/server';
+import { Button } from '@kit/ui/button';
+import { Skeleton } from '@kit/ui/skeleton';
+import { toast } from '@kit/ui/sonner';
+import { cn } from '@kit/ui/utils';
+
+interface SfxTimelineProps {
+    episodeId: string;
+    totalDuration: number;
+    pixelsPerSecond: number;
+    onRefresh?: () => void;
+}
+
+interface AudioCue {
+    id: string;
+    scene_number: number;
+    cue_type: 'sfx' | 'ambient' | 'music';
+    prompt: string;
+    start_offset_seconds: number | null;
+    duration_seconds: number | null;
+    status: string | null;
+    audio_asset_id: string | null;
+    audio_assets: {
+        id: string;
+        name: string | null;
+        file_url: string | null;
+        duration_seconds: number | null;
+    } | null;
+}
+
+const TIMELINE_LEFT_PADDING = 30;
+
+function formatTime(seconds: number): string {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+function getMarkerInterval(pps: number): number {
+    if (pps >= 120) return 1;
+    if (pps >= 60) return 5;
+    return 15;
+}
+
+export function SfxTimeline({
+    episodeId,
+    totalDuration,
+    pixelsPerSecond,
+    onRefresh,
+}: SfxTimelineProps) {
+    const [cues, setCues] = useState<AudioCue[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+
+    // Fetch SFX and ambient cues
+    const fetchCues = useCallback(async () => {
+        try {
+            const result = await getAudioCuesAction({ episodeId });
+            // Filter to only sfx and ambient cues, sort by start_offset_seconds
+            const sfxCues = (result.cues as AudioCue[])
+                .filter((c) => c.cue_type === 'sfx' || c.cue_type === 'ambient')
+                .sort((a, b) => (a.start_offset_seconds ?? 0) - (b.start_offset_seconds ?? 0));
+            setCues(sfxCues);
+        } catch (error) {
+            console.error('Failed to fetch SFX cues:', error);
+            toast.error('Failed to load sound effects');
+        } finally {
+            setIsLoading(false);
+        }
+    }, [episodeId]);
+
+    useEffect(() => {
+        void fetchCues();
+    }, [fetchCues]);
+
+    // Poll for generating cues
+    useEffect(() => {
+        const generatingCues = cues.filter((c) => c.status === 'generating');
+        if (generatingCues.length === 0) return;
+
+        const pollInterval = setInterval(async () => {
+            await fetchCues();
+        }, 5000);
+
+        return () => clearInterval(pollInterval);
+    }, [cues, fetchCues]);
+
+    const handleGenerate = async (cue: AudioCue) => {
+        setGeneratingIds((prev) => new Set(prev).add(cue.id));
+
+        try {
+            const result = await generateAudioForCueAction({ cueId: cue.id });
+            if (result.success) {
+                toast.success(`Generated: ${cue.prompt.substring(0, 30)}...`);
+                await fetchCues();
+                onRefresh?.();
+            } else {
+                toast.error(result.error ?? 'Generation failed');
+            }
+        } catch (error) {
+            toast.error('Failed to generate audio');
+        } finally {
+            setGeneratingIds((prev) => {
+                const next = new Set(prev);
+                next.delete(cue.id);
+                return next;
+            });
+        }
+    };
+
+    const handlePlay = (cue: AudioCue) => {
+        const url = cue.audio_assets?.file_url;
+        if (!url) {
+            toast.error('No audio available');
+            return;
+        }
+        const audio = new Audio(url);
+        audio.play();
+    };
+
+    const handleGenerateAll = async () => {
+        const pendingCues = cues.filter((c) => c.status === 'pending');
+        if (pendingCues.length === 0) {
+            toast.info('No pending cues to generate');
+            return;
+        }
+
+        toast.info(`Generating ${pendingCues.length} sound effects...`);
+
+        for (const cue of pendingCues) {
+            await handleGenerate(cue);
+        }
+
+        toast.success('All sound effects generated');
+    };
+
+    if (isLoading) {
+        return (
+            <div className="flex h-full flex-col bg-background">
+                <div className="h-10 border-b bg-gray-100 dark:bg-black/20" />
+                <div className="flex-1 space-y-4 p-4">
+                    {[...Array(3)].map((_, i) => (
+                        <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    const effectiveDuration = totalDuration > 0 ? totalDuration : 90;
+    const timelineWidth = Math.max(
+        effectiveDuration * pixelsPerSecond + TIMELINE_LEFT_PADDING + 40,
+        800
+    );
+
+    const timeMarkers: number[] = [];
+    const markerInterval = getMarkerInterval(pixelsPerSecond);
+    for (let t = 0; t <= effectiveDuration; t += markerInterval) {
+        timeMarkers.push(t);
+    }
+
+    const pendingCount = cues.filter((c) => c.status === 'pending').length;
+
+    return (
+        <div className="relative flex h-full flex-col bg-card">
+            {/* Header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-200/50 px-4 py-2 dark:border-gray-700/50">
+                <div className="flex items-center gap-2">
+                    <Volume2 className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Sound Effects ({cues.length})
+                    </span>
+                    {pendingCount > 0 && (
+                        <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                            {pendingCount} pending
+                        </span>
+                    )}
+                </div>
+                {pendingCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={handleGenerateAll}>
+                        Generate All ({pendingCount})
+                    </Button>
+                )}
+            </div>
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-x-auto overflow-y-auto">
+                {/* Time ruler */}
+                <div
+                    className="sticky top-0 z-10 flex h-8 items-end border-b border-gray-200/50 bg-gray-50 px-4 font-mono text-[10px] text-gray-400 select-none dark:border-gray-700/50 dark:bg-black/20"
+                    style={{ width: `${timelineWidth}px`, minWidth: '100%' }}
+                >
+                    <div
+                        className="relative h-full w-full pb-1"
+                        style={{ paddingLeft: TIMELINE_LEFT_PADDING }}
+                    >
+                        {timeMarkers.map((time) => (
+                            <span
+                                key={time}
+                                className="absolute bottom-2 -translate-x-1/2"
+                                style={{ left: `${TIMELINE_LEFT_PADDING + time * pixelsPerSecond}px` }}
+                            >
+                                {formatTime(time)}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Cues content */}
+                <div className="p-4" style={{ width: `${timelineWidth}px` }}>
+                    {cues.length === 0 ? (
+                        <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
+                            <div className="text-center">
+                                <Volume2 className="mx-auto mb-3 h-12 w-12 opacity-30" />
+                                <p>No sound effects yet</p>
+                                <p className="mt-1 text-sm">
+                                    Generate shots to automatically create SFX prompts
+                                </p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div
+                            className="relative space-y-2"
+                            style={{ paddingLeft: TIMELINE_LEFT_PADDING }}
+                        >
+                            {cues.map((cue) => {
+                                const leftPx = (cue.start_offset_seconds ?? 0) * pixelsPerSecond;
+                                const widthPx = Math.max(
+                                    (cue.duration_seconds ?? 3) * pixelsPerSecond,
+                                    180
+                                );
+                                const isGenerating = generatingIds.has(cue.id);
+                                const isPlaced = cue.status === 'placed' || cue.status === 'matched';
+                                const isPending = cue.status === 'pending';
+
+                                return (
+                                    <div key={cue.id} className="relative h-14">
+                                        <div
+                                            className={cn(
+                                                'absolute flex items-center gap-2 rounded-lg border p-2 shadow-sm transition-all',
+                                                isPlaced
+                                                    ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/30'
+                                                    : isPending
+                                                        ? 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/30'
+                                                        : cue.status === 'failed'
+                                                            ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
+                                                            : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+                                            )}
+                                            style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
+                                        >
+                                            {/* Status/action icon */}
+                                            {isGenerating ? (
+                                                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
+                                            ) : isPlaced ? (
+                                                <button
+                                                    onClick={() => handlePlay(cue)}
+                                                    className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
+                                                >
+                                                    <Play className="h-3 w-3" />
+                                                </button>
+                                            ) : isPending ? (
+                                                <button
+                                                    onClick={() => handleGenerate(cue)}
+                                                    className="shrink-0 rounded bg-amber-500 p-1 text-white hover:bg-amber-600"
+                                                >
+                                                    <RefreshCw className="h-3 w-3" />
+                                                </button>
+                                            ) : (
+                                                <Volume2 className="h-4 w-4 shrink-0 text-gray-400" />
+                                            )}
+
+                                            {/* Cue info */}
+                                            <div className="min-w-0 flex-1">
+                                                <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
+                                                    {cue.prompt}
+                                                </p>
+                                                <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                                                    Scene {cue.scene_number} | {cue.cue_type}
+                                                    {cue.duration_seconds && ` | ${formatTime(cue.duration_seconds)}`}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}

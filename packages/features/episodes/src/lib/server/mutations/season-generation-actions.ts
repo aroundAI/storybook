@@ -43,8 +43,8 @@ interface AnalysisResult {
 }
 
 /**
- * Step 1: Analyze Roadmap
- * Queues the roadmap analysis LLM call for background processing.
+ * Analyze Roadmap
+ * Queues the roadmap analysis LLM call for background processing via Lambda.
  * Results are delivered via WebSocket.
  */
 export const analyzeSeasonRoadmapAction = enhanceAction(
@@ -62,157 +62,26 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Check if we're in Lambda environment (production)
-    const { isLambdaEnvironment, queueLlmJob } = await import(
-      '@kit/prompt-engine/server'
-    );
+    // Always queue to Lambda for processing
+    const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-    if (isLambdaEnvironment()) {
-      // Production: Queue for background processing
-      await queueLlmJob({
-        jobType: 'season-analysis',
-        userId: user.id,
-        payload: {
-          projectId: data.projectId,
-          roadmap: data.roadmap,
-        },
-      });
-
-      logger.info(ctx, 'Job queued successfully');
-
-      return { success: true, queued: true };
-    } else {
-      // Local development: Run synchronously (no SQS available)
-      logger.info(ctx, 'Running synchronously (local dev mode)');
-
-      // 1. Load and render prompt template
-      const { loadAndRenderPrompt } = await import('@kit/prompt-engine/server');
-      const renderedPrompt = await loadAndRenderPrompt('season-generation', {
+    await queueLlmJob({
+      jobType: 'season-analysis',
+      userId: user.id,
+      payload: {
+        projectId: data.projectId,
         roadmap: data.roadmap,
-      });
+      },
+    });
 
-      // 2. Determine API key based on provider from prompt template
-      const provider = renderedPrompt.llmConfig.provider || 'deepseek';
-      let apiKey: string | undefined;
-
-      switch (provider) {
-        case 'gemini':
-          apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-          break;
-        case 'deepseek':
-          apiKey = process.env.DEEPSEEK_API_KEY;
-          break;
-        case 'openai':
-          apiKey = process.env.OPENAI_API_KEY;
-          break;
-        case 'anthropic':
-          apiKey = process.env.ANTHROPIC_API_KEY;
-          break;
-        default:
-          apiKey = process.env.DEEPSEEK_API_KEY;
-      }
-
-      if (!apiKey) {
-        throw new Error(`API key not configured for provider: ${provider}`);
-      }
-
-      const { createLLMClient } = await import('@kit/llm');
-
-      const llm = createLLMClient({
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        provider: provider as any,
-        model: renderedPrompt.llmConfig.model,
-        apiKey,
-        temperature: renderedPrompt.llmConfig.temperature,
-        maxTokens: renderedPrompt.llmConfig.max_tokens,
-      });
-
-      const messages = [
-        { role: 'system', content: renderedPrompt.systemPrompt },
-        { role: 'user', content: renderedPrompt.userPrompt },
-      ];
-
-      try {
-        const response = await llm.createChatCompletion({
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          messages: messages as any,
-        });
-        const content = response.message.content;
-
-        if (!content) throw new Error('Empty response from LLM');
-
-        // Enhanced JSON extraction: handle markdown fences and whitespace
-        let jsonString = content.trim();
-
-        // Remove markdown code fences if present
-        const codeBlockMatch = jsonString.match(
-          /```(?:json)?\s*\n([\s\S]*?)\n```/,
-        );
-        if (codeBlockMatch && codeBlockMatch[1]) {
-          jsonString = codeBlockMatch[1].trim();
-        }
-
-        // Attempt to parse JSON
-        let result: AnalysisResult;
-        try {
-          result = JSON.parse(jsonString) as AnalysisResult;
-        } catch (parseError) {
-          logger.error(
-            {
-              ...ctx,
-              error: parseError,
-              contentLength: content.length,
-              contentPreview: content.substring(0, 500),
-            },
-            'JSON parse error',
-          );
-
-          throw new Error(
-            'LLM returned invalid JSON. Try a shorter roadmap.',
-          );
-        }
-
-        // Validate required fields
-        if (!result.episodes || !Array.isArray(result.episodes)) {
-          throw new Error('Invalid response format: missing episodes array');
-        }
-
-        if (!result.premise) {
-          result.premise = 'Generated from roadmap';
-        }
-
-        if (!result.characters) {
-          result.characters = [];
-        }
-
-        if (!result.locations) {
-          result.locations = [];
-        }
-
-        logger.info(
-          {
-            ...ctx,
-            episodeCount: result.episodes.length,
-            characterCount: result.characters.length,
-            locationCount: result.locations.length,
-          },
-          'Successfully analyzed roadmap',
-        );
-
-        return { success: true, data: result };
-      } catch (error) {
-        logger.error({ ...ctx, error }, 'Analysis failed');
-        throw new Error(
-          'Failed to analyze roadmap. Please try again.',
-        );
-      }
-    }
+    logger.info(ctx, 'Job queued successfully');
+    return { success: true, queued: true };
   },
   { schema: AnalyzeSeasonSchema },
 );
 
 /**
- * Step 2: Generate
+ * Generate Season Episodes
  * Creates Assets (Characters, Locations) and Episodes based on approved analysis
  */
 export const generateSeasonEpisodesAction = enhanceAction(
@@ -392,6 +261,9 @@ export const generateSeasonEpisodesAction = enhanceAction(
         metadata: {
           character_ids: characterIds,
           location_ids: locationIds,
+          // Store names for immediate display in episode header (before story/screenplay)
+          character_names: charNames,
+          location_names: locNames,
           season_premise: data.premise,
           season_tone: data.tone || null,
           target_audience: data.targetAudience || null,
