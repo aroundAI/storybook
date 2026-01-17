@@ -33,7 +33,7 @@ interface ExtractedEpisode {
   tags?: string[];
 }
 
-interface AnalysisResult {
+interface _AnalysisResult {
   premise: string;
   tone?: string | null;
   target_audience?: string | null;

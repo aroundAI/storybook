@@ -115,7 +115,7 @@ export async function processScreenplayConversion(
         const locations = episodeContext.locations;
 
         const charactersFormatted = formatCharactersForPrompt(characters);
-        const locationsFormatted = formatLocationsForPrompt(locations);
+        const _locationsFormatted = formatLocationsForPrompt(locations);
 
         console.log(`[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations`);
 

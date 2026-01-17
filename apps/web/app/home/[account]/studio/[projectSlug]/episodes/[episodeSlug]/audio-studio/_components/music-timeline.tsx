@@ -8,7 +8,6 @@ import {
   deleteAudioTrackAction,
   getAudioTracksAction,
   getAudioCuesAction,
-  generateAudioForCueAction,
   pollMusicStatusAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';

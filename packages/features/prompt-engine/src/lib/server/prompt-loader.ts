@@ -1,7 +1,7 @@
 'use server';
 
 import { PROMPT_REGISTRY } from './prompt-registry';
-import type { PromptTemplate, RenderedPrompt } from '../types';
+import type { RenderedPrompt } from '../types';
 
 /**
  * Load and render a prompt template from the bundled registry

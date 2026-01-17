@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
 import type { ContentStyle } from '@kit/episodes/lib';
 import { generateFullStoryAction } from '@kit/episodes/server';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 

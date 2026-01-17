@@ -31,7 +31,6 @@ import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {

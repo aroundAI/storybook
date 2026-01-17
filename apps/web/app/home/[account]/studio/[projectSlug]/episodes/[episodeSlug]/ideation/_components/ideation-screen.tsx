@@ -27,7 +27,6 @@ export interface StoryIdeaWithSettings extends StoryIdea {
   targetDuration: number;
   contentStyle: ContentStyle;
 }
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import {
   Collapsible,
@@ -70,7 +69,7 @@ export function IdeationScreen({
   defaultContentStyle = 'dialogue-heavy',
 }: IdeationScreenProps) {
   const { isGenerating, setIsGenerating } = useEpisodeContext();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, _startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
   const [_hasGenerated, setHasGenerated] = useState(false);

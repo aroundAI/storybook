@@ -1,8 +1,5 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-
-import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import type {
   StoryGenerationOutput,

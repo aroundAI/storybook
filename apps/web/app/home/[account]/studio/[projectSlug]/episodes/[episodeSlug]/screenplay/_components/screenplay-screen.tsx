@@ -17,7 +17,6 @@ import type {
   ScreenplayData,
   ScreenplayScene,
 } from '@kit/episodes/types';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -44,7 +43,7 @@ export function ScreenplayScreen({
   onShotListComplete,
   refetchEpisode,
 }: ScreenplayScreenProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, _startTransition] = useTransition();
   const [activeSceneNumber, setActiveSceneNumber] = useState(1);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);

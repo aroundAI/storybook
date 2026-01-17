@@ -70,7 +70,7 @@ export function useActiveGenerationJob(
     const { enabled = true } = options ?? {};
 
     const [job, setJob] = useState<GenerationJob | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [_loading, setLoading] = useState(true);
 
     // Track polling state
     const pollCountRef = useRef(0);

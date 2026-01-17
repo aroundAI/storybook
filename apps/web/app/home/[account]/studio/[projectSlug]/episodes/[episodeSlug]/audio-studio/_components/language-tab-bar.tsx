@@ -6,7 +6,6 @@ import { Globe, Loader2, Plus } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/audio-generation/lib';
 import { translateDialogueToLanguageAction } from '@kit/audio-generation/server';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import {
     DropdownMenu,
@@ -43,7 +42,7 @@ export function LanguageTabBar({
     onLanguageChange,
     onLanguageAdded,
 }: LanguageTabBarProps) {
-    const [isTranslating, startTransition] = useTransition();
+    const [isTranslating, _startTransition] = useTransition();
     const [translatingTo, setTranslatingTo] = useState<SupportedLanguage | null>(null);
 
     // WebSocket for async LLM results (uses shared provider from layout)

@@ -1,26 +1,15 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
-
-import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import type {
   Screenplay,
-  ScreenplayConversionOutput,
 } from '@kit/prompt-engine/schemas';
-import { executeLLM } from '@kit/prompt-engine/server';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import {
-  type ContentStyle,
-  calculateContentScaling,
-  formatDuration,
-} from '../lib/duration-scaling';
 import { ConvertToScreenplaySchema } from '../lib/schemas';
-import { OptimisticLockError } from '../lib/status-workflow';
-import type { EpisodeStatus, StoryData } from '../lib/types';
+import type { StoryData } from '../lib/types';
 
 /**
  * Response type for convertToScreenplayAction
@@ -59,7 +48,7 @@ function estimateDialogueDuration(text: string): number {
  * Matches character names to asset IDs for proper linking
  * Calculates timeline positions based on scene durations
  */
-function extractDialogueLines(
+function _extractDialogueLines(
   screenplay: Screenplay,
   episodeId: string,
   characters: Array<{ id: string; name: string }>,
@@ -160,7 +149,7 @@ export const convertToScreenplayAction = enhanceAction(
       name: 'episodes.convertToScreenplay',
       episodeId: data.episodeId,
     };
-    const startTime = Date.now();
+    const _startTime = Date.now();
 
     logger.info(ctx, 'Processing screenplay conversion request');
 

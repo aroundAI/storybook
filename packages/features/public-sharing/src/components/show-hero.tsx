@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { Play, Film, Users, Clock } from 'lucide-react';
 import { Button } from '@kit/ui/button';
-import { cn } from '@kit/ui/utils';
 import { HeroBackground } from './ui/gradient-background';
 import { ShareButton } from './share-button';
 

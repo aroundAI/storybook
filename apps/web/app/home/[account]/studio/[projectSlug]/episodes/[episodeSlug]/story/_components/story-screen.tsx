@@ -13,7 +13,6 @@ import {
 
 import { convertToScreenplayAction } from '@kit/episodes/server';
 import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -40,7 +39,7 @@ export function StoryScreen({
   onScreenplayComplete,
   refetchEpisode,
 }: StoryScreenProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const storyData = episode.storyData;

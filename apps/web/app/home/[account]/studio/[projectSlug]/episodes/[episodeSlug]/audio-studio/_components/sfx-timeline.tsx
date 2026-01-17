@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
 
@@ -106,7 +106,7 @@ export function SfxTimeline({
             } else {
                 toast.error(result.error ?? 'Generation failed');
             }
-        } catch (error) {
+        } catch (_error) {
             toast.error('Failed to generate audio');
         } finally {
             setGeneratingIds((prev) => {

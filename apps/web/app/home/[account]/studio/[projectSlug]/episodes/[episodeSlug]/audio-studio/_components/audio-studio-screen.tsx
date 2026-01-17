@@ -15,7 +15,6 @@ import {
   Minus,
   Play,
   Plus,
-  Volume2,
 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
