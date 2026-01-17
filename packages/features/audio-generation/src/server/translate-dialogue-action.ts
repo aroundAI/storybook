@@ -9,9 +9,6 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import type { SupportedLanguage } from '../lib/types/dialogue.types';
-import { SUPPORTED_LANGUAGES } from '../lib/types/dialogue.types';
-
 /**
  * Schema for translate dialogue action
  */
@@ -29,7 +26,7 @@ export interface LocalizeDialogueResult {
     error?: string;
 }
 
-interface DialogueLineRow {
+interface _DialogueLineRow {
     id: string;
     episode_id: string;
     character_asset_id: string | null;
@@ -103,7 +100,7 @@ export const translateDialogueToLanguageAction = enhanceAction(
 /**
  * Parse numbered translations from LLM output
  */
-function parseNumberedTranslations(content: string, expectedCount: number): string[] {
+function _parseNumberedTranslations(content: string, expectedCount: number): string[] {
     const lines = content.split('\n').filter(l => l.trim());
     const translations: string[] = [];
 

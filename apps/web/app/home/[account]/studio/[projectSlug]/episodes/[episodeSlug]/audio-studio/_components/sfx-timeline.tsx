@@ -106,7 +106,7 @@ export function SfxTimeline({
             } else {
                 toast.error(result.error ?? 'Generation failed');
             }
-        } catch (_error) {
+        } catch {
             toast.error('Failed to generate audio');
         } finally {
             setGeneratingIds((prev) => {

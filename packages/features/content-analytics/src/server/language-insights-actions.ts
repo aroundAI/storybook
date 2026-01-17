@@ -5,7 +5,6 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { executeLLM } from '@kit/prompt-engine/server';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -28,7 +27,7 @@ const GenerateLanguageInsightsSchema = z.object({
 /**
  * Output from LLM for language insights
  */
-interface LanguageInsightsLLMOutput {
+interface _LanguageInsightsLLMOutput {
     languageSummary: string;
     topLanguage: string;
     languageRecommendations: string[];

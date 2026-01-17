@@ -5,12 +5,10 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { executeLLM } from '@kit/prompt-engine/server';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { calculateChanges } from '../lib/insights-utils';
 import type { InsightsResult } from '../types';
 
 /**
@@ -78,7 +76,7 @@ const GenerateInsightsSchema = z.object({
 /**
  * Output schema for executeLLM
  */
-interface InsightsLLMOutput {
+interface _InsightsLLMOutput {
   performanceSummary: string;
   contentRecommendations: string[];
   postingStrategy: string[];

@@ -5,17 +5,10 @@ import type {
   StoryGenerationOutput,
   StoryIdeationOutput,
 } from '@kit/prompt-engine/schemas';
-import { executeLLM } from '@kit/prompt-engine/server';
 import { getLogger } from '@kit/shared/logger';
-import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import {
-  type ContentStyle,
-  calculateContentScaling,
-  formatDuration,
-} from '../lib/duration-scaling';
 import {
   GenerateFullStorySchema,
   GenerateStoryIdeasSchema,
