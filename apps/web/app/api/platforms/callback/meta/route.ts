@@ -175,28 +175,26 @@ export async function GET(request: NextRequest) {
   }
 
   // Store connections for each page and associated Instagram
-  const connections: Array<{
-    account_id: string;
-    platform: string;
-    platform_account_id: string;
-    platform_account_name: string;
-    access_token_encrypted: string;
-    refresh_token_encrypted: string;
-    token_expires_at: string;
-    scopes: string[];
-    is_active: boolean;
-    metadata: { [key: string]: string | number | boolean | null };
-    updated_at: string;
-  }> = [];
-
-  const encryptedUserToken = await encrypt(userAccessToken);
-
-  await Promise.all(
+  const pageConnectionResults = await Promise.all(
     pages.map(async (page) => {
+      const pageConnections: Array<{
+        account_id: string;
+        platform: string;
+        platform_account_id: string;
+        platform_account_name: string;
+        access_token_encrypted: string;
+        refresh_token_encrypted: string;
+        token_expires_at: string;
+        scopes: string[];
+        is_active: boolean;
+        metadata: { [key: string]: string | number | boolean | null };
+        updated_at: string;
+      }> = [];
+
       // Store Facebook Page connection
       if (state.platforms.includes('facebook')) {
         const encryptedPageToken = await encrypt(page.access_token);
-        connections.push({
+        pageConnections.push({
           account_id: state.accountId,
           platform: 'facebook',
           platform_account_id: page.id,
@@ -236,7 +234,7 @@ export async function GET(request: NextRequest) {
 
           if (igAccount.id) {
             const encryptedPageToken = await encrypt(page.access_token);
-            connections.push({
+            pageConnections.push({
               account_id: state.accountId,
               platform: 'instagram',
               platform_account_id: igAccountId,
@@ -268,8 +266,12 @@ export async function GET(request: NextRequest) {
           );
         }
       }
+
+      return pageConnections;
     }),
   );
+
+  const connections = pageConnectionResults.flat();
 
   // Upsert all connections
   if (connections.length > 0) {
