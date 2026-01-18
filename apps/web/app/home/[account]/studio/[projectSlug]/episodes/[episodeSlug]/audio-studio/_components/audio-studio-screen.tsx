@@ -11,10 +11,15 @@ import {
 
 import { Download, Loader2, Minus, Play, Plus } from 'lucide-react';
 
-import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
+import type {
+  CharacterAsset,
+  DialogueLine,
+  ProjectAudioSettings,
+} from '@kit/audio-generation/lib';
 import {
   getCharactersForEpisodeAction,
   getDialogueLinesAction,
+  getProjectAudioSettings,
 } from '@kit/audio-generation/server';
 import { autoStitchAction } from '@kit/episodes/server';
 import type { EpisodeWithShots } from '@kit/episodes/types';
@@ -44,6 +49,8 @@ export function AudioStudioScreen({
   // State for real dialogue data
   const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
   const [characters, setCharacters] = useState<CharacterAsset[]>([]);
+  const [audioSettings, setAudioSettings] =
+    useState<ProjectAudioSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Language selection state
@@ -128,9 +135,10 @@ export function AudioStudioScreen({
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [dialogueResult, chars] = await Promise.all([
+      const [dialogueResult, chars, settings] = await Promise.all([
         getDialogueLinesAction({ episodeId: episode.id }),
         getCharactersForEpisodeAction({ episodeId: episode.id }),
+        getProjectAudioSettings(episode.projectId),
       ]);
 
       const allLines = Array.isArray(dialogueResult?.lines)
@@ -153,6 +161,7 @@ export function AudioStudioScreen({
       );
       setDialogueLines(filteredLines);
       setCharacters(Array.isArray(chars) ? chars : []);
+      setAudioSettings(settings);
     } catch (error) {
       console.error('Failed to fetch audio studio data:', error);
       toast.error('Failed to load dialogue data');
@@ -162,7 +171,7 @@ export function AudioStudioScreen({
     } finally {
       setIsLoading(false);
     }
-  }, [episode.id, selectedLanguage]);
+  }, [episode.id, episode.projectId, selectedLanguage]);
 
   useEffect(() => {
     void fetchData();
@@ -513,6 +522,7 @@ export function AudioStudioScreen({
               isLoading={isLoading}
               onRefresh={fetchData}
               pixelsPerSecond={pixelsPerSecond}
+              audioSettings={audioSettings}
             />
           )}
 
@@ -523,6 +533,7 @@ export function AudioStudioScreen({
               scenes={scenes}
               onRefresh={fetchData}
               pixelsPerSecond={pixelsPerSecond}
+              audioSettings={audioSettings}
             />
           )}
 
@@ -532,6 +543,7 @@ export function AudioStudioScreen({
               totalDuration={totalDuration}
               pixelsPerSecond={pixelsPerSecond}
               onRefresh={fetchData}
+              audioSettings={audioSettings}
             />
           )}
         </div>

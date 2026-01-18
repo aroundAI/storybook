@@ -603,6 +603,7 @@ export const updateAudioTrackAction = enhanceAction(
     timelineStartSeconds?: number;
     durationSeconds?: number;
     volume?: number;
+    prompt?: string;
   }): Promise<{ success: boolean; trackId: string }> => {
     const logger = await getLogger();
     const ctx = {
@@ -628,6 +629,21 @@ export const updateAudioTrackAction = enhanceAction(
       updatePayload.volume = data.volume;
     }
 
+    if (data.prompt !== undefined) {
+      // Fetch existing metadata first to merge
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: track } = await (client as any)
+        .from('audio_tracks')
+        .select('metadata')
+        .eq('id', data.trackId)
+        .single();
+
+      updatePayload.metadata = {
+        ...(track?.metadata || {}),
+        prompt: data.prompt,
+      };
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (client as any)
       .from('audio_tracks')
@@ -651,6 +667,7 @@ export const updateAudioTrackAction = enhanceAction(
       timelineStartSeconds: z.number().min(0).optional(),
       durationSeconds: z.number().positive().optional(),
       volume: z.number().min(0).max(1).optional(),
+      prompt: z.string().min(1).optional(),
     }),
   },
 );

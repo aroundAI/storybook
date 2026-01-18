@@ -2,13 +2,27 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { Loader2, Music, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import {
+  Edit3,
+  Loader2,
+  Music,
+  Play,
+  Plus,
+  RefreshCw,
+  Trash2,
+} from 'lucide-react';
 
+import type { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
   deleteAudioTrackAction,
+  generateAudioForCueAction,
+  generateMusicCueAction,
+  generateSceneMusicAction,
   getAudioCuesAction,
   getAudioTracksAction,
   pollMusicStatusAction,
+  updateAudioCueAction,
+  updateAudioTrackAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -28,6 +42,7 @@ interface MusicTimelineProps {
   }>;
   onRefresh?: () => void;
   pixelsPerSecond: number;
+  audioSettings: ProjectAudioSettings | null;
 }
 
 interface MusicTrack {
@@ -44,6 +59,9 @@ interface MusicTrack {
     isCue?: boolean;
     providerJobId?: string;
     error?: string;
+    genre?: string;
+    mood?: string;
+    instrumentalOnly?: boolean;
   } | null;
 }
 
@@ -68,13 +86,19 @@ export function MusicTimeline({
   scenes,
   onRefresh,
   pixelsPerSecond,
+  audioSettings,
 }: MusicTimelineProps) {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [showSceneDialog, setShowSceneDialog] = useState(false);
   const [showCueDialog, setShowCueDialog] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch music tracks (user-generated) AND music cues (auto-generated from shots)
   const fetchTracks = useCallback(async () => {
@@ -115,6 +139,8 @@ export function MusicTimeline({
         }>
       )
         .filter((c) => c.cue_type === 'music')
+        // Filter out cues that are already placed or matched, as they will appear as tracks
+        .filter((c) => c.status !== 'placed' && c.status !== 'matched')
         .map((c) => ({
           id: `cue-${c.id}`,
           name: c.prompt.substring(0, 50),
@@ -219,6 +245,15 @@ export function MusicTimeline({
     return positions;
   }, [scenes]);
 
+  const handleTrackClick = (track: MusicTrack, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      x: rect.right + 8,
+      y: rect.top,
+    });
+    setSelectedTrack(track);
+  };
+
   const handlePlayTrack = (track: MusicTrack) => {
     if (!track.fileUrl) {
       toast.error('No audio available');
@@ -226,6 +261,43 @@ export function MusicTimeline({
     }
     const audio = new Audio(track.fileUrl);
     audio.play();
+  };
+
+  const handleEdit = () => {
+    if (!selectedTrack) return;
+    setEditPrompt(selectedTrack.metadata?.prompt ?? '');
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedTrack || !editPrompt.trim()) return;
+
+    setIsSaving(true);
+    try {
+      if (selectedTrack.id.startsWith('cue-')) {
+        // Update Cue
+        const cueId = selectedTrack.id.replace('cue-', '');
+        await updateAudioCueAction({
+          cueId,
+          prompt: editPrompt.trim(),
+        });
+      } else {
+        // Update Track
+        await updateAudioTrackAction({
+          trackId: selectedTrack.id,
+          prompt: editPrompt.trim(),
+        });
+      }
+      toast.success('Music prompt updated');
+      setIsEditModalOpen(false);
+      setSelectedTrack(null);
+      void fetchTracks();
+      onRefresh?.();
+    } catch {
+      toast.error('Failed to update music prompt');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteTrack = async (track: MusicTrack) => {
@@ -236,6 +308,80 @@ export function MusicTimeline({
       onRefresh?.();
     } catch {
       toast.error('Failed to delete track');
+    }
+  };
+
+  const handleRegenerateTrack = async (track: MusicTrack) => {
+    if (isRegenerating) return;
+
+    if (track.id.startsWith('cue-')) {
+      const cueId = track.id.replace('cue-', '');
+
+      if (!audioSettings?.elevenlabs?.music_model) {
+        toast.error('Music model not selected in project settings');
+        return;
+      }
+
+      setIsRegenerating(true);
+      try {
+        const result = await generateAudioForCueAction({ cueId });
+        if (result.success) {
+          toast.success('Music regenerated');
+          handleGenerationComplete();
+        } else {
+          toast.error(result.error ?? 'Failed to regenerate music');
+        }
+      } catch {
+        toast.error('Failed to regenerate music');
+      } finally {
+        setIsRegenerating(false);
+      }
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const isSceneMusic =
+        Boolean(track.metadata?.sceneNumber) && !track.metadata?.isCue;
+
+      let success = false;
+
+      if (isSceneMusic && track.metadata?.sceneNumber) {
+        const result = await generateSceneMusicAction({
+          episodeId,
+          sceneNumber: track.metadata.sceneNumber,
+          genre: track.metadata.genre,
+          mood: track.metadata.mood,
+          instrumentalOnly: track.metadata.instrumentalOnly,
+          prompt: track.metadata.prompt,
+        });
+        success = result.success;
+      } else {
+        const result = await generateMusicCueAction({
+          episodeId,
+          prompt: track.metadata?.prompt ?? 'Music Cue',
+          duration: track.durationSeconds ?? 30,
+          timelineStartSeconds: track.timelineStartSeconds,
+          name: track.name ?? undefined,
+          genre: track.metadata?.genre,
+          mood: track.metadata?.mood,
+          instrumentalOnly: track.metadata?.instrumentalOnly,
+        });
+        success = result.success;
+      }
+
+      if (success) {
+        await deleteAudioTrackAction({ trackId: track.id });
+        toast.success('Music regeneration started');
+        handleGenerationComplete();
+      } else {
+        toast.error('Failed to start regeneration');
+      }
+    } catch (error) {
+      console.error('Failed to regenerate music:', error);
+      toast.error('Failed to regenerate music');
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -411,21 +557,13 @@ export function MusicTimeline({
                         left: `${leftPx}px`,
                         width: `${widthPx}px`,
                       }}
-                      onClick={() => setSelectedTrack(track)}
+                      onClick={(e) => handleTrackClick(track, e)}
                     >
                       {/* Status icon */}
                       {track.status === 'processing' ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
                       ) : track.status === 'completed' ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayTrack(track);
-                          }}
-                          className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
-                        >
-                          <Play className="h-3 w-3" />
-                        </button>
+                        <Music className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
                       ) : track.status === 'failed' ? (
                         <RefreshCw className="h-4 w-4 shrink-0 text-red-500" />
                       ) : (
@@ -445,17 +583,6 @@ export function MusicTimeline({
                             ` | Scene ${track.metadata.sceneNumber}`}
                         </p>
                       </div>
-
-                      {/* Delete button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleDeleteTrack(track);
-                        }}
-                        className="shrink-0 rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-red-500 dark:hover:bg-gray-700"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
                     </div>
                   </div>
                 );
@@ -464,6 +591,92 @@ export function MusicTimeline({
           )}
         </div>
       </div>
+
+      {/* Context Menu */}
+      {selectedTrack && (
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setSelectedTrack(null)}
+          />
+          <div
+            className="fixed z-50 w-48 rounded-xl border border-gray-100 bg-white py-1.5 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+            style={{ top: menuPosition.y, left: menuPosition.x }}
+          >
+            {selectedTrack.status === 'completed' && (
+              <button
+                onClick={() => handlePlayTrack(selectedTrack)}
+                className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+              >
+                <Play className="h-4 w-4" /> Play
+              </button>
+            )}
+            <button
+              onClick={handleEdit}
+              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+            >
+              <Edit3 className="h-4 w-4" /> Edit Prompt
+            </button>
+            <button
+              onClick={() => handleRegenerateTrack(selectedTrack)}
+              disabled={isRegenerating}
+              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+            >
+              <RefreshCw
+                className={cn('h-4 w-4', isRegenerating && 'animate-spin')}
+              />
+              {isRegenerating ? 'Generating...' : 'Regenerate'}
+            </button>
+            <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+            <button
+              onClick={() => {
+                void handleDeleteTrack(selectedTrack);
+                setSelectedTrack(null);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+            >
+              <Trash2 className="h-4 w-4" /> Delete
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Edit Modal */}
+      {isEditModalOpen && selectedTrack && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/50"
+            onClick={() => setIsEditModalOpen(false)}
+          />
+          <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+              Edit Music Prompt
+            </h3>
+            <textarea
+              value={editPrompt}
+              onChange={(e) => setEditPrompt(e.target.value)}
+              className="mb-4 h-32 w-full resize-none rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+              placeholder="Enter music prompt..."
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsEditModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveEdit}
+                disabled={isSaving || !editPrompt.trim()}
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Dialogs */}
       <GenerateSceneMusicDialog

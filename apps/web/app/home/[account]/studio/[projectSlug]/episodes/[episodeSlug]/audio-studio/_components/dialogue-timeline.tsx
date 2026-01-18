@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react';
 import { Edit3, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
+import { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
   generateDialogueVoiceAction,
   updateDialogueTextAction,
@@ -20,6 +21,7 @@ interface DialogueTimelineProps {
   isLoading: boolean;
   onRefresh: () => void;
   pixelsPerSecond: number;
+  audioSettings?: ProjectAudioSettings | null;
 }
 
 interface TimelineDialogue extends DialogueLine {
@@ -104,6 +106,7 @@ export function DialogueTimeline({
   isLoading,
   onRefresh,
   pixelsPerSecond,
+  audioSettings,
 }: DialogueTimelineProps) {
   const [selectedDialogue, setSelectedDialogue] =
     useState<TimelineDialogue | null>(null);
@@ -231,6 +234,11 @@ export function DialogueTimeline({
 
   const handleRegenerate = async () => {
     if (!selectedDialogue) return;
+
+    if (!audioSettings?.elevenlabs?.tts_model) {
+      toast.error('Voice model not selected in project settings');
+      return;
+    }
 
     setIsGenerating(true);
     try {

@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
+import { Edit3, Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
 
+import { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
   generateAudioForCueAction,
   getAudioCuesAction,
+  updateAudioCueAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
 import { Skeleton } from '@kit/ui/skeleton';
@@ -18,6 +20,7 @@ interface SfxTimelineProps {
   totalDuration: number;
   pixelsPerSecond: number;
   onRefresh?: () => void;
+  audioSettings: ProjectAudioSettings | null;
 }
 
 interface AudioCue {
@@ -56,10 +59,16 @@ export function SfxTimeline({
   totalDuration,
   pixelsPerSecond,
   onRefresh,
+  audioSettings,
 }: SfxTimelineProps) {
   const [cues, setCues] = useState<AudioCue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+  const [selectedCue, setSelectedCue] = useState<AudioCue | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   // Fetch SFX and ambient cues
   const fetchCues = useCallback(async () => {
@@ -97,7 +106,48 @@ export function SfxTimeline({
     return () => clearInterval(pollInterval);
   }, [cues, fetchCues]);
 
+  const handleCueClick = (cue: AudioCue, event: React.MouseEvent) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      x: rect.right + 8,
+      y: rect.top,
+    });
+    setSelectedCue(cue);
+  };
+
+  const handleEdit = () => {
+    if (!selectedCue) return;
+    setEditPrompt(selectedCue.prompt);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedCue || !editPrompt.trim()) return;
+
+    setIsSaving(true);
+    try {
+      await updateAudioCueAction({
+        cueId: selectedCue.id,
+        prompt: editPrompt.trim(),
+      });
+      toast.success('SFX prompt updated');
+      setIsEditModalOpen(false);
+      setSelectedCue(null);
+      void fetchCues();
+      onRefresh?.();
+    } catch {
+      toast.error('Failed to update SFX prompt');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleGenerate = async (cue: AudioCue) => {
+    if (!audioSettings?.elevenlabs?.sfx_model) {
+      toast.error('SFX model not selected in project settings');
+      return;
+    }
+
     setGeneratingIds((prev) => new Set(prev).add(cue.id));
 
     try {
@@ -131,6 +181,11 @@ export function SfxTimeline({
   };
 
   const handleGenerateAll = async () => {
+    if (!audioSettings?.elevenlabs?.sfx_model) {
+      toast.error('SFX model not selected in project settings');
+      return;
+    }
+
     const pendingCues = cues.filter((c) => c.status === 'pending');
     if (pendingCues.length === 0) {
       toast.info('No pending cues to generate');
@@ -253,7 +308,7 @@ export function SfxTimeline({
                   <div key={cue.id} className="relative h-14">
                     <div
                       className={cn(
-                        'absolute flex items-center gap-2 rounded-lg border p-2 shadow-sm transition-all',
+                        'absolute flex cursor-pointer items-center gap-2 rounded-lg border p-2 shadow-sm transition-all hover:shadow-md',
                         isPlaced
                           ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/30'
                           : isPending
@@ -261,26 +316,19 @@ export function SfxTimeline({
                             : cue.status === 'failed'
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
+                        selectedCue?.id === cue.id &&
+                          'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
+                      onClick={(e) => handleCueClick(cue, e)}
                     >
                       {/* Status/action icon */}
                       {isGenerating ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
                       ) : isPlaced ? (
-                        <button
-                          onClick={() => handlePlay(cue)}
-                          className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
-                        >
-                          <Play className="h-3 w-3" />
-                        </button>
+                        <Play className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
                       ) : isPending ? (
-                        <button
-                          onClick={() => handleGenerate(cue)}
-                          className="shrink-0 rounded bg-amber-500 p-1 text-white hover:bg-amber-600"
-                        >
-                          <RefreshCw className="h-3 w-3" />
-                        </button>
+                        <RefreshCw className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                       ) : (
                         <Volume2 className="h-4 w-4 shrink-0 text-gray-400" />
                       )}
@@ -290,7 +338,7 @@ export function SfxTimeline({
                         <p className="truncate text-xs font-medium text-gray-700 dark:text-gray-200">
                           {cue.prompt}
                         </p>
-                        <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                        <p className="truncate text-[10px] text-gray-500 dark:text-gray-400">
                           Scene {cue.scene_number} | {cue.cue_type}
                           {cue.duration_seconds &&
                             ` | ${formatTime(cue.duration_seconds)}`}
@@ -303,6 +351,88 @@ export function SfxTimeline({
             </div>
           )}
         </div>
+
+        {/* Context Menu */}
+        {selectedCue && (
+          <>
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setSelectedCue(null)}
+            />
+            <div
+              className="fixed z-50 w-48 rounded-xl border border-gray-100 bg-white py-1.5 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+              style={{ top: menuPosition.y, left: menuPosition.x }}
+            >
+              {(selectedCue.status === 'placed' ||
+                selectedCue.status === 'matched') && (
+                <button
+                  onClick={() => handlePlay(selectedCue)}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+                >
+                  <Play className="h-4 w-4" /> Play
+                </button>
+              )}
+              <button
+                onClick={handleEdit}
+                className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+              >
+                <Edit3 className="h-4 w-4" /> Edit Prompt
+              </button>
+              <button
+                onClick={() => handleGenerate(selectedCue)}
+                disabled={generatingIds.has(selectedCue.id)}
+                className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+              >
+                <RefreshCw
+                  className={cn(
+                    'h-4 w-4',
+                    generatingIds.has(selectedCue.id) && 'animate-spin',
+                  )}
+                />
+                {generatingIds.has(selectedCue.id)
+                  ? 'Generating...'
+                  : 'Regenerate'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Edit Modal */}
+        {isEditModalOpen && selectedCue && (
+          <>
+            <div
+              className="fixed inset-0 z-50 bg-black/50"
+              onClick={() => setIsEditModalOpen(false)}
+            />
+            <div className="fixed top-1/2 left-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 rounded-xl border border-gray-200 bg-white p-4 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                Edit SFX Prompt
+              </h3>
+              <textarea
+                value={editPrompt}
+                onChange={(e) => setEditPrompt(e.target.value)}
+                className="mb-4 h-32 w-full resize-none rounded-lg border border-gray-300 p-3 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
+                placeholder="Enter SFX prompt..."
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSaveEdit}
+                  disabled={isSaving || !editPrompt.trim()}
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
