@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
 
+import { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
   generateAudioForCueAction,
   getAudioCuesAction,
@@ -18,6 +19,7 @@ interface SfxTimelineProps {
   totalDuration: number;
   pixelsPerSecond: number;
   onRefresh?: () => void;
+  audioSettings: ProjectAudioSettings | null;
 }
 
 interface AudioCue {
@@ -56,6 +58,7 @@ export function SfxTimeline({
   totalDuration,
   pixelsPerSecond,
   onRefresh,
+  audioSettings,
 }: SfxTimelineProps) {
   const [cues, setCues] = useState<AudioCue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -98,6 +101,11 @@ export function SfxTimeline({
   }, [cues, fetchCues]);
 
   const handleGenerate = async (cue: AudioCue) => {
+    if (!audioSettings?.elevenlabs?.sfx_model) {
+      toast.error('SFX model not selected in project settings');
+      return;
+    }
+
     setGeneratingIds((prev) => new Set(prev).add(cue.id));
 
     try {
@@ -131,6 +139,11 @@ export function SfxTimeline({
   };
 
   const handleGenerateAll = async () => {
+    if (!audioSettings?.elevenlabs?.sfx_model) {
+      toast.error('SFX model not selected in project settings');
+      return;
+    }
+
     const pendingCues = cues.filter((c) => c.status === 'pending');
     if (pendingCues.length === 0) {
       toast.info('No pending cues to generate');
@@ -268,12 +281,27 @@ export function SfxTimeline({
                       {isGenerating ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
                       ) : isPlaced ? (
-                        <button
-                          onClick={() => handlePlay(cue)}
-                          className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
-                        >
-                          <Play className="h-3 w-3" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlay(cue);
+                            }}
+                            className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
+                          >
+                            <Play className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleGenerate(cue);
+                            }}
+                            className="shrink-0 rounded-full bg-gray-200 p-1 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-300"
+                            title="Regenerate"
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                          </button>
+                        </div>
                       ) : isPending ? (
                         <button
                           onClick={() => handleGenerate(cue)}

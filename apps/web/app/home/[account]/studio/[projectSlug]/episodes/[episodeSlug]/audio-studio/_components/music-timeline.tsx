@@ -4,8 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Loader2, Music, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
+import type { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
   deleteAudioTrackAction,
+  generateAudioForCueAction,
+  generateMusicCueAction,
+  generateSceneMusicAction,
   getAudioCuesAction,
   getAudioTracksAction,
   pollMusicStatusAction,
@@ -28,6 +32,7 @@ interface MusicTimelineProps {
   }>;
   onRefresh?: () => void;
   pixelsPerSecond: number;
+  audioSettings: ProjectAudioSettings | null;
 }
 
 interface MusicTrack {
@@ -68,10 +73,12 @@ export function MusicTimeline({
   scenes,
   onRefresh,
   pixelsPerSecond,
+  audioSettings,
 }: MusicTimelineProps) {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
   const [showSceneDialog, setShowSceneDialog] = useState(false);
   const [showCueDialog, setShowCueDialog] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
@@ -236,6 +243,79 @@ export function MusicTimeline({
       onRefresh?.();
     } catch {
       toast.error('Failed to delete track');
+    }
+  };
+
+  const handleRegenerateTrack = async (track: MusicTrack) => {
+    if (isRegenerating) return;
+
+    if (track.id.startsWith('cue-')) {
+      const cueId = track.id.replace('cue-', '');
+      
+      if (!audioSettings?.elevenlabs?.music_model) {
+        toast.error('Music model not selected in project settings');
+        return;
+      }
+
+      setIsRegenerating(true);
+      try {
+        const result = await generateAudioForCueAction({ cueId });
+        if (result.success) {
+          toast.success('Music regenerated');
+          handleGenerationComplete();
+        } else {
+          toast.error(result.error ?? 'Failed to regenerate music');
+        }
+      } catch {
+        toast.error('Failed to regenerate music');
+      } finally {
+        setIsRegenerating(false);
+      }
+      return;
+    }
+
+    setIsRegenerating(true);
+    try {
+      const isSceneMusic = Boolean(track.metadata?.sceneNumber) && !track.metadata?.isCue;
+      
+      let success = false;
+
+      if (isSceneMusic && track.metadata?.sceneNumber) {
+        const result = await generateSceneMusicAction({
+          episodeId,
+          sceneNumber: track.metadata.sceneNumber,
+          genre: track.metadata.genre as string,
+          mood: track.metadata.mood as string,
+          instrumentalOnly: track.metadata.instrumentalOnly as boolean,
+          prompt: track.metadata.prompt,
+        });
+        success = result.success;
+      } else {
+        const result = await generateMusicCueAction({
+          episodeId,
+          prompt: track.metadata?.prompt ?? 'Music Cue',
+          duration: track.durationSeconds ?? 30,
+          timelineStartSeconds: track.timelineStartSeconds,
+          name: track.name ?? undefined,
+          genre: track.metadata?.genre as string,
+          mood: track.metadata?.mood as string,
+          instrumentalOnly: track.metadata?.instrumentalOnly as boolean,
+        });
+        success = result.success;
+      }
+
+      if (success) {
+        await deleteAudioTrackAction({ trackId: track.id });
+        toast.success('Music regeneration started');
+        handleGenerationComplete();
+      } else {
+        toast.error('Failed to start regeneration');
+      }
+    } catch (error) {
+       console.error(error);
+      toast.error('Failed to regenerate music');
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -426,6 +506,18 @@ export function MusicTimeline({
                         >
                           <Play className="h-3 w-3" />
                         </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRegenerateTrack(track);
+                          }}
+                          disabled={isRegenerating}
+                          className="shrink-0 rounded-full bg-gray-200 p-1 text-gray-700 hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300"
+                          title="Regenerate"
+                        >
+                          <RefreshCw className={cn("h-3 w-3", isRegenerating && "animate-spin")} />
+                        </button>
+                      </>
                       ) : track.status === 'failed' ? (
                         <RefreshCw className="h-4 w-4 shrink-0 text-red-500" />
                       ) : (
