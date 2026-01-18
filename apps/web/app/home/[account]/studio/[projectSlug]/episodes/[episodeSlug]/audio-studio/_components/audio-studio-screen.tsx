@@ -171,7 +171,7 @@ export function AudioStudioScreen({
     } finally {
       setIsLoading(false);
     }
-  }, [episode.id, selectedLanguage]);
+  }, [episode.id, episode.projectId, selectedLanguage]);
 
   useEffect(() => {
     void fetchData();

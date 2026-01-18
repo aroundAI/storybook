@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
-import { Edit3, Loader2, Play, RefreshCw, Trash2, Volume2 } from 'lucide-react';
+import { Edit3, Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {

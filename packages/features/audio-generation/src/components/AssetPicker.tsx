@@ -6,7 +6,7 @@
  * Modal to browse and select audio assets from the library.
  * Used in Audio Studio to add music/SFX tracks from existing library.
  */
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Check, Loader2, Music, Search, Volume2 } from 'lucide-react';
 
@@ -70,9 +70,9 @@ export function AssetPicker({
     if (open) {
       fetchAssets();
     }
-  }, [open, projectId]);
+  }, [open, fetchAssets]);
 
-  const fetchAssets = async () => {
+  const fetchAssets = useCallback(async () => {
     setIsLoading(true);
     try {
       const result = await getAudioAssetsAction({
@@ -98,7 +98,7 @@ export function AssetPicker({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [projectId]);
 
   // Filter assets
   const filteredAssets = assets.filter((asset) => {
