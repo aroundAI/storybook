@@ -270,7 +270,7 @@ export default $config({
     });
 
     // Dead Letter Queue for failed email messages
-    const emailDLQ = new sst.aws.Queue("EmailDLQ", {
+    const emailDLQ = new sst.aws.Queue("StorybookEmailDLQ", {
       fifo: false,
       transform: {
         queue: {
@@ -281,7 +281,7 @@ export default $config({
     });
 
     // AWS SQS queue for email sending
-    const queue = new sst.aws.Queue("EmailQueue", {
+    const queue = new sst.aws.Queue("StorybookEmailQueue", {
       fifo: false,
       transform: {
         queue: (args) => {
@@ -297,8 +297,37 @@ export default $config({
       },
     });
 
+    // Dead Letter Queue for failed LLM jobs
+    const llmJobsDLQ = new sst.aws.Queue("StorybookLlmJobsDLQ", {
+      fifo: false,
+      transform: {
+        queue: {
+          // Retain messages in DLQ for 14 days for investigation
+          messageRetentionPeriodSeconds: 1209600, // 14 days
+        },
+      },
+    });
+
+    // AWS SQS queue for LLM job processing (long-running tasks)
+    const llmJobsQueue = new sst.aws.Queue("StorybookLlmJobsQueue", {
+      fifo: false,
+      transform: {
+        queue: (args) => {
+          // Visibility timeout must be >= Lambda timeout (15 minutes)
+          // AWS best practice: 6x function timeout for retries
+          args.visibilityTimeoutSeconds = 900; // 15 minutes
+
+          // Configure Dead Letter Queue
+          // After 3 failed attempts, move message to DLQ for investigation
+          args.redrivePolicy = $interpolate`{"deadLetterTargetArn":"${llmJobsDLQ.arn}","maxReceiveCount":3}`;
+        },
+      },
+    });
+
+    console.log(`✓ LLM jobs queue configured with 15-minute visibility timeout`);
+
     // DynamoDB table for WebSocket connection tracking
-    const connectionsTable = new sst.aws.Dynamo("WebSocketConnections", {
+    const connectionsTable = new sst.aws.Dynamo("StorybookWebSocketConnections", {
       fields: {
         connectionId: "string",
         userId: "string",
@@ -356,7 +385,7 @@ export default $config({
     console.log(`✓ KMS encryption key created for Lambda environment variables`);
 
     // API Gateway WebSocket for real-time features
-    const websocket = new sst.aws.ApiGatewayWebSocket("RealtimeWebSocket", {
+    const websocket = new sst.aws.ApiGatewayWebSocket("StorybookRealtimeWebSocket", {
       accessLog: {
         retention: "1 week",
       },
@@ -368,6 +397,10 @@ export default $config({
       link: [connectionsTable],
       environment: {
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        // Required for JWT token verification
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+        // Required for fetching JWKS (Supabase requires apikey header)
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
       },
       transform: {
         function: {
@@ -484,8 +517,64 @@ export default $config({
       },
     });
 
+    // LLM Worker Lambda - Processes long-running LLM jobs from SQS
+    // Results are pushed to users via WebSocket
+    const llmWorker = llmJobsQueue.subscribe({
+      handler: "apps/web/lambda/llm-worker/index.handler",
+      timeout: "15 minutes", // 15 minutes for long LLM calls
+      memory: "2048 MB", // More memory for LLM processing
+      architecture: "arm64",
+      link: [connectionsTable, websocket, llmJobsQueue],
+      permissions: [
+        {
+          // Permission to send WebSocket messages to users
+          actions: ["execute-api:ManageConnections"],
+          resources: ["*"],
+        },
+        {
+          actions: ["kms:Decrypt"],
+          resources: [kmsKey.arn],
+        },
+      ],
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
+      environment: {
+        // Supabase configuration
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
+        // LLM API keys
+        ...(process.env.OPENAI_API_KEY && { OPENAI_API_KEY: process.env.OPENAI_API_KEY }),
+        ...(process.env.ANTHROPIC_API_KEY && { ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY }),
+        ...(process.env.GOOGLE_API_KEY && { GOOGLE_API_KEY: process.env.GOOGLE_API_KEY }),
+        ...(process.env.GEMINI_API_KEY && { GEMINI_API_KEY: process.env.GEMINI_API_KEY }),
+        ...(process.env.DEEPSEEK_API_KEY && { DEEPSEEK_API_KEY: process.env.DEEPSEEK_API_KEY }),
+
+        // LLM configuration
+        LLM_PROVIDER: process.env.LLM_PROVIDER || "gemini",
+        LLM_MODEL: process.env.LLM_MODEL || "",
+
+        // WebSocket configuration
+        CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
+      },
+      nodejs: {
+        install: [
+          "@supabase/supabase-js",
+          "@aws-sdk/client-dynamodb",
+          "@aws-sdk/lib-dynamodb",
+          "@aws-sdk/client-apigatewaymanagementapi",
+        ],
+      },
+    });
+
+    console.log(`✓ LLM Worker Lambda configured with 15-minute timeout`);
+
     // Deploy Next.js application
-    const web = new sst.aws.Nextjs("Web", {
+    const web = new sst.aws.Nextjs("StorybookWeb", {
       path: "apps/web",
 
       // Build configuration
@@ -502,6 +591,7 @@ export default $config({
       link: [
         ...Array.from(buckets.values()),
         queue,
+        llmJobsQueue,
         connectionsTable,
         websocket,
       ],
@@ -602,6 +692,9 @@ export default $config({
         ...(process.env.SENTRY_DSN && { SENTRY_DSN: process.env.SENTRY_DSN }),
         ...(process.env.NEXT_PUBLIC_SENTRY_DSN && { NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN }),
 
+        // WebSocket URL (from SST deployment)
+        NEXT_PUBLIC_WEBSOCKET_URL: websocket.url,
+
         // Misc
         TZ: process.env.TZ || "UTC",
       },
@@ -609,13 +702,12 @@ export default $config({
       // CloudFront CDN configuration
       domain: domainConfig,
 
-      // Lambda function configuration
+      // Lambda configuration via transform
+      // Note: Using defaults until we can properly configure increased timeouts
       transform: {
         server: {
           // Increase memory for better performance (reduce cold starts)
-          memory: "1024 MB",
-          // Increase timeout for long-running requests
-          timeout: "30 seconds",
+          memory: "1792 MB",
           // Architecture (arm64 is cheaper and often faster)
           architecture: "arm64",
           // Enable KMS encryption for environment variables
@@ -686,7 +778,7 @@ export default $config({
 
     // Analytics Sync Cron - Syncs YouTube, TikTok, Instagram analytics hourly
     // Uses EventBridge to trigger a Lambda that calls the analytics sync API endpoint
-    const analyticsSyncCron = new sst.aws.Cron("AnalyticsSyncCron", {
+    const analyticsSyncCron = new sst.aws.Cron("StorybookAnalyticsSyncCron", {
       job: {
         handler: "apps/web/lambda/analytics-sync/index.handler",
         timeout: "5 minutes",
@@ -716,7 +808,7 @@ export default $config({
 
     // Token Refresh Cron - Refreshes OAuth tokens before they expire
     // Runs every 30 minutes to catch tokens expiring within the hour
-    const tokenRefreshCron = new sst.aws.Cron("TokenRefreshCron", {
+    const tokenRefreshCron = new sst.aws.Cron("StorybookTokenRefreshCron", {
       job: {
         handler: "apps/web/lambda/token-refresh/index.handler",
         timeout: "2 minutes",
@@ -746,7 +838,7 @@ export default $config({
 
     // Scheduled Publish Cron - Processes videos scheduled for publishing
     // Runs every 5 minutes to publish videos at their scheduled time
-    const scheduledPublishCron = new sst.aws.Cron("ScheduledPublishCron", {
+    const scheduledPublishCron = new sst.aws.Cron("StorybookScheduledPublishCron", {
       job: {
         handler: "apps/web/lambda/scheduled-publish/index.handler",
         timeout: "5 minutes",

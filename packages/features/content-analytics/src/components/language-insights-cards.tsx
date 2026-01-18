@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -18,7 +18,9 @@ import { Alert, AlertDescription } from '@kit/ui/alert';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
+import { toast } from '@kit/ui/sonner';
 
 import type { GeographyByLanguage } from '../server/language-analytics';
 import { generateLanguageInsightsAction } from '../server/language-insights-actions';
@@ -172,9 +174,39 @@ interface LanguageInsightsCardProps {
 export function LanguageInsightsCard({ projectId }: LanguageInsightsCardProps) {
     const [insights, setInsights] = useState<LanguageInsightsResult | null>(null);
 
+    // WebSocket for async LLM results (uses shared provider from layout)
+    const { status: llmStatus, result: llmResult, error: llmError } = useLlmJob<{ data: LanguageInsightsResult }>(
+        'language-insights'
+    );
+
+    // Handle async WebSocket result
+    useEffect(() => {
+        if (llmStatus === 'success' && llmResult) {
+            // llmResult is already the result object from message.result
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const resultData = llmResult as any;
+            if (resultData) {
+                setInsights(resultData);
+                toast.success('Language insights generated');
+            }
+        } else if (llmStatus === 'error') {
+            toast.error(llmError || 'Failed to generate language insights');
+        }
+    }, [llmStatus, llmResult, llmError]);
+
     const { mutate: generateInsights, isPending } = useMutation({
-        mutationFn: () => generateLanguageInsightsAction({ projectId }),
-        onSuccess: (data) => setInsights(data),
+        mutationFn: async () => {
+            const result = await generateLanguageInsightsAction({ projectId });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((result as any)?.queued) {
+                toast.info('Generating insights in background...');
+                return null; // WebSocket will deliver result
+            }
+            return result;
+        },
+        onSuccess: (data) => {
+            if (data) setInsights(data);
+        },
     });
 
     if (!insights && !isPending) {

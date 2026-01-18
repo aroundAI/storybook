@@ -3,7 +3,6 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
-import { executeLLM } from '@kit/prompt-engine/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 const PublishVideoSchema = z.object({
@@ -52,44 +51,41 @@ export const updatePublishedVideoAction = enhanceAction(
     { schema: PublishVideoSchema },
 );
 
+
+const ShortsGroupSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    title: z.string(),
+    description: z.string(),
+    tags: z.array(z.string()),
+    videos: z.record(z.string(), z.string()),
+});
+
+const UpdateShortsGroupsSchema = z.object({
+    episodeId: z.string().uuid(),
+    shortsGroups: z.array(ShortsGroupSchema),
+});
+
 /**
- * Update shorts URL for a specific language
+ * Update the entire shorts_groups array for an episode.
+ * This persists add/update/delete operations on shorts groups.
  */
-export const updatePublishedShortsAction = enhanceAction(
-    async ({ episodeId, language, videoUrl }) => {
+export const updateShortsGroupsAction = enhanceAction(
+    async ({ episodeId, shortsGroups }) => {
         const client = getSupabaseServerClient();
-
-        const { data: episode, error: fetchError } = await client
-            .from('episodes')
-            .select('localized_shorts')
-            .eq('id', episodeId)
-            .single();
-
-        if (fetchError) {
-            throw new Error(`Failed to fetch episode: ${fetchError.message}`);
-        }
-
-        const currentShorts = (episode.localized_shorts as Record<string, string>) || {};
-        const updatedShorts = { ...currentShorts };
-
-        if (videoUrl) {
-            updatedShorts[language] = videoUrl;
-        } else {
-            delete updatedShorts[language];
-        }
 
         const { error: updateError } = await client
             .from('episodes')
-            .update({ localized_shorts: updatedShorts })
+            .update({ shorts_groups: shortsGroups })
             .eq('id', episodeId);
 
         if (updateError) {
-            throw new Error(`Failed to update published shorts: ${updateError.message}`);
+            throw new Error(`Failed to update shorts groups: ${updateError.message}`);
         }
 
         return { success: true };
     },
-    { schema: PublishVideoSchema },
+    { schema: UpdateShortsGroupsSchema },
 );
 
 const TranslateMetadataSchema = z.object({
@@ -100,9 +96,16 @@ const TranslateMetadataSchema = z.object({
 
 /**
  * Translate metadata (title, description) to target language using LLM
+ * In production, queues via SQS for background processing.
  */
 export const translateMetadataAction = enhanceAction(
-    async ({ title, description, targetLanguage }) => {
+    async ({ title, description, targetLanguage }): Promise<{
+        success: boolean;
+        translatedTitle: string;
+        translatedDescription: string;
+        targetLanguage: string;
+        queued?: boolean;
+    }> => {
         // Skip translation for English
         if (targetLanguage === 'en') {
             return {
@@ -113,29 +116,22 @@ export const translateMetadataAction = enhanceAction(
             };
         }
 
-        try {
-            const result = await executeLLM<{ title: string; description: string }>({
-                templateSlug: 'publishing/translate-metadata',
-                variables: { title, description, targetLanguage },
-                context: { name: 'translate-metadata', accountId: 'system' },
-            });
+        // Always queue to Lambda for processing
+        const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-            return {
-                success: true,
-                translatedTitle: result.data?.title || title,
-                translatedDescription: result.data?.description || description,
-                targetLanguage,
-            };
-        } catch (error) {
-            console.error('Translation failed, using original:', error);
-            // Fallback to original if translation fails
-            return {
-                success: false,
-                translatedTitle: title,
-                translatedDescription: description,
-                targetLanguage,
-            };
-        }
+        await queueLlmJob({
+            jobType: 'publish-metadata',
+            userId: 'system',
+            payload: { title, description, targetLanguage },
+        });
+
+        return {
+            success: true,
+            translatedTitle: title,
+            translatedDescription: description,
+            targetLanguage,
+            queued: true,
+        };
     },
     { schema: TranslateMetadataSchema },
 );

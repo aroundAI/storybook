@@ -10,7 +10,7 @@ import 'server-only';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
-import type { StorageAdapter, UploadOptions, UploadResult } from '../types';
+import type { SignedUploadResult, StorageAdapter, UploadOptions, UploadResult } from '../types';
 
 /**
  * Expand tilde (~) in paths to the user's home directory
@@ -69,6 +69,20 @@ export class LocalStorageAdapter implements StorageAdapter {
         const url = this.getPublicUrl(bucket, path);
 
         return { path, url };
+    }
+
+    async getSignedUploadUrl(
+        _bucket: string,
+        _path: string,
+        _contentType: string,
+        _expiresIn?: number,
+    ): Promise<SignedUploadResult> {
+        // Local storage doesn't support presigned URLs
+        // For development, use the regular upload endpoint
+        throw new Error(
+            'Local storage does not support presigned URLs. ' +
+            'Use server-side upload or switch to R2/Supabase for production.',
+        );
     }
 
     getPublicUrl(bucket: string, path: string): string {

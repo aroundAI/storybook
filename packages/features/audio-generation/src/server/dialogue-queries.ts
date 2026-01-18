@@ -92,18 +92,7 @@ function transformDialogueLine(row: DialogueLineRow): DialogueLine {
   };
 }
 
-/**
- * Calculate summary counts from dialogue lines
- */
-function calculateSummary(lines: DialogueLine[]): DialogueLineSummary {
-  return {
-    total: lines.length,
-    pending: lines.filter((l) => l.status === 'pending').length,
-    generating: lines.filter((l) => l.status === 'generating').length,
-    completed: lines.filter((l) => l.status === 'completed').length,
-    failed: lines.filter((l) => l.status === 'failed').length,
-  };
-}
+// Note: calculateSummary function removed - now calculated inline with single-pass loop
 
 /**
  * Fetch all dialogue lines for an episode
@@ -162,7 +151,21 @@ export const getDialogueLinesAction = enhanceAction(
 
     const dialogueRows = (rows ?? []) as DialogueLineRow[];
     const lines = dialogueRows.map(transformDialogueLine);
-    const summary = calculateSummary(lines);
+
+    // Calculate summary directly from raw rows for efficiency (avoid 5x filter on transformed array)
+    const summary: DialogueLineSummary = {
+      total: dialogueRows.length,
+      pending: 0,
+      generating: 0,
+      completed: 0,
+      failed: 0,
+    };
+    for (const row of dialogueRows) {
+      if (row.status === 'pending') summary.pending++;
+      else if (row.status === 'generating') summary.generating++;
+      else if (row.status === 'completed') summary.completed++;
+      else if (row.status === 'failed') summary.failed++;
+    }
 
     logger.info(
       { ...ctx, total: summary.total, completed: summary.completed },

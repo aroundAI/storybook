@@ -18,6 +18,7 @@ import type {
   ScreenplayScene,
 } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
@@ -42,7 +43,7 @@ export function ScreenplayScreen({
   onShotListComplete,
   refetchEpisode,
 }: ScreenplayScreenProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, _startTransition] = useTransition();
   const [activeSceneNumber, setActiveSceneNumber] = useState(1);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -50,6 +51,47 @@ export function ScreenplayScreen({
   const scenes = parseScenes(episode.screenplayData);
   const metadata = episode.screenplayData?.metadata;
   const hasShotList = Boolean(episode.shotList) || episode.shots.length > 0;
+
+  // WebSocket for shot-generation async LLM results
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ shotsCreated: number }>(
+    'shot-generation'
+  );
+
+  // WebSocket for screenplay-conversion results (when screenplay is generated while on this tab)
+  const { status: screenplayStatus, result: screenplayResult, error: screenplayError } = useLlmJob<{ success: boolean }>(
+    'screenplay-conversion'
+  );
+
+  // Handle shot-generation async result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = llmResult as any;
+      if (resultData?.success) {
+        // Don't show count in toast - let UI refresh show actual count
+        // This avoids confusing "0 shots" message due to timing issues
+        toast.success('Shot list generated successfully');
+        refetchEpisode();
+        onShotListComplete();
+      }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to generate shot list');
+    }
+  }, [llmStatus, llmResult, llmError, refetchEpisode, onShotListComplete]);
+
+  // Handle screenplay-conversion result (refresh to show generated screenplay)
+  useEffect(() => {
+    if (screenplayStatus === 'success' && screenplayResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = screenplayResult as any;
+      if (resultData?.success) {
+        toast.success('Screenplay converted successfully');
+        refetchEpisode();
+      }
+    } else if (screenplayStatus === 'error') {
+      toast.error(screenplayError || 'Failed to convert screenplay');
+    }
+  }, [screenplayStatus, screenplayResult, screenplayError, refetchEpisode]);
 
   const scrollToScene = useCallback((sceneNumber: number) => {
     setActiveSceneNumber(sceneNumber);
@@ -91,40 +133,41 @@ export function ScreenplayScreen({
   }, [scenes]);
 
   const handleGenerateShotList = () => {
-    startTransition(async () => {
-      try {
-        const result = await generateShotListAction({
-          episodeId: episode.id,
-          shotDurationMin: 5,
-          shotDurationMax: 8,
-          videoProvider: 'kling',
-        });
-
-        if (result.success) {
-          toast.success(
-            `Shot list generated with ${result.shotsCreated} shots`,
-          );
-          refetchEpisode();
-          onShotListComplete();
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to generate shot list',
-        );
+    triggerLlm(async () => {
+      const result = await generateShotListAction({
+        episodeId: episode.id,
+        shotDurationMin: 5,
+        shotDurationMax: 8,
+        videoProvider: 'kling',
+      });
+      // If queued, return queued flag (WebSocket will deliver result)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((result as any)?.queued) {
+        toast.info('Generating shot list in background... This may take a few minutes.');
+        return { queued: true };
       }
+      // If local dev (synchronous), process immediately
+      if (result.success) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const resultData = result as any;
+        const shotsCreated = resultData?.data?.shotsCreated ?? resultData?.shotsCreated ?? 0;
+        toast.success(`Shot list generated with ${shotsCreated} shots`);
+        refetchEpisode();
+        onShotListComplete();
+        return { success: true, data: { shotsCreated } };
+      }
+      throw new Error('Failed to generate shot list');
     });
   };
 
   if (!scenes.length) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
-          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="cinema-panel p-12 text-center">
+          <h2 className="mb-2 text-xl font-semibold text-white">
             No Screenplay
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-slate-400">
             Convert your story to screenplay format first.
           </p>
         </div>
@@ -135,7 +178,7 @@ export function ScreenplayScreen({
   return (
     <div className="relative flex h-full flex-col">
       {/* Header Bar */}
-      <div className="flex items-center justify-between border-b border-black/5 bg-card/85 px-6 py-3 backdrop-blur-xl">
+      <div className="cinema-workspace flex items-center justify-between border-b border-white/5 px-6 py-3">
         <div className="flex items-center gap-4">
           <h2 className="font-semibold text-gray-900 dark:text-white">
             Screenplay
@@ -155,7 +198,7 @@ export function ScreenplayScreen({
           {hasShotList ? (
             <Button
               onClick={onShotListComplete}
-              className="gap-2 bg-green-600 text-white hover:bg-green-700"
+              className="btn-cinema-primary gap-2 bg-gradient-to-r from-emerald-500 to-green-600"
             >
               View Shot List
               <ArrowRight className="h-4 w-4" />
@@ -163,10 +206,10 @@ export function ScreenplayScreen({
           ) : (
             <Button
               onClick={handleGenerateShotList}
-              disabled={isPending}
-              className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+              disabled={isPending || llmStatus === 'pending'}
+              className="btn-cinema-primary gap-2"
             >
-              {isPending ? (
+              {isPending || llmStatus === 'pending' ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Generating Shot List...
@@ -185,7 +228,7 @@ export function ScreenplayScreen({
       {/* Main Content - Two Column Layout */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Scene Index */}
-        <div className="w-56 shrink-0 border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-900">
+        <div className="w-56 shrink-0 border-r border-white/5 bg-white/[0.02]">
           <SceneIndexSidebar
             scenes={scenes}
             activeSceneNumber={activeSceneNumber}
@@ -193,10 +236,9 @@ export function ScreenplayScreen({
           />
         </div>
 
-        {/* Center - Screenplay Paper */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto bg-gray-100 p-8 dark:bg-gray-900"
+          className="flex-1 overflow-y-auto bg-slate-950 p-8"
         >
           <ScreenplayPaper
             scenes={scenes}

@@ -34,8 +34,10 @@ import { DeleteProjectDialog } from '../../../_components/delete-project-dialog'
 import { EditProjectDialog } from '../../../_components/edit-project-dialog';
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
 import { AudioSettingsForm } from './_components/audio-settings-form';
+import { ProjectCoverSettings } from './_components/project-cover-settings';
 import { ProjectIntroSettings } from './_components/project-intro-settings';
 import { StudioSettingsForm } from './_components/studio-settings-form';
+import { ProjectVisibilitySettings } from './_components/visibility-settings';
 
 interface ProjectSettingsPageProps {
   params: Promise<{ account: string; projectSlug: string }>;
@@ -82,7 +84,11 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   // First fetch project by slug
   const { data: project, error: projectError } = await client
     .from('projects')
-    .select('*')
+    .select(`
+      id, name, slug, description, account_id, metadata, status, visibility,
+      audio_settings, created_by, updated_by, public_slug, seo_metadata,
+      created_at, updated_at
+    `)
     .eq('slug', projectSlug)
     .single();
 
@@ -112,11 +118,14 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
     notFound();
   }
 
-  // Fetch publishing configs
-  const [publishingConfigs, platformConnections] = await Promise.all([
+  // Fetch publishing configs and account public profile
+  const [publishingConfigs, platformConnections, accountData] = await Promise.all([
     getProjectPublishingConfigs(project.id),
     getAccountPlatformConnections(project.account_id ?? ''),
+    client.from('accounts').select('public_profile').eq('id', project.account_id ?? '').single(),
   ]);
+
+  const isAccountPublic = (accountData.data?.public_profile as Record<string, unknown>)?.is_public === true;
 
   return (
     <>
@@ -212,11 +221,34 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             </CardContent>
           </Card>
 
+          {/* Cover Image Settings */}
+          <If condition={permissions.canEdit}>
+            <ProjectCoverSettings
+              projectId={project.id}
+              currentCoverUrl={
+                (project.metadata as Record<string, unknown>)?.coverImageUrl as string | undefined
+              }
+            />
+          </If>
+
+          {/* Public Sharing & Visibility Settings */}
+          <If condition={permissions.canEdit}>
+            <ProjectVisibilitySettings
+              projectId={project.id}
+              projectName={project.name}
+              accountSlug={account}
+              currentVisibility={project.visibility ?? 'private'}
+              currentPublicSlug={project.public_slug ?? null}
+              isAccountPublic={isAccountPublic}
+            />
+          </If>
+
           {/* Studio Content Generation Settings */}
           <If condition={permissions.canEdit}>
             <StudioSettingsForm
               projectId={project.id}
               currentSettings={{
+                description: project.description ?? undefined,
                 targetAudience: (project.metadata as Record<string, unknown>)
                   ?.targetAudience as string | undefined,
                 genre: (project.metadata as Record<string, unknown>)?.genre as

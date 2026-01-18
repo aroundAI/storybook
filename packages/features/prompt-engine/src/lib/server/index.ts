@@ -1,4 +1,4 @@
-export { loadAndRenderPrompt, clearPromptCache } from './prompt-loader';
+export { loadAndRenderPrompt } from './prompt-loader';
 
 export type {
   PromptOutputConfig,
@@ -8,3 +8,6 @@ export type {
 } from '../types';
 
 export { executeLLM, getApiKeyForProvider } from './llm-executor';
+
+export { queueLlmJob, isLambdaEnvironment } from './sqs-helper';
+export type { LlmJobType } from './sqs-helper';

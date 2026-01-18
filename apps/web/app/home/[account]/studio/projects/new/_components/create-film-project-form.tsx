@@ -45,9 +45,10 @@ import {
 } from '../_lib/schema';
 import {
   createFilmProject,
-  uploadProjectCoverImage,
+  updateProjectCoverImage,
 } from '../_lib/server/create-film-project.action';
 import { CoverImageUpload } from './cover-image-upload';
+import { uploadProjectCover } from '@kit/storage/client';
 
 type FormData = z.infer<typeof CreateFilmProjectSchema>;
 
@@ -230,25 +231,24 @@ export function CreateFilmProjectForm({
           },
         );
 
-        // 2. Upload cover image if provided (uses storage adapter)
+        // 2. Upload cover image if provided (uses presigned URL - direct to R2)
         if (coverFile) {
-          console.log('[Cover Upload Debug] Starting upload via server action:', {
+          console.log('[Cover Upload Debug] Starting presigned upload:', {
             projectId,
             fileName: coverFile.name,
             fileSize: coverFile.size,
             fileType: coverFile.type,
           });
 
-          const formData = new FormData();
-          formData.append('file', coverFile);
+          try {
+            const uploadResult = await uploadProjectCover(coverFile, projectId);
+            console.log('[Cover Upload Debug] Upload result:', uploadResult);
 
-          const uploadResult = await uploadProjectCoverImage(projectId, formData);
-
-          console.log('[Cover Upload Debug] Upload result:', uploadResult);
-
-          if (!uploadResult.success) {
-            console.error('Cover image upload failed:', uploadResult.error);
-            toast.error(`Cover upload failed: ${uploadResult.error}`);
+            // Update project metadata with cover URL
+            await updateProjectCoverImage(projectId, uploadResult.url);
+          } catch (uploadError) {
+            console.error('Cover image upload failed:', uploadError);
+            toast.error(`Cover upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
           }
         }
 

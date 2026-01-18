@@ -7,6 +7,7 @@ import { Loader2, Music, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import {
   deleteAudioTrackAction,
   getAudioTracksAction,
+  getAudioCuesAction,
   pollMusicStatusAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
@@ -75,25 +76,66 @@ export function MusicTimeline({
   const [showCueDialog, setShowCueDialog] = useState(false);
   const [selectedTrack, setSelectedTrack] = useState<MusicTrack | null>(null);
 
-  // Fetch music tracks
+  // Fetch music tracks (user-generated) AND music cues (auto-generated from shots)
   const fetchTracks = useCallback(async () => {
     try {
-      const result = await getAudioTracksAction({
-        episodeId,
-        type: 'music',
-      });
-      setTracks(
-        result.tracks.map((t) => ({
-          id: t.id,
-          name: t.name,
-          fileUrl: t.fileUrl,
-          durationSeconds: t.durationSeconds,
-          timelineStartSeconds: t.timelineStartSeconds,
-          volume: t.volume,
-          status: t.status,
-          metadata: t.metadata as MusicTrack['metadata'],
-        })),
+      // Fetch both user-created tracks and auto-generated cues
+      const [tracksResult, cuesResult] = await Promise.all([
+        getAudioTracksAction({ episodeId, type: 'music' }),
+        getAudioCuesAction({ episodeId }),
+      ]);
+
+      // Map user-created tracks
+      const userTracks: MusicTrack[] = tracksResult.tracks.map((t) => ({
+        id: t.id,
+        name: t.name,
+        fileUrl: t.fileUrl,
+        durationSeconds: t.durationSeconds,
+        timelineStartSeconds: t.timelineStartSeconds,
+        volume: t.volume,
+        status: t.status,
+        metadata: t.metadata as MusicTrack['metadata'],
+      }));
+
+      // Map auto-generated music cues
+      const musicCues: MusicTrack[] = (cuesResult.cues as Array<{
+        id: string;
+        cue_type: string;
+        prompt: string;
+        scene_number: number;
+        start_offset_seconds: number | null;
+        duration_seconds: number | null;
+        status: string | null;
+        audio_assets: { id: string; file_url: string | null; duration_seconds: number | null } | null;
+      }>)
+        .filter((c) => c.cue_type === 'music')
+        .map((c) => ({
+          id: `cue-${c.id}`,
+          name: c.prompt.substring(0, 50),
+          fileUrl: c.audio_assets?.file_url ?? null,
+          durationSeconds: c.audio_assets?.duration_seconds ?? c.duration_seconds ?? 30,
+          timelineStartSeconds: c.start_offset_seconds ?? 0,
+          volume: 1,
+          status: c.status === 'placed' || c.status === 'matched'
+            ? 'completed'
+            : c.status === 'pending'
+              ? 'pending'
+              : c.status === 'generating'
+                ? 'processing'
+                : 'failed' as const,
+          metadata: {
+            sceneNumber: c.scene_number,
+            prompt: c.prompt,
+            isCue: true,
+          },
+        }));
+
+      // Combine and sort by timeline position
+      const combined = [...userTracks, ...musicCues].sort(
+        (a, b) => a.timelineStartSeconds - b.timelineStartSeconds
       );
+
+      setTracks(combined);
     } catch (error) {
       console.error('Failed to fetch music tracks:', error);
       toast.error('Failed to load music tracks');
@@ -355,7 +397,7 @@ export function MusicTimeline({
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
                         selectedTrack?.id === track.id &&
-                          'ring-2 ring-blue-500 ring-offset-2',
+                        'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{
                         left: `${leftPx}px`,

@@ -1,0 +1,65 @@
+{
+    "name": "@kit/public-sharing",
+    "private": true,
+    "version": "0.1.0",
+    "scripts": {
+        "clean": "git clean -xdf .turbo node_modules",
+        "format": "prettier --check \"**/*.{ts,tsx}\"",
+        "lint": "eslint .",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest",
+        "test:coverage": "vitest --coverage"
+    },
+    "exports": {
+        "./components/company-page": "./src/components/company-page.tsx",
+        "./components/project-page": "./src/components/project-page.tsx",
+        "./components/episode-page": "./src/components/episode-page.tsx",
+        "./components/language-selector": "./src/components/language-selector.tsx",
+        "./components/share-button": "./src/components/share-button.tsx",
+        "./components/video-player": "./src/components/video-player.tsx",
+        "./components/episode-list": "./src/components/episode-list.tsx",
+        "./components/project-grid": "./src/components/project-grid.tsx",
+        "./components/episode-visibility-settings": "./src/components/episode-visibility-settings.tsx",
+        "./components/video-link-manager": "./src/components/video-link-manager.tsx",
+        "./server/visibility-actions": "./src/server/visibility-actions.ts",
+        "./server/public-queries": "./src/server/public-queries.ts",
+        "./lib/metadata": "./src/lib/metadata.ts",
+        "./lib/structured-data": "./src/lib/structured-data.ts",
+        "./lib/slug-validation": "./src/lib/slug-validation.ts"
+    },
+    "devDependencies": {
+        "@hookform/resolvers": "^4.1.3",
+        "@kit/eslint-config": "workspace:*",
+        "@kit/next": "workspace:*",
+        "@kit/prettier-config": "workspace:*",
+        "@kit/shared": "workspace:*",
+        "@kit/supabase": "workspace:*",
+        "@kit/tsconfig": "workspace:*",
+        "@kit/ui": "workspace:*",
+        "@radix-ui/react-icons": "^1.3.2",
+        "@supabase/supabase-js": "2.57.4",
+        "@types/react": "19.1.13",
+        "@types/react-dom": "19.1.9",
+        "date-fns": "^4.1.0",
+        "lucide-react": "^0.544.0",
+        "next": "15.5.3",
+        "react": "19.1.1",
+        "react-dom": "19.1.1",
+        "react-hook-form": "^7.62.0",
+        "react-i18next": "^15.7.3",
+        "sonner": "^2.0.7",
+        "vitest": "^3.2.4",
+        "zod": "^3.25.74"
+    },
+    "prettier": "@kit/prettier-config",
+    "transpilePackages": [
+        "@kit/ui"
+    ],
+    "typesVersions": {
+        "*": {
+            "*": [
+                "src/*"
+            ]
+        }
+    }
+}

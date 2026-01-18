@@ -66,30 +66,31 @@ export const getRevenueSummaryAction = enhanceAction(
 
     if (error) throw error;
 
-    // Calculate totals
-    const totalRevenueCents =
-      records?.reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
-
-    // Group by platform
+    // Calculate totals and group by platform/content in single pass
+    let totalRevenueCents = 0;
     const byPlatform: Record<string, number> = {};
-    records?.forEach((r) => {
-      const platform = r.platform || 'unknown';
-      byPlatform[platform] =
-        (byPlatform[platform] || 0) + (r.revenue_cents || 0);
-    });
-
-    // Group by content (episode)
     const byContent: Record<string, number> = {};
-    records?.forEach((r) => {
+    const publishIds: string[] = [];
+
+    for (const r of records ?? []) {
+      const revenueCents = r.revenue_cents || 0;
+      totalRevenueCents += revenueCents;
+
+      // Group by platform
+      const platform = r.platform || 'unknown';
+      byPlatform[platform] = (byPlatform[platform] || 0) + revenueCents;
+
+      // Group by content (episode)
       const episodeId = r.publishes?.episode_id;
       if (episodeId) {
-        byContent[episodeId] =
-          (byContent[episodeId] || 0) + (r.revenue_cents || 0);
+        byContent[episodeId] = (byContent[episodeId] || 0) + revenueCents;
       }
-    });
+
+      // Collect publish IDs for view lookup
+      publishIds.push(r.publish_id);
+    }
 
     // Get view data for RPM calculation
-    const publishIds = records?.map((r) => r.publish_id) ?? [];
     let totalViews = 0;
 
     if (publishIds.length > 0) {
@@ -100,8 +101,10 @@ export const getRevenueSummaryAction = enhanceAction(
         .gte('snapshot_date', startDate)
         .lte('snapshot_date', endDate);
 
-      totalViews =
-        analyticsData?.reduce((sum, a) => sum + (a.views || 0), 0) ?? 0;
+      // Single-pass sum for views
+      for (const a of analyticsData ?? []) {
+        totalViews += a.views || 0;
+      }
     }
 
     const rpm = totalViews > 0 ? (totalRevenueCents / totalViews) * 1000 : 0;
@@ -139,8 +142,11 @@ export const getRevenueSummaryAction = enhanceAction(
       .lt('record_date', startDate)
       .eq('publishes.episodes.projects.account_id', accountId);
 
-    const previousTotal =
-      previousRecords?.reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
+    // Single-pass sum for previous period
+    let previousTotal = 0;
+    for (const r of previousRecords ?? []) {
+      previousTotal += r.revenue_cents || 0;
+    }
     const trendPercent =
       previousTotal > 0
         ? ((totalRevenueCents - previousTotal) / previousTotal) * 100
@@ -293,9 +299,25 @@ export const getRevenueProjectionAction = enhanceAction(
       .gte('record_date', thirtyDaysAgo.toISOString().split('T')[0])
       .eq('publishes.episodes.projects.account_id', accountId);
 
-    const totalRecent =
-      recentRecords?.reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
-    const uniqueDates = new Set(recentRecords?.map((r) => r.record_date));
+    // Single-pass aggregation for total, unique dates, and trend calculation
+    let totalRecent = 0;
+    let firstHalfRevenue = 0;
+    const uniqueDates = new Set<string>();
+    const fifteenDaysAgo = new Date();
+    fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
+    for (const r of recentRecords ?? []) {
+      const revenueCents = r.revenue_cents || 0;
+      totalRecent += revenueCents;
+      uniqueDates.add(r.record_date);
+
+      // Check if in first half for trend
+      const date = new Date(r.record_date);
+      if (date < fifteenDaysAgo) {
+        firstHalfRevenue += revenueCents;
+      }
+    }
+
     const daysWithData = uniqueDates.size;
 
     // Calculate daily average
@@ -311,22 +333,12 @@ export const getRevenueProjectionAction = enhanceAction(
     else if (daysWithData >= 14) confidenceLevel = 'medium';
 
     // Calculate trend for impact factor
-    const firstHalfRevenue =
-      recentRecords
-        ?.filter((r) => {
-          const date = new Date(r.record_date);
-          const fifteenDaysAgo = new Date();
-          fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
-          return date < fifteenDaysAgo;
-        })
-        .reduce((sum, r) => sum + (r.revenue_cents || 0), 0) ?? 0;
-
     const secondHalfRevenue = totalRecent - firstHalfRevenue;
     const trendImpact =
       firstHalfRevenue > 0
         ? Math.round(
-            ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
-          )
+          ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
+        )
         : 0;
 
     return {

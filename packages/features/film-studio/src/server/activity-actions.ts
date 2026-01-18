@@ -75,7 +75,7 @@ export const getRecentActivityAction = enhanceAction(
         );
       }
 
-      // Get recent publishes
+      // Get recent publishes - filtered by account at SQL level
       const { data: publishes, error: publishesError } = await client
         .from('publishes')
         .select(
@@ -92,8 +92,9 @@ export const getRecentActivityAction = enhanceAction(
         `,
         )
         .eq('status', 'published')
+        .eq('episodes.projects.account_id', data.accountId)
         .order('published_at', { ascending: false, nullsFirst: false })
-        .limit(data.limit * 2); // Fetch more since we'll filter by account
+        .limit(data.limit);
 
       if (publishesError) {
         throw new Error(`Failed to fetch publishes: ${publishesError.message}`);
@@ -125,20 +126,9 @@ export const getRecentActivityAction = enhanceAction(
         }
       }
 
-      // Add publish activities (filter by account)
+      // Add publish activities - SQL already filtered by account
       if (publishes) {
         for (const publish of publishes) {
-          const accountId = safeGetNestedProperty<string>(
-            publish.episodes,
-            ['projects', 'account_id'],
-            '',
-          );
-
-          // Filter by account_id
-          if (accountId !== data.accountId) {
-            continue;
-          }
-
           const projectName = safeGetNestedProperty<string>(
             publish.episodes,
             ['projects', 'name'],

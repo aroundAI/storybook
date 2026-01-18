@@ -217,6 +217,50 @@
       box-shadow: 0 0 20px var(--primary), 0 0 30px var(--primary), 0 0 40px var(--primary);
     }
   }
+
+  /* Cinema Design System - Ambient glow pulse */
+  @keyframes glow-pulse {
+    0% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+
+    100% {
+      opacity: 0.7;
+      transform: scale(1.1);
+    }
+  }
+
+  --animate-glow-pulse: glow-pulse 4s ease-in-out infinite alternate;
+
+  /* Cinema Surface Layer Colors */
+  --cinema-border-soft: rgba(255, 255, 255, 0.06);
+  --cinema-border-hover: rgba(255, 255, 255, 0.12);
+  --cinema-border-active: rgba(255, 255, 255, 0.18);
+
+  /* Cinema Glow RGB Values */
+  --glow-indigo-rgb: 99,
+  102,
+  241;
+  --glow-purple-rgb: 168,
+  85,
+  247;
+  --glow-blue-rgb: 59,
+  130,
+  246;
+  --glow-emerald-rgb: 52,
+  211,
+  153;
+
+  /* Cinema Shadows */
+  --shadow-cinema-soft: 0 4px 20px rgba(0, 0, 0, 0.2);
+  --shadow-cinema-glow: 0 4px 30px rgba(99, 102, 241, 0.15);
+  --shadow-cinema-elevated: 0 8px 40px rgba(0, 0, 0, 0.3);
+
+  /* Cinema Typography */
+  --cinema-story-line-height: 1.9;
+  --cinema-story-font-size: 1.125rem;
+  --cinema-ui-font-size: 0.875rem;
 }
 
 /* Glass effect utility */

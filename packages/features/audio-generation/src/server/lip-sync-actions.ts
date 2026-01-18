@@ -343,7 +343,13 @@ export const applyLipSyncAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: jobError } = await (client as any)
       .from('lip_sync_jobs')
-      .select('*')
+      .select(`
+        id, shot_id, dialogue_line_id, provider, status,
+        input_video_url, input_audio_url, output_video_url,
+        face_coordinates, quality, provider_job_id,
+        error_message, processing_time_seconds,
+        created_at, completed_at
+      `)
       .eq('id', data.jobId)
       .single();
 
@@ -448,7 +454,13 @@ export const getLipSyncJobAction = enhanceAction(
 
     // Build query
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (client as any).from('lip_sync_jobs').select('*');
+    let query = (client as any).from('lip_sync_jobs').select(`
+      id, shot_id, dialogue_line_id, provider, status,
+      input_video_url, input_audio_url, output_video_url,
+      face_coordinates, quality, provider_job_id,
+      error_message, processing_time_seconds,
+      created_at, completed_at
+    `);
 
     if (data.jobId) {
       query = query.eq('id', data.jobId);
@@ -527,7 +539,10 @@ export const pollLipSyncStatusAction = enhanceAction(
       .from('lip_sync_jobs')
       .select(
         `
-        *,
+        id, shot_id, dialogue_line_id, provider, status, provider_job_id,
+        input_video_url, input_audio_url, output_video_url,
+        face_coordinates, quality, error_message, processing_time_seconds,
+        created_at, completed_at,
         shots!inner(
           episodes!inner(
             projects!inner(account_id)

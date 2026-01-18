@@ -9,7 +9,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import type { StorageAdapter, UploadOptions, UploadResult } from '../types';
+import type { SignedUploadResult, StorageAdapter, UploadOptions, UploadResult } from '../types';
 
 /**
  * Generic Supabase client type to avoid strict typing issues
@@ -43,6 +43,30 @@ export class SupabaseStorageAdapter implements StorageAdapter {
         const url = this.getPublicUrl(bucket, path);
 
         return { path, url };
+    }
+
+    async getSignedUploadUrl(
+        bucket: string,
+        path: string,
+        _contentType: string,
+        expiresIn: number = 3600,
+    ): Promise<SignedUploadResult> {
+        // Supabase uses createSignedUploadUrl for presigned uploads
+        const { data, error } = await this.client.storage
+            .from(bucket)
+            .createSignedUploadUrl(path);
+
+        if (error || !data) {
+            throw new Error(`Failed to create signed upload URL: ${error?.message}`);
+        }
+
+        const publicUrl = this.getPublicUrl(bucket, path);
+
+        return {
+            uploadUrl: data.signedUrl,
+            publicUrl,
+            expiresIn,
+        };
     }
 
     getPublicUrl(bucket: string, path: string): string {

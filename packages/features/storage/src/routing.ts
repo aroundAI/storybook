@@ -2,9 +2,13 @@
  * Smart Storage Routing
  *
  * Routes uploads to the appropriate storage provider based on asset type.
- * - Video/Audio/Thumbnails → R2 (zero egress)
- * - Images (logos, frames) → Supabase (fast CDN)
- * - Avatars → Supabase (fast access)
+ * 
+ * STRATEGY: ALL runtime uploads go to R2 (Cloudflare)
+ * - Zero egress fees for video/audio streaming
+ * - Fast edge delivery globally
+ * - Consistent storage location for all user uploads
+ * 
+ * Static build assets (logos, icons in code) use S3/Supabase via CDN.
  */
 
 import 'server-only';
@@ -23,19 +27,21 @@ export type AssetType =
     | 'document';
 
 /**
- * Route configuration: which provider handles which asset types
+ * Route configuration: ALL runtime uploads go to R2
  *
- * Strategy:
- * - R2: Zero egress for large/frequently streamed files
- * - Supabase: Fast CDN for small UI assets
+ * R2 Benefits:
+ * - Zero egress fees for streaming
+ * - Fast edge delivery globally
+ * - S3-compatible API
+ * - Presigned URL support for large uploads
  */
 const ASSET_ROUTE_CONFIG: Record<AssetType, StorageProvider> = {
     video: 'r2',        // Zero egress for large files
     audio: 'r2',        // Streamed frequently
     thumbnail: 'r2',    // Consistent with media storage
-    image: 'supabase',  // Fast CDN for logos, frames
-    avatar: 'supabase', // Fast access, always small
-    document: 'supabase',
+    image: 'r2',        // All runtime uploads to R2
+    avatar: 'r2',       // All runtime uploads to R2
+    document: 'r2',     // All runtime uploads to R2
 };
 
 /**

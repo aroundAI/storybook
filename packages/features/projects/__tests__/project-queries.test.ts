@@ -93,6 +93,9 @@ describe('Project Queries', () => {
           created_by: USER_ID,
           updated_by: USER_ID,
           user_role: 'owner',
+          public_slug: null,
+          seo_metadata: null,
+          visibility: 'private',
         },
         {
           id: '550e8400-e29b-41d4-a716-446655440010',
@@ -108,6 +111,9 @@ describe('Project Queries', () => {
           created_by: USER_ID,
           updated_by: USER_ID,
           user_role: 'admin',
+          public_slug: null,
+          seo_metadata: null,
+          visibility: 'private',
         },
       ];
 

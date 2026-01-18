@@ -72,7 +72,11 @@ export const getProject = cache(async (projectId: string) => {
 
   const { data, error } = await client
     .from('projects')
-    .select('*')
+    .select(`
+      id, name, slug, description, account_id, metadata, status, visibility,
+      audio_settings, created_by, updated_by, public_slug, seo_metadata,
+      created_at, updated_at
+    `)
     .eq('id', projectId)
     .single();
 

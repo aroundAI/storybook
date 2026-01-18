@@ -14,6 +14,7 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 
 // local imports
 import { ConditionalSidebarLayout } from './_components/conditional-sidebar-layout';
+import { LlmWebSocketWrapper } from './_components/llm-websocket-wrapper';
 import { TeamAccountLayoutMobileNavigation } from './_components/team-account-layout-mobile-navigation';
 import { TeamAccountNavigationMenu } from './_components/team-account-navigation-menu';
 import { loadTeamWorkspace } from './_lib/server/team-account-workspace.loader';
@@ -51,14 +52,16 @@ function SidebarLayout({
   return (
     <TeamAccountWorkspaceContextProvider value={data}>
       <SidebarProvider defaultOpen={state.open}>
-        <ConditionalSidebarLayout
-          account={account}
-          accounts={accounts}
-          user={data.user}
-          accountId={data.account.id}
-        >
-          {children}
-        </ConditionalSidebarLayout>
+        <LlmWebSocketWrapper>
+          <ConditionalSidebarLayout
+            account={account}
+            accounts={accounts}
+            user={data.user}
+            accountId={data.account.id}
+          >
+            {children}
+          </ConditionalSidebarLayout>
+        </LlmWebSocketWrapper>
       </SidebarProvider>
     </TeamAccountWorkspaceContextProvider>
   );
@@ -80,25 +83,27 @@ function HeaderLayout({
 
   return (
     <TeamAccountWorkspaceContextProvider value={data}>
-      <Page style={'header'}>
-        <PageNavigation>
-          <TeamAccountNavigationMenu workspace={data} />
-        </PageNavigation>
+      <LlmWebSocketWrapper>
+        <Page style={'header'}>
+          <PageNavigation>
+            <TeamAccountNavigationMenu workspace={data} />
+          </PageNavigation>
 
-        <PageMobileNavigation className={'flex items-center justify-between'}>
-          <AppLogo />
+          <PageMobileNavigation className={'flex items-center justify-between'}>
+            <AppLogo />
 
-          <div className={'group-data-[mobile:hidden]'}>
-            <TeamAccountLayoutMobileNavigation
-              userId={data.user.id}
-              accounts={accounts}
-              account={account}
-            />
-          </div>
-        </PageMobileNavigation>
+            <div className={'group-data-[mobile:hidden]'}>
+              <TeamAccountLayoutMobileNavigation
+                userId={data.user.id}
+                accounts={accounts}
+                account={account}
+              />
+            </div>
+          </PageMobileNavigation>
 
-        {children}
-      </Page>
+          {children}
+        </Page>
+      </LlmWebSocketWrapper>
     </TeamAccountWorkspaceContextProvider>
   );
 }

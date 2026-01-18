@@ -31,7 +31,11 @@ export const getConnectionsAction = enhanceAction(
 
     const { data: connections, error } = (await client
       .from('platform_connections' as 'accounts')
-      .select('*')
+      .select(`
+        id, account_id, platform, platform_account_id, platform_account_name,
+        is_active, token_expires_at, scopes, metadata, language,
+        created_at, updated_at
+      `)
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false })) as {
         data: DBPlatformConnection[] | null;
@@ -244,7 +248,11 @@ export const getConnectedPlatformsAction = enhanceAction(
 
     const { data: connections, error } = await client
       .from('platform_connections')
-      .select('*')
+      .select(`
+        id, account_id, platform, platform_account_id, platform_account_name,
+        is_active, token_expires_at, scopes, metadata, language,
+        created_at, updated_at
+      `)
       .eq('account_id', accountId)
       .order('platform', { ascending: true });
 

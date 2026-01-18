@@ -31,7 +31,8 @@ import {
     type ProjectIntro,
     uploadProjectIntroAction,
 } from '@kit/episodes/server';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
+
+import { uploadWithPresignedUrl } from '~/lib/presigned-upload';
 
 // ============================================================================
 // Types
@@ -351,49 +352,35 @@ function AddIntroDialog({
         setUploadProgress(0);
 
         try {
-            // 1. Upload file to Supabase Storage directly
-            const client = getSupabaseBrowserClient();
-            const timestamp = Date.now();
-            const storagePath = `projects/${projectId}/intros/${language.toLowerCase()}-${timestamp}.mp4`;
-
-            setUploadProgress(20);
-
-            const { data: uploadData, error: uploadError } = await client.storage
-                .from('project-assets')
-                .upload(storagePath, selectedFile, {
-                    contentType: selectedFile.type,
-                    upsert: true,
-                });
-
-            if (uploadError) {
-                throw new Error(`Upload failed: ${uploadError.message}`);
-            }
-
-            setUploadProgress(60);
-
-            // Get public URL
-            const { data: urlData } = client.storage
-                .from('project-assets')
-                .getPublicUrl(uploadData.path);
-
-            // 2. Get video duration (using video element)
+            // 1. Get video duration first
             const duration = await getVideoDuration(selectedFile);
 
             if (duration > 60) {
                 toast.error('Intro video should be 60 seconds or less');
-                // Clean up uploaded file
-                await client.storage.from('project-assets').remove([storagePath]);
+                setIsUploading(false);
                 return;
             }
 
-            setUploadProgress(80);
+            setUploadProgress(20);
+
+            // 2. Upload file to R2 via presigned URL
+            const timestamp = Date.now();
+            const storagePath = `projects/${projectId}/intros/${language.toLowerCase()}-${timestamp}.mp4`;
+
+            const uploadResult = await uploadWithPresignedUrl(
+                selectedFile,
+                'project-assets',
+                storagePath
+            );
+
+            setUploadProgress(70);
 
             // 3. Save to database
             const result = await uploadProjectIntroAction({
                 projectId,
                 language: language.toLowerCase(),
                 languageLabel: languageLabel.trim() || undefined,
-                videoUrl: urlData.publicUrl,
+                videoUrl: uploadResult.url,
                 durationSeconds: duration,
                 fileName: selectedFile.name,
                 fileSizeBytes: selectedFile.size,

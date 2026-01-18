@@ -297,6 +297,7 @@ export function ClipItem({
     >
       {/* Background: thumbnail or waveform */}
       {hasThumbnail && (
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={clip.thumbnailUrl}
           alt=""

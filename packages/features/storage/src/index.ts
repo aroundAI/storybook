@@ -1,13 +1,15 @@
 /**
- * Storage Adapter Package
+ * Storage Adapter Package (Server-Only)
  *
  * Provides a unified interface for file storage operations with
  * pluggable backends (local filesystem, Supabase Storage, R2, B2)
  * and smart routing based on content type.
+ *
+ * NOTE: For client-side uploads, import from '@kit/storage/client' instead.
  */
 
 // Types
-export type { StorageAdapter, UploadOptions, UploadResult } from './types';
+export type { SignedUploadResult, StorageAdapter, UploadOptions, UploadResult } from './types';
 export type { StorageProvider } from './factory';
 export type { AssetType } from './routing';
 

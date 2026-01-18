@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useState } from 'react';
+
 import Image from 'next/image';
 
 import { useQuery } from '@tanstack/react-query';
@@ -14,7 +16,9 @@ import {
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
+import { toast } from '@kit/ui/sonner';
 
 import { generateInsightsAction } from '../server/insights-actions';
 import type { AggregateAnalytics } from '../types';
@@ -25,19 +29,52 @@ interface AIInsightsProps {
 }
 
 export function AIInsights({ projectId, analytics }: AIInsightsProps) {
+  const [wsInsights, setWsInsights] = useState<Awaited<ReturnType<typeof generateInsightsAction>> | null>(null);
+
+  // WebSocket for async LLM results (uses shared provider from layout)
+  const { status: llmStatus, result: llmResult, error: llmError } = useLlmJob<{ insights: Awaited<ReturnType<typeof generateInsightsAction>> }>(
+    'analytics-insights'
+  );
+
+  // Handle async WebSocket result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = llmResult as any;
+      if (resultData) {
+        setWsInsights(resultData);
+        toast.success('AI insights generated');
+      }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to generate insights');
+    }
+  }, [llmStatus, llmResult, llmError]);
+
   const {
-    data: insights,
+    data: queryInsights,
     isLoading,
     isFetching,
     refetch,
   } = useQuery({
     queryKey: ['ai-insights', projectId, analytics?.totals?.views],
-    queryFn: () => generateInsightsAction({ projectId, analytics }),
+    queryFn: async () => {
+      const result = await generateInsightsAction({ projectId, analytics });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((result as any)?.queued) {
+        toast.info('Generating insights in background...');
+        return null; // WebSocket will deliver result
+      }
+      return result;
+    },
     staleTime: 1000 * 60 * 60, // Cache for 1 hour
     enabled: !!projectId,
   });
 
-  if (isLoading) {
+  // Use WebSocket result if available, otherwise query result
+  const insights = wsInsights || queryInsights;
+
+  if (isLoading || llmStatus === 'pending') {
     return <InsightsSkeleton />;
   }
 

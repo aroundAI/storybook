@@ -21,8 +21,9 @@ import {
     PutObjectCommand,
     S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
-import type { StorageAdapter, UploadOptions, UploadResult } from '../types';
+import type { SignedUploadResult, StorageAdapter, UploadOptions, UploadResult } from '../types';
 
 export class R2StorageAdapter implements StorageAdapter {
     private s3Client: S3Client;
@@ -83,6 +84,33 @@ export class R2StorageAdapter implements StorageAdapter {
         const url = this.getPublicUrl(bucket, path);
 
         return { path, url };
+    }
+
+    async getSignedUploadUrl(
+        bucket: string,
+        path: string,
+        contentType: string,
+        expiresIn: number = 3600,
+    ): Promise<SignedUploadResult> {
+        const fullPath = `${bucket}/${path}`;
+
+        const command = new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: fullPath,
+            ContentType: contentType,
+        });
+
+        const uploadUrl = await getSignedUrl(this.s3Client, command, {
+            expiresIn,
+        });
+
+        const publicUrl = this.getPublicUrl(bucket, path);
+
+        return {
+            uploadUrl,
+            publicUrl,
+            expiresIn,
+        };
     }
 
     getPublicUrl(bucket: string, path: string): string {

@@ -53,8 +53,7 @@ export async function middleware(request: NextRequest) {
     csrfResponse.headers.set('x-action-path', request.nextUrl.pathname);
   }
 
-  // if no pattern handler returned a response,
-  // return the session response
+  // in all other cases, return the response
   return csrfResponse;
 }
 
@@ -72,7 +71,7 @@ async function withCsrfMiddleware(
     ignoreMethods: isServerAction(request)
       ? ['POST']
       : // always ignore GET, HEAD, and OPTIONS requests
-        ['GET', 'HEAD', 'OPTIONS'],
+      ['GET', 'HEAD', 'OPTIONS'],
   });
 
   try {
@@ -126,11 +125,90 @@ async function adminMiddleware(request: NextRequest, response: NextResponse) {
   return response;
 }
 
+// ============================================
+// Rate Limiting for Public Routes
+// ============================================
+const publicRouteRateLimits = new Map<string, { count: number; resetTime: number }>();
+
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per minute per IP
+
+function getRateLimitKey(request: NextRequest): string {
+  // Use x-forwarded-for for proxied requests, fallback to IP
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  const ip = forwardedFor?.split(',')[0]?.trim() || 'unknown';
+  return `public:${ip}`;
+}
+
+function checkRateLimit(request: NextRequest): { allowed: boolean; remaining: number; resetIn: number } {
+  const key = getRateLimitKey(request);
+  const now = Date.now();
+
+  const entry = publicRouteRateLimits.get(key);
+
+  if (!entry || now > entry.resetTime) {
+    // New window
+    publicRouteRateLimits.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { allowed: false, remaining: 0, resetIn: entry.resetTime - now };
+  }
+
+  entry.count++;
+  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - entry.count, resetIn: entry.resetTime - now };
+}
+
+// Clean up old entries periodically (every 5 minutes)
+if (typeof setInterval !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of publicRouteRateLimits.entries()) {
+      if (now > entry.resetTime + RATE_LIMIT_WINDOW_MS) {
+        publicRouteRateLimits.delete(key);
+      }
+    }
+  }, 5 * 60 * 1000);
+}
+
+async function publicRouteMiddleware(request: NextRequest, response: NextResponse) {
+  const { allowed, remaining, resetIn } = checkRateLimit(request);
+
+  // Set rate limit headers
+  response.headers.set('X-RateLimit-Limit', String(RATE_LIMIT_MAX_REQUESTS));
+  response.headers.set('X-RateLimit-Remaining', String(remaining));
+  response.headers.set('X-RateLimit-Reset', String(Math.ceil(resetIn / 1000)));
+
+  if (!allowed) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.ceil(resetIn / 1000)),
+          'X-RateLimit-Limit': String(RATE_LIMIT_MAX_REQUESTS),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(Math.ceil(resetIn / 1000)),
+        },
+      }
+    );
+  }
+
+  // Allow the request to continue
+  return response;
+}
+
 /**
  * Define URL patterns and their corresponding handlers.
  */
 function getPatterns() {
   return [
+    {
+      pattern: new URLPattern({ pathname: '/@*' }),
+      handler: publicRouteMiddleware,
+    },
     {
       pattern: new URLPattern({ pathname: '/admin/*?' }),
       handler: adminMiddleware,

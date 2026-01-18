@@ -270,6 +270,7 @@ function TopContentCard({
                         {content.map((item) => (
                             <div key={item.id} className="flex items-center gap-3">
                                 {item.thumbnailUrl ? (
+                                    /* eslint-disable-next-line @next/next/no-img-element */
                                     <img
                                         src={item.thumbnailUrl}
                                         alt={item.title}

@@ -88,7 +88,10 @@ describe('audit-log-queries', () => {
       const result = await getAuditLogsForObject('project', 'project-123');
 
       expect(mockFrom).toHaveBeenCalledWith('audit_logs');
-      expect(mockSelect).toHaveBeenCalledWith('*');
+      expect(mockSelect).toHaveBeenCalledWith(`
+        id, account_id, user_id, action, object_type, object_id, object_name,
+        before_state, after_state, scopes, metadata, ip_address, user_agent, created_at
+      `);
       expect(mockEq).toHaveBeenCalledWith('object_type', 'project');
       expect(mockEq).toHaveBeenCalledWith('object_id', 'project-123');
       expect(result).toEqual(mockLogs);

@@ -185,7 +185,10 @@ export const getEpisodeWithShotsAction = enhanceAction(
       .from('episodes')
       .select(
         `
-        *,
+        id, slug, project_id, season_id, number, title, description,
+        status, duration_seconds, thumbnail_url, final_video_url,
+        localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
+        metadata, version, created_at, updated_at, deleted_at,
         season:seasons(id, name, number)
       `,
       )
@@ -202,7 +205,13 @@ export const getEpisodeWithShotsAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: shots, error: shotsError } = await (client as any)
       .from('shots')
-      .select('*')
+      .select(`
+        id, episode_id, scene_number, shot_number, sequence_number,
+        duration_seconds, scene_description, action_description,
+        prompt, camera_direction, status, video_url, thumbnail_url,
+        first_frame_url, last_frame_url, generation_job_id, generation_metadata,
+        created_at, updated_at, deleted_at
+      `)
       .eq('episode_id', data.episodeId)
       .order('sequence_number', { ascending: true });
 
@@ -227,7 +236,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
       thumbnailUrl: episode.thumbnail_url,
       finalVideoUrl: episode.final_video_url,
       localizedVideos: episode.localized_videos ?? null,
-      localizedShorts: episode.localized_shorts ?? null,
+      shortsGroups: episode.shorts_groups ?? null,
       storyData: episode.story_data,
       screenplayData: episode.screenplay_data,
       shotList: episode.shot_list,
@@ -295,7 +304,12 @@ export const updateEpisodeStatusAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: currentEpisode, error: fetchError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(account_id)')
+      .select(`
+        id, project_id, season_id, number, slug, title, description, status, version,
+        duration_seconds, thumbnail_url, final_video_url, target_duration_seconds,
+        created_at, updated_at, deleted_at,
+        project:projects(account_id)
+      `)
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -405,7 +419,12 @@ export const listProjectEpisodesAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (client as any)
       .from('episodes')
-      .select('*', { count: 'exact' })
+      .select(`
+        id, slug, project_id, season_id, number, title, description,
+        status, duration_seconds, thumbnail_url, final_video_url,
+        localized_videos, story_data, screenplay_data, shot_list,
+        metadata, version, created_at, updated_at, deleted_at
+      `, { count: 'exact' })
       .eq('project_id', data.projectId)
       .is('deleted_at', null)
       .order('number', { ascending: true })
@@ -468,7 +487,12 @@ export const updateEpisodeAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: currentEpisode, error: fetchError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(account_id)')
+      .select(`
+        id, project_id, season_id, number, slug, title, description, status, version,
+        duration_seconds, thumbnail_url, final_video_url, target_duration_seconds,
+        created_at, updated_at, deleted_at,
+        project:projects(account_id)
+      `)
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -573,7 +597,12 @@ export const deleteEpisodeAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: fetchError } = await (client as any)
       .from('episodes')
-      .select('*, project:projects(account_id)')
+      .select(`
+        id, project_id, season_id, number, slug, title, description, status, version,
+        duration_seconds, thumbnail_url, final_video_url, target_duration_seconds,
+        created_at, updated_at, deleted_at,
+        project:projects(account_id)
+      `)
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();

@@ -27,6 +27,18 @@ export interface UploadResult {
 }
 
 /**
+ * Result of a presigned URL request
+ */
+export interface SignedUploadResult {
+    /** Presigned URL to upload directly */
+    uploadUrl: string;
+    /** Public URL to access the file after upload */
+    publicUrl: string;
+    /** Expiration time in seconds */
+    expiresIn: number;
+}
+
+/**
  * Unified storage adapter interface
  *
  * All storage backends (local, Supabase, S3, etc.) implement this interface.
@@ -47,6 +59,23 @@ export interface StorageAdapter {
         data: Buffer,
         options: UploadOptions,
     ): Promise<UploadResult>;
+
+    /**
+     * Get a presigned URL for direct client-side upload
+     * This bypasses the Lambda payload limit (6MB)
+     *
+     * @param bucket - The bucket/folder name
+     * @param path - Path within the bucket
+     * @param contentType - MIME type of the file
+     * @param expiresIn - URL expiration in seconds (default: 3600)
+     * @returns Presigned upload URL and public URL
+     */
+    getSignedUploadUrl(
+        bucket: string,
+        path: string,
+        contentType: string,
+        expiresIn?: number,
+    ): Promise<SignedUploadResult>;
 
     /**
      * Get the public URL for a file

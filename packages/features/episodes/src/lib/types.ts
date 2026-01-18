@@ -91,6 +91,8 @@ export interface EpisodeMetadata {
   tags?: string[];
   character_ids?: string[]; // Asset IDs for tagged characters
   location_ids?: string[]; // Asset IDs for tagged locations
+  character_names?: string[]; // Character names for immediate display in header
+  location_names?: string[]; // Location names for immediate display in header
   season_premise?: string; // Season-level premise for context
 }
 
@@ -324,8 +326,6 @@ export interface Episode {
   finalVideoUrl: string | null;
   /** Localized video URLs by language: { en: "url", hi: "url", es: "url", pt: "url" } */
   localizedVideos?: Record<string, string> | null;
-  /** @deprecated Use shortsGroups instead */
-  localizedShorts?: Record<string, string> | null;
   /** Grouped shorts with per-group metadata */
   shortsGroups?: ShortsGroup[] | null;
   storyData: StoryData | null;

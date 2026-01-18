@@ -15,19 +15,22 @@ interface EpisodeListItemProps {
   isLast?: boolean;
 }
 
+/**
+ * Derive stage status from the episode.status field
+ * Status progression: draft → story → storyboard → visual-studio → audio-studio → review → published
+ * This avoids fetching large JSON blobs just for boolean presence checks
+ */
 function getStageStatus(episode: Episode) {
+  const status = episode.status;
+
+  // Status progression map
+  const statusOrder = ['draft', 'story', 'storyboard', 'visual-studio', 'audio-studio', 'review', 'published'];
+  const currentIndex = statusOrder.indexOf(status);
+
   return {
-    story: episode.storyData?.fullStory ? 'complete' : 'pending',
-    screenplay: episode.screenplayData?.scenes
-      ? 'complete'
-      : episode.storyData?.fullStory
-        ? 'in-progress'
-        : 'pending',
-    visuals: episode.shotList?.shots
-      ? 'complete'
-      : episode.screenplayData?.scenes
-        ? 'in-progress'
-        : 'pending',
+    story: currentIndex >= 1 ? 'complete' : currentIndex === 0 ? 'in-progress' : 'pending',
+    screenplay: currentIndex >= 2 ? 'complete' : currentIndex === 1 ? 'in-progress' : 'pending',
+    visuals: currentIndex >= 3 ? 'complete' : currentIndex === 2 ? 'in-progress' : 'pending',
   } as const;
 }
 
@@ -51,9 +54,9 @@ function getStatusLabel(
 }
 
 function getStatusDotColor(status: 'complete' | 'in-progress' | 'pending') {
-  if (status === 'complete') return 'bg-green-500';
-  if (status === 'in-progress') return 'bg-blue-500';
-  return 'bg-gray-400';
+  if (status === 'complete') return 'bg-green-400';
+  if (status === 'in-progress') return 'bg-blue-400';
+  return 'bg-slate-500';
 }
 
 export function EpisodeListItem({
@@ -68,14 +71,14 @@ export function EpisodeListItem({
 
   return (
     <div className="group flex items-start gap-4">
-      {/* Number circle */}
-      <div className="relative z-10 mt-4 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-xs font-medium text-gray-500 shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+      {/* Number circle - floating with gradient */}
+      <div className="relative z-10 mt-4 flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 text-sm font-semibold text-slate-300 ring-1 ring-white/10">
         {String(episode.number).padStart(2, '0')}
       </div>
 
-      {/* Episode card */}
+      {/* Episode card - glass panel */}
       <Link href={href} className="flex-1">
-        <div className="cursor-pointer rounded-lg border border-gray-200 bg-white p-4 transition-all hover:border-blue-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-800 dark:hover:border-blue-700">
+        <div className="cursor-pointer rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-white/[0.12] hover:bg-white/[0.05] hover:shadow-lg">
           <div className="flex items-start justify-between">
             <div>
               <h3 className="mb-1 text-sm font-semibold text-gray-900 dark:text-white">
@@ -85,12 +88,12 @@ export function EpisodeListItem({
                 Updated {new Date(episode.updatedAt).toLocaleDateString()}
               </p>
 
-              {/* Status badges */}
-              <div className="flex gap-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+              {/* Status badges - cinema badges */}
+              <div className="flex flex-wrap gap-2 text-[10px]">
                 {(['story', 'screenplay', 'visuals'] as const).map((stage) => (
                   <span
                     key={stage}
-                    className="flex items-center gap-1 rounded border border-gray-100 bg-gray-100 px-2 py-0.5 dark:border-gray-700 dark:bg-gray-800"
+                    className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-0.5 text-slate-400 backdrop-blur-sm"
                   >
                     <div
                       className={cn(

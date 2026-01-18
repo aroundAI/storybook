@@ -2,16 +2,13 @@
 
 import { useCallback } from 'react';
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { useTranslation } from 'react-i18next';
 
+import { uploadAvatar } from '@kit/storage/client';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 import { ImageUploader } from '@kit/ui/image-uploader';
 import { toast } from '@kit/ui/sonner';
 import { Trans } from '@kit/ui/trans';
-
-const AVATARS_BUCKET = 'account_image';
 
 export function UpdateTeamAccountImage(props: {
   account: {
@@ -36,45 +33,32 @@ export function UpdateTeamAccountImage(props: {
 
   const onValueChange = useCallback(
     (file: File | null) => {
-      const removeExistingStorageFile = () => {
-        if (props.account.pictureUrl) {
-          return (
-            deleteProfilePhoto(client, props.account.pictureUrl) ??
-            Promise.resolve()
-          );
-        }
-
-        return Promise.resolve();
-      };
-
       if (file) {
-        const promise = () =>
-          removeExistingStorageFile().then(() =>
-            uploadUserProfilePhoto(client, file, props.account.id).then(
-              (pictureUrl) => {
-                return client
-                  .from('accounts')
-                  .update({
-                    picture_url: pictureUrl,
-                  })
-                  .eq('id', props.account.id)
-                  .throwOnError();
-              },
-            ),
-          );
+        const promise = async () => {
+          // Upload to R2 via presigned URL
+          const result = await uploadAvatar(file, props.account.id);
+
+          // Update the account record with new picture URL
+          return client
+            .from('accounts')
+            .update({
+              picture_url: result.url,
+            })
+            .eq('id', props.account.id)
+            .throwOnError();
+        };
 
         createToaster(promise);
       } else {
-        const promise = () =>
-          removeExistingStorageFile().then(() => {
-            return client
-              .from('accounts')
-              .update({
-                picture_url: null,
-              })
-              .eq('id', props.account.id)
-              .throwOnError();
-          });
+        const promise = async () => {
+          await client
+            .from('accounts')
+            .update({
+              picture_url: null,
+            })
+            .eq('id', props.account.id)
+            .throwOnError();
+        };
 
         createToaster(promise);
       }
@@ -98,43 +82,4 @@ export function UpdateTeamAccountImage(props: {
       </div>
     </ImageUploader>
   );
-}
-
-function deleteProfilePhoto(client: SupabaseClient, url: string) {
-  const bucket = client.storage.from(AVATARS_BUCKET);
-  const fileName = url.split('/').pop()?.split('?')[0];
-
-  if (!fileName) {
-    return;
-  }
-
-  return bucket.remove([fileName]);
-}
-
-async function uploadUserProfilePhoto(
-  client: SupabaseClient,
-  photoFile: File,
-  userId: string,
-) {
-  const bytes = await photoFile.arrayBuffer();
-  const bucket = client.storage.from(AVATARS_BUCKET);
-  const fileName = getAvatarFileName(userId);
-  const { nanoid } = await import('nanoid');
-  const cacheBuster = nanoid(16);
-
-  const result = await bucket.upload(fileName, bytes, {
-    contentType: photoFile.type,
-    upsert: true,
-  });
-
-  if (!result.error) {
-    const url = bucket.getPublicUrl(userId).data.publicUrl;
-    return `${url}?v=${cacheBuster}`;
-  }
-
-  throw result.error;
-}
-
-function getAvatarFileName(userId: string) {
-  return userId;
 }

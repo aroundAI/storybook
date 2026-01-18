@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import { Globe, Loader2, Plus } from 'lucide-react';
 
@@ -13,6 +13,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
 // Re-export for convenience
@@ -41,8 +42,34 @@ export function LanguageTabBar({
     onLanguageChange,
     onLanguageAdded,
 }: LanguageTabBarProps) {
-    const [isTranslating, startTransition] = useTransition();
+    const [isTranslating, _startTransition] = useTransition();
     const [translatingTo, setTranslatingTo] = useState<SupportedLanguage | null>(null);
+
+    // WebSocket for async LLM results (uses shared provider from layout)
+    const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ translatedCount: number }>(
+        'translate-dialogue'
+    );
+
+    // Handle async WebSocket result
+    useEffect(() => {
+        if (llmStatus === 'success' && llmResult && translatingTo) {
+            // llmResult is already the result object from message.result (contains {success, translatedCount})
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const resultData = llmResult as any;
+            if (resultData?.success) {
+                const count = resultData?.data?.translatedCount ?? resultData?.translatedCount ?? 0;
+                toast.success(
+                    `Translated ${count} lines to ${LANG_INFO[translatingTo].name}`
+                );
+                onLanguageAdded?.();
+                onLanguageChange(translatingTo);
+            }
+            setTranslatingTo(null);
+        } else if (llmStatus === 'error') {
+            toast.error(llmError || 'Failed to translate dialogue');
+            setTranslatingTo(null);
+        }
+    }, [llmStatus, llmResult, llmError, translatingTo, onLanguageAdded, onLanguageChange]);
 
     const missingLanguages = (['hi', 'es', 'pt'] as const).filter(
         (lang) => !availableLanguages.includes(lang)
@@ -50,28 +77,30 @@ export function LanguageTabBar({
 
     const handleTranslate = (targetLang: 'hi' | 'es' | 'pt') => {
         setTranslatingTo(targetLang);
-        startTransition(async () => {
-            try {
-                const result = await translateDialogueToLanguageAction({
-                    episodeId,
-                    targetLanguage: targetLang,
-                    preserveTiming: true,
-                });
+        triggerLlm(async () => {
+            const result = await translateDialogueToLanguageAction({
+                episodeId,
+                targetLanguage: targetLang,
+                preserveTiming: true,
+            });
 
-                if (result.success) {
-                    toast.success(
-                        `Translated ${result.translatedCount} lines to ${LANG_INFO[targetLang].name}`
-                    );
-                    onLanguageAdded?.();
-                    onLanguageChange(targetLang);
-                } else {
-                    toast.error(result.error ?? 'Translation failed');
-                }
-            } catch {
-                toast.error('Failed to translate dialogue');
-            } finally {
-                setTranslatingTo(null);
+            // If queued, return queued flag (WebSocket will deliver result)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if ((result as any)?.queued) {
+                toast.info('Translating dialogue in background...');
+                return { queued: true };
             }
+            // If local dev (synchronous), process immediately
+            if (result.success) {
+                toast.success(
+                    `Translated ${result.translatedCount} lines to ${LANG_INFO[targetLang].name}`
+                );
+                onLanguageAdded?.();
+                onLanguageChange(targetLang);
+                setTranslatingTo(null);
+                return { success: true, data: { translatedCount: result.translatedCount } };
+            }
+            throw new Error(result.error ?? 'Translation failed');
         });
     };
 

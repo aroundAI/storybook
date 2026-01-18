@@ -63,6 +63,7 @@ export function ThumbnailSelector({
         <div className="bg-muted relative aspect-video w-32 overflow-hidden rounded-lg border">
           {currentUrl ? (
             <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={currentUrl}
                 alt="Thumbnail preview"

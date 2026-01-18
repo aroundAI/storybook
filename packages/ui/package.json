@@ -121,7 +121,8 @@
     "./empty-state": "./src/makerkit/empty-state.tsx",
     "./marketing": "./src/makerkit/marketing/index.tsx",
     "./oauth-provider-logo-image": "./src/makerkit/oauth-provider-logo-image.tsx",
-    "./file-uploader": "./src/makerkit/file-uploader.tsx"
+    "./file-uploader": "./src/makerkit/file-uploader.tsx",
+    "./hooks": "./src/hooks/index.ts"
   },
   "typesVersions": {
     "*": {

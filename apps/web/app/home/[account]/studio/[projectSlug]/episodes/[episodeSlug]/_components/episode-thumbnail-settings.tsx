@@ -32,7 +32,8 @@ import {
     setDefaultThumbnailAction,
     uploadEpisodeThumbnailAction,
 } from '@kit/episodes/server';
-import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
+
+import { uploadWithPresignedUrl } from '~/lib/presigned-upload';
 
 // ============================================================================
 // Types
@@ -414,38 +415,27 @@ function AddThumbnailDialog({
         setUploadProgress(0);
 
         try {
-            // 1. Upload file to Supabase Storage
-            const client = getSupabaseBrowserClient();
+            // 1. Upload file to R2 via presigned URL
             const timestamp = Date.now();
             const ext = selectedFile.name.split('.').pop() || 'jpg';
             const storagePath = `episodes/${episodeId}/thumbnails/${language.toLowerCase()}-${timestamp}.${ext}`;
 
             setUploadProgress(30);
 
-            const { data: uploadData, error: uploadError } = await client.storage
-                .from('project-assets')
-                .upload(storagePath, selectedFile, {
-                    contentType: selectedFile.type,
-                    upsert: true,
-                });
-
-            if (uploadError) {
-                throw new Error(`Upload failed: ${uploadError.message}`);
-            }
+            const uploadResult = await uploadWithPresignedUrl(
+                selectedFile,
+                'project-assets',
+                storagePath
+            );
 
             setUploadProgress(70);
-
-            // Get public URL
-            const { data: urlData } = client.storage
-                .from('project-assets')
-                .getPublicUrl(uploadData.path);
 
             // 2. Save to database
             const result = await uploadEpisodeThumbnailAction({
                 episodeId,
                 language: language.toLowerCase(),
                 languageLabel: languageLabel.trim() || undefined,
-                thumbnailUrl: urlData.publicUrl,
+                thumbnailUrl: uploadResult.url,
                 fileName: selectedFile.name,
                 fileSizeBytes: selectedFile.size,
                 mimeType: selectedFile.type,

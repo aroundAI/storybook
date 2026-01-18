@@ -90,18 +90,7 @@ function transformAudioTrack(row: AudioTrackRow): AudioTrack {
   };
 }
 
-/**
- * Calculate summary counts from tracks
- */
-function calculateSummary(tracks: AudioTrack[]): AudioTrackSummary {
-  return {
-    total: tracks.length,
-    pending: tracks.filter((t) => t.status === 'pending').length,
-    processing: tracks.filter((t) => t.status === 'processing').length,
-    completed: tracks.filter((t) => t.status === 'completed').length,
-    failed: tracks.filter((t) => t.status === 'failed').length,
-  };
-}
+// Note: calculateSummary function removed - now calculated inline with single-pass loop
 
 // =============================================================================
 // Actions
@@ -174,7 +163,21 @@ export const getAudioTracksAction = enhanceAction(
 
     const audioRows = (rows ?? []) as AudioTrackRow[];
     const tracks = audioRows.map(transformAudioTrack);
-    const summary = calculateSummary(tracks);
+
+    // Calculate summary with single-pass loop for efficiency
+    const summary: AudioTrackSummary = {
+      total: tracks.length,
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
+    };
+    for (const track of tracks) {
+      if (track.status === 'pending') summary.pending++;
+      else if (track.status === 'processing') summary.processing++;
+      else if (track.status === 'completed') summary.completed++;
+      else if (track.status === 'failed') summary.failed++;
+    }
 
     logger.info(
       { ...ctx, total: summary.total, completed: summary.completed },

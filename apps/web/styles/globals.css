@@ -116,4 +116,320 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: #9ca3af;
   }
+
+  /* ==========================================
+   * Cinema Design System Components
+   * Cinematic, premium styling for app screens
+   * ========================================== */
+
+  /* Base Canvas - Full page gradient background */
+  .cinema-base {
+    min-height: 100vh;
+    background: linear-gradient(180deg,
+        #020617 0%,
+        #0f172a 50%,
+        #0a0a0f 100%);
+  }
+
+  /* Workspace Surface - Main content wrapper */
+  .cinema-workspace {
+    position: relative;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.02) 0%,
+        transparent 100%);
+  }
+
+  /* Interactive Panel - Cards that float */
+  .cinema-panel {
+    position: relative;
+    overflow: hidden;
+    border-radius: 1rem;
+    background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.05) 0%,
+        rgba(255, 255, 255, 0.02) 100%);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+  }
+
+  .cinema-panel:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
+
+  /* Focus Content - Story text, screenplay */
+  .cinema-focus {
+    position: relative;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 1.5rem;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Animated Glow Effects */
+  .cinema-glow {
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(48px);
+    opacity: 0.6;
+    animation: glow-pulse 4s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+
+  .cinema-glow-indigo {
+    background: linear-gradient(135deg, rgb(99, 102, 241), rgb(79, 70, 229));
+  }
+
+  .cinema-glow-purple {
+    background: linear-gradient(135deg, rgb(168, 85, 247), rgb(139, 92, 246));
+  }
+
+  .cinema-glow-emerald {
+    background: linear-gradient(135deg, rgb(52, 211, 153), rgb(16, 185, 129));
+  }
+
+  .cinema-glow-blue {
+    background: linear-gradient(135deg, rgb(59, 130, 246), rgb(37, 99, 235));
+  }
+
+  /* Cinema Badges - Unified status indicators */
+  .cinema-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .cinema-badge-pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: #fbbf24;
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+
+  .cinema-badge-processing {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.3);
+    animation: pulse-ring 1.5s ease-in-out infinite;
+  }
+
+  .cinema-badge-complete {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  .cinema-badge-error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* Cinema Buttons */
+  .btn-cinema-primary {
+    position: relative;
+    overflow: hidden;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #6366f1, #2563eb);
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    transition: all 0.3s ease;
+  }
+
+  .btn-cinema-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+  }
+
+  .btn-cinema-secondary {
+    padding: 0.625rem 1.25rem;
+    border-radius: 0.75rem;
+    font-weight: 500;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cbd5e1;
+    transition: all 0.2s ease;
+  }
+
+  .btn-cinema-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.15);
+  }
+
+  .btn-cinema-ghost {
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    color: #94a3b8;
+    transition: color 0.2s ease;
+  }
+
+  .btn-cinema-ghost:hover {
+    color: #e2e8f0;
+  }
+
+  /* Cinema Typography */
+  .cinema-story-text {
+    color: #e2e8f0;
+    font-size: 1.125rem;
+    line-height: 1.9;
+    letter-spacing: 0.01em;
+  }
+
+  .cinema-ui-label {
+    color: #94a3b8;
+    /* slate-400 for WCAG AA compliance (4.5:1) */
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .cinema-heading {
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, white, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ==========================================
+   * Light Mode Overrides
+   * Ensures cinema components work in both modes
+   * ========================================== */
+
+  /* Base and workspace - light mode */
+  :root:not(.dark) .cinema-base,
+  .light .cinema-base {
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%);
+  }
+
+  :root:not(.dark) .cinema-workspace,
+  .light .cinema-workspace {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.02) 0%, transparent 100%);
+  }
+
+  /* Panel - light mode glass effect */
+  :root:not(.dark) .cinema-panel,
+  .light .cinema-panel {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+    border-color: rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+  }
+
+  :root:not(.dark) .cinema-panel:hover,
+  .light .cinema-panel:hover {
+    border-color: rgba(0, 0, 0, 0.12);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Focus content - light mode */
+  :root:not(.dark) .cinema-focus,
+  .light .cinema-focus {
+    background: rgba(0, 0, 0, 0.02);
+    border-color: rgba(0, 0, 0, 0.08);
+  }
+
+  /* Glows - reduced in light mode */
+  :root:not(.dark) .cinema-glow,
+  .light .cinema-glow {
+    opacity: 0.2;
+  }
+
+  /* Badges - light mode */
+  :root:not(.dark) .cinema-badge,
+  .light .cinema-badge {
+    border-color: rgba(0, 0, 0, 0.1);
+  }
+
+  :root:not(.dark) .cinema-badge-pending,
+  .light .cinema-badge-pending {
+    background: rgba(234, 179, 8, 0.15);
+    color: #b45309;
+    /* amber-700 for contrast */
+    border-color: rgba(234, 179, 8, 0.3);
+  }
+
+  :root:not(.dark) .cinema-badge-processing,
+  .light .cinema-badge-processing {
+    background: rgba(59, 130, 246, 0.15);
+    color: #1d4ed8;
+    /* blue-700 for contrast */
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  :root:not(.dark) .cinema-badge-complete,
+  .light .cinema-badge-complete {
+    background: rgba(34, 197, 94, 0.15);
+    color: #15803d;
+    /* green-700 for contrast */
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+
+  :root:not(.dark) .cinema-badge-error,
+  .light .cinema-badge-error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #b91c1c;
+    /* red-700 for contrast */
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  /* Buttons - light mode */
+  :root:not(.dark) .btn-cinema-secondary,
+  .light .btn-cinema-secondary {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.1);
+    color: #475569;
+    /* slate-600 */
+  }
+
+  :root:not(.dark) .btn-cinema-secondary:hover,
+  .light .btn-cinema-secondary:hover {
+    background: rgba(0, 0, 0, 0.08);
+    border-color: rgba(0, 0, 0, 0.15);
+  }
+
+  :root:not(.dark) .btn-cinema-ghost,
+  .light .btn-cinema-ghost {
+    color: #64748b;
+    /* slate-500 */
+  }
+
+  :root:not(.dark) .btn-cinema-ghost:hover,
+  .light .btn-cinema-ghost:hover {
+    color: #1e293b;
+    /* slate-800 */
+  }
+
+  /* Typography - light mode */
+  :root:not(.dark) .cinema-story-text,
+  .light .cinema-story-text {
+    color: #1e293b;
+    /* slate-800 */
+  }
+
+  :root:not(.dark) .cinema-ui-label,
+  .light .cinema-ui-label {
+    color: #64748b;
+    /* slate-500 - higher contrast on light bg */
+  }
+
+  :root:not(.dark) .cinema-heading,
+  .light .cinema-heading {
+    background: linear-gradient(135deg, #0f172a, #334155);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 }

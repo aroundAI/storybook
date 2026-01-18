@@ -190,31 +190,35 @@ async function fetchAnalyticsData(
 function calculateSummary(data: AnalyticsDataRow[]): ReportSummary {
   const platformBreakdown: Record<string, number> = {};
 
-  const totals = data.reduce(
-    (acc, row) => {
-      platformBreakdown[row.platform] =
-        (platformBreakdown[row.platform] || 0) + row.views;
+  // Single-pass aggregation for totals and platform breakdown
+  let totalViews = 0;
+  let totalLikes = 0;
+  let totalComments = 0;
+  let totalShares = 0;
+  let totalWatchTimeSeconds = 0;
+  let totalSubscribers = 0;
+  let totalRevenueCents = 0;
 
-      return {
-        totalViews: acc.totalViews + row.views,
-        totalLikes: acc.totalLikes + row.likes,
-        totalComments: acc.totalComments + row.comments,
-        totalShares: acc.totalShares + row.shares,
-        totalWatchTimeSeconds: acc.totalWatchTimeSeconds + row.watchTimeSeconds,
-        totalSubscribers: acc.totalSubscribers + row.subscribersGained,
-        totalRevenueCents: acc.totalRevenueCents + row.revenueCents,
-      };
-    },
-    {
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
-      totalWatchTimeSeconds: 0,
-      totalSubscribers: 0,
-      totalRevenueCents: 0,
-    },
-  );
+  for (const row of data) {
+    platformBreakdown[row.platform] = (platformBreakdown[row.platform] || 0) + row.views;
+    totalViews += row.views;
+    totalLikes += row.likes;
+    totalComments += row.comments;
+    totalShares += row.shares;
+    totalWatchTimeSeconds += row.watchTimeSeconds;
+    totalSubscribers += row.subscribersGained;
+    totalRevenueCents += row.revenueCents;
+  }
+
+  const totals = {
+    totalViews,
+    totalLikes,
+    totalComments,
+    totalShares,
+    totalWatchTimeSeconds,
+    totalSubscribers,
+    totalRevenueCents,
+  };
 
   return {
     ...totals,
@@ -452,7 +456,11 @@ export const getScheduledReportsAction = enhanceAction(
 
     const { data: reports, error } = await client
       .from('scheduled_reports')
-      .select('*')
+      .select(`
+        id, account_id, name, report_type, frequency, metrics, platforms,
+        project_ids, branding, recipients, next_run_at, last_run_at,
+        last_run_status, last_error, is_active, created_at, updated_at
+      `)
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false });
 

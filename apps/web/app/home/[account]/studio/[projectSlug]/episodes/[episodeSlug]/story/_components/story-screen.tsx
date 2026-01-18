@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 
 import {
   ArrowRight,
@@ -14,6 +14,7 @@ import {
 import { convertToScreenplayAction } from '@kit/episodes/server';
 import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
@@ -38,43 +39,84 @@ export function StoryScreen({
   onScreenplayComplete,
   refetchEpisode,
 }: StoryScreenProps) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   const storyData = episode.storyData;
 
-  const handleConvertToScreenplay = () => {
-    startTransition(async () => {
-      try {
-        const result = await convertToScreenplayAction({
-          episodeId: episode.id,
-        });
+  // WebSocket for screenplay-conversion async LLM results
+  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ screenplay: { scenes: unknown[] } }>(
+    'screenplay-conversion'
+  );
 
-        if (result.success) {
-          toast.success(
-            `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
-          );
-          refetchEpisode();
-          onScreenplayComplete();
-        }
-      } catch (error) {
-        toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to convert to screenplay',
+  // WebSocket for story-generation results (when story is generated while on this tab)
+  const { status: storyGenStatus, result: storyGenResult, error: storyGenError } = useLlmJob<{ success: boolean }>(
+    'story-generation'
+  );
+
+  // Handle async screenplay-conversion result
+  useEffect(() => {
+    if (llmStatus === 'success' && llmResult) {
+      // llmResult is already the result object from message.result (contains {success, data})
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (llmResult as any)?.data;
+      if (resultData?.screenplay?.scenes?.length) {
+        toast.success(
+          `Screenplay generated with ${resultData.screenplay.scenes.length} scenes`,
         );
+        refetchEpisode();
+        onScreenplayComplete();
       }
+    } else if (llmStatus === 'error') {
+      toast.error(llmError || 'Failed to convert to screenplay');
+    }
+  }, [llmStatus, llmResult, llmError, refetchEpisode, onScreenplayComplete]);
+
+  // Handle story-generation result (refresh to show generated story)
+  useEffect(() => {
+    if (storyGenStatus === 'success' && storyGenResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = storyGenResult as any;
+      if (resultData?.success) {
+        toast.success('Story generated successfully');
+        refetchEpisode();
+      }
+    } else if (storyGenStatus === 'error') {
+      toast.error(storyGenError || 'Failed to generate story');
+    }
+  }, [storyGenStatus, storyGenResult, storyGenError, refetchEpisode]);
+
+  const handleConvertToScreenplay = () => {
+    triggerLlm(async () => {
+      const result = await convertToScreenplayAction({
+        episodeId: episode.id,
+      });
+      // If local dev (synchronous), process immediately
+      if (result.success && result.data) {
+        toast.success(
+          `Screenplay generated with ${result.data.screenplay.scenes.length} scenes`,
+        );
+        refetchEpisode();
+        onScreenplayComplete();
+        return { success: true, data: result.data };
+      }
+      // If queued, return queued flag (WebSocket will deliver result)
+      if (result?.queued) {
+        toast.info('Converting to screenplay in background...');
+        return { success: true, queued: true };
+      }
+      throw new Error('Failed to convert to screenplay');
     });
   };
 
   if (!storyData?.fullStory) {
     return (
       <div className="flex h-full items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
-          <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
+        <div className="cinema-panel p-12 text-center">
+          <h2 className="mb-2 text-xl font-semibold text-white">
             No Story Generated
           </h2>
-          <p className="text-gray-500 dark:text-gray-400">
+          <p className="text-slate-400">
             Select an idea from the Ideation tab to generate a full story.
           </p>
         </div>
@@ -119,7 +161,7 @@ export function StoryScreen({
         elements.push(
           <p
             key={index}
-            className="mb-4 font-serif text-lg leading-relaxed text-gray-800 dark:text-gray-200"
+            className="cinema-story-text mb-4"
           >
             {line}
           </p>,
@@ -192,14 +234,14 @@ export function StoryScreen({
     <div className="relative min-h-full p-8">
       <div className="mx-auto max-w-5xl">
         {/* Story Card */}
-        <div className="relative rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+        <div className="cinema-focus relative">
           {/* Label */}
-          <div className="absolute -top-3 left-6 bg-[#F5F5F7] px-2 text-xs font-semibold tracking-wide text-blue-600 uppercase dark:bg-gray-900 dark:text-blue-400">
+          <div className="absolute -top-3 left-6 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-xs font-semibold tracking-wide text-indigo-400 uppercase backdrop-blur-sm">
             Story
           </div>
 
           {/* Header */}
-          <div className="flex items-start justify-between border-b border-gray-100 p-6 dark:border-gray-700">
+          <div className="flex items-start justify-between border-b border-white/10 p-6">
             <div className="flex-1">
               <h2 className="font-serif text-2xl font-bold text-gray-900 dark:text-white">
                 {storyData.title ?? 'Untitled Story'}
@@ -223,10 +265,10 @@ export function StoryScreen({
               {!hasScreenplay && (
                 <Button
                   onClick={handleConvertToScreenplay}
-                  disabled={isPending}
-                  className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
+                  disabled={isPending || llmStatus === 'pending'}
+                  className="btn-cinema-primary gap-2"
                 >
-                  {isPending ? (
+                  {isPending || llmStatus === 'pending' ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />
                       Converting...
@@ -243,7 +285,7 @@ export function StoryScreen({
               {hasScreenplay && (
                 <Button
                   onClick={onScreenplayComplete}
-                  className="gap-2 bg-green-600 text-white hover:bg-green-700"
+                  className="btn-cinema-primary gap-2 bg-gradient-to-r from-emerald-500 to-green-600"
                 >
                   View Screenplay
                   <ArrowRight className="h-4 w-4" />
@@ -433,7 +475,7 @@ export function StoryScreen({
                                 className={cn(
                                   'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
                                   ROLE_COLORS[character.role.toLowerCase()] ??
-                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                  'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
                                 )}
                               >
                                 {character.role}

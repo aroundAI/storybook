@@ -39,7 +39,10 @@ export async function getProjectAssets(
   // Build query with pagination
   let query = client
     .from('assets')
-    .select('*', { count: 'exact' })
+    .select(`
+      id, project_id, name, type, thumbnail_url, file_url,
+      metadata, created_at, updated_at, deleted_at
+    `, { count: 'exact' })
     .eq('project_id', projectId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
@@ -88,7 +91,10 @@ export async function getAsset(assetId: string): Promise<Asset | null> {
 
   const { data, error } = await client
     .from('assets')
-    .select('*')
+    .select(`
+      id, project_id, name, type, thumbnail_url, file_url,
+      metadata, created_at, updated_at, deleted_at
+    `)
     .eq('id', assetId)
     .is('deleted_at', null)
     .single();

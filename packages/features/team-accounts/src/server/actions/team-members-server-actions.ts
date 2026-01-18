@@ -32,7 +32,7 @@ export const removeMemberFromAccountAction = enhanceAction(
 
     const { data: member } = await client
       .from('accounts_memberships')
-      .select('*')
+      .select('account_id, user_id, account_role, created_at, updated_at')
       .eq('account_id', accountId)
       .eq('user_id', userId)
       .single();
@@ -92,7 +92,7 @@ export const updateMemberRoleAction = enhanceAction(
 
     const { data: beforeMember } = await client
       .from('accounts_memberships')
-      .select('*')
+      .select('account_id, user_id, account_role, created_at, updated_at')
       .eq('account_id', data.accountId)
       .eq('user_id', data.userId)
       .single();
@@ -103,7 +103,7 @@ export const updateMemberRoleAction = enhanceAction(
     // Fetch after state
     const { data: afterMember } = await client
       .from('accounts_memberships')
-      .select('*')
+      .select('account_id, user_id, account_role, created_at, updated_at')
       .eq('account_id', data.accountId)
       .eq('user_id', data.userId)
       .single();
@@ -209,7 +209,10 @@ export const transferOwnershipAction = enhanceAction(
     // Fetch account info before transfer
     const { data: account } = await client
       .from('accounts')
-      .select('*')
+      .select(`
+        id, name, slug, picture_url, email, is_personal_account,
+        primary_owner_user_id, public_data, created_at, updated_at
+      `)
       .eq('id', data.accountId)
       .single();
 
@@ -219,7 +222,10 @@ export const transferOwnershipAction = enhanceAction(
     // Fetch after state
     const { data: afterAccount } = await client
       .from('accounts')
-      .select('*')
+      .select(`
+        id, name, slug, picture_url, email, is_personal_account,
+        primary_owner_user_id, public_data, created_at, updated_at
+      `)
       .eq('id', data.accountId)
       .single();
 

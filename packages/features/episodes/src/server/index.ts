@@ -17,9 +17,6 @@ export * from './captions-actions';
 // Auto-stitch action (FILM-604)
 export * from './auto-stitch-action';
 
-// Video rendering action
-export * from './render-video-action';
-
 // Season Generation (FILM-201)
 export * from '../lib/server/mutations/season-generation-actions';
 
@@ -34,3 +31,6 @@ export * from './thumbnail-actions';
 
 // Publish actions
 export * from '../lib/server/mutations/publish-actions';
+
+// Generation job tracking
+export * from '../lib/server/mutations/generation-job-actions';

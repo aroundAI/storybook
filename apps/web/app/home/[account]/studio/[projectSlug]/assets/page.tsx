@@ -9,9 +9,13 @@ import { AssetGallery } from '@kit/assets/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
+import { cached } from '~/lib/cache/data-cache';
 import { withI18n } from '~/lib/i18n/with-i18n';
 
 import { CreateAssetButton } from './_components/create-asset-button';
+
+// ISR: Revalidate every 60 seconds
+export const revalidate = 60;
 
 interface AssetLibraryPageProps {
   params: Promise<{
@@ -58,23 +62,41 @@ async function AssetLibraryPage({
 
   const client = getSupabaseServerClient();
 
-  // Fetch account ID from slug
-  const { data: accountRecord } = await client
-    .from('accounts')
-    .select('id')
-    .eq('slug', account)
-    .single();
+  // Fetch account and project with caching
+  const [accountResult, projectResult] = await Promise.all([
+    // Account lookup (30 min cache - rarely changes)
+    cached(
+      `account:slug:${account}`,
+      async () => {
+        const { data } = await client
+          .from('accounts')
+          .select('id')
+          .eq('slug', account)
+          .single();
+        return data;
+      },
+      1800,
+    ),
+    // Project lookup (1 hour cache)
+    cached(
+      `project:slug:${projectSlug}`,
+      async () => {
+        const { data, error } = await client
+          .from('projects')
+          .select('id, name, slug')
+          .eq('slug', projectSlug)
+          .single();
+        return { data, error };
+      },
+      3600,
+    ),
+  ]);
 
-  // Fetch project by slug
-  const { data: project, error } = await client
-    .from('projects')
-    .select('id, name, slug')
-    .eq('slug', projectSlug)
-    .single();
-
-  if (error || !project || !accountRecord) {
+  if (projectResult.error || !projectResult.data || !accountResult) {
     notFound();
   }
+
+  const project = projectResult.data;
 
   const activeTab = tab ?? 'character';
 
@@ -102,7 +124,7 @@ async function AssetLibraryPage({
       <PageHeader title={title} description={description}>
         <CreateAssetButton
           projectId={project.id}
-          accountId={accountRecord.id}
+          accountId={accountResult.id}
           account={account}
         />
       </PageHeader>
@@ -110,7 +132,7 @@ async function AssetLibraryPage({
       <PageBody>
         <AssetGallery
           projectId={project.id}
-          accountId={accountRecord.id}
+          accountId={accountResult.id}
           initialTab={tab ?? 'character'}
         />
       </PageBody>

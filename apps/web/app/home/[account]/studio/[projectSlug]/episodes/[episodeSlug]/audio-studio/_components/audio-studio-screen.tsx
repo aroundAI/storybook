@@ -15,7 +15,6 @@ import {
   Minus,
   Play,
   Plus,
-  Volume2,
 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
@@ -26,6 +25,7 @@ import {
 import { autoStitchAction } from '@kit/episodes/server';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
 import { DialogueTimeline } from './dialogue-timeline';
@@ -34,6 +34,7 @@ import {
   type SupportedLanguage,
 } from './language-tab-bar';
 import { MusicTimeline } from './music-timeline';
+import { SfxTimeline } from './sfx-timeline';
 
 interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
@@ -61,6 +62,44 @@ export function AudioStudioScreen({
   // Timeline zoom state (pixels per second)
   const [pixelsPerSecond, setPixelsPerSecond] = useState(2);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
+
+  // WebSocket for shot-generation results (when shot list is generated while on this tab)
+  const { status: shotGenStatus, result: shotGenResult, error: shotGenError } = useLlmJob<{ success: boolean }>(
+    'shot-generation'
+  );
+
+  // WebSocket for translate-dialogue results (when dialogue is translated while on this tab)
+  const { status: translateStatus, result: translateResult, error: translateError } = useLlmJob<{ success: boolean }>(
+    'translate-dialogue'
+  );
+
+  // Handle shot-generation result (refresh to show updated episode)
+  useEffect(() => {
+    if (shotGenStatus === 'success' && shotGenResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = shotGenResult as any;
+      if (resultData?.success) {
+        toast.success('Shot list generated successfully');
+        refetchEpisode();
+      }
+    } else if (shotGenStatus === 'error') {
+      toast.error(shotGenError || 'Failed to generate shot list');
+    }
+  }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode]);
+
+  // Handle translate-dialogue result (refresh to show translated dialogue)
+  useEffect(() => {
+    if (translateStatus === 'success' && translateResult) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = translateResult as any;
+      if (resultData?.success) {
+        toast.success('Dialogue translated successfully');
+        refetchEpisode();
+      }
+    } else if (translateStatus === 'error') {
+      toast.error(translateError || 'Failed to translate dialogue');
+    }
+  }, [translateStatus, translateResult, translateError, refetchEpisode]);
 
   // Zoom presets
   const ZOOM_LEVELS = [2, 5, 10, 20, 40, 60, 80, 120, 160, 200];
@@ -480,12 +519,12 @@ export function AudioStudioScreen({
           )}
 
           {activeTab === 'sfx' && (
-            <div className="flex h-full items-center justify-center text-gray-500 dark:text-gray-400">
-              <div className="text-center">
-                <Volume2 className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                <p>Sound effects coming soon</p>
-              </div>
-            </div>
+            <SfxTimeline
+              episodeId={episode.id}
+              totalDuration={totalDuration}
+              pixelsPerSecond={pixelsPerSecond}
+              onRefresh={fetchData}
+            />
           )}
         </div>
       </div>

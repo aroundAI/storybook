@@ -6,6 +6,7 @@
     "type": "module",
     "exports": {
         ".": "./src/index.ts",
+        "./client": "./src/client.ts",
         "./adapters/local": "./src/adapters/local.ts",
         "./adapters/supabase": "./src/adapters/supabase.ts"
     },
@@ -17,6 +18,7 @@
     },
     "dependencies": {
         "@aws-sdk/client-s3": "^3.964.0",
+        "@aws-sdk/s3-request-presigner": "^3.965.0",
         "mime-types": "^2.1.35",
         "server-only": "^0.0.1"
     },

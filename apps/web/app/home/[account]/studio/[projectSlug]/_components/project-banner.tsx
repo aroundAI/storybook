@@ -46,6 +46,7 @@ export function ProjectBanner({
     <div className="relative mb-6 h-[280px] overflow-hidden rounded-3xl border border-zinc-700/50">
       {/* Background Layer - Real image with gradient overlay */}
       <div className="absolute inset-0">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={backdrop} alt="" className="h-full w-full object-cover" />
         {/* Gradient overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/70 to-zinc-900/30" />
@@ -56,6 +57,7 @@ export function ProjectBanner({
         {/* Poster Art (2:3 ratio) */}
         <div className="hidden shrink-0 sm:block">
           <div className="aspect-[2/3] w-28 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={poster}
               alt={`${name} poster`}

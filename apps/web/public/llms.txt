@@ -1,0 +1,20 @@
+# StoryBook Public Content Guidance for LLMs
+
+The following paths contain public content intended for indexing and citation:
+
+- Public Company Profile: /@company_slug
+- Project Details: /@company_slug/project_slug
+- Episode Player: /@company_slug/project_slug/e/episode_slug
+
+Structure:
+- Company Pages list available projects.
+- Project Pages list available episodes with descriptions.
+- Episode Pages contain video player (YouTube/Facebook embed), transcript (if available), and metadata.
+
+Restricted Areas:
+- /admin: Administrative interface (Login required)
+- /home: User dashboard (Login required)
+- /auth: Authentication flows
+
+Structured Data:
+- Pages include JSON-LD for Organization, TVSeries, and TVEpisode types.

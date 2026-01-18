@@ -349,7 +349,11 @@ export const getEpisodeThumbnailsAction = enhanceAction(
         try {
             const { data: thumbnails, error: fetchError } = await client
                 .from('episode_thumbnails')
-                .select('*')
+                .select(`
+                    id, episode_id, language, language_label, thumbnail_url,
+                    file_name, file_size_bytes, mime_type, width, height,
+                    is_default, created_at, updated_at
+                `)
                 .eq('episode_id', data.episodeId)
                 .order('language', { ascending: true });
 

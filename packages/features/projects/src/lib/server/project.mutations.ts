@@ -123,7 +123,11 @@ export const updateProjectAction = enhanceAction(
     // Fetch before state for audit log
     const { data: beforeProject } = await client
       .from('projects')
-      .select('*')
+      .select(`
+        id, name, slug, description, account_id, metadata, status, visibility,
+        audio_settings, created_by, updated_by, public_slug, seo_metadata,
+        created_at, updated_at
+      `)
       .eq('id', data.id)
       .single();
 
@@ -206,7 +210,11 @@ export const deleteProjectAction = enhanceAction(
     // Fetch before state for audit log
     const { data: project } = await client
       .from('projects')
-      .select('*')
+      .select(`
+        id, name, slug, description, account_id, metadata, status, visibility,
+        audio_settings, created_by, updated_by, public_slug, seo_metadata,
+        created_at, updated_at
+      `)
       .eq('id', data.id)
       .single();
 
@@ -356,7 +364,7 @@ export const updateProjectMemberAction = enhanceAction(
 
     const { data: beforeMember } = await client
       .from('project_members')
-      .select('*')
+      .select('id, project_id, user_id, role, created_at, updated_at')
       .eq('project_id', data.project_id)
       .eq('user_id', data.user_id)
       .single();
@@ -440,7 +448,7 @@ export const removeProjectMemberAction = enhanceAction(
 
     const { data: member } = await client
       .from('project_members')
-      .select('*')
+      .select('id, project_id, user_id, role, created_at, updated_at')
       .eq('project_id', data.project_id)
       .eq('user_id', data.user_id)
       .single();

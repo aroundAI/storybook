@@ -160,6 +160,7 @@ export function AssetCard({ asset, onEdit, onDelete }: AssetCardProps) {
               )}
             >
               {asset.thumbnailUrl || asset.fileUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img
                   src={asset.thumbnailUrl || asset.fileUrl || undefined}
                   alt={asset.name}

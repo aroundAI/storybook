@@ -218,7 +218,10 @@ export async function getEpisodeClips(episodeId: string) {
 
   const { data: jobs, error } = await client
     .from('generation_jobs')
-    .select('*')
+    .select(`
+      id, job_type, account_id, project_id, reference_type, reference_id, status,
+      input_data, output_data, error_message, created_at, completed_at
+    `)
     .eq('reference_type', 'episode')
     .eq('reference_id', episodeId)
     .eq('status', 'completed')

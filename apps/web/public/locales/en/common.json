@@ -78,7 +78,8 @@
     "profile": "Profile",
     "application": "Application",
     "projects": "Projects",
-    "analytics": "Analytics"
+    "analytics": "Analytics",
+    "publicProfile": "Public Profile"
   },
   "roles": {
     "owner": {

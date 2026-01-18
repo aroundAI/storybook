@@ -15,8 +15,8 @@ const config = {
       runtime: 'node',
       // Architecture (arm64 is more cost-effective)
       architecture: 'arm64',
-      // Optimize memory for smaller bundle
-      memorySize: 1024,
+      // Optimize memory for faster cold starts (1792MB gives ~1 vCPU)
+      memorySize: 1792,
     },
   },
 

@@ -7,6 +7,9 @@ import type { Episode, EpisodeWithShots, Shot } from '../lib/types';
 /**
  * Get all episodes for a project (excluding soft-deleted)
  * Ordered by episode number ascending
+ * 
+ * NOTE: This fetches FULL episode data including large JSON blobs.
+ * For list views, prefer getEpisodeMetadataByProject() instead.
  */
 export async function getEpisodesByProject(projectId: string) {
   const client = getSupabaseServerClient();
@@ -14,7 +17,12 @@ export async function getEpisodesByProject(projectId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client as any)
     .from('episodes')
-    .select('*')
+    .select(`
+      id, slug, project_id, season_id, number, title, description,
+      status, duration_seconds, thumbnail_url, final_video_url,
+      localized_videos, story_data, screenplay_data, shot_list,
+      metadata, version, created_at, updated_at, deleted_at
+    `)
     .eq('project_id', projectId)
     .is('deleted_at', null)
     .order('number', { ascending: true });
@@ -30,6 +38,38 @@ export async function getEpisodesByProject(projectId: string) {
 }
 
 /**
+ * Get episode metadata for a project (excluding soft-deleted)
+ * Ordered by episode number ascending
+ * 
+ * LIGHTWEIGHT: Excludes large JSON blobs (story_data, screenplay_data, shot_list)
+ * Use this for list views to reduce data transfer by 90%+
+ */
+export async function getEpisodeMetadataByProject(projectId: string) {
+  const client = getSupabaseServerClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (client as any)
+    .from('episodes')
+    .select(`
+      id, slug, project_id, season_id, number, title, description,
+      status, duration_seconds, thumbnail_url, final_video_url,
+      localized_videos, metadata, version, created_at, updated_at, deleted_at
+    `)
+    .eq('project_id', projectId)
+    .is('deleted_at', null)
+    .order('number', { ascending: true });
+
+  if (error) {
+    return { data: null, error };
+  }
+
+  return {
+    data: data as Omit<Episode, 'story_data' | 'screenplay_data' | 'shot_list'>[],
+    error: null,
+  };
+}
+
+/**
  * Get a single episode by ID (excluding soft-deleted)
  */
 export async function getEpisode(episodeId: string) {
@@ -38,7 +78,12 @@ export async function getEpisode(episodeId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client as any)
     .from('episodes')
-    .select('*')
+    .select(`
+      id, slug, project_id, season_id, number, title, description,
+      status, duration_seconds, thumbnail_url, final_video_url,
+      localized_videos, story_data, screenplay_data, shot_list,
+      metadata, version, created_at, updated_at, deleted_at
+    `)
     .eq('id', episodeId)
     .is('deleted_at', null)
     .single();
@@ -65,7 +110,10 @@ export async function getEpisodeWithShots(episodeId: string) {
     .from('episodes')
     .select(
       `
-      *,
+      id, slug, project_id, season_id, number, title, description,
+      status, duration_seconds, thumbnail_url, final_video_url,
+      localized_videos, story_data, screenplay_data, shot_list,
+      metadata, version, created_at, updated_at, deleted_at,
       season:seasons(id, name, number)
     `,
     )
@@ -81,7 +129,12 @@ export async function getEpisodeWithShots(episodeId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: shots, error: shotsError } = await (client as any)
     .from('shots')
-    .select('*')
+    .select(`
+      id, episode_id, scene_number, shot_number, sequence_number,
+      duration_seconds, scene_description, action_description,
+      prompt, camera_direction, status, video_url, thumbnail_url,
+      generation_job_id, generation_metadata, created_at, updated_at, deleted_at
+    `)
     .eq('episode_id', episodeId)
     .order('sequence_number', { ascending: true });
 
@@ -156,7 +209,12 @@ export async function getShotsByEpisode(episodeId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client as any)
     .from('shots')
-    .select('*')
+    .select(`
+      id, episode_id, scene_number, shot_number, sequence_number,
+      duration_seconds, scene_description, action_description,
+      prompt, camera_direction, status, video_url, thumbnail_url,
+      generation_job_id, generation_metadata, created_at, updated_at, deleted_at
+    `)
     .eq('episode_id', episodeId)
     .order('sequence_number', { ascending: true });
 
@@ -179,7 +237,12 @@ export async function getShot(shotId: string) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client as any)
     .from('shots')
-    .select('*')
+    .select(`
+      id, episode_id, scene_number, shot_number, sequence_number,
+      duration_seconds, scene_description, action_description,
+      prompt, camera_direction, status, video_url, thumbnail_url,
+      generation_job_id, generation_metadata, created_at, updated_at, deleted_at
+    `)
     .eq('id', shotId)
     .single();
 
@@ -202,7 +265,12 @@ export async function getShotsByScene(episodeId: string, sceneNumber: number) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (client as any)
     .from('shots')
-    .select('*')
+    .select(`
+      id, episode_id, scene_number, shot_number, sequence_number,
+      duration_seconds, scene_description, action_description,
+      prompt, camera_direction, status, video_url, thumbnail_url,
+      generation_job_id, generation_metadata, created_at, updated_at, deleted_at
+    `)
     .eq('episode_id', episodeId)
     .eq('scene_number', sceneNumber)
     .order('sequence_number', { ascending: true });

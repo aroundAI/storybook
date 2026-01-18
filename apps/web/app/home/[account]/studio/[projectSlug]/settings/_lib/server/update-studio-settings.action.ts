@@ -46,7 +46,10 @@ export const updateStudioSettingsAction = enhanceAction(
     // Fetch current project
     const { data: project, error: fetchError } = await client
       .from('projects')
-      .select('*')
+      .select(`
+        id, name, slug, description, account_id, metadata, status, visibility,
+        created_at, updated_at
+      `)
       .eq('id', data.projectId)
       .single();
 
@@ -91,13 +94,20 @@ export const updateStudioSettingsAction = enhanceAction(
       updatedMetadata.projectAestheticStyle = data.projectAestheticStyle;
     }
 
-    // Update project metadata
+    // Update project metadata and description
+    const updatePayload: Record<string, unknown> = {
+      metadata: updatedMetadata as Json,
+      updated_at: new Date().toISOString(),
+    };
+
+    // Description is a direct column, not part of metadata
+    if (data.description !== undefined) {
+      updatePayload.description = data.description;
+    }
+
     const { data: updatedProject, error: updateError } = await client
       .from('projects')
-      .update({
-        metadata: updatedMetadata as Json,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', data.projectId)
       .select()
       .single();
