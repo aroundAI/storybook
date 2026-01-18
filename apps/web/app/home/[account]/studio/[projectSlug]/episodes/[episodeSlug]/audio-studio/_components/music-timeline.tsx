@@ -288,9 +288,9 @@ export function MusicTimeline({
         const result = await generateSceneMusicAction({
           episodeId,
           sceneNumber: track.metadata.sceneNumber,
-          genre: track.metadata.genre as string,
-          mood: track.metadata.mood as string,
-          instrumentalOnly: track.metadata.instrumentalOnly as boolean,
+          genre: track.metadata.genre,
+          mood: track.metadata.mood,
+          instrumentalOnly: track.metadata.instrumentalOnly,
           prompt: track.metadata.prompt,
         });
         success = result.success;
@@ -301,9 +301,9 @@ export function MusicTimeline({
           duration: track.durationSeconds ?? 30,
           timelineStartSeconds: track.timelineStartSeconds,
           name: track.name ?? undefined,
-          genre: track.metadata?.genre as string,
-          mood: track.metadata?.mood as string,
-          instrumentalOnly: track.metadata?.instrumentalOnly as boolean,
+          genre: track.metadata?.genre,
+          mood: track.metadata?.mood,
+          instrumentalOnly: track.metadata?.instrumentalOnly,
         });
         success = result.success;
       }
@@ -316,7 +316,7 @@ export function MusicTimeline({
         toast.error('Failed to start regeneration');
       }
     } catch (error) {
-      console.error(error);
+      console.error('Failed to regenerate music:', error);
       toast.error('Failed to regenerate music');
     } finally {
       setIsRegenerating(false);
