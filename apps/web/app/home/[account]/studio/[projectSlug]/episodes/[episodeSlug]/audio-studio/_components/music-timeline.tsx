@@ -49,6 +49,9 @@ interface MusicTrack {
     isCue?: boolean;
     providerJobId?: string;
     error?: string;
+    genre?: string;
+    mood?: string;
+    instrumentalOnly?: boolean;
   } | null;
 }
 
@@ -251,7 +254,7 @@ export function MusicTimeline({
 
     if (track.id.startsWith('cue-')) {
       const cueId = track.id.replace('cue-', '');
-      
+
       if (!audioSettings?.elevenlabs?.music_model) {
         toast.error('Music model not selected in project settings');
         return;
@@ -276,8 +279,9 @@ export function MusicTimeline({
 
     setIsRegenerating(true);
     try {
-      const isSceneMusic = Boolean(track.metadata?.sceneNumber) && !track.metadata?.isCue;
-      
+      const isSceneMusic =
+        Boolean(track.metadata?.sceneNumber) && !track.metadata?.isCue;
+
       let success = false;
 
       if (isSceneMusic && track.metadata?.sceneNumber) {
@@ -312,7 +316,7 @@ export function MusicTimeline({
         toast.error('Failed to start regeneration');
       }
     } catch (error) {
-       console.error(error);
+      console.error(error);
       toast.error('Failed to regenerate music');
     } finally {
       setIsRegenerating(false);
@@ -497,27 +501,33 @@ export function MusicTimeline({
                       {track.status === 'processing' ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
                       ) : track.status === 'completed' ? (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePlayTrack(track);
-                          }}
-                          className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
-                        >
-                          <Play className="h-3 w-3" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRegenerateTrack(track);
-                          }}
-                          disabled={isRegenerating}
-                          className="shrink-0 rounded-full bg-gray-200 p-1 text-gray-700 hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300"
-                          title="Regenerate"
-                        >
-                          <RefreshCw className={cn("h-3 w-3", isRegenerating && "animate-spin")} />
-                        </button>
-                      </>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlayTrack(track);
+                            }}
+                            className="shrink-0 rounded-full bg-green-500 p-1 text-white hover:bg-green-600"
+                          >
+                            <Play className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRegenerateTrack(track);
+                            }}
+                            disabled={isRegenerating}
+                            className="shrink-0 rounded-full bg-gray-200 p-1 text-gray-700 hover:bg-gray-300 disabled:opacity-50 dark:bg-gray-700 dark:text-gray-300"
+                            title="Regenerate"
+                          >
+                            <RefreshCw
+                              className={cn(
+                                'h-3 w-3',
+                                isRegenerating && 'animate-spin',
+                              )}
+                            />
+                          </button>
+                        </div>
                       ) : track.status === 'failed' ? (
                         <RefreshCw className="h-4 w-4 shrink-0 text-red-500" />
                       ) : (

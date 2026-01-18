@@ -11,17 +11,16 @@ import {
 
 import { Download, Loader2, Minus, Play, Plus } from 'lucide-react';
 
-import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
-import {
-  getCharactersForEpisodeAction,
-  getDialogueLinesAction,
-  getProjectAudioSettings,
-} from '@kit/audio-generation/server';
 import type {
   CharacterAsset,
   DialogueLine,
   ProjectAudioSettings,
 } from '@kit/audio-generation/lib';
+import {
+  getCharactersForEpisodeAction,
+  getDialogueLinesAction,
+  getProjectAudioSettings,
+} from '@kit/audio-generation/server';
 import { autoStitchAction } from '@kit/episodes/server';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
@@ -50,7 +49,8 @@ export function AudioStudioScreen({
   // State for real dialogue data
   const [dialogueLines, setDialogueLines] = useState<DialogueLine[]>([]);
   const [characters, setCharacters] = useState<CharacterAsset[]>([]);
-  const [audioSettings, setAudioSettings] = useState<ProjectAudioSettings | null>(null);
+  const [audioSettings, setAudioSettings] =
+    useState<ProjectAudioSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Language selection state
