@@ -174,6 +174,8 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const encryptedUserToken = await encrypt(userAccessToken);
+
   // Store connections for each page and associated Instagram
   const pageConnectionResults = await Promise.all(
     pages.map(async (page) => {
