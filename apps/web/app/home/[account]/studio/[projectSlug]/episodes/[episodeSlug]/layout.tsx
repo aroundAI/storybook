@@ -7,9 +7,9 @@ import type {
   EpisodeStatus,
   EpisodeWithShots,
   ScreenplayData,
+  ShortsGroup,
   ShotListData,
   StoryData,
-  ShortsGroup,
 } from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -110,13 +110,15 @@ async function EpisodeWorkspaceLayout({
   // Now fetch shots using the episode ID
   const { data: shotsData } = await client
     .from('shots')
-    .select(`
+    .select(
+      `
       id, episode_id, scene_number, shot_number, sequence_number,
       duration_seconds, scene_description, action_description,
       prompt, camera_direction, status, video_url, thumbnail_url,
       first_frame_url, last_frame_url, generation_job_id, generation_metadata,
       created_at, updated_at, deleted_at
-    `)
+    `,
+    )
     .eq('episode_id', episodeData.id)
     .is('deleted_at', null)
     .order('sequence_number', { ascending: true });
@@ -139,8 +141,12 @@ async function EpisodeWorkspaceLayout({
     durationSeconds: episodeData.duration_seconds,
     thumbnailUrl: episodeData.thumbnail_url,
     finalVideoUrl: episodeData.final_video_url,
-    localizedVideos: (episodeData as { localized_videos?: Record<string, string> | null }).localized_videos ?? null,
-    shortsGroups: (episodeData as { shorts_groups?: ShortsGroup[] | null }).shorts_groups ?? null,
+    localizedVideos:
+      (episodeData as { localized_videos?: Record<string, string> | null })
+        .localized_videos ?? null,
+    shortsGroups:
+      (episodeData as { shorts_groups?: ShortsGroup[] | null }).shorts_groups ??
+      null,
     storyData: episodeData.story_data as StoryData | null,
     screenplayData: episodeData.screenplay_data as ScreenplayData | null,
     shotList: episodeData.shot_list as ShotListData | null,
@@ -170,8 +176,10 @@ async function EpisodeWorkspaceLayout({
           | 'failed',
         videoUrl: shot.video_url,
         thumbnailUrl: shot.thumbnail_url,
-        firstFrameUrl: (shot as { first_frame_url?: string | null }).first_frame_url ?? null,
-        lastFrameUrl: (shot as { last_frame_url?: string | null }).last_frame_url ?? null,
+        firstFrameUrl:
+          (shot as { first_frame_url?: string | null }).first_frame_url ?? null,
+        lastFrameUrl:
+          (shot as { last_frame_url?: string | null }).last_frame_url ?? null,
         generationJobId: shot.generation_job_id,
         metadata: (shot.generation_metadata as Record<string, unknown>) ?? null,
         generationSettings: null,
@@ -183,10 +191,10 @@ async function EpisodeWorkspaceLayout({
       })) ?? [],
     season: seasonData
       ? {
-        id: seasonData.id,
-        name: seasonData.name ?? '',
-        number: seasonData.number,
-      }
+          id: seasonData.id,
+          name: seasonData.name ?? '',
+          number: seasonData.number,
+        }
       : null,
     // Include project metadata for shot prompts (projectAestheticStyle, videoStyle, etc.)
     projectMetadata: (project.metadata as Record<string, unknown>) ?? {},

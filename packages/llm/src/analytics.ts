@@ -67,6 +67,13 @@ import type { LLMProvider } from './types';
  */
 
 /**
+ * LLM Usage Analytics
+ *
+ * Simple helper to log LLM executions to database for cost monitoring
+ * and failure analysis.
+ */
+
+/**
  * LLM Usage Event for analytics tracking
  */
 export interface LLMUsageEvent {
@@ -109,7 +116,8 @@ export interface LLMUsageEvent {
  * Check if a string is a valid UUID
  */
 function isValidUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   return uuidRegex.test(str);
 }
 
@@ -144,7 +152,8 @@ export async function logLLMUsage(
   try {
     // Validate UUIDs - if invalid, use null to avoid database errors
     const accountId = isValidUUID(event.accountId) ? event.accountId : null;
-    const userId = event.userId && isValidUUID(event.userId) ? event.userId : null;
+    const userId =
+      event.userId && isValidUUID(event.userId) ? event.userId : null;
 
     const { error } = await client.from('llm_usage_analytics').insert({
       account_id: accountId,

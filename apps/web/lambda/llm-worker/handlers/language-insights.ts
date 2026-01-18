@@ -7,128 +7,128 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 interface LanguageInsightsPayload {
-    projectId: string;
-    languagePerformance: Array<{
-        language: string;
-        views: number;
-        likes: number;
-        comments: number;
-        engagementRate: number;
-    }>;
-    platformMatrix: Array<Record<string, unknown>>;
-    contentType: Record<string, unknown>;
-    shorts: Array<Record<string, unknown>>;
-    geography: Record<string, unknown>;
-    userId: string;
+  projectId: string;
+  languagePerformance: Array<{
+    language: string;
+    views: number;
+    likes: number;
+    comments: number;
+    engagementRate: number;
+  }>;
+  platformMatrix: Array<Record<string, unknown>>;
+  contentType: Record<string, unknown>;
+  shorts: Array<Record<string, unknown>>;
+  geography: Record<string, unknown>;
+  userId: string;
 }
 
 interface LanguageInsightsResult {
-    success: boolean;
-    data: {
-        summary: string;
-        topLanguage: string;
-        recommendations: string[];
-        platformInsights: string[];
-        contentInsights: string[];
-        geographyInsights: string[];
-        actions: string[];
-    };
+  success: boolean;
+  data: {
+    summary: string;
+    topLanguage: string;
+    recommendations: string[];
+    platformInsights: string[];
+    contentInsights: string[];
+    geographyInsights: string[];
+    actions: string[];
+  };
 }
 
 export async function processLanguageInsights(
-    payload: Record<string, unknown>,
-    supabase: SupabaseClient,
+  payload: Record<string, unknown>,
+  supabase: SupabaseClient,
 ): Promise<LanguageInsightsResult> {
-    const data = payload as LanguageInsightsPayload;
+  const data = payload as LanguageInsightsPayload;
 
-    console.log(`[Language Insights] Processing for project ${data.projectId}`);
+  console.log(`[Language Insights] Processing for project ${data.projectId}`);
 
-    // Handle empty data
-    if (!data.languagePerformance?.length) {
-        return {
-            success: true,
-            data: {
-                summary: 'Not enough language data to generate insights.',
-                topLanguage: 'en',
-                recommendations: ['Publish content in multiple languages'],
-                platformInsights: [],
-                contentInsights: [],
-                geographyInsights: [],
-                actions: ['Publish content to start generating insights'],
-            },
-        };
-    }
-
-    // Prepare data for LLM
-    const languageData = {
-        languagePerformance: data.languagePerformance,
-        platformMatrix: data.platformMatrix?.slice(0, 20),
-        contentType: data.contentType,
-        topShorts: data.shorts,
-        geography: data.geography,
+  // Handle empty data
+  if (!data.languagePerformance?.length) {
+    return {
+      success: true,
+      data: {
+        summary: 'Not enough language data to generate insights.',
+        topLanguage: 'en',
+        recommendations: ['Publish content in multiple languages'],
+        platformInsights: [],
+        contentInsights: [],
+        geographyInsights: [],
+        actions: ['Publish content to start generating insights'],
+      },
     };
+  }
 
-    // Execute LLM
-    const { executeLLM } = await import('@kit/prompt-engine/server');
+  // Prepare data for LLM
+  const languageData = {
+    languagePerformance: data.languagePerformance,
+    platformMatrix: data.platformMatrix?.slice(0, 20),
+    contentType: data.contentType,
+    topShorts: data.shorts,
+    geography: data.geography,
+  };
 
-    interface LanguageInsightsLLMOutput {
-        languageSummary: string;
-        topLanguage: string;
-        languageRecommendations: string[];
-        platformOptimization: string[];
-        contentTypeInsights: string[];
-        geographicOpportunities: string[];
-        priorityActions: string[];
-    }
+  // Execute LLM
+  const { executeLLM } = await import('@kit/prompt-engine/server');
 
-    try {
-        const result = await executeLLM<LanguageInsightsLLMOutput>({
-            templateSlug: 'language-insights',
-            variables: {
-                language_data: JSON.stringify(languageData, null, 2),
-            },
-            context: {
-                name: 'generate-language-insights',
-                accountId: data.projectId,
-                userId: data.userId,
-            },
-            supabaseClient: supabase,
-        });
+  interface LanguageInsightsLLMOutput {
+    languageSummary: string;
+    topLanguage: string;
+    languageRecommendations: string[];
+    platformOptimization: string[];
+    contentTypeInsights: string[];
+    geographicOpportunities: string[];
+    priorityActions: string[];
+  }
 
-        console.log('[Language Insights] Generated insights successfully');
+  try {
+    const result = await executeLLM<LanguageInsightsLLMOutput>({
+      templateSlug: 'language-insights',
+      variables: {
+        language_data: JSON.stringify(languageData, null, 2),
+      },
+      context: {
+        name: 'generate-language-insights',
+        accountId: data.projectId,
+        userId: data.userId,
+      },
+      supabaseClient: supabase,
+    });
 
-        return {
-            success: true,
-            data: {
-                summary: result.data.languageSummary || 'Analysis complete.',
-                topLanguage: result.data.topLanguage || 'en',
-                recommendations: result.data.languageRecommendations || [],
-                platformInsights: result.data.platformOptimization || [],
-                contentInsights: result.data.contentTypeInsights || [],
-                geographyInsights: result.data.geographicOpportunities || [],
-                actions: result.data.priorityActions || [],
-            },
-        };
-    } catch (error) {
-        console.error('[Language Insights] Error:', error);
+    console.log('[Language Insights] Generated insights successfully');
 
-        // Fallback with basic insights
-        const topLang = data.languagePerformance.reduce(
-            (best, curr) => (curr.views > best.views ? curr : best),
-            data.languagePerformance[0]!,
-        );
+    return {
+      success: true,
+      data: {
+        summary: result.data.languageSummary || 'Analysis complete.',
+        topLanguage: result.data.topLanguage || 'en',
+        recommendations: result.data.languageRecommendations || [],
+        platformInsights: result.data.platformOptimization || [],
+        contentInsights: result.data.contentTypeInsights || [],
+        geographyInsights: result.data.geographicOpportunities || [],
+        actions: result.data.priorityActions || [],
+      },
+    };
+  } catch (error) {
+    console.error('[Language Insights] Error:', error);
 
-        return {
-            success: true,
-            data: {
-                summary: `Top performing language: ${topLang.language.toUpperCase()}`,
-                topLanguage: topLang.language,
-                recommendations: [`Focus on ${topLang.language} content`],
-                platformInsights: [],
-                contentInsights: [],
-                geographyInsights: [],
-                actions: ['Unable to generate AI insights. Try again later.'],
-            },
-        };
-    }
+    // Fallback with basic insights
+    const topLang = data.languagePerformance.reduce(
+      (best, curr) => (curr.views > best.views ? curr : best),
+      data.languagePerformance[0]!,
+    );
+
+    return {
+      success: true,
+      data: {
+        summary: `Top performing language: ${topLang.language.toUpperCase()}`,
+        topLanguage: topLang.language,
+        recommendations: [`Focus on ${topLang.language} content`],
+        platformInsights: [],
+        contentInsights: [],
+        geographyInsights: [],
+        actions: ['Unable to generate AI insights. Try again later.'],
+      },
+    };
+  }
 }

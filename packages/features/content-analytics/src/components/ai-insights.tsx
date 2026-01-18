@@ -29,12 +29,18 @@ interface AIInsightsProps {
 }
 
 export function AIInsights({ projectId, analytics }: AIInsightsProps) {
-  const [wsInsights, setWsInsights] = useState<Awaited<ReturnType<typeof generateInsightsAction>> | null>(null);
+  const [wsInsights, setWsInsights] = useState<Awaited<
+    ReturnType<typeof generateInsightsAction>
+  > | null>(null);
 
   // WebSocket for async LLM results (uses shared provider from layout)
-  const { status: llmStatus, result: llmResult, error: llmError } = useLlmJob<{ insights: Awaited<ReturnType<typeof generateInsightsAction>> }>(
-    'analytics-insights'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+  } = useLlmJob<{
+    insights: Awaited<ReturnType<typeof generateInsightsAction>>;
+  }>('analytics-insights');
 
   // Handle async WebSocket result
   useEffect(() => {

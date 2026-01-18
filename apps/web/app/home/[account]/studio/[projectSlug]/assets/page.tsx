@@ -41,10 +41,7 @@ export async function generateMetadata({
     .eq('slug', projectSlug)
     .single();
 
-  const tabTitle =
-    tab === 'location'
-      ? 'Story World'
-      : 'Cast';
+  const tabTitle = tab === 'location' ? 'Story World' : 'Cast';
 
   return {
     title: project ? `${project.name} - ${tabTitle}` : tabTitle,

@@ -4,9 +4,7 @@ import {
   OAuthAppConfig,
   PlatformConnections,
 } from '@kit/publishing/components';
-import {
-  getAccountOAuthApps,
-} from '@kit/publishing/server';
+import { getAccountOAuthApps } from '@kit/publishing/server';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { PageBody } from '@kit/ui/page';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
@@ -55,23 +53,15 @@ async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
                 <Settings2 className="mr-2 h-4 w-4" />
                 App Credentials
               </TabsTrigger>
-              <TabsTrigger value="connections">
-                Connect Accounts
-              </TabsTrigger>
+              <TabsTrigger value="connections">Connect Accounts</TabsTrigger>
             </TabsList>
 
             <TabsContent value="credentials" className="mt-6">
-              <OAuthAppConfig
-                accountId={accountId}
-                existingApps={oauthApps}
-              />
+              <OAuthAppConfig accountId={accountId} existingApps={oauthApps} />
             </TabsContent>
 
             <TabsContent value="connections" className="mt-6">
-              <PlatformConnections
-                accountSlug={slug}
-                accountId={accountId}
-              />
+              <PlatformConnections accountSlug={slug} accountId={accountId} />
             </TabsContent>
           </Tabs>
         </div>

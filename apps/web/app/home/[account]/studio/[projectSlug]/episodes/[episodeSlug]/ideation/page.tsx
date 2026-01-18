@@ -10,14 +10,14 @@ import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
+import { useEpisodeContext } from '../_components/episode-context-provider';
+import { IdeationScreen } from './_components/ideation-screen';
+
 /** Extended story idea with generation settings */
 interface StoryIdeaWithSettings extends StoryIdea {
   targetDuration: number;
   contentStyle: ContentStyle;
 }
-
-import { useEpisodeContext } from '../_components/episode-context-provider';
-import { IdeationScreen } from './_components/ideation-screen';
 
 export default function IdeationPage() {
   const router = useRouter();
@@ -31,9 +31,12 @@ export default function IdeationPage() {
   } = useEpisodeContext();
 
   // WebSocket for async LLM results (uses shared provider from layout)
-  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ storyData: unknown }>(
-    'story-generation'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+    trigger: triggerLlm,
+  } = useLlmJob<{ storyData: unknown }>('story-generation');
 
   // Handle async WebSocket result
   useEffect(() => {
@@ -53,7 +56,18 @@ export default function IdeationPage() {
       setIsGenerating(false);
       toast.error(llmError || 'Failed to generate story');
     }
-  }, [llmStatus, llmResult, llmError, refetchEpisode, setIsGenerating, router, accountSlug, projectSlug, episode.slug, episode.id]);
+  }, [
+    llmStatus,
+    llmResult,
+    llmError,
+    refetchEpisode,
+    setIsGenerating,
+    router,
+    accountSlug,
+    projectSlug,
+    episode.slug,
+    episode.id,
+  ]);
 
   // Extract project defaults for duration and content style
   const defaultDuration =
@@ -64,9 +78,6 @@ export default function IdeationPage() {
 
   const handleComplete = async (selection: StoryIdeaWithSettings) => {
     triggerLlm(async () => {
-
-      console.log('[story-actions] start here 1223');
-
       // Generate the full story using the selected idea
       const result = await generateFullStoryAction({
         episodeId: episode.id,
@@ -76,8 +87,6 @@ export default function IdeationPage() {
         targetDuration: selection.targetDuration,
         contentStyle: selection.contentStyle,
       });
-
-      console.log('[story-actions] end here 1223');
 
       // If queued, return queued flag (WebSocket will deliver result)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

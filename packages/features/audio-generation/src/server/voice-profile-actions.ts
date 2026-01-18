@@ -83,7 +83,6 @@ export const listVoicesAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-
     // Get account ID from project - projectId is required for API key lookup
     if (!data.projectId) {
       throw new Error('Project ID is required to list voices');
@@ -444,7 +443,10 @@ export const autoAssignVoicesAction = enhanceAction(
       throw new Error('Failed to fetch character details');
     }
 
-    const charDetailsMap = new Map<string, { asset_id: string; gender: string | null; age: string | null }>();
+    const charDetailsMap = new Map<
+      string,
+      { asset_id: string; gender: string | null; age: string | null }
+    >();
     for (const detail of charDetailsList || []) {
       charDetailsMap.set(detail.asset_id, detail);
     }
@@ -494,8 +496,8 @@ export const autoAssignVoicesAction = enhanceAction(
       if (!matchedVoice && voicesResult.voices.length > 0) {
         matchedVoice =
           voicesResult.voices[
-          (maleIndex + femaleIndex + neutralIndex) %
-          voicesResult.voices.length
+            (maleIndex + femaleIndex + neutralIndex) %
+              voicesResult.voices.length
           ];
         reason = `Assigned first available voice (no character gender specified)`;
       }

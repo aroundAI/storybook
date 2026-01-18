@@ -214,12 +214,14 @@ export const retryJobAction = enhanceAction(
 
     const { data: job, error: fetchError } = await client
       .from('generation_jobs')
-      .select(`
+      .select(
+        `
         id, idempotency_key, job_type, account_id, project_id,
         reference_type, reference_id, input_data, output_data, provider,
         estimated_cost_cents, priority, status,
         retry_count, max_retries, error_message, started_at, completed_at, created_at
-      `)
+      `,
+      )
       .eq('id', data.jobId)
       .eq('account_id', data.accountId)
       .eq('status', 'failed')

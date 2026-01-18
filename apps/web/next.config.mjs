@@ -1,4 +1,32 @@
 import withBundleAnalyzer from '@next/bundle-analyzer';
+import { execSync } from 'child_process';
+
+const getGitInfo = () => {
+  try {
+    const commit = execSync('git rev-parse HEAD').toString().trim();
+    const branch = execSync('git rev-parse --abbrev-ref HEAD')
+      .toString()
+      .trim();
+    const tag = execSync('git describe --tags --always').toString().trim();
+    const date = execSync('git show -s --format=%cd HEAD').toString().trim();
+    const author = execSync('git show -s --format="%an" HEAD')
+      .toString()
+      .trim();
+
+    return { commit, branch, tag, date, author };
+  } catch {
+    return {
+      commit: 'unknown',
+      branch: 'unknown',
+      tag: 'unknown',
+      date: 'unknown',
+      author: 'unknown',
+    };
+  }
+};
+
+const gitInfo = getGitInfo();
+const buildDate = new Date().toUTCString();
 
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -29,6 +57,13 @@ const INTERNAL_PACKAGES = [
 
 /** @type {import('next').NextConfig} */
 const config = {
+  env: {
+    NEXT_PUBLIC_BUILD_COMMIT: gitInfo.commit,
+    NEXT_PUBLIC_BUILD_BRANCH: gitInfo.branch,
+    NEXT_PUBLIC_BUILD_RELEASE_TAG: gitInfo.tag,
+    NEXT_PUBLIC_BUILD_DATE: buildDate,
+    NEXT_PUBLIC_BUILD_AUTHOR: gitInfo.author,
+  },
   reactStrictMode: true,
   /** Enables hot reloading for local packages without a build step */
   transpilePackages: INTERNAL_PACKAGES,
@@ -93,8 +128,8 @@ const config = {
     process.env.NEXT_PUBLIC_CI === 'true'
       ? false
       : {
-        position: 'bottom-right',
-      },
+          position: 'bottom-right',
+        },
   experimental: {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
@@ -137,16 +172,16 @@ function getRemotePatterns() {
   return IS_PRODUCTION
     ? remotePatterns
     : [
-      ...remotePatterns, // Include R2 patterns in development too
-      {
-        protocol: 'http',
-        hostname: '127.0.0.1',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
-    ];
+        ...remotePatterns, // Include R2 patterns in development too
+        {
+          protocol: 'http',
+          hostname: '127.0.0.1',
+        },
+        {
+          protocol: 'http',
+          hostname: 'localhost',
+        },
+      ];
 }
 
 async function getRedirects() {
@@ -179,22 +214,26 @@ async function getHeaders() {
     {
       source: '/images/favicon/:path*',
       headers: [
-        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800' },
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, s-maxage=604800',
+        },
       ],
     },
     // Public images - cache 1 day browser, 1 week CDN
     {
       source: '/images/:path*',
       headers: [
-        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800' },
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, s-maxage=604800',
+        },
       ],
     },
     // API routes - no cache by default
     {
       source: '/api/:path*',
-      headers: [
-        { key: 'Cache-Control', value: 'no-store, must-revalidate' },
-      ],
+      headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
     },
   ];
 }

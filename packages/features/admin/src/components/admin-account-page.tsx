@@ -232,7 +232,8 @@ async function SubscriptionsTable(props: { accountId: string }) {
 
   const { data: subscription, error } = await client
     .from('subscriptions')
-    .select(`
+    .select(
+      `
       id, account_id, billing_customer_id, billing_provider, status, active,
       period_starts_at, period_ends_at, trial_starts_at, trial_ends_at, currency,
       cancel_at_period_end, created_at, updated_at,
@@ -240,7 +241,8 @@ async function SubscriptionsTable(props: { accountId: string }) {
         id, subscription_id, product_id, variant_id, price_amount,
         quantity, interval, interval_count, type, created_at, updated_at
       )
-    `)
+    `,
+    )
     .eq('account_id', props.accountId)
     .maybeSingle();
 

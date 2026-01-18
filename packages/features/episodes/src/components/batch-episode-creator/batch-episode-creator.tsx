@@ -24,6 +24,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@kit/ui/form';
+import { useLlmJob } from '@kit/ui/hooks';
 import {
   Select,
   SelectContent,
@@ -34,7 +35,6 @@ import {
 import { Slider } from '@kit/ui/slider';
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
-import { useLlmJob } from '@kit/ui/hooks';
 
 import {
   type EpisodeOutline,
@@ -88,9 +88,11 @@ export function BatchEpisodeCreator({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   // WebSocket for async LLM results (uses shared provider from layout)
-  const { status: llmStatus, result: llmResult, error: llmError } = useLlmJob<{ episodes: EpisodeOutline[] }>(
-    'season-outline'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+  } = useLlmJob<{ episodes: EpisodeOutline[] }>('season-outline');
 
   // Handle async WebSocket result
   useEffect(() => {
@@ -101,7 +103,9 @@ export function BatchEpisodeCreator({
       if (resultData?.episodes) {
         setEpisodes(resultData.episodes);
         setIsPreviewOpen(true);
-        toast.success(`Generated ${resultData.episodes.length} episode outlines`);
+        toast.success(
+          `Generated ${resultData.episodes.length} episode outlines`,
+        );
       }
     } else if (llmStatus === 'error') {
       toast.error(llmError || 'Failed to generate episode outlines');

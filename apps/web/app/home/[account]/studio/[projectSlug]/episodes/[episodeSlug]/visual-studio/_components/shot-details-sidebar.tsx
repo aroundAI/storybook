@@ -24,8 +24,6 @@ import {
   X,
 } from 'lucide-react';
 
-import { FrameUploader } from './frame-uploader';
-
 import { VideoUploader } from '@kit/episodes/components';
 import { updateShotAction } from '@kit/episodes/server';
 import type { Shot } from '@kit/episodes/types';
@@ -39,6 +37,8 @@ import {
 import { toast } from '@kit/ui/sonner';
 import { Textarea } from '@kit/ui/textarea';
 import { cn } from '@kit/ui/utils';
+
+import { FrameUploader } from './frame-uploader';
 
 /**
  * VEO prompt component types (from shot metadata) - Legacy v1 format
@@ -183,7 +183,9 @@ function assembleVeoPrompt(
       characters.push(...charSet);
     }
     if (characters.length > 0) {
-      lines.push(`CHARACTERS: ${characters.join(', ')} (identify from reference images)`);
+      lines.push(
+        `CHARACTERS: ${characters.join(', ')} (identify from reference images)`,
+      );
       lines.push('');
     }
   }
@@ -200,7 +202,9 @@ function assembleVeoPrompt(
     if (event.type === 'dialogue' && event.character) {
       // Dialogue: "[0s-4s] Character: 'text' (Tone: emotion)"
       const emotionPart = event.emotion ? ` (Tone: ${event.emotion})` : '';
-      lines.push(`[${startSec}s-${endSec}s] ${event.character}: "${event.content}"${emotionPart}`);
+      lines.push(
+        `[${startSec}s-${endSec}s] ${event.character}: "${event.content}"${emotionPart}`,
+      );
     } else {
       // Action/transition: "[0s-4s] content. Setting: location"
       lines.push(`[${startSec}s-${endSec}s] ${event.content}`);
@@ -239,7 +243,6 @@ interface ShotDetailsSidebarProps {
   onClose: () => void;
   onUpdate: () => void;
 }
-
 
 /**
  * Copy text to clipboard with toast feedback
@@ -375,7 +378,7 @@ export function ShotDetailsSidebar({
   }, []);
 
   return (
-    <div className="flex h-full w-96 flex-col border-l border-white/20 bg-card/50 shadow-2xl ring-1 ring-border backdrop-blur-2xl backdrop-saturate-150 ring-inset dark:ring-white/10">
+    <div className="bg-card/50 ring-border flex h-full w-96 flex-col border-l border-white/20 shadow-2xl ring-1 backdrop-blur-2xl backdrop-saturate-150 ring-inset dark:ring-white/10">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-white/20 p-4 dark:border-white/10">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -747,9 +750,9 @@ export function ShotDetailsSidebar({
                                   className={cn(
                                     'text-xs capitalize',
                                     event.type === 'dialogue' &&
-                                    'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
+                                      'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
                                     event.type === 'action' &&
-                                    'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+                                      'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
                                   )}
                                 >
                                   {event.type}
@@ -844,11 +847,11 @@ export function ShotDetailsSidebar({
                     // Use runtime-assembled prompt for V2, fallback to stored for V1
                     const prompt = isVeoPromptV2(veoPrompt)
                       ? assembleVeoPrompt(veoPrompt, {
-                        projectVideoStyle,
-                        projectAestheticStyle,
-                        characterDetails,
-                        characterNames: shotCharacters,
-                      })
+                          projectVideoStyle,
+                          projectAestheticStyle,
+                          characterDetails,
+                          characterNames: shotCharacters,
+                        })
                       : veoPrompt.fullPrompt;
                     copyToClipboard(prompt, 'Full prompt');
                   }}
@@ -866,11 +869,11 @@ export function ShotDetailsSidebar({
                 {/* Use runtime-assembled prompt for V2, fallback to stored for V1 */}
                 {isVeoPromptV2(veoPrompt)
                   ? assembleVeoPrompt(veoPrompt, {
-                    projectVideoStyle,
-                    projectAestheticStyle,
-                    characterDetails,
-                    characterNames: shotCharacters,
-                  })
+                      projectVideoStyle,
+                      projectAestheticStyle,
+                      characterDetails,
+                      characterNames: shotCharacters,
+                    })
                   : veoPrompt.fullPrompt}
               </div>
             </div>
@@ -1056,7 +1059,7 @@ export function ShotDetailsSidebar({
               value={editedPrompt}
               onChange={(e) => setEditedPrompt(e.target.value)}
               rows={8}
-              className="resize-none bg-card/50 text-sm"
+              className="bg-card/50 resize-none text-sm"
               placeholder="Describe the visual for this shot..."
             />
           </div>

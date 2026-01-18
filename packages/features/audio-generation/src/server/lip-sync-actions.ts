@@ -343,13 +343,15 @@ export const applyLipSyncAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: jobError } = await (client as any)
       .from('lip_sync_jobs')
-      .select(`
+      .select(
+        `
         id, shot_id, dialogue_line_id, provider, status,
         input_video_url, input_audio_url, output_video_url,
         face_coordinates, quality, provider_job_id,
         error_message, processing_time_seconds,
         created_at, completed_at
-      `)
+      `,
+      )
       .eq('id', data.jobId)
       .single();
 

@@ -278,7 +278,6 @@ export function MobileStudioHeader({
                     isActive={pathname.includes('/audio-library')}
                     onClick={closeSheet}
                   />
-
                 </nav>
               </div>
 

@@ -5,7 +5,10 @@ import { useMemo, useState } from 'react';
 import { Edit3, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
-import { generateDialogueVoiceAction, updateDialogueTextAction } from '@kit/audio-generation/server';
+import {
+  generateDialogueVoiceAction,
+  updateDialogueTextAction,
+} from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
@@ -252,7 +255,6 @@ export function DialogueTimeline({
     }
   };
 
-
   const handleEdit = () => {
     if (!selectedDialogue) return;
     setEditText(selectedDialogue.text ?? '');
@@ -294,7 +296,7 @@ export function DialogueTimeline({
 
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col bg-background">
+      <div className="bg-background flex h-full flex-col">
         <div className="h-10 border-b bg-gray-100 dark:bg-black/20" />
         <div className="flex-1 space-y-4 p-4">
           {[...Array(5)].map((_, i) => (
@@ -326,7 +328,7 @@ export function DialogueTimeline({
   );
 
   return (
-    <div className="relative flex h-full flex-col bg-card">
+    <div className="bg-card relative flex h-full flex-col">
       {/* Playhead - fixed position */}
       <div className="pointer-events-none absolute top-0 bottom-0 left-[20px] z-20 flex w-0.5 flex-col items-center bg-black dark:bg-white">
         <div className="-mt-1.5 h-3 w-3 rotate-45 rounded-sm bg-black dark:bg-white" />
@@ -392,7 +394,7 @@ export function DialogueTimeline({
                       colors.bg,
                       colors.border,
                       selectedDialogue?.id === dialogue.id &&
-                      'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
+                        'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
                     )}
                     style={{
                       left: `${leftPx}px`,
@@ -474,7 +476,6 @@ export function DialogueTimeline({
               />
               {isGenerating ? 'Generating...' : 'Regenerate'}
             </button>
-
           </div>
         </>
       )}
@@ -523,4 +524,3 @@ export function DialogueTimeline({
     </div>
   );
 }
-

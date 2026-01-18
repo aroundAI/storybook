@@ -189,7 +189,9 @@ function extractJSON<T = unknown>(
 /**
  * Get API key for LLM provider from environment variables
  */
-export async function getApiKeyForProvider(provider: LLMProvider | string): Promise<string> {
+export async function getApiKeyForProvider(
+  provider: LLMProvider | string,
+): Promise<string> {
   let apiKey = '';
   let source = '';
 
@@ -621,7 +623,9 @@ export async function executeLLM<T = unknown>(
       client = config.supabaseClient;
     } else {
       // Dynamic import to avoid server-only at module level (for Next.js context)
-      const { getSupabaseServerAdminClient } = await import('@kit/supabase/server-admin-client');
+      const { getSupabaseServerAdminClient } = await import(
+        '@kit/supabase/server-admin-client'
+      );
       client = getSupabaseServerAdminClient();
     }
 
@@ -691,7 +695,9 @@ export async function executeLLM<T = unknown>(
       failureClient = config.supabaseClient;
     } else {
       // Dynamic import to avoid server-only at module level (for Next.js context)
-      const { getSupabaseServerAdminClient } = await import('@kit/supabase/server-admin-client');
+      const { getSupabaseServerAdminClient } = await import(
+        '@kit/supabase/server-admin-client'
+      );
       failureClient = getSupabaseServerAdminClient();
     }
 

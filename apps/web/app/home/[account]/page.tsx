@@ -1,19 +1,19 @@
 import { Suspense } from 'react';
 
-import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
-import { PageBody } from '@kit/ui/page';
-import { Trans } from '@kit/ui/trans';
 import {
   CompanyDashboard,
   CompanyDashboardSkeleton,
 } from '@kit/content-analytics/components';
 import { getAccountDashboardData } from '@kit/content-analytics/server';
+import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import { PageBody } from '@kit/ui/page';
+import { Trans } from '@kit/ui/trans';
 
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { withI18n } from '~/lib/i18n/with-i18n';
-import { loadTeamWorkspace } from './_lib/server/team-account-workspace.loader';
 
 import { TeamAccountLayoutPageHeader } from './_components/team-account-layout-page-header';
+import { loadTeamWorkspace } from './_lib/server/team-account-workspace.loader';
 
 interface TeamAccountHomePageProps {
   params: Promise<{ account: string }>;

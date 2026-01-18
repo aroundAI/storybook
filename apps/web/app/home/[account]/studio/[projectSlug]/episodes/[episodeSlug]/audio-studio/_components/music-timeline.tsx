@@ -6,8 +6,8 @@ import { Loader2, Music, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 import {
   deleteAudioTrackAction,
-  getAudioTracksAction,
   getAudioCuesAction,
+  getAudioTracksAction,
   pollMusicStatusAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
@@ -98,31 +98,39 @@ export function MusicTimeline({
       }));
 
       // Map auto-generated music cues
-      const musicCues: MusicTrack[] = (cuesResult.cues as Array<{
-        id: string;
-        cue_type: string;
-        prompt: string;
-        scene_number: number;
-        start_offset_seconds: number | null;
-        duration_seconds: number | null;
-        status: string | null;
-        audio_assets: { id: string; file_url: string | null; duration_seconds: number | null } | null;
-      }>)
+      const musicCues: MusicTrack[] = (
+        cuesResult.cues as Array<{
+          id: string;
+          cue_type: string;
+          prompt: string;
+          scene_number: number;
+          start_offset_seconds: number | null;
+          duration_seconds: number | null;
+          status: string | null;
+          audio_assets: {
+            id: string;
+            file_url: string | null;
+            duration_seconds: number | null;
+          } | null;
+        }>
+      )
         .filter((c) => c.cue_type === 'music')
         .map((c) => ({
           id: `cue-${c.id}`,
           name: c.prompt.substring(0, 50),
           fileUrl: c.audio_assets?.file_url ?? null,
-          durationSeconds: c.audio_assets?.duration_seconds ?? c.duration_seconds ?? 30,
+          durationSeconds:
+            c.audio_assets?.duration_seconds ?? c.duration_seconds ?? 30,
           timelineStartSeconds: c.start_offset_seconds ?? 0,
           volume: 1,
-          status: c.status === 'placed' || c.status === 'matched'
-            ? 'completed'
-            : c.status === 'pending'
-              ? 'pending'
-              : c.status === 'generating'
-                ? 'processing'
-                : 'failed' as const,
+          status:
+            c.status === 'placed' || c.status === 'matched'
+              ? 'completed'
+              : c.status === 'pending'
+                ? 'pending'
+                : c.status === 'generating'
+                  ? 'processing'
+                  : ('failed' as const),
           metadata: {
             sceneNumber: c.scene_number,
             prompt: c.prompt,
@@ -132,7 +140,7 @@ export function MusicTimeline({
 
       // Combine and sort by timeline position
       const combined = [...userTracks, ...musicCues].sort(
-        (a, b) => a.timelineStartSeconds - b.timelineStartSeconds
+        (a, b) => a.timelineStartSeconds - b.timelineStartSeconds,
       );
 
       setTracks(combined);
@@ -238,7 +246,7 @@ export function MusicTimeline({
 
   if (isLoading) {
     return (
-      <div className="flex h-full flex-col bg-background">
+      <div className="bg-background flex h-full flex-col">
         <div className="h-10 border-b bg-gray-100 dark:bg-black/20" />
         <div className="flex-1 space-y-4 p-4">
           {[...Array(3)].map((_, i) => (
@@ -258,7 +266,7 @@ export function MusicTimeline({
   );
 
   return (
-    <div className="relative flex h-full flex-col bg-card">
+    <div className="bg-card relative flex h-full flex-col">
       {/* Header with actions */}
       <div className="flex shrink-0 items-center justify-between border-b border-gray-200/50 px-4 py-2 dark:border-gray-700/50">
         <div className="flex items-center gap-2">
@@ -362,7 +370,7 @@ export function MusicTimeline({
                   return (
                     <div
                       key={scene.number}
-                      className="absolute top-0 h-full border-l border-border"
+                      className="border-border absolute top-0 h-full border-l"
                       style={{
                         left: `${leftPx}px`,
                         width: `${widthPx}px`,
@@ -397,7 +405,7 @@ export function MusicTimeline({
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
                         selectedTrack?.id === track.id &&
-                        'ring-2 ring-blue-500 ring-offset-2',
+                          'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{
                         left: `${leftPx}px`,

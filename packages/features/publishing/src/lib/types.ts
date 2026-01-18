@@ -18,11 +18,7 @@ export type PublishStatus =
   | 'failed'
   | 'scheduled';
 
-export type ContentType = 'full' | 'short' | 'teaser' | 'trailer';
-
-export type CropType = 'center' | 'left' | 'right' | 'smart' | 'custom';
-
-export type AspectRatio = '9:16' | '1:1' | '16:9';
+export type ContentType = 'full' | 'teaser' | 'trailer';
 
 /**
  * Props for the main PublishHub component
@@ -119,41 +115,6 @@ export interface PublishResult {
 }
 
 /**
- * Clip region for shorts clipper
- */
-export interface ClipRegion {
-  id: string;
-  startTime: number;
-  endTime: number;
-  title: string;
-  cropSettings: CropSettings;
-  generated?: boolean;
-  generatedUrl?: string;
-}
-
-/**
- * Crop settings for vertical conversion
- */
-export interface CropSettings {
-  type: CropType;
-  x: number; // 0-1 normalized horizontal position
-  y: number; // 0-1 normalized vertical position
-  scale: number; // 0.5-2 zoom level
-}
-
-/**
- * Generated clip result
- */
-export interface GeneratedClip {
-  id: string;
-  clipUrl: string;
-  thumbnailUrl: string;
-  duration: number;
-  title: string;
-  aspectRatio: AspectRatio;
-}
-
-/**
  * Props for PlatformSelector component
  */
 export interface PlatformSelectorProps {
@@ -179,16 +140,6 @@ export interface ThumbnailSelectorProps {
   currentUrl?: string;
   videoUrl: string;
   onChange: (url: string) => void;
-}
-
-/**
- * Props for ShortsClipper component
- */
-export interface ShortsClipperProps {
-  videoUrl: string;
-  duration: number;
-  episodeId: string;
-  onClipCreated: (clip: GeneratedClip) => void;
 }
 
 /**

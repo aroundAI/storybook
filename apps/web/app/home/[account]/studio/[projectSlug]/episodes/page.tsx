@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Film } from 'lucide-react';
+
 import type { EpisodeStatus } from '@kit/episodes/types';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -94,22 +95,26 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
     // Episodes with computed boolean checks instead of fetching full JSON blobs
     client
       .from('episodes')
-      .select(`
+      .select(
+        `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url,
         created_at, updated_at, deleted_at
-      `)
+      `,
+      )
       .eq('project_id', project.id)
       .is('deleted_at', null)
       .order('number', { ascending: true }),
     // Separate query for unassigned episodes (SQL filter instead of JS filter)
     client
       .from('episodes')
-      .select(`
+      .select(
+        `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url,
         created_at, updated_at, deleted_at
-      `)
+      `,
+      )
       .eq('project_id', project.id)
       .is('deleted_at', null)
       .is('season_id', null)

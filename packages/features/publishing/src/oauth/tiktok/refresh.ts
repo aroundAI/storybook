@@ -23,11 +23,13 @@ export async function refreshTikTokToken(
   // Note: Type assertion needed until database types are regenerated
   const { data: connection, error: fetchError } = (await client
     .from('platform_connections' as 'accounts')
-    .select(`
+    .select(
+      `
       id, account_id, platform, platform_account_id, platform_account_name,
       access_token_encrypted, refresh_token_encrypted, is_active,
       token_expires_at, scopes, metadata, created_at, updated_at
-    `)
+    `,
+    )
     .eq('id', connectionId)
     .eq('platform', 'tiktok')
     .single()) as { data: PlatformConnection | null; error: unknown };

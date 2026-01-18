@@ -26,10 +26,12 @@ export async function getAuditLogsForObject(
 
     const { data, error } = await client
       .from('audit_logs')
-      .select(`
+      .select(
+        `
         id, account_id, user_id, action, object_type, object_id, object_name,
         before_state, after_state, scopes, metadata, ip_address, user_agent, created_at
-      `)
+      `,
+      )
       .eq('object_type', objectType)
       .eq('object_id', objectId)
       .order('created_at', { ascending: false })

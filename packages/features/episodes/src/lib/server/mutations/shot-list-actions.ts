@@ -9,7 +9,6 @@
  * NOTE: The actual LLM processing and database insertion logic has been
  * moved to apps/web/lambda/llm-worker/handlers/shot-generation.ts
  */
-
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -101,7 +100,10 @@ export const generateShotListAction = enhanceAction(
 
     if (jobError) {
       console.error('[shot-list-actions] FAILED:', jobError);
-      logger.warn({ ...ctx, error: jobError }, 'Failed to create generation job entry');
+      logger.warn(
+        { ...ctx, error: jobError },
+        'Failed to create generation job entry',
+      );
     } else {
       console.log('[shot-list-actions] SUCCESS:', insertedJob);
     }

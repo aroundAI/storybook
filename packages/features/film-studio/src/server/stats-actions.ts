@@ -116,8 +116,12 @@ export const getQuickStatsAction = enhanceAction(
       }
 
       // Aggregate stats directly - SQL already filtered by account
-      const currentStats = aggregateStats(currentAnalytics as AnalyticsRow[] | null);
-      const previousStats = aggregateStats(previousAnalytics as AnalyticsRow[] | null);
+      const currentStats = aggregateStats(
+        currentAnalytics as AnalyticsRow[] | null,
+      );
+      const previousStats = aggregateStats(
+        previousAnalytics as AnalyticsRow[] | null,
+      );
 
       // Calculate changes
       const viewsChange = calculateChange(
@@ -166,7 +170,8 @@ export const getQuickStatsAction = enhanceAction(
 // SQL filters now handle account-level filtering at database level
 
 function aggregateStats(data: AnalyticsRow[] | null) {
-  if (!data) return { views: 0, likes: 0, comments: 0, shares: 0, subscribers: 0 };
+  if (!data)
+    return { views: 0, likes: 0, comments: 0, shares: 0, subscribers: 0 };
   return data.reduce(
     (acc, row) => ({
       views: acc.views + (row.views || 0),

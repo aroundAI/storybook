@@ -174,10 +174,14 @@ export async function buildEpisodeContext(
       errorDetails: episodeError?.details,
       errorHint: episodeError?.hint,
     });
-    throw new Error(`Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'} [code: ${episodeError?.code}]`);
+    throw new Error(
+      `Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'} [code: ${episodeError?.code}]`,
+    );
   }
 
-  console.log(`[buildEpisodeContext] Episode fetched successfully: ${episode.title}`);
+  console.log(
+    `[buildEpisodeContext] Episode fetched successfully: ${episode.title}`,
+  );
 
   const metadata =
     (episode.metadata as {
@@ -185,14 +189,15 @@ export async function buildEpisodeContext(
       location_ids?: string[];
       season_premise?: string;
     }) ?? {};
-  const storyData = (episode.story_data as {
-    premise?: string;
-    synopsis?: string;
-    beats?: Array<{ label: string; content: string }>;
-    moral?: string;
-    signature_line?: string;
-    tags?: string[];
-  }) ?? {};
+  const storyData =
+    (episode.story_data as {
+      premise?: string;
+      synopsis?: string;
+      beats?: Array<{ label: string; content: string }>;
+      moral?: string;
+      signature_line?: string;
+      tags?: string[];
+    }) ?? {};
   const projectMetadata =
     (episode.project?.metadata as {
       genre?: string;
@@ -218,9 +223,9 @@ export async function buildEpisodeContext(
   // 4. Fetch season context
   const seasonContext = episode.season
     ? {
-      number: episode.season.number,
-      premise: episode.season.description ?? metadata.season_premise,
-    }
+        number: episode.season.number,
+        premise: episode.season.description ?? metadata.season_premise,
+      }
     : null;
 
   // 5. Fetch previous episodes (semantic or sequential)
@@ -294,12 +299,12 @@ export async function buildEpisodeContext(
     recurringElement:
       projectMetadata.recurringElement?.enabled === true
         ? {
-          enabled: true,
-          location: projectMetadata.recurringElement.location,
-          purpose: projectMetadata.recurringElement.purpose,
-          placement: projectMetadata.recurringElement.placement,
-          dialogueHints: projectMetadata.recurringElement.dialogueHints,
-        }
+            enabled: true,
+            location: projectMetadata.recurringElement.location,
+            purpose: projectMetadata.recurringElement.purpose,
+            placement: projectMetadata.recurringElement.placement,
+            dialogueHints: projectMetadata.recurringElement.dialogueHints,
+          }
         : undefined,
   };
 }
@@ -515,17 +520,17 @@ export function formatPreviousEpisodesForPrompt(
 
   return `**Previous Episodes (for continuity)**:
 ${episodes
-      .map((ep) => {
-        let entry = `- Episode ${ep.number}: "${ep.title}"
+  .map((ep) => {
+    let entry = `- Episode ${ep.number}: "${ep.title}"
   Plot: ${ep.summary}`;
 
-        if (ep.keyEvents && ep.keyEvents.length > 0) {
-          entry += `\n  Key Events: ${ep.keyEvents.join('; ')}`;
-        }
+    if (ep.keyEvents && ep.keyEvents.length > 0) {
+      entry += `\n  Key Events: ${ep.keyEvents.join('; ')}`;
+    }
 
-        return entry;
-      })
-      .join('\n\n')}
+    return entry;
+  })
+  .join('\n\n')}
 
 **Continuity Guidelines**:
 - Reference events/characters from previous episodes where natural
@@ -568,7 +573,10 @@ export function formatRecurringElementForPrompt(
  * Formats the flexible beats array, moral, and signature line extracted from roadmap
  */
 export function formatBeatsForPrompt(
-  context: Pick<EpisodeContext, 'beats' | 'moral' | 'signatureLine' | 'synopsis'>
+  context: Pick<
+    EpisodeContext,
+    'beats' | 'moral' | 'signatureLine' | 'synopsis'
+  >,
 ): string {
   const parts: string[] = [];
 
@@ -580,7 +588,9 @@ export function formatBeatsForPrompt(
 
   // Beats from roadmap (preserving original labels)
   if (context.beats && context.beats.length > 0) {
-    parts.push('**Plot Structure** (follow this structure from the creator roadmap):');
+    parts.push(
+      '**Plot Structure** (follow this structure from the creator roadmap):',
+    );
     context.beats.forEach((beat) => {
       parts.push(`- **${beat.label}**: ${beat.content}`);
     });
@@ -590,14 +600,18 @@ export function formatBeatsForPrompt(
   // Moral/theme
   if (context.moral) {
     parts.push(`**Moral/Theme**: ${context.moral}`);
-    parts.push('The story should naturally lead to this moral at the resolution.');
+    parts.push(
+      'The story should naturally lead to this moral at the resolution.',
+    );
     parts.push('');
   }
 
   // Signature line/catchphrase
   if (context.signatureLine) {
     parts.push(`**Signature Line** (must include): "${context.signatureLine}"`);
-    parts.push('Include this line at an appropriate moment, typically near the resolution or moral delivery.');
+    parts.push(
+      'Include this line at an appropriate moment, typically near the resolution or moral delivery.',
+    );
     parts.push('');
   }
 
@@ -698,16 +712,16 @@ export function formatCharactersForVeoPrompt(
   return `## VEO 3.1 Character Descriptions (15+ attributes each)
 
 ${characters
-      .map((c) => {
-        const hasImage = !!c.imageUrl;
-        const imageNote = hasImage
-          ? `\n  📷 Reference Image: ${c.imageUrl}`
-          : '\n  ⚠️ No reference image available';
+  .map((c) => {
+    const hasImage = !!c.imageUrl;
+    const imageNote = hasImage
+      ? `\n  📷 Reference Image: ${c.imageUrl}`
+      : '\n  ⚠️ No reference image available';
 
-        return `### ${c.name} (${c.role})
+    return `### ${c.name} (${c.role})
 ${formatCharacterForVeoPrompt(c)}${imageNote}`;
-      })
-      .join('\n\n')}`;
+  })
+  .join('\n\n')}`;
 }
 
 /**
@@ -759,16 +773,16 @@ export function formatLocationsForVeoPrompt(
   return `## VEO 3.1 Location Descriptions
 
 ${locations
-      .map((l) => {
-        const hasImage = !!l.imageUrl;
-        const imageNote = hasImage
-          ? `\n  📷 Reference Image: ${l.imageUrl}`
-          : '\n  ⚠️ No reference image available';
+  .map((l) => {
+    const hasImage = !!l.imageUrl;
+    const imageNote = hasImage
+      ? `\n  📷 Reference Image: ${l.imageUrl}`
+      : '\n  ⚠️ No reference image available';
 
-        return `### ${l.name}
+    return `### ${l.name}
 ${formatLocationForVeoPrompt(l)}${imageNote}`;
-      })
-      .join('\n\n')}`;
+  })
+  .join('\n\n')}`;
 }
 
 /**
@@ -943,7 +957,9 @@ export async function buildGlobalShotContext(
     .single();
 
   if (episodeError || !episode) {
-    throw new Error(`Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'}`);
+    throw new Error(
+      `Episode not found (${episodeId}): ${episodeError?.message || 'No data returned'}`,
+    );
   }
 
   const metadata =

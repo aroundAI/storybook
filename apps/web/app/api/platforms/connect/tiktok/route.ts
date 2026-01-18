@@ -49,10 +49,7 @@ export async function GET(request: NextRequest) {
         { ...ctx, slug: accountSlug, error: accountError },
         'Failed to resolve account slug',
       );
-      return NextResponse.json(
-        { error: 'Account not found' },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
     accountId = account.id;
   }

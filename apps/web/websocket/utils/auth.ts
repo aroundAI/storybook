@@ -1,4 +1,4 @@
-import { createLocalJWKSet, jwtVerify, type JWK } from 'jose';
+import { type JWK, createLocalJWKSet, jwtVerify } from 'jose';
 
 // Cache for JWKS to avoid fetching on every request
 let cachedJWKS: ReturnType<typeof createLocalJWKSet> | null = null;
@@ -18,22 +18,26 @@ async function getSupabaseJWKS() {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY not set');
+    throw new Error(
+      'NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY not set',
+    );
   }
 
   // Supabase JWKS endpoint requires apikey header
   const jwksUrl = `${supabaseUrl}/auth/v1/.well-known/jwks.json`;
   const response = await fetch(jwksUrl, {
     headers: {
-      'apikey': supabaseAnonKey,
+      apikey: supabaseAnonKey,
     },
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to fetch JWKS: ${response.status} ${response.statusText}`);
+    throw new Error(
+      `Failed to fetch JWKS: ${response.status} ${response.statusText}`,
+    );
   }
 
-  const jwks = await response.json() as { keys: JWK[] };
+  const jwks = (await response.json()) as { keys: JWK[] };
   cachedJWKS = createLocalJWKSet(jwks);
   cachedJWKSExpiry = now + JWKS_CACHE_TTL;
 

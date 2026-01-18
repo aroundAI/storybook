@@ -112,9 +112,9 @@ export const myNewAction = enhanceAction(
   async (data): Promise<MyResult | { success: true; queued: true }> => {
     const client = getSupabaseServerClient();
     const { data: user } = await requireUser(client);
-    
+
     // Validation and pre-processing here...
-    
+
     // Check environment
     const { isLambdaEnvironment, queueLlmJob } = await import(
       '@kit/prompt-engine/server'
@@ -123,7 +123,7 @@ export const myNewAction = enhanceAction(
     if (isLambdaEnvironment()) {
       // PRODUCTION: Queue for background processing
       await queueLlmJob({
-        jobType: 'my-new-action',  // Must match switch case
+        jobType: 'my-new-action', // Must match switch case
         userId: user.id,
         payload: {
           episodeId: data.episodeId,
@@ -139,7 +139,7 @@ export const myNewAction = enhanceAction(
     // LOCAL DEV: Run synchronously (full logic here)
     // ... your existing sync implementation
   },
-  { schema: MyNewActionSchema }
+  { schema: MyNewActionSchema },
 );
 ```
 
@@ -150,7 +150,7 @@ Handle the async response in your UI:
 ```tsx
 const handleAction = async () => {
   const result = await myNewAction({ episodeId });
-  
+
   if ('queued' in result && result.queued) {
     toast.info('Processing in background...');
     // WebSocket will deliver result via useLlmJob hook
@@ -165,6 +165,7 @@ const handleAction = async () => {
 ## Handler Patterns by Complexity
 
 ### Pattern A: Read-Only (No DB Writes)
+
 Examples: `analytics-insights`, `language-insights`, `story-ideation`
 
 ```typescript
@@ -175,6 +176,7 @@ return { success: true, data: result.data };
 ```
 
 ### Pattern B: Single Update
+
 Examples: `story-generation`, `screenplay-conversion`
 
 ```typescript
@@ -186,6 +188,7 @@ return { success: true, data: ... };
 ```
 
 ### Pattern C: Multiple Operations
+
 Examples: `shot-generation`, `translate-dialogue`
 
 ```typescript
@@ -213,10 +216,10 @@ return { success: true, data: ... };
 
 ## File Locations
 
-| Type | Location |
-|------|----------|
-| Lambda Worker | `apps/web/lambda/llm-worker/index.ts` |
-| Handlers | `apps/web/lambda/llm-worker/handlers/` |
-| SQS Helper | `packages/features/prompt-engine/src/lib/server/sqs-helper.ts` |
-| WebSocket Hook | `packages/ui/src/hooks/use-llm-job.ts` |
-| SST Config | `sst.config.ts` (LlmJobsQueue, llmWorker) |
+| Type           | Location                                                       |
+| -------------- | -------------------------------------------------------------- |
+| Lambda Worker  | `apps/web/lambda/llm-worker/index.ts`                          |
+| Handlers       | `apps/web/lambda/llm-worker/handlers/`                         |
+| SQS Helper     | `packages/features/prompt-engine/src/lib/server/sqs-helper.ts` |
+| WebSocket Hook | `packages/ui/src/hooks/use-llm-job.ts`                         |
+| SST Config     | `sst.config.ts` (LlmJobsQueue, llmWorker)                      |

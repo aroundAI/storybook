@@ -10,20 +10,26 @@ import { NextResponse } from 'next/server';
 
 import { existsSync, readFileSync, statSync } from 'fs';
 import mime from 'mime-types';
-import { join } from 'path';
-
 import { homedir } from 'os';
+import { join } from 'path';
 
 // Default storage path - same as LocalStorageAdapter
 // Expand ~ to home directory if present
-const rawStoragePath = process.env.STORAGE_LOCAL_PATH || join(process.cwd(), '.storage');
+const rawStoragePath =
+  process.env.STORAGE_LOCAL_PATH || join(process.cwd(), '.storage');
 const STORAGE_PATH = rawStoragePath.startsWith('~')
   ? rawStoragePath.replace('~', homedir())
   : rawStoragePath;
 
-function getFilePath(pathSegments: string[]): { fullPath: string; error?: string } {
+function getFilePath(pathSegments: string[]): {
+  fullPath: string;
+  error?: string;
+} {
   if (!pathSegments || pathSegments.length < 2) {
-    return { fullPath: '', error: 'Invalid path. Expected: /api/storage/[bucket]/[...path]' };
+    return {
+      fullPath: '',
+      error: 'Invalid path. Expected: /api/storage/[bucket]/[...path]',
+    };
   }
 
   const [bucket, ...filePath] = pathSegments;

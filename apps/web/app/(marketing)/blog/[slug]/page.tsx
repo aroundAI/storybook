@@ -8,7 +8,7 @@ import { createCmsClient } from '@kit/cms';
 
 import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
-import { getArticleSchema, JsonLd } from '~/lib/structured-data';
+import { JsonLd, getArticleSchema } from '~/lib/structured-data';
 
 import { Post } from '../../blog/_components/post';
 
@@ -50,10 +50,10 @@ export async function generateMetadata({
       url: post.url,
       images: image
         ? [
-          {
-            url: image,
-          },
-        ]
+            {
+              url: image,
+            },
+          ]
         : [],
     },
     twitter: {
@@ -91,4 +91,3 @@ async function BlogPost({ params }: BlogPageProps) {
 }
 
 export default withI18n(BlogPost);
-

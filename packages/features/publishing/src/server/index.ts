@@ -17,8 +17,6 @@ export {
   unpublishAction,
 } from './publish-actions';
 
-export { generateClipAction, getEpisodeClips } from './clip-actions';
-
 export {
   getEpisodePublishingConfigs,
   getAccountPlatformConnections,

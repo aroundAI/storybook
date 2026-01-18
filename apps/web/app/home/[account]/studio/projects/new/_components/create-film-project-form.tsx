@@ -9,6 +9,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import type { z } from 'zod';
 
 import type { TargetPlatform } from '@kit/film-studio-schemas/project';
+import { uploadProjectCover } from '@kit/storage/client';
 import { Button } from '@kit/ui/button';
 import {
   Card,
@@ -48,7 +49,6 @@ import {
   updateProjectCoverImage,
 } from '../_lib/server/create-film-project.action';
 import { CoverImageUpload } from './cover-image-upload';
-import { uploadProjectCover } from '@kit/storage/client';
 
 type FormData = z.infer<typeof CreateFilmProjectSchema>;
 
@@ -233,22 +233,16 @@ export function CreateFilmProjectForm({
 
         // 2. Upload cover image if provided (uses presigned URL - direct to R2)
         if (coverFile) {
-          console.log('[Cover Upload Debug] Starting presigned upload:', {
-            projectId,
-            fileName: coverFile.name,
-            fileSize: coverFile.size,
-            fileType: coverFile.type,
-          });
-
           try {
             const uploadResult = await uploadProjectCover(coverFile, projectId);
-            console.log('[Cover Upload Debug] Upload result:', uploadResult);
 
             // Update project metadata with cover URL
             await updateProjectCoverImage(projectId, uploadResult.url);
           } catch (uploadError) {
             console.error('Cover image upload failed:', uploadError);
-            toast.error(`Cover upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`);
+            toast.error(
+              `Cover upload failed: ${uploadError instanceof Error ? uploadError.message : 'Unknown error'}`,
+            );
           }
         }
 
@@ -407,10 +401,11 @@ export function CreateFilmProjectForm({
                           type="button"
                           onClick={() => togglePlatform(platformKey)}
                           disabled={isPending}
-                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${isSelected
-                            ? 'border-primary bg-primary/10'
-                            : 'border-border hover:border-primary/50'
-                            }`}
+                          className={`flex items-center gap-2 rounded-lg border p-3 text-left transition-colors ${
+                            isSelected
+                              ? 'border-primary bg-primary/10'
+                              : 'border-border hover:border-primary/50'
+                          }`}
                           data-test={`platform-${key}`}
                         >
                           <span className="font-medium">{config.label}</span>

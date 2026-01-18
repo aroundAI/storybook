@@ -33,7 +33,9 @@ const ROLE_PRIORITY: Record<CharacterRole, number> = {
 /**
  * Sort characters by role priority, then by name
  */
-function sortCharactersByRole(characters: CharacterWithDetails[]): CharacterWithDetails[] {
+function sortCharactersByRole(
+  characters: CharacterWithDetails[],
+): CharacterWithDetails[] {
   return [...characters].sort((a, b) => {
     const priorityA = ROLE_PRIORITY[a.role] ?? 99;
     const priorityB = ROLE_PRIORITY[b.role] ?? 99;
@@ -135,7 +137,7 @@ export async function listCharacters(
 
   // Map to CharacterWithDetails and sort by role priority
   const characters = sortCharactersByRole(
-    (data as CharacterRow[]).map(mapRowToCharacterWithDetails)
+    (data as CharacterRow[]).map(mapRowToCharacterWithDetails),
   );
   const total = count ?? 0;
 

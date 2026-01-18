@@ -92,7 +92,10 @@ interface _InsightsLLMOutput {
  * In production, queues via SQS for background processing.
  */
 export const generateInsightsAction = enhanceAction(
-  async function ({ projectId, analytics }): Promise<InsightsResult & { queued?: boolean }> {
+  async function ({
+    projectId,
+    analytics,
+  }): Promise<InsightsResult & { queued?: boolean }> {
     const logger = await getLogger();
     const ctx = { name: 'analytics.generateInsights' };
 

@@ -3,6 +3,7 @@
 import 'server-only';
 
 import { revalidatePath } from 'next/cache';
+
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -634,7 +635,10 @@ export const updateAudioTrackAction = enhanceAction(
       .eq('id', data.trackId);
 
     if (updateError) {
-      logger.error({ ...ctx, error: updateError }, 'Failed to update audio track');
+      logger.error(
+        { ...ctx, error: updateError },
+        'Failed to update audio track',
+      );
       throw new Error('Failed to update audio track');
     }
 

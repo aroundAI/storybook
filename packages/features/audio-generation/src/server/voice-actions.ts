@@ -28,12 +28,15 @@ import {
 import { estimateVoiceCost } from '../lib/voice-utils';
 import { ElevenLabsProvider } from '../providers/elevenlabs';
 import {
+  getAccountElevenLabsApiKey,
+  getProjectTTSModel,
+} from './project-audio-settings';
+import {
   checkAccountBudget,
   getVoiceIdForCharacter,
   getVoiceSettings,
   incrementAccountUsage,
 } from './voice-queries';
-import { getProjectTTSModel, getAccountElevenLabsApiKey } from './project-audio-settings';
 
 // Note: These actions use type assertions because the film studio tables
 // (dialogue_lines, episodes, generation_jobs) are not yet in the generated
@@ -745,7 +748,10 @@ export const updateDialogueTimingAction = enhanceAction(
       .eq('id', data.dialogueLineId);
 
     if (updateError) {
-      logger.error({ ...ctx, error: updateError }, 'Failed to update dialogue timing');
+      logger.error(
+        { ...ctx, error: updateError },
+        'Failed to update dialogue timing',
+      );
       throw new Error('Failed to update dialogue timing');
     }
 

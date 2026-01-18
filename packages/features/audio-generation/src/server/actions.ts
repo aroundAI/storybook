@@ -217,12 +217,14 @@ export const getMusicJobStatusAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: job, error: fetchError } = await (client as any)
       .from('generation_jobs')
-      .select(`
+      .select(
+        `
         id, account_id, project_id, episode_id, type, status,
         external_id, metadata, error, result, started_at, completed_at,
         created_at, updated_at,
         accounts!inner(primary_owner_user_id)
-      `)
+      `,
+      )
       .eq('id', data.jobId)
       .single();
 

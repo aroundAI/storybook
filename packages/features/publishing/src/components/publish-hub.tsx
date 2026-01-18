@@ -13,7 +13,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { getDefaultPlatformSettings } from '../lib/platform-limits';
 import type {
-  GeneratedClip,
   Platform,
   PlatformConnection,
   PlatformPublishConfig,
@@ -29,7 +28,6 @@ import {
 import { MetadataEditor } from './metadata-editor';
 import { PlatformSelector } from './platform-selector';
 import { PublishStatusRow } from './publish-status-row';
-import { ShortsClipper } from './shorts-clipper';
 
 export function PublishHub({
   episodeId,
@@ -40,14 +38,14 @@ export function PublishHub({
   thumbnailUrl,
   defaultTitle,
   defaultDescription,
-  duration,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  duration: _duration,
 }: PublishHubProps) {
-  const [activeTab, setActiveTab] = useState<'full' | 'shorts'>('full');
+  const [activeTab, setActiveTab] = useState<'full'>('full');
   const [platforms, setPlatforms] = useState<PlatformPublishConfig[]>([]);
   const [publishResults, setPublishResults] = useState<
     Record<string, PublishResult>
   >({});
-  const [generatedClips, setGeneratedClips] = useState<GeneratedClip[]>([]);
 
   // Fetch connected platforms
   const {
@@ -199,10 +197,6 @@ export function PublishHub({
     [accountSlug],
   );
 
-  const handleClipCreated = useCallback((clip: GeneratedClip) => {
-    setGeneratedClips((prev) => [...prev, clip]);
-  }, []);
-
   const handleRetry = useCallback(
     (publishId: string) => {
       retryMutation.mutate(publishId);
@@ -270,13 +264,9 @@ export function PublishHub({
       )}
 
       {/* Content Type Tabs */}
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => setActiveTab(v as 'full' | 'shorts')}
-      >
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'full')}>
         <TabsList>
           <TabsTrigger value="full">Full Video</TabsTrigger>
-          <TabsTrigger value="shorts">Shorts/Clips</TabsTrigger>
         </TabsList>
 
         <TabsContent value="full" className="space-y-6">
@@ -300,37 +290,6 @@ export function PublishHub({
                 videoPreviewUrl={videoUrl}
               />
             ))}
-        </TabsContent>
-
-        <TabsContent value="shorts">
-          <ShortsClipper
-            videoUrl={videoUrl}
-            duration={duration}
-            episodeId={episodeId}
-            onClipCreated={handleClipCreated}
-          />
-
-          {/* Generated Clips */}
-          {generatedClips.length > 0 && (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Generated Clips ({generatedClips.length})</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                  {generatedClips.map((clip) => (
-                    <div key={clip.id} className="rounded-lg border p-3">
-                      <div className="font-medium">{clip.title}</div>
-                      <div className="text-muted-foreground text-sm">
-                        Duration: {Math.round(clip.duration)}s •{' '}
-                        {clip.aspectRatio}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
 

@@ -51,10 +51,7 @@ export async function GET(request: NextRequest) {
         { ...ctx, slug: accountSlug, error: accountError },
         'Failed to resolve account slug',
       );
-      return NextResponse.json(
-        { error: 'Account not found' },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: 'Account not found' }, { status: 404 });
     }
     accountId = account.id;
   }
@@ -65,12 +62,16 @@ export async function GET(request: NextRequest) {
 
   // Get OAuth credentials from database (account-scoped)
   const oauthApp = await getAccountOAuthApp(accountId, 'meta');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
   if (!oauthApp) {
     logger.error(ctx, 'Meta OAuth credentials not found for this account');
     return NextResponse.json(
-      { error: 'Meta OAuth not configured. Please add your Meta App credentials in Platforms settings.' },
+      {
+        error:
+          'Meta OAuth not configured. Please add your Meta App credentials in Platforms settings.',
+      },
       { status: 400 },
     );
   }

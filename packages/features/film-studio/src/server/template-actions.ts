@@ -154,11 +154,13 @@ export const getTemplateAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: template, error } = await (client as any)
       .from('project_templates')
-      .select(`
+      .select(
+        `
         id, account_id, name, description, category, genre, tags,
         is_system, is_public, usage_count, thumbnail_url, preview_url,
         template_data, created_at, updated_at, deleted_at
-      `)
+      `,
+      )
       .eq('id', data.templateId)
       .is('deleted_at', null)
       .single();
@@ -238,11 +240,13 @@ export const createProjectFromTemplateAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: template, error: templateError } = await (client as any)
       .from('project_templates')
-      .select(`
+      .select(
+        `
         id, account_id, name, description, category, genre, tags,
         is_system, is_public, usage_count, thumbnail_url, preview_url,
         template_data, created_at, updated_at, deleted_at
-      `)
+      `,
+      )
       .eq('id', data.templateId)
       .is('deleted_at', null)
       .single();
@@ -392,11 +396,13 @@ export const saveProjectAsTemplateAction = enhanceAction(
     // Get the project with its settings
     const { data: project, error: projectError } = await client
       .from('projects')
-      .select(`
+      .select(
+        `
         id, name, slug, description, account_id, metadata, status, visibility,
         audio_settings, created_by, updated_by, public_slug, seo_metadata,
         created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', data.projectId)
       .single();
 

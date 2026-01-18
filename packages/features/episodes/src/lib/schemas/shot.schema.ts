@@ -24,6 +24,7 @@ export const TimelineEventTypeSchema = z.enum([
   'action',
   'dialogue',
   'transition',
+  'reaction',
 ]);
 
 /**
@@ -113,11 +114,21 @@ export const ShotMetadataSchema = z.object({
     .object({
       viralScore: z.number().min(1).max(10),
       hookType: z
-        .enum(['question', 'reveal', 'conflict', 'visual', 'humor', 'cliffhanger'])
+        .enum([
+          'question',
+          'reveal',
+          'conflict',
+          'visual',
+          'humor',
+          'cliffhanger',
+          'character',
+          'action',
+          'reaction',
+        ])
         .nullish(),
       standaloneSummary: z.string().nullish(),
     })
-    .optional(),
+    .nullish(),
 });
 
 /**

@@ -1,7 +1,7 @@
 'use server';
 
-import { PROMPT_REGISTRY } from './prompt-registry';
 import type { RenderedPrompt } from '../types';
+import { PROMPT_REGISTRY } from './prompt-registry';
 
 /**
  * Load and render a prompt template from the bundled registry
@@ -35,10 +35,10 @@ export async function loadAndRenderPrompt(
     const availablePrompts = Object.keys(PROMPT_REGISTRY).join(', ');
     throw new Error(
       `Prompt template not found: ${slug}\n\n` +
-      `Available prompts: ${availablePrompts}\n\n` +
-      `To add a new prompt:\n` +
-      `1. Create the JSON file in packages/features/prompt-engine/src/prompts/<category>/\n` +
-      `2. Add an import and registry entry in prompt-registry.ts`,
+        `Available prompts: ${availablePrompts}\n\n` +
+        `To add a new prompt:\n` +
+        `1. Create the JSON file in packages/features/prompt-engine/src/prompts/<category>/\n` +
+        `2. Add an import and registry entry in prompt-registry.ts`,
     );
   }
 

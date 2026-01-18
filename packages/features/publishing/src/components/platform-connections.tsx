@@ -324,7 +324,9 @@ function ConnectionRow({
       queryClient.invalidateQueries({
         queryKey: ['platform-connections', accountId],
       });
-      toast.success(`Language set to ${LANGUAGE_NAMES[language as keyof typeof LANGUAGE_NAMES] ?? language}`);
+      toast.success(
+        `Language set to ${LANGUAGE_NAMES[language as keyof typeof LANGUAGE_NAMES] ?? language}`,
+      );
     },
     onError: () => {
       toast.error('Failed to update language');
@@ -347,7 +349,8 @@ function ConnectionRow({
               <ConnectionStatusBadge status={connection.status} />
             </div>
             <p className="text-muted-foreground text-xs">
-              {connection.createdAt && !isNaN(new Date(connection.createdAt).getTime()) ? (
+              {connection.createdAt &&
+              !isNaN(new Date(connection.createdAt).getTime()) ? (
                 <Trans
                   i18nKey="platforms:connectedTimeAgo"
                   defaults="Connected {time}"
@@ -371,7 +374,10 @@ function ConnectionRow({
             onValueChange={(value) => languageMutation.mutate(value)}
             disabled={languageMutation.isPending}
           >
-            <SelectTrigger className="w-[130px]" title="Target language for this channel">
+            <SelectTrigger
+              className="w-[130px]"
+              title="Target language for this channel"
+            >
               <Globe className="mr-1 h-3 w-3" />
               <SelectValue placeholder="Language" />
             </SelectTrigger>

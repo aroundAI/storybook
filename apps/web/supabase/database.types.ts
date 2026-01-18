@@ -1,8 +1,3 @@
-
-> web@0.1.0 supabase /Users/shaurya/Work/projects/storybook/apps/web
-> supabase gen types --lang=typescript --local
-
-Connecting to db 5432
 export type Json =
   | string
   | number

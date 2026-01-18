@@ -27,8 +27,8 @@ import {
   updateAssetAction,
 } from '../lib/server/asset.mutations';
 import {
-  getElevenLabsVoicesAction,
   type ElevenLabsVoice,
+  getElevenLabsVoicesAction,
 } from '../lib/server/voice.actions';
 import type { Asset, VoiceMetadata } from '../lib/types';
 import type { VoiceOption } from './voice-card';
@@ -109,23 +109,33 @@ export function VoiceProfileEditor({
   const [isGeneratingPreview, setIsGeneratingPreview] = useState(false);
 
   // Fetch voices from ElevenLabs
-  const { data: voicesData, isLoading: voicesLoading, error: voicesError } = useQuery({
+  const {
+    data: voicesData,
+    isLoading: voicesLoading,
+    error: voicesError,
+  } = useQuery({
     queryKey: ['elevenlabs-voices', accountId],
     queryFn: () => getElevenLabsVoicesAction({ accountId }),
     enabled: !!accountId,
   });
 
   // Transform API voices to VoiceOption format
-  const voices: VoiceOption[] = voicesData?.voices?.map((v: ElevenLabsVoice) => ({
-    id: v.id,
-    name: v.name,
-    gender: v.gender === 'male' ? 'Male' : v.gender === 'female' ? 'Female' : 'Neutral',
-    age: v.age || 'Unknown',
-    accent: v.accent || 'Neutral',
-    description: v.description,
-    category: v.isCloned ? 'cloned' : 'premade',
-    previewUrl: v.previewUrl,
-  })) ?? [];
+  const voices: VoiceOption[] =
+    voicesData?.voices?.map((v: ElevenLabsVoice) => ({
+      id: v.id,
+      name: v.name,
+      gender:
+        v.gender === 'male'
+          ? 'Male'
+          : v.gender === 'female'
+            ? 'Female'
+            : 'Neutral',
+      age: v.age || 'Unknown',
+      accent: v.accent || 'Neutral',
+      description: v.description,
+      category: v.isCloned ? 'cloned' : 'premade',
+      previewUrl: v.previewUrl,
+    })) ?? [];
 
   const isEditMode = !!voiceProfile;
   const existingMetadata = voiceProfile?.metadata as VoiceMetadata | null;

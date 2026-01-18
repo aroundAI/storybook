@@ -19,13 +19,13 @@ interface Episode {
   number: number;
   updated_at: string;
   stage?:
-  | 'draft'
-  | 'story'
-  | 'screenplay'
-  | 'shots'
-  | 'visual'
-  | 'audio'
-  | 'complete';
+    | 'draft'
+    | 'story'
+    | 'screenplay'
+    | 'shots'
+    | 'visual'
+    | 'audio'
+    | 'complete';
   thumbnailUrl?: string;
   seasonNumber?: number;
 }

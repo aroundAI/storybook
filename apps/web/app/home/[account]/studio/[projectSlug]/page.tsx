@@ -127,9 +127,7 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       async () => {
         const { data } = await client
           .from('episodes')
-          .select(
-            'id, slug, title, number, status, updated_at',
-          )
+          .select('id, slug, title, number, status, updated_at')
           .eq('project_id', project.id)
           .is('deleted_at', null)
           .order('updated_at', { ascending: false })
@@ -144,7 +142,10 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       async () => {
         const result = await client
           .from('publishes')
-          .select('id, episodes!inner(project_id)', { count: 'exact', head: true })
+          .select('id, episodes!inner(project_id)', {
+            count: 'exact',
+            head: true,
+          })
           .eq('episodes.project_id', project.id);
         return result;
       },
@@ -158,7 +159,8 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
         // Get latest analytics for all publishes in this project with a single query
         const { data } = await client
           .from('content_analytics')
-          .select(`
+          .select(
+            `
             views,
             likes,
             comments,
@@ -167,7 +169,8 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
                 project_id
               )
             )
-          `)
+          `,
+          )
           .eq('publishes.episodes.project_id', project.id)
           .order('snapshot_date', { ascending: false })
           .limit(100); // Get latest snapshots
@@ -177,7 +180,10 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
         }
 
         // Aggregate totals (take max per publish since they're cumulative)
-        const publishTotals = new Map<string, { views: number; likes: number; comments: number }>();
+        const publishTotals = new Map<
+          string,
+          { views: number; likes: number; comments: number }
+        >();
         for (const row of data) {
           // Use first occurrence (latest) for each publish
           const key = JSON.stringify(row.publishes);
@@ -218,7 +224,15 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   // Calculate production status from recent episodes (approximation)
   // Full status would require fetching all episodes - deferred to episodes page
   // Status order: draft → story → storyboard → visual-studio → audio-studio → review → published
-  const statusOrder = ['draft', 'story', 'storyboard', 'visual-studio', 'audio-studio', 'review', 'published'];
+  const statusOrder = [
+    'draft',
+    'story',
+    'storyboard',
+    'visual-studio',
+    'audio-studio',
+    'review',
+    'published',
+  ];
 
   // Helper to check if episode has reached a status or beyond
   const hasReachedStatus = (ep: { status: string }, minStatus: string) => {
@@ -231,22 +245,30 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
     scriptsComplete:
       recentEpisodes?.filter((e) => hasReachedStatus(e, 'story')).length ?? 0,
     storyboardsComplete:
-      recentEpisodes?.filter((e) => hasReachedStatus(e, 'storyboard')).length ?? 0,
+      recentEpisodes?.filter((e) => hasReachedStatus(e, 'storyboard')).length ??
+      0,
     visualsComplete:
-      recentEpisodes?.filter((e) => hasReachedStatus(e, 'visual-studio')).length ?? 0,
+      recentEpisodes?.filter((e) => hasReachedStatus(e, 'visual-studio'))
+        .length ?? 0,
     totalEpisodes: episodeCount ?? 0,
   };
 
   // Build lightweight analytics object for UI
-  const analytics = analyticsSnapshot ? {
-    totalViews: analyticsSnapshot.totalViews,
-    totalLikes: analyticsSnapshot.totalLikes,
-    totalComments: analyticsSnapshot.totalComments,
-    avgEngagementRate: analyticsSnapshot.totalViews > 0
-      ? ((analyticsSnapshot.totalLikes + analyticsSnapshot.totalComments) / analyticsSnapshot.totalViews) * 100
-      : 0,
-    contentCount: publishedCount ?? 0,
-  } : null;
+  const analytics = analyticsSnapshot
+    ? {
+        totalViews: analyticsSnapshot.totalViews,
+        totalLikes: analyticsSnapshot.totalLikes,
+        totalComments: analyticsSnapshot.totalComments,
+        avgEngagementRate:
+          analyticsSnapshot.totalViews > 0
+            ? ((analyticsSnapshot.totalLikes +
+                analyticsSnapshot.totalComments) /
+                analyticsSnapshot.totalViews) *
+              100
+            : 0,
+        contentCount: publishedCount ?? 0,
+      }
+    : null;
 
   // Map recent episodes to include stage info (derived from status field)
   const mappedEpisodes =

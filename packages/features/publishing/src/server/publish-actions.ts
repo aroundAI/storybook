@@ -3,6 +3,7 @@
 import 'server-only';
 
 import { revalidatePath } from 'next/cache';
+
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -74,7 +75,9 @@ export const publishToAllAction = enhanceAction(
     // Get episode video - fetch localized videos and shorts groups for multi-language support
     const { data: episode, error: episodeError } = await client
       .from('episodes')
-      .select('final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number')
+      .select(
+        'final_video_url, thumbnail_url, project_id, localized_videos, shorts_groups, public_slug, title, number',
+      )
       .eq('id', episodeId)
       .single();
 
@@ -84,9 +87,15 @@ export const publishToAllAction = enhanceAction(
     }
 
     // Support both legacy final_video_url and new localized_videos
-    const localizedVideos = (episode.localized_videos as Record<string, string> | null) ?? {};
-    const shortsGroups = (episode.shorts_groups as Array<{ videos: Record<string, string> }> | null) ?? [];
-    const hasAnyShortsVideos = shortsGroups.some(g => Object.keys(g.videos || {}).length > 0);
+    const localizedVideos =
+      (episode.localized_videos as Record<string, string> | null) ?? {};
+    const shortsGroups =
+      (episode.shorts_groups as Array<{
+        videos: Record<string, string>;
+      }> | null) ?? [];
+    const hasAnyShortsVideos = shortsGroups.some(
+      (g) => Object.keys(g.videos || {}).length > 0,
+    );
     const hasAnyVideos =
       !!episode.final_video_url ||
       Object.keys(localizedVideos).length > 0 ||
@@ -94,7 +103,9 @@ export const publishToAllAction = enhanceAction(
 
     if (!hasAnyVideos) {
       logger.error(ctx, 'Episode video not ready');
-      throw new Error('No videos available for publishing. Upload videos first.');
+      throw new Error(
+        'No videos available for publishing. Upload videos first.',
+      );
     }
 
     // Publish to all platforms in parallel
@@ -131,7 +142,10 @@ export const publishToAllAction = enhanceAction(
               .eq('id', platform.connectionId)
               .single();
             // Cast through unknown to handle untyped column
-            const langRecord = langData as unknown as Record<string, unknown> | null;
+            const langRecord = langData as unknown as Record<
+              string,
+              unknown
+            > | null;
             if (langRecord && typeof langRecord.language === 'string') {
               connectionLanguage = langRecord.language;
             }
@@ -177,7 +191,11 @@ export const publishToAllAction = enhanceAction(
           // For server-side scheduling, don't upload now - the cron job will handle it
           if (useServerScheduling) {
             logger.info(
-              { ...platformCtx, publishId: publish.id, scheduledAt: platform.scheduledAt },
+              {
+                ...platformCtx,
+                publishId: publish.id,
+                scheduledAt: platform.scheduledAt,
+              },
               'Created scheduled publish record - will be processed by cron job',
             );
 
@@ -213,10 +231,18 @@ export const publishToAllAction = enhanceAction(
 
           if (isShortsPreferred) {
             // Try shorts first, fall back to full video
-            videoUrl = shortsVideoUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+            videoUrl =
+              shortsVideoUrl ??
+              localizedVideos[lang] ??
+              episode.final_video_url ??
+              null;
           } else {
             // Try full video first, fall back to shorts
-            videoUrl = localizedVideos[lang] ?? shortsVideoUrl ?? episode.final_video_url ?? null;
+            videoUrl =
+              localizedVideos[lang] ??
+              shortsVideoUrl ??
+              episode.final_video_url ??
+              null;
           }
 
           if (!videoUrl) {
@@ -224,7 +250,8 @@ export const publishToAllAction = enhanceAction(
           }
 
           // Update content_type based on what we're actually publishing
-          const actualContentType = (shortsVideoUrl && isShortsPreferred) ? 'short' : 'full';
+          const actualContentType =
+            shortsVideoUrl && isShortsPreferred ? 'short' : 'full';
           await client
             .from('publishes')
             .update({ content_type: actualContentType })
@@ -232,7 +259,9 @@ export const publishToAllAction = enhanceAction(
 
           // Apply tunnel URL for external platforms (Instagram, Facebook, TikTok)
           // YouTube uses direct byte upload so doesn't need tunneling
-          const needsTunnel = ['instagram', 'facebook', 'tiktok'].includes(platform.platform);
+          const needsTunnel = ['instagram', 'facebook', 'tiktok'].includes(
+            platform.platform,
+          );
           const finalVideoUrl = needsTunnel ? getTunnelUrl(videoUrl) : videoUrl;
 
           // Upload to platform (immediately or with native scheduling)
@@ -348,7 +377,10 @@ export const publishToAllAction = enhanceAction(
     });
 
     // Revalidate episode page - use 'page' type for dynamic routes
-    revalidatePath('/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish', 'page');
+    revalidatePath(
+      '/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish',
+      'page',
+    );
 
     logger.info(
       {
@@ -428,12 +460,14 @@ export const retryPublishAction = enhanceAction(
     // Get publish record
     const { data: publish, error: publishError } = await client
       .from('publishes')
-      .select(`
+      .select(
+        `
         id, episode_id, platform_connection_id, platform, content_type, status,
         title, description, tags, thumbnail_url, platform_content_id, platform_url,
         scheduled_at, published_at, language, metadata, created_at,
         episodes(final_video_url, thumbnail_url)
-      `)
+      `,
+      )
       .eq('id', publishId)
       .single();
 
@@ -583,7 +617,10 @@ async function uploadToPlatform(
 ): Promise<{ contentId: string; url: string }> {
   switch (platform) {
     case 'youtube':
-      return uploadToYouTube(accessToken, { ...options, isShort: options.isShort ?? false });
+      return uploadToYouTube(accessToken, {
+        ...options,
+        isShort: options.isShort ?? false,
+      });
     case 'tiktok':
       return uploadToTikTok(accessToken, options);
     case 'instagram':
@@ -713,7 +750,8 @@ async function uploadToFacebook(
   let videoUrl = '';
   try {
     const status = await provider.getVideoStatus(result.videoId);
-    videoUrl = status.videoUrl ?? `https://www.facebook.com/watch/?v=${result.videoId}`;
+    videoUrl =
+      status.videoUrl ?? `https://www.facebook.com/watch/?v=${result.videoId}`;
   } catch {
     // Fallback to constructed URL if status fetch fails
     videoUrl = `https://www.facebook.com/watch/?v=${result.videoId}`;
@@ -768,7 +806,8 @@ export const getEpisodePublishesAction = enhanceAction(
 
     const { data: publishes, error } = await client
       .from('publishes')
-      .select(`
+      .select(
+        `
         id,
         platform,
         content_type,
@@ -792,7 +831,8 @@ export const getEpisodePublishesAction = enhanceAction(
           shares,
           watch_time_seconds
         )
-      `)
+      `,
+      )
       .eq('episode_id', episodeId)
       .order('created_at', { ascending: false });
 
@@ -802,34 +842,45 @@ export const getEpisodePublishesAction = enhanceAction(
 
     return (publishes ?? []).map((p) => {
       // Get latest analytics snapshot
-      const analytics = (p.content_analytics as Array<{
-        views: number;
-        likes: number;
-        comments: number;
-        shares: number;
-        watch_time_seconds: number;
-      }> | null)?.[0];
+      const analytics = (
+        p.content_analytics as Array<{
+          views: number;
+          likes: number;
+          comments: number;
+          shares: number;
+          watch_time_seconds: number;
+        }> | null
+      )?.[0];
 
       return {
         id: p.id,
         platform: p.platform as Platform,
         contentType: p.content_type as 'full' | 'short' | 'teaser' | 'trailer',
-        status: p.status as 'draft' | 'scheduled' | 'publishing' | 'published' | 'failed',
+        status: p.status as
+          | 'draft'
+          | 'scheduled'
+          | 'publishing'
+          | 'published'
+          | 'failed',
         title: p.title,
         platformContentId: p.platform_content_id,
         platformUrl: p.platform_url,
-        language: (p as Record<string, unknown>).language as string ?? 'en',
-        channelName: (p.platform_connections as { platform_account_name: string } | null)?.platform_account_name ?? 'Unknown',
+        language: ((p as Record<string, unknown>).language as string) ?? 'en',
+        channelName:
+          (p.platform_connections as { platform_account_name: string } | null)
+            ?.platform_account_name ?? 'Unknown',
         scheduledAt: p.scheduled_at,
         publishedAt: p.published_at,
         createdAt: p.created_at,
-        analytics: analytics ? {
-          views: analytics.views,
-          likes: analytics.likes,
-          comments: analytics.comments,
-          shares: analytics.shares,
-          watchTimeSeconds: analytics.watch_time_seconds,
-        } : null,
+        analytics: analytics
+          ? {
+              views: analytics.views,
+              likes: analytics.likes,
+              comments: analytics.comments,
+              shares: analytics.shares,
+              watchTimeSeconds: analytics.watch_time_seconds,
+            }
+          : null,
         error: (p.metadata as { error?: string } | null)?.error,
       };
     });
@@ -881,7 +932,10 @@ export const deleteEpisodePublishesAction = enhanceAction(
               case 'youtube': {
                 const yt = new YouTubeProvider(accessToken);
                 await yt.deleteVideo(contentId);
-                logger.info({ ...ctx, platform, contentId }, 'Deleted from YouTube');
+                logger.info(
+                  { ...ctx, platform, contentId },
+                  'Deleted from YouTube',
+                );
                 break;
               }
               case 'facebook': {
@@ -894,7 +948,10 @@ export const deleteEpisodePublishesAction = enhanceAction(
                 const pageId = conn?.platform_account_id ?? '';
                 const fb = new FacebookProvider(accessToken, pageId);
                 await fb.deleteVideo(contentId);
-                logger.info({ ...ctx, platform, contentId }, 'Deleted from Facebook');
+                logger.info(
+                  { ...ctx, platform, contentId },
+                  'Deleted from Facebook',
+                );
                 break;
               }
               case 'instagram':
@@ -920,7 +977,10 @@ export const deleteEpisodePublishesAction = enhanceAction(
 
     // Delete analytics for these publishes
     const publishIds = publishes.map((p) => p.id);
-    await client.from('content_analytics').delete().in('publish_id', publishIds);
+    await client
+      .from('content_analytics')
+      .delete()
+      .in('publish_id', publishIds);
 
     // Delete publish records
     const { error } = await client
@@ -933,7 +993,14 @@ export const deleteEpisodePublishesAction = enhanceAction(
       throw new Error(`Failed to delete publish records: ${error.message}`);
     }
 
-    logger.info({ ...ctx, count: publishes.length, platformErrors: platformErrors.length }, 'Deleted publish records');
+    logger.info(
+      {
+        ...ctx,
+        count: publishes.length,
+        platformErrors: platformErrors.length,
+      },
+      'Deleted publish records',
+    );
 
     return { success: true, deletedCount: publishes.length, platformErrors };
   },
@@ -958,12 +1025,14 @@ export const unpublishAction = enhanceAction(
     // Get the publish record with connection info
     const { data: publish, error: fetchError } = await client
       .from('publishes')
-      .select(`
+      .select(
+        `
         id, episode_id, platform_connection_id, platform, content_type, status,
         title, description, tags, thumbnail_url, platform_content_id, platform_url,
         scheduled_at, published_at, language, metadata, created_at,
         platform_connections(id, platform_account_id)
-      `)
+      `,
+      )
       .eq('id', publishId)
       .single();
 
@@ -978,7 +1047,9 @@ export const unpublishAction = enhanceAction(
     // Try to delete from platform if we have a content ID
     if (contentId && publish.platform_connection_id) {
       try {
-        const tokenResult = await getAccessToken(publish.platform_connection_id);
+        const tokenResult = await getAccessToken(
+          publish.platform_connection_id,
+        );
         if (tokenResult.accessToken) {
           const accessToken = tokenResult.accessToken;
 
@@ -991,8 +1062,11 @@ export const unpublishAction = enhanceAction(
             }
             case 'facebook': {
               const pageId =
-                (publish.platform_connections as { platform_account_id?: string })
-                  ?.platform_account_id ?? '';
+                (
+                  publish.platform_connections as {
+                    platform_account_id?: string;
+                  }
+                )?.platform_account_id ?? '';
               const fb = new FacebookProvider(accessToken, pageId);
               await fb.deleteVideo(contentId);
               logger.info({ ...ctx, platform }, 'Deleted from Facebook');
@@ -1029,8 +1103,13 @@ export const unpublishAction = enhanceAction(
       .eq('id', publishId);
 
     if (deleteError) {
-      logger.error({ ...ctx, error: deleteError }, 'Failed to delete publish record');
-      throw new Error(`Failed to delete publish record: ${deleteError.message}`);
+      logger.error(
+        { ...ctx, error: deleteError },
+        'Failed to delete publish record',
+      );
+      throw new Error(
+        `Failed to delete publish record: ${deleteError.message}`,
+      );
     }
 
     logger.info(ctx, 'Unpublished successfully');
