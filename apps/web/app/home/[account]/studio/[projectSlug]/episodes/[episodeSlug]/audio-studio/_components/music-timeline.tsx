@@ -139,6 +139,8 @@ export function MusicTimeline({
         }>
       )
         .filter((c) => c.cue_type === 'music')
+        // Filter out cues that are already placed or matched, as they will appear as tracks
+        .filter((c) => c.status !== 'placed' && c.status !== 'matched')
         .map((c) => ({
           id: `cue-${c.id}`,
           name: c.prompt.substring(0, 50),
