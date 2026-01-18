@@ -89,33 +89,39 @@ export const autoStitchAction = enhanceAction(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (client as any)
           .from('shots')
-          .select(`
+          .select(
+            `
             id, episode_id, scene_number, shot_number, sequence_number,
             duration_seconds, scene_description, action_description,
             prompt, camera_direction, status, video_url, thumbnail_url,
             generation_job_id, created_at, updated_at
-          `)
+          `,
+          )
           .eq('episode_id', input.episodeId)
           .is('deleted_at', null)
           .order('sequence_number', { ascending: true }),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (client as any)
           .from('dialogue_lines')
-          .select(`
+          .select(
+            `
             id, episode_id, shot_id, sequence_number, character_asset_id,
             text, audio_url, status, timeline_start_seconds,
             estimated_duration_seconds, generation_metadata, created_at
-          `)
+          `,
+          )
           .eq('episode_id', input.episodeId)
           .order('sequence_number', { ascending: true }),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (client as any)
           .from('audio_tracks')
-          .select(`
+          .select(
+            `
             id, episode_id, track_type, audio_url, duration_seconds,
             start_seconds, volume, fade_in_seconds, fade_out_seconds,
             name, metadata, created_at, updated_at
-          `)
+          `,
+          )
           .eq('episode_id', input.episodeId),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (client as any)

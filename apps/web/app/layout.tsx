@@ -13,9 +13,9 @@ import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 import { generateRootMetadata } from '~/lib/root-metdata';
 import { getRootTheme } from '~/lib/root-theme';
 import {
+  JsonLd,
   getOrganizationSchema,
   getWebSiteSchema,
-  JsonLd,
 } from '~/lib/structured-data';
 
 import '../styles/branding.css';
@@ -76,7 +76,6 @@ export default async function RootLayout({
     </html>
   );
 }
-
 
 async function getCspNonce() {
   const headersStore = await headers();

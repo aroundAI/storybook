@@ -1,6 +1,14 @@
 'use client';
 
-import { AlertCircle, Clock, Flame, ImageIcon, Loader2, Play, Users } from 'lucide-react';
+import {
+  AlertCircle,
+  Clock,
+  Flame,
+  ImageIcon,
+  Loader2,
+  Play,
+  Users,
+} from 'lucide-react';
 
 import type { Shot, ShotStatus } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
@@ -147,7 +155,7 @@ export function ShotCard({
 
         {/* Character Badges - bottom right */}
         {characters.length > 0 && (
-          <div className="absolute bottom-3 right-3 flex items-center gap-1">
+          <div className="absolute right-3 bottom-3 flex items-center gap-1">
             {characters.slice(0, 3).map((char) => (
               <div
                 key={char}

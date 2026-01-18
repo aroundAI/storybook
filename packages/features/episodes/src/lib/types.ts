@@ -163,14 +163,14 @@ export interface ScreenplayScene {
   heading: string;
   location: string;
   timeOfDay:
-  | 'dawn'
-  | 'morning'
-  | 'midday'
-  | 'afternoon'
-  | 'golden-hour'
-  | 'dusk'
-  | 'night'
-  | 'day';
+    | 'dawn'
+    | 'morning'
+    | 'midday'
+    | 'afternoon'
+    | 'golden-hour'
+    | 'dusk'
+    | 'night'
+    | 'day';
   description: string;
   dialogue: ScreenplayDialogueLine[];
   estimatedDuration: number;
@@ -345,7 +345,6 @@ export interface Episode {
   };
 }
 
-
 /**
  * Episode with related shots and season info
  */
@@ -394,7 +393,13 @@ export interface ShortsMetadata {
   /** LLM-rated viral potential 1-10 */
   viralScore: number;
   /** Type of hook this shot contains */
-  hookType?: 'question' | 'reveal' | 'conflict' | 'visual' | 'humor' | 'cliffhanger';
+  hookType?:
+    | 'question'
+    | 'reveal'
+    | 'conflict'
+    | 'visual'
+    | 'humor'
+    | 'cliffhanger';
   /** Suggested offset from shot start for optimal clip (seconds) */
   suggestedStartOffset?: number;
   /** Suggested clip duration (seconds) */

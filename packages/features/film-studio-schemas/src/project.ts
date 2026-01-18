@@ -90,7 +90,9 @@ export const StudioProjectSettingsSchema = z.object({
       // Purpose/function of the scene
       purpose: z.string().max(500).optional(), // e.g., "Characters debrief and gain new perspective"
       // Placement in episode
-      placement: z.enum(['beginning', 'middle', 'end', 'throughout']).default('end'),
+      placement: z
+        .enum(['beginning', 'middle', 'end', 'throughout'])
+        .default('end'),
       // Specific dialogue patterns or phrases
       dialogueHints: z.string().max(500).optional(), // e.g., "Use phrases like 'You know what I learned...'"
     })

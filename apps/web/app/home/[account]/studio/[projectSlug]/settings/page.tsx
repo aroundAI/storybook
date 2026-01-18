@@ -84,11 +84,13 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   // First fetch project by slug
   const { data: project, error: projectError } = await client
     .from('projects')
-    .select(`
+    .select(
+      `
       id, name, slug, description, account_id, metadata, status, visibility,
       audio_settings, created_by, updated_by, public_slug, seo_metadata,
       created_at, updated_at
-    `)
+    `,
+    )
     .eq('slug', projectSlug)
     .single();
 
@@ -119,18 +121,25 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
   }
 
   // Fetch publishing configs and account public profile
-  const [publishingConfigs, platformConnections, accountData] = await Promise.all([
-    getProjectPublishingConfigs(project.id),
-    getAccountPlatformConnections(project.account_id ?? ''),
-    client.from('accounts').select('public_profile').eq('id', project.account_id ?? '').single(),
-  ]);
+  const [publishingConfigs, platformConnections, accountData] =
+    await Promise.all([
+      getProjectPublishingConfigs(project.id),
+      getAccountPlatformConnections(project.account_id ?? ''),
+      client
+        .from('accounts')
+        .select('public_profile')
+        .eq('id', project.account_id ?? '')
+        .single(),
+    ]);
 
-  const isAccountPublic = (accountData.data?.public_profile as Record<string, unknown>)?.is_public === true;
+  const isAccountPublic =
+    (accountData.data?.public_profile as Record<string, unknown>)?.is_public ===
+    true;
 
   return (
     <>
       {/* Fixed Header - matching Episodes page pattern */}
-      <header className="border-b border-gray-200 bg-card px-6 py-4">
+      <header className="bg-card border-b border-gray-200 px-6 py-4">
         <div className="mb-2">
           <Link
             href={`/home/${account}/studio/${project.slug}`}
@@ -226,7 +235,9 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <ProjectCoverSettings
               projectId={project.id}
               currentCoverUrl={
-                (project.metadata as Record<string, unknown>)?.coverImageUrl as string | undefined
+                (project.metadata as Record<string, unknown>)?.coverImageUrl as
+                  | string
+                  | undefined
               }
             />
           </If>
@@ -271,17 +282,18 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   | undefined,
                 language: (project.metadata as Record<string, unknown>)
                   ?.language as string | undefined,
-                projectAestheticStyle: (project.metadata as Record<string, unknown>)
-                  ?.projectAestheticStyle as string | undefined,
+                projectAestheticStyle: (
+                  project.metadata as Record<string, unknown>
+                )?.projectAestheticStyle as string | undefined,
                 recurringElement: (project.metadata as Record<string, unknown>)
                   ?.recurringElement as
                   | {
-                    enabled?: boolean;
-                    location?: string;
-                    purpose?: string;
-                    placement?: 'beginning' | 'middle' | 'end' | 'throughout';
-                    dialogueHints?: string;
-                  }
+                      enabled?: boolean;
+                      location?: string;
+                      purpose?: string;
+                      placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+                      dialogueHints?: string;
+                    }
                   | undefined,
               }}
             />
@@ -293,16 +305,14 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               projectId={project.id}
               accountId={project.account_id ?? ''}
               currentSettings={
-                (project as Record<string, unknown>).audio_settings as
-                | {
+                (project as Record<string, unknown>).audio_settings as {
                   elevenlabs?: {
                     enabled?: boolean;
                     tts_model?: string;
                     sfx_model?: string;
                   };
                   voice_provider?: 'elevenlabs' | 'playht' | 'azure' | 'google';
-                }
-                | null
+                } | null
               }
             />
           </If>

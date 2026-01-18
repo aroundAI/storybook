@@ -64,10 +64,10 @@ const getRoutes = (account: string) => [
       },
       featureFlagsConfig.enableTeamAccountBilling
         ? {
-          label: 'common:routes.billing',
-          path: createPath(pathsConfig.app.accountBilling, account),
-          Icon: <CreditCard className={iconClasses} />,
-        }
+            label: 'common:routes.billing',
+            path: createPath(pathsConfig.app.accountBilling, account),
+            Icon: <CreditCard className={iconClasses} />,
+          }
         : undefined,
     ].filter(Boolean),
   },

@@ -4,10 +4,9 @@ import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useActiveGenerationJob } from '@kit/episodes/hooks';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
-
-import { useActiveGenerationJob } from '@kit/episodes/hooks';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { GeneratingState } from '../_components/generating-state';
@@ -22,22 +21,21 @@ export default function StoryPage() {
   const hasStory = Boolean(episode.storyData?.fullStory);
 
   // Check for active story generation job (only if no data exists)
-  const { isGenerating } = useActiveGenerationJob(
-    episode.id,
-    'story',
-    { enabled: !hasStory }
-  );
+  const { isGenerating } = useActiveGenerationJob(episode.id, 'story', {
+    enabled: !hasStory,
+  });
 
   // Subscribe to WebSocket for story-generation results
   // This subscriber MUST be at page level so it's active during GeneratingState
-  const { status: wsStatus, result: wsResult, error: wsError } = useLlmJob<{ success: boolean }>(
-    'story-generation'
-  );
+  const {
+    status: wsStatus,
+    result: wsResult,
+    error: wsError,
+  } = useLlmJob<{ success: boolean }>('story-generation');
 
   // Handle WebSocket completion - refetch episode data
   useEffect(() => {
     if (wsStatus === 'success' && wsResult) {
-      console.log('[StoryPage] WebSocket received completion, refetching episode');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = wsResult as any;
       if (resultData?.success) {
@@ -68,13 +66,12 @@ export default function StoryPage() {
   }
 
   // Check if story is unlocked (has story data or status >= 'story')
-  const isUnlocked =
-    episode.status !== 'draft' || hasStory;
+  const isUnlocked = episode.status !== 'draft' || hasStory;
 
   if (!isUnlocked) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
+        <div className="bg-card rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
           <div className="mb-4 text-4xl">🔒</div>
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             Story Locked
@@ -98,4 +95,3 @@ export default function StoryPage() {
     </div>
   );
 }
-

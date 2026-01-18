@@ -30,7 +30,11 @@ import { generateEpisodeSlug } from '../lib/slug-utils';
 export const generateSeasonOutlineAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data?: GenerateSeasonOutlineResponse; queued?: boolean }> => {
+  ): Promise<{
+    success: true;
+    data?: GenerateSeasonOutlineResponse;
+    queued?: boolean;
+  }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.generateSeasonOutline',
@@ -240,7 +244,11 @@ export const batchCreateEpisodesAction = enhanceAction(
 export const regenerateEpisodeOutlineAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data?: RegenerateEpisodeOutlineResponse; queued?: boolean }> => {
+  ): Promise<{
+    success: true;
+    data?: RegenerateEpisodeOutlineResponse;
+    queued?: boolean;
+  }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.regenerateOutline',

@@ -53,14 +53,19 @@ export function ScreenplayScreen({
   const hasShotList = Boolean(episode.shotList) || episode.shots.length > 0;
 
   // WebSocket for shot-generation async LLM results
-  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ shotsCreated: number }>(
-    'shot-generation'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+    trigger: triggerLlm,
+  } = useLlmJob<{ shotsCreated: number }>('shot-generation');
 
   // WebSocket for screenplay-conversion results (when screenplay is generated while on this tab)
-  const { status: screenplayStatus, result: screenplayResult, error: screenplayError } = useLlmJob<{ success: boolean }>(
-    'screenplay-conversion'
-  );
+  const {
+    status: screenplayStatus,
+    result: screenplayResult,
+    error: screenplayError,
+  } = useLlmJob<{ success: boolean }>('screenplay-conversion');
 
   // Handle shot-generation async result
   useEffect(() => {
@@ -143,14 +148,17 @@ export function ScreenplayScreen({
       // If queued, return queued flag (WebSocket will deliver result)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
-        toast.info('Generating shot list in background... This may take a few minutes.');
+        toast.info(
+          'Generating shot list in background... This may take a few minutes.',
+        );
         return { queued: true };
       }
       // If local dev (synchronous), process immediately
       if (result.success) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const resultData = result as any;
-        const shotsCreated = resultData?.data?.shotsCreated ?? resultData?.shotsCreated ?? 0;
+        const shotsCreated =
+          resultData?.data?.shotsCreated ?? resultData?.shotsCreated ?? 0;
         toast.success(`Shot list generated with ${shotsCreated} shots`);
         refetchEpisode();
         onShotListComplete();
@@ -253,7 +261,7 @@ export function ScreenplayScreen({
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           className={cn(
-            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
+            'bg-card/70 hover:bg-card/90 fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 p-3 shadow-lg backdrop-blur-xl transition-all dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',
           )}
         >
@@ -271,7 +279,7 @@ export function ScreenplayScreen({
         {/* Sidebar Panel */}
         <div
           className={cn(
-            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-card/60 shadow-2xl backdrop-blur-xl transition-transform duration-300',
+            'bg-card/60 fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 shadow-2xl backdrop-blur-xl transition-transform duration-300',
             isSidebarExpanded ? 'translate-x-0' : 'translate-x-full',
           )}
         >
@@ -291,7 +299,7 @@ export function ScreenplayScreen({
               <div className="space-y-4">
                 {/* Screenplay Details */}
                 {metadata && (
-                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Screenplay Details
                     </h3>
@@ -317,7 +325,7 @@ export function ScreenplayScreen({
                 )}
 
                 {/* Characters */}
-                <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                   <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                     <Users className="h-4 w-4" />
                     Characters
@@ -345,7 +353,7 @@ export function ScreenplayScreen({
 
                 {/* Locations */}
                 {metadata?.locations && metadata.locations.length > 0 && (
-                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                       <MapPin className="h-4 w-4" />
                       Locations

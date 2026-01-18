@@ -4,7 +4,7 @@ import { cache } from 'react';
 
 import { createCacheClient } from '@kit/cache';
 import { getLogger } from '@kit/shared/logger';
-import { getSupabaseServerClient } from '@kit/supabase/server-client'
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { projectCacheKeys, projectCacheTTL } from '../cache-keys';
 import type { ProjectMemberWithUser, ProjectWithRole } from '../types';
@@ -24,12 +24,18 @@ export const getAccountProjects = cache(async (accountId: string) => {
   try {
     const cached = await cacheClient.get<ProjectWithRole[]>(cacheKey);
     if (cached) {
-      logger.info({ ...ctx, cached: true }, 'Account projects fetched from cache');
+      logger.info(
+        { ...ctx, cached: true },
+        'Account projects fetched from cache',
+      );
       return cached;
     }
   } catch (cacheError) {
     // Log but don't fail - cache miss is acceptable
-    logger.warn({ ...ctx, error: cacheError }, 'Cache read failed, fetching from DB');
+    logger.warn(
+      { ...ctx, error: cacheError },
+      'Cache read failed, fetching from DB',
+    );
   }
 
   logger.info(ctx, 'Fetching account projects from DB');
@@ -54,7 +60,10 @@ export const getAccountProjects = cache(async (accountId: string) => {
     logger.warn({ ...ctx, error: cacheError }, 'Failed to cache projects');
   }
 
-  logger.info({ ...ctx, count: projects?.length || 0 }, 'Account projects fetched');
+  logger.info(
+    { ...ctx, count: projects?.length || 0 },
+    'Account projects fetched',
+  );
 
   return projects;
 });
@@ -72,11 +81,13 @@ export const getProject = cache(async (projectId: string) => {
 
   const { data, error } = await client
     .from('projects')
-    .select(`
+    .select(
+      `
       id, name, slug, description, account_id, metadata, status, visibility,
       audio_settings, created_by, updated_by, public_slug, seo_metadata,
       created_at, updated_at
-    `)
+    `,
+    )
     .eq('id', projectId)
     .single();
 

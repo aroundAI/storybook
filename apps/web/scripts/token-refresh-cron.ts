@@ -1,40 +1,42 @@
 #!/usr/bin/env tsx
 /**
  * Local Token Refresh Cron Script
- * 
+ *
  * Runs during development to keep OAuth tokens refreshed.
  * Calls the /api/cron/refresh-tokens endpoint every 30 minutes.
- * 
+ *
  * Usage: pnpm run dev:cron
  */
-
 import Cron from 'croner';
 
 const CRON_SECRET = process.env.CRON_SECRET || 'dev-secret';
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+const APP_URL =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  'http://localhost:3000';
 
 async function refreshTokens() {
-    const timestamp = new Date().toISOString();
-    console.log(`[${timestamp}] 🔄 Running token refresh...`);
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] 🔄 Running token refresh...`);
 
-    try {
-        const response = await fetch(`${APP_URL}/api/cron/refresh-tokens`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${CRON_SECRET}`,
-            },
-        });
+  try {
+    const response = await fetch(`${APP_URL}/api/cron/refresh-tokens`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${CRON_SECRET}`,
+      },
+    });
 
-        const data = await response.json();
+    const data = await response.json();
 
-        if (response.ok) {
-            console.log(`[${timestamp}] ✅ Token refresh completed:`, data);
-        } else {
-            console.error(`[${timestamp}] ❌ Token refresh failed:`, data);
-        }
-    } catch (error) {
-        console.error(`[${timestamp}] ❌ Token refresh error:`, error);
+    if (response.ok) {
+      console.log(`[${timestamp}] ✅ Token refresh completed:`, data);
+    } else {
+      console.error(`[${timestamp}] ❌ Token refresh failed:`, data);
     }
+  } catch (error) {
+    console.error(`[${timestamp}] ❌ Token refresh error:`, error);
+  }
 }
 
 // Run immediately on start
@@ -45,19 +47,19 @@ console.log('');
 
 // Initial run after 10 seconds (give dev server time to start)
 setTimeout(() => {
-    refreshTokens();
+  refreshTokens();
 }, 10000);
 
 // Schedule to run every 30 minutes
 const job = Cron('*/30 * * * *', () => {
-    refreshTokens();
+  refreshTokens();
 });
 
 console.log(`📅 Next run: ${job.nextRun()?.toISOString()}`);
 
 // Keep the process running
 process.on('SIGINT', () => {
-    console.log('\n👋 Token refresh cron stopped');
-    job.stop();
-    process.exit(0);
+  console.log('\n👋 Token refresh cron stopped');
+  job.stop();
+  process.exit(0);
 });

@@ -18,7 +18,7 @@ export class FacebookProvider {
   constructor(
     private accessToken: string,
     private pageId: string,
-  ) { }
+  ) {}
 
   /**
    * Uploads a video to Facebook Page
@@ -96,8 +96,8 @@ export class FacebookProvider {
     const uploadResponse = await fetch(uploadUrl, {
       method: 'POST',
       headers: {
-        'Authorization': `OAuth ${this.accessToken}`,
-        'file_url': input.videoPath,
+        Authorization: `OAuth ${this.accessToken}`,
+        file_url: input.videoPath,
       },
     });
 
@@ -111,7 +111,9 @@ export class FacebookProvider {
     // Check upload response for errors
     const uploadData = await uploadResponse.json().catch(() => ({}));
     if (uploadData.error) {
-      throw new Error(`Facebook Reel upload failed: ${uploadData.error.message}`);
+      throw new Error(
+        `Facebook Reel upload failed: ${uploadData.error.message}`,
+      );
     }
 
     onProgress?.(70);
@@ -141,7 +143,9 @@ export class FacebookProvider {
 
     const finishData = await finishResponse.json();
     if (finishData.error) {
-      throw new Error(`Facebook Reel finish failed: ${finishData.error.message}`);
+      throw new Error(
+        `Facebook Reel finish failed: ${finishData.error.message}`,
+      );
     }
 
     onProgress?.(100);

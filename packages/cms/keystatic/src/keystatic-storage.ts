@@ -9,8 +9,7 @@ type ZodOutputFor<T> = z.ZodType<T, z.ZodTypeDef, unknown>;
  *
  * This is provided through the `NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND` environment variable.
  */
-const STORAGE_KIND =
-  process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND ?? 'local';
+const STORAGE_KIND = process.env.NEXT_PUBLIC_KEYSTATIC_STORAGE_KIND ?? 'local';
 
 /**
  * @name REPO

@@ -2,10 +2,9 @@
 
 import { useEffect } from 'react';
 
+import { useActiveGenerationJob } from '@kit/episodes/hooks';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
-
-import { useActiveGenerationJob } from '@kit/episodes/hooks';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { GeneratingState } from '../_components/generating-state';
@@ -21,19 +20,20 @@ export default function VisualStudioPage() {
   const { isGenerating } = useActiveGenerationJob(
     episode.id,
     'shot_list',
-    { enabled: !hasShots } // Don't poll if data already exists
+    { enabled: !hasShots }, // Don't poll if data already exists
   );
 
   // Subscribe to WebSocket for shot-generation results
   // This subscriber MUST be at page level so it's active during GeneratingState
-  const { status: wsStatus, result: wsResult, error: wsError } = useLlmJob<{ success: boolean }>(
-    'shot-generation'
-  );
+  const {
+    status: wsStatus,
+    result: wsResult,
+    error: wsError,
+  } = useLlmJob<{ success: boolean }>('shot-generation');
 
   // Handle WebSocket completion - refetch episode data
   useEffect(() => {
     if (wsStatus === 'success' && wsResult) {
-      console.log('[VisualStudioPage] WebSocket received completion, refetching episode');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = wsResult as any;
       if (resultData?.success) {
@@ -60,7 +60,7 @@ export default function VisualStudioPage() {
   if (!hasShots) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
+        <div className="bg-card rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
           <div className="mb-4 text-4xl">🔒</div>
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             Visual Studio Locked
@@ -80,4 +80,3 @@ export default function VisualStudioPage() {
     </div>
   );
 }
-

@@ -200,7 +200,8 @@ function calculateSummary(data: AnalyticsDataRow[]): ReportSummary {
   let totalRevenueCents = 0;
 
   for (const row of data) {
-    platformBreakdown[row.platform] = (platformBreakdown[row.platform] || 0) + row.views;
+    platformBreakdown[row.platform] =
+      (platformBreakdown[row.platform] || 0) + row.views;
     totalViews += row.views;
     totalLikes += row.likes;
     totalComments += row.comments;
@@ -456,11 +457,13 @@ export const getScheduledReportsAction = enhanceAction(
 
     const { data: reports, error } = await client
       .from('scheduled_reports')
-      .select(`
+      .select(
+        `
         id, account_id, name, report_type, frequency, metrics, platforms,
         project_ids, branding, recipients, next_run_at, last_run_at,
         last_run_status, last_error, is_active, created_at, updated_at
-      `)
+      `,
+      )
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false });
 

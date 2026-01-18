@@ -41,9 +41,9 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
-import { cn } from '@kit/ui/utils';
 import { Switch } from '@kit/ui/switch';
 import { Textarea } from '@kit/ui/textarea';
+import { cn } from '@kit/ui/utils';
 
 import {
   type UpdateStudioSettingsInput,
@@ -54,7 +54,7 @@ import { updateStudioSettingsAction } from '../_lib/server/update-studio-setting
 interface StudioSettingsFormProps {
   projectId: string;
   currentSettings: {
-    description?: string;  // Project description
+    description?: string; // Project description
     targetAudience?: string;
     genre?: Genre;
     videoStyle?: VideoStyle;
@@ -105,25 +105,25 @@ const CONTENT_STYLES: Array<{
   description: string;
   icon: React.ComponentType<{ className?: string }>;
 }> = [
-    {
-      value: 'dialogue-heavy',
-      label: 'Dialogue Heavy',
-      description: 'More dialogue lines per scene (kids cartoons, comedies)',
-      icon: MessageSquare,
-    },
-    {
-      value: 'balanced',
-      label: 'Balanced',
-      description: 'Mix of dialogue and action (dramas, documentaries)',
-      icon: Film,
-    },
-    {
-      value: 'action-heavy',
-      label: 'Action Heavy',
-      description: 'Fewer dialogue lines, more visual storytelling',
-      icon: Zap,
-    },
-  ];
+  {
+    value: 'dialogue-heavy',
+    label: 'Dialogue Heavy',
+    description: 'More dialogue lines per scene (kids cartoons, comedies)',
+    icon: MessageSquare,
+  },
+  {
+    value: 'balanced',
+    label: 'Balanced',
+    description: 'Mix of dialogue and action (dramas, documentaries)',
+    icon: Film,
+  },
+  {
+    value: 'action-heavy',
+    label: 'Action Heavy',
+    description: 'Fewer dialogue lines, more visual storytelling',
+    icon: Zap,
+  },
+];
 
 const DURATION_PRESETS = [
   { value: 60, label: '1 min' },
@@ -205,9 +205,7 @@ export function StudioSettingsForm({
         <Card>
           <CardHeader>
             <CardTitle>Content Generation Settings</CardTitle>
-            <CardDescription>
-              Testing with Select components.
-            </CardDescription>
+            <CardDescription>Testing with Select components.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Project Description */}
@@ -226,7 +224,8 @@ export function StudioSettingsForm({
                     />
                   </FormControl>
                   <FormDescription>
-                    A brief description of your project shown on the overview page.
+                    A brief description of your project shown on the overview
+                    page.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -240,10 +239,7 @@ export function StudioSettingsForm({
                 <FormItem>
                   <FormLabel>Target Audience</FormLabel>
                   <FormControl>
-                    <Input
-                      placeholder="e.g., Children ages 4-8"
-                      {...field}
-                    />
+                    <Input placeholder="e.g., Children ages 4-8" {...field} />
                   </FormControl>
                   <FormDescription>Who is this content for?</FormDescription>
                   <FormMessage />
@@ -325,7 +321,7 @@ export function StudioSettingsForm({
                           className={cn(
                             'border-input hover:bg-accent flex flex-col items-center gap-2 rounded-lg border p-4 transition-colors',
                             field.value === style.value &&
-                            'bg-primary/10 border-primary ring-primary/20 ring-2',
+                              'bg-primary/10 border-primary ring-primary/20 ring-2',
                           )}
                         >
                           <StyleIcon
@@ -370,7 +366,7 @@ export function StudioSettingsForm({
                         className={cn(
                           'border-input hover:bg-accent rounded-md border px-3 py-1.5 text-sm transition-colors',
                           field.value === preset.value &&
-                          'bg-primary text-primary-foreground border-primary',
+                            'bg-primary text-primary-foreground border-primary',
                         )}
                       >
                         {preset.label}
@@ -462,7 +458,8 @@ export function StudioSettingsForm({
                     />
                   </FormControl>
                   <FormDescription>
-                    Visual aesthetic applied to all shot prompts for consistency across the project.
+                    Visual aesthetic applied to all shot prompts for consistency
+                    across the project.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -513,7 +510,9 @@ export function StudioSettingsForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>Where does this scene take place?</FormDescription>
+                    <FormDescription>
+                      Where does this scene take place?
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -532,7 +531,9 @@ export function StudioSettingsForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>What happens in this scene?</FormDescription>
+                    <FormDescription>
+                      What happens in this scene?
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -552,7 +553,7 @@ export function StudioSettingsForm({
                           className={cn(
                             'border-input hover:bg-accent rounded-md border px-3 py-1.5 text-sm transition-colors',
                             field.value === option.value &&
-                            'bg-primary text-primary-foreground border-primary',
+                              'bg-primary text-primary-foreground border-primary',
                           )}
                         >
                           {option.label}
@@ -577,7 +578,9 @@ export function StudioSettingsForm({
                         {...field}
                       />
                     </FormControl>
-                    <FormDescription>Specific phrases or dialogue patterns to use.</FormDescription>
+                    <FormDescription>
+                      Specific phrases or dialogue patterns to use.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

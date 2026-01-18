@@ -59,11 +59,13 @@ export const GET = enhanceRouteHandler(
       const now = new Date();
       const { data: dueReports, error: fetchError } = await adminClient
         .from('scheduled_reports')
-        .select(`
+        .select(
+          `
           id, account_id, name, report_type, frequency, metrics, platforms,
           project_ids, branding, recipients, next_run_at, last_run_at,
           last_run_status, last_error, is_active, created_at, updated_at
-        `)
+        `,
+        )
         .eq('is_active', true)
         .lte('next_run_at', now.toISOString());
 
@@ -163,9 +165,9 @@ async function processScheduledReport(
     report.frequency === 'weekly'
       ? { start: subWeeks(new Date(), 1), end: new Date() }
       : {
-        start: startOfMonth(subMonths(new Date(), 1)),
-        end: endOfMonth(subMonths(new Date(), 1)),
-      };
+          start: startOfMonth(subMonths(new Date(), 1)),
+          end: endOfMonth(subMonths(new Date(), 1)),
+        };
 
   const { data: analyticsData, error: dataError } = await adminClient
     .from('content_analytics')

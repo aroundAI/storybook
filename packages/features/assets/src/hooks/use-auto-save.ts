@@ -58,6 +58,13 @@ import { useCallback, useEffect, useRef } from 'react';
  * Used by CharacterEditor to save drafts.
  */
 
+/**
+ * Auto-Save Hook (FILM-205)
+ *
+ * Hook for auto-saving form data to localStorage periodically.
+ * Used by CharacterEditor to save drafts.
+ */
+
 interface UseAutoSaveOptions<T> {
   /** Unique key for localStorage */
   storageKey: string;
@@ -172,7 +179,12 @@ export function useAutoSave<T>(
       // Parse the data and check if it has meaningful content
       const parsed = JSON.parse(saved);
       // Only return true if there's a name (indicates real user input)
-      return !!(parsed && typeof parsed === 'object' && parsed.name && parsed.name.trim().length > 0);
+      return !!(
+        parsed &&
+        typeof parsed === 'object' &&
+        parsed.name &&
+        parsed.name.trim().length > 0
+      );
     } catch {
       return false;
     }

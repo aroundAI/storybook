@@ -47,7 +47,11 @@ export interface GenerateFullStoryResponse {
 export const generateStoryIdeasAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data?: GenerateStoryIdeasResponse; queued?: boolean }> => {
+  ): Promise<{
+    success: true;
+    data?: GenerateStoryIdeasResponse;
+    queued?: boolean;
+  }> => {
     const logger = await getLogger();
     const ctx = { name: 'episodes.generateStoryIdeas' };
 
@@ -115,8 +119,17 @@ export const generateStoryIdeasAction = enhanceAction(
  * In production, queues via SQS for background processing.
  */
 export const generateFullStoryAction = enhanceAction(
-  async (data): Promise<{ success: true; data?: GenerateFullStoryResponse; queued?: boolean }> => {
-    console.log('[story-actions] generateFullStoryAction called with:', data.episodeId);
+  async (
+    data,
+  ): Promise<{
+    success: true;
+    data?: GenerateFullStoryResponse;
+    queued?: boolean;
+  }> => {
+    console.log(
+      '[story-actions] generateFullStoryAction called with:',
+      data.episodeId,
+    );
 
     const logger = await getLogger();
     const ctx = {
@@ -138,12 +151,14 @@ export const generateFullStoryAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: fetchError } = await (client as any)
       .from('episodes')
-      .select(`
+      .select(
+        `
         id, project_id, season_id, number, slug, title, description, status, version,
         duration_seconds, thumbnail_url, story_data, screenplay_data, shot_list,
         target_duration_seconds, created_at, updated_at, deleted_at,
         project:projects(id, account_id)
-      `)
+      `,
+      )
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -186,7 +201,10 @@ export const generateFullStoryAction = enhanceAction(
       input_data: { episodeId: data.episodeId, title: data.title },
     };
 
-    console.log('[story-actions] Creating generation job with data:', JSON.stringify(jobData, null, 2));
+    console.log(
+      '[story-actions] Creating generation job with data:',
+      JSON.stringify(jobData, null, 2),
+    );
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: insertedJob, error: jobError } = await (client as any)
@@ -196,11 +214,20 @@ export const generateFullStoryAction = enhanceAction(
       .single();
 
     if (jobError) {
-      console.error('[story-actions] FAILED to create generation job:', jobError);
+      console.error(
+        '[story-actions] FAILED to create generation job:',
+        jobError,
+      );
       console.error('[story-actions] Job data was:', jobData);
-      logger.warn({ ...ctx, error: jobError }, 'Failed to create generation job entry');
+      logger.warn(
+        { ...ctx, error: jobError },
+        'Failed to create generation job entry',
+      );
     } else {
-      console.log('[story-actions] SUCCESS - Created generation job:', insertedJob);
+      console.log(
+        '[story-actions] SUCCESS - Created generation job:',
+        insertedJob,
+      );
     }
 
     await queueLlmJob({

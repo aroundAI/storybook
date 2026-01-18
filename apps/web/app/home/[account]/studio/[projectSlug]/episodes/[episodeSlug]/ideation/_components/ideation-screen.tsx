@@ -21,12 +21,6 @@ import {
 } from '@kit/episodes/schemas';
 import { generateStoryIdeasAction } from '@kit/episodes/server';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
-
-/** Extended story idea with generation settings */
-export interface StoryIdeaWithSettings extends StoryIdea {
-  targetDuration: number;
-  contentStyle: ContentStyle;
-}
 import { Button } from '@kit/ui/button';
 import {
   Collapsible,
@@ -48,6 +42,12 @@ import { Textarea } from '@kit/ui/textarea';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
 import { IdeaCard } from './idea-card';
+
+/** Extended story idea with generation settings */
+export interface StoryIdeaWithSettings extends StoryIdea {
+  targetDuration: number;
+  contentStyle: ContentStyle;
+}
 
 interface IdeationScreenProps {
   episodeId: string;
@@ -81,9 +81,12 @@ export function IdeationScreen({
     useState<ContentStyle>(defaultContentStyle);
 
   // WebSocket for async LLM results (uses shared provider from layout)
-  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ ideas: StoryIdea[] }>(
-    'story-ideation'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+    trigger: triggerLlm,
+  } = useLlmJob<{ ideas: StoryIdea[] }>('story-ideation');
 
   // Handle async WebSocket result
   useEffect(() => {
@@ -178,7 +181,9 @@ export function IdeationScreen({
               </span>
               <Button
                 type="submit"
-                disabled={isPending || llmStatus === 'pending' || premiseLength < 10}
+                disabled={
+                  isPending || llmStatus === 'pending' || premiseLength < 10
+                }
                 className="btn-cinema-primary gap-2 text-sm"
               >
                 {isPending || llmStatus === 'pending' ? (

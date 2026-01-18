@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+
 import Link from 'next/link';
 
 import {
@@ -26,7 +27,7 @@ import { Trans } from '@kit/ui/trans';
 
 import appConfig from '~/config/app.config';
 import { withI18n } from '~/lib/i18n/with-i18n';
-import { getSoftwareApplicationSchema, JsonLd } from '~/lib/structured-data';
+import { JsonLd, getSoftwareApplicationSchema } from '~/lib/structured-data';
 
 import { RotatingText } from './_components/rotating-text';
 
@@ -91,11 +92,7 @@ function Home() {
               <h1 className="max-w-2xl text-4xl leading-tight font-bold lg:text-5xl">
                 The AI-Powered{' '}
                 <RotatingText
-                  texts={[
-                    'Production Bible',
-                    'Writer\'s Room',
-                    'Story Engine',
-                  ]}
+                  texts={['Production Bible', "Writer's Room", 'Story Engine']}
                   className="bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent"
                 />
               </h1>
@@ -315,7 +312,9 @@ function Home() {
             className={'flex flex-col items-center justify-center space-y-16'}
           >
             <SecondaryHero
-              pill={<Pill label="Built for Creators">From Concept to Screen</Pill>}
+              pill={
+                <Pill label="Built for Creators">From Concept to Screen</Pill>
+              }
               heading="Why Choose StoryBook"
               subheading="The complete AI toolkit for modern showrunners and content creators."
             />
@@ -338,15 +337,15 @@ function Home() {
                   </h3>
                   <ul className="text-muted-foreground relative z-10 space-y-3">
                     <li className="flex items-start">
-                      <Palette className="mr-3 mt-0.5 h-4 w-4 text-indigo-600" />
+                      <Palette className="mt-0.5 mr-3 h-4 w-4 text-indigo-600" />
                       <span>AI-assisted story development</span>
                     </li>
                     <li className="flex items-start">
-                      <Palette className="mr-3 mt-0.5 h-4 w-4 text-indigo-600" />
+                      <Palette className="mt-0.5 mr-3 h-4 w-4 text-indigo-600" />
                       <span>Character consistency across episodes</span>
                     </li>
                     <li className="flex items-start">
-                      <Palette className="mr-3 mt-0.5 h-4 w-4 text-indigo-600" />
+                      <Palette className="mt-0.5 mr-3 h-4 w-4 text-indigo-600" />
                       <span>Industry-standard screenplay format</span>
                     </li>
                   </ul>
@@ -362,15 +361,15 @@ function Home() {
                   </h3>
                   <ul className="text-muted-foreground relative z-10 space-y-3">
                     <li className="flex items-start">
-                      <Palette className="mr-3 mt-0.5 h-4 w-4 text-violet-600" />
+                      <Palette className="mt-0.5 mr-3 h-4 w-4 text-violet-600" />
                       <span>Visual shot lists for production</span>
                     </li>
                     <li className="flex items-start">
-                      <Palette className="mr-3 mt-0.5 h-4 w-4 text-violet-600" />
+                      <Palette className="mt-0.5 mr-3 h-4 w-4 text-violet-600" />
                       <span>Team collaboration with permissions</span>
                     </li>
                     <li className="flex items-start">
-                      <Palette className="mr-3 mt-0.5 h-4 w-4 text-violet-600" />
+                      <Palette className="mt-0.5 mr-3 h-4 w-4 text-violet-600" />
                       <span>Multi-platform publishing workflow</span>
                     </li>
                   </ul>

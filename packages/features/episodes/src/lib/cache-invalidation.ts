@@ -4,48 +4,47 @@
  * Cache key patterns and invalidation functions for episode data.
  * Call invalidation functions after any mutation to ensure fresh data.
  */
-
 import { createCacheClient } from '@kit/cache';
 
 /**
  * Cache key patterns for episodes
  */
 export const episodeCacheKeys = {
-    /** Single episode by ID */
-    episode: (id: string) => `episode:${id}`,
+  /** Single episode by ID */
+  episode: (id: string) => `episode:${id}`,
 
-    /** All episodes for a project */
-    episodeList: (projectId: string) => `episodes:${projectId}`,
+  /** All episodes for a project */
+  episodeList: (projectId: string) => `episodes:${projectId}`,
 
-    /** Episode screenplay data */
-    screenplay: (id: string) => `episode:${id}:screenplay`,
+  /** Episode screenplay data */
+  screenplay: (id: string) => `episode:${id}:screenplay`,
 
-    /** Episode shot list */
-    shots: (id: string) => `episode:${id}:shots`,
+  /** Episode shot list */
+  shots: (id: string) => `episode:${id}:shots`,
 
-    /** Episode ideation data */
-    ideation: (id: string) => `episode:${id}:ideation`,
+  /** Episode ideation data */
+  ideation: (id: string) => `episode:${id}:ideation`,
 
-    /** Episode story data */
-    story: (id: string) => `episode:${id}:story`,
+  /** Episode story data */
+  story: (id: string) => `episode:${id}:story`,
 } as const;
 
 /**
  * Cache TTLs in seconds
  */
 export const episodeCacheTTL = {
-    /** Episode list - 5 minutes (frequently updated) */
-    episodeList: 300,
-    /** Single episode - 5 minutes */
-    episode: 300,
-    /** Screenplay - 5 minutes (actively edited) */
-    screenplay: 300,
-    /** Shot list - 5 minutes (actively edited) */
-    shots: 300,
-    /** Ideation - 30 minutes (less frequently changed) */
-    ideation: 1800,
-    /** Story - 30 minutes */
-    story: 1800,
+  /** Episode list - 5 minutes (frequently updated) */
+  episodeList: 300,
+  /** Single episode - 5 minutes */
+  episode: 300,
+  /** Screenplay - 5 minutes (actively edited) */
+  screenplay: 300,
+  /** Shot list - 5 minutes (actively edited) */
+  shots: 300,
+  /** Ideation - 30 minutes (less frequently changed) */
+  ideation: 1800,
+  /** Story - 30 minutes */
+  story: 1800,
 } as const;
 
 /**
@@ -53,19 +52,19 @@ export const episodeCacheTTL = {
  * Call this on episode update/delete operations
  */
 export async function invalidateEpisodeCache(
-    episodeId: string,
-    projectId: string,
+  episodeId: string,
+  projectId: string,
 ): Promise<void> {
-    const cache = createCacheClient();
+  const cache = createCacheClient();
 
-    await cache.mdel([
-        episodeCacheKeys.episode(episodeId),
-        episodeCacheKeys.episodeList(projectId),
-        episodeCacheKeys.screenplay(episodeId),
-        episodeCacheKeys.shots(episodeId),
-        episodeCacheKeys.ideation(episodeId),
-        episodeCacheKeys.story(episodeId),
-    ]);
+  await cache.mdel([
+    episodeCacheKeys.episode(episodeId),
+    episodeCacheKeys.episodeList(projectId),
+    episodeCacheKeys.screenplay(episodeId),
+    episodeCacheKeys.shots(episodeId),
+    episodeCacheKeys.ideation(episodeId),
+    episodeCacheKeys.story(episodeId),
+  ]);
 }
 
 /**
@@ -73,10 +72,10 @@ export async function invalidateEpisodeCache(
  * Call this when episodes are created/deleted
  */
 export async function invalidateEpisodeListCache(
-    projectId: string,
+  projectId: string,
 ): Promise<void> {
-    const cache = createCacheClient();
-    await cache.del(episodeCacheKeys.episodeList(projectId));
+  const cache = createCacheClient();
+  await cache.del(episodeCacheKeys.episodeList(projectId));
 }
 
 /**
@@ -84,13 +83,13 @@ export async function invalidateEpisodeListCache(
  * Call this when screenplay is updated
  */
 export async function invalidateScreenplayCache(
-    episodeId: string,
+  episodeId: string,
 ): Promise<void> {
-    const cache = createCacheClient();
-    await cache.mdel([
-        episodeCacheKeys.episode(episodeId),
-        episodeCacheKeys.screenplay(episodeId),
-    ]);
+  const cache = createCacheClient();
+  await cache.mdel([
+    episodeCacheKeys.episode(episodeId),
+    episodeCacheKeys.screenplay(episodeId),
+  ]);
 }
 
 /**
@@ -98,9 +97,9 @@ export async function invalidateScreenplayCache(
  * Call this when shots are updated
  */
 export async function invalidateShotsCache(episodeId: string): Promise<void> {
-    const cache = createCacheClient();
-    await cache.mdel([
-        episodeCacheKeys.episode(episodeId),
-        episodeCacheKeys.shots(episodeId),
-    ]);
+  const cache = createCacheClient();
+  await cache.mdel([
+    episodeCacheKeys.episode(episodeId),
+    episodeCacheKeys.shots(episodeId),
+  ]);
 }

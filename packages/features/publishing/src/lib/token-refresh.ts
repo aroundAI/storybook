@@ -22,11 +22,11 @@ export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
-  | 'EXPIRED'
-  | 'REFRESH_FAILED'
-  | 'CONNECTION_INACTIVE'
-  | 'NOT_FOUND'
-  | 'NO_REFRESH_TOKEN';
+    | 'EXPIRED'
+    | 'REFRESH_FAILED'
+    | 'CONNECTION_INACTIVE'
+    | 'NOT_FOUND'
+    | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 
@@ -94,11 +94,13 @@ async function doEnsureValidToken(
   // Note: Type assertion needed until database types are regenerated
   const { data: connection, error } = (await client
     .from('platform_connections' as 'accounts')
-    .select(`
+    .select(
+      `
       id, account_id, platform, platform_account_id, platform_account_name,
       access_token_encrypted, refresh_token_encrypted, is_active,
       token_expires_at, scopes, metadata, created_at, updated_at
-    `)
+    `,
+    )
     .eq('id', connectionId)
     .single()) as { data: PlatformConnection | null; error: unknown };
 
@@ -232,11 +234,15 @@ async function refreshYouTubeToken(
   accountId: string,
 ): Promise<TokenRefreshResult> {
   // Fetch credentials from database (using admin client for background jobs)
-  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const { getAccountOAuthAppAdmin } = await import(
+    '../server/account-oauth-actions'
+  );
   const oauthApp = await getAccountOAuthAppAdmin(accountId, 'youtube');
 
   if (!oauthApp) {
-    throw new Error('YouTube OAuth credentials not configured for this account');
+    throw new Error(
+      'YouTube OAuth credentials not configured for this account',
+    );
   }
 
   const response = await fetch('https://oauth2.googleapis.com/token', {
@@ -273,7 +279,9 @@ async function refreshTikTokToken(
   accountId: string,
 ): Promise<TokenRefreshResult> {
   // Fetch credentials from database (using admin client for background jobs)
-  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const { getAccountOAuthAppAdmin } = await import(
+    '../server/account-oauth-actions'
+  );
   const oauthApp = await getAccountOAuthAppAdmin(accountId, 'tiktok');
 
   if (!oauthApp) {
@@ -320,7 +328,9 @@ async function refreshMetaToken(
   accountId: string,
 ): Promise<TokenRefreshResult> {
   // Fetch credentials from database (using admin client for background jobs)
-  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const { getAccountOAuthAppAdmin } = await import(
+    '../server/account-oauth-actions'
+  );
   const oauthApp = await getAccountOAuthAppAdmin(accountId, 'meta');
 
   if (!oauthApp) {
@@ -357,12 +367,16 @@ async function refreshLinkedInToken(
 ): Promise<TokenRefreshResult> {
   // Fetch credentials from database (using admin client for background jobs)
   // LinkedIn uses 'meta' credentials as fallback (or add linkedin to platform type)
-  const { getAccountOAuthAppAdmin } = await import('../server/account-oauth-actions');
+  const { getAccountOAuthAppAdmin } = await import(
+    '../server/account-oauth-actions'
+  );
   // @ts-expect-error linkedin not in type yet
   const oauthApp = await getAccountOAuthAppAdmin(accountId, 'linkedin');
 
   if (!oauthApp) {
-    throw new Error('LinkedIn OAuth credentials not configured for this account');
+    throw new Error(
+      'LinkedIn OAuth credentials not configured for this account',
+    );
   }
 
   const response = await fetch(

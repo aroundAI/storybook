@@ -45,14 +45,19 @@ export function StoryScreen({
   const storyData = episode.storyData;
 
   // WebSocket for screenplay-conversion async LLM results
-  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm } = useLlmJob<{ screenplay: { scenes: unknown[] } }>(
-    'screenplay-conversion'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+    trigger: triggerLlm,
+  } = useLlmJob<{ screenplay: { scenes: unknown[] } }>('screenplay-conversion');
 
   // WebSocket for story-generation results (when story is generated while on this tab)
-  const { status: storyGenStatus, result: storyGenResult, error: storyGenError } = useLlmJob<{ success: boolean }>(
-    'story-generation'
-  );
+  const {
+    status: storyGenStatus,
+    result: storyGenResult,
+    error: storyGenError,
+  } = useLlmJob<{ success: boolean }>('story-generation');
 
   // Handle async screenplay-conversion result
   useEffect(() => {
@@ -159,10 +164,7 @@ export function StoryScreen({
       // Regular paragraphs
       if (line.trim()) {
         elements.push(
-          <p
-            key={index}
-            className="cinema-story-text mb-4"
-          >
+          <p key={index} className="cinema-story-text mb-4">
             {line}
           </p>,
         );
@@ -309,7 +311,7 @@ export function StoryScreen({
         <button
           onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
           className={cn(
-            'fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 bg-card/70 p-3 shadow-lg backdrop-blur-xl transition-all hover:bg-card/90 dark:hover:bg-gray-800/90',
+            'bg-card/70 hover:bg-card/90 fixed top-1/2 right-0 z-40 -translate-y-1/2 rounded-l-xl border border-r-0 border-white/30 p-3 shadow-lg backdrop-blur-xl transition-all dark:hover:bg-gray-800/90',
             isSidebarExpanded && 'right-80',
           )}
         >
@@ -327,7 +329,7 @@ export function StoryScreen({
         {/* Sidebar Panel */}
         <div
           className={cn(
-            'fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 bg-card/60 shadow-2xl backdrop-blur-xl transition-transform duration-300',
+            'bg-card/60 fixed top-0 right-0 z-30 h-full w-80 transform border-l border-white/20 shadow-2xl backdrop-blur-xl transition-transform duration-300',
             isSidebarExpanded ? 'translate-x-0' : 'translate-x-full',
           )}
         >
@@ -346,7 +348,7 @@ export function StoryScreen({
             <div className="flex-1 overflow-y-auto p-4">
               <div className="space-y-4">
                 {/* Story Details */}
-                <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                   <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                     Story Details
                   </h3>
@@ -396,7 +398,7 @@ export function StoryScreen({
 
                 {/* Act Breakdown */}
                 {storyData.actBreakdown && (
-                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Act Breakdown
                     </h3>
@@ -431,7 +433,7 @@ export function StoryScreen({
 
                 {/* Themes */}
                 {storyData.themes && storyData.themes.length > 0 && (
-                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
                       Themes
                     </h3>
@@ -450,7 +452,7 @@ export function StoryScreen({
 
                 {/* Characters */}
                 {storyData.characters && storyData.characters.length > 0 && (
-                  <div className="rounded-xl bg-card/80 p-4 shadow-sm backdrop-blur-sm">
+                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                       <Users className="h-4 w-4" />
                       Characters
@@ -475,7 +477,7 @@ export function StoryScreen({
                                 className={cn(
                                   'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
                                   ROLE_COLORS[character.role.toLowerCase()] ??
-                                  'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
                                 )}
                               >
                                 {character.role}

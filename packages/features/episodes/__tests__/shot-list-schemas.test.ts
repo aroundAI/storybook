@@ -168,7 +168,9 @@ describe('Shot List Schemas', () => {
     it('should reject non-string values', () => {
       expect(PromptCameraDirectionSchema.safeParse(123).success).toBe(false);
       expect(PromptCameraDirectionSchema.safeParse(null).success).toBe(false);
-      expect(PromptCameraDirectionSchema.safeParse(undefined).success).toBe(false);
+      expect(PromptCameraDirectionSchema.safeParse(undefined).success).toBe(
+        false,
+      );
     });
   });
 

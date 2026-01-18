@@ -65,11 +65,14 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
 
           {/* API Keys Section */}
           <div className="border-t pt-8">
-            <h2 className="text-xl font-semibold mb-2">
+            <h2 className="mb-2 text-xl font-semibold">
               <Trans i18nKey="teams:apiKeys.pageTitle" defaults="API Keys" />
             </h2>
-            <p className="text-sm text-muted-foreground mb-6">
-              <Trans i18nKey="teams:apiKeys.pageDescription" defaults="Manage API keys for external services like ElevenLabs" />
+            <p className="text-muted-foreground mb-6 text-sm">
+              <Trans
+                i18nKey="teams:apiKeys.pageDescription"
+                defaults="Manage API keys for external services like ElevenLabs"
+              />
             </p>
             <ApiKeysSettings accountSlug={account.slug} />
           </div>
@@ -80,4 +83,3 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
 }
 
 export default TeamAccountSettingsPage;
-

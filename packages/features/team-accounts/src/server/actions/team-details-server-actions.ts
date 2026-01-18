@@ -25,10 +25,12 @@ export const updateTeamAccountName = enhanceAction(
     // Fetch before state for audit log
     const { data: beforeAccount } = await client
       .from('accounts')
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .eq('slug', slug)
       .single();
 
@@ -41,10 +43,12 @@ export const updateTeamAccountName = enhanceAction(
       .match({
         slug,
       })
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .single();
 
     if (error) {

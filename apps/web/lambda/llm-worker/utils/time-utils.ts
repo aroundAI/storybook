@@ -15,12 +15,12 @@
  * parseTimeToSeconds("2:45")  // returns 165
  */
 export function parseTimeToSeconds(time: string): number {
-    if (!time || typeof time !== 'string') {
-        return 0;
-    }
-    const parts = time.split(':').map(Number);
-    const [minutes, seconds] = parts;
-    return (minutes || 0) * 60 + (seconds || 0);
+  if (!time || typeof time !== 'string') {
+    return 0;
+  }
+  const parts = time.split(':').map(Number);
+  const [minutes, seconds] = parts;
+  return (minutes || 0) * 60 + (seconds || 0);
 }
 
 /**
@@ -33,7 +33,7 @@ export function parseTimeToSeconds(time: string): number {
  * formatSecondsAsTime(165) // returns "02:45"
  */
 export function formatSecondsAsTime(totalSeconds: number): string {
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = Math.floor(totalSeconds % 60);
-    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }

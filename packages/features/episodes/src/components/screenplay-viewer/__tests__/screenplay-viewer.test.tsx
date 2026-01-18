@@ -528,7 +528,9 @@ describe('ScreenplayViewer', () => {
       );
 
       // There are two Film icons in empty state (header + content)
-      expect(screen.getAllByTestId('icon-film').length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByTestId('icon-film').length).toBeGreaterThanOrEqual(
+        1,
+      );
     });
 
     it('should render Check icon in approve button', () => {

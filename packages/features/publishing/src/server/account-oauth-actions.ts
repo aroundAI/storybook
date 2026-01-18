@@ -13,12 +13,12 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * OAuth App credential for an account
  */
 export interface AccountOAuthApp {
-    id: string;
-    accountId: string;
-    platform: 'youtube' | 'tiktok' | 'meta';
-    clientId: string;
-    createdAt: string;
-    updatedAt: string;
+  id: string;
+  accountId: string;
+  platform: 'youtube' | 'tiktok' | 'meta';
+  clientId: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -26,37 +26,39 @@ export interface AccountOAuthApp {
  * Requires authenticated user context (for API routes/server components)
  */
 export async function getAccountOAuthApp(
-    accountId: string,
-    platform: 'youtube' | 'tiktok' | 'meta',
+  accountId: string,
+  platform: 'youtube' | 'tiktok' | 'meta',
 ): Promise<{ clientId: string; clientSecret: string } | null> {
-    // Use regular client which respects RLS
-    // The caller (API route) must have authenticated user context
-    const client = getSupabaseServerClient();
+  // Use regular client which respects RLS
+  // The caller (API route) must have authenticated user context
+  const client = getSupabaseServerClient();
 
-    // Verify auth context
-    const { data: { user } } = await client.auth.getUser();
+  // Verify auth context
+  const {
+    data: { user },
+  } = await client.auth.getUser();
 
-    if (!user) {
-        return null;
-    }
+  if (!user) {
+    return null;
+  }
 
-    const { data, error } = await client
-        .from('account_oauth_apps')
-        .select('client_id, client_secret_encrypted')
-        .eq('account_id', accountId)
-        .eq('platform', platform)
-        .single();
+  const { data, error } = await client
+    .from('account_oauth_apps')
+    .select('client_id, client_secret_encrypted')
+    .eq('account_id', accountId)
+    .eq('platform', platform)
+    .single();
 
-    if (error || !data) {
-        return null;
-    }
+  if (error || !data) {
+    return null;
+  }
 
-    const clientSecret = await decrypt(data.client_secret_encrypted);
+  const clientSecret = await decrypt(data.client_secret_encrypted);
 
-    return {
-        clientId: data.client_id,
-        clientSecret,
-    };
+  return {
+    clientId: data.client_id,
+    clientSecret,
+  };
 }
 
 /**
@@ -64,128 +66,126 @@ export async function getAccountOAuthApp(
  * Uses admin client - for cron jobs and background tasks (no request context)
  */
 export async function getAccountOAuthAppAdmin(
-    accountId: string,
-    platform: 'youtube' | 'tiktok' | 'meta',
+  accountId: string,
+  platform: 'youtube' | 'tiktok' | 'meta',
 ): Promise<{ clientId: string; clientSecret: string } | null> {
-    // Use admin client for background jobs (no cookies/request context)
-    const client = getSupabaseServerAdminClient();
+  // Use admin client for background jobs (no cookies/request context)
+  const client = getSupabaseServerAdminClient();
 
-    const { data, error } = await client
-        .from('account_oauth_apps')
-        .select('client_id, client_secret_encrypted')
-        .eq('account_id', accountId)
-        .eq('platform', platform)
-        .single();
+  const { data, error } = await client
+    .from('account_oauth_apps')
+    .select('client_id, client_secret_encrypted')
+    .eq('account_id', accountId)
+    .eq('platform', platform)
+    .single();
 
-    if (error || !data) {
-        return null;
-    }
+  if (error || !data) {
+    return null;
+  }
 
-    const clientSecret = await decrypt(data.client_secret_encrypted);
+  const clientSecret = await decrypt(data.client_secret_encrypted);
 
-    return {
-        clientId: data.client_id,
-        clientSecret,
-    };
+  return {
+    clientId: data.client_id,
+    clientSecret,
+  };
 }
 
 /**
  * Get all OAuth apps for an account
  */
 export async function getAccountOAuthApps(
-    accountId: string,
+  accountId: string,
 ): Promise<AccountOAuthApp[]> {
-    const client = getSupabaseServerClient();
+  const client = getSupabaseServerClient();
 
-    const { data, error } = await client
-        .from('account_oauth_apps')
-        .select('id, account_id, platform, client_id, created_at, updated_at')
-        .eq('account_id', accountId);
+  const { data, error } = await client
+    .from('account_oauth_apps')
+    .select('id, account_id, platform, client_id, created_at, updated_at')
+    .eq('account_id', accountId);
 
-    if (error || !data) {
-        return [];
-    }
+  if (error || !data) {
+    return [];
+  }
 
-    return data.map((row) => ({
-        id: row.id,
-        accountId: row.account_id,
-        platform: row.platform as 'youtube' | 'tiktok' | 'meta',
-        clientId: row.client_id,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-    }));
+  return data.map((row) => ({
+    id: row.id,
+    accountId: row.account_id,
+    platform: row.platform as 'youtube' | 'tiktok' | 'meta',
+    clientId: row.client_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }));
 }
 
 /**
  * Save OAuth app credentials for an account
  */
 const SaveOAuthAppSchema = z.object({
-    accountId: z.string().uuid(),
-    platform: z.enum(['youtube', 'tiktok', 'meta']),
-    clientId: z.string().min(1),
-    clientSecret: z.string().min(1),
+  accountId: z.string().uuid(),
+  platform: z.enum(['youtube', 'tiktok', 'meta']),
+  clientId: z.string().min(1),
+  clientSecret: z.string().min(1),
 });
 
 export const saveAccountOAuthAppAction = enhanceAction(
-    async ({ accountId, platform, clientId, clientSecret }) => {
-        const client = getSupabaseServerClient();
+  async ({ accountId, platform, clientId, clientSecret }) => {
+    const client = getSupabaseServerClient();
 
-        // Encrypt the secret before storing
-        const encryptedSecret = await encrypt(clientSecret);
+    // Encrypt the secret before storing
+    const encryptedSecret = await encrypt(clientSecret);
 
-        const { error } = await client
-            .from('account_oauth_apps')
-            .upsert(
-                {
-                    account_id: accountId,
-                    platform,
-                    client_id: clientId,
-                    client_secret_encrypted: encryptedSecret,
-                    updated_at: new Date().toISOString(),
-                },
-                {
-                    onConflict: 'account_id,platform',
-                },
-            );
+    const { error } = await client.from('account_oauth_apps').upsert(
+      {
+        account_id: accountId,
+        platform,
+        client_id: clientId,
+        client_secret_encrypted: encryptedSecret,
+        updated_at: new Date().toISOString(),
+      },
+      {
+        onConflict: 'account_id,platform',
+      },
+    );
 
-        if (error) {
-            throw new Error('Failed to save OAuth app credentials');
-        }
+    if (error) {
+      throw new Error('Failed to save OAuth app credentials');
+    }
 
-        return { success: true };
-    },
-    {
-        schema: SaveOAuthAppSchema,
-        auth: true,
-    },
+    return { success: true };
+  },
+  {
+    schema: SaveOAuthAppSchema,
+    auth: true,
+  },
 );
 
 /**
  * Delete OAuth app credentials for an account
  */
 const DeleteOAuthAppSchema = z.object({
-    accountId: z.string().uuid(),
-    platform: z.enum(['youtube', 'tiktok', 'meta']),
+  accountId: z.string().uuid(),
+  platform: z.enum(['youtube', 'tiktok', 'meta']),
 });
 
 export const deleteAccountOAuthAppAction = enhanceAction(
-    async ({ accountId, platform }) => {
-        const client = getSupabaseServerClient();
+  async ({ accountId, platform }) => {
+    const client = getSupabaseServerClient();
 
-        const { error } = await client
-            .from('account_oauth_apps')
-            .delete()
-            .eq('account_id', accountId)
-            .eq('platform', platform);
+    const { error } = await client
+      .from('account_oauth_apps')
+      .delete()
+      .eq('account_id', accountId)
+      .eq('platform', platform);
 
-        if (error) {
-            throw new Error('Failed to delete OAuth app credentials');
-        }
+    if (error) {
+      throw new Error('Failed to delete OAuth app credentials');
+    }
 
-        return { success: true };
-    },
-    {
-        schema: DeleteOAuthAppSchema,
-        auth: true,
-    },
+    return { success: true };
+  },
+  {
+    schema: DeleteOAuthAppSchema,
+    auth: true,
+  },
 );

@@ -108,10 +108,7 @@ describe('Config Loader', () => {
         });
         process.env.PLAYHT_API_KEY = 'platform-playht-key';
 
-        const config = await loadVoiceProviderConfig(
-          'account-123',
-          'playht',
-        );
+        const config = await loadVoiceProviderConfig('account-123', 'playht');
 
         expect(config.apiKey).toBe('platform-playht-key');
         expect(mockedDecrypt).not.toHaveBeenCalled();
@@ -367,10 +364,7 @@ describe('Config Loader', () => {
         });
         process.env.PLAYHT_API_KEY = 'platform-key';
 
-        const hasKey = await hasVoiceProviderApiKey(
-          'account-123',
-          'playht',
-        );
+        const hasKey = await hasVoiceProviderApiKey('account-123', 'playht');
 
         expect(hasKey).toBe(true);
       });
@@ -413,7 +407,10 @@ describe('Config Loader', () => {
         });
         // Note: No env fallback for ElevenLabs
 
-        const hasKey = await hasVoiceProviderApiKey('account-123', 'elevenlabs');
+        const hasKey = await hasVoiceProviderApiKey(
+          'account-123',
+          'elevenlabs',
+        );
         expect(hasKey).toBe(false);
       });
     });

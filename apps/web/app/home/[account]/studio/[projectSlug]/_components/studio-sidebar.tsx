@@ -461,7 +461,6 @@ export function StudioSidebar({
                 isActive={pathname.includes('/audio-library')}
                 isCollapsed={isCollapsed}
               />
-
             </nav>
           </div>
 

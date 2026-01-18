@@ -4,10 +4,9 @@ import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import { useActiveGenerationJob } from '@kit/episodes/hooks';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
-
-import { useActiveGenerationJob } from '@kit/episodes/hooks';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { GeneratingState } from '../_components/generating-state';
@@ -22,22 +21,21 @@ export default function ScreenplayPage() {
   const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
 
   // Check for active screenplay conversion job (only if no data exists)
-  const { isGenerating } = useActiveGenerationJob(
-    episode.id,
-    'screenplay',
-    { enabled: !hasScreenplay }
-  );
+  const { isGenerating } = useActiveGenerationJob(episode.id, 'screenplay', {
+    enabled: !hasScreenplay,
+  });
 
   // Subscribe to WebSocket for screenplay-conversion results
   // This subscriber MUST be at page level so it's active during GeneratingState
-  const { status: wsStatus, result: wsResult, error: wsError } = useLlmJob<{ success: boolean }>(
-    'screenplay-conversion'
-  );
+  const {
+    status: wsStatus,
+    result: wsResult,
+    error: wsError,
+  } = useLlmJob<{ success: boolean }>('screenplay-conversion');
 
   // Handle WebSocket completion - refetch episode data
   useEffect(() => {
     if (wsStatus === 'success' && wsResult) {
-      console.log('[ScreenplayPage] WebSocket received completion, refetching episode');
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = wsResult as any;
       if (resultData?.success) {
@@ -71,7 +69,7 @@ export default function ScreenplayPage() {
   if (!hasScreenplay) {
     return (
       <div className="flex h-full flex-col items-center justify-center p-8">
-        <div className="rounded-2xl border border-gray-200 bg-card p-12 text-center shadow-sm">
+        <div className="bg-card rounded-2xl border border-gray-200 p-12 text-center shadow-sm">
           <div className="mb-4 text-4xl">🔒</div>
           <h2 className="mb-2 text-xl font-semibold text-gray-900 dark:text-white">
             Screenplay Locked
@@ -95,4 +93,3 @@ export default function ScreenplayPage() {
     </div>
   );
 }
-

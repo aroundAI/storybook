@@ -31,16 +31,18 @@ export const getConnectionsAction = enhanceAction(
 
     const { data: connections, error } = (await client
       .from('platform_connections' as 'accounts')
-      .select(`
+      .select(
+        `
         id, account_id, platform, platform_account_id, platform_account_name,
         is_active, token_expires_at, scopes, metadata, language,
         created_at, updated_at
-      `)
+      `,
+      )
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false })) as {
-        data: DBPlatformConnection[] | null;
-        error: unknown;
-      };
+      data: DBPlatformConnection[] | null;
+      error: unknown;
+    };
 
     if (error) {
       throw new Error('Failed to fetch connections');
@@ -56,16 +58,15 @@ export const getConnectionsAction = enhanceAction(
           accountName: conn.platform_account_name ?? 'Unknown Account',
           profileImageUrl:
             conn.metadata && typeof conn.metadata === 'object'
-              ? ((conn.metadata as Record<string, unknown>).profile_image_url as
-                | string
-                | undefined)
+              ? ((conn.metadata as Record<string, unknown>)
+                  .profile_image_url as string | undefined)
               : undefined,
           status: determineStatus(conn),
           errorMessage:
             conn.metadata && typeof conn.metadata === 'object'
               ? ((conn.metadata as Record<string, unknown>).last_error as
-                | string
-                | undefined)
+                  | string
+                  | undefined)
               : undefined,
           scopes: conn.scopes ?? [],
           tokenExpiresAt: conn.token_expires_at,
@@ -159,13 +160,15 @@ export const updateConnectionLanguageAction = enhanceAction(
     const client = getSupabaseServerClient();
 
     // Type cast until migration is applied and types regenerated
-    const { error } = await (client as unknown as {
-      from: (table: string) => {
-        update: (data: { language: string }) => {
-          eq: (col: string, val: string) => Promise<{ error: unknown }>;
+    const { error } = await (
+      client as unknown as {
+        from: (table: string) => {
+          update: (data: { language: string }) => {
+            eq: (col: string, val: string) => Promise<{ error: unknown }>;
+          };
         };
-      };
-    })
+      }
+    )
       .from('platform_connections')
       .update({ language })
       .eq('id', connectionId);
@@ -248,11 +251,13 @@ export const getConnectedPlatformsAction = enhanceAction(
 
     const { data: connections, error } = await client
       .from('platform_connections')
-      .select(`
+      .select(
+        `
         id, account_id, platform, platform_account_id, platform_account_name,
         is_active, token_expires_at, scopes, metadata, language,
         created_at, updated_at
-      `)
+      `,
+      )
       .eq('account_id', accountId)
       .order('platform', { ascending: true });
 

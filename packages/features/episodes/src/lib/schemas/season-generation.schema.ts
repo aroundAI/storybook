@@ -10,7 +10,7 @@ export const AnalyzeSeasonSchema = z.object({
  * Preserves the original label from the source document
  */
 export const EpisodeBeatSchema = z.object({
-  label: z.string(),   // Original label: "The Mystery", "Act 1", "Cold Open", etc.
+  label: z.string(), // Original label: "The Mystery", "Act 1", "Cold Open", etc.
   content: z.string(), // The content for that beat
 });
 
@@ -83,6 +83,6 @@ export const GenerateSeasonEpisodesSchema = z.object({
 // Type exports
 export type EpisodeBeat = z.infer<typeof EpisodeBeatSchema>;
 export type ExtractedEpisode = z.infer<typeof ExtractedEpisodeSchema>;
-export type GenerateSeasonEpisodesInput = z.infer<typeof GenerateSeasonEpisodesSchema>;
-
-
+export type GenerateSeasonEpisodesInput = z.infer<
+  typeof GenerateSeasonEpisodesSchema
+>;

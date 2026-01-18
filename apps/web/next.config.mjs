@@ -93,8 +93,8 @@ const config = {
     process.env.NEXT_PUBLIC_CI === 'true'
       ? false
       : {
-        position: 'bottom-right',
-      },
+          position: 'bottom-right',
+        },
   experimental: {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
@@ -137,16 +137,16 @@ function getRemotePatterns() {
   return IS_PRODUCTION
     ? remotePatterns
     : [
-      ...remotePatterns, // Include R2 patterns in development too
-      {
-        protocol: 'http',
-        hostname: '127.0.0.1',
-      },
-      {
-        protocol: 'http',
-        hostname: 'localhost',
-      },
-    ];
+        ...remotePatterns, // Include R2 patterns in development too
+        {
+          protocol: 'http',
+          hostname: '127.0.0.1',
+        },
+        {
+          protocol: 'http',
+          hostname: 'localhost',
+        },
+      ];
 }
 
 async function getRedirects() {
@@ -179,22 +179,26 @@ async function getHeaders() {
     {
       source: '/images/favicon/:path*',
       headers: [
-        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800' },
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, s-maxage=604800',
+        },
       ],
     },
     // Public images - cache 1 day browser, 1 week CDN
     {
       source: '/images/:path*',
       headers: [
-        { key: 'Cache-Control', value: 'public, max-age=86400, s-maxage=604800' },
+        {
+          key: 'Cache-Control',
+          value: 'public, max-age=86400, s-maxage=604800',
+        },
       ],
     },
     // API routes - no cache by default
     {
       source: '/api/:path*',
-      headers: [
-        { key: 'Cache-Control', value: 'no-store, must-revalidate' },
-      ],
+      headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
     },
   ];
 }

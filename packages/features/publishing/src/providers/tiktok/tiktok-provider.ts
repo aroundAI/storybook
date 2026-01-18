@@ -14,12 +14,12 @@ const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
 /**
  * TikTok Provider
  * Handles video uploads using TikTok's Content Posting API with streaming chunked upload
- * 
+ *
  * Memory-optimized: Uses streaming to avoid loading entire video into memory.
  * This allows uploading large videos (up to 4GB) without running out of memory.
  */
 export class TikTokProvider {
-  constructor(private accessToken: string) { }
+  constructor(private accessToken: string) {}
 
   /**
    * Uploads a video to TikTok using the Content Posting API
@@ -117,7 +117,13 @@ export class TikTokProvider {
           const startByte = uploadedBytes;
           const endByte = uploadedBytes + chunk.length - 1;
 
-          await this.uploadChunk(uploadUrl, chunk, startByte, endByte, videoSize);
+          await this.uploadChunk(
+            uploadUrl,
+            chunk,
+            startByte,
+            endByte,
+            videoSize,
+          );
 
           uploadedBytes += chunk.length;
           const progress = Math.round((uploadedBytes / videoSize) * 100);

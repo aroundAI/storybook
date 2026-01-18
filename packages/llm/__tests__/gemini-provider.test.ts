@@ -245,17 +245,17 @@ describe('GeminiClient', () => {
       const testCases: Array<{
         finishReason: string | undefined;
         expectedFinishReason:
-        | 'stop'
-        | 'length'
-        | 'function_call'
-        | 'content_filter';
+          | 'stop'
+          | 'length'
+          | 'function_call'
+          | 'content_filter';
       }> = [
-          { finishReason: 'STOP', expectedFinishReason: 'stop' },
-          { finishReason: 'MAX_TOKENS', expectedFinishReason: 'length' },
-          { finishReason: 'SAFETY', expectedFinishReason: 'content_filter' },
-          { finishReason: 'RECITATION', expectedFinishReason: 'content_filter' },
-          { finishReason: undefined, expectedFinishReason: 'stop' },
-        ];
+        { finishReason: 'STOP', expectedFinishReason: 'stop' },
+        { finishReason: 'MAX_TOKENS', expectedFinishReason: 'length' },
+        { finishReason: 'SAFETY', expectedFinishReason: 'content_filter' },
+        { finishReason: 'RECITATION', expectedFinishReason: 'content_filter' },
+        { finishReason: undefined, expectedFinishReason: 'stop' },
+      ];
 
       const client = new GeminiClient({
         provider: 'gemini',

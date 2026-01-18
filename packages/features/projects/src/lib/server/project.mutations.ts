@@ -2,6 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 
+/**
+ * Update project audio settings
+ * Used to configure per-project audio generation models (TTS, SFX, Music)
+ */
+import { z } from 'zod';
+
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -123,11 +129,13 @@ export const updateProjectAction = enhanceAction(
     // Fetch before state for audit log
     const { data: beforeProject } = await client
       .from('projects')
-      .select(`
+      .select(
+        `
         id, name, slug, description, account_id, metadata, status, visibility,
         audio_settings, created_by, updated_by, public_slug, seo_metadata,
         created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', data.id)
       .single();
 
@@ -210,11 +218,13 @@ export const deleteProjectAction = enhanceAction(
     // Fetch before state for audit log
     const { data: project } = await client
       .from('projects')
-      .select(`
+      .select(
+        `
         id, name, slug, description, account_id, metadata, status, visibility,
         audio_settings, created_by, updated_by, public_slug, seo_metadata,
         created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', data.id)
       .single();
 
@@ -503,12 +513,6 @@ export const removeProjectMemberAction = enhanceAction(
   },
 );
 
-/**
- * Update project audio settings
- * Used to configure per-project audio generation models (TTS, SFX, Music)
- */
-import { z } from 'zod';
-
 const UpdateProjectAudioSettingsSchema = z.object({
   projectId: z.string().uuid(),
   audioSettings: z.object({
@@ -535,7 +539,10 @@ export type ProjectAudioSettings = z.infer<
 export const updateProjectAudioSettingsAction = enhanceAction(
   async (data: z.infer<typeof UpdateProjectAudioSettingsSchema>) => {
     const logger = await getLogger();
-    const ctx = { name: 'projects.updateAudioSettings', projectId: data.projectId };
+    const ctx = {
+      name: 'projects.updateAudioSettings',
+      projectId: data.projectId,
+    };
 
     logger.info(ctx, 'Updating project audio settings');
 
@@ -582,4 +589,3 @@ export const updateProjectAudioSettingsAction = enhanceAction(
     schema: UpdateProjectAudioSettingsSchema,
   },
 );
-

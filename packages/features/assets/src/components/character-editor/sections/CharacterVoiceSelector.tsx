@@ -7,10 +7,9 @@
 
 'use client';
 
-import type { UseFormReturn } from 'react-hook-form';
-
 import { useQuery } from '@tanstack/react-query';
 import { AlertCircle, Volume2 } from 'lucide-react';
+import type { UseFormReturn } from 'react-hook-form';
 
 import { Alert, AlertDescription } from '@kit/ui/alert';
 import {
@@ -32,9 +31,16 @@ import { Skeleton } from '@kit/ui/skeleton';
 
 import type { CharacterFormData } from '../../../lib/schemas/character.schema';
 import {
-  getElevenLabsVoicesAction,
   type ElevenLabsVoice,
+  getElevenLabsVoicesAction,
 } from '../../../lib/server/voice.actions';
+
+/**
+ * Character Voice Selector Section
+ *
+ * Dropdown to select an ElevenLabs voice for the character.
+ * Fetches voices directly from the ElevenLabs API.
+ */
 
 interface CharacterVoiceSelectorProps {
   form: UseFormReturn<CharacterFormData>;
@@ -64,7 +70,10 @@ export function CharacterVoiceSelector({
   // Debug: log current form value and available voices
   const currentValue = form.watch('voiceAssetId');
   console.log('[VoiceSelector] Current form value:', currentValue);
-  console.log('[VoiceSelector] Available voices:', voices.map(v => ({ id: v.id, name: v.name })));
+  console.log(
+    '[VoiceSelector] Available voices:',
+    voices.map((v) => ({ id: v.id, name: v.name })),
+  );
 
   if (isLoading) {
     return (
@@ -141,4 +150,3 @@ export function CharacterVoiceSelector({
     </div>
   );
 }
-

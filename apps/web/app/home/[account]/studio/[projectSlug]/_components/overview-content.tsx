@@ -18,13 +18,13 @@ interface Episode {
   thumbnailUrl?: string;
   seasonNumber?: number;
   stage?:
-  | 'draft'
-  | 'story'
-  | 'screenplay'
-  | 'shots'
-  | 'visual'
-  | 'audio'
-  | 'complete';
+    | 'draft'
+    | 'story'
+    | 'screenplay'
+    | 'shots'
+    | 'visual'
+    | 'audio'
+    | 'complete';
 }
 
 interface ProjectMetadata {
@@ -189,34 +189,34 @@ export function OverviewContent({
   const scriptPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-        (productionStatus.scriptsComplete / productionStatus.totalEpisodes) *
-        100,
-      )
+          (productionStatus.scriptsComplete / productionStatus.totalEpisodes) *
+            100,
+        )
       : 0;
   const storyboardPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-        (productionStatus.storyboardsComplete /
-          productionStatus.totalEpisodes) *
-        100,
-      )
+          (productionStatus.storyboardsComplete /
+            productionStatus.totalEpisodes) *
+            100,
+        )
       : 0;
   const visualPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-        (productionStatus.visualsComplete / productionStatus.totalEpisodes) *
-        100,
-      )
+          (productionStatus.visualsComplete / productionStatus.totalEpisodes) *
+            100,
+        )
       : 0;
   const overallPercent =
     productionStatus.totalEpisodes > 0
       ? Math.round(
-        ((productionStatus.scriptsComplete +
-          productionStatus.storyboardsComplete +
-          productionStatus.visualsComplete) /
-          (productionStatus.totalEpisodes * 3)) *
-        100,
-      )
+          ((productionStatus.scriptsComplete +
+            productionStatus.storyboardsComplete +
+            productionStatus.visualsComplete) /
+            (productionStatus.totalEpisodes * 3)) *
+            100,
+        )
       : 0;
 
   return (
@@ -275,10 +275,7 @@ export function OverviewContent({
       {/* ============= STATS CARDS ============= */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* Episodes stat */}
-        <Link
-          href={`${baseUrl}/episodes`}
-          className="group cinema-panel p-6"
-        >
+        <Link href={`${baseUrl}/episodes`} className="group cinema-panel p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-muted-foreground mb-1 text-sm font-medium">
@@ -307,10 +304,7 @@ export function OverviewContent({
         </Link>
 
         {/* Characters stat */}
-        <Link
-          href={`${baseUrl}/assets`}
-          className="group cinema-panel p-6"
-        >
+        <Link href={`${baseUrl}/assets`} className="group cinema-panel p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-muted-foreground mb-1 text-sm font-medium">
@@ -342,10 +336,7 @@ export function OverviewContent({
         </Link>
 
         {/* Locations stat */}
-        <Link
-          href={`${baseUrl}/assets`}
-          className="group cinema-panel p-6"
-        >
+        <Link href={`${baseUrl}/assets`} className="group cinema-panel p-6">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-muted-foreground mb-1 text-sm font-medium">

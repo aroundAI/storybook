@@ -71,7 +71,7 @@ async function withCsrfMiddleware(
     ignoreMethods: isServerAction(request)
       ? ['POST']
       : // always ignore GET, HEAD, and OPTIONS requests
-      ['GET', 'HEAD', 'OPTIONS'],
+        ['GET', 'HEAD', 'OPTIONS'],
   });
 
   try {
@@ -128,7 +128,10 @@ async function adminMiddleware(request: NextRequest, response: NextResponse) {
 // ============================================
 // Rate Limiting for Public Routes
 // ============================================
-const publicRouteRateLimits = new Map<string, { count: number; resetTime: number }>();
+const publicRouteRateLimits = new Map<
+  string,
+  { count: number; resetTime: number }
+>();
 
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 60; // 60 requests per minute per IP
@@ -140,7 +143,11 @@ function getRateLimitKey(request: NextRequest): string {
   return `public:${ip}`;
 }
 
-function checkRateLimit(request: NextRequest): { allowed: boolean; remaining: number; resetIn: number } {
+function checkRateLimit(request: NextRequest): {
+  allowed: boolean;
+  remaining: number;
+  resetIn: number;
+} {
   const key = getRateLimitKey(request);
   const now = Date.now();
 
@@ -148,8 +155,15 @@ function checkRateLimit(request: NextRequest): { allowed: boolean; remaining: nu
 
   if (!entry || now > entry.resetTime) {
     // New window
-    publicRouteRateLimits.set(key, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+    publicRouteRateLimits.set(key, {
+      count: 1,
+      resetTime: now + RATE_LIMIT_WINDOW_MS,
+    });
+    return {
+      allowed: true,
+      remaining: RATE_LIMIT_MAX_REQUESTS - 1,
+      resetIn: RATE_LIMIT_WINDOW_MS,
+    };
   }
 
   if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
@@ -157,22 +171,32 @@ function checkRateLimit(request: NextRequest): { allowed: boolean; remaining: nu
   }
 
   entry.count++;
-  return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - entry.count, resetIn: entry.resetTime - now };
+  return {
+    allowed: true,
+    remaining: RATE_LIMIT_MAX_REQUESTS - entry.count,
+    resetIn: entry.resetTime - now,
+  };
 }
 
 // Clean up old entries periodically (every 5 minutes)
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of publicRouteRateLimits.entries()) {
-      if (now > entry.resetTime + RATE_LIMIT_WINDOW_MS) {
-        publicRouteRateLimits.delete(key);
+  setInterval(
+    () => {
+      const now = Date.now();
+      for (const [key, entry] of publicRouteRateLimits.entries()) {
+        if (now > entry.resetTime + RATE_LIMIT_WINDOW_MS) {
+          publicRouteRateLimits.delete(key);
+        }
       }
-    }
-  }, 5 * 60 * 1000);
+    },
+    5 * 60 * 1000,
+  );
 }
 
-async function publicRouteMiddleware(request: NextRequest, response: NextResponse) {
+async function publicRouteMiddleware(
+  request: NextRequest,
+  response: NextResponse,
+) {
   const { allowed, remaining, resetIn } = checkRateLimit(request);
 
   // Set rate limit headers
@@ -192,7 +216,7 @@ async function publicRouteMiddleware(request: NextRequest, response: NextRespons
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(Math.ceil(resetIn / 1000)),
         },
-      }
+      },
     );
   }
 

@@ -164,10 +164,12 @@ export const getProjectSeasonsAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: seasons, error } = await (client as any)
       .from('seasons')
-      .select(`
+      .select(
+        `
         id, project_id, number, name, description,
         created_at, updated_at, deleted_at
-      `)
+      `,
+      )
       .eq('project_id', data.projectId)
       .is('deleted_at', null)
       .order('number', { ascending: true });
@@ -249,11 +251,13 @@ export const updateSeasonAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: currentSeason, error: fetchError } = await (client as any)
       .from('seasons')
-      .select(`
+      .select(
+        `
         id, project_id, number, name, description, version,
         created_at, updated_at, deleted_at,
         project:projects(account_id)
-      `)
+      `,
+      )
       .eq('id', data.seasonId)
       .is('deleted_at', null)
       .single();
@@ -346,11 +350,13 @@ export const deleteSeasonAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: season, error: fetchError } = await (client as any)
       .from('seasons')
-      .select(`
+      .select(
+        `
         id, project_id, number, name, description, version,
         created_at, updated_at, deleted_at,
         project:projects(account_id)
-      `)
+      `,
+      )
       .eq('id', data.seasonId)
       .is('deleted_at', null)
       .single();

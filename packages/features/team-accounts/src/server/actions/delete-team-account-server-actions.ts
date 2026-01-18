@@ -55,10 +55,12 @@ export const deleteTeamAccountAction = enhanceAction(
     const client = getSupabaseServerClient();
     const { data: account } = await client
       .from('accounts')
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', params.accountId)
       .single();
 

@@ -9,16 +9,16 @@ import { projectCacheKeys } from '../cache-keys';
  * Call this on project update/delete operations
  */
 export async function invalidateProjectCache(
-    projectId: string,
-    accountId: string,
+  projectId: string,
+  accountId: string,
 ) {
-    const cache = createCacheClient();
+  const cache = createCacheClient();
 
-    await cache.mdel([
-        projectCacheKeys.project(projectId),
-        projectCacheKeys.projectMembers(projectId),
-        projectCacheKeys.accountProjects(accountId),
-    ]);
+  await cache.mdel([
+    projectCacheKeys.project(projectId),
+    projectCacheKeys.projectMembers(projectId),
+    projectCacheKeys.accountProjects(accountId),
+  ]);
 }
 
 /**
@@ -26,8 +26,8 @@ export async function invalidateProjectCache(
  * Call this when projects are created/deleted
  */
 export async function invalidateAccountProjectsCache(accountId: string) {
-    const cache = createCacheClient();
-    await cache.del(projectCacheKeys.accountProjects(accountId));
+  const cache = createCacheClient();
+  await cache.del(projectCacheKeys.accountProjects(accountId));
 }
 
 /**
@@ -35,6 +35,6 @@ export async function invalidateAccountProjectsCache(accountId: string) {
  * Call this when members are added/removed/updated
  */
 export async function invalidateProjectMembersCache(projectId: string) {
-    const cache = createCacheClient();
-    await cache.del(projectCacheKeys.projectMembers(projectId));
+  const cache = createCacheClient();
+  await cache.del(projectCacheKeys.projectMembers(projectId));
 }

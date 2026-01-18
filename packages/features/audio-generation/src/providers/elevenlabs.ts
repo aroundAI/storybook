@@ -177,11 +177,11 @@ export class ElevenLabsProvider extends BaseVoiceGenerationProvider {
         isCloned: voice.category === 'cloned',
         settings: voice.settings
           ? {
-            stability: voice.settings.stability,
-            similarityBoost: voice.settings.similarity_boost,
-            style: voice.settings.style,
-            useSpeakerBoost: voice.settings.use_speaker_boost,
-          }
+              stability: voice.settings.stability,
+              similarityBoost: voice.settings.similarity_boost,
+              style: voice.settings.style,
+              useSpeakerBoost: voice.settings.use_speaker_boost,
+            }
           : undefined,
       }));
 

@@ -1,11 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 import { format } from 'date-fns';
 import { ArrowLeft, MapPin, MoreVertical, Sparkles, User } from 'lucide-react';
 
-import { usePathname } from 'next/navigation';
 import { useEpisodeContext } from './episode-context-provider';
 import { StudioSwitcher } from './studio-switcher';
 
@@ -19,8 +19,10 @@ export function EpisodeWorkspaceHeader() {
   const locationIds = (episode.metadata?.location_ids as string[]) ?? [];
 
   // Primary source: character/location names stored in metadata from season generation
-  const metadataCharacterNames = (episode.metadata?.character_names as string[]) ?? [];
-  const metadataLocationNames = (episode.metadata?.location_names as string[]) ?? [];
+  const metadataCharacterNames =
+    (episode.metadata?.character_names as string[]) ?? [];
+  const metadataLocationNames =
+    (episode.metadata?.location_names as string[]) ?? [];
 
   // Fallback: Extract character names from story data if available
   const storyCharacters = episode.storyData?.characters ?? [];
@@ -30,8 +32,14 @@ export function EpisodeWorkspaceHeader() {
   const screenplayLocations = episode.screenplayData?.metadata?.locations ?? [];
 
   // Use metadata names first, then fallback to story/screenplay data
-  const characterNames = metadataCharacterNames.length > 0 ? metadataCharacterNames : storyCharacterNames;
-  const locationNames = metadataLocationNames.length > 0 ? metadataLocationNames : screenplayLocations;
+  const characterNames =
+    metadataCharacterNames.length > 0
+      ? metadataCharacterNames
+      : storyCharacterNames;
+  const locationNames =
+    metadataLocationNames.length > 0
+      ? metadataLocationNames
+      : screenplayLocations;
 
   return (
     <header className="sticky top-0 z-20 px-6 py-2">
@@ -121,13 +129,13 @@ export function EpisodeWorkspaceHeader() {
             locationNames.length > 0 ||
             characterIds.length > 0 ||
             locationIds.length > 0) && (
-              <TaggedAssets
-                characterNames={characterNames}
-                locationNames={locationNames}
-                characterCount={characterIds.length}
-                locationCount={locationIds.length}
-              />
-            )}
+            <TaggedAssets
+              characterNames={characterNames}
+              locationNames={locationNames}
+              characterCount={characterIds.length}
+              locationCount={locationIds.length}
+            />
+          )}
         </div>
       )}
     </header>
@@ -155,37 +163,37 @@ function TaggedAssets({
       {/* Show character names if available, otherwise fall back to count */}
       {hasCharacterNames
         ? characterNames.map((name, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-          >
-            <User className="h-2.5 w-2.5" />
-            {name}
-          </span>
-        ))
+            <span
+              key={i}
+              className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            >
+              <User className="h-2.5 w-2.5" />
+              {name}
+            </span>
+          ))
         : characterCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <User className="h-2.5 w-2.5" />
-            {characterCount} character{characterCount !== 1 ? 's' : ''}
-          </span>
-        )}
+            <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              <User className="h-2.5 w-2.5" />
+              {characterCount} character{characterCount !== 1 ? 's' : ''}
+            </span>
+          )}
       {/* Show location names if available, otherwise fall back to count */}
       {hasLocationNames
         ? locationNames.map((name, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
-          >
-            <MapPin className="h-2.5 w-2.5" />
-            {name}
-          </span>
-        ))
+            <span
+              key={i}
+              className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300"
+            >
+              <MapPin className="h-2.5 w-2.5" />
+              {name}
+            </span>
+          ))
         : locationCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
-            <MapPin className="h-2.5 w-2.5" />
-            {locationCount} location{locationCount !== 1 ? 's' : ''}
-          </span>
-        )}
+            <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300">
+              <MapPin className="h-2.5 w-2.5" />
+              {locationCount} location{locationCount !== 1 ? 's' : ''}
+            </span>
+          )}
     </div>
   );
 }

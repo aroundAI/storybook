@@ -29,11 +29,13 @@ export const disconnectMetaAction = enhanceAction(
     // Note: Type assertion needed until database types are regenerated
     const { data: connection, error: fetchError } = (await client
       .from('platform_connections' as 'accounts')
-      .select(`
+      .select(
+        `
         id, account_id, platform, platform_account_id, platform_account_name,
         access_token_encrypted, refresh_token_encrypted, is_active,
         token_expires_at, scopes, metadata, created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', connectionId)
       .single()) as { data: PlatformConnection | null; error: unknown };
 
@@ -100,8 +102,8 @@ export const disconnectMetaAction = enhanceAction(
         .select('id')
         .eq('account_id', connection.account_id)
         .eq('platform', 'instagram')) as {
-          data: Array<{ id: string; metadata?: Record<string, unknown> }> | null;
-        };
+        data: Array<{ id: string; metadata?: Record<string, unknown> }> | null;
+      };
 
       if (linkedInstagram) {
         for (const ig of linkedInstagram) {
@@ -109,10 +111,12 @@ export const disconnectMetaAction = enhanceAction(
           // This is a limitation - in production you might want a proper JSONB query
           const { data: igConnection } = (await client
             .from('platform_connections' as 'accounts')
-            .select(`
+            .select(
+              `
               id, account_id, platform, platform_account_id, platform_account_name,
               access_token_encrypted, is_active, metadata, created_at, updated_at
-            `)
+            `,
+            )
             .eq('id', ig.id)
             .single()) as { data: PlatformConnection | null };
 
@@ -121,7 +125,7 @@ export const disconnectMetaAction = enhanceAction(
             typeof igConnection.metadata === 'object' &&
             'linked_page_id' in igConnection.metadata &&
             igConnection.metadata.linked_page_id ===
-            connection.platform_account_id
+              connection.platform_account_id
           ) {
             await client
               .from('platform_connections' as 'accounts')

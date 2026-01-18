@@ -1,53 +1,50 @@
 'use client';
 
+import type {
+  ContentTypeComparison,
+  GeographyByLanguage,
+  LanguagePerformance,
+  LanguageTrendEntry,
+  PlatformLanguageEntry,
+  ShortsSourcePerformance,
+} from '../server/language-analytics';
 import {
-    BestEpisodesToClipCard,
-    BestEpisodesToClipCardSkeleton,
-    LanguageComparisonChart,
-    LanguageComparisonChartSkeleton,
-    ShortsROICard,
-    ShortsROICardSkeleton,
+  BestEpisodesToClipCard,
+  BestEpisodesToClipCardSkeleton,
+  LanguageComparisonChart,
+  LanguageComparisonChartSkeleton,
+  ShortsROICard,
+  ShortsROICardSkeleton,
 } from './analytics-enhancement-cards';
 import {
-    ContentTypeCard,
-    ContentTypeCardSkeleton,
-    LanguagePerformanceCard,
-    LanguagePerformanceCardSkeleton,
-    PlatformLanguageMatrix,
-    PlatformLanguageMatrixSkeleton,
+  ContentTypeCard,
+  ContentTypeCardSkeleton,
+  LanguagePerformanceCard,
+  LanguagePerformanceCardSkeleton,
+  PlatformLanguageMatrix,
+  PlatformLanguageMatrixSkeleton,
 } from './language-analytics-cards';
 import {
-    GeographyHeatmapCard,
-    GeographyHeatmapCardSkeleton,
-    LanguageInsightsCard,
-    LanguageInsightsCardSkeleton,
+  GeographyHeatmapCard,
+  GeographyHeatmapCardSkeleton,
+  LanguageInsightsCard,
+  LanguageInsightsCardSkeleton,
 } from './language-insights-cards';
 import {
-    LanguageTrendChart,
-    LanguageTrendChartSkeleton,
+  LanguageTrendChart,
+  LanguageTrendChartSkeleton,
 } from './language-trend-chart';
-import {
-    TopShortsCard,
-    TopShortsCardSkeleton,
-} from './shorts-geography-cards';
-import type {
-    ContentTypeComparison,
-    GeographyByLanguage,
-    LanguagePerformance,
-    LanguageTrendEntry,
-    PlatformLanguageEntry,
-    ShortsSourcePerformance,
-} from '../server/language-analytics';
+import { TopShortsCard, TopShortsCardSkeleton } from './shorts-geography-cards';
 
 interface LanguageAnalyticsDashboardProps {
-    projectId: string;
-    languageData: LanguagePerformance[] | null;
-    matrixData: PlatformLanguageEntry[] | null;
-    contentTypeData: ContentTypeComparison | null;
-    shortsData?: ShortsSourcePerformance[] | null;
-    geographyData?: GeographyByLanguage[] | null;
-    trendData?: LanguageTrendEntry[] | null;
-    isLoading?: boolean;
+  projectId: string;
+  languageData: LanguagePerformance[] | null;
+  matrixData: PlatformLanguageEntry[] | null;
+  contentTypeData: ContentTypeComparison | null;
+  shortsData?: ShortsSourcePerformance[] | null;
+  geographyData?: GeographyByLanguage[] | null;
+  trendData?: LanguageTrendEntry[] | null;
+  isLoading?: boolean;
 }
 
 /**
@@ -66,74 +63,74 @@ interface LanguageAnalyticsDashboardProps {
  * - AI Language Insights (Phase 4)
  */
 export function LanguageAnalyticsDashboard({
-    projectId,
-    languageData,
-    matrixData,
-    contentTypeData,
-    shortsData,
-    geographyData,
-    trendData,
-    isLoading = false,
+  projectId,
+  languageData,
+  matrixData,
+  contentTypeData,
+  shortsData,
+  geographyData,
+  trendData,
+  isLoading = false,
 }: LanguageAnalyticsDashboardProps) {
-    if (isLoading) {
-        return <LanguageAnalyticsDashboardSkeleton />;
-    }
+  if (isLoading) {
+    return <LanguageAnalyticsDashboardSkeleton />;
+  }
 
-    return (
-        <div className="space-y-6">
-            {/* Row 1: Language Performance + Content Type */}
-            <div className="grid gap-6 md:grid-cols-2">
-                <LanguagePerformanceCard data={languageData || []} />
-                <ContentTypeCard data={contentTypeData} />
-            </div>
+  return (
+    <div className="space-y-6">
+      {/* Row 1: Language Performance + Content Type */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <LanguagePerformanceCard data={languageData || []} />
+        <ContentTypeCard data={contentTypeData} />
+      </div>
 
-            {/* Row 2: Language Trend Chart */}
-            <LanguageTrendChart data={trendData || []} />
+      {/* Row 2: Language Trend Chart */}
+      <LanguageTrendChart data={trendData || []} />
 
-            {/* Row 3: Platform × Language Matrix */}
-            <PlatformLanguageMatrix data={matrixData || []} />
+      {/* Row 3: Platform × Language Matrix */}
+      <PlatformLanguageMatrix data={matrixData || []} />
 
-            {/* Row 4: Phase 3 Analytics Enhancements */}
-            <div className="grid gap-6 md:grid-cols-3">
-                <LanguageComparisonChart data={languageData} />
-                <ShortsROICard contentTypeData={contentTypeData} />
-                <BestEpisodesToClipCard
-                    languageData={languageData}
-                    contentTypeData={contentTypeData}
-                />
-            </div>
+      {/* Row 4: Phase 3 Analytics Enhancements */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <LanguageComparisonChart data={languageData} />
+        <ShortsROICard contentTypeData={contentTypeData} />
+        <BestEpisodesToClipCard
+          languageData={languageData}
+          contentTypeData={contentTypeData}
+        />
+      </div>
 
-            {/* Row 5: Shorts + AI Insights */}
-            <div className="grid gap-6 md:grid-cols-2">
-                <TopShortsCard data={shortsData || []} />
-                <LanguageInsightsCard projectId={projectId} />
-            </div>
+      {/* Row 5: Shorts + AI Insights */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <TopShortsCard data={shortsData || []} />
+        <LanguageInsightsCard projectId={projectId} />
+      </div>
 
-            {/* Row 6: Geography Heatmap */}
-            <GeographyHeatmapCard data={geographyData || []} />
-        </div>
-    );
+      {/* Row 6: Geography Heatmap */}
+      <GeographyHeatmapCard data={geographyData || []} />
+    </div>
+  );
 }
 
 export function LanguageAnalyticsDashboardSkeleton() {
-    return (
-        <div className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2">
-                <LanguagePerformanceCardSkeleton />
-                <ContentTypeCardSkeleton />
-            </div>
-            <LanguageTrendChartSkeleton />
-            <PlatformLanguageMatrixSkeleton />
-            <div className="grid gap-6 md:grid-cols-3">
-                <LanguageComparisonChartSkeleton />
-                <ShortsROICardSkeleton />
-                <BestEpisodesToClipCardSkeleton />
-            </div>
-            <div className="grid gap-6 md:grid-cols-2">
-                <TopShortsCardSkeleton />
-                <LanguageInsightsCardSkeleton />
-            </div>
-            <GeographyHeatmapCardSkeleton />
-        </div>
-    );
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 md:grid-cols-2">
+        <LanguagePerformanceCardSkeleton />
+        <ContentTypeCardSkeleton />
+      </div>
+      <LanguageTrendChartSkeleton />
+      <PlatformLanguageMatrixSkeleton />
+      <div className="grid gap-6 md:grid-cols-3">
+        <LanguageComparisonChartSkeleton />
+        <ShortsROICardSkeleton />
+        <BestEpisodesToClipCardSkeleton />
+      </div>
+      <div className="grid gap-6 md:grid-cols-2">
+        <TopShortsCardSkeleton />
+        <LanguageInsightsCardSkeleton />
+      </div>
+      <GeographyHeatmapCardSkeleton />
+    </div>
+  );
 }

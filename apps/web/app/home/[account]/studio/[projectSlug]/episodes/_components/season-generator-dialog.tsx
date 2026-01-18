@@ -79,7 +79,7 @@ interface AnalysisResult {
     character_names?: string[];
     location_names?: string[];
     tags?: string[];
-    description?: string;  // Legacy support
+    description?: string; // Legacy support
   }>;
 }
 
@@ -106,7 +106,7 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                 isCurrent &&
-                'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
+                  'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
                 !isCurrent && 'text-zinc-500 dark:text-zinc-400',
               )}
             >
@@ -115,10 +115,10 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
                   'flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                  'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+                    'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
                   !isCompleted &&
-                  !isCurrent &&
-                  'border border-zinc-300 dark:border-zinc-600',
+                    !isCurrent &&
+                    'border border-zinc-300 dark:border-zinc-600',
                 )}
               >
                 {isCompleted ? <Check className="h-2.5 w-2.5" /> : step.number}
@@ -160,10 +160,10 @@ function ProgressStepper({ currentStep }: { currentStep: Step }) {
                   'z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-transform',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                  'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
+                    'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
                   !isCompleted &&
-                  !isCurrent &&
-                  'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
+                    !isCurrent &&
+                    'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
                 )}
               >
                 {isCompleted ? <Check className="h-3.5 w-3.5" /> : idx + 1}
@@ -215,9 +215,13 @@ export function SeasonGeneratorDialog({
   const [locMapping, setLocMapping] = useState<Record<string, string>>({});
 
   // WebSocket for async LLM results (uses shared provider from layout)
-  const { status: llmStatus, result: llmResult, error: llmError, trigger: triggerLlm, reset: resetLlm } = useLlmJob<{ data: AnalysisResult }>(
-    'season-analysis'
-  );
+  const {
+    status: llmStatus,
+    result: llmResult,
+    error: llmError,
+    trigger: triggerLlm,
+    reset: resetLlm,
+  } = useLlmJob<{ data: AnalysisResult }>('season-analysis');
 
   const {
     assets: existingCharacters,
@@ -251,82 +255,89 @@ export function SeasonGeneratorDialog({
   }, [open]);
 
   // Process analysis result (reusable for both sync and async)
-  const processAnalysisResult = useCallback((data: AnalysisResult) => {
-    // Post-process: Aggregate all unique locations from episodes into main list
-    const globalLocations = data.locations || [];
-    const globalLocationNames = new Set(globalLocations.map(l => l.name.toLowerCase()));
-
-    const episodeLocationNames = new Set<string>();
-    data.episodes.forEach(ep => {
-      ep.location_names?.forEach(name => {
-        if (!globalLocationNames.has(name.toLowerCase())) {
-          episodeLocationNames.add(name);
-        }
-      });
-    });
-
-    const allLocations = [
-      ...globalLocations,
-      ...Array.from(episodeLocationNames).map(name => ({
-        name,
-        description: `Location mentioned in episodes`,
-        setting: 'general',
-      })),
-    ];
-
-    const globalCharacters = data.characters || [];
-    const globalCharNames = new Set(globalCharacters.map(c => c.name.toLowerCase()));
-
-    const episodeCharNames = new Set<string>();
-    data.episodes.forEach(ep => {
-      ep.character_names?.forEach(name => {
-        if (!globalCharNames.has(name.toLowerCase())) {
-          episodeCharNames.add(name);
-        }
-      });
-    });
-
-    const allCharacters = [
-      ...globalCharacters,
-      ...Array.from(episodeCharNames).map(name => ({
-        name,
-        role: 'supporting',
-        description: `Character mentioned in episodes`,
-      })),
-    ];
-
-    const enrichedAnalysis = {
-      ...data,
-      characters: allCharacters,
-      locations: allLocations,
-    };
-
-    setAnalysis(enrichedAnalysis);
-    setPremise(enrichedAnalysis.premise);
-    setShowPremise(true);
-
-    // Auto-map Characters
-    const initialCharMapping: Record<string, string> = {};
-    enrichedAnalysis.characters.forEach((c) => {
-      const match = existingCharacters.find(
-        (ex) => ex.name.toLowerCase() === c.name.toLowerCase(),
+  const processAnalysisResult = useCallback(
+    (data: AnalysisResult) => {
+      // Post-process: Aggregate all unique locations from episodes into main list
+      const globalLocations = data.locations || [];
+      const globalLocationNames = new Set(
+        globalLocations.map((l) => l.name.toLowerCase()),
       );
-      initialCharMapping[c.name] = match ? match.id : 'NEW';
-    });
-    setCharMapping(initialCharMapping);
 
-    // Auto-map Locations
-    const initialLocMapping: Record<string, string> = {};
-    enrichedAnalysis.locations?.forEach((l) => {
-      const match = existingLocations.find(
-        (ex) => ex.name.toLowerCase() === l.name.toLowerCase(),
+      const episodeLocationNames = new Set<string>();
+      data.episodes.forEach((ep) => {
+        ep.location_names?.forEach((name) => {
+          if (!globalLocationNames.has(name.toLowerCase())) {
+            episodeLocationNames.add(name);
+          }
+        });
+      });
+
+      const allLocations = [
+        ...globalLocations,
+        ...Array.from(episodeLocationNames).map((name) => ({
+          name,
+          description: `Location mentioned in episodes`,
+          setting: 'general',
+        })),
+      ];
+
+      const globalCharacters = data.characters || [];
+      const globalCharNames = new Set(
+        globalCharacters.map((c) => c.name.toLowerCase()),
       );
-      initialLocMapping[l.name] = match ? match.id : 'NEW';
-    });
-    setLocMapping(initialLocMapping);
 
-    toast.success('Roadmap analyzed successfully!');
-  }, [existingCharacters, existingLocations]);
+      const episodeCharNames = new Set<string>();
+      data.episodes.forEach((ep) => {
+        ep.character_names?.forEach((name) => {
+          if (!globalCharNames.has(name.toLowerCase())) {
+            episodeCharNames.add(name);
+          }
+        });
+      });
+
+      const allCharacters = [
+        ...globalCharacters,
+        ...Array.from(episodeCharNames).map((name) => ({
+          name,
+          role: 'supporting',
+          description: `Character mentioned in episodes`,
+        })),
+      ];
+
+      const enrichedAnalysis = {
+        ...data,
+        characters: allCharacters,
+        locations: allLocations,
+      };
+
+      setAnalysis(enrichedAnalysis);
+      setPremise(enrichedAnalysis.premise);
+      setShowPremise(true);
+
+      // Auto-map Characters
+      const initialCharMapping: Record<string, string> = {};
+      enrichedAnalysis.characters.forEach((c) => {
+        const match = existingCharacters.find(
+          (ex) => ex.name.toLowerCase() === c.name.toLowerCase(),
+        );
+        initialCharMapping[c.name] = match ? match.id : 'NEW';
+      });
+      setCharMapping(initialCharMapping);
+
+      // Auto-map Locations
+      const initialLocMapping: Record<string, string> = {};
+      enrichedAnalysis.locations?.forEach((l) => {
+        const match = existingLocations.find(
+          (ex) => ex.name.toLowerCase() === l.name.toLowerCase(),
+        );
+        initialLocMapping[l.name] = match ? match.id : 'NEW';
+      });
+      setLocMapping(initialLocMapping);
+
+      toast.success('Roadmap analyzed successfully!');
+    },
+    [existingCharacters, existingLocations],
+  );
 
   // Handle async WebSocket result
   // Track processed result to avoid re-processing when processAnalysisResult reference changes
@@ -365,7 +376,9 @@ export function SeasonGeneratorDialog({
       const result = await analyzeSeasonRoadmapAction(data);
       // Job is always queued to Lambda - WebSocket will deliver result
       if (result?.success && result?.queued) {
-        toast.info('Analyzing roadmap in background... This may take 2-3 minutes.');
+        toast.info(
+          'Analyzing roadmap in background... This may take 2-3 minutes.',
+        );
         return { queued: true };
       }
       throw new Error('Failed to analyze roadmap');
@@ -613,7 +626,11 @@ export function SeasonGeneratorDialog({
                 <Button
                   type="submit"
                   form="analyze-form"
-                  disabled={isPending || llmStatus === 'pending' || !form.watch('roadmap')}
+                  disabled={
+                    isPending ||
+                    llmStatus === 'pending' ||
+                    !form.watch('roadmap')
+                  }
                   className="relative flex items-center gap-2 rounded-full bg-zinc-900 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:shadow-xl dark:bg-white dark:text-zinc-900"
                 >
                   {isPending || llmStatus === 'pending' ? (
@@ -621,7 +638,9 @@ export function SeasonGeneratorDialog({
                   ) : (
                     <Sparkles className="h-4 w-4" />
                   )}
-                  {llmStatus === 'pending' ? 'Analyzing...' : 'Analyze & Generate Premise'}
+                  {llmStatus === 'pending'
+                    ? 'Analyzing...'
+                    : 'Analyze & Generate Premise'}
                 </Button>
                 <div className="h-px flex-1 bg-zinc-200 dark:bg-zinc-700" />
               </div>
@@ -943,7 +962,9 @@ export function SeasonGeneratorDialog({
                           {ep.title}
                         </h4>
                         <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-                          {ep.synopsis || ep.description || 'No description available'}
+                          {ep.synopsis ||
+                            ep.description ||
+                            'No description available'}
                         </p>
 
                         {/* Plot Beats */}
@@ -955,13 +976,18 @@ export function SeasonGeneratorDialog({
                             </div>
                             <div className="space-y-1.5">
                               {ep.beats.map((beat, idx) => (
-                                <div key={idx} className="flex items-start gap-2 text-xs">
+                                <div
+                                  key={idx}
+                                  className="flex items-start gap-2 text-xs"
+                                >
                                   <ChevronRight className="mt-0.5 h-3 w-3 flex-shrink-0 text-zinc-400" />
                                   <span className="font-medium text-zinc-700 dark:text-zinc-300">
                                     {beat.label}:
                                   </span>
                                   <span className="text-zinc-500 dark:text-zinc-400">
-                                    {beat.content.length > 80 ? beat.content.slice(0, 80) + '...' : beat.content}
+                                    {beat.content.length > 80
+                                      ? beat.content.slice(0, 80) + '...'
+                                      : beat.content}
                                   </span>
                                 </div>
                               ))}
@@ -980,7 +1006,11 @@ export function SeasonGeneratorDialog({
                           {ep.signature_line && (
                             <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-100 bg-purple-50 px-2.5 py-1 text-[11px] font-medium text-purple-700 dark:border-purple-900 dark:bg-purple-900/20 dark:text-purple-300">
                               <MessageCircle className="h-3 w-3" />
-                              &quot;{ep.signature_line.length > 40 ? ep.signature_line.slice(0, 40) + '...' : ep.signature_line}&quot;
+                              &quot;
+                              {ep.signature_line.length > 40
+                                ? ep.signature_line.slice(0, 40) + '...'
+                                : ep.signature_line}
+                              &quot;
                             </span>
                           )}
                         </div>

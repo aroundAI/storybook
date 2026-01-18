@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const stateParam = request.nextUrl.searchParams.get('state');
   const error = request.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
 
   if (error) {
     const errorDesc = request.nextUrl.searchParams.get('error_description');
@@ -141,7 +142,14 @@ export async function GET(request: NextRequest) {
       subscriberCount: ch.statistics?.subscriberCount || undefined,
     }));
 
-    logger.info({ ...ctx, channelCount: channels.length, channelNames: channels.map(c => c.title) }, 'Found YouTube channels');
+    logger.info(
+      {
+        ...ctx,
+        channelCount: channels.length,
+        channelNames: channels.map((c) => c.title),
+      },
+      'Found YouTube channels',
+    );
 
     if (channels.length === 0) {
       return NextResponse.redirect(

@@ -3,7 +3,7 @@ import pino from 'pino';
 /**
  * @name Logger
  * @description A logger implementation using Pino
- * 
+ *
  * Uses synchronous logging in development to avoid worker exit errors.
  * In production, uses async transport for better performance.
  */
@@ -34,7 +34,7 @@ const getDestination = () => {
           options: {
             destination: process.env.STORAGE_LOCAL_PATH
               ? `${process.env.STORAGE_LOCAL_PATH}/logs/app.log`
-              : (process.env.LOG_FILE_PATH || './logs/app.log'),
+              : process.env.LOG_FILE_PATH || './logs/app.log',
             mkdir: true,
           },
         },
@@ -45,15 +45,18 @@ const getDestination = () => {
   return undefined;
 };
 
-const Logger = pino({
-  browser: {
-    asObject: true,
+const Logger = pino(
+  {
+    browser: {
+      asObject: true,
+    },
+    level: process.env.LOG_LEVEL || 'debug',
+    base: {
+      env: process.env.NODE_ENV,
+    },
+    errorKey: 'error',
   },
-  level: process.env.LOG_LEVEL || 'debug',
-  base: {
-    env: process.env.NODE_ENV,
-  },
-  errorKey: 'error',
-}, getDestination());
+  getDestination(),
+);
 
 export { Logger };

@@ -9,13 +9,7 @@
 
 import { useCallback, useState } from 'react';
 
-import {
-  AlertCircle,
-  CheckCircle,
-  Film,
-  Loader2,
-  Upload,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle, Film, Loader2, Upload } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import { Progress } from '@kit/ui/progress';
@@ -27,6 +21,13 @@ import {
   type VideoUploadState,
   useVideoUpload,
 } from '../hooks/use-video-upload';
+
+/**
+ * VideoUploader Component
+ *
+ * Dropzone component for uploading videos to shots.
+ * Supports drag-and-drop, click-to-upload, and progress tracking.
+ */
 
 /**
  * VideoUploader Component

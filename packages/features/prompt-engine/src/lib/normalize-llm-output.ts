@@ -253,12 +253,12 @@ export function normalizeSceneShotData(
     // Normalize metadata.timeOfDay
     metadata: shot.metadata
       ? {
-        ...shot.metadata,
-        timeOfDay:
-          typeof shot.metadata.timeOfDay === 'string'
-            ? normalizeTimeOfDay(shot.metadata.timeOfDay)
-            : shot.metadata.timeOfDay,
-      }
+          ...shot.metadata,
+          timeOfDay:
+            typeof shot.metadata.timeOfDay === 'string'
+              ? normalizeTimeOfDay(shot.metadata.timeOfDay)
+              : shot.metadata.timeOfDay,
+        }
       : shot.metadata,
   }));
 

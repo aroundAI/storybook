@@ -102,13 +102,17 @@ export const VeoPromptSchema = z.object({
   // Shot line: Camera setup and positioning
   shotLine: z.string().describe('Camera shot type and positioning'),
   // Timeline: Timestamped action/dialogue/transition events
-  timeline: z.array(TimelineEventSchema).describe('Timestamped events in the shot'),
+  timeline: z
+    .array(TimelineEventSchema)
+    .describe('Timestamped events in the shot'),
   // Audio: Ambient sounds, SFX
   audio: z.string().describe('Ambient sounds, SFX description'),
   // Style: Visual aesthetic, lighting, mood
   style: z.string().describe('Visual aesthetic, lighting, mood'),
   // Avoid: Elements to exclude
-  avoid: z.string().describe('Elements to exclude: subtitles, watermarks, etc.'),
+  avoid: z
+    .string()
+    .describe('Elements to exclude: subtitles, watermarks, etc.'),
   // Combined prompt ready for VEO 3.1
   fullPrompt: z.string().describe('Complete formatted prompt for copy/paste'),
 });
@@ -267,7 +271,14 @@ export const SceneShotOutputSchema = z.object({
     .object({
       viralScore: z.number().min(1).max(10),
       hookType: z
-        .enum(['question', 'reveal', 'conflict', 'visual', 'humor', 'cliffhanger'])
+        .enum([
+          'question',
+          'reveal',
+          'conflict',
+          'visual',
+          'humor',
+          'cliffhanger',
+        ])
         .optional(),
       standaloneSummary: z.string().optional(),
     })

@@ -44,7 +44,8 @@ export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get('code');
   const stateParam = request.nextUrl.searchParams.get('state');
   const error = request.nextUrl.searchParams.get('error');
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  const appUrl =
+    process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
 
   if (error) {
     const errorDesc = request.nextUrl.searchParams.get('error_description');
@@ -190,77 +191,85 @@ export async function GET(request: NextRequest) {
 
   const encryptedUserToken = await encrypt(userAccessToken);
 
-  for (const page of pages) {
-    // Store Facebook Page connection
-    if (state.platforms.includes('facebook')) {
-      const encryptedPageToken = await encrypt(page.access_token);
-      connections.push({
-        account_id: state.accountId,
-        platform: 'facebook',
-        platform_account_id: page.id,
-        platform_account_name: page.name,
-        access_token_encrypted: encryptedPageToken, // Page access token (never expires)
-        refresh_token_encrypted: encryptedUserToken, // User token for refresh
-        token_expires_at: expiresAt.toISOString(),
-        scopes: [...META_OAUTH_CONFIG.scopes],
-        is_active: true,
-        metadata: {
-          category: page.category,
-          picture_url: page.picture?.data?.url ?? null,
-          user_token_expires_at: expiresAt.toISOString(),
-        },
-        updated_at: new Date().toISOString(),
-      });
-    }
-
-    // Store Instagram Business connection if linked
-    if (
-      state.platforms.includes('instagram') &&
-      page.instagram_business_account
-    ) {
-      const igAccountId = page.instagram_business_account.id;
-
-      // Get Instagram account details
-      const igUrl = new URL(`${META_OAUTH_CONFIG.graphUrl}/${igAccountId}`);
-      igUrl.searchParams.set('access_token', page.access_token);
-      igUrl.searchParams.set(
-        'fields',
-        'username,name,profile_picture_url,followers_count',
-      );
-
-      const igResponse = await fetch(igUrl.toString());
-      const igAccount: InstagramAccountResponse = await igResponse.json();
-
-      if (!igAccount.id) {
-        logger.warn(
-          { ...ctx, pageId: page.id },
-          'Failed to fetch Instagram account details',
-        );
-        continue;
+  await Promise.all(
+    pages.map(async (page) => {
+      // Store Facebook Page connection
+      if (state.platforms.includes('facebook')) {
+        const encryptedPageToken = await encrypt(page.access_token);
+        connections.push({
+          account_id: state.accountId,
+          platform: 'facebook',
+          platform_account_id: page.id,
+          platform_account_name: page.name,
+          access_token_encrypted: encryptedPageToken, // Page access token (never expires)
+          refresh_token_encrypted: encryptedUserToken, // User token for refresh
+          token_expires_at: expiresAt.toISOString(),
+          scopes: [...META_OAUTH_CONFIG.scopes],
+          is_active: true,
+          metadata: {
+            category: page.category,
+            picture_url: page.picture?.data?.url ?? null,
+            user_token_expires_at: expiresAt.toISOString(),
+          },
+          updated_at: new Date().toISOString(),
+        });
       }
 
-      const encryptedPageToken = await encrypt(page.access_token);
-      connections.push({
-        account_id: state.accountId,
-        platform: 'instagram',
-        platform_account_id: igAccountId,
-        platform_account_name:
-          igAccount.username || igAccount.name || igAccountId,
-        access_token_encrypted: encryptedPageToken, // Use Page token for Instagram API
-        refresh_token_encrypted: encryptedUserToken, // User token for refresh
-        token_expires_at: expiresAt.toISOString(),
-        scopes: ['instagram_basic', 'instagram_content_publish'],
-        is_active: true,
-        metadata: {
-          linked_page_id: page.id,
-          profile_picture_url: igAccount.profile_picture_url ?? null,
-          followers_count: igAccount.followers_count ?? null,
-          user_token_expires_at: expiresAt.toISOString(),
-        },
-        updated_at: new Date().toISOString(),
-      });
-    }
-  }
+      // Store Instagram Business connection if linked
+      if (
+        state.platforms.includes('instagram') &&
+        page.instagram_business_account
+      ) {
+        const igAccountId = page.instagram_business_account.id;
+
+        // Get Instagram account details
+        const igUrl = new URL(`${META_OAUTH_CONFIG.graphUrl}/${igAccountId}`);
+        igUrl.searchParams.set('access_token', page.access_token);
+        igUrl.searchParams.set(
+          'fields',
+          'username,name,profile_picture_url,followers_count',
+        );
+
+        try {
+          const igResponse = await fetch(igUrl.toString());
+          const igAccount: InstagramAccountResponse = await igResponse.json();
+
+          if (igAccount.id) {
+            const encryptedPageToken = await encrypt(page.access_token);
+            connections.push({
+              account_id: state.accountId,
+              platform: 'instagram',
+              platform_account_id: igAccountId,
+              platform_account_name:
+                igAccount.username || igAccount.name || igAccountId,
+              access_token_encrypted: encryptedPageToken, // Use Page token for Instagram API
+              refresh_token_encrypted: encryptedUserToken, // User token for refresh
+              token_expires_at: expiresAt.toISOString(),
+              scopes: ['instagram_basic', 'instagram_content_publish'],
+              is_active: true,
+              metadata: {
+                linked_page_id: page.id,
+                profile_picture_url: igAccount.profile_picture_url ?? null,
+                followers_count: igAccount.followers_count ?? null,
+                user_token_expires_at: expiresAt.toISOString(),
+              },
+              updated_at: new Date().toISOString(),
+            });
+          } else {
+            logger.warn(
+              { ...ctx, pageId: page.id },
+              'Failed to fetch Instagram account details',
+            );
+          }
+        } catch (error) {
+          logger.error(
+            { ...ctx, pageId: page.id, error },
+            'Error processing Instagram account',
+          );
+        }
+      }
+    }),
+  );
 
   // Upsert all connections
   if (connections.length > 0) {

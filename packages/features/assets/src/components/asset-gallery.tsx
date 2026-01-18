@@ -273,7 +273,8 @@ export function AssetGallery({
         <DialogContent className="max-h-[85vh] max-w-4xl overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Edit {editingAsset?.type === 'location' ? 'Location' : 'Character'}
+              Edit{' '}
+              {editingAsset?.type === 'location' ? 'Location' : 'Character'}
             </DialogTitle>
           </DialogHeader>
 

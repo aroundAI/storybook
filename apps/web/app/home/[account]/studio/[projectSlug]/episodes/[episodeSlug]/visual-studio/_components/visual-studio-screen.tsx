@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 
-import { Download, Filter, Loader2, Play, PlusCircle, Search, X } from 'lucide-react';
+import {
+  Download,
+  Filter,
+  Loader2,
+  Play,
+  PlusCircle,
+  Search,
+  X,
+} from 'lucide-react';
 
 import { useAssets } from '@kit/assets/hooks';
 import type { EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
@@ -53,9 +61,11 @@ export function VisualStudioScreen({
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
 
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
-  const { status: shotGenStatus, result: shotGenResult, error: shotGenError } = useLlmJob<{ success: boolean }>(
-    'shot-generation'
-  );
+  const {
+    status: shotGenStatus,
+    result: shotGenResult,
+    error: shotGenError,
+  } = useLlmJob<{ success: boolean }>('shot-generation');
 
   // Handle shot-generation result (refresh to show generated shots)
   useEffect(() => {
@@ -87,11 +97,13 @@ export function VisualStudioScreen({
   }, [episode.shots]);
 
   // Fetch project characters to get descriptions for shot prompts
-  const { assets: projectCharacters, fetchAssets: fetchCharacters } = useAssets({
-    projectId: episode.projectId,
-    type: 'character',
-    limit: 100,
-  });
+  const { assets: projectCharacters, fetchAssets: fetchCharacters } = useAssets(
+    {
+      projectId: episode.projectId,
+      type: 'character',
+      limit: 100,
+    },
+  );
 
   // Fetch project locations for export
   const { assets: projectLocations, fetchAssets: fetchLocations } = useAssets({
@@ -253,7 +265,7 @@ export function VisualStudioScreen({
       const charDetails: Array<{ name: string; description: string }> = [];
       for (const charName of shotCharacters) {
         const asset = projectCharacters.find(
-          (c) => c.name.toLowerCase() === charName.toLowerCase()
+          (c) => c.name.toLowerCase() === charName.toLowerCase(),
         );
         if (asset) {
           charDetails.push({
@@ -387,7 +399,7 @@ export function VisualStudioScreen({
 
       // Sort scenes
       const sortedScenes = Object.entries(shotsBySceneMap).sort(
-        ([a], [b]) => parseInt(a) - parseInt(b)
+        ([a], [b]) => parseInt(a) - parseInt(b),
       );
 
       // Track fetched images to avoid duplicates or 429s
@@ -407,12 +419,12 @@ export function VisualStudioScreen({
 
         // Sort shots within scene
         const sortedShots = [...sceneShots].sort(
-          (a, b) => a.shotNumber - b.shotNumber
+          (a, b) => a.shotNumber - b.shotNumber,
         );
 
         for (const shot of sortedShots) {
           const shotFolder = sceneFolder.folder(
-            `Shot-${sceneNum}.${shot.shotNumber}`
+            `Shot-${sceneNum}.${shot.shotNumber}`,
           );
           if (!shotFolder) continue;
 
@@ -480,7 +492,10 @@ export function VisualStudioScreen({
           } | null;
 
           // Add character images - try metadata.referenceImages first, then fall back to project assets
-          if (metadata?.referenceImages?.characters && metadata.referenceImages.characters.length > 0) {
+          if (
+            metadata?.referenceImages?.characters &&
+            metadata.referenceImages.characters.length > 0
+          ) {
             // Use reference images from metadata
             for (const img of metadata.referenceImages.characters) {
               const filename = `character-${sanitizeName(img.name)}.png`;
@@ -499,7 +514,7 @@ export function VisualStudioScreen({
             // Fall back to looking up characters from project assets
             for (const charName of metadata.characters) {
               const asset = projectCharacters.find(
-                (c) => c.name.toLowerCase() === charName.toLowerCase()
+                (c) => c.name.toLowerCase() === charName.toLowerCase(),
               );
               if (asset?.fileUrl) {
                 const filename = `character-${sanitizeName(charName)}.png`;
@@ -518,7 +533,10 @@ export function VisualStudioScreen({
           }
 
           // Add location images - try metadata.referenceImages first, then fall back to project assets
-          if (metadata?.referenceImages?.locations && metadata.referenceImages.locations.length > 0) {
+          if (
+            metadata?.referenceImages?.locations &&
+            metadata.referenceImages.locations.length > 0
+          ) {
             // Use reference images from metadata
             for (const img of metadata.referenceImages.locations) {
               const filename = `location-${sanitizeName(img.name)}.png`;
@@ -537,7 +555,7 @@ export function VisualStudioScreen({
             // Fall back to looking up locations from project assets
             for (const locName of metadata.locations) {
               const asset = projectLocations.find(
-                (l) => l.name.toLowerCase() === locName.toLowerCase()
+                (l) => l.name.toLowerCase() === locName.toLowerCase(),
               );
               if (asset?.fileUrl) {
                 const filename = `location-${sanitizeName(locName)}.png`;
@@ -558,7 +576,10 @@ export function VisualStudioScreen({
       }
 
       // Add Metadata Manifest for FCP automation
-      zip.file('fcp-import-manifest.json', JSON.stringify(fcpMetadata, null, 2));
+      zip.file(
+        'fcp-import-manifest.json',
+        JSON.stringify(fcpMetadata, null, 2),
+      );
 
       // Generate and download ZIP
       const content = await zip.generateAsync({ type: 'blob' });
@@ -583,8 +604,8 @@ export function VisualStudioScreen({
   return (
     <div className="relative h-full">
       {/* Ambient Glow Background Effects */}
-      <div className="cinema-glow cinema-glow-indigo pointer-events-none fixed -top-48 -right-48 h-96 w-96 -z-10" />
-      <div className="cinema-glow cinema-glow-purple pointer-events-none fixed -bottom-40 -left-40 h-80 w-80 -z-10" />
+      <div className="cinema-glow cinema-glow-indigo pointer-events-none fixed -top-48 -right-48 -z-10 h-96 w-96" />
+      <div className="cinema-glow cinema-glow-purple pointer-events-none fixed -bottom-40 -left-40 -z-10 h-80 w-80" />
 
       {/* Main Content - Full width always */}
       <div className="flex h-full flex-col overflow-hidden">
@@ -783,20 +804,27 @@ export function VisualStudioScreen({
               shot={selectedShot}
               projectId={episode.projectId}
               projectVideoStyle={episode.projectMetadata?.videoStyle}
-              projectAestheticStyle={episode.projectMetadata?.projectAestheticStyle}
+              projectAestheticStyle={
+                episode.projectMetadata?.projectAestheticStyle
+              }
               characterDetails={(() => {
                 // Build characterDetails from project characters matching shot's character names
-                const shotMetadata = selectedShot.metadata as { characters?: string[] } | undefined;
+                const shotMetadata = selectedShot.metadata as
+                  | { characters?: string[] }
+                  | undefined;
                 const shotCharacterNames = shotMetadata?.characters ?? [];
 
-                if (shotCharacterNames.length === 0 || projectCharacters.length === 0) {
+                if (
+                  shotCharacterNames.length === 0 ||
+                  projectCharacters.length === 0
+                ) {
                   return undefined;
                 }
 
                 return shotCharacterNames
                   .map((name) => {
                     const asset = projectCharacters.find(
-                      (c) => c.name.toLowerCase() === name.toLowerCase()
+                      (c) => c.name.toLowerCase() === name.toLowerCase(),
                     );
                     if (!asset) return null;
                     return {
@@ -804,7 +832,10 @@ export function VisualStudioScreen({
                       description: asset.description || asset.name,
                     };
                   })
-                  .filter((c): c is { name: string; description: string } => c !== null);
+                  .filter(
+                    (c): c is { name: string; description: string } =>
+                      c !== null,
+                  );
               })()}
               onClose={() => setSelectedShot(null)}
               onUpdate={refetchEpisode}

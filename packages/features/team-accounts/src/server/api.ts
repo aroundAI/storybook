@@ -8,7 +8,7 @@ import { Database } from '@kit/supabase/database';
  * @param {SupabaseClient<Database>} client - The Supabase client instance.
  */
 export class TeamAccountsApi {
-  constructor(private readonly client: SupabaseClient<Database>) { }
+  constructor(private readonly client: SupabaseClient<Database>) {}
 
   /**
    * @name getTeamAccount
@@ -18,10 +18,12 @@ export class TeamAccountsApi {
   async getTeamAccount(slug: string) {
     const { data, error } = await this.client
       .from('accounts')
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .eq('slug', slug)
       .single();
 
@@ -40,10 +42,12 @@ export class TeamAccountsApi {
   async getTeamAccountById(accountId: string) {
     const { data, error } = await this.client
       .from('accounts')
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', accountId)
       .single();
 
@@ -62,7 +66,8 @@ export class TeamAccountsApi {
   async getSubscription(accountId: string) {
     const { data, error } = await this.client
       .from('subscriptions')
-      .select(`
+      .select(
+        `
         id, account_id, billing_customer_id, billing_provider, status, active,
         period_starts_at, period_ends_at, trial_starts_at, trial_ends_at, currency,
         cancel_at_period_end, created_at, updated_at,
@@ -70,7 +75,8 @@ export class TeamAccountsApi {
           id, subscription_id, product_id, variant_id, price_amount,
           quantity, interval, interval_count, type, created_at, updated_at
         )
-      `)
+      `,
+      )
       .eq('account_id', accountId)
       .maybeSingle();
 
@@ -88,14 +94,16 @@ export class TeamAccountsApi {
   async getOrder(accountId: string) {
     const response = await this.client
       .from('orders')
-      .select(`
+      .select(
+        `
         id, account_id, billing_customer_id, billing_provider, status,
         currency, total_amount, created_at, updated_at,
         items: order_items !inner (
           id, order_id, product_id, variant_id, price_amount,
           quantity, created_at, updated_at
         )
-      `)
+      `,
+      )
       .eq('account_id', accountId)
       .maybeSingle();
 

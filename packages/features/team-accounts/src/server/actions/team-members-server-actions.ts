@@ -209,10 +209,12 @@ export const transferOwnershipAction = enhanceAction(
     // Fetch account info before transfer
     const { data: account } = await client
       .from('accounts')
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', data.accountId)
       .single();
 
@@ -222,10 +224,12 @@ export const transferOwnershipAction = enhanceAction(
     // Fetch after state
     const { data: afterAccount } = await client
       .from('accounts')
-      .select(`
+      .select(
+        `
         id, name, slug, picture_url, email, is_personal_account,
         primary_owner_user_id, public_data, created_at, updated_at
-      `)
+      `,
+      )
       .eq('id', data.accountId)
       .single();
 

@@ -1,9 +1,7 @@
 'use server';
 
 import { enhanceAction } from '@kit/next/actions';
-import type {
-  Screenplay,
-} from '@kit/prompt-engine/schemas';
+import type { Screenplay } from '@kit/prompt-engine/schemas';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -143,7 +141,11 @@ function _extractDialogueLines(
 export const convertToScreenplayAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: true; data?: ConvertToScreenplayResponse; queued?: boolean }> => {
+  ): Promise<{
+    success: true;
+    data?: ConvertToScreenplayResponse;
+    queued?: boolean;
+  }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'episodes.convertToScreenplay',
@@ -165,12 +167,14 @@ export const convertToScreenplayAction = enhanceAction(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: episodeError } = await (client as any)
       .from('episodes')
-      .select(`
+      .select(
+        `
         id, project_id, season_id, number, slug, title, description, status, version,
         story_data, screenplay_data, target_duration_seconds,
         created_at, updated_at, deleted_at,
         project:projects(id, account_id, metadata)
-      `)
+      `,
+      )
       .eq('id', data.episodeId)
       .is('deleted_at', null)
       .single();
@@ -227,7 +231,10 @@ export const convertToScreenplayAction = enhanceAction(
 
     if (jobError) {
       console.error('[screenplay-actions] FAILED:', jobError);
-      logger.warn({ ...ctx, error: jobError }, 'Failed to create generation job entry');
+      logger.warn(
+        { ...ctx, error: jobError },
+        'Failed to create generation job entry',
+      );
     } else {
       console.log('[screenplay-actions] SUCCESS:', insertedJob);
     }

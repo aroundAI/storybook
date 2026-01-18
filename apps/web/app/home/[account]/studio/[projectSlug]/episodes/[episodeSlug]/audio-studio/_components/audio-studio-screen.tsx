@@ -9,13 +9,7 @@ import {
   useTransition,
 } from 'react';
 
-import {
-  Download,
-  Loader2,
-  Minus,
-  Play,
-  Plus,
-} from 'lucide-react';
+import { Download, Loader2, Minus, Play, Plus } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
 import {
@@ -29,10 +23,7 @@ import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
 import { DialogueTimeline } from './dialogue-timeline';
-import {
-  LanguageTabBar,
-  type SupportedLanguage,
-} from './language-tab-bar';
+import { LanguageTabBar, type SupportedLanguage } from './language-tab-bar';
 import { MusicTimeline } from './music-timeline';
 import { SfxTimeline } from './sfx-timeline';
 
@@ -56,22 +47,29 @@ export function AudioStudioScreen({
   const [isLoading, setIsLoading] = useState(true);
 
   // Language selection state
-  const [selectedLanguage, setSelectedLanguage] = useState<SupportedLanguage>('en');
-  const [availableLanguages, setAvailableLanguages] = useState<SupportedLanguage[]>(['en']);
+  const [selectedLanguage, setSelectedLanguage] =
+    useState<SupportedLanguage>('en');
+  const [availableLanguages, setAvailableLanguages] = useState<
+    SupportedLanguage[]
+  >(['en']);
 
   // Timeline zoom state (pixels per second)
   const [pixelsPerSecond, setPixelsPerSecond] = useState(2);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
 
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
-  const { status: shotGenStatus, result: shotGenResult, error: shotGenError } = useLlmJob<{ success: boolean }>(
-    'shot-generation'
-  );
+  const {
+    status: shotGenStatus,
+    result: shotGenResult,
+    error: shotGenError,
+  } = useLlmJob<{ success: boolean }>('shot-generation');
 
   // WebSocket for translate-dialogue results (when dialogue is translated while on this tab)
-  const { status: translateStatus, result: translateResult, error: translateError } = useLlmJob<{ success: boolean }>(
-    'translate-dialogue'
-  );
+  const {
+    status: translateStatus,
+    result: translateResult,
+    error: translateError,
+  } = useLlmJob<{ success: boolean }>('translate-dialogue');
 
   // Handle shot-generation result (refresh to show updated episode)
   useEffect(() => {
@@ -135,11 +133,13 @@ export function AudioStudioScreen({
         getCharactersForEpisodeAction({ episodeId: episode.id }),
       ]);
 
-      const allLines = Array.isArray(dialogueResult?.lines) ? dialogueResult.lines : [];
+      const allLines = Array.isArray(dialogueResult?.lines)
+        ? dialogueResult.lines
+        : [];
 
       // Extract available languages from dialogue lines
       const langs = new Set<SupportedLanguage>(
-        allLines.map((l) => (l.language || 'en') as SupportedLanguage)
+        allLines.map((l) => (l.language || 'en') as SupportedLanguage),
       );
       const langArray = Array.from(langs).sort((a, b) => {
         const order = ['en', 'hi', 'es', 'pt'];
@@ -149,7 +149,7 @@ export function AudioStudioScreen({
 
       // Filter dialogue by selected language
       const filteredLines = allLines.filter(
-        (l) => (l.language || 'en') === selectedLanguage
+        (l) => (l.language || 'en') === selectedLanguage,
       );
       setDialogueLines(filteredLines);
       setCharacters(Array.isArray(chars) ? chars : []);
@@ -308,7 +308,9 @@ export function AudioStudioScreen({
         if (blob) {
           // Filename: Scene-X_Seq-Y_Character.mp3
           // If scene info is missing, just use Seq-Y
-          const characterName = characters.find(c => c.id === line.characterAssetId)?.name ?? 'Unknown';
+          const characterName =
+            characters.find((c) => c.id === line.characterAssetId)?.name ??
+            'Unknown';
           const filename = `${line.sequenceNumber.toString().padStart(3, '0')}_${characterName.replace(/[^a-z0-9]/gi, '_')}.mp3`;
           dialogueFolder.file(filename, blob);
         }
@@ -318,21 +320,25 @@ export function AudioStudioScreen({
         // If 'startTime' exists on the line, use it. Otherwise, we can strictly only generate
         // per-clip SRTs or assume a sequential flow if we had durations.
         // For now, if we don't have global timeline positions, we can't generate a valid global SRT.
-        // BUT, looking at `DialogueLine` type, we might not have `startTime`. 
-        // Let's create individual SRTs per line if global timing isn't available, 
+        // BUT, looking at `DialogueLine` type, we might not have `startTime`.
+        // Let's create individual SRTs per line if global timing isn't available,
         // OR just dump the transcription text.
 
-        // Let's assume for this export we primarily want the files. 
+        // Let's assume for this export we primarily want the files.
         // If we want a global SRT, we'd need the Timeline logic to calculate offsets.
-        // Since `dialogueLines` is just a list, we'll skip global SRT for now 
+        // Since `dialogueLines` is just a list, we'll skip global SRT for now
         // and just export a JSON manifest of the lines.
       }
 
       // Export Metadata / Script
-      const scriptContent = sortedLines.map(l => {
-        const charName = characters.find(c => c.id === l.characterAssetId)?.name ?? 'Unknown';
-        return `${charName}: ${l.text}`;
-      }).join('\n\n');
+      const scriptContent = sortedLines
+        .map((l) => {
+          const charName =
+            characters.find((c) => c.id === l.characterAssetId)?.name ??
+            'Unknown';
+          return `${charName}: ${l.text}`;
+        })
+        .join('\n\n');
 
       zip.file('script_transcript.txt', scriptContent);
       zip.file('dialogue_manifest.json', JSON.stringify(sortedLines, null, 2));
@@ -359,20 +365,20 @@ export function AudioStudioScreen({
 
   return (
     <div className="flex h-full">
-
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header Bar */}
-        <div className="flex items-center gap-3 border-b border-gray-200/50 bg-white/85 px-4 py-2.5 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85 overflow-x-auto">
-          <div className="flex items-center gap-3 min-w-max">
+        <div className="flex items-center gap-3 overflow-x-auto border-b border-gray-200/50 bg-white/85 px-4 py-2.5 backdrop-blur-xl dark:border-gray-700/50 dark:bg-gray-800/85">
+          <div className="flex min-w-max items-center gap-3">
             {/* Tab Switcher */}
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
               <button
                 onClick={() => setActiveTab('dialogue')}
-                className={`rounded-md px-3 py-1 text-xs font-semibold transition-all whitespace-nowrap ${activeTab === 'dialogue'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
+                className={`rounded-md px-3 py-1 text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'dialogue'
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
               >
                 Dialogue{' '}
                 <span className="ml-1 font-normal text-gray-400">
@@ -381,19 +387,21 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('music')}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'music'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                  activeTab === 'music'
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
               >
                 Music
               </button>
               <button
                 onClick={() => setActiveTab('sfx')}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'sfx'
-                  ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
-                  }`}
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                  activeTab === 'sfx'
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                }`}
               >
                 SFX
               </button>
@@ -402,7 +410,7 @@ export function AudioStudioScreen({
             {/* Language Selector (for Dialogue tab) */}
             {activeTab === 'dialogue' && (
               <>
-                <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
+                <div className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
                 <LanguageTabBar
                   episodeId={episode.id}
                   availableLanguages={availableLanguages}
@@ -413,19 +421,19 @@ export function AudioStudioScreen({
               </>
             )}
 
-            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
+            <div className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
 
             {/* Status badges - compact */}
             <div className="flex items-center gap-1.5">
-              <span className="rounded-md border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400 whitespace-nowrap">
+              <span className="rounded-md border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
                 {stats.completed}
               </span>
-              <span className="rounded-md border border-orange-100 bg-orange-50 px-2 py-0.5 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400 whitespace-nowrap">
+              <span className="rounded-md border border-orange-100 bg-orange-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
                 {stats.pending}
               </span>
             </div>
 
-            <div className="h-5 w-px bg-gray-200 dark:bg-gray-700 shrink-0" />
+            <div className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
 
             {/* Zoom Controls - compact */}
             <div className="flex items-center gap-0.5">
@@ -462,9 +470,9 @@ export function AudioStudioScreen({
           </div>
 
           {/* Spacer to push action buttons right */}
-          <div className="flex-1 min-w-4" />
+          <div className="min-w-4 flex-1" />
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex shrink-0 items-center gap-2">
             <Button
               onClick={handleGenerateAll}
               disabled={isPending || stats.pending === 0}

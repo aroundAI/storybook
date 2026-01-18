@@ -24,13 +24,36 @@ function getStageStatus(episode: Episode) {
   const status = episode.status;
 
   // Status progression map
-  const statusOrder = ['draft', 'story', 'storyboard', 'visual-studio', 'audio-studio', 'review', 'published'];
+  const statusOrder = [
+    'draft',
+    'story',
+    'storyboard',
+    'visual-studio',
+    'audio-studio',
+    'review',
+    'published',
+  ];
   const currentIndex = statusOrder.indexOf(status);
 
   return {
-    story: currentIndex >= 1 ? 'complete' : currentIndex === 0 ? 'in-progress' : 'pending',
-    screenplay: currentIndex >= 2 ? 'complete' : currentIndex === 1 ? 'in-progress' : 'pending',
-    visuals: currentIndex >= 3 ? 'complete' : currentIndex === 2 ? 'in-progress' : 'pending',
+    story:
+      currentIndex >= 1
+        ? 'complete'
+        : currentIndex === 0
+          ? 'in-progress'
+          : 'pending',
+    screenplay:
+      currentIndex >= 2
+        ? 'complete'
+        : currentIndex === 1
+          ? 'in-progress'
+          : 'pending',
+    visuals:
+      currentIndex >= 3
+        ? 'complete'
+        : currentIndex === 2
+          ? 'in-progress'
+          : 'pending',
   } as const;
 }
 

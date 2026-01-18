@@ -84,6 +84,13 @@ import { isAssetInUse } from './asset.queries';
  */
 
 /**
+ * Character Server Actions (FILM-202)
+ *
+ * Server actions for creating, updating, and deleting characters with atomic operations.
+ * Characters require both an asset record and a character_details record.
+ */
+
+/**
  * Create a new character with atomic insert into assets + character_details
  *
  * Transaction pattern:
@@ -255,8 +262,13 @@ export const getCharacterAction = enhanceAction(
 
     logger.info(ctx, 'Character fetched successfully');
 
-    const mappedCharacter = mapRowToCharacterWithDetails(character as CharacterRow);
-    logger.info({ ...ctx, voiceAssetId: mappedCharacter.voiceAssetId }, 'Character mapped with voiceAssetId');
+    const mappedCharacter = mapRowToCharacterWithDetails(
+      character as CharacterRow,
+    );
+    logger.info(
+      { ...ctx, voiceAssetId: mappedCharacter.voiceAssetId },
+      'Character mapped with voiceAssetId',
+    );
 
     return {
       success: true,
@@ -279,7 +291,10 @@ export const updateCharacterAction = enhanceAction(
     logger.info(ctx, 'Updating character');
 
     // Debug: log incoming voiceAssetId
-    logger.info({ ...ctx, voiceAssetIdFromInput: data.voiceAssetId }, 'Incoming voiceAssetId value');
+    logger.info(
+      { ...ctx, voiceAssetIdFromInput: data.voiceAssetId },
+      'Incoming voiceAssetId value',
+    );
 
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
@@ -375,7 +390,10 @@ export const updateCharacterAction = enhanceAction(
 
     // Update character_details if there are changes (or create if missing)
     if (hasDetailsUpdates) {
-      logger.info({ ...ctx, detailsUpdates }, 'Updating character_details with');
+      logger.info(
+        { ...ctx, detailsUpdates },
+        'Updating character_details with',
+      );
 
       // Use upsert to handle cases where character_details row doesn't exist
       const { data: upsertedRows, error: detailsError } = await client
@@ -385,7 +403,7 @@ export const updateCharacterAction = enhanceAction(
             asset_id: data.assetId,
             ...detailsUpdates,
           },
-          { onConflict: 'asset_id' }
+          { onConflict: 'asset_id' },
         )
         .select();
 
@@ -399,7 +417,10 @@ export const updateCharacterAction = enhanceAction(
         );
       }
 
-      logger.info({ ...ctx, rowsAffected: upsertedRows?.length ?? 0 }, 'character_details upsert result');
+      logger.info(
+        { ...ctx, rowsAffected: upsertedRows?.length ?? 0 },
+        'character_details upsert result',
+      );
     }
 
     // Fetch updated character

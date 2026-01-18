@@ -13,7 +13,6 @@ import {
 } from '../../schemas/season-generation.schema';
 import { generateEpisodeSlug } from '../../slug-utils';
 
-
 interface EpisodeBeat {
   label: string;
   content: string;
@@ -233,7 +232,7 @@ export const generateSeasonEpisodesAction = enhanceAction(
       // Build premise from beats if synopsis is empty
       const buildPremiseFromBeats = () => {
         if (ep.beats && ep.beats.length > 0) {
-          return ep.beats.map(b => `${b.label}: ${b.content}`).join(' | ');
+          return ep.beats.map((b) => `${b.label}: ${b.content}`).join(' | ');
         }
         return description;
       };

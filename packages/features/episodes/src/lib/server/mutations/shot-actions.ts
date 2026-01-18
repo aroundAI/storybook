@@ -303,9 +303,12 @@ export const updateShotAction = enhanceAction(
       updates.generation_metadata = data.metadata;
 
     // Video clip trimming fields (Phase 1: Video Clip Trimming)
-    if (data.trimInPoint !== undefined) updates.trim_in_point = data.trimInPoint;
-    if (data.trimOutPoint !== undefined) updates.trim_out_point = data.trimOutPoint;
-    if (data.sourceDuration !== undefined) updates.source_duration = data.sourceDuration;
+    if (data.trimInPoint !== undefined)
+      updates.trim_in_point = data.trimInPoint;
+    if (data.trimOutPoint !== undefined)
+      updates.trim_out_point = data.trimOutPoint;
+    if (data.sourceDuration !== undefined)
+      updates.source_duration = data.sourceDuration;
 
     // Timeline positioning
     if (data.timelineStartSeconds !== undefined) {
