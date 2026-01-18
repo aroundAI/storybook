@@ -38,7 +38,8 @@ export function PublishHub({
   thumbnailUrl,
   defaultTitle,
   defaultDescription,
-  duration,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  duration: _duration,
 }: PublishHubProps) {
   const [activeTab, setActiveTab] = useState<'full'>('full');
   const [platforms, setPlatforms] = useState<PlatformPublishConfig[]>([]);

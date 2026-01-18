@@ -14,7 +14,7 @@ const getGitInfo = () => {
       .trim();
 
     return { commit, branch, tag, date, author };
-  } catch (e) {
+  } catch {
     return {
       commit: 'unknown',
       branch: 'unknown',
