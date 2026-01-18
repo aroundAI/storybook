@@ -22,6 +22,13 @@ import { generateSfxAction } from './sfx-actions';
  * and trigger generation for SFX/ambient, display prompts for music.
  */
 
+/**
+ * Audio Cue Actions
+ *
+ * Process audioCues from screenplay scenes into audio_cues table
+ * and trigger generation for SFX/ambient, display prompts for music.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================
@@ -352,6 +359,41 @@ export const getAudioCuesAction = enhanceAction(
   {
     schema: z.object({
       episodeId: z.string().uuid(),
+    }),
+  },
+);
+
+/**
+ * Update audio cue details
+ */
+export const updateAudioCueAction = enhanceAction(
+  async (data) => {
+    const client = getSupabaseServerClient();
+
+    const updateData: Record<string, unknown> = {};
+    if (data.prompt !== undefined) updateData.prompt = data.prompt;
+    if (data.startOffset !== undefined)
+      updateData.start_offset_seconds = data.startOffset;
+    if (data.duration !== undefined)
+      updateData.duration_seconds = data.duration;
+
+    const { error } = await client
+      .from('audio_cues')
+      .update(updateData)
+      .eq('id', data.cueId);
+
+    if (error) {
+      throw new Error(`Failed to update audio cue: ${error.message}`);
+    }
+
+    return { success: true };
+  },
+  {
+    schema: z.object({
+      cueId: z.string().uuid(),
+      prompt: z.string().min(1).optional(),
+      startOffset: z.number().min(0).optional(),
+      duration: z.number().min(0.1).optional(),
     }),
   },
 );
