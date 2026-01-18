@@ -24,6 +24,7 @@ export const TimelineEventTypeSchema = z.enum([
   'action',
   'dialogue',
   'transition',
+  'reaction',
 ]);
 
 /**
@@ -120,11 +121,14 @@ export const ShotMetadataSchema = z.object({
           'visual',
           'humor',
           'cliffhanger',
+          'character',
+          'action',
+          'reaction',
         ])
         .nullish(),
       standaloneSummary: z.string().nullish(),
     })
-    .optional(),
+    .nullish(),
 });
 
 /**

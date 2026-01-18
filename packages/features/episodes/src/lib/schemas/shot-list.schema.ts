@@ -51,6 +51,7 @@ export const ShotTypeSchema = z.enum([
   'establishing',
   'reaction',
   'silhouette',
+  'tracking',
 ]);
 
 /**
@@ -80,6 +81,7 @@ export const TimelineEventTypeSchema = z.enum([
   'action',
   'dialogue',
   'transition',
+  'reaction',
 ]);
 
 /**
@@ -278,11 +280,14 @@ export const SceneShotOutputSchema = z.object({
           'visual',
           'humor',
           'cliffhanger',
+          'character',
+          'action',
+          'reaction',
         ])
-        .optional(),
-      standaloneSummary: z.string().optional(),
+        .nullish(),
+      standaloneSummary: z.string().nullish(),
     })
-    .optional(),
+    .nullish(),
 });
 
 export type SceneShotOutput = z.infer<typeof SceneShotOutputSchema>;
