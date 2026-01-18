@@ -65,13 +65,6 @@ export function AssetPicker({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [_playingId, _setPlayingId] = useState<string | null>(null);
 
-  // Fetch assets when dialog opens
-  useEffect(() => {
-    if (open) {
-      fetchAssets();
-    }
-  }, [open, fetchAssets]);
-
   const fetchAssets = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -99,6 +92,13 @@ export function AssetPicker({
       setIsLoading(false);
     }
   }, [projectId]);
+
+  // Fetch assets when dialog opens
+  useEffect(() => {
+    if (open) {
+      fetchAssets();
+    }
+  }, [open, fetchAssets]);
 
   // Filter assets
   const filteredAssets = assets.filter((asset) => {
