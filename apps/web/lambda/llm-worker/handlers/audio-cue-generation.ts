@@ -104,6 +104,7 @@ export async function processAudioCueGeneration(
         userId: 'system',
       },
       temperature: 0.2, // Low temp for strict logic
+      supabaseClient: supabase,
     });
 
     const generatedCues = result.data.cues;
