@@ -1,0 +1,84 @@
+{
+  "slug": "scene-audio-refinement",
+  "name": "Scene Audio Refinement & Coherence",
+  "version": 1,
+  "category": "audio-generation",
+  "description": "Analyzes a sequence of shots to generate coherent, continuous audio cues (music, SFX, ambience) suitable for ElevenLabs/Suno generation.",
+  "exported_at": "2025-01-20T00:00:00.000Z",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4-turbo",
+    "max_tokens": 4000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Audio Supervisor Role",
+      "content": "You are an expert Audio Supervisor and Sound Designer for film. Your goal is to translate a sequence of visual shots into a cohesive audio timeline. You prioritize FLOW and CONTINUITY over literal shot-by-shot translation.\n\nYour output will be used to generate assets via ElevenLabs (SFX) and Suno/ElevenLabs (Music).",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "best-practices",
+      "name": "Audio Generation Best Practices",
+      "content": "FOLLOW THESE RULES STRICTLY:\n\n1. MERGE CONTINUOUS AUDIO:\n   - If Shot 1 has 'Jazz music' and Shot 2 has 'Jazz music continues', create ONE Music Cue spanning both shots.\n   - Do NOT restart music every shot unless the mood changes drastically.\n\n2. MUSIC PROMPTS (Suno/ElevenLabs):\n   - Format: '[Genre], [Mood], [Tempo/BPM], [Instrumentation], [Key]'\n   - Example: 'Cinematic orchestral, suspenseful, 90 BPM, strings and brass, in D minor'\n   - NO negative prompts in the prompt string itself.\n\n3. SFX PROMPTS (ElevenLabs):\n   - Keep it SIMPLE and DISCRETE.\n   - Good: 'Heavy wooden door slamming shut'\n   - Bad: 'A man walks down a hall and then opens a door and then sighs'\n   - Limit duration to the specific action (usually < 5s).\n\n4. AMBIENT PROMPTS:\n   - Create ONE loopable ambient track for the entire scene location if consistent.\n   - Example: 'Quiet park atmosphere, light wind in trees, distant city rumble'",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    }
+  ],
+  "user_prompt": "Analyze the following sequence of shots for {{scene_heading}}.\n\n## SHOT SEQUENCE\n{{shots_json}}\n\n## INSTRUCTIONS\n1. Identify the primary 'Base Layer' (Ambience) - usually covers the whole sequence.\n2. Identify 'Music Layers' - merge shots with similar musical moods into single long cues.\n3. Identify 'Spot SFX' - specific actions that need discrete sounds.\n4. Calculate durations based on the shot durations provided.\n\nGenerate the optimized list of Audio Cues.",
+  "variables": {
+    "scene_heading": {
+      "type": "text",
+      "required": true,
+      "description": "Heading of the scene (e.g., EXT. PARK - DAY)"
+    },
+    "shots_json": {
+      "type": "text",
+      "required": true,
+      "description": "JSON array of shots: [{ seq: 1, duration: 8, audioDesc: '...', action: '...' }]"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ cues: z.array(z.object({ type: z.enum(['music', 'sfx', 'ambient']), prompt: z.string(), startShotSequence: z.number(), startOffsetInShot: z.number().default(0), durationSeconds: z.number(), reasoning: z.string().optional() })) })"
+    },
+    "schema_for_llm": "Return JSON: { \"cues\": [{ \"type\": \"music|sfx|ambient\", \"prompt\": \"optimized prompt string\", \"startShotSequence\": 1, \"startOffsetInShot\": 0, \"durationSeconds\": 16, \"reasoning\": \"Merged shots 1 and 2 for continuity\" }] }",
+    "example_output": {
+      "cues": [
+        {
+          "type": "ambient",
+          "prompt": "Quiet park atmosphere with light wind",
+          "startShotSequence": 1,
+          "startOffsetInShot": 0,
+          "durationSeconds": 32,
+          "reasoning": "Covers entire 4-shot sequence"
+        },
+        {
+          "type": "music",
+          "prompt": "Upbeat jazz, energetic, 120 BPM, saxophone lead",
+          "startShotSequence": 1,
+          "startOffsetInShot": 0,
+          "durationSeconds": 16,
+          "reasoning": "Music starts at Shot 1 and continues through Shot 2"
+        },
+        {
+          "type": "sfx",
+          "prompt": "Heavy metal thud",
+          "startShotSequence": 3,
+          "startOffsetInShot": 2,
+          "durationSeconds": 1.5,
+          "reasoning": "Impact sound in middle of Shot 3"
+        }
+      ]
+    }
+  }
+}

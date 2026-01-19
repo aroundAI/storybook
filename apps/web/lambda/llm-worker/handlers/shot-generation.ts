@@ -378,73 +378,21 @@ export async function processShotGeneration(
       `[Shot Generation] Created ${allShots.length} shots across ${sceneResults.length} scenes`,
     );
 
-    // Extract and save audioCues from each shot's veoPrompt (Stage 2 of audio generation)
-    // This is analogous to how dialogueTiming works - LLM generates structured audio cues per shot
-    try {
-      let cumulativeTime = 0;
-      const audioCueInserts: Array<{
-        episode_id: string;
-        scene_number: number;
-        cue_type: 'sfx' | 'ambient' | 'music';
-        prompt: string;
-        start_offset_seconds: number;
-        duration_seconds: number;
-        is_loopable: boolean;
-        status: string;
-      }> = [];
+    // 7. Queue Audio Refinement Job (The Dedicated Audio Pass)
+    // We decouple audio generation to ensure coherence across shots (merging music, coherent SFX)
+    console.log('[Shot Generation] Queuing audio refinement job');
+    const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
-      // Sort by sequence_number to calculate proper timeline offsets
-      const sortedShots = [...allShots].sort(
-        (a, b) => a.sequence_number - b.sequence_number,
-      );
-
-      for (const shot of sortedShots) {
-        const veoPrompt = shot.generation_metadata?.veoPrompt;
-        const audioCues = veoPrompt?.audioCues || [];
-
-        for (const cue of audioCues) {
-          audioCueInserts.push({
-            episode_id: data.episodeId,
-            scene_number: shot.scene_number,
-            cue_type: cue.type,
-            prompt: cue.prompt,
-            start_offset_seconds: cumulativeTime + (cue.startOffset || 0),
-            duration_seconds: cue.duration || shot.duration_seconds,
-            is_loopable: cue.isLoopable ?? cue.type === 'ambient',
-            status: 'pending',
-          });
-        }
-
-        cumulativeTime += shot.duration_seconds;
-      }
-
-      if (audioCueInserts.length > 0) {
-        const { error: audioCueError } = await supabase
-          .from('audio_cues')
-          .insert(audioCueInserts);
-
-        if (audioCueError) {
-          console.error(
-            '[Shot Generation] Failed to insert audio cues:',
-            audioCueError.message,
-          );
-        } else {
-          console.log(
-            `[Shot Generation] Created ${audioCueInserts.length} audio cues`,
-          );
-        }
-      } else {
-        console.log(
-          '[Shot Generation] No structured audio cues found in shots',
-        );
-      }
-    } catch (audioCueError) {
-      // Log but don't fail the shot generation - audio cues are secondary
-      console.error(
-        '[Shot Generation] Audio cue extraction failed:',
-        audioCueError,
-      );
-    }
+    await queueLlmJob({
+      jobType: 'audio-cue-generation',
+      userId: data.userId,
+      payload: {
+        episodeId: data.episodeId,
+        projectId: data.projectId,
+        accountId: data.accountId,
+        version: data.version,
+      },
+    });
 
     // Mark job as completed
     await markJobCompleted(supabase, data.episodeId, 'shot_list', {

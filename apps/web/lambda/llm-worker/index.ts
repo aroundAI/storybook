@@ -222,7 +222,12 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processTranslateDialogue(job.payload, supabase);
     }
-    // NOTE: audio-cue-generation removed - audio cues now extracted directly in shot-generation
+    case 'audio-cue-generation': {
+      const { processAudioCueGeneration } = await import(
+        './handlers/audio-cue-generation'
+      );
+      return processAudioCueGeneration(job.payload, supabase);
+    }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
   }
