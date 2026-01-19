@@ -91,7 +91,7 @@ export async function processAudioCueGeneration(
     // Assuming standard episode < 50 shots for now.
 
     const result = await executeLLM<{ cues: GeneratedAudioCue[] }>({
-      templateSlug: 'audio-generation/scene-audio-refinement',
+      templateSlug: 'scene-audio-refinement',
       variables: {
         scene_heading: 'Full Episode Sequence', // or derive from first shot
         shots_json: JSON.stringify(shotsJson),
