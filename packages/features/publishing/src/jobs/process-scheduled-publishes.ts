@@ -43,6 +43,76 @@ interface ScheduledPublish {
 }
 
 /**
+ * Retry helper for transient network failures
+ * Uses exponential backoff: 1s, 2s, 4s
+ */
+async function queryWithRetry<T>(
+  queryFn: () => Promise<{ data: T | null; error: { message: string } | null }>,
+  logger: Awaited<ReturnType<typeof getLogger>>,
+  ctx: Record<string, unknown>,
+  maxRetries = 3,
+  baseDelay = 1000,
+): Promise<{ data: T | null; error: { message: string } | null }> {
+  let lastError: { message: string } | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await queryFn();
+
+      // If no error, return immediately
+      if (!result.error) {
+        return result;
+      }
+
+      // Check if it's a transient network error worth retrying
+      const isTransient =
+        result.error.message?.includes('fetch failed') ||
+        result.error.message?.includes('ECONNRESET') ||
+        result.error.message?.includes('ETIMEDOUT') ||
+        result.error.message?.includes('socket hang up');
+
+      if (!isTransient) {
+        // Not a transient error, return immediately
+        return result;
+      }
+
+      lastError = result.error;
+    } catch (err) {
+      // Handle thrown errors (not Supabase errors)
+      const message = err instanceof Error ? err.message : String(err);
+      lastError = { message };
+
+      const isTransient =
+        message.includes('fetch failed') ||
+        message.includes('ECONNRESET') ||
+        message.includes('ETIMEDOUT');
+
+      if (!isTransient) {
+        return { data: null, error: lastError };
+      }
+    }
+
+    // Log retry attempt
+    if (attempt < maxRetries - 1) {
+      const delay = baseDelay * Math.pow(2, attempt);
+      logger.warn(
+        {
+          ...ctx,
+          attempt: attempt + 1,
+          maxRetries,
+          delay,
+          error: lastError?.message,
+        },
+        'Retrying Supabase query after transient error',
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  return { data: null, error: lastError };
+}
+
+/**
  * Processes scheduled publishes that are due.
  * This job should run every minute via cron.
  *
@@ -57,11 +127,13 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
   const client = getSupabaseServerAdminClient();
   const now = new Date();
 
-  // Find scheduled publishes that are due
-  const { data: duePublishes, error } = await client
-    .from('publishes')
-    .select(
-      `
+  // Find scheduled publishes that are due (with retry for transient failures)
+  const { data: duePublishes, error } = await queryWithRetry<ScheduledPublish[]>(
+    async () => {
+      const result = await client
+        .from('publishes')
+        .select(
+          `
       id,
       episode_id,
       platform_connection_id,
@@ -73,16 +145,33 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       metadata,
       episodes(final_video_url, thumbnail_url)
     `,
-    )
-    .eq('status', 'scheduled')
-    .lte('scheduled_at', now.toISOString())
-    .order('scheduled_at', { ascending: true })
-    .limit(10); // Process 10 at a time to avoid timeout
+        )
+        .eq('status', 'scheduled')
+        .lte('scheduled_at', now.toISOString())
+        .order('scheduled_at', { ascending: true })
+        .limit(10);
+
+      return {
+        data: result.data as ScheduledPublish[] | null,
+        error: result.error ? { message: result.error.message } : null,
+      };
+    },
+    logger,
+    ctx,
+  );
 
   if (error) {
+    const isNetworkError =
+      error.message?.includes('fetch failed') ||
+      error.message?.includes('ECONNRESET');
     logger.error(
-      { ...ctx, error: error.message },
-      'Failed to query scheduled publishes',
+      {
+        ...ctx,
+        error: error.message,
+        errorType: isNetworkError ? 'transient_network' : 'query_error',
+        retriesExhausted: true,
+      },
+      'Failed to query scheduled publishes after retries',
     );
     return { processed: 0, published: 0, failed: 0 };
   }
