@@ -6,17 +6,19 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { z } from 'zod';
+
 import {
   markJobCompleted,
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
 
-interface AudioCueGenerationPayload {
-  episodeId: string;
-  projectId: string;
-  accountId: string;
-}
+const AudioCueGenerationPayloadSchema = z.object({
+  episodeId: z.string(),
+  projectId: z.string(),
+  accountId: z.string(),
+});
 
 interface ShotData {
   sequence_number: number;
@@ -45,7 +47,7 @@ export async function processAudioCueGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
 ): Promise<{ success: boolean; cuesCreated: number }> {
-  const data = payload as AudioCueGenerationPayload;
+  const data = AudioCueGenerationPayloadSchema.parse(payload);
   const { episodeId } = data;
 
   console.log(`[Audio Generation] Processing for episode ${episodeId}`);

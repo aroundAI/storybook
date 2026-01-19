@@ -383,6 +383,29 @@ export async function processShotGeneration(
     console.log('[Shot Generation] Queuing audio refinement job');
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
+    // Create generation job entry for tracking audio cue generation
+    const audioJobData = {
+      reference_type: 'episode',
+      reference_id: data.episodeId,
+      job_type: 'audio_cue_generation',
+      status: 'queued',
+      account_id: data.accountId,
+      project_id: data.projectId,
+      idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
+      input_data: { episodeId: data.episodeId },
+    };
+
+    const { error: audioJobError } = await supabase
+      .from('generation_jobs')
+      .insert(audioJobData);
+
+    if (audioJobError) {
+      console.error(
+        '[Shot Generation] Failed to create audio cue job:',
+        audioJobError,
+      );
+    }
+
     await queueLlmJob({
       jobType: 'audio-cue-generation',
       userId: data.userId,
