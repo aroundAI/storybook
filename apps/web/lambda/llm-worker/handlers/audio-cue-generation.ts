@@ -117,40 +117,6 @@ export async function processAudioCueGeneration(
       currentTime += shot.duration_seconds;
     }
 
-    const audioCueInserts = generatedCues
-      .map((cue) => {
-        const shotStartTime = shotStartTimes.get(cue.startShotSequence);
-
-        if (shotStartTime === undefined) {
-          console.warn(
-            `[Audio Generation] Cue references unknown shot sequence: ${cue.startShotSequence}`,
-          );
-          return null;
-        }
-
-        const absoluteStart = shotStartTime + (cue.startOffsetInShot || 0);
-
-        // Verify bounds (optional, but good practice)
-        // If absoluteStart < 0, clamp to 0.
-        const validStart = Math.max(0, absoluteStart);
-
-        return {
-          episode_id: episodeId,
-          // We don't have scene_number in the cue output, we should infer it from the shot.
-          // But we need to look up the shot by sequence number.
-          // Wait, shots table doesn't have scene_number explicitly in my interface above, let me check DB schema.
-          // Actually shot-generation.ts writes 'scene_number'. I should fetch it.
-          scene_number: 1, // Fallback, see below
-          cue_type: cue.type,
-          prompt: cue.prompt,
-          start_offset_seconds: validStart,
-          duration_seconds: cue.durationSeconds,
-          is_loopable: cue.type === 'ambient',
-          status: 'pending',
-        };
-      })
-      .filter(Boolean);
-
     // Re-fetch shots WITH scene_number to populate it correctly
     // (Optimized: could have fetched it in Step 1)
     const { data: shotsWithScene } = await supabase
@@ -161,15 +127,6 @@ export async function processAudioCueGeneration(
     const sceneMap = new Map(
       shotsWithScene?.map((s) => [s.sequence_number, s.scene_number]),
     );
-
-    // Update scene numbers in inserts
-    for (const insert of audioCueInserts) {
-      // Find the shot that contains this time?
-      // Or simpler: use the startShotSequence from the generated cue.
-      // The LLM gave us `startShotSequence`.
-      // We need to map that back to the inserted object.
-      // Let's redo the map logic slightly.
-    }
 
     // Correct mapping loop
     const finalInserts = generatedCues
