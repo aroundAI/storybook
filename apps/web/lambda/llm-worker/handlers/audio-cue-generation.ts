@@ -20,6 +20,7 @@ interface AudioCueGenerationPayload {
 
 interface ShotData {
   sequence_number: number;
+  scene_number: number;
   duration_seconds: number;
   scene_description: string;
   prompt: string;
@@ -55,7 +56,7 @@ export async function processAudioCueGeneration(
     const { data: shots, error: shotsError } = await supabase
       .from('shots')
       .select(
-        'sequence_number, duration_seconds, scene_description, prompt, generation_metadata',
+        'sequence_number, scene_number, duration_seconds, scene_description, prompt, generation_metadata',
       )
       .eq('episode_id', episodeId)
       .is('deleted_at', null)
@@ -117,24 +118,30 @@ export async function processAudioCueGeneration(
       currentTime += shot.duration_seconds;
     }
 
-    // Re-fetch shots WITH scene_number to populate it correctly
-    // (Optimized: could have fetched it in Step 1)
-    const { data: shotsWithScene } = await supabase
-      .from('shots')
-      .select('sequence_number, scene_number')
-      .eq('episode_id', episodeId);
-
+    // Create scene map from initial shots fetch
     const sceneMap = new Map(
-      shotsWithScene?.map((s) => [s.sequence_number, s.scene_number]),
+      shots.map((s) => [s.sequence_number, s.scene_number]),
     );
 
     // Correct mapping loop
     const finalInserts = generatedCues
       .map((cue) => {
         const shotStartTime = shotStartTimes.get(cue.startShotSequence);
-        if (shotStartTime === undefined) return null;
+        if (shotStartTime === undefined) {
+          console.warn(
+            `[Audio Generation] Cue references unknown shot sequence: ${cue.startShotSequence}`,
+          );
+          return null;
+        }
 
-        const sceneNum = sceneMap.get(cue.startShotSequence) ?? 1;
+        const sceneNum = sceneMap.get(cue.startShotSequence);
+
+        if (sceneNum === undefined) {
+          console.warn(
+            `[Audio Generation] Could not find scene number for shot sequence: ${cue.startShotSequence}`,
+          );
+          return null;
+        }
 
         return {
           episode_id: episodeId,
