@@ -17,6 +17,7 @@ import type {
   ProjectAudioSettings,
 } from '@kit/audio-generation/lib';
 import {
+  getAvailableLanguagesAction,
   getCharactersForEpisodeAction,
   getDialogueLinesAction,
   getProjectAudioSettings,
@@ -36,6 +37,8 @@ interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
   refetchEpisode: () => void;
 }
+
+const PREFERRED_LANGUAGE_ORDER = ['en', 'hi', 'es', 'pt'];
 
 export function AudioStudioScreen({
   episode,
@@ -78,6 +81,47 @@ export function AudioStudioScreen({
     error: translateError,
   } = useLlmJob<{ success: boolean }>('translate-dialogue');
 
+  // Fetch dialogue lines and characters on mount
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [dialogueResult, chars, settings, languages] = await Promise.all([
+        getDialogueLinesAction({
+          episodeId: episode.id,
+          language: selectedLanguage,
+        }),
+        getCharactersForEpisodeAction({ episodeId: episode.id }),
+        getProjectAudioSettings(episode.projectId),
+        getAvailableLanguagesAction({ episodeId: episode.id }),
+      ]);
+
+      const allLines = Array.isArray(dialogueResult?.lines)
+        ? dialogueResult.lines
+        : [];
+
+      setDialogueLines(allLines);
+      setCharacters(Array.isArray(chars) ? chars : []);
+      setAudioSettings(settings);
+
+      if (Array.isArray(languages) && languages.length > 0) {
+        const langArray = [...languages].sort((a, b) => {
+          return (
+            PREFERRED_LANGUAGE_ORDER.indexOf(a) -
+            PREFERRED_LANGUAGE_ORDER.indexOf(b)
+          );
+        });
+        setAvailableLanguages(langArray);
+      }
+    } catch (error) {
+      console.error('Failed to fetch audio studio data:', error);
+      toast.error('Failed to load dialogue data');
+      setDialogueLines([]);
+      setCharacters([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [episode.id, episode.projectId, selectedLanguage]);
+
   // Handle shot-generation result (refresh to show updated episode)
   useEffect(() => {
     if (shotGenStatus === 'success' && shotGenResult) {
@@ -86,11 +130,12 @@ export function AudioStudioScreen({
       if (resultData?.success) {
         toast.success('Shot list generated successfully');
         refetchEpisode();
+        void fetchData();
       }
     } else if (shotGenStatus === 'error') {
       toast.error(shotGenError || 'Failed to generate shot list');
     }
-  }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode]);
+  }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode, fetchData]);
 
   // Handle translate-dialogue result (refresh to show translated dialogue)
   useEffect(() => {
@@ -100,11 +145,22 @@ export function AudioStudioScreen({
       if (resultData?.success) {
         toast.success('Dialogue translated successfully');
         refetchEpisode();
+        void fetchData();
       }
     } else if (translateStatus === 'error') {
       toast.error(translateError || 'Failed to translate dialogue');
     }
-  }, [translateStatus, translateResult, translateError, refetchEpisode]);
+  }, [
+    translateStatus,
+    translateResult,
+    translateError,
+    refetchEpisode,
+    fetchData,
+  ]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   // Zoom presets
   const ZOOM_LEVELS = [2, 5, 10, 20, 40, 60, 80, 120, 160, 200];
@@ -130,52 +186,6 @@ export function AudioStudioScreen({
     const newPPS = Math.floor(availableWidth / totalDuration);
     setPixelsPerSecond(Math.max(20, Math.min(200, newPPS)));
   };
-
-  // Fetch dialogue lines and characters on mount
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [dialogueResult, chars, settings] = await Promise.all([
-        getDialogueLinesAction({ episodeId: episode.id }),
-        getCharactersForEpisodeAction({ episodeId: episode.id }),
-        getProjectAudioSettings(episode.projectId),
-      ]);
-
-      const allLines = Array.isArray(dialogueResult?.lines)
-        ? dialogueResult.lines
-        : [];
-
-      // Extract available languages from dialogue lines
-      const langs = new Set<SupportedLanguage>(
-        allLines.map((l) => (l.language || 'en') as SupportedLanguage),
-      );
-      const langArray = Array.from(langs).sort((a, b) => {
-        const order = ['en', 'hi', 'es', 'pt'];
-        return order.indexOf(a) - order.indexOf(b);
-      });
-      setAvailableLanguages(langArray.length > 0 ? langArray : ['en']);
-
-      // Filter dialogue by selected language
-      const filteredLines = allLines.filter(
-        (l) => (l.language || 'en') === selectedLanguage,
-      );
-      setDialogueLines(filteredLines);
-      setCharacters(Array.isArray(chars) ? chars : []);
-      setAudioSettings(settings);
-    } catch (error) {
-      console.error('Failed to fetch audio studio data:', error);
-      toast.error('Failed to load dialogue data');
-      // Reset to empty arrays on error
-      setDialogueLines([]);
-      setCharacters([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [episode.id, episode.projectId, selectedLanguage]);
-
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
 
   // Stats from real data
   const stats = useMemo(() => {

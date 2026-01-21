@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
-import { getAccountOAuthApp } from '@kit/publishing/server';
+import { getGlobalOAuthCredentials } from '@kit/publishing/server';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -60,17 +60,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Account ID required' }, { status: 400 });
   }
 
-  // Get OAuth credentials from database (account-scoped)
-  const oauthApp = await getAccountOAuthApp(accountId, 'meta');
+  // Get global OAuth credentials (configured by super admin)
+  const credentials = await getGlobalOAuthCredentials('meta');
   const appUrl =
     process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL;
 
-  if (!oauthApp) {
-    logger.error(ctx, 'Meta OAuth credentials not found for this account');
+  if (!credentials) {
+    logger.error(ctx, 'Meta OAuth credentials not configured globally');
     return NextResponse.json(
       {
         error:
-          'Meta OAuth not configured. Please add your Meta App credentials in Platforms settings.',
+          'Meta OAuth not configured. Please contact your administrator.',
       },
       { status: 400 },
     );
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
   }
 
   const params = new URLSearchParams({
-    client_id: oauthApp.clientId,
+    client_id: credentials.clientId,
     redirect_uri: `${appUrl}/api/platforms/callback/meta`,
     response_type: 'code',
     scope: META_OAUTH_CONFIG.scopes.join(','),

@@ -12,7 +12,8 @@ export type GenerationJobType =
   | 'story'
   | 'screenplay'
   | 'shot_list'
-  | 'translate-dialogue';
+  | 'translate-dialogue'
+  | 'audio_cue_generation';
 
 export type GenerationJobStatus =
   | 'queued'

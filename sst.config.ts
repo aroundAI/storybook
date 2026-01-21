@@ -557,6 +557,16 @@ export default $config({
         LLM_PROVIDER: process.env.LLM_PROVIDER || "gemini",
         LLM_MODEL: process.env.LLM_MODEL || "",
 
+        // Security - needed for API key decryption
+        ...(process.env.ENCRYPTION_KEY && { ENCRYPTION_KEY: process.env.ENCRYPTION_KEY }),
+
+        // R2 Storage configuration (for audio uploads)
+        ...(process.env.R2_ACCOUNT_ID && { R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID }),
+        ...(process.env.R2_ACCESS_KEY_ID && { R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID }),
+        ...(process.env.R2_SECRET_ACCESS_KEY && { R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY }),
+        ...(process.env.R2_BUCKET_NAME && { R2_BUCKET_NAME: process.env.R2_BUCKET_NAME }),
+        ...(process.env.R2_PUBLIC_URL && { R2_PUBLIC_URL: process.env.R2_PUBLIC_URL }),
+
         // WebSocket configuration
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
         WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
@@ -567,6 +577,7 @@ export default $config({
           "@aws-sdk/client-dynamodb",
           "@aws-sdk/lib-dynamodb",
           "@aws-sdk/client-apigatewaymanagementapi",
+          "@aws-sdk/client-s3",
         ],
       },
     });

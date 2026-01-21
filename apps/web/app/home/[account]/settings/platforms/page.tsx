@@ -1,13 +1,6 @@
-import { Settings2 } from 'lucide-react';
-
-import {
-  OAuthAppConfig,
-  PlatformConnections,
-} from '@kit/publishing/components';
-import { getAccountOAuthApps } from '@kit/publishing/server';
+import { PlatformConnections } from '@kit/publishing/components';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { PageBody } from '@kit/ui/page';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 import { Trans } from '@kit/ui/trans';
 
 import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
@@ -34,9 +27,6 @@ async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
   const workspace = await loadTeamWorkspace(slug);
   const accountId = workspace.account.id;
 
-  // Fetch OAuth apps for the account
-  const oauthApps = await getAccountOAuthApps(accountId);
-
   return (
     <>
       <TeamAccountLayoutPageHeader
@@ -47,23 +37,7 @@ async function PlatformConnectionsPage(props: PlatformConnectionsPageProps) {
 
       <PageBody>
         <div className="flex max-w-4xl flex-1 flex-col">
-          <Tabs defaultValue="credentials" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="credentials">
-                <Settings2 className="mr-2 h-4 w-4" />
-                App Credentials
-              </TabsTrigger>
-              <TabsTrigger value="connections">Connect Accounts</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="credentials" className="mt-6">
-              <OAuthAppConfig accountId={accountId} existingApps={oauthApps} />
-            </TabsContent>
-
-            <TabsContent value="connections" className="mt-6">
-              <PlatformConnections accountSlug={slug} accountId={accountId} />
-            </TabsContent>
-          </Tabs>
+          <PlatformConnections accountSlug={slug} accountId={accountId} />
         </div>
       </PageBody>
     </>

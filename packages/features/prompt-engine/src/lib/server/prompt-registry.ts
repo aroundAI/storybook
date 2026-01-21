@@ -16,6 +16,7 @@ import languageInsights from '../../prompts/analytics/language-insights.json';
 // Audio Generation Prompts
 // =============================================================================
 import dialogueTranslation from '../../prompts/audio-generation/dialogue-translation.json';
+import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-refinement.json';
 // =============================================================================
 // Publishing Prompts
 // =============================================================================
@@ -55,6 +56,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
   // Audio Generation
   'dialogue-translation': dialogueTranslation as unknown as PromptTemplate,
+  'scene-audio-refinement': sceneAudioRefinement as unknown as PromptTemplate,
 
   // Publishing
   'translate-metadata': translateMetadata as unknown as PromptTemplate,

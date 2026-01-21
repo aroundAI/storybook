@@ -25,6 +25,7 @@ import {
   updateAudioTrackAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
@@ -99,6 +100,15 @@ export function MusicTimeline({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // WebSocket hook for audio-file-generation results
+  const {
+    status: audioGenStatus,
+    result: audioGenResult,
+    error: audioGenError,
+  } = useLlmJob<{ success: boolean; assetId?: string; cueId?: string }>(
+    'audio-file-generation',
+  );
 
   // Fetch music tracks (user-generated) AND music cues (auto-generated from shots)
   const fetchTracks = useCallback(async () => {
@@ -181,6 +191,18 @@ export function MusicTimeline({
   useEffect(() => {
     void fetchTracks();
   }, [fetchTracks]);
+
+  // Handle WebSocket audio generation result
+  useEffect(() => {
+    if (audioGenStatus === 'success' && audioGenResult?.success) {
+      toast.success('Music generated successfully');
+      void fetchTracks();
+      onRefresh?.();
+    } else if (audioGenStatus === 'error') {
+      toast.error(audioGenError || 'Music generation failed');
+      void fetchTracks();
+    }
+  }, [audioGenStatus, audioGenResult, audioGenError, fetchTracks, onRefresh]);
 
   // Poll for processing tracks
   useEffect(() => {
@@ -325,11 +347,11 @@ export function MusicTimeline({
       setIsRegenerating(true);
       try {
         const result = await generateAudioForCueAction({ cueId });
-        if (result.success) {
-          toast.success('Music regenerated');
-          handleGenerationComplete();
+        if (result.status === 'queued') {
+          toast.info('Music generation started...');
+          // Don't call handleGenerationComplete - WebSocket will notify when complete
         } else {
-          toast.error(result.error ?? 'Failed to regenerate music');
+          toast.error(result.error ?? 'Failed to queue music regeneration');
         }
       } catch {
         toast.error('Failed to regenerate music');
@@ -551,7 +573,7 @@ export function MusicTimeline({
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
                         selectedTrack?.id === track.id &&
-                          'ring-2 ring-blue-500 ring-offset-2',
+                        'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{
                         left: `${leftPx}px`,

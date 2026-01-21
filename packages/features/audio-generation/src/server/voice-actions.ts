@@ -416,6 +416,155 @@ export const generateDialogueVoiceAction = enhanceAction(
 );
 
 /**
+ * Generate voice audio for a dialogue line (ASYNC)
+ *
+ * Enqueues a job for background processing via LLM Worker Lambda.
+ * Results are delivered via WebSocket when complete.
+ *
+ * This is the preferred method for production use as it avoids
+ * API Gateway timeout issues with long TTS generation.
+ */
+export const generateDialogueVoiceAsyncAction = enhanceAction(
+  async (
+    data: GenerateDialogueVoiceSchemaType,
+  ): Promise<{ success: boolean; status: 'queued' | 'failed'; error?: string }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'voice.generateDialogueAsync',
+      dialogueLineId: data.dialogueLineId,
+    };
+
+    logger.info(ctx, 'Queueing dialogue voice generation');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      return { success: false, status: 'failed', error: 'Authentication required' };
+    }
+
+    // 1. Fetch dialogue line with episode and account context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: dialogueLine, error: fetchError } = await (client as any)
+      .from('dialogue_lines')
+      .select(
+        `
+        id,
+        episode_id,
+        text,
+        character_asset_id,
+        audio_url,
+        status,
+        episodes!inner(
+          id,
+          project_id,
+          projects!inner(
+            id,
+            account_id
+          )
+        )
+      `,
+      )
+      .eq('id', data.dialogueLineId)
+      .single();
+
+    if (fetchError || !dialogueLine) {
+      return { success: false, status: 'failed', error: 'Dialogue line not found' };
+    }
+
+    const dialogueData = dialogueLine as DialogueLineResponse;
+    const accountId = dialogueData.episodes?.projects?.account_id;
+    const projectId = dialogueData.episodes?.project_id;
+    const episodeId = dialogueData.episode_id;
+
+    if (!accountId || !projectId) {
+      return { success: false, status: 'failed', error: 'Could not determine account for dialogue line' };
+    }
+
+    // Validate text is not empty
+    const dialogueText = dialogueData.text?.trim();
+    if (!dialogueText) {
+      return { success: false, status: 'failed', error: 'Dialogue text is empty' };
+    }
+
+    // 2. Get voice ID from params or character's voice profile
+    const voiceId =
+      data.voiceId ??
+      (await getVoiceIdForCharacter(client, dialogueData.character_asset_id));
+
+    if (!voiceId) {
+      return {
+        success: false,
+        status: 'failed',
+        error: 'No voice ID provided and character has no voice profile configured',
+      };
+    }
+
+    // 3. Get voice settings from profile or use defaults
+    const voiceSettings =
+      data.settings ??
+      (await getVoiceSettings(client, dialogueData.character_asset_id));
+
+    // 4. Get TTS model for project
+    const ttsModel = await getProjectTTSModel(projectId);
+
+    try {
+      // 5. Update status to 'generating' (queued for background)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('dialogue_lines')
+        .update({ status: 'generating' })
+        .eq('id', data.dialogueLineId);
+
+      // 6. Enqueue LLM job for background processing
+      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+
+      await queueLlmJob({
+        jobType: 'dialogue-voice-generation',
+        userId: user.id,
+        payload: {
+          dialogueLineId: data.dialogueLineId,
+          projectId,
+          episodeId,
+          accountId,
+          text: dialogueText,
+          voiceId,
+          ttsModel,
+          voiceSettings: {
+            stability: voiceSettings.stability,
+            similarityBoost: voiceSettings.similarityBoost,
+            style: voiceSettings.style,
+            speed: voiceSettings.speed,
+          },
+          overwriteExisting: data.overwriteExisting ?? false,
+          characterAssetId: dialogueData.character_asset_id,
+        },
+      });
+
+      logger.info(ctx, 'Dialogue voice generation job queued successfully');
+
+      return { success: true, status: 'queued' };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      logger.error({ ...ctx, error }, 'Failed to queue dialogue voice generation');
+
+      // Revert status to pending
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('dialogue_lines')
+        .update({ status: 'pending' })
+        .eq('id', data.dialogueLineId);
+
+      return { success: false, status: 'failed', error: errorMsg };
+    }
+  },
+  {
+    schema: GenerateDialogueVoiceSchema,
+  },
+);
+
+
+/**
  * Generate voice audio from raw text (for previews)
  *
  * This action generates voice audio from provided text without

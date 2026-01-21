@@ -129,9 +129,9 @@ async function sendToUser(
     } catch (error: unknown) {
       const statusCode =
         error &&
-        typeof error === 'object' &&
-        'statusCode' in error &&
-        typeof error.statusCode === 'number'
+          typeof error === 'object' &&
+          'statusCode' in error &&
+          typeof error.statusCode === 'number'
           ? error.statusCode
           : null;
 
@@ -222,9 +222,27 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processTranslateDialogue(job.payload, supabase);
     }
-    // NOTE: audio-cue-generation removed - audio cues now extracted directly in shot-generation
+    case 'audio-cue-generation': {
+      const { processAudioCueGeneration } = await import(
+        './handlers/audio-cue-generation'
+      );
+      return processAudioCueGeneration(job.payload, supabase);
+    }
+    case 'audio-file-generation': {
+      const { processAudioFileGeneration } = await import(
+        './handlers/audio-file-generation'
+      );
+      return processAudioFileGeneration(job.payload, supabase);
+    }
+    case 'dialogue-voice-generation': {
+      const { processDialogueVoiceGeneration } = await import(
+        './handlers/dialogue-voice-generation'
+      );
+      return processDialogueVoiceGeneration(job.payload, supabase);
+    }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
+
   }
 }
 

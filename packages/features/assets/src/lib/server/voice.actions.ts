@@ -5,6 +5,7 @@ import 'server-only';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { decrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -51,7 +52,8 @@ async function getAccountElevenLabsApiKey(accountId: string): Promise<string> {
     );
   }
 
-  return apiKeyRecord.encrypted_key;
+  // Decrypt the stored key before returning
+  return await decrypt(apiKeyRecord.encrypted_key);
 }
 
 /**

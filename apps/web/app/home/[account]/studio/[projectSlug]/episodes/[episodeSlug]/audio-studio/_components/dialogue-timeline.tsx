@@ -1,16 +1,17 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { Edit3, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import type { CharacterAsset, DialogueLine } from '@kit/audio-generation/lib';
 import { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
-  generateDialogueVoiceAction,
+  generateDialogueVoiceAsyncAction,
   updateDialogueTextAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
@@ -111,10 +112,38 @@ export function DialogueTimeline({
   const [selectedDialogue, setSelectedDialogue] =
     useState<TimelineDialogue | null>(null);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editText, setEditText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+
+  // WebSocket hook for dialogue-voice-generation results
+  const {
+    status: voiceGenStatus,
+    result: voiceGenResult,
+    error: voiceGenError,
+  } = useLlmJob<{ success: boolean; dialogueLineId?: string; audioUrl?: string }>(
+    'dialogue-voice-generation',
+  );
+
+  // Handle WebSocket voice generation result
+  useEffect(() => {
+    if (voiceGenStatus === 'success' && voiceGenResult?.success) {
+      toast.success('Voice generated successfully');
+      onRefresh();
+      // Clear generating state for the completed dialogue
+      if (voiceGenResult.dialogueLineId) {
+        setGeneratingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(voiceGenResult.dialogueLineId!);
+          return next;
+        });
+      }
+    } else if (voiceGenStatus === 'error') {
+      toast.error(voiceGenError || 'Voice generation failed');
+      onRefresh();
+    }
+  }, [voiceGenStatus, voiceGenResult, voiceGenError, onRefresh]);
 
   // Map character IDs to colors
   const characterColorMap = useMemo(() => {
@@ -240,26 +269,35 @@ export function DialogueTimeline({
       return;
     }
 
-    setIsGenerating(true);
+    const dialogueId = selectedDialogue.id;
+    setGeneratingIds((prev) => new Set(prev).add(dialogueId));
+    setSelectedDialogue(null);
+
     try {
-      const result = await generateDialogueVoiceAction({
-        dialogueLineId: selectedDialogue.id,
+      const result = await generateDialogueVoiceAsyncAction({
+        dialogueLineId: dialogueId,
         overwriteExisting: true,
       });
 
-      if (result.status === 'completed') {
-        toast.success('Voice regenerated successfully');
-        onRefresh();
+      if (result.status === 'queued') {
+        toast.success('Voice generation started');
       } else {
-        toast.error(result.error ?? 'Failed to regenerate voice');
+        toast.error(result.error ?? 'Failed to start voice generation');
+        setGeneratingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(dialogueId);
+          return next;
+        });
       }
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Failed to regenerate',
       );
-    } finally {
-      setIsGenerating(false);
-      setSelectedDialogue(null);
+      setGeneratingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(dialogueId);
+        return next;
+      });
     }
   };
 
@@ -402,7 +440,7 @@ export function DialogueTimeline({
                       colors.bg,
                       colors.border,
                       selectedDialogue?.id === dialogue.id &&
-                        'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
+                      'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
                     )}
                     style={{
                       left: `${leftPx}px`,
@@ -476,13 +514,13 @@ export function DialogueTimeline({
             </button>
             <button
               onClick={handleRegenerate}
-              disabled={isGenerating}
+              disabled={selectedDialogue ? generatingIds.has(selectedDialogue.id) : false}
               className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
             >
               <RefreshCw
-                className={cn('h-4 w-4', isGenerating && 'animate-spin')}
+                className={cn('h-4 w-4', selectedDialogue && generatingIds.has(selectedDialogue.id) && 'animate-spin')}
               />
-              {isGenerating ? 'Generating...' : 'Regenerate'}
+              {selectedDialogue && generatingIds.has(selectedDialogue.id) ? 'Generating...' : 'Regenerate'}
             </button>
           </div>
         </>

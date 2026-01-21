@@ -42,7 +42,10 @@ export type LlmJobType =
   | 'publish-metadata'
   | 'analytics-insights'
   | 'language-insights'
-  | 'translate-dialogue';
+  | 'translate-dialogue'
+  | 'audio-cue-generation'
+  | 'audio-file-generation'
+  | 'dialogue-voice-generation';
 
 /**
  * Queue an LLM job for background processing
