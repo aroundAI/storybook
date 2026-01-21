@@ -234,8 +234,15 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processAudioFileGeneration(job.payload, supabase);
     }
+    case 'dialogue-voice-generation': {
+      const { processDialogueVoiceGeneration } = await import(
+        './handlers/dialogue-voice-generation'
+      );
+      return processDialogueVoiceGeneration(job.payload, supabase);
+    }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
+
   }
 }
 
