@@ -25,16 +25,74 @@ const AudioFileGenerationPayloadSchema = z.object({
     startOffsetSeconds: z.number(),
 });
 
-/**
- * Get decrypted ElevenLabs API key for a project
- * Note: decrypt is imported here in Lambda context where server-only works
- */
+// =============================================================================
+// Inline Decryption (Lambda-safe, no server-only import)
+// =============================================================================
+
+const ALGORITHM = 'AES-GCM';
+const KEY_LENGTH = 256;
+const IV_LENGTH = 12;
+const TAG_LENGTH = 128;
+
+async function getEncryptionKey(): Promise<CryptoKey> {
+    const keyBase64 = process.env.ENCRYPTION_KEY;
+
+    if (!keyBase64) {
+        throw new Error(
+            'ENCRYPTION_KEY environment variable is required.',
+        );
+    }
+
+    const keyBuffer = Buffer.from(keyBase64, 'base64');
+
+    if (keyBuffer.length !== 32) {
+        throw new Error(
+            'ENCRYPTION_KEY must be exactly 32 bytes (256 bits) when decoded',
+        );
+    }
+
+    return crypto.subtle.importKey(
+        'raw',
+        keyBuffer,
+        { name: ALGORITHM, length: KEY_LENGTH },
+        false,
+        ['encrypt', 'decrypt'],
+    );
+}
+
+async function decrypt(encryptedBase64: string): Promise<string> {
+    const key = await getEncryptionKey();
+    const combined = Buffer.from(encryptedBase64, 'base64');
+
+    if (combined.length < IV_LENGTH + TAG_LENGTH / 8) {
+        throw new Error('Invalid encrypted data: too short');
+    }
+
+    const iv = combined.subarray(0, IV_LENGTH);
+    const ciphertext = combined.subarray(IV_LENGTH);
+
+    const decrypted = await crypto.subtle.decrypt(
+        {
+            name: ALGORITHM,
+            iv,
+            tagLength: TAG_LENGTH,
+        },
+        key,
+        ciphertext,
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+}
+
+// =============================================================================
+// API Key Fetching
+// =============================================================================
+
 async function getProjectElevenLabsApiKey(
     supabase: SupabaseClient,
     projectId: string,
 ): Promise<string> {
-    const { decrypt } = await import('@kit/shared/crypto');
-
     const { data, error } = await supabase
         .from('project_audio_settings')
         .select('elevenlabs_api_key_encrypted')
@@ -48,6 +106,10 @@ async function getProjectElevenLabsApiKey(
     return decrypt(data.elevenlabs_api_key_encrypted);
 }
 
+// =============================================================================
+// Handler
+// =============================================================================
+
 export async function processAudioFileGeneration(
     payload: Record<string, unknown>,
     supabase: SupabaseClient,
@@ -60,7 +122,7 @@ export async function processAudioFileGeneration(
     await markJobProcessing(supabase, data.cueId, 'audio_file_generation');
 
     try {
-        // Fetch API key first - decrypt happens here in Lambda context
+        // Fetch API key first - decrypt happens inline without server-only
         const apiKey = await getProjectElevenLabsApiKey(supabase, data.projectId);
 
         let result: {

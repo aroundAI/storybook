@@ -4,12 +4,10 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Share2 } from 'lucide-react';
 
 import {
-  OAuthAppConfig,
   PlatformConnections,
   ProjectPublishingConfigs,
 } from '@kit/publishing/components';
 import {
-  getAccountOAuthApps,
   getAccountPlatformConnections,
   getProjectPublishingConfigs,
 } from '@kit/publishing/server';
@@ -85,14 +83,12 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
     notFound();
   }
 
-  // Fetch publishing configs, connections, and OAuth apps
-  const [publishingConfigs, platformConnections, oauthApps] = await Promise.all(
-    [
-      getProjectPublishingConfigs(project.id),
-      getAccountPlatformConnections(project.account_id ?? ''),
-      getAccountOAuthApps(accountId),
-    ],
-  );
+  // Fetch publishing configs and connections
+  // Note: OAuth app credentials are now managed globally by sys admin
+  const [publishingConfigs, platformConnections] = await Promise.all([
+    getProjectPublishingConfigs(project.id),
+    getAccountPlatformConnections(project.account_id ?? ''),
+  ]);
 
   return (
     <>
@@ -114,30 +110,20 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
           </h1>
         </div>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Configure OAuth apps and connect publishing platforms
+          Connect platform accounts and configure publishing destinations
         </p>
       </header>
 
       {/* Content */}
       <div className="flex-1">
         <div className="mx-auto max-w-4xl space-y-6 p-6">
-          <Tabs defaultValue="credentials" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="credentials">App Credentials</TabsTrigger>
+          <Tabs defaultValue="connections" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="connections">Connect Accounts</TabsTrigger>
               <TabsTrigger value="destinations">Destinations</TabsTrigger>
             </TabsList>
 
-            {/* Tab 1: Configure OAuth App Credentials */}
-            <TabsContent value="credentials" className="space-y-4">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Configure your OAuth app credentials to enable connecting
-                platform accounts. This is a one-time setup per platform.
-              </div>
-              <OAuthAppConfig accountId={accountId} existingApps={oauthApps} />
-            </TabsContent>
-
-            {/* Tab 2: Connect Platform Accounts */}
+            {/* Tab 1: Connect Platform Accounts */}
             <TabsContent value="connections" className="space-y-4">
               <div className="text-sm text-gray-600 dark:text-gray-400">
                 Connect your YouTube, TikTok, and Instagram accounts to enable
@@ -149,7 +135,7 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
               />
             </TabsContent>
 
-            {/* Tab 3: Project Destinations */}
+            {/* Tab 2: Project Destinations */}
             <TabsContent value="destinations" className="space-y-6">
               <Card>
                 <CardHeader>
@@ -176,3 +162,4 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
 }
 
 export default withI18n(PlatformsPage);
+
