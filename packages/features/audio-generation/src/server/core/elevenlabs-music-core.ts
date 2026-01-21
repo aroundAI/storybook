@@ -19,6 +19,14 @@ import {
 // Types
 // =============================================================================
 
+/** Upload function type for dependency injection */
+export type UploadFn = (
+    bucket: string,
+    path: string,
+    data: Buffer,
+    contentType: string,
+) => Promise<{ url: string; path: string }>;
+
 export interface GenerateMusicCoreInput {
     supabase: SupabaseClient;
     projectId: string;
@@ -33,6 +41,8 @@ export interface GenerateMusicCoreInput {
     timelineStartSeconds?: number;
     /** ElevenLabs API key (decrypted) - passed from handler to avoid server-only import */
     apiKey: string;
+    /** Optional upload function for Lambda environments (avoids @kit/storage server-only import) */
+    uploadFn?: UploadFn;
 }
 
 export interface GenerateMusicCoreResult {
@@ -54,11 +64,18 @@ async function uploadAudioToStorage(
     projectId: string,
     assetId: string,
     audioBuffer: Buffer,
+    uploadFn?: UploadFn,
 ): Promise<{ url: string; path: string }> {
-    const { getStorageAdapter } = await import('@kit/storage');
-
     const fileName = `${assetId}.mp3`;
     const storagePath = `${projectId}/music/${fileName}`;
+
+    // Use injected upload function if provided (Lambda-safe)
+    if (uploadFn) {
+        return uploadFn('audio', storagePath, audioBuffer, 'audio/mpeg');
+    }
+
+    // Default: use @kit/storage (for Next.js server actions)
+    const { getStorageAdapter } = await import('@kit/storage');
     const storage = getStorageAdapter(supabase);
 
     const { url } = await storage.upload('audio', storagePath, audioBuffer, {
@@ -173,6 +190,7 @@ export async function generateMusicElevenLabsCore(
             input.projectId,
             asset.id,
             audioBuffer,
+            input.uploadFn,
         );
 
         // 4. Update asset with completed status

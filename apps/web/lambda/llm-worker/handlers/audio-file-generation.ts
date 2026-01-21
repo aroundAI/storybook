@@ -14,6 +14,7 @@ import {
     markJobFailed,
     markJobProcessing,
 } from '../utils/job-tracking';
+import { uploadToR2 } from '../utils/r2-storage';
 
 const AudioFileGenerationPayloadSchema = z.object({
     cueId: z.string().uuid(),
@@ -182,6 +183,7 @@ export async function processAudioFileGeneration(
                 durationSeconds: Math.min(data.durationSeconds, 300),
                 timelineStartSeconds: data.startOffsetSeconds,
                 apiKey,
+                uploadFn: uploadToR2,
             });
 
             result = {
@@ -204,6 +206,7 @@ export async function processAudioFileGeneration(
                 durationSeconds: Math.min(data.durationSeconds, 22),
                 timelineStartSeconds: data.startOffsetSeconds,
                 apiKey,
+                uploadFn: uploadToR2,
             });
 
             result = {

@@ -15,6 +15,7 @@ export {
     generateSfxCore,
     type GenerateSfxCoreInput,
     type GenerateSfxCoreResult,
+    type UploadFn,
 } from './sfx-core';
 
 export {
