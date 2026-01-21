@@ -481,6 +481,12 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
       return { success: false, status: 'failed', error: 'Could not determine account for dialogue line' };
     }
 
+    // Validate text is not empty
+    const dialogueText = dialogueData.text?.trim();
+    if (!dialogueText) {
+      return { success: false, status: 'failed', error: 'Dialogue text is empty' };
+    }
+
     // 2. Get voice ID from params or character's voice profile
     const voiceId =
       data.voiceId ??
@@ -521,7 +527,7 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
           projectId,
           episodeId,
           accountId,
-          text: dialogueData.text,
+          text: dialogueText,
           voiceId,
           ttsModel,
           voiceSettings: {
