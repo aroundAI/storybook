@@ -570,6 +570,7 @@ export default $config({
           "@aws-sdk/client-dynamodb",
           "@aws-sdk/lib-dynamodb",
           "@aws-sdk/client-apigatewaymanagementapi",
+          "@aws-sdk/client-s3",
         ],
       },
     });
