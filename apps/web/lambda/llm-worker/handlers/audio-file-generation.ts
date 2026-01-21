@@ -38,9 +38,7 @@ async function getEncryptionKey(): Promise<CryptoKey> {
     const keyBase64 = process.env.ENCRYPTION_KEY;
 
     if (!keyBase64) {
-        throw new Error(
-            'ENCRYPTION_KEY environment variable is required.',
-        );
+        throw new Error('ENCRYPTION_KEY environment variable is required.');
     }
 
     const keyBuffer = Buffer.from(keyBase64, 'base64');
@@ -86,24 +84,62 @@ async function decrypt(encryptedBase64: string): Promise<string> {
 }
 
 // =============================================================================
-// API Key Fetching
+// API Key Fetching (using correct source: external_api_keys table)
 // =============================================================================
 
-async function getProjectElevenLabsApiKey(
+/**
+ * Get the account ID for a given project
+ */
+async function getProjectAccountId(
     supabase: SupabaseClient,
     projectId: string,
 ): Promise<string> {
     const { data, error } = await supabase
-        .from('project_audio_settings')
-        .select('elevenlabs_api_key_encrypted')
-        .eq('project_id', projectId)
+        .from('projects')
+        .select('account_id')
+        .eq('id', projectId)
         .single();
 
-    if (error || !data?.elevenlabs_api_key_encrypted) {
-        throw new Error('ElevenLabs API key not configured for this project');
+    if (error || !data?.account_id) {
+        throw new Error(`Could not find project ${projectId}`);
     }
 
-    return decrypt(data.elevenlabs_api_key_encrypted);
+    return data.account_id;
+}
+
+/**
+ * Get ElevenLabs API key for an account from external_api_keys table
+ */
+async function getAccountElevenLabsApiKey(
+    supabase: SupabaseClient,
+    accountId: string,
+): Promise<string> {
+    const { data: storedKey, error } = await supabase
+        .from('external_api_keys')
+        .select('encrypted_key, is_active')
+        .eq('account_id', accountId)
+        .eq('provider', 'elevenlabs')
+        .eq('is_active', true)
+        .single();
+
+    if (error || !storedKey?.encrypted_key) {
+        throw new Error(
+            'ElevenLabs API key not configured. Please add your API key in Settings → API Keys.',
+        );
+    }
+
+    return decrypt(storedKey.encrypted_key);
+}
+
+/**
+ * Get ElevenLabs API key for a project (looks up accountId first)
+ */
+async function getProjectElevenLabsApiKey(
+    supabase: SupabaseClient,
+    projectId: string,
+): Promise<string> {
+    const accountId = await getProjectAccountId(supabase, projectId);
+    return getAccountElevenLabsApiKey(supabase, accountId);
 }
 
 // =============================================================================
@@ -122,7 +158,7 @@ export async function processAudioFileGeneration(
     await markJobProcessing(supabase, data.cueId, 'audio_file_generation');
 
     try {
-        // Fetch API key first - decrypt happens inline without server-only
+        // Fetch API key from external_api_keys via project → account lookup
         const apiKey = await getProjectElevenLabsApiKey(supabase, data.projectId);
 
         let result: {
