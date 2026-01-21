@@ -154,6 +154,62 @@ export async function getPublicEpisode(
 }
 
 /**
+ * Get a public episode by slugs.
+ * Combines lookups to avoid sequential fetching.
+ */
+export async function getPublicEpisodeBySlugs(
+  companySlug: string,
+  projectSlug: string,
+  episodeSlug: string,
+): Promise<PublicEpisode | null> {
+  const client = getSupabaseServerClient();
+
+  const { data: episode, error } = await client
+    .from('episodes')
+    .select(
+      `
+      *,
+      project:projects!inner(
+        id,
+        name,
+        public_slug,
+        visibility,
+        account:accounts!inner(
+          id, name, slug, public_profile
+        )
+      )
+    `,
+    )
+    .eq('slug', episodeSlug)
+    .eq('project.public_slug', projectSlug)
+    .eq('project.account.slug', companySlug)
+    .eq('project.account.public_profile->>is_public', 'true')
+    .single();
+
+  if (error || !episode) return null;
+
+  // Resolve effective visibility
+  let effectiveVisibility = episode.visibility;
+  if (effectiveVisibility === 'inherit') {
+    effectiveVisibility = episode.project.visibility;
+  }
+
+  if (effectiveVisibility === 'private') {
+    return null;
+  }
+
+  // Also check project visibility explicitly (redundant with query but safe)
+  if (
+    episode.project.visibility !== 'public' &&
+    episode.project.visibility !== 'unlisted'
+  ) {
+    return null;
+  }
+
+  return episode as unknown as PublicEpisode;
+}
+
+/**
  * List public episodes for a project.
  * Only returns 'public' visibility (or 'inherit' where project is public).
  * Only returns RELEASED episodes (those with at least one localized video).

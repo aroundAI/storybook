@@ -19,6 +19,7 @@ import {
   getEpisodePlatformUrls,
   getPublicCompany,
   getPublicEpisode,
+  getPublicEpisodeBySlugs,
   getPublicEpisodes,
   getPublicProject,
   getPublicProjects,
@@ -53,30 +54,11 @@ export async function generateMetadata({
 
   // 1. Company Page: /@company
   if (decodedSlug.length === 1) {
-    const company = await getPublicCompany(companySlug);
-    if (!company) return {};
-    return generateCompanyMetadata(company);
-  }
-
-  // 2. Project Page: /@company/project
-  if (decodedSlug.length === 2) {
-    const company = await getPublicCompany(companySlug);
-    if (!company) return {};
-    const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
-    if (!project) return {};
-    return generateProjectMetadata(project);
-  }
-
-  // 3. Episode Page: /@company/project/e/episode
-  if (decodedSlug.length === 4 && decodedSlug[2] === 'e') {
-    const company = await getPublicCompany(companySlug);
-    if (!company) return {};
-    const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
-    if (!project) return {};
-    const episodeSlug = decodedSlug[3]!;
-    const episode = await getPublicEpisode(project.id, episodeSlug);
+    const episode = await getPublicEpisodeBySlugs(
+      companySlug,
+      projectSlug,
+      episodeSlug,
+    );
     if (!episode) return {};
     if (typeof lang !== 'string') return {};
     return generateEpisodeMetadata(episode, lang);
@@ -149,11 +131,13 @@ export default async function PublicPage({ params, searchParams }: PageProps) {
   // 3. Episode Page
   if (decodedSlug.length === 4 && decodedSlug[2] === 'e') {
     const projectSlug = decodedSlug[1]!;
-    const project = await getPublicProject(company.id, projectSlug);
-    if (!project) return notFound();
-
     const episodeSlug = decodedSlug[3]!;
-    const episode = await getPublicEpisode(project.id, episodeSlug);
+
+    const episode = await getPublicEpisodeBySlugs(
+      companySlug,
+      projectSlug,
+      episodeSlug,
+    );
     if (!episode) return notFound();
 
     // Get YouTube/Facebook URLs from publishes table

@@ -35,23 +35,27 @@ export const generateShotListAction = enhanceAction(
     logger.info(ctx, 'Processing shot list generation request');
 
     const client = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(client);
+
+    // 1. Parallelize Auth and Initial DB Fetch
+    const [userResult, episodeResult] = await Promise.all([
+      requireUser(client),
+      (client as any)
+        .from('episodes')
+        .select(
+          'id, project_id, screenplay_data, story_data, status, version, title, projects(account_id)',
+        )
+        .eq('id', data.episodeId)
+        .is('deleted_at', null)
+        .single(),
+    ]);
+
+    const { data: user, error: authError } = userResult;
+    const { data: episode, error: episodeError } = episodeResult;
 
     if (authError || !user) {
       logger.warn(ctx, 'Unauthorized shot list generation attempt');
       throw new Error('Authentication required');
     }
-
-    // Fetch episode with screenplay_data for validation
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: episode, error: episodeError } = await (client as any)
-      .from('episodes')
-      .select(
-        'id, project_id, screenplay_data, story_data, status, version, title',
-      )
-      .eq('id', data.episodeId)
-      .is('deleted_at', null)
-      .single();
 
     if (episodeError || !episode) {
       logger.error({ ...ctx, error: episodeError }, 'Episode not found');
@@ -67,14 +71,7 @@ export const generateShotListAction = enhanceAction(
     }
 
     // Get project for account context
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: project } = await (client as any)
-      .from('projects')
-      .select('account_id')
-      .eq('id', episode.project_id)
-      .single();
-
-    const accountId = project?.account_id ?? 'unknown';
+    const accountId = episode.projects?.account_id ?? 'unknown';
 
     // Queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');

@@ -103,9 +103,9 @@ function loadConfigFromEnv(): CacheConfig {
   if (provider === 'redis') {
     // Only set redis config if REDIS_URL is provided
     // If not provided, it will fall back to memory cache
-    if (process.env.REDIS_URL) {
+    if (process.env.REDIS_URL || process.env.CACHE_REDIS_URL) {
       config.redis = {
-        url: process.env.REDIS_URL,
+        url: process.env.REDIS_URL || process.env.CACHE_REDIS_URL,
         scanCount: process.env.REDIS_SCAN_COUNT
           ? parseInt(process.env.REDIS_SCAN_COUNT, 10)
           : 100,

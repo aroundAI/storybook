@@ -36,30 +36,22 @@ export async function generateMetadata({
   const { projectSlug, episodeSlug } = await params;
   const client = getSupabaseServerClient();
 
-  // First get project by slug
-  const { data: project } = await client
-    .from('projects')
-    .select('id')
-    .eq('slug', projectSlug)
-    .single();
-
-  if (!project) {
-    return { title: 'Episode Not Found' };
-  }
-
-  // Then get episode by slug within that project
   const { data: episode } = await client
     .from('episodes')
-    .select('title, description')
+    .select(
+      `
+      title,
+      description,
+      projects!inner(slug)
+    `,
+    )
     .eq('slug', episodeSlug)
-    .eq('project_id', project.id)
+    .eq('projects.slug', projectSlug)
     .is('deleted_at', null)
     .single();
 
   if (!episode) {
-    return {
-      title: 'Episode Not Found',
-    };
+    return { title: 'Episode Not Found' };
   }
 
   return {
@@ -75,18 +67,6 @@ async function EpisodeWorkspaceLayout({
   const { account, projectSlug, episodeSlug } = await params;
   const client = getSupabaseServerClient();
 
-  // First fetch the project by slug to get its ID
-  const { data: project, error: projectError } = await client
-    .from('projects')
-    .select('id, name, slug, account_id, metadata')
-    .eq('slug', projectSlug)
-    .single();
-
-  if (projectError || !project) {
-    notFound();
-  }
-
-  // Fetch episode using the project ID
   const { data: episodeData, error: episodeError } = await client
     .from('episodes')
     .select(
@@ -95,40 +75,38 @@ async function EpisodeWorkspaceLayout({
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        season:seasons(id, name, number)
+        projects!inner (
+          id, name, slug, account_id, metadata
+        ),
+        season:seasons (
+          id, name, number
+        ),
+        shots (
+          id, episode_id, scene_number, shot_number, sequence_number,
+          duration_seconds, scene_description, action_description,
+          prompt, camera_direction, status, video_url, thumbnail_url,
+          first_frame_url, last_frame_url, generation_job_id, generation_metadata,
+          created_at, updated_at, deleted_at
+        )
       `,
     )
     .eq('slug', episodeSlug)
-    .eq('project_id', project.id)
+    .eq('projects.slug', projectSlug)
     .is('deleted_at', null)
+    .is('shots.deleted_at', null)
+    .order('sequence_number', { foreignTable: 'shots', ascending: true })
     .single();
 
   if (episodeError || !episodeData) {
     notFound();
   }
 
-  // Now fetch shots using the episode ID
-  const { data: shotsData } = await client
-    .from('shots')
-    .select(
-      `
-      id, episode_id, scene_number, shot_number, sequence_number,
-      duration_seconds, scene_description, action_description,
-      prompt, camera_direction, status, video_url, thumbnail_url,
-      first_frame_url, last_frame_url, generation_job_id, generation_metadata,
-      created_at, updated_at, deleted_at
-    `,
-    )
-    .eq('episode_id', episodeData.id)
-    .is('deleted_at', null)
-    .order('sequence_number', { ascending: true });
+  const project = episodeData.projects;
 
-  // Get season data - Supabase returns relations as objects for single matches
   const seasonData = Array.isArray(episodeData.season)
     ? episodeData.season[0]
     : episodeData.season;
 
-  // Transform database response to typed Episode
   const episode: EpisodeWithShots = {
     id: episodeData.id,
     slug: episodeData.slug,
@@ -156,7 +134,7 @@ async function EpisodeWorkspaceLayout({
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,
     shots:
-      shotsData?.map((shot) => ({
+      episodeData.shots?.map((shot) => ({
         id: shot.id,
         episodeId: shot.episode_id,
         sceneNumber: shot.scene_number ?? 1,
@@ -196,8 +174,7 @@ async function EpisodeWorkspaceLayout({
           number: seasonData.number,
         }
       : null,
-    // Include project metadata for shot prompts (projectAestheticStyle, videoStyle, etc.)
-    projectMetadata: (project.metadata as Record<string, unknown>) ?? {},
+    projectMetadata: (project?.metadata as Record<string, unknown>) ?? {},
   };
 
   return (
