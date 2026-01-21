@@ -81,7 +81,7 @@ function getTabUnlockState(
     status: string;
     finalVideoUrl: string | null;
   },
-  hasCompletedShots: boolean,
+  _hasCompletedShots: boolean,
 ): Record<string, boolean> {
   const hasStoryData = episode.storyData !== null;
   const hasScreenplayData = episode.screenplayData !== null;
@@ -93,7 +93,7 @@ function getTabUnlockState(
     screenplay: hasStoryData, // Unlocked when story exists
     'shot-list': hasScreenplayData, // Unlocked when screenplay exists
     audio: hasShotList, // Unlocked when shot list exists
-    publish: hasCompletedShots, // Unlocked when shots are completed (ready to export/upload)
+    publish: hasShotList, // Unlocked when shot list exists (user can upload video directly)
   };
 }
 
