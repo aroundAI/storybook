@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { META_OAUTH_CONFIG, MetaOAuthState } from '@kit/publishing/oauth/meta';
-import { getAccountOAuthApp } from '@kit/publishing/server';
+import { getGlobalOAuthCredentials } from '@kit/publishing/server';
 import { encrypt } from '@kit/shared/crypto';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -86,10 +86,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Get OAuth credentials from database (account-scoped)
-  const oauthApp = await getAccountOAuthApp(state.accountId, 'meta');
+  // Get global OAuth credentials (configured by super admin)
+  const credentials = await getGlobalOAuthCredentials('meta');
 
-  if (!oauthApp) {
+  if (!credentials) {
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=meta_not_configured`,
     );
@@ -97,8 +97,8 @@ export async function GET(request: NextRequest) {
 
   // Exchange code for short-lived token
   const tokenUrl = new URL(META_OAUTH_CONFIG.tokenUrl);
-  tokenUrl.searchParams.set('client_id', oauthApp.clientId);
-  tokenUrl.searchParams.set('client_secret', oauthApp.clientSecret);
+  tokenUrl.searchParams.set('client_id', credentials.clientId);
+  tokenUrl.searchParams.set('client_secret', credentials.clientSecret);
   tokenUrl.searchParams.set(
     'redirect_uri',
     `${appUrl}/api/platforms/callback/meta`,
@@ -123,8 +123,8 @@ export async function GET(request: NextRequest) {
     `${META_OAUTH_CONFIG.graphUrl}/oauth/access_token`,
   );
   longLivedUrl.searchParams.set('grant_type', 'fb_exchange_token');
-  longLivedUrl.searchParams.set('client_id', oauthApp.clientId);
-  longLivedUrl.searchParams.set('client_secret', oauthApp.clientSecret);
+  longLivedUrl.searchParams.set('client_id', credentials.clientId);
+  longLivedUrl.searchParams.set('client_secret', credentials.clientSecret);
   longLivedUrl.searchParams.set(
     'fb_exchange_token',
     shortLivedToken.access_token,

@@ -73,11 +73,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Get OAuth credentials from database (account-scoped)
-  const { getAccountOAuthApp } = await import('@kit/publishing/server');
-  const oauthApp = await getAccountOAuthApp(state.accountId, 'youtube');
+  // Get global OAuth credentials (configured by super admin)
+  const { getGlobalOAuthCredentials } = await import('@kit/publishing/server');
+  const credentials = await getGlobalOAuthCredentials('youtube');
 
-  if (!oauthApp) {
+  if (!credentials) {
     return NextResponse.redirect(
       `${appUrl}/settings/platforms?error=youtube_not_configured`,
     );
@@ -89,8 +89,8 @@ export async function GET(request: NextRequest) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code,
-      client_id: oauthApp.clientId,
-      client_secret: oauthApp.clientSecret,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
       redirect_uri: `${appUrl}/api/platforms/callback/youtube`,
       grant_type: 'authorization_code',
     }),
