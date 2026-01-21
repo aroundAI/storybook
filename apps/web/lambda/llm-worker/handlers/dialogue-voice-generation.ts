@@ -7,7 +7,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { z } from 'zod';
 
 import {
@@ -15,6 +14,7 @@ import {
     markJobFailed,
     markJobProcessing,
 } from '../utils/job-tracking';
+import { uploadToR2 } from '../utils/r2-storage';
 
 const DialogueVoiceGenerationPayloadSchema = z.object({
     dialogueLineId: z.string().uuid(),
@@ -180,42 +180,14 @@ export async function processDialogueVoiceGeneration(
         // 4. Get audio buffer
         const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-        // 5. Upload to R2 storage using S3-compatible API
-        const audioPath = `audio/dialogue/${data.episodeId}/${data.dialogueLineId}.mp3`;
-
-        const r2AccountId = process.env.R2_ACCOUNT_ID;
-        const r2AccessKeyId = process.env.R2_ACCESS_KEY_ID;
-        const r2SecretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-        const r2BucketName = process.env.R2_BUCKET_NAME;
-        const r2PublicUrl = process.env.R2_PUBLIC_URL;
-
-        if (!r2AccountId || !r2AccessKeyId || !r2SecretAccessKey || !r2BucketName) {
-            throw new Error('R2 credentials not configured. Required: R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET_NAME');
-        }
-
-        const s3Client = new S3Client({
-            region: 'auto',
-            endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
-            credentials: {
-                accessKeyId: r2AccessKeyId,
-                secretAccessKey: r2SecretAccessKey,
-            },
-        });
-
-        await s3Client.send(
-            new PutObjectCommand({
-                Bucket: r2BucketName,
-                Key: audioPath,
-                Body: audioBuffer,
-                ContentType: 'audio/mpeg',
-            }),
+        // 5. Upload to R2 storage
+        const audioPath = `dialogue/${data.episodeId}/${data.dialogueLineId}.mp3`;
+        const { url: audioUrl } = await uploadToR2(
+            'audio',
+            audioPath,
+            audioBuffer,
+            'audio/mpeg',
         );
-
-        // Construct public URL
-        if (!r2PublicUrl) {
-            throw new Error('R2_PUBLIC_URL not configured');
-        }
-        const audioUrl = `${r2PublicUrl}/${audioPath}`;
 
         // 6. Calculate duration estimate (rough: ~150 words per minute)
         const wordCount = data.text.split(/\s+/).length;
