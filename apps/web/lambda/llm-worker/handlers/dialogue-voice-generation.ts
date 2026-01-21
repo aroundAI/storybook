@@ -179,20 +179,26 @@ export async function processDialogueVoiceGeneration(
         // 4. Get audio buffer
         const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-        // 5. Upload to storage
-        const { getStorageAdapter } = await import('@kit/storage');
-        const storage = getStorageAdapter(supabase);
+        // 5. Upload to storage using Supabase Storage directly (avoids server-only import)
         const audioPath = `dialogue/${data.episodeId}/${data.dialogueLineId}.mp3`;
 
-        const { url: audioUrl } = await storage.upload(
-            'audio',
-            audioPath,
-            audioBuffer,
-            {
+        const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('audio')
+            .upload(audioPath, audioBuffer, {
                 contentType: 'audio/mpeg',
                 upsert: data.overwriteExisting,
-            },
-        );
+            });
+
+        if (uploadError) {
+            throw new Error(`Failed to upload audio: ${uploadError.message}`);
+        }
+
+        // Get public URL
+        const { data: urlData } = supabase.storage
+            .from('audio')
+            .getPublicUrl(audioPath);
+
+        const audioUrl = urlData.publicUrl;
 
         // 6. Calculate duration estimate (rough: ~150 words per minute)
         const wordCount = data.text.split(/\s+/).length;
