@@ -1,8 +1,19 @@
+import {
+  MultiFactorAuthFactorsList,
+  UpdatePasswordFormContainer,
+} from '@kit/accounts/personal-account-settings';
 import { ApiKeysSettings } from '@kit/film-studio/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
 import { TeamAccountSettingsContainer } from '@kit/team-accounts/components';
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@kit/ui/card';
 import { PageBody } from '@kit/ui/page';
 import { Trans } from '@kit/ui/trans';
 
@@ -31,9 +42,15 @@ const paths = {
 };
 
 async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
-  const api = createTeamAccountsApi(getSupabaseServerClient());
+  const client = getSupabaseServerClient();
+  const api = createTeamAccountsApi(client);
   const slug = (await props.params).account;
   const data = await api.getTeamAccount(slug);
+
+  // Get current user for personal settings
+  const {
+    data: { user },
+  } = await client.auth.getUser();
 
   const account = {
     id: data.id,
@@ -46,6 +63,8 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
   const features = {
     enableTeamDeletion: featuresFlagConfig.enableTeamDeletion,
   };
+
+  const callbackPath = `/home/${account.slug}/settings`;
 
   return (
     <>
@@ -76,6 +95,52 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
             </p>
             <ApiKeysSettings accountSlug={account.slug} />
           </div>
+
+          {/* Personal Settings Section (for MFA, password) */}
+          {user && (
+            <div className="border-t pt-8">
+              <h2 className="mb-6 text-xl font-semibold">
+                <Trans
+                  i18nKey="account:personalSettings"
+                  defaults="Personal Settings"
+                />
+              </h2>
+
+              <div className="space-y-6">
+                {/* Multi-Factor Authentication */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      <Trans i18nKey={'account:multiFactorAuth'} />
+                    </CardTitle>
+                    <CardDescription>
+                      <Trans i18nKey={'account:multiFactorAuthDescription'} />
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <MultiFactorAuthFactorsList userId={user.id} />
+                  </CardContent>
+                </Card>
+
+                {/* Password Update */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>
+                      <Trans i18nKey={'account:updatePasswordCardTitle'} />
+                    </CardTitle>
+                    <CardDescription>
+                      <Trans
+                        i18nKey={'account:updatePasswordCardDescription'}
+                      />
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <UpdatePasswordFormContainer callbackPath={callbackPath} />
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          )}
         </div>
       </PageBody>
     </>
@@ -83,3 +148,4 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
 }
 
 export default TeamAccountSettingsPage;
+
