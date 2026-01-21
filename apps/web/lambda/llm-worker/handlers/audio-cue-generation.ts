@@ -91,6 +91,11 @@ export async function processAudioCueGeneration(
 
     // We might need to chunk this if the episode is very long.
     // Assuming standard episode < 50 shots for now.
+    if (shots.length > 50) {
+      console.warn(
+        `[Audio Generation] Episode has ${shots.length} shots. Context window limit may be reached. Consider implementing chunking.`,
+      );
+    }
 
     const result = await executeLLM<{ cues: GeneratedAudioCue[] }>({
       templateSlug: 'scene-audio-refinement',

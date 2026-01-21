@@ -41,6 +41,7 @@ export const getAvailableLanguagesAction = enhanceAction(
     }
 
     // Fetch distinct languages (using select only language column)
+    // TODO: Generate specific Supabase types to avoid 'any' casting (FILM-506)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: rows, error } = await (client as any)
       .from('dialogue_lines')

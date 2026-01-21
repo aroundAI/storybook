@@ -38,6 +38,8 @@ interface AudioStudioScreenProps {
   refetchEpisode: () => void;
 }
 
+const PREFERRED_LANGUAGE_ORDER = ['en', 'hi', 'es', 'pt'];
+
 export function AudioStudioScreen({
   episode,
   refetchEpisode,
@@ -103,8 +105,10 @@ export function AudioStudioScreen({
 
       if (Array.isArray(languages) && languages.length > 0) {
         const langArray = [...languages].sort((a, b) => {
-          const order = ['en', 'hi', 'es', 'pt'];
-          return order.indexOf(a) - order.indexOf(b);
+          return (
+            PREFERRED_LANGUAGE_ORDER.indexOf(a) -
+            PREFERRED_LANGUAGE_ORDER.indexOf(b)
+          );
         });
         setAvailableLanguages(langArray);
       }
