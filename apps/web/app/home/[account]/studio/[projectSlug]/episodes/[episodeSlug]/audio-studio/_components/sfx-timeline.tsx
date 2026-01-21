@@ -11,6 +11,7 @@ import {
   updateAudioCueAction,
 } from '@kit/audio-generation/server';
 import { Button } from '@kit/ui/button';
+import { useLlmJob } from '@kit/ui/hooks';
 import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
@@ -70,6 +71,15 @@ export function SfxTimeline({
   const [editPrompt, setEditPrompt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
+  // WebSocket hook for audio-file-generation results
+  const {
+    status: audioGenStatus,
+    result: audioGenResult,
+    error: audioGenError,
+  } = useLlmJob<{ success: boolean; assetId?: string; cueId?: string }>(
+    'audio-file-generation',
+  );
+
   // Fetch SFX and ambient cues
   const fetchCues = useCallback(async () => {
     try {
@@ -94,17 +104,25 @@ export function SfxTimeline({
     void fetchCues();
   }, [fetchCues]);
 
-  // Poll for generating cues
+  // Handle WebSocket audio generation result
   useEffect(() => {
-    const generatingCues = cues.filter((c) => c.status === 'generating');
-    if (generatingCues.length === 0) return;
-
-    const pollInterval = setInterval(async () => {
-      await fetchCues();
-    }, 5000);
-
-    return () => clearInterval(pollInterval);
-  }, [cues, fetchCues]);
+    if (audioGenStatus === 'success' && audioGenResult?.success) {
+      toast.success('Audio generated successfully');
+      void fetchCues();
+      onRefresh?.();
+      // Clear generating state for the completed cue
+      if (audioGenResult.cueId) {
+        setGeneratingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(audioGenResult.cueId!);
+          return next;
+        });
+      }
+    } else if (audioGenStatus === 'error') {
+      toast.error(audioGenError || 'Audio generation failed');
+      void fetchCues();
+    }
+  }, [audioGenStatus, audioGenResult, audioGenError, fetchCues, onRefresh]);
 
   const handleCueClick = (cue: AudioCue, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -152,16 +170,19 @@ export function SfxTimeline({
 
     try {
       const result = await generateAudioForCueAction({ cueId: cue.id });
-      if (result.success) {
-        toast.success(`Generated: ${cue.prompt.substring(0, 30)}...`);
-        await fetchCues();
-        onRefresh?.();
+      if (result.status === 'queued') {
+        toast.info(`Generating: ${cue.prompt.substring(0, 30)}...`);
+        // Don't call fetchCues here - WebSocket will notify when complete
       } else {
-        toast.error(result.error ?? 'Generation failed');
+        toast.error(result.error ?? 'Failed to queue generation');
+        setGeneratingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(cue.id);
+          return next;
+        });
       }
     } catch {
-      toast.error('Failed to generate audio');
-    } finally {
+      toast.error('Failed to start audio generation');
       setGeneratingIds((prev) => {
         const next = new Set(prev);
         next.delete(cue.id);
@@ -192,13 +213,13 @@ export function SfxTimeline({
       return;
     }
 
-    toast.info(`Generating ${pendingCues.length} sound effects...`);
+    toast.info(`Queuing ${pendingCues.length} sound effects for generation...`);
 
+    // Queue all pending cues for generation
     for (const cue of pendingCues) {
       await handleGenerate(cue);
     }
-
-    toast.success('All sound effects generated');
+    // completion notifications come via WebSocket
   };
 
   if (isLoading) {
@@ -317,7 +338,7 @@ export function SfxTimeline({
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
                         selectedCue?.id === cue.id &&
-                          'ring-2 ring-blue-500 ring-offset-2',
+                        'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
                       onClick={(e) => handleCueClick(cue, e)}
@@ -365,13 +386,13 @@ export function SfxTimeline({
             >
               {(selectedCue.status === 'placed' ||
                 selectedCue.status === 'matched') && (
-                <button
-                  onClick={() => handlePlay(selectedCue)}
-                  className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
-                >
-                  <Play className="h-4 w-4" /> Play
-                </button>
-              )}
+                  <button
+                    onClick={() => handlePlay(selectedCue)}
+                    className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+                  >
+                    <Play className="h-4 w-4" /> Play
+                  </button>
+                )}
               <button
                 onClick={handleEdit}
                 className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"

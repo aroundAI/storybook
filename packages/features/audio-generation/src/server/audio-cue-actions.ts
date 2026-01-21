@@ -10,9 +10,9 @@
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
+import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { generateMusicElevenLabsAction } from './elevenlabs-music-actions';
 import { generateSfxAction } from './sfx-actions';
 
 /**
@@ -220,14 +220,23 @@ export const processAudioCuesAction = enhanceAction(
 );
 
 /**
- * Generate audio for a specific cue
+ * Generate audio for a specific cue (ASYNC)
+ *
+ * Enqueues an LLM job for background processing.
+ * Results are delivered via WebSocket when complete.
+ *
  * Used when user clicks "Generate" on a pending cue
  */
 export const generateAudioForCueAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: boolean; assetId?: string; error?: string }> => {
+  ): Promise<{ success: boolean; status: 'queued' | 'failed'; error?: string }> => {
     const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      return { success: false, status: 'failed', error: 'Authentication required' };
+    }
 
     // Get cue details
     const { data: cue, error: cueError } = await client
@@ -244,67 +253,53 @@ export const generateAudioForCueAction = enhanceAction(
       .single();
 
     if (cueError || !cue) {
-      return { success: false, error: cueError?.message ?? 'Cue not found' };
+      return { success: false, status: 'failed', error: cueError?.message ?? 'Cue not found' };
     }
 
     // Extract project_id from the nested join
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const projectId = (cue.episodes as any)?.seasons?.project_id;
     if (!projectId) {
-      return { success: false, error: 'Could not determine project ID' };
+      return { success: false, status: 'failed', error: 'Could not determine project ID' };
     }
 
     try {
-      let result: { assetId: string; status: string; error?: string };
-
-      if (cue.cue_type === 'music') {
-        // Use music generation
-        result = await generateMusicElevenLabsAction({
-          projectId,
-          episodeId: cue.episode_id,
-          prompt: cue.prompt,
-          durationSeconds: Math.min(cue.duration_seconds ?? 60, 300),
-          timelineStartSeconds: cue.start_offset_seconds ?? 0,
-        });
-      } else {
-        // Use SFX generation for sfx and ambient
-        result = await generateSfxAction({
-          projectId,
-          episodeId: cue.episode_id,
-          prompt: cue.prompt,
-          durationSeconds: Math.min(cue.duration_seconds ?? 5, 22),
-          timelineStartSeconds: cue.start_offset_seconds ?? 0,
-        });
-      }
-
-      if (result.status === 'completed' || result.status === 'reused') {
-        // Update cue with asset reference
-        await client
-          .from('audio_cues')
-          .update({
-            audio_asset_id: result.assetId,
-            status: 'placed',
-          })
-          .eq('id', data.cueId);
-
-        return { success: true, assetId: result.assetId };
-      } else {
-        await client
-          .from('audio_cues')
-          .update({ status: 'failed' })
-          .eq('id', data.cueId);
-
-        return { success: false, error: result.error ?? 'Generation failed' };
-      }
-    } catch (error) {
+      // 1. Update cue status to 'generating'
       await client
         .from('audio_cues')
-        .update({ status: 'failed' })
+        .update({ status: 'generating' })
+        .eq('id', data.cueId);
+
+      // 2. Enqueue LLM job for background processing
+      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+
+      await queueLlmJob({
+        jobType: 'audio-file-generation',
+        userId: user.id,
+        payload: {
+          cueId: data.cueId,
+          projectId,
+          episodeId: cue.episode_id,
+          cueType: cue.cue_type,
+          prompt: cue.prompt,
+          durationSeconds: cue.duration_seconds ?? 60,
+          startOffsetSeconds: cue.start_offset_seconds ?? 0,
+        },
+      });
+
+      // 3. Return immediately - result comes via WebSocket
+      return { success: true, status: 'queued' };
+    } catch (error) {
+      // Revert status on enqueue failure
+      await client
+        .from('audio_cues')
+        .update({ status: 'pending' })
         .eq('id', data.cueId);
 
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Failed to queue generation',
       };
     }
   },

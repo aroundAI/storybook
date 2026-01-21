@@ -129,9 +129,9 @@ async function sendToUser(
     } catch (error: unknown) {
       const statusCode =
         error &&
-        typeof error === 'object' &&
-        'statusCode' in error &&
-        typeof error.statusCode === 'number'
+          typeof error === 'object' &&
+          'statusCode' in error &&
+          typeof error.statusCode === 'number'
           ? error.statusCode
           : null;
 
@@ -227,6 +227,12 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
         './handlers/audio-cue-generation'
       );
       return processAudioCueGeneration(job.payload, supabase);
+    }
+    case 'audio-file-generation': {
+      const { processAudioFileGeneration } = await import(
+        './handlers/audio-file-generation'
+      );
+      return processAudioFileGeneration(job.payload, supabase);
     }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
