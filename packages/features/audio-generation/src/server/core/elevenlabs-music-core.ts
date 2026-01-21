@@ -31,6 +31,8 @@ export interface GenerateMusicCoreInput {
     mood?: string;
     tempo?: 'slow' | 'medium' | 'fast' | 'varied';
     timelineStartSeconds?: number;
+    /** ElevenLabs API key (decrypted) - passed from handler to avoid server-only import */
+    apiKey: string;
 }
 
 export interface GenerateMusicCoreResult {
@@ -65,25 +67,6 @@ async function uploadAudioToStorage(
     });
 
     return { url, path: storagePath };
-}
-
-async function getProjectElevenLabsApiKey(
-    supabase: SupabaseClient,
-    projectId: string,
-): Promise<string> {
-    const { decrypt } = await import('@kit/shared/crypto');
-
-    const { data, error } = await supabase
-        .from('project_audio_settings')
-        .select('elevenlabs_api_key_encrypted')
-        .eq('project_id', projectId)
-        .single();
-
-    if (error || !data?.elevenlabs_api_key_encrypted) {
-        throw new Error('ElevenLabs API key not configured for this project');
-    }
-
-    return decrypt(data.elevenlabs_api_key_encrypted);
 }
 
 // =============================================================================
@@ -152,12 +135,8 @@ export async function generateMusicElevenLabsCore(
             status: 'processing',
         });
 
-        // Get API key and create provider
-        const apiKey = await getProjectElevenLabsApiKey(
-            input.supabase,
-            input.projectId,
-        );
-        const provider = new ElevenLabsMusicProvider({ apiKey });
+        // Use API key passed from handler
+        const provider = new ElevenLabsMusicProvider({ apiKey: input.apiKey });
 
         // Generate music
         const result = await provider.generateMusic({
