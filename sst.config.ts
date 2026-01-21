@@ -557,6 +557,9 @@ export default $config({
         LLM_PROVIDER: process.env.LLM_PROVIDER || "gemini",
         LLM_MODEL: process.env.LLM_MODEL || "",
 
+        // Security - needed for API key decryption
+        ...(process.env.ENCRYPTION_KEY && { ENCRYPTION_KEY: process.env.ENCRYPTION_KEY }),
+
         // WebSocket configuration
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
         WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
