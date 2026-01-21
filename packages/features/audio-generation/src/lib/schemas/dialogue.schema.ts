@@ -9,6 +9,7 @@ import { z } from 'zod';
  */
 export const GetDialogueLinesSchema = z.object({
   episodeId: z.string().uuid(),
+  language: z.string().optional(),
 });
 
 export type GetDialogueLinesSchemaType = z.infer<typeof GetDialogueLinesSchema>;

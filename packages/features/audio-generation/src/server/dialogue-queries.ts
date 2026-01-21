@@ -2,6 +2,8 @@
 
 import 'server-only';
 
+import { z } from 'zod';
+
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -24,6 +26,46 @@ import type {
 // Note: These queries use type assertions because the film studio tables
 // are not yet in the generated database types. The database schema will
 // be aligned in a future update. RLS policies enforce authorization.
+
+/**
+ * Fetch available languages for an episode
+ * Returns list of language codes present in dialogue lines
+ */
+export const getAvailableLanguagesAction = enhanceAction(
+  async (data: { episodeId: string }): Promise<SupportedLanguage[]> => {
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Fetch distinct languages (using select only language column)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rows, error } = await (client as any)
+      .from('dialogue_lines')
+      .select('language')
+      .eq('episode_id', data.episodeId);
+
+    if (error) {
+      throw new Error('Failed to fetch languages');
+    }
+
+    const languages = new Set<SupportedLanguage>();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (rows || []).forEach((r: any) => {
+      if (r.language) languages.add(r.language as SupportedLanguage);
+    });
+
+    // Default to 'en' if empty or not present
+    if (languages.size === 0) languages.add('en');
+
+    return Array.from(languages);
+  },
+  {
+    schema: z.object({ episodeId: z.string().uuid() }),
+  },
+);
 
 /**
  * Database response type for dialogue line
@@ -120,7 +162,7 @@ export const getDialogueLinesAction = enhanceAction(
 
     // Fetch dialogue lines for the episode
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rows, error } = await (client as any)
+    let query = (client as any)
       .from('dialogue_lines')
       .select(
         `
@@ -141,8 +183,16 @@ export const getDialogueLinesAction = enhanceAction(
         created_at
       `,
       )
-      .eq('episode_id', data.episodeId)
-      .order('sequence_number', { ascending: true });
+      .eq('episode_id', data.episodeId);
+
+    // Apply language filter if provided
+    if (data.language) {
+      query = query.eq('language', data.language);
+    }
+
+    const { data: rows, error } = await query.order('sequence_number', {
+      ascending: true,
+    });
 
     if (error) {
       logger.error({ ...ctx, error }, 'Failed to fetch dialogue lines');

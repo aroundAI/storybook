@@ -138,6 +138,14 @@ export function LanguageTabBar({
         </button>
       ))}
 
+      {/* Translating Status Badge */}
+      {translatingTo && (
+        <div className="flex items-center gap-1.5 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          <span>Translating to {LANG_INFO[translatingTo].name}...</span>
+        </div>
+      )}
+
       {/* Add Language Button */}
       {missingLanguages.length > 0 && (
         <DropdownMenu>
