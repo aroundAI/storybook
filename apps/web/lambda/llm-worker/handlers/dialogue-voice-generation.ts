@@ -141,10 +141,16 @@ export async function processDialogueVoiceGeneration(
     await markJobProcessing(supabase, data.dialogueLineId, 'dialogue_voice_generation');
 
     try {
-        // 1. Get API key from external_api_keys
+        // 1. Validate text is not empty (safety check - validation also done in action)
+        const text = data.text?.trim();
+        if (!text) {
+            throw new Error('Dialogue text is empty or whitespace-only');
+        }
+
+        // 2. Get API key from external_api_keys
         const apiKey = await getAccountElevenLabsApiKey(supabase, data.accountId);
 
-        // 2. Update dialogue line status to generating
+        // 3. Update dialogue line status to generating
         await supabase
             .from('dialogue_lines')
             .update({ status: 'generating' })
@@ -160,7 +166,7 @@ export async function processDialogueVoiceGeneration(
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    text: data.text,
+                    text: text, // Use validated, trimmed text
                     model_id: data.ttsModel,
                     voice_settings: {
                         stability: data.voiceSettings.stability,
