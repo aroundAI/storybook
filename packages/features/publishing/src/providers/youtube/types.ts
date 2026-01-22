@@ -16,8 +16,6 @@ export interface YouTubeUploadInput {
   categoryId: string;
   /** Privacy status of the video */
   privacy: 'private' | 'unlisted' | 'public';
-  /** Schedule publish time (for private videos that will go public later) */
-  publishAt?: Date;
   /** Path to custom thumbnail image */
   thumbnailPath?: string;
   /** Playlist IDs to add the video to */

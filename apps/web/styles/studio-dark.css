@@ -1,0 +1,131 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Studio Dark Theme Design Tokens
+   ═══════════════════════════════════════════════════════════════════════════
+   
+   A Linear/ElevenLabs-inspired dark theme with:
+   - Deep black backgrounds
+   - Subtle glow effects on cards and interactive elements
+   - Light blue accent color (#3B82F6)
+   
+   Usage: Apply Tailwind classes like dark:bg-[var(--studio-bg-base)]
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root.dark {
+    /* ═══════════════════════════════════════════════════════════════
+     BACKGROUND LAYERS (darkest to lightest)
+     ═══════════════════════════════════════════════════════════════ */
+    --studio-bg-base: #0A0A0A;
+    /* Page background */
+    --studio-bg-surface: #111111;
+    /* Sidebar, header */
+    --studio-bg-elevated: #1A1A1A;
+    /* Cards, panels */
+    --studio-bg-muted: #252525;
+    /* Inputs, dropdowns, secondary elements */
+    --studio-bg-hover: #2D2D2D;
+    /* Hover states */
+
+    /* ═══════════════════════════════════════════════════════════════
+     BORDERS & SEPARATORS
+     ═══════════════════════════════════════════════════════════════ */
+    --studio-border-subtle: rgba(255, 255, 255, 0.06);
+    --studio-border-default: rgba(255, 255, 255, 0.10);
+    --studio-border-strong: rgba(255, 255, 255, 0.15);
+    --studio-border-glow: rgba(59, 130, 246, 0.20);
+    /* Blue glow for focus/active */
+
+    /* ═══════════════════════════════════════════════════════════════
+     SHADOWS & GLOWS
+     ═══════════════════════════════════════════════════════════════ */
+    --studio-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --studio-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --studio-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+    /* Glow effects for cards and interactive elements */
+    --studio-glow-blue: 0 0 20px rgba(59, 130, 246, 0.08);
+    --studio-glow-blue-strong: 0 0 30px rgba(59, 130, 246, 0.15);
+    --studio-glow-accent: 0 0 12px rgba(59, 130, 246, 0.30);
+
+    /* ═══════════════════════════════════════════════════════════════
+     TEXT COLORS
+     ═══════════════════════════════════════════════════════════════ */
+    --studio-text-primary: #F5F5F5;
+    --studio-text-secondary: #A3A3A3;
+    --studio-text-muted: #737373;
+    --studio-text-disabled: #525252;
+
+    /* ═══════════════════════════════════════════════════════════════
+     ACCENT COLORS (Light Blue)
+     ═══════════════════════════════════════════════════════════════ */
+    --studio-accent: #3B82F6;
+    /* Primary blue */
+    --studio-accent-hover: #2563EB;
+    /* Darker on hover */
+    --studio-accent-muted: rgba(59, 130, 246, 0.15);
+    /* Background tint */
+    --studio-accent-glow: 0 0 12px rgba(59, 130, 246, 0.30);
+
+    /* ═══════════════════════════════════════════════════════════════
+     STATE COLORS
+     ═══════════════════════════════════════════════════════════════ */
+    --studio-success: #22C55E;
+    --studio-warning: #F59E0B;
+    --studio-error: #EF4444;
+    --studio-info: #3B82F6;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   UTILITY CLASSES
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Card with subtle glow on hover */
+.studio-card {
+    @apply rounded-xl border transition-all duration-200;
+    background: var(--studio-bg-elevated);
+    border-color: var(--studio-border-default);
+    box-shadow: var(--studio-glow-blue);
+}
+
+.studio-card:hover {
+    border-color: var(--studio-border-strong);
+    box-shadow: var(--studio-glow-blue-strong);
+}
+
+/* Active/selected card */
+.studio-card-active {
+    border-color: var(--studio-accent) !important;
+    box-shadow: var(--studio-glow-accent) !important;
+}
+
+/* Glowing button */
+.studio-btn-primary {
+    @apply px-4 py-2 rounded-lg font-medium transition-all duration-200;
+    background: var(--studio-accent);
+    color: white;
+    box-shadow: var(--studio-glow-accent);
+}
+
+.studio-btn-primary:hover {
+    background: var(--studio-accent-hover);
+    box-shadow: var(--studio-glow-blue-strong);
+}
+
+/* Input fields */
+.studio-input {
+    @apply rounded-lg border px-3 py-2 transition-all duration-200;
+    background: var(--studio-bg-muted);
+    border-color: var(--studio-border-default);
+    color: var(--studio-text-primary);
+}
+
+.studio-input:focus {
+    border-color: var(--studio-accent);
+    box-shadow: 0 0 0 3px var(--studio-accent-muted);
+    outline: none;
+}
+
+/* Surface panels (sidebar, header) */
+.studio-surface {
+    background: var(--studio-bg-surface);
+    border-color: var(--studio-border-subtle);
+}

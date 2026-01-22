@@ -13,6 +13,7 @@
 @import './shadcn-ui.css';
 @import './markdoc.css';
 @import './makerkit.css';
+@import './studio-dark.css';
 
 /* plugins - update the below if you add a new plugin */
 @plugin "tailwindcss-animate";
@@ -171,18 +172,18 @@
     overflow: hidden;
     border-radius: 1rem;
     background: linear-gradient(135deg,
-        rgba(255, 255, 255, 0.05) 0%,
-        rgba(255, 255, 255, 0.02) 100%);
+        rgba(26, 26, 26, 0.95) 0%,
+        rgba(17, 17, 17, 0.95) 100%);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3), 0 0 20px rgba(59, 130, 246, 0.05);
     transition: all 0.3s ease;
   }
 
   .cinema-panel:hover {
-    border-color: rgba(255, 255, 255, 0.12);
-    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.3);
+    border-color: rgba(59, 130, 246, 0.20);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.4), 0 0 30px rgba(59, 130, 246, 0.10);
     transform: translateY(-2px);
   }
 
@@ -190,9 +191,10 @@
   .cinema-focus {
     position: relative;
     padding: 2rem;
-    background: rgba(255, 255, 255, 0.03);
+    background: rgba(26, 26, 26, 0.8);
     border-radius: 1.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.05);
   }
 
   /* Animated Glow Effects */
@@ -267,14 +269,14 @@
     border-radius: 0.75rem;
     font-weight: 600;
     color: white;
-    background: linear-gradient(135deg, #6366f1, #2563eb);
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    background: linear-gradient(135deg, #3B82F6, #2563EB);
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3), 0 0 12px rgba(59, 130, 246, 0.20);
     transition: all 0.3s ease;
   }
 
   .btn-cinema-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 30px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 8px 30px rgba(59, 130, 246, 0.4), 0 0 20px rgba(59, 130, 246, 0.30);
   }
 
   .btn-cinema-secondary {

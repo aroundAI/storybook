@@ -33,7 +33,9 @@
     "./lib/export-package-types": "./src/lib/export-package-types.ts",
     "./lib/schemas/upload-only": "./src/lib/schemas/upload-only.schema.ts",
     "./token-refresh": "./src/lib/token-refresh.ts",
-    "./jobs": "./src/jobs/index.ts"
+    "./jobs": "./src/jobs/index.ts",
+    "./lib/constants": "./src/lib/constants.ts",
+    "./lib/url-validation": "./src/lib/url-validation.ts"
   },
   "dependencies": {
     "@kit/next": "workspace:*",
@@ -41,7 +43,8 @@
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",
     "@tanstack/react-query": "5.89.0",
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0"
   },
   "devDependencies": {
     "@kit/eslint-config": "workspace:*",

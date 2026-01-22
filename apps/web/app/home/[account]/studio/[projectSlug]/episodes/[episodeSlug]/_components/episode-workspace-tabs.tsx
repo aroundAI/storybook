@@ -148,10 +148,10 @@ export function EpisodeWorkspaceTabs() {
         key={tab.id}
         href={`${basePath}/${tab.path}`}
         className={cn(
-          'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all',
+          'flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200',
           isActive
-            ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400'
-            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700/50 dark:hover:text-gray-200',
+            ? 'bg-white text-blue-600 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_12px_rgba(59,130,246,0.30)]'
+            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A] dark:hover:text-white',
         )}
       >
         <TabIcon className="h-3.5 w-3.5" />
@@ -164,15 +164,15 @@ export function EpisodeWorkspaceTabs() {
     <div className="sticky top-[88px] z-10 px-6 py-2">
       <div className="flex items-center gap-4">
         {/* Story Studio Tabs */}
-        <div className="flex flex-1 items-center rounded-xl bg-gray-100/80 p-1 dark:bg-gray-800/50">
+        <div className="flex flex-1 items-center rounded-xl bg-gray-100/80 p-1 dark:bg-[#111111] dark:border dark:border-white/5">
           {STORY_TABS.map(renderTab)}
         </div>
 
         {/* Separator */}
-        <div className="h-8 w-px bg-gray-300 dark:bg-gray-600" />
+        <div className="h-8 w-px bg-gray-300 dark:bg-white/10" />
 
         {/* Post-Production Tabs */}
-        <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:bg-gray-800/50">
+        <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:bg-[#111111] dark:border dark:border-white/5">
           {POST_TABS.map(renderTab)}
         </div>
       </div>

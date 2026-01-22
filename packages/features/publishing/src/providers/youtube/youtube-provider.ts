@@ -47,7 +47,7 @@ export class YouTubeProvider {
       },
       status: {
         privacyStatus: input.privacy,
-        publishAt: input.publishAt?.toISOString(),
+        // publishAt removed - scheduling handled server-side by cron job
         madeForKids: input.madeForKids,
         selfDeclaredMadeForKids: input.madeForKids,
       },
@@ -79,10 +79,17 @@ export class YouTubeProvider {
 
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // 4. Upload thumbnail if provided
+    // 4. Upload thumbnail if provided (non-fatal - video is already uploaded)
     let thumbnailUrl: string | undefined;
     if (input.thumbnailPath) {
-      thumbnailUrl = await this.uploadThumbnail(videoId, input.thumbnailPath);
+      try {
+        thumbnailUrl = await this.uploadThumbnail(videoId, input.thumbnailPath);
+      } catch (thumbnailError) {
+        // Log but don't fail - video is already uploaded successfully
+        console.warn(
+          `[YouTube] Thumbnail upload failed for video ${videoId}: ${thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError)}`,
+        );
+      }
     }
 
     // 5. Add to playlists
@@ -97,7 +104,7 @@ export class YouTubeProvider {
     return {
       videoId,
       videoUrl,
-      status: input.publishAt ? 'uploaded' : 'published',
+      status: 'published', // Always published - scheduling handled server-side
       thumbnailUrl,
     };
   }

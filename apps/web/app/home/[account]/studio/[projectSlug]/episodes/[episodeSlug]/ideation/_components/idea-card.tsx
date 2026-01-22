@@ -17,10 +17,10 @@ export function IdeaCard({ idea, index, isSelected, onSelect }: IdeaCardProps) {
     <div
       onClick={onSelect}
       className={cn(
-        'group relative cursor-pointer rounded-xl border p-6 backdrop-blur-sm transition-all',
+        'group relative cursor-pointer rounded-xl border p-6 backdrop-blur-sm transition-all duration-200',
         isSelected
-          ? 'border-indigo-500/50 bg-indigo-500/10 ring-2 ring-indigo-500/50'
-          : 'border-white/[0.08] bg-white/[0.03] hover:border-white/[0.12] hover:bg-white/[0.05]',
+          ? 'border-[#3B82F6]/50 bg-[#3B82F6]/10 ring-2 ring-[#3B82F6]/50 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
+          : 'border-white/[0.08] bg-[#1A1A1A] hover:border-[#3B82F6]/30 hover:bg-[#1A1A1A] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]',
       )}
     >
       {/* Header */}
@@ -59,7 +59,7 @@ export function IdeaCard({ idea, index, isSelected, onSelect }: IdeaCardProps) {
             {idea.themes.slice(0, 3).map((theme, i) => (
               <span
                 key={i}
-                className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-white/10 dark:text-gray-300"
+                className="rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600 dark:bg-[#252525] dark:text-[#A3A3A3]"
               >
                 {theme}
               </span>

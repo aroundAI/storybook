@@ -13,6 +13,12 @@ export { EpisodePublishingConfigs } from './episode-publishing-configs';
 export { ProjectPublishingConfigs } from './project-publishing-configs';
 export { OAuthAppConfig } from './oauth-app-config';
 export { GlobalOAuthAppConfig } from './global-oauth-app-config';
+export {
+  ScheduleReleasePanel,
+  type ScheduleConfig,
+  type ScheduleItem,
+  type VideoToSchedule,
+} from './schedule-release-panel';
 
 // Re-export types
 export type {
