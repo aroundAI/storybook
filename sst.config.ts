@@ -955,6 +955,12 @@ export default $config({
             resources: [publishQueue.arn],
           },
         ],
+        nodejs: {
+          install: [
+            "@supabase/supabase-js",
+            "@aws-sdk/client-sqs",
+          ],
+        },
       },
       schedule: "rate(5 minutes)",
     });
