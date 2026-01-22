@@ -191,6 +191,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     { ...ctx, count: duePublishes.length },
     'Processing scheduled publishes',
   );
+  console.log(`[ScheduledPublish] Processing ${duePublishes.length} due publishes`);
 
   const results: ProcessScheduledResult = {
     processed: duePublishes.length,
@@ -246,16 +247,21 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       const shortsGroups = episode.shorts_groups ?? [];
 
       // Log all available data for debugging
+      const debugData = {
+        publishId: publish.id,
+        language: lang,
+        contentType: publish.content_type,
+        isShort,
+        hasLocalizedVideos: Object.keys(localizedVideos).length > 0,
+        localizedVideoLanguages: Object.keys(localizedVideos),
+        shortsGroupCount: shortsGroups.length,
+        hasFinalVideoUrl: !!episode.final_video_url,
+      };
+      console.log(`[ScheduledPublish] Resolving video URL:`, JSON.stringify(debugData));
       logger.info(
         {
           ...publishCtx,
-          language: lang,
-          contentType: publish.content_type,
-          isShort,
-          hasLocalizedVideos: Object.keys(localizedVideos).length > 0,
-          localizedVideoLanguages: Object.keys(localizedVideos),
-          shortsGroupCount: shortsGroups.length,
-          hasFinalVideoUrl: !!episode.final_video_url,
+          ...debugData,
         },
         'Resolving video URL for scheduled publish',
       );
@@ -318,6 +324,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           },
           'No video available for scheduled publish',
         );
+        console.error(`[ScheduledPublish] ERROR: No video for language=${lang}, content_type=${publish.content_type}, availableLanguages=${Object.keys(localizedVideos).join(',')}`);
         throw new Error(`No video available for language: ${lang}, content_type: ${publish.content_type}`);
       }
 
@@ -353,6 +360,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         .eq('id', publish.id);
 
       results.published++;
+      console.log(`[ScheduledPublish] SUCCESS: Published ${publish.id} to ${publish.platform}, url=${uploadResult.url}`);
       logger.info(
         { ...publishCtx, url: uploadResult.url },
         'Scheduled publish completed',
@@ -374,6 +382,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         })
         .eq('id', publish.id);
 
+      console.error(`[ScheduledPublish] FAILED: ${publish.id} - ${errorMessage}`);
       logger.error(
         { ...publishCtx, error: errorMessage },
         'Scheduled publish failed',
@@ -384,6 +393,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     await sleep(500);
   }
 
+  console.log(`[ScheduledPublish] COMPLETE: ${results.published}/${results.processed} published, ${results.failed} failed`);
   logger.info(
     { ...ctx, ...results },
     `Scheduled publish job complete: ${results.published}/${results.processed} published, ${results.failed} failed`,
