@@ -1,6 +1,8 @@
 /**
  * Encryption utilities for Lambda environment
  * Mirrors @kit/shared/crypto but without 'use server' directive
+ * 
+ * Note: Only decrypt is needed - encryption is handled by the main app/cron jobs
  */
 
 const ALGORITHM = 'AES-GCM';
@@ -34,7 +36,7 @@ async function getEncryptionKey(): Promise<CryptoKey> {
         keyBuffer,
         { name: ALGORITHM, length: KEY_LENGTH },
         false,
-        ['encrypt', 'decrypt'],
+        ['decrypt'],
     );
 }
 
@@ -65,32 +67,4 @@ export async function decrypt(encryptedBase64: string): Promise<string> {
 
     const decoder = new TextDecoder();
     return decoder.decode(decrypted);
-}
-
-/**
- * Encrypts a string value using AES-256-GCM
- * Returns a base64 string containing IV + ciphertext + auth tag
- */
-export async function encrypt(plaintext: string): Promise<string> {
-    const key = await getEncryptionKey();
-    const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH));
-    const encoder = new TextEncoder();
-    const data = encoder.encode(plaintext);
-
-    const ciphertext = await crypto.subtle.encrypt(
-        {
-            name: ALGORITHM,
-            iv,
-            tagLength: TAG_LENGTH,
-        },
-        key,
-        data,
-    );
-
-    // Combine IV + ciphertext (includes auth tag)
-    const combined = new Uint8Array(iv.length + ciphertext.byteLength);
-    combined.set(iv, 0);
-    combined.set(new Uint8Array(ciphertext), iv.length);
-
-    return Buffer.from(combined).toString('base64');
 }

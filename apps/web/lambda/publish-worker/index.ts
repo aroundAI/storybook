@@ -123,21 +123,22 @@ async function sendToUser(
 
 /**
  * Ensure we have a valid access token for the platform
+ * Note: Token refresh is handled by a cron job (every 30 min). 
+ * This just decrypts and returns the token.
  */
 async function ensureValidToken(
     connectionId: string,
     client: SupabaseClient,
 ): Promise<{ valid: boolean; accessToken?: string; error?: string }> {
     // Import crypto utilities
-    const { decrypt, encrypt } = await import('./crypto');
+    const { decrypt } = await import('./crypto');
 
     // Get platform connection
     const { data: connection, error } = await client
         .from('platform_connections')
         .select(`
             id, platform, platform_account_id, platform_account_name,
-            access_token_encrypted, refresh_token_encrypted,
-            token_expires_at, is_active
+            access_token_encrypted, token_expires_at, is_active
         `)
         .eq('id', connectionId)
         .single();
@@ -150,58 +151,25 @@ async function ensureValidToken(
         return { valid: false, error: 'Platform connection is inactive' };
     }
 
-    // Check if token is expired (with 5 minute buffer)
+    if (!connection.access_token_encrypted) {
+        return { valid: false, error: 'No access token available' };
+    }
+
+    // Check if token is expired
     const expiresAt = connection.token_expires_at ? new Date(connection.token_expires_at) : null;
     const now = new Date();
-    const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
-    if (expiresAt && expiresAt > fiveMinutesFromNow && connection.access_token_encrypted) {
-        // Token still valid - decrypt and return
-        try {
-            const accessToken = await decrypt(connection.access_token_encrypted);
-            return { valid: true, accessToken };
-        } catch (decryptError) {
-            console.error(`[Publish Worker] Failed to decrypt access token:`, decryptError);
-            // Fall through to refresh
-        }
+    if (expiresAt && expiresAt <= now) {
+        return { valid: false, error: 'Token expired - please reconnect your account or wait for refresh' };
     }
 
-    // Need to refresh token
-    if (!connection.refresh_token_encrypted) {
-        return { valid: false, error: 'No refresh token available' };
-    }
-
-    console.log(`[Publish Worker] Refreshing token for connection ${connectionId}`);
-
+    // Decrypt and return the token
     try {
-        // Decrypt the refresh token
-        const refreshToken = await decrypt(connection.refresh_token_encrypted);
-
-        // Dynamic import to keep bundle smaller
-        const { refreshOAuthToken } = await import('./token-refresh');
-        const newTokens = await refreshOAuthToken(connection.platform, refreshToken);
-
-        // Encrypt new tokens before storing
-        const encryptedAccessToken = await encrypt(newTokens.accessToken);
-        const encryptedRefreshToken = newTokens.refreshToken
-            ? await encrypt(newTokens.refreshToken)
-            : connection.refresh_token_encrypted;
-
-        // Update tokens in database
-        await client
-            .from('platform_connections')
-            .update({
-                access_token_encrypted: encryptedAccessToken,
-                refresh_token_encrypted: encryptedRefreshToken,
-                token_expires_at: newTokens.expiresAt,
-            })
-            .eq('id', connectionId);
-
-        return { valid: true, accessToken: newTokens.accessToken };
-    } catch (refreshError) {
-        const errorMessage = refreshError instanceof Error ? refreshError.message : String(refreshError);
-        console.error(`[Publish Worker] Token refresh failed: ${errorMessage}`);
-        return { valid: false, error: `Token refresh failed: ${errorMessage}` };
+        const accessToken = await decrypt(connection.access_token_encrypted);
+        return { valid: true, accessToken };
+    } catch (decryptError) {
+        console.error(`[Publish Worker] Failed to decrypt access token:`, decryptError);
+        return { valid: false, error: 'Failed to decrypt access token' };
     }
 }
 
