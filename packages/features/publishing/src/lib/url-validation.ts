@@ -1,5 +1,3 @@
-'use server';
-
 /**
  * URL validation for SSRF protection
  * Only allows URLs from trusted storage domains
