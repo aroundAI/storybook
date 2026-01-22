@@ -326,6 +326,34 @@ export default $config({
 
     console.log(`✓ LLM jobs queue configured with 15-minute visibility timeout`);
 
+    // Dead Letter Queue for failed publish jobs
+    const publishDLQ = new sst.aws.Queue("StorybookPublishDLQ", {
+      fifo: false,
+      transform: {
+        queue: {
+          // Retain messages in DLQ for 14 days for investigation
+          messageRetentionPeriodSeconds: 1209600, // 14 days
+        },
+      },
+    });
+
+    // AWS SQS queue for video publish processing
+    const publishQueue = new sst.aws.Queue("StorybookPublishQueue", {
+      fifo: false,
+      transform: {
+        queue: (args) => {
+          // Visibility timeout must be >= Lambda timeout (5 minutes)
+          args.visibilityTimeoutSeconds = 300; // 5 minutes
+
+          // Configure Dead Letter Queue
+          // After 3 failed attempts, move message to DLQ for investigation
+          args.redrivePolicy = $interpolate`{"deadLetterTargetArn":"${publishDLQ.arn}","maxReceiveCount":3}`;
+        },
+      },
+    });
+
+    console.log(`✓ Publish queue configured with 5-minute visibility timeout`);
+
     // DynamoDB table for WebSocket connection tracking
     const connectionsTable = new sst.aws.Dynamo("StorybookWebSocketConnections", {
       fields: {
@@ -583,6 +611,55 @@ export default $config({
     });
 
     console.log(`✓ LLM Worker Lambda configured with 15-minute timeout`);
+
+    // Publish Worker Lambda - Processes video publish jobs from SQS
+    // Each message = one video upload to one platform
+    const publishWorker = publishQueue.subscribe({
+      handler: "apps/web/lambda/publish-worker/index.handler",
+      timeout: "5 minutes",
+      memory: "512 MB",
+      architecture: "arm64",
+      link: [connectionsTable, websocket, publishQueue],
+      permissions: [
+        {
+          // Permission to send WebSocket messages to users
+          actions: ["execute-api:ManageConnections"],
+          resources: ["*"],
+        },
+        {
+          actions: ["kms:Decrypt"],
+          resources: [kmsKey.arn],
+        },
+      ],
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
+      environment: {
+        // Supabase configuration
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
+        // Security - needed for token decryption
+        ...(process.env.ENCRYPTION_KEY && { ENCRYPTION_KEY: process.env.ENCRYPTION_KEY }),
+
+        // WebSocket configuration
+        CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
+      },
+      nodejs: {
+        install: [
+          "@supabase/supabase-js",
+          "@aws-sdk/client-dynamodb",
+          "@aws-sdk/lib-dynamodb",
+          "@aws-sdk/client-apigatewaymanagementapi",
+          "googleapis",
+        ],
+      },
+    });
+
+    console.log(`✓ Publish Worker Lambda configured with 5-minute timeout`);
 
     // Deploy Next.js application
     const web = new sst.aws.Nextjs("StorybookWeb", {
@@ -847,18 +924,21 @@ export default $config({
 
     console.log(`✓ Token refresh cron configured (every 30 minutes)`);
 
-    // Scheduled Publish Cron - Processes videos scheduled for publishing
-    // Runs every 5 minutes to publish videos at their scheduled time
+    // Scheduled Publish Cron - Queries for due publishes and queues them
+    // Runs every 5 minutes, sends each publish job to SQS for processing
     const scheduledPublishCron = new sst.aws.Cron("StorybookScheduledPublishCron", {
       job: {
         handler: "apps/web/lambda/scheduled-publish/index.handler",
         timeout: "5 minutes",
         memory: "512 MB",
         architecture: "arm64",
-        link: [web],
+        link: [publishQueue],
         environment: {
-          API_URL: web.url,
-          CRON_SECRET: process.env.CRON_SECRET || '',
+          // Supabase for DB access
+          NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+          SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+          // SQS queue URL
+          PUBLISH_QUEUE_URL: publishQueue.url,
         },
         transform: {
           function: {
@@ -869,6 +949,10 @@ export default $config({
           {
             actions: ["kms:Decrypt"],
             resources: [kmsKey.arn],
+          },
+          {
+            actions: ["sqs:SendMessage"],
+            resources: [publishQueue.arn],
           },
         ],
       },

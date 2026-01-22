@@ -1,76 +1,211 @@
 /**
- * Scheduled Publish Lambda Handler
+ * Scheduled Publish Cron Lambda Handler
  *
- * Processes scheduled video publishes that are due.
+ * Queries database for due publishes and sends each to SQS for processing.
  * Triggered by AWS EventBridge every 5 minutes.
+ *
+ * Architecture:
+ * - This Lambda: Queries DB, queues messages (fast, <5s)
+ * - Publish Worker Lambda: Processes each upload (up to 5 min per video)
  */
+import { createClient } from '@supabase/supabase-js';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+
+import type { PublishJobMessage } from '../publish-worker/index';
+
+const sqsClient = new SQSClient({});
+
+const PUBLISH_QUEUE_URL = process.env.PUBLISH_QUEUE_URL!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  throw new Error(
+    `Supabase credentials missing: URL=${!!supabaseUrl}, ServiceKey=${!!supabaseServiceKey}`,
+  );
+}
+
+if (!PUBLISH_QUEUE_URL) {
+  throw new Error('PUBLISH_QUEUE_URL environment variable not configured');
+}
+
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
 
 interface ScheduledPublishResult {
   success: boolean;
-  processed?: number;
-  published?: number;
-  failed?: number;
+  queued: number;
+  skipped: number;
   error?: string;
+}
+
+interface ScheduledPublish {
+  id: string;
+  episode_id: string;
+  platform_connection_id: string;
+  platform: string;
+  title: string | null;
+  description: string | null;
+  tags: string[] | null;
+  thumbnail_url: string | null;
+  metadata: Record<string, unknown> | null;
+  language: string | null;
+  content_type: string | null;
+  user_id: string;
+  episodes: {
+    final_video_url: string | null;
+    thumbnail_url: string | null;
+    localized_videos: Record<string, string> | null;
+    shorts_groups: Array<{ videos?: Record<string, string> }> | null;
+  } | null;
+}
+
+/**
+ * Resolve video URL based on language and content type
+ */
+function resolveVideoUrl(publish: ScheduledPublish): string | null {
+  const episode = publish.episodes;
+  if (!episode) return null;
+
+  const lang = publish.language || 'en';
+  const isShort = publish.content_type === 'short';
+  const localizedVideos = episode.localized_videos ?? {};
+  const shortsGroups = episode.shorts_groups ?? [];
+
+  // For shorts, check shorts_groups first
+  if (isShort) {
+    for (const group of shortsGroups) {
+      if (group?.videos && group.videos[lang]) {
+        return group.videos[lang];
+      }
+    }
+  }
+
+  // Check localized videos
+  if (localizedVideos[lang]) {
+    return localizedVideos[lang];
+  }
+
+  // Fall back to final_video_url
+  return episode.final_video_url;
 }
 
 /**
  * Lambda handler for scheduled publish cron job
  */
 export async function handler(): Promise<ScheduledPublishResult> {
-  const apiUrl = process.env.API_URL;
-  const cronSecret = process.env.CRON_SECRET;
+  console.log(`[Cron] Starting scheduled publish check...`);
 
-  if (!apiUrl) {
-    console.error('API_URL environment variable not configured');
-    return {
-      success: false,
-      error: 'API_URL not configured',
-    };
+  const now = new Date();
+
+  // Query for due publishes
+  const { data: duePublishes, error } = await supabase
+    .from('publishes')
+    .select(`
+      id,
+      episode_id,
+      platform_connection_id,
+      platform,
+      title,
+      description,
+      tags,
+      thumbnail_url,
+      metadata,
+      language,
+      content_type,
+      user_id,
+      episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups)
+    `)
+    .eq('status', 'scheduled')
+    .lte('scheduled_at', now.toISOString())
+    .order('scheduled_at', { ascending: true })
+    .limit(50);
+
+  if (error) {
+    console.error(`[Cron] Database query failed:`, error);
+    return { success: false, queued: 0, skipped: 0, error: error.message };
   }
 
-  if (!cronSecret) {
-    console.error('CRON_SECRET environment variable not configured');
-    return {
-      success: false,
-      error: 'CRON_SECRET not configured',
-    };
+  if (!duePublishes?.length) {
+    console.log(`[Cron] No due publishes`);
+    return { success: true, queued: 0, skipped: 0 };
   }
 
-  try {
-    // Ensure URL doesn't have trailing slash
-    const baseUrl = apiUrl.endsWith('/') ? apiUrl.slice(0, -1) : apiUrl;
+  console.log(`[Cron] Found ${duePublishes.length} due publishes`);
 
-    const response = await fetch(`${baseUrl}/api/cron/publish-scheduled`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${cronSecret}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  let queued = 0;
+  let skipped = 0;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(
-        `Scheduled publish API returned ${response.status}: ${errorText}`,
-      );
-      return {
-        success: false,
-        error: `API returned ${response.status}`,
-      };
+  for (const publish of duePublishes as ScheduledPublish[]) {
+    // Resolve video URL based on language
+    const videoUrl = resolveVideoUrl(publish);
+
+    if (!videoUrl) {
+      console.error(`[Cron] No video URL for publish ${publish.id}, skipping`);
+      skipped++;
+      continue;
     }
 
-    const result = (await response.json()) as ScheduledPublishResult;
+    // Update status to 'queued' to prevent re-processing
+    const { error: updateError } = await supabase
+      .from('publishes')
+      .update({ status: 'queued' })
+      .eq('id', publish.id);
 
-    console.log('Scheduled publish completed:', JSON.stringify(result));
+    if (updateError) {
+      console.error(`[Cron] Failed to update status for ${publish.id}:`, updateError);
+      skipped++;
+      continue;
+    }
 
-    return result;
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.error('Scheduled publish failed:', errorMessage);
-
-    return {
-      success: false,
-      error: errorMessage,
+    // Build the job message
+    const message: PublishJobMessage = {
+      publishId: publish.id,
+      userId: publish.user_id,
+      platform: publish.platform as PublishJobMessage['platform'],
+      platformConnectionId: publish.platform_connection_id,
+      episodeId: publish.episode_id,
+      videoUrl,
+      title: publish.title || '',
+      description: publish.description || '',
+      tags: publish.tags || [],
+      thumbnailUrl: publish.thumbnail_url || publish.episodes?.thumbnail_url || undefined,
+      metadata: publish.metadata || {},
     };
+
+    // Send to SQS
+    try {
+      await sqsClient.send(
+        new SendMessageCommand({
+          QueueUrl: PUBLISH_QUEUE_URL,
+          MessageBody: JSON.stringify(message),
+        }),
+      );
+
+      queued++;
+      console.log(
+        `[Cron] Queued publish ${publish.id} for ${publish.platform} (${publish.language || 'en'})`,
+      );
+    } catch (sqsError) {
+      console.error(`[Cron] Failed to queue ${publish.id}:`, sqsError);
+
+      // Revert status back to scheduled
+      await supabase
+        .from('publishes')
+        .update({ status: 'scheduled' })
+        .eq('id', publish.id);
+
+      skipped++;
+    }
   }
+
+  console.log(
+    `[Cron] Complete: ${queued} queued, ${skipped} skipped`,
+  );
+
+  return { success: true, queued, skipped };
 }
