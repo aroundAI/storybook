@@ -53,14 +53,15 @@ interface ScheduledPublish {
   tags: string[] | null;
   thumbnail_url: string | null;
   metadata: Record<string, unknown> | null;
-  language: string | null;
   content_type: string | null;
-  user_id: string;
   episodes: {
     final_video_url: string | null;
     thumbnail_url: string | null;
     localized_videos: Record<string, string> | null;
     shorts_groups: Array<{ videos?: Record<string, string> }> | null;
+    projects: {
+      account_id: string;
+    } | null;
   } | null;
 }
 
@@ -71,7 +72,8 @@ function resolveVideoUrl(publish: ScheduledPublish): string | null {
   const episode = publish.episodes;
   if (!episode) return null;
 
-  const lang = publish.language || 'en';
+  // Get language from metadata (default to 'en')
+  const lang = (publish.metadata?.language as string) || 'en';
   const isShort = publish.content_type === 'short';
   const localizedVideos = episode.localized_videos ?? {};
   const shortsGroups = episode.shorts_groups ?? [];
@@ -102,7 +104,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
 
   const now = new Date();
 
-  // Query for due publishes
+  // Query for due publishes - join with episodes and projects to get account_id
   const { data: duePublishes, error } = await supabase
     .from('publishes')
     .select(`
@@ -115,10 +117,14 @@ export async function handler(): Promise<ScheduledPublishResult> {
       tags,
       thumbnail_url,
       metadata,
-      language,
       content_type,
-      user_id,
-      episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups)
+      episodes(
+        final_video_url,
+        thumbnail_url,
+        localized_videos,
+        shorts_groups,
+        projects(account_id)
+      )
     `)
     .eq('status', 'scheduled')
     .lte('scheduled_at', now.toISOString())
@@ -150,6 +156,14 @@ export async function handler(): Promise<ScheduledPublishResult> {
       continue;
     }
 
+    // Get user/account ID from episode → project → account_id
+    const accountId = publish.episodes?.projects?.account_id;
+    if (!accountId) {
+      console.error(`[Cron] No account ID for publish ${publish.id}, skipping`);
+      skipped++;
+      continue;
+    }
+
     // Update status to 'queued' to prevent re-processing
     const { error: updateError } = await supabase
       .from('publishes')
@@ -162,10 +176,13 @@ export async function handler(): Promise<ScheduledPublishResult> {
       continue;
     }
 
+    // Get language from metadata
+    const language = (publish.metadata?.language as string) || 'en';
+
     // Build the job message
     const message: PublishJobMessage = {
       publishId: publish.id,
-      userId: publish.user_id,
+      userId: accountId, // Use account_id as the user identifier
       platform: publish.platform as PublishJobMessage['platform'],
       platformConnectionId: publish.platform_connection_id,
       episodeId: publish.episode_id,
@@ -188,7 +205,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
 
       queued++;
       console.log(
-        `[Cron] Queued publish ${publish.id} for ${publish.platform} (${publish.language || 'en'})`,
+        `[Cron] Queued publish ${publish.id} for ${publish.platform} (${language})`,
       );
     } catch (sqsError) {
       console.error(`[Cron] Failed to queue ${publish.id}:`, sqsError);
