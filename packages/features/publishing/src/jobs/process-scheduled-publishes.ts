@@ -36,9 +36,13 @@ interface ScheduledPublish {
   tags: string[] | null;
   thumbnail_url: string | null;
   metadata: Record<string, unknown> | null;
+  language: string | null;
+  content_type: string | null;
   episodes: {
     final_video_url: string | null;
     thumbnail_url: string | null;
+    localized_videos: Record<string, string> | null;
+    shorts_groups: Array<{ videos: Record<string, string> }> | null;
   } | null;
 }
 
@@ -143,7 +147,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       tags,
       thumbnail_url,
       metadata,
-      episodes(final_video_url, thumbnail_url)
+      language,
+      content_type,
+      episodes(final_video_url, thumbnail_url, localized_videos, shorts_groups)
     `,
         )
         .eq('status', 'scheduled')
@@ -229,8 +235,37 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       }
 
       const episode = publish.episodes;
-      if (!episode?.final_video_url) {
-        throw new Error('Episode video not available');
+      if (!episode) {
+        throw new Error('Episode not found');
+      }
+
+      // Resolve video URL based on language and content type
+      const lang = publish.language || 'en';
+      const isShort = publish.content_type === 'short';
+      const localizedVideos = episode.localized_videos ?? {};
+      const shortsGroups = episode.shorts_groups ?? [];
+
+      // Get shorts video URL from groups (first group that has this language)
+      const getShortsVideoUrl = (language: string): string | null => {
+        for (const group of shortsGroups) {
+          if (group.videos && group.videos[language]) {
+            return group.videos[language];
+          }
+        }
+        return null;
+      };
+
+      let videoUrl: string | null = null;
+      if (isShort) {
+        // Try shorts first, fall back to full video
+        videoUrl = getShortsVideoUrl(lang) ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+      } else {
+        // Try localized full video, fall back to default
+        videoUrl = localizedVideos[lang] ?? episode.final_video_url ?? null;
+      }
+
+      if (!videoUrl) {
+        throw new Error(`No video available for language: ${lang}, content_type: ${publish.content_type}`);
       }
 
       // Execute the platform upload
@@ -239,7 +274,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         tokenResult.accessToken,
         connection.platform_account_id ?? '',
         {
-          videoUrl: episode.final_video_url,
+          videoUrl: videoUrl,
           title: publish.title ?? '',
           description: publish.description ?? '',
           tags: publish.tags ?? [],
