@@ -92,7 +92,7 @@ export function ShotCard({
     >
       {/* Image Container with liquid styling */}
       {/* Priority: Video → Thumbnail → First Frame → Last Frame → Placeholder */}
-      <div className="liquid-image-container relative flex-1 overflow-hidden rounded-2xl bg-gray-100 dark:bg-gray-700">
+      <div className="liquid-image-container relative flex-1 overflow-hidden rounded-2xl bg-gray-100 dark:bg-[#252525]">
         {shot.videoUrl ? (
           <video
             src={shot.videoUrl}

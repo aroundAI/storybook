@@ -126,7 +126,7 @@ export function ProjectBanner({
             </Button>
             <Button
               asChild
-              className="rounded-xl bg-indigo-500 text-white hover:bg-indigo-600"
+              className="rounded-xl bg-indigo-500 text-white hover:bg-indigo-600 dark:bg-[#3B82F6] dark:shadow-[0_0_12px_rgba(59,130,246,0.30)] dark:hover:bg-[#2563EB]"
             >
               <Link href={`${baseUrl}/episodes`}>
                 <Play className="mr-2 h-4 w-4 fill-current" />

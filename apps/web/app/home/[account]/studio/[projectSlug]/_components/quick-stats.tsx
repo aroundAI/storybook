@@ -59,10 +59,10 @@ export function QuickStats({
           const Icon = stat.icon;
           const content = (
             <div
-              className={`group flex min-w-[140px] flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 ${stat.hoverBorder} cursor-pointer transition-colors`}
+              className={`group flex min-w-[140px] flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/8 dark:bg-[#1A1A1A] dark:shadow-[0_0_20px_rgba(59,130,246,0.03)] ${stat.hoverBorder} dark:hover:border-white/15 dark:hover:shadow-[0_0_25px_rgba(59,130,246,0.08)] cursor-pointer transition-all duration-200`}
             >
               <div className="mb-2 flex items-start justify-between">
-                <span className="text-xs font-medium tracking-wider text-zinc-500 uppercase dark:text-zinc-400">
+                <span className="text-xs font-medium tracking-wider text-zinc-500 uppercase dark:text-[#A3A3A3]">
                   {stat.label}
                 </span>
                 <Icon
@@ -70,7 +70,7 @@ export function QuickStats({
                 />
               </div>
               <div className="flex items-baseline gap-1">
-                <span className="text-3xl font-bold text-zinc-900 dark:text-white">
+                <span className="text-3xl font-bold text-zinc-900 dark:text-[#F5F5F5]">
                   {stat.value}
                 </span>
               </div>
@@ -93,7 +93,7 @@ export function QuickStats({
           <Button
             variant="outline"
             asChild
-            className="rounded-xl border-zinc-200 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
+            className="rounded-xl border-zinc-200 hover:bg-zinc-50 dark:border-white/10 dark:bg-[#1A1A1A] dark:hover:bg-[#252525]"
           >
             <Link href={`${baseUrl}/assets`}>
               <Plus className="mr-2 h-4 w-4" />
@@ -102,7 +102,7 @@ export function QuickStats({
           </Button>
           <Button
             asChild
-            className="rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600"
+            className="rounded-xl bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 hover:bg-indigo-600 dark:bg-[#3B82F6] dark:shadow-[0_0_12px_rgba(59,130,246,0.30)] dark:hover:bg-[#2563EB]"
           >
             <Link href={`${baseUrl}/episodes`}>
               <Sparkles className="mr-2 h-4 w-4" />
