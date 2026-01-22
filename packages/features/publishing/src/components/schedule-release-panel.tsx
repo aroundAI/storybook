@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 
 import { format, addMinutes } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import {
     Calendar as CalendarIcon,
     Clock,
@@ -219,6 +220,25 @@ export function ScheduleReleasePanel({
     const [staggerMinutes, setStaggerMinutes] = useState(15);
     const [showPreview, setShowPreview] = useState(true);
 
+    // Get user's local timezone
+    const userTimezone = useMemo(() => {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        } catch {
+            return 'UTC';
+        }
+    }, []);
+
+    // Get short timezone name (e.g., "IST", "PST")
+    const timezoneShort = useMemo(() => {
+        try {
+            const now = new Date();
+            return formatInTimeZone(now, userTimezone, 'zzz');
+        } catch {
+            return '';
+        }
+    }, [userTimezone]);
+
     // Calculate total videos
     const totalVideos = useMemo(() => {
         const fullCount = fullVideoLanguages.length;
@@ -324,6 +344,9 @@ export function ScheduleReleasePanel({
                             <Clock className="text-muted-foreground h-4 w-4" />
                             <TimePicker value={time} onChange={setTime} />
                         </div>
+                        <p className="text-muted-foreground text-xs">
+                            🌐 Times shown in your local timezone ({timezoneShort || userTimezone})
+                        </p>
                     </div>
                 </div>
 
