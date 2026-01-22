@@ -33,6 +33,7 @@ import {
   Youtube,
 } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
+import { format } from 'date-fns';
 
 import {
   translateMetadataAction,
@@ -47,6 +48,10 @@ import {
   publishToAllAction,
   unpublishAction,
 } from '@kit/publishing/server';
+import {
+  ScheduleReleasePanel,
+  type ScheduleConfig,
+} from '@kit/publishing/components';
 import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -607,9 +612,9 @@ export function PublishScreen({
             const updatedGroups = shortsGroups.map((g) =>
               g.id === selectedGroupId
                 ? {
-                    ...g,
-                    videos: { ...g.videos, [selectedLanguage]: result.url },
-                  }
+                  ...g,
+                  videos: { ...g.videos, [selectedLanguage]: result.url },
+                }
                 : g,
             );
             const updateResult = await updateShortsGroupsAction({
@@ -657,6 +662,105 @@ export function PublishScreen({
         toast.error('Failed to remove video');
       }
     });
+  };
+
+  // Handle scheduled release - applies staggered scheduledAt times
+  const handleScheduleRelease = async (config: ScheduleConfig) => {
+    const conns = (connections ?? []) as PlatformConnection[];
+
+    if (conns.length === 0) {
+      toast.error('No connected channels. Connect platforms first.');
+      return;
+    }
+
+    // Build platform configs with scheduled times
+    const platformConfigs: Array<{
+      platform: Platform;
+      connectionId: string;
+      contentType: 'full' | 'short';
+      title: string;
+      description: string;
+      tags: string[];
+      thumbnailUrl?: string | null;
+      language: string;
+      scheduledAt: string;
+      platformSpecific: Record<string, unknown>;
+    }> = [];
+
+    const baseTitle = metadata.title || episode.title;
+    const baseDescription = metadata.description || episode.description || '';
+    const baseTags = metadata.tags
+      ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean)
+      : [];
+
+    // Process each scheduled item
+    for (const item of config.schedule) {
+      const channelsForLang = conns.filter(
+        (c) => (c.language || 'en') === item.language
+      );
+
+      if (item.type === 'full') {
+        // Full video channels (YouTube, Facebook)
+        const fullChannels = channelsForLang.filter((c) =>
+          ['youtube', 'facebook'].includes(c.platform)
+        );
+        for (const channel of fullChannels) {
+          platformConfigs.push({
+            platform: channel.platform,
+            connectionId: channel.id,
+            contentType: 'full',
+            title: baseTitle,
+            description: baseDescription,
+            tags: baseTags,
+            thumbnailUrl: episode.thumbnailUrl,
+            language: item.language,
+            scheduledAt: item.scheduledAt.toISOString(),
+            platformSpecific: {},
+          });
+        }
+      } else {
+        // Shorts channels (YouTube, Instagram, Facebook, TikTok)
+        const group = shortsGroups.find((g) => g.id === item.groupId);
+        const shortsChannels = channelsForLang.filter((c) =>
+          ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform)
+        );
+        for (const channel of shortsChannels) {
+          platformConfigs.push({
+            platform: channel.platform,
+            connectionId: channel.id,
+            contentType: 'short',
+            title: group?.title || baseTitle,
+            description: group?.description || baseDescription,
+            tags: group?.tags?.length ? group.tags : baseTags,
+            thumbnailUrl: episode.thumbnailUrl,
+            language: item.language,
+            scheduledAt: item.scheduledAt.toISOString(),
+            platformSpecific: channel.platform === 'facebook' ? { isReel: true } : {},
+          });
+        }
+      }
+    }
+
+    if (platformConfigs.length === 0) {
+      toast.error('No matching channels for uploaded videos. Check language settings.');
+      return;
+    }
+
+    // Call publish with all configs (they have scheduledAt set)
+    try {
+      setPublishStage('uploading');
+      await publishToAllAction({
+        episodeId: episode.id,
+        platforms: platformConfigs,
+      });
+      toast.success(`Scheduled ${platformConfigs.length} uploads`);
+      setPublishStage('complete');
+      refetchPublishes();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Scheduling failed';
+      toast.error(errorMessage);
+      setPublishStage('error');
+    }
   };
 
   // Stage 1: Start publishing - translate metadata with progress tracking
@@ -717,11 +821,11 @@ export function PublishScreen({
           prev.map((t) =>
             t.language === lang
               ? {
-                  ...t,
-                  title: baseTitle,
-                  description: baseDescription,
-                  status: 'success' as const,
-                }
+                ...t,
+                title: baseTitle,
+                description: baseDescription,
+                status: 'success' as const,
+              }
               : t,
           ),
         );
@@ -746,10 +850,10 @@ export function PublishScreen({
             prev.map((t) =>
               t.language === lang
                 ? {
-                    ...t,
-                    ...translatedEpisodeMetadata[lang],
-                    status: 'success' as const,
-                  }
+                  ...t,
+                  ...translatedEpisodeMetadata[lang],
+                  status: 'success' as const,
+                }
                 : t,
             ),
           );
@@ -823,11 +927,11 @@ export function PublishScreen({
       prev.map((t) =>
         t.status === 'pending'
           ? {
-              ...t,
-              status: 'success' as const,
-              title: baseTitle,
-              description: baseDescription,
-            }
+            ...t,
+            status: 'success' as const,
+            title: baseTitle,
+            description: baseDescription,
+          }
           : t,
       ),
     );
@@ -856,9 +960,9 @@ export function PublishScreen({
           description: langMeta.description,
           tags: metadata.tags
             ? metadata.tags
-                .split(',')
-                .map((t) => t.trim())
-                .filter(Boolean)
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
             : [],
           thumbnailUrl: episode.thumbnailUrl,
           language: lang,
@@ -897,9 +1001,9 @@ export function PublishScreen({
                 ? group.tags
                 : metadata.tags
                   ? metadata.tags
-                      .split(',')
-                      .map((t) => t.trim())
-                      .filter(Boolean)
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean)
                   : [],
             thumbnailUrl: episode.thumbnailUrl,
             language: lang,
@@ -984,10 +1088,10 @@ export function PublishScreen({
             prev.map((s, idx) =>
               idx === i
                 ? {
-                    ...s,
-                    status: 'error' as const,
-                    error: result?.error || 'Unknown error',
-                  }
+                  ...s,
+                  status: 'error' as const,
+                  error: result?.error || 'Unknown error',
+                }
                 : s,
             ),
           );
@@ -1160,8 +1264,8 @@ export function PublishScreen({
       type === 'full'
         ? channels.filter((c) => ['youtube', 'facebook'].includes(c.platform))
         : channels.filter((c) =>
-            ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
-          );
+          ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
+        );
 
     return (
       <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -1256,59 +1360,59 @@ export function PublishScreen({
             {/* Translation Stage */}
             {(publishStage === 'translating' ||
               publishStage === 'confirm-translation') && (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500">
-                  {publishStage === 'translating'
-                    ? 'Translating titles and descriptions for each language...'
-                    : 'Review the translated metadata before publishing:'}
-                </p>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                  {translationResults.map((t) => (
-                    <div
-                      key={t.language}
-                      className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-                    >
-                      <span className="text-xl">
-                        {LANG_INFO[t.language as SupportedLanguage]?.flag ||
-                          '🌐'}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {LANG_INFO[t.language as SupportedLanguage]?.name ||
-                              t.language}
-                          </span>
-                          {t.status === 'pending' && (
-                            <span className="text-xs text-gray-400">
-                              Pending
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500">
+                    {publishStage === 'translating'
+                      ? 'Translating titles and descriptions for each language...'
+                      : 'Review the translated metadata before publishing:'}
+                  </p>
+                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    {translationResults.map((t) => (
+                      <div
+                        key={t.language}
+                        className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+                      >
+                        <span className="text-xl">
+                          {LANG_INFO[t.language as SupportedLanguage]?.flag ||
+                            '🌐'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {LANG_INFO[t.language as SupportedLanguage]?.name ||
+                                t.language}
                             </span>
+                            {t.status === 'pending' && (
+                              <span className="text-xs text-gray-400">
+                                Pending
+                              </span>
+                            )}
+                            {t.status === 'translating' && (
+                              <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
+                            )}
+                            {t.status === 'success' && (
+                              <Check className="h-3 w-3 text-green-500" />
+                            )}
+                            {t.status === 'error' && (
+                              <X className="h-3 w-3 text-red-500" />
+                            )}
+                          </div>
+                          {t.status === 'success' && t.title && (
+                            <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
+                              {t.title}
+                            </p>
                           )}
-                          {t.status === 'translating' && (
-                            <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
-                          )}
-                          {t.status === 'success' && (
-                            <Check className="h-3 w-3 text-green-500" />
-                          )}
-                          {t.status === 'error' && (
-                            <X className="h-3 w-3 text-red-500" />
+                          {t.error && (
+                            <p className="mt-0.5 text-xs text-red-500">
+                              {t.error}
+                            </p>
                           )}
                         </div>
-                        {t.status === 'success' && t.title && (
-                          <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
-                            {t.title}
-                          </p>
-                        )}
-                        {t.error && (
-                          <p className="mt-0.5 text-xs text-red-500">
-                            {t.error}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Uploading Stage */}
             {(publishStage === 'uploading' || publishStage === 'complete') && (
@@ -1411,11 +1515,11 @@ export function PublishScreen({
               )}
               {(publishStage === 'translating' ||
                 publishStage === 'uploading') && (
-                <Button variant="outline" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait...
-                </Button>
-              )}
+                  <Button variant="outline" disabled>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Please wait...
+                  </Button>
+                )}
             </div>
           </div>
         </DialogContent>
@@ -1980,6 +2084,19 @@ export function PublishScreen({
                                   {pub.error}
                                 </p>
                               )}
+                              {/* Show scheduled time for scheduled posts */}
+                              {pub.status === 'scheduled' && pub.scheduledAt && (
+                                <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                                  <Clock className="h-3 w-3" />
+                                  Scheduled for {format(new Date(pub.scheduledAt), 'PPp')}
+                                </p>
+                              )}
+                              {/* Show published time for published posts */}
+                              {pub.status === 'published' && pub.publishedAt && (
+                                <p className="text-muted-foreground mt-1 text-xs">
+                                  Published {format(new Date(pub.publishedAt), 'PPp')}
+                                </p>
+                              )}
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
@@ -2065,6 +2182,20 @@ export function PublishScreen({
                 </div>
               </CardContent>
             </Card>
+
+            {/* Schedule Release */}
+            <ScheduleReleasePanel
+              fullVideoLanguages={uploadedFullLanguages}
+              shortsGroups={shortsGroups.map((g) => ({
+                id: g.id,
+                name: g.name || `Group ${shortsGroups.indexOf(g) + 1}`,
+                videoLanguages: Object.keys(g.videos).filter((lang) => g.videos[lang]),
+              }))}
+              onSchedule={handleScheduleRelease}
+              onPublishNow={handlePublish}
+              isPublishing={publishStage === 'uploading' || publishStage === 'translating'}
+              isScheduling={false}
+            />
 
             {/* Connected Channels */}
             <Card>
@@ -2198,28 +2329,28 @@ export function PublishScreen({
                       uploadType === 'full'
                         ? ['youtube', 'facebook'].includes(c.platform)
                         : [
-                            'youtube',
-                            'instagram',
-                            'facebook',
-                            'tiktok',
-                          ].includes(c.platform),
+                          'youtube',
+                          'instagram',
+                          'facebook',
+                          'tiktok',
+                        ].includes(c.platform),
                     )
                     .map((conn) => (
                       <ChannelBadge key={conn.id} conn={conn} size="md" />
                     ))}
                   {(channelsByLanguage[selectedLanguage] ?? []).length ===
                     0 && (
-                    <p className="text-sm text-amber-600">
-                      No channels connected for{' '}
-                      {LANG_INFO[selectedLanguage].name}.
-                      <a
-                        href={`/home/${accountSlug}/settings/platforms`}
-                        className="ml-1 underline"
-                      >
-                        Connect channels
-                      </a>
-                    </p>
-                  )}
+                      <p className="text-sm text-amber-600">
+                        No channels connected for{' '}
+                        {LANG_INFO[selectedLanguage].name}.
+                        <a
+                          href={`/home/${accountSlug}/settings/platforms`}
+                          className="ml-1 underline"
+                        >
+                          Connect channels
+                        </a>
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -2227,11 +2358,10 @@ export function PublishScreen({
                 <Label>Video File</Label>
                 <div
                   {...getRootProps()}
-                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                    isDragActive
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                      : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
-                  }`}
+                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragActive
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
+                    }`}
                 >
                   <input {...getInputProps()} />
                   {selectedFile ? (
