@@ -128,10 +128,17 @@ async function ensureValidToken(
     connectionId: string,
     client: SupabaseClient,
 ): Promise<{ valid: boolean; accessToken?: string; error?: string }> {
+    // Import crypto utilities
+    const { decrypt, encrypt } = await import('./crypto');
+
     // Get platform connection
     const { data: connection, error } = await client
         .from('platform_connections')
-        .select('*')
+        .select(`
+            id, platform, platform_account_id, platform_account_name,
+            access_token_encrypted, refresh_token_encrypted,
+            token_expires_at, is_active
+        `)
         .eq('id', connectionId)
         .single();
 
@@ -139,35 +146,54 @@ async function ensureValidToken(
         return { valid: false, error: 'Platform connection not found' };
     }
 
+    if (!connection.is_active) {
+        return { valid: false, error: 'Platform connection is inactive' };
+    }
+
     // Check if token is expired (with 5 minute buffer)
-    const expiresAt = connection.expires_at ? new Date(connection.expires_at) : null;
+    const expiresAt = connection.token_expires_at ? new Date(connection.token_expires_at) : null;
     const now = new Date();
     const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
 
-    if (expiresAt && expiresAt > fiveMinutesFromNow) {
-        // Token still valid
-        return { valid: true, accessToken: connection.access_token };
+    if (expiresAt && expiresAt > fiveMinutesFromNow && connection.access_token_encrypted) {
+        // Token still valid - decrypt and return
+        try {
+            const accessToken = await decrypt(connection.access_token_encrypted);
+            return { valid: true, accessToken };
+        } catch (decryptError) {
+            console.error(`[Publish Worker] Failed to decrypt access token:`, decryptError);
+            // Fall through to refresh
+        }
     }
 
     // Need to refresh token
-    if (!connection.refresh_token) {
+    if (!connection.refresh_token_encrypted) {
         return { valid: false, error: 'No refresh token available' };
     }
 
     console.log(`[Publish Worker] Refreshing token for connection ${connectionId}`);
 
     try {
+        // Decrypt the refresh token
+        const refreshToken = await decrypt(connection.refresh_token_encrypted);
+
         // Dynamic import to keep bundle smaller
         const { refreshOAuthToken } = await import('./token-refresh');
-        const newTokens = await refreshOAuthToken(connection.platform, connection.refresh_token);
+        const newTokens = await refreshOAuthToken(connection.platform, refreshToken);
+
+        // Encrypt new tokens before storing
+        const encryptedAccessToken = await encrypt(newTokens.accessToken);
+        const encryptedRefreshToken = newTokens.refreshToken
+            ? await encrypt(newTokens.refreshToken)
+            : connection.refresh_token_encrypted;
 
         // Update tokens in database
         await client
             .from('platform_connections')
             .update({
-                access_token: newTokens.accessToken,
-                refresh_token: newTokens.refreshToken || connection.refresh_token,
-                expires_at: newTokens.expiresAt,
+                access_token_encrypted: encryptedAccessToken,
+                refresh_token_encrypted: encryptedRefreshToken,
+                token_expires_at: newTokens.expiresAt,
             })
             .eq('id', connectionId);
 
