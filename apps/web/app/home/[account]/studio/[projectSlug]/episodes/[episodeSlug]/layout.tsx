@@ -191,10 +191,10 @@ async function EpisodeWorkspaceLayout({
       })) ?? [],
     season: seasonData
       ? {
-          id: seasonData.id,
-          name: seasonData.name ?? '',
-          number: seasonData.number,
-        }
+        id: seasonData.id,
+        name: seasonData.name ?? '',
+        number: seasonData.number,
+      }
       : null,
     // Include project metadata for shot prompts (projectAestheticStyle, videoStyle, etc.)
     projectMetadata: (project.metadata as Record<string, unknown>) ?? {},
@@ -210,7 +210,7 @@ async function EpisodeWorkspaceLayout({
       projectName={project.name ?? 'Project'}
       projectMetadata={project.metadata as Record<string, unknown> | null}
     >
-      <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-gray-900">
+      <div className="flex h-full flex-col bg-[#F5F5F7] dark:bg-[#0A0A0A]">
         <EpisodeWorkspaceHeader />
         <EpisodeWorkspaceTabs />
         <div className="flex-1 overflow-y-auto">{children}</div>
