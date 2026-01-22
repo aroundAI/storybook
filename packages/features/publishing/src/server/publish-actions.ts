@@ -24,6 +24,7 @@ import { TwitterProvider } from '../providers/twitter';
 // Import providers
 import { YouTubeProvider } from '../providers/youtube';
 import { getAccessToken } from './connection-actions';
+import { validateContentUrl } from '../lib/url-validation';
 
 /**
  * Replace localhost URLs with tunnel URL for external platform uploads.
@@ -264,6 +265,11 @@ export const publishToAllAction = enhanceAction(
           );
           const finalVideoUrl = needsTunnel ? getTunnelUrl(videoUrl) : videoUrl;
 
+          // Validate URLs for SSRF protection (skip in development with tunnel)
+          const safeThumbnailUrl = validateContentUrl(
+            platform.thumbnailUrl ?? episode.thumbnail_url,
+          );
+
           // Upload to platform (immediately or with native scheduling)
           const uploadResult = await uploadToPlatform(
             platform.platform,
@@ -274,7 +280,7 @@ export const publishToAllAction = enhanceAction(
               title: platform.title,
               description: platform.description,
               tags: platform.tags,
-              thumbnailUrl: platform.thumbnailUrl ?? episode.thumbnail_url,
+              thumbnailUrl: safeThumbnailUrl,
               scheduledAt: platform.scheduledAt
                 ? new Date(platform.scheduledAt)
                 : undefined,
@@ -874,12 +880,12 @@ export const getEpisodePublishesAction = enhanceAction(
         createdAt: p.created_at,
         analytics: analytics
           ? {
-              views: analytics.views,
-              likes: analytics.likes,
-              comments: analytics.comments,
-              shares: analytics.shares,
-              watchTimeSeconds: analytics.watch_time_seconds,
-            }
+            views: analytics.views,
+            likes: analytics.likes,
+            comments: analytics.comments,
+            shares: analytics.shares,
+            watchTimeSeconds: analytics.watch_time_seconds,
+          }
           : null,
         error: (p.metadata as { error?: string } | null)?.error,
       };

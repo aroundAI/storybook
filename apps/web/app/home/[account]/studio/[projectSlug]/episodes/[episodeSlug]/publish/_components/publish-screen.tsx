@@ -90,36 +90,14 @@ interface PublishScreenProps {
   accountId?: string;
 }
 
-type SupportedLanguage =
-  | 'en'
-  | 'hi'
-  | 'es'
-  | 'pt'
-  | 'fr'
-  | 'de'
-  | 'ja'
-  | 'ko'
-  | 'zh';
-
-const LANG_INFO: Record<SupportedLanguage, { name: string; flag: string }> = {
-  en: { name: 'English', flag: '🇺🇸' },
-  hi: { name: 'Hindi', flag: '🇮🇳' },
-  es: { name: 'Spanish', flag: '🇪🇸' },
-  pt: { name: 'Portuguese', flag: '🇧🇷' },
-  fr: { name: 'French', flag: '🇫🇷' },
-  de: { name: 'German', flag: '🇩🇪' },
-  ja: { name: 'Japanese', flag: '🇯🇵' },
-  ko: { name: 'Korean', flag: '🇰🇷' },
-  zh: { name: 'Chinese', flag: '🇨🇳' },
-};
-
-// Platform type constants to avoid duplication
-const FULL_VIDEO_PLATFORMS = ['youtube', 'facebook'] as const;
-const SHORTS_PLATFORMS = ['youtube', 'instagram', 'facebook', 'tiktok'] as const;
-
-// Helper to parse comma-separated tags
-const parseTags = (tagsString?: string): string[] =>
-  tagsString ? tagsString.split(',').map((t) => t.trim()).filter(Boolean) : [];
+// Import shared constants from @kit/publishing
+import {
+  LANG_INFO,
+  type SupportedLanguage,
+  FULL_VIDEO_PLATFORMS,
+  SHORTS_PLATFORMS,
+  parseTags,
+} from '@kit/publishing/lib/constants';
 
 // Platform icons and configurations - with light/dark mode compatible colors
 const PLATFORM_CONFIG: Record<
@@ -307,6 +285,12 @@ export function PublishScreen({
   // Scheduling state for schedule release panel
   const [isScheduling, setIsScheduling] = useState(false);
 
+  // Scheduled translations state (for ScheduleReleasePanel)
+  const [scheduledTranslations, setScheduledTranslations] = useState<
+    Record<string, { title: string; description: string }>
+  >({});
+  const [isScheduleTranslating, setIsScheduleTranslating] = useState(false);
+
   // WebSocket for async LLM translation results (uses shared provider from layout)
   const {
     status: llmStatus,
@@ -318,12 +302,12 @@ export function PublishScreen({
     targetLanguage: string;
   }>('publish-metadata');
 
-  // Handle async WebSocket translation result
+  // Handle WebSocket translation results
   useEffect(() => {
     if (
       llmStatus === 'success' &&
       llmResult &&
-      publishStage === 'translating'
+      (publishStage === 'translating' || isScheduleTranslating)
     ) {
       // llmResult is already the result object from message.result (contains {translatedTitle, etc.})
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -339,14 +323,48 @@ export function PublishScreen({
             status: 'success',
           },
         ]);
-        toast.success(`Translated to ${LANG_INFO[lang]?.name || lang}`);
-      }
-    } else if (llmStatus === 'error' && publishStage === 'translating') {
-      toast.error(llmError || 'Translation failed');
-    }
-  }, [llmStatus, llmResult, llmError, publishStage]);
 
-  // Metadata state
+        // Also update scheduled translations for ScheduleReleasePanel
+        setScheduledTranslations((prev) => ({
+          ...prev,
+          [lang]: {
+            title: resultData.translatedTitle,
+            description: resultData.translatedDescription,
+          },
+        }));
+
+        toast.success(`Translated to ${LANG_INFO[lang]?.name || lang}`);
+
+        // Check if all scheduled translations are complete
+        // (This is a simplistic check - could be improved)
+        setIsScheduleTranslating(false);
+      }
+    } else if (llmStatus === 'error' && (publishStage === 'translating' || isScheduleTranslating)) {
+      toast.error(llmError || 'Translation failed');
+      setIsScheduleTranslating(false);
+    }
+  }, [llmStatus, llmResult, llmError, publishStage, isScheduleTranslating]);
+
+  // Handler for ScheduleReleasePanel translation requests
+  const handleScheduleTranslate = async (languages: string[]) => {
+    setIsScheduleTranslating(true);
+    // Clear previous scheduled translations
+    setScheduledTranslations({});
+
+    const baseTitle = metadata.title || episode.title;
+    const baseDescription = metadata.description || episode.description || '';
+
+    // Queue translations for each non-English language
+    for (const lang of languages) {
+      await translateMetadataAction({
+        title: baseTitle,
+        description: baseDescription,
+        targetLanguage: lang,
+      });
+    }
+    // Results will come back via WebSocket and update scheduledTranslations
+  };
+
   // Metadata state
   const [metadata, setMetadata] = useState({
     title: episode.title || '',
@@ -710,6 +728,10 @@ export function PublishScreen({
         (c) => (c.language || 'en') === item.language
       );
 
+      // Use translated title/description from schedule item, fallback to base
+      const itemTitle = item.title || baseTitle;
+      const itemDescription = item.description || baseDescription;
+
       if (item.type === 'full') {
         // Full video channels (using constant)
         const fullChannels = channelsForLang.filter((c) =>
@@ -720,8 +742,8 @@ export function PublishScreen({
             platform: channel.platform,
             connectionId: channel.id,
             contentType: 'full',
-            title: baseTitle,
-            description: baseDescription,
+            title: itemTitle,
+            description: itemDescription,
             tags: baseTags,
             thumbnailUrl: episode.thumbnailUrl,
             language: item.language,
@@ -740,8 +762,9 @@ export function PublishScreen({
             platform: channel.platform,
             connectionId: channel.id,
             contentType: 'short',
-            title: group?.title || baseTitle,
-            description: group?.description || baseDescription,
+            // For shorts, prefer group title, then translated, then base
+            title: group?.title || itemTitle,
+            description: group?.description || itemDescription,
             tags: group?.tags?.length ? group.tags : baseTags,
             thumbnailUrl: episode.thumbnailUrl,
             language: item.language,
@@ -2203,8 +2226,15 @@ export function PublishScreen({
                 name: g.name || `Group ${shortsGroups.indexOf(g) + 1}`,
                 videoLanguages: Object.keys(g.videos).filter((lang) => g.videos[lang]),
               }))}
+              baseMetadata={{
+                title: metadata.title || episode.title,
+                description: metadata.description || episode.description || '',
+              }}
               onSchedule={handleScheduleRelease}
               onPublishNow={handlePublish}
+              onTranslate={handleScheduleTranslate}
+              translatedMetadata={scheduledTranslations}
+              isTranslating={isScheduleTranslating}
               isPublishing={publishStage === 'uploading' || publishStage === 'translating'}
               isScheduling={isScheduling}
             />

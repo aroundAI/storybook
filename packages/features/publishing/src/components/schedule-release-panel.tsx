@@ -12,6 +12,10 @@ import {
     ChevronUp,
     Film,
     Smartphone,
+    Loader2,
+    Languages,
+    Check,
+    ArrowLeft,
 } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
@@ -48,6 +52,10 @@ export interface VideoToSchedule {
 
 export interface ScheduleItem extends VideoToSchedule {
     scheduledAt: Date;
+    /** Translated title for this language */
+    title?: string;
+    /** Translated description for this language */
+    description?: string;
 }
 
 export interface ScheduleConfig {
@@ -65,10 +73,21 @@ interface ScheduleReleasePanelProps {
         name: string;
         videoLanguages: string[];
     }>;
+    /** Base metadata to translate */
+    baseMetadata: {
+        title: string;
+        description: string;
+    };
     /** Callback when user clicks "Schedule All" */
     onSchedule: (config: ScheduleConfig) => void;
     /** Callback when user clicks "Publish Now" */
     onPublishNow: () => void;
+    /** Callback to trigger translations for languages */
+    onTranslate?: (languages: string[]) => void;
+    /** Translated metadata by language */
+    translatedMetadata?: Record<string, { title: string; description: string }>;
+    /** Is translation in progress */
+    isTranslating?: boolean;
     /** Is publishing in progress */
     isPublishing?: boolean;
     /** Is scheduling in progress */
@@ -76,24 +95,10 @@ interface ScheduleReleasePanelProps {
 }
 
 // =============================================================================
-// Language Display
+// Language Display - imported from shared constants
 // =============================================================================
 
-const LANG_INFO: Record<string, { name: string; flag: string }> = {
-    en: { name: 'English', flag: '🇺🇸' },
-    hi: { name: 'Hindi', flag: '🇮🇳' },
-    es: { name: 'Spanish', flag: '🇪🇸' },
-    pt: { name: 'Portuguese', flag: '🇧🇷' },
-    fr: { name: 'French', flag: '🇫🇷' },
-    de: { name: 'German', flag: '🇩🇪' },
-    ja: { name: 'Japanese', flag: '🇯🇵' },
-    ko: { name: 'Korean', flag: '🇰🇷' },
-    zh: { name: 'Chinese', flag: '🇨🇳' },
-};
-
-function getLangDisplay(lang: string) {
-    return LANG_INFO[lang] || { name: lang.toUpperCase(), flag: '🌐' };
-}
+import { LANG_INFO, getLangDisplay } from '../lib/constants';
 
 // =============================================================================
 // Schedule Calculation
@@ -209,8 +214,12 @@ function TimePicker({
 export function ScheduleReleasePanel({
     fullVideoLanguages,
     shortsGroups,
+    baseMetadata,
     onSchedule,
     onPublishNow,
+    onTranslate,
+    translatedMetadata = {},
+    isTranslating = false,
     isPublishing = false,
     isScheduling = false,
 }: ScheduleReleasePanelProps) {
@@ -219,6 +228,7 @@ export function ScheduleReleasePanel({
     const [time, setTime] = useState({ hours: 10, minutes: 0 });
     const [staggerMinutes, setStaggerMinutes] = useState(15);
     const [showPreview, setShowPreview] = useState(true);
+    const [showConfirmation, setShowConfirmation] = useState(false);
 
     // Get user's local timezone
     const userTimezone = useMemo(() => {
@@ -264,23 +274,64 @@ export function ScheduleReleasePanel({
         );
     }, [date, time, staggerMinutes, fullVideoLanguages, shortsGroups]);
 
+    // Get unique languages that need translation
+    const languagesToTranslate = useMemo(() => {
+        const allLangs = new Set([
+            ...fullVideoLanguages,
+            ...shortsGroups.flatMap(g => g.videoLanguages),
+        ]);
+        return [...allLangs].filter(lang => lang !== 'en').sort();
+    }, [fullVideoLanguages, shortsGroups]);
+
+    // Check translation status for each language
+    const translationStatus = useMemo(() => {
+        const status: Record<string, boolean> = { en: true }; // English doesn't need translation
+        languagesToTranslate.forEach(lang => {
+            status[lang] = !!translatedMetadata[lang];
+        });
+        return status;
+    }, [languagesToTranslate, translatedMetadata]);
+
+    const allTranslated = useMemo(() => {
+        return languagesToTranslate.every(lang => translatedMetadata[lang]);
+    }, [languagesToTranslate, translatedMetadata]);
+
     // Calculate total duration
     const totalDuration = useMemo(() => {
         if (totalVideos <= 1) return 0;
         return (totalVideos - 1) * staggerMinutes;
     }, [totalVideos, staggerMinutes]);
 
-    // Handle schedule
-    const handleSchedule = () => {
+    // Step 1: User clicks "Prepare Schedule" -> trigger translations
+    const handlePrepareSchedule = () => {
+        if (!date) return;
+
+        setShowConfirmation(true);
+
+        // Trigger translations for non-English languages
+        if (languagesToTranslate.length > 0 && onTranslate) {
+            onTranslate(languagesToTranslate);
+        }
+    };
+
+    // Step 2: User confirms -> build schedule with translations and submit
+    const handleConfirmSchedule = () => {
         if (!date) return;
 
         const startDateTime = new Date(date);
         startDateTime.setHours(time.hours, time.minutes, 0, 0);
 
+        // Build schedule with translated metadata
+        const scheduleWithTranslations = schedulePreview.map(item => ({
+            ...item,
+            title: translatedMetadata[item.language]?.title || baseMetadata.title,
+            description: translatedMetadata[item.language]?.description || baseMetadata.description,
+        }));
+
         onSchedule({
             startDateTime,
             staggerMinutes,
-            schedule: schedulePreview,
+            schedule: scheduleWithTranslations,
         });
     };
 
@@ -469,42 +520,134 @@ export function ScheduleReleasePanel({
                     </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="flex flex-col gap-3 sm:flex-row">
-                    <Button
-                        variant="default"
-                        className="flex-1"
-                        disabled={!date || isScheduling || isPublishing}
-                        onClick={handleSchedule}
-                    >
-                        {isScheduling ? (
-                            <>
-                                <Clock className="mr-2 h-4 w-4 animate-spin" />
-                                Scheduling...
-                            </>
+                {/* Confirmation Panel - Step 2 */}
+                {showConfirmation && (
+                    <div className="bg-muted/50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-4">
+                            <Languages className="h-5 w-5" />
+                            <h4 className="font-medium">Translation Status</h4>
+                        </div>
+
+                        {isTranslating ? (
+                            <div className="flex items-center gap-2 py-4">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                <span className="text-sm">
+                                    Translating metadata for {languagesToTranslate.length} language{languagesToTranslate.length !== 1 ? 's' : ''}...
+                                </span>
+                            </div>
                         ) : (
-                            <>
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                Schedule All
-                            </>
+                            <div className="space-y-2 mb-4">
+                                {languagesToTranslate.length === 0 ? (
+                                    <p className="text-muted-foreground text-sm">
+                                        Only English videos - no translation needed.
+                                    </p>
+                                ) : (
+                                    languagesToTranslate.map(lang => {
+                                        const langInfo = getLangDisplay(lang);
+                                        const isReady = translationStatus[lang];
+                                        const translated = translatedMetadata[lang];
+                                        return (
+                                            <div
+                                                key={lang}
+                                                className="bg-background flex items-center gap-3 rounded-md p-3"
+                                            >
+                                                <span className="text-lg">{langInfo.flag}</span>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium truncate">
+                                                        {translated?.title || baseMetadata.title}
+                                                    </p>
+                                                    <p className="text-muted-foreground text-xs">
+                                                        {langInfo.name}
+                                                    </p>
+                                                </div>
+                                                {isReady ? (
+                                                    <Check className="h-4 w-4 text-green-500" />
+                                                ) : (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                )}
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
                         )}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="flex-1"
-                        disabled={isScheduling || isPublishing}
-                        onClick={onPublishNow}
-                    >
-                        {isPublishing ? (
-                            <>
-                                <Clock className="mr-2 h-4 w-4 animate-spin" />
-                                Publishing...
-                            </>
-                        ) : (
-                            'Publish Now'
-                        )}
-                    </Button>
-                </div>
+
+                        <div className="flex gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowConfirmation(false)}
+                                disabled={isScheduling}
+                            >
+                                <ArrowLeft className="mr-2 h-4 w-4" />
+                                Back
+                            </Button>
+                            <Button
+                                variant="default"
+                                size="sm"
+                                className="flex-1"
+                                disabled={!allTranslated || isScheduling}
+                                onClick={handleConfirmSchedule}
+                            >
+                                {isScheduling ? (
+                                    <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Scheduling...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Check className="mr-2 h-4 w-4" />
+                                        Confirm & Schedule
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Action Buttons - Step 1 */}
+                {!showConfirmation && (
+                    <div className="flex flex-col gap-3 sm:flex-row">
+                        <Button
+                            variant="default"
+                            className="flex-1"
+                            disabled={!date || isScheduling || isPublishing}
+                            onClick={languagesToTranslate.length > 0 ? handlePrepareSchedule : handleConfirmSchedule}
+                        >
+                            {isScheduling ? (
+                                <>
+                                    <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                    Scheduling...
+                                </>
+                            ) : languagesToTranslate.length > 0 ? (
+                                <>
+                                    <Languages className="mr-2 h-4 w-4" />
+                                    Prepare Schedule
+                                </>
+                            ) : (
+                                <>
+                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                    Schedule All
+                                </>
+                            )}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="flex-1"
+                            disabled={isScheduling || isPublishing}
+                            onClick={onPublishNow}
+                        >
+                            {isPublishing ? (
+                                <>
+                                    <Clock className="mr-2 h-4 w-4 animate-spin" />
+                                    Publishing...
+                                </>
+                            ) : (
+                                'Publish Now'
+                            )}
+                        </Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
