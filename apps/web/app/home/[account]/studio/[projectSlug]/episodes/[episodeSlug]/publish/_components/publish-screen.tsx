@@ -49,6 +49,11 @@ import {
   unpublishAction,
 } from '@kit/publishing/server';
 import {
+  uploadEpisodeThumbnailAction,
+  getEpisodeThumbnailsAction,
+  type EpisodeThumbnail,
+} from '@kit/episodes/server';
+import {
   ScheduleReleasePanel,
   type ScheduleConfig,
 } from '@kit/publishing/components';
@@ -371,6 +376,75 @@ export function PublishScreen({
     description: episode.description || '',
     tags: '',
   });
+
+  // Episode thumbnails state (per-language thumbnails)
+  const [episodeThumbnails, setEpisodeThumbnails] = useState<EpisodeThumbnail[]>([]);
+
+  // Fetch episode thumbnails on mount
+  useEffect(() => {
+    const fetchThumbnails = async () => {
+      const result = await getEpisodeThumbnailsAction({ episodeId: episode.id });
+      if (result.success && result.thumbnails) {
+        setEpisodeThumbnails(result.thumbnails);
+      }
+    };
+    void fetchThumbnails();
+  }, [episode.id]);
+
+  // Get thumbnail URL for a specific language (fallback to default then episode thumbnail)
+  const getThumbnailForLanguage = useCallback((lang: string): string | null => {
+    const match = episodeThumbnails.find(t => t.language === lang);
+    if (match) return match.thumbnailUrl;
+    const defaultThumb = episodeThumbnails.find(t => t.isDefault);
+    if (defaultThumb) return defaultThumb.thumbnailUrl;
+    return episode.thumbnailUrl;
+  }, [episodeThumbnails, episode.thumbnailUrl]);
+
+  // Handle thumbnail upload for a specific language
+  const handleThumbnailUpload = async (lang: string, file: File) => {
+    // Upload to storage first
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('path', `thumbnails/${episode.id}/${lang}/${file.name}`);
+    formData.append('bucket', 'videos');
+
+    try {
+      const uploadRes = await fetch('/api/storage/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        toast.error('Failed to upload thumbnail');
+        return;
+      }
+
+      const { url } = await uploadRes.json();
+
+      // Save to episode_thumbnails table
+      const result = await uploadEpisodeThumbnailAction({
+        episodeId: episode.id,
+        language: lang,
+        languageLabel: LANG_INFO[lang as SupportedLanguage]?.name || lang,
+        thumbnailUrl: url,
+        fileName: file.name,
+        fileSizeBytes: file.size,
+        mimeType: file.type,
+      });
+
+      if (result.success && result.thumbnail) {
+        setEpisodeThumbnails(prev => {
+          const filtered = prev.filter(t => t.language !== lang);
+          return [...filtered, result.thumbnail!];
+        });
+        toast.success(`Thumbnail uploaded for ${LANG_INFO[lang as SupportedLanguage]?.name || lang}`);
+      } else {
+        toast.error(result.error || 'Failed to save thumbnail');
+      }
+    } catch {
+      toast.error('Failed to upload thumbnail');
+    }
+  };
 
   // Shorts groups state - use episode.shortsGroups directly (no legacy migration)
   const [shortsGroups, setShortsGroups] = useState<ShortsGroup[]>(
@@ -745,7 +819,7 @@ export function PublishScreen({
             title: itemTitle,
             description: itemDescription,
             tags: baseTags,
-            thumbnailUrl: episode.thumbnailUrl,
+            thumbnailUrl: getThumbnailForLanguage(item.language),
             language: item.language,
             scheduledAt: item.scheduledAt.toISOString(),
             platformSpecific: {},
@@ -766,7 +840,7 @@ export function PublishScreen({
             title: group?.title || itemTitle,
             description: group?.description || itemDescription,
             tags: group?.tags?.length ? group.tags : baseTags,
-            thumbnailUrl: episode.thumbnailUrl,
+            thumbnailUrl: getThumbnailForLanguage(item.language),
             language: item.language,
             scheduledAt: item.scheduledAt.toISOString(),
             platformSpecific: channel.platform === 'facebook' ? { isReel: true } : {},
@@ -999,7 +1073,7 @@ export function PublishScreen({
               .map((t) => t.trim())
               .filter(Boolean)
             : [],
-          thumbnailUrl: episode.thumbnailUrl,
+          thumbnailUrl: getThumbnailForLanguage(lang),
           language: lang,
           platformSpecific: {},
         });
@@ -1040,7 +1114,7 @@ export function PublishScreen({
                     .map((t) => t.trim())
                     .filter(Boolean)
                   : [],
-            thumbnailUrl: episode.thumbnailUrl,
+            thumbnailUrl: getThumbnailForLanguage(lang),
             language: lang,
             platformSpecific:
               channel.platform === 'facebook' ? { isReel: true } : {},
@@ -1283,7 +1357,7 @@ export function PublishScreen({
     );
   };
 
-  // Video card with channel destinations
+  // Video card with channel destinations and thumbnail upload
   const VideoCard = ({
     type,
     lang,
@@ -1301,6 +1375,9 @@ export function PublishScreen({
         : channels.filter((c) =>
           ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
         );
+
+    const thumbnailUrl = getThumbnailForLanguage(lang);
+    const thumbnailInputId = `thumbnail-input-${type}-${lang}`;
 
     return (
       <div className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
@@ -1329,6 +1406,40 @@ export function PublishScreen({
             >
               <Trash2 className="h-4 w-4" />
             </Button>
+          </div>
+
+          {/* Thumbnail Preview and Upload */}
+          <div className="mb-2 flex items-center gap-2">
+            <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded border border-gray-200 dark:border-gray-600">
+              {thumbnailUrl ? (
+                <img
+                  src={thumbnailUrl}
+                  alt={`${LANG_INFO[lang]?.name} thumbnail`}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-700">
+                  <Film className="h-4 w-4 text-gray-400" />
+                </div>
+              )}
+            </div>
+            <input
+              type="file"
+              id={thumbnailInputId}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleThumbnailUpload(lang, file);
+              }}
+            />
+            <label
+              htmlFor={thumbnailInputId}
+              className="flex cursor-pointer items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-indigo-100 hover:text-indigo-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-indigo-900 dark:hover:text-indigo-400"
+            >
+              <Upload className="h-3 w-3" />
+              {thumbnailUrl ? 'Change' : 'Add'} Thumbnail
+            </label>
           </div>
 
           {/* Destination channels */}
