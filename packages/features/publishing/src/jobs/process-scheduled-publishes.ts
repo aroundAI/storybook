@@ -368,6 +368,7 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     } catch (err) {
       results.failed++;
       const errorMessage = err instanceof Error ? err.message : String(err);
+      const errorStack = err instanceof Error ? err.stack : undefined;
 
       // Update with failure
       await client
@@ -377,14 +378,18 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           metadata: {
             ...(publish.metadata ?? {}),
             error: errorMessage,
+            errorStack: errorStack?.split('\n').slice(0, 5).join('\n'), // First 5 lines of stack
             failedAt: new Date().toISOString(),
           },
         })
         .eq('id', publish.id);
 
       console.error(`[ScheduledPublish] FAILED: ${publish.id} - ${errorMessage}`);
+      if (errorStack) {
+        console.error(`[ScheduledPublish] Stack trace:\n${errorStack}`);
+      }
       logger.error(
-        { ...publishCtx, error: errorMessage },
+        { ...publishCtx, error: errorMessage, stack: errorStack },
         'Scheduled publish failed',
       );
     }

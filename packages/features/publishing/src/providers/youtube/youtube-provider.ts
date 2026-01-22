@@ -79,10 +79,17 @@ export class YouTubeProvider {
 
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
 
-    // 4. Upload thumbnail if provided
+    // 4. Upload thumbnail if provided (non-fatal - video is already uploaded)
     let thumbnailUrl: string | undefined;
     if (input.thumbnailPath) {
-      thumbnailUrl = await this.uploadThumbnail(videoId, input.thumbnailPath);
+      try {
+        thumbnailUrl = await this.uploadThumbnail(videoId, input.thumbnailPath);
+      } catch (thumbnailError) {
+        // Log but don't fail - video is already uploaded successfully
+        console.warn(
+          `[YouTube] Thumbnail upload failed for video ${videoId}: ${thumbnailError instanceof Error ? thumbnailError.message : String(thumbnailError)}`,
+        );
+      }
     }
 
     // 5. Add to playlists
