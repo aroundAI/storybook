@@ -113,6 +113,14 @@ const LANG_INFO: Record<SupportedLanguage, { name: string; flag: string }> = {
   zh: { name: 'Chinese', flag: '🇨🇳' },
 };
 
+// Platform type constants to avoid duplication
+const FULL_VIDEO_PLATFORMS = ['youtube', 'facebook'] as const;
+const SHORTS_PLATFORMS = ['youtube', 'instagram', 'facebook', 'tiktok'] as const;
+
+// Helper to parse comma-separated tags
+const parseTags = (tagsString?: string): string[] =>
+  tagsString ? tagsString.split(',').map((t) => t.trim()).filter(Boolean) : [];
+
 // Platform icons and configurations - with light/dark mode compatible colors
 const PLATFORM_CONFIG: Record<
   string,
@@ -295,6 +303,9 @@ export function PublishScreen({
   // Delete all dialog state
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+
+  // Scheduling state for schedule release panel
+  const [isScheduling, setIsScheduling] = useState(false);
 
   // WebSocket for async LLM translation results (uses shared provider from layout)
   const {
@@ -673,6 +684,8 @@ export function PublishScreen({
       return;
     }
 
+    setIsScheduling(true);
+
     // Build platform configs with scheduled times
     const platformConfigs: Array<{
       platform: Platform;
@@ -689,9 +702,7 @@ export function PublishScreen({
 
     const baseTitle = metadata.title || episode.title;
     const baseDescription = metadata.description || episode.description || '';
-    const baseTags = metadata.tags
-      ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean)
-      : [];
+    const baseTags = parseTags(metadata.tags);
 
     // Process each scheduled item
     for (const item of config.schedule) {
@@ -700,9 +711,9 @@ export function PublishScreen({
       );
 
       if (item.type === 'full') {
-        // Full video channels (YouTube, Facebook)
+        // Full video channels (using constant)
         const fullChannels = channelsForLang.filter((c) =>
-          ['youtube', 'facebook'].includes(c.platform)
+          FULL_VIDEO_PLATFORMS.includes(c.platform as typeof FULL_VIDEO_PLATFORMS[number])
         );
         for (const channel of fullChannels) {
           platformConfigs.push({
@@ -719,10 +730,10 @@ export function PublishScreen({
           });
         }
       } else {
-        // Shorts channels (YouTube, Instagram, Facebook, TikTok)
+        // Shorts channels (using constant)
         const group = shortsGroups.find((g) => g.id === item.groupId);
         const shortsChannels = channelsForLang.filter((c) =>
-          ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform)
+          SHORTS_PLATFORMS.includes(c.platform as typeof SHORTS_PLATFORMS[number])
         );
         for (const channel of shortsChannels) {
           platformConfigs.push({
@@ -743,23 +754,24 @@ export function PublishScreen({
 
     if (platformConfigs.length === 0) {
       toast.error('No matching channels for uploaded videos. Check language settings.');
+      setIsScheduling(false);
       return;
     }
 
     // Call publish with all configs (they have scheduledAt set)
     try {
-      setPublishStage('uploading');
       await publishToAllAction({
         episodeId: episode.id,
         platforms: platformConfigs,
       });
       toast.success(`Scheduled ${platformConfigs.length} uploads`);
-      setPublishStage('complete');
       refetchPublishes();
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Scheduling failed';
-      toast.error(errorMessage);
-      setPublishStage('error');
+      // Use generic error message for security (avoid exposing server details)
+      console.error('Scheduling failed:', error);
+      toast.error('Failed to schedule uploads. Please try again.');
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -2194,7 +2206,7 @@ export function PublishScreen({
               onSchedule={handleScheduleRelease}
               onPublishNow={handlePublish}
               isPublishing={publishStage === 'uploading' || publishStage === 'translating'}
-              isScheduling={false}
+              isScheduling={isScheduling}
             />
 
             {/* Connected Channels */}
