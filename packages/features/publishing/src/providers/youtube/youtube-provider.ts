@@ -47,7 +47,7 @@ export class YouTubeProvider {
       },
       status: {
         privacyStatus: input.privacy,
-        publishAt: input.publishAt?.toISOString(),
+        // publishAt removed - scheduling handled server-side by cron job
         madeForKids: input.madeForKids,
         selfDeclaredMadeForKids: input.madeForKids,
       },
@@ -97,7 +97,7 @@ export class YouTubeProvider {
     return {
       videoId,
       videoUrl,
-      status: input.publishAt ? 'uploaded' : 'published',
+      status: 'published', // Always published - scheduling handled server-side
       thumbnailUrl,
     };
   }

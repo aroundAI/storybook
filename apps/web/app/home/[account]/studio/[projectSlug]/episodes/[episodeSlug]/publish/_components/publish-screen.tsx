@@ -290,6 +290,9 @@ export function PublishScreen({
   // Scheduling state for schedule release panel
   const [isScheduling, setIsScheduling] = useState(false);
 
+  // Thumbnail upload loading state (per language)
+  const [uploadingThumbnails, setUploadingThumbnails] = useState<Record<string, boolean>>({});
+
   // Scheduled translations state (for ScheduleReleasePanel)
   const [scheduledTranslations, setScheduledTranslations] = useState<
     Record<string, { title: string; description: string }>
@@ -402,6 +405,9 @@ export function PublishScreen({
 
   // Handle thumbnail upload for a specific language
   const handleThumbnailUpload = async (lang: string, file: File) => {
+    // Set loading state for this language
+    setUploadingThumbnails(prev => ({ ...prev, [lang]: true }));
+
     try {
       // Upload to R2 via presigned URL
       const ext = file.name.split('.').pop() || 'jpg';
@@ -432,6 +438,8 @@ export function PublishScreen({
     } catch (error) {
       console.error('Thumbnail upload error:', error);
       toast.error('Failed to upload thumbnail');
+    } finally {
+      setUploadingThumbnails(prev => ({ ...prev, [lang]: false }));
     }
   };
 
@@ -1400,6 +1408,12 @@ export function PublishScreen({
           {/* Thumbnail Preview and Upload */}
           <div className="mb-2 flex items-center gap-2">
             <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded border border-gray-200 dark:border-gray-600">
+              {/* Upload spinner overlay */}
+              {uploadingThumbnails[lang] && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                  <Loader2 className="h-4 w-4 animate-spin text-white" />
+                </div>
+              )}
               {thumbnailUrl ? (
                 <img
                   src={thumbnailUrl}

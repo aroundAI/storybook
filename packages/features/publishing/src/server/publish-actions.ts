@@ -159,11 +159,9 @@ export const publishToAllAction = enhanceAction(
 
           // Create publish record
           // Determine if this is a server-side scheduled publish
-          // YouTube and Facebook have native scheduling, others don't
-          const hasNativeScheduling =
-            platform.platform === 'youtube' || platform.platform === 'facebook';
+          // ALL platforms now use server-side scheduling (cron job publishes at scheduled time)
           const isScheduled = !!platform.scheduledAt;
-          const useServerScheduling = isScheduled && !hasNativeScheduling;
+          const useServerScheduling = isScheduled;
 
           const { data: publish, error: publishError } = await client
             .from('publishes')
@@ -675,13 +673,12 @@ async function uploadToYouTube(
     description,
     tags: options.tags,
     categoryId: (options.platformSpecific.categoryId as string) ?? '22',
-    privacy:
-      (options.platformSpecific.privacy as 'private' | 'unlisted' | 'public') ??
-      'private',
+    // Always public - scheduling is handled server-side by cron job
+    privacy: 'public',
     madeForKids: (options.platformSpecific.madeForKids as boolean) ?? false,
     thumbnailPath: options.thumbnailUrl ?? undefined,
     playlistIds: options.platformSpecific.playlistIds as string[] | undefined,
-    publishAt: options.scheduledAt,
+    // publishAt removed - cron job handles scheduling
   });
 
   return { contentId: result.videoId, url: result.videoUrl ?? '' };
