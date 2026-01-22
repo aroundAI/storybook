@@ -245,10 +245,30 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       const localizedVideos = episode.localized_videos ?? {};
       const shortsGroups = episode.shorts_groups ?? [];
 
+      // Log all available data for debugging
+      logger.info(
+        {
+          ...publishCtx,
+          language: lang,
+          contentType: publish.content_type,
+          isShort,
+          hasLocalizedVideos: Object.keys(localizedVideos).length > 0,
+          localizedVideoLanguages: Object.keys(localizedVideos),
+          shortsGroupCount: shortsGroups.length,
+          hasFinalVideoUrl: !!episode.final_video_url,
+        },
+        'Resolving video URL for scheduled publish',
+      );
+
       // Get shorts video URL from groups (first group that has this language)
       const getShortsVideoUrl = (language: string): string | null => {
-        for (const group of shortsGroups) {
-          if (group.videos && group.videos[language]) {
+        for (let i = 0; i < shortsGroups.length; i++) {
+          const group = shortsGroups[i];
+          if (group?.videos && group.videos[language]) {
+            logger.debug(
+              { ...publishCtx, groupIndex: i, language },
+              'Found shorts video in group',
+            );
             return group.videos[language];
           }
         }
@@ -258,15 +278,53 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       let videoUrl: string | null = null;
       if (isShort) {
         // Try shorts first, fall back to full video
-        videoUrl = getShortsVideoUrl(lang) ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+        const shortsUrl = getShortsVideoUrl(lang);
+        videoUrl = shortsUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+        logger.info(
+          {
+            ...publishCtx,
+            shortsUrlFound: !!shortsUrl,
+            localizedUrlFound: !!localizedVideos[lang],
+            finalUrlFound: !!episode.final_video_url,
+            resolvedUrl: videoUrl ? 'yes' : 'no',
+          },
+          'Short video URL resolution',
+        );
       } else {
         // Try localized full video, fall back to default
         videoUrl = localizedVideos[lang] ?? episode.final_video_url ?? null;
+        logger.info(
+          {
+            ...publishCtx,
+            localizedUrlFound: !!localizedVideos[lang],
+            finalUrlFound: !!episode.final_video_url,
+            resolvedUrl: videoUrl ? 'yes' : 'no',
+          },
+          'Full video URL resolution',
+        );
       }
 
       if (!videoUrl) {
+        logger.error(
+          {
+            ...publishCtx,
+            language: lang,
+            contentType: publish.content_type,
+            availableLanguages: Object.keys(localizedVideos),
+            shortsGroups: shortsGroups.map((g, i) => ({
+              index: i,
+              languages: g?.videos ? Object.keys(g.videos) : [],
+            })),
+          },
+          'No video available for scheduled publish',
+        );
         throw new Error(`No video available for language: ${lang}, content_type: ${publish.content_type}`);
       }
+
+      logger.info(
+        { ...publishCtx, videoUrl: videoUrl.substring(0, 100) + '...' },
+        'Video URL resolved successfully',
+      );
 
       // Execute the platform upload
       const uploadResult = await uploadToPlatform(
