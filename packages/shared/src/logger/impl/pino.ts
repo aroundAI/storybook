@@ -4,17 +4,24 @@ import pino from 'pino';
  * @name Logger
  * @description A logger implementation using Pino
  *
- * Uses synchronous logging in development to avoid worker exit errors.
- * In production, uses async transport for better performance.
+ * For AWS Lambda: Uses synchronous stdout for CloudWatch capture
+ * For Development: Uses synchronous stdout to avoid worker exit errors
+ * For Production with file logging: Uses async transport for performance
  */
 const isBrowser = typeof window !== 'undefined';
 const isDevelopment = process.env.NODE_ENV === 'development';
+const isLambda = !!process.env.AWS_LAMBDA_FUNCTION_NAME;
 
-// In development, avoid async transports to prevent "worker has exited" errors
+// In Lambda or development, use sync destination to stdout for guaranteed logging
 // In production with file logging, use async transport for performance
 const getDestination = () => {
   // Browser has no destination
   if (isBrowser) return undefined;
+
+  // In Lambda, always use sync stdout for CloudWatch
+  if (isLambda) {
+    return pino.destination({ sync: true, dest: 1 }); // 1 = stdout
+  }
 
   // In development, use sync destination to stdout
   if (isDevelopment) {
@@ -42,7 +49,8 @@ const getDestination = () => {
     });
   }
 
-  return undefined;
+  // Default: sync stdout for serverless/Lambda environments
+  return pino.destination({ sync: true, dest: 1 });
 };
 
 const Logger = pino(
@@ -53,8 +61,13 @@ const Logger = pino(
     level: process.env.LOG_LEVEL || 'debug',
     base: {
       env: process.env.NODE_ENV,
+      ...(isLambda ? { lambda: process.env.AWS_LAMBDA_FUNCTION_NAME } : {}),
     },
     errorKey: 'error',
+    // For Lambda, use a format CloudWatch can parse
+    formatters: {
+      level: (label) => ({ level: label }),
+    },
   },
   getDestination(),
 );
