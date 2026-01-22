@@ -86,7 +86,7 @@ import {
   TooltipTrigger,
 } from '@kit/ui/tooltip';
 
-import { uploadPublishVideo } from '~/lib/presigned-upload';
+import { uploadPublishVideo, uploadWithPresignedUrl } from '~/lib/presigned-upload';
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
@@ -402,31 +402,19 @@ export function PublishScreen({
 
   // Handle thumbnail upload for a specific language
   const handleThumbnailUpload = async (lang: string, file: File) => {
-    // Upload to storage first
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('path', `thumbnails/${episode.id}/${lang}/${file.name}`);
-    formData.append('bucket', 'videos');
-
     try {
-      const uploadRes = await fetch('/api/storage/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        toast.error('Failed to upload thumbnail');
-        return;
-      }
-
-      const { url } = await uploadRes.json();
+      // Upload to R2 via presigned URL
+      const ext = file.name.split('.').pop() || 'jpg';
+      const timestamp = Date.now();
+      const path = `episodes/${episode.id}/thumbnails/${lang}-${timestamp}.${ext}`;
+      const uploadResult = await uploadWithPresignedUrl(file, 'project-assets', path);
 
       // Save to episode_thumbnails table
       const result = await uploadEpisodeThumbnailAction({
         episodeId: episode.id,
         language: lang,
         languageLabel: LANG_INFO[lang as SupportedLanguage]?.name || lang,
-        thumbnailUrl: url,
+        thumbnailUrl: uploadResult.url,
         fileName: file.name,
         fileSizeBytes: file.size,
         mimeType: file.type,
@@ -441,7 +429,8 @@ export function PublishScreen({
       } else {
         toast.error(result.error || 'Failed to save thumbnail');
       }
-    } catch {
+    } catch (error) {
+      console.error('Thumbnail upload error:', error);
       toast.error('Failed to upload thumbnail');
     }
   };
