@@ -98,7 +98,7 @@ interface ScheduleReleasePanelProps {
 // Language Display - imported from shared constants
 // =============================================================================
 
-import { LANG_INFO, getLangDisplay } from '../lib/constants';
+import { getLangDisplay } from '../lib/constants';
 
 // =============================================================================
 // Schedule Calculation
