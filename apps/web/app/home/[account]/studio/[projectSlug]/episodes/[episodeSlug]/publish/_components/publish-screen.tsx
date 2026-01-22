@@ -405,6 +405,13 @@ export function PublishScreen({
 
   // Handle thumbnail upload for a specific language
   const handleThumbnailUpload = async (lang: string, file: File) => {
+    // Validate file size (YouTube limit is 2MB)
+    const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024; // 2MB
+    if (file.size > MAX_THUMBNAIL_SIZE) {
+      toast.error(`Thumbnail must be under 2MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB`);
+      return;
+    }
+
     // Set loading state for this language
     setUploadingThumbnails(prev => ({ ...prev, [lang]: true }));
 
