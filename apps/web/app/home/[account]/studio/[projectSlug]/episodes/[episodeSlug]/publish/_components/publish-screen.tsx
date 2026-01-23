@@ -356,16 +356,49 @@ export function PublishScreen({
     const baseTitle = metadata.title || episode.title;
     const baseDescription = metadata.description || episode.description || '';
 
-    // Build items for ALL languages in one batch
-    const items = languages
-      .filter((lang) => lang !== 'en')
-      .map((lang) => ({
-        id: `full-video-${lang}`,
-        contentType: 'full-video' as const,
-        title: baseTitle,
-        description: baseDescription,
-        targetLanguage: lang,
-      }));
+    // Build items for ALL content types and ALL languages in one batch
+    const items: Array<{
+      id: string;
+      contentType: 'full-video' | 'shorts-group';
+      title: string;
+      description: string;
+      targetLanguage: string;
+      groupId?: string;
+      groupName?: string;
+    }> = [];
+
+    // Add Full Video items for each non-English language
+    for (const lang of languages) {
+      if (lang !== 'en') {
+        items.push({
+          id: `full-video-${lang}`,
+          contentType: 'full-video',
+          title: baseTitle,
+          description: baseDescription,
+          targetLanguage: lang,
+        });
+      }
+    }
+
+    // Add Shorts Group items for each group and each non-English language
+    for (const group of shortsGroups) {
+      // Get languages that have videos for this group
+      const groupLanguages = Object.keys(group.videos).filter(
+        (lang) => group.videos[lang] && lang !== 'en'
+      );
+
+      for (const lang of groupLanguages) {
+        items.push({
+          id: `group-${group.id}-${lang}`,
+          contentType: 'shorts-group',
+          title: group.title || baseTitle,
+          description: group.description || baseDescription,
+          targetLanguage: lang,
+          groupId: group.id,
+          groupName: group.title || `Shorts Group`,
+        });
+      }
+    }
 
     if (items.length > 0) {
       await batchTranslateMetadataAction({ items });
