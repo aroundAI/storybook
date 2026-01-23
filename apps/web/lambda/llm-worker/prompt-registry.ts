@@ -13,7 +13,7 @@ import languageInsights from '../../../../packages/features/prompt-engine/src/pr
 // Audio Generation Prompts (correct file name)
 import dialogueTranslation from '../../../../packages/features/prompt-engine/src/prompts/audio-generation/dialogue-translation.json';
 // Publishing Prompts
-import translateMetadata from '../../../../packages/features/prompt-engine/src/prompts/publishing/translate-metadata.json';
+import batchTranslateMetadata from '../../../../packages/features/prompt-engine/src/prompts/publishing/batch-translate-metadata.json';
 import sceneShot from '../../../../packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json';
 import screenplay from '../../../../packages/features/prompt-engine/src/prompts/story-generation/screenplay-conversion.json';
 import season from '../../../../packages/features/prompt-engine/src/prompts/story-generation/season-generation.json';
@@ -89,8 +89,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'analytics/insights-generation': insightsGeneration as PromptTemplate,
   'analytics/language-insights': languageInsights as PromptTemplate,
   // Publishing
-  'translate-metadata': translateMetadata as PromptTemplate,
-  'publishing/translate-metadata': translateMetadata as PromptTemplate,
+  'batch-translate-metadata': batchTranslateMetadata as PromptTemplate,
+  'publishing/batch-translate-metadata': batchTranslateMetadata as PromptTemplate,
   // Audio Generation
   'dialogue-translation': dialogueTranslation as PromptTemplate,
   'translate-dialogue': dialogueTranslation as PromptTemplate, // alias
