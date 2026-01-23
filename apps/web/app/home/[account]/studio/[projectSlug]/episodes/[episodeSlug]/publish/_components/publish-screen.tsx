@@ -787,6 +787,7 @@ export function PublishScreen({
       platform: Platform;
       connectionId: string;
       contentType: 'full' | 'short';
+      shortsGroupId?: string; // For shorts - identifies which shorts group
       title: string;
       description: string;
       tags: string[];

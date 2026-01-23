@@ -125,9 +125,14 @@ export const translateMetadataAction = enhanceAction(
     // Always queue to Lambda for processing
     const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
+    // Get actual userId from session for WebSocket delivery
+    const client = getSupabaseServerClient();
+    const { data: { user } } = await client.auth.getUser();
+    const userId = user?.id || 'system';
+
     await queueLlmJob({
       jobType: 'publish-metadata',
-      userId: 'system',
+      userId,
       payload: { title, description, targetLanguage },
     });
 
