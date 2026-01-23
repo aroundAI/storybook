@@ -36,6 +36,7 @@ import { useDropzone } from 'react-dropzone';
 import { format } from 'date-fns';
 
 import {
+  batchTranslateMetadataAction,
   translateMetadataAction,
   updatePublishedVideoAction,
   updateShortsGroupsAction,
@@ -198,11 +199,15 @@ type PublishStage =
   | 'error';
 
 type TranslationResult = {
+  id: string; // Unique ID: 'full-video-hi' or 'group-xxx-hi'
+  contentType: 'full-video' | 'shorts-group';
+  contentName: string; // Display name: 'Full Video' or group name
   language: string;
   title: string;
   description: string;
   status: 'pending' | 'translating' | 'success' | 'error';
   error?: string;
+  groupId?: string; // For shorts groups
 };
 
 type PlatformUploadStatus = {
@@ -300,6 +305,7 @@ export function PublishScreen({
   const [isScheduleTranslating, setIsScheduleTranslating] = useState(false);
 
   // WebSocket for async LLM translation results (uses shared provider from layout)
+  // Legacy single-item translation (for ScheduleReleasePanel)
   const {
     status: llmStatus,
     result: llmResult,
@@ -310,27 +316,169 @@ export function PublishScreen({
     targetLanguage: string;
   }>('publish-metadata');
 
-  // Handle WebSocket translation results
+  // Batch translation WebSocket (for main publish flow)
+  const {
+    status: batchLlmStatus,
+    result: batchLlmResult,
+    error: batchLlmError,
+  } = useLlmJob<{
+    items: Array<{
+      id: string;
+      translatedTitle: string;
+      translatedDescription: string;
+      targetLanguage: string;
+      contentType: 'full-video' | 'shorts-group';
+      groupId?: string;
+    }>;
+  }>('batch-translate-metadata');
+
+  // Handle batch WebSocket translation results (main publish flow)
+  useEffect(() => {
+    if (batchLlmStatus === 'success' && batchLlmResult && publishStage === 'translating') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (batchLlmResult as any)?.data || batchLlmResult;
+      const items = resultData?.items || [];
+
+      if (items.length > 0) {
+        // Update each item's translation result
+        const updatedTranslations = translationResults.map((tr) => {
+          const translated = items.find((item: { id: string }) => item.id === tr.id);
+          if (translated) {
+            return {
+              ...tr,
+              title: translated.translatedTitle,
+              description: translated.translatedDescription,
+              status: 'success' as const,
+            };
+          }
+          return tr;
+        });
+        setTranslationResults(updatedTranslations);
+
+        // Also update scheduled translations map for ScheduleReleasePanel
+        const newScheduledTranslations: Record<string, { title: string; description: string }> = {};
+        for (const item of items) {
+          if (!newScheduledTranslations[item.targetLanguage]) {
+            newScheduledTranslations[item.targetLanguage] = {
+              title: item.translatedTitle,
+              description: item.translatedDescription,
+            };
+          }
+        }
+        setScheduledTranslations((prev) => ({ ...prev, ...newScheduledTranslations }));
+
+        // Build platform configs using updated translations
+        const conns = (connections ?? []) as PlatformConnection[];
+        const baseTitle = metadata.title || episode.title;
+        const baseDescription = metadata.description || episode.description || '';
+
+        // Build lookup map from updated translations
+        const translationMap = new Map(
+          updatedTranslations.map((t) => [
+            t.id,
+            { title: t.title || baseTitle, description: t.description || baseDescription },
+          ])
+        );
+
+        const platformConfigs: Array<{
+          platform: Platform;
+          connectionId: string;
+          contentType: 'full' | 'short';
+          title: string;
+          description: string;
+          tags: string[];
+          thumbnailUrl?: string | null;
+          language: string;
+          platformSpecific: Record<string, unknown>;
+        }> = [];
+
+        // Process Full Videos
+        for (const lang of uploadedFullLanguages) {
+          const channelsForLang = conns.filter(
+            (c) =>
+              (c.language || 'en') === lang &&
+              ['youtube', 'facebook'].includes(c.platform),
+          );
+
+          const fullVideoId = `full-video-${lang}`;
+          const langMeta = translationMap.get(fullVideoId) || { title: baseTitle, description: baseDescription };
+
+          for (const channel of channelsForLang) {
+            platformConfigs.push({
+              platform: channel.platform,
+              connectionId: channel.id,
+              contentType: 'full',
+              title: langMeta.title,
+              description: langMeta.description,
+              tags: metadata.tags ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+              thumbnailUrl: getThumbnailForLanguage(lang as SupportedLanguage),
+              language: lang,
+              platformSpecific: {},
+            });
+          }
+        }
+
+        // Process Shorts Groups
+        for (const group of shortsGroups) {
+          const groupLangs = Object.keys(group.videos).filter(
+            (lang) => group.videos[lang],
+          ) as SupportedLanguage[];
+
+          for (const lang of groupLangs) {
+            const channelsForLang = conns.filter(
+              (c) =>
+                (c.language || 'en') === lang &&
+                ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
+            );
+
+            const groupItemId = `group-${group.id}-${lang}`;
+            const groupMeta = translationMap.get(groupItemId) || {
+              title: group.title || baseTitle,
+              description: group.description || baseDescription,
+            };
+
+            for (const channel of channelsForLang) {
+              platformConfigs.push({
+                platform: channel.platform,
+                connectionId: channel.id,
+                contentType: 'short',
+                title: groupMeta.title,
+                description: groupMeta.description,
+                tags: group.tags.length > 0
+                  ? group.tags
+                  : metadata.tags ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+                thumbnailUrl: getThumbnailForLanguage(lang),
+                language: lang,
+                platformSpecific: channel.platform === 'facebook' ? { isReel: true } : {},
+              });
+            }
+          }
+        }
+
+        setPendingPlatformConfigs(platformConfigs);
+        toast.success(`Translated ${items.length} items`);
+        setPublishStage('confirm-translation');
+      }
+    } else if (batchLlmStatus === 'error' && publishStage === 'translating') {
+      toast.error(batchLlmError || 'Batch translation failed');
+      setPublishError(batchLlmError || 'Translation failed');
+      setPublishStage('error');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [batchLlmStatus, batchLlmResult, batchLlmError, publishStage]);
+
+  // Handle legacy single-item WebSocket translation results (ScheduleReleasePanel)
   useEffect(() => {
     if (
       llmStatus === 'success' &&
       llmResult &&
-      (publishStage === 'translating' || isScheduleTranslating)
+      isScheduleTranslating
     ) {
       // Handler returns { success: true, data: { translatedTitle, translatedDescription, targetLanguage } }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = (llmResult as any)?.data || llmResult;
       if (resultData?.translatedTitle) {
         const lang = resultData.targetLanguage as SupportedLanguage;
-        setTranslationResults((prev) => [
-          ...prev,
-          {
-            language: lang,
-            title: resultData.translatedTitle,
-            description: resultData.translatedDescription,
-            status: 'success',
-          },
-        ]);
 
         // Also update scheduled translations for ScheduleReleasePanel
         setScheduledTranslations((prev) => ({
@@ -344,14 +492,13 @@ export function PublishScreen({
         toast.success(`Translated to ${LANG_INFO[lang]?.name || lang}`);
 
         // Check if all scheduled translations are complete
-        // (This is a simplistic check - could be improved)
         setIsScheduleTranslating(false);
       }
-    } else if (llmStatus === 'error' && (publishStage === 'translating' || isScheduleTranslating)) {
+    } else if (llmStatus === 'error' && isScheduleTranslating) {
       toast.error(llmError || 'Translation failed');
       setIsScheduleTranslating(false);
     }
-  }, [llmStatus, llmResult, llmError, publishStage, isScheduleTranslating]);
+  }, [llmStatus, llmResult, llmError, isScheduleTranslating]);
 
   // Handler for ScheduleReleasePanel translation requests
   const handleScheduleTranslate = async (languages: string[]) => {
@@ -879,7 +1026,7 @@ export function PublishScreen({
     }
   };
 
-  // Stage 1: Start publishing - translate metadata with progress tracking
+  // Stage 1: Start publishing - collect items and trigger batch translation
   const handlePublish = async () => {
     const conns = (connections ?? []) as PlatformConnection[];
 
@@ -892,168 +1039,116 @@ export function PublishScreen({
     setPublishError(null);
     setPublishStage('translating');
 
-    // Collect all languages that need translation
-    // For full videos: use episode metadata
-    // For shorts: each group has its own metadata
-    const fullVideoLangs = uploadedFullLanguages;
-
-    // Get shorts languages from all groups
-    const shortsLangs = [
-      ...new Set(
-        shortsGroups.flatMap((g) =>
-          Object.keys(g.videos).filter((lang) => g.videos[lang]),
-        ),
-      ),
-    ] as SupportedLanguage[];
-
-    const allLanguages = [...new Set([...fullVideoLangs, ...shortsLangs])];
-
-    // Initialize translation results - show what we're translating
-    const initialTranslations: TranslationResult[] = allLanguages.map(
-      (lang) => ({
-        language: lang,
-        title: '',
-        description: '',
-        status: lang === 'en' ? 'success' : 'pending',
-      }),
-    );
-    setTranslationResults(initialTranslations);
-
-    // 1. Translate episode metadata for full videos
     const baseTitle = metadata.title || episode.title;
     const baseDescription = metadata.description || episode.description || '';
-    const translatedEpisodeMetadata: Record<
-      string,
-      { title: string; description: string }
-    > = {};
 
-    for (const lang of fullVideoLangs) {
-      if (lang === 'en') {
-        translatedEpisodeMetadata[lang] = {
+    // Build list of all content items to translate
+    // Each item is unique: full-video per language + each shorts group per language
+    const translationItems: TranslationResult[] = [];
+    const batchItems: Array<{
+      id: string;
+      contentType: 'full-video' | 'shorts-group';
+      title: string;
+      description: string;
+      targetLanguage: string;
+      groupId?: string;
+      groupName?: string;
+    }> = [];
+
+    // Add full video translations for each non-English language
+    for (const lang of uploadedFullLanguages) {
+      const itemId = `full-video-${lang}`;
+      translationItems.push({
+        id: itemId,
+        contentType: 'full-video',
+        contentName: 'Full Video',
+        language: lang,
+        title: lang === 'en' ? baseTitle : '',
+        description: lang === 'en' ? baseDescription : '',
+        status: lang === 'en' ? 'success' : 'translating',
+      });
+
+      if (lang !== 'en') {
+        batchItems.push({
+          id: itemId,
+          contentType: 'full-video',
           title: baseTitle,
           description: baseDescription,
-        };
-        setTranslationResults((prev) =>
-          prev.map((t) =>
-            t.language === lang
-              ? {
-                ...t,
-                title: baseTitle,
-                description: baseDescription,
-                status: 'success' as const,
-              }
-              : t,
-          ),
-        );
-      } else {
-        setTranslationResults((prev) =>
-          prev.map((t) =>
-            t.language === lang ? { ...t, status: 'translating' as const } : t,
-          ),
-        );
-
-        try {
-          const result = await translateMetadataAction({
-            title: baseTitle,
-            description: baseDescription,
-            targetLanguage: lang,
-          });
-          translatedEpisodeMetadata[lang] = {
-            title: result.translatedTitle || baseTitle,
-            description: result.translatedDescription || baseDescription,
-          };
-          setTranslationResults((prev) =>
-            prev.map((t) =>
-              t.language === lang
-                ? {
-                  ...t,
-                  ...translatedEpisodeMetadata[lang],
-                  status: 'success' as const,
-                }
-                : t,
-            ),
-          );
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : 'Translation failed';
-          setTranslationResults((prev) =>
-            prev.map((t) =>
-              t.language === lang
-                ? { ...t, status: 'error' as const, error: errorMessage }
-                : t,
-            ),
-          );
-          setPublishError(
-            `Translation failed for ${LANG_INFO[lang as SupportedLanguage]?.name || lang}: ${errorMessage}`,
-          );
-          setPublishStage('error');
-          return;
-        }
+          targetLanguage: lang,
+        });
       }
     }
 
-    // 2. Translate each shorts group's metadata
-    const translatedGroupMetadata: Record<
-      string,
-      Record<string, { title: string; description: string }>
-    > = {};
-
+    // Add shorts group translations for each group + language
     for (const group of shortsGroups) {
       const groupLangs = Object.keys(group.videos).filter(
         (lang) => group.videos[lang],
       ) as SupportedLanguage[];
-      translatedGroupMetadata[group.id] = {};
 
       const groupTitle = group.title || baseTitle;
       const groupDescription = group.description || baseDescription;
 
       for (const lang of groupLangs) {
-        const groupMeta = translatedGroupMetadata[group.id]!;
-        if (lang === 'en') {
-          groupMeta[lang] = {
+        const itemId = `group-${group.id}-${lang}`;
+        translationItems.push({
+          id: itemId,
+          contentType: 'shorts-group',
+          contentName: group.name || 'Shorts Group',
+          language: lang,
+          title: lang === 'en' ? groupTitle : '',
+          description: lang === 'en' ? groupDescription : '',
+          status: lang === 'en' ? 'success' : 'translating',
+          groupId: group.id,
+        });
+
+        if (lang !== 'en') {
+          batchItems.push({
+            id: itemId,
+            contentType: 'shorts-group',
             title: groupTitle,
             description: groupDescription,
-          };
-        } else {
-          // Check if we already translated for full videos - but groups have different metadata
-          // So we need to translate group-specific content
-          try {
-            const result = await translateMetadataAction({
-              title: groupTitle,
-              description: groupDescription,
-              targetLanguage: lang,
-            });
-            groupMeta[lang] = {
-              title: result.translatedTitle || groupTitle,
-              description: result.translatedDescription || groupDescription,
-            };
-          } catch {
-            // Use untranslated as fallback
-            groupMeta[lang] = {
-              title: groupTitle,
-              description: groupDescription,
-            };
-          }
+            targetLanguage: lang,
+            groupId: group.id,
+            groupName: group.name || 'Shorts Group',
+          });
         }
       }
     }
 
-    // Mark all translations complete
-    setTranslationResults((prev) =>
-      prev.map((t) =>
-        t.status === 'pending'
-          ? {
-            ...t,
-            status: 'success' as const,
-            title: baseTitle,
-            description: baseDescription,
-          }
-          : t,
-      ),
-    );
+    // Set initial translation state (shows all items in UI)
+    setTranslationResults(translationItems);
 
-    // Build platform configs
+    // If no items need translation (all English), skip to confirmation
+    if (batchItems.length === 0) {
+      // Build platform configs directly
+      await buildPlatformConfigsAndConfirm(translationItems, conns, baseTitle, baseDescription);
+      return;
+    }
+
+    // Queue batch translation job - results come via WebSocket
+    try {
+      await batchTranslateMetadataAction({ items: batchItems });
+      // The useEffect for batchLlmStatus will handle the result and call buildPlatformConfigs
+    } catch (error) {
+      console.error('Batch translation failed:', error);
+      setPublishError('Failed to start translation. Please try again.');
+      setPublishStage('error');
+    }
+  };
+
+  // Helper: Build platform configs after translations are complete
+  const buildPlatformConfigsAndConfirm = async (
+    translations: TranslationResult[],
+    conns: PlatformConnection[],
+    baseTitle: string,
+    baseDescription: string,
+  ) => {
     const platformConfigs: typeof pendingPlatformConfigs = [];
+
+    // Build a lookup map for translations
+    const translationMap = new Map(
+      translations.map((t) => [t.id, { title: t.title || baseTitle, description: t.description || baseDescription }])
+    );
 
     // Process Full Videos -> YouTube, Facebook
     for (const lang of uploadedFullLanguages) {
@@ -1063,11 +1158,10 @@ export function PublishScreen({
           ['youtube', 'facebook'].includes(c.platform),
       );
 
+      const fullVideoId = `full-video-${lang}`;
+      const langMeta = translationMap.get(fullVideoId) || { title: baseTitle, description: baseDescription };
+
       for (const channel of channelsForLang) {
-        const langMeta = translatedEpisodeMetadata[lang] || {
-          title: baseTitle,
-          description: baseDescription,
-        };
         platformConfigs.push({
           platform: channel.platform,
           connectionId: channel.id,
@@ -1075,12 +1169,9 @@ export function PublishScreen({
           title: langMeta.title,
           description: langMeta.description,
           tags: metadata.tags
-            ? metadata.tags
-              .split(',')
-              .map((t) => t.trim())
-              .filter(Boolean)
+            ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean)
             : [],
-          thumbnailUrl: getThumbnailForLanguage(lang),
+          thumbnailUrl: getThumbnailForLanguage(lang as SupportedLanguage),
           language: lang,
           platformSpecific: {},
         });
@@ -1100,7 +1191,8 @@ export function PublishScreen({
             ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
         );
 
-        const groupMeta = translatedGroupMetadata[group.id]?.[lang] || {
+        const groupId = `group-${group.id}-${lang}`;
+        const groupMeta = translationMap.get(groupId) || {
           title: group.title || baseTitle,
           description: group.description || baseDescription,
         };
@@ -1116,10 +1208,7 @@ export function PublishScreen({
               group.tags.length > 0
                 ? group.tags
                 : metadata.tags
-                  ? metadata.tags
-                    .split(',')
-                    .map((t) => t.trim())
-                    .filter(Boolean)
+                  ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean)
                   : [],
             thumbnailUrl: getThumbnailForLanguage(lang),
             language: lang,
@@ -1528,7 +1617,7 @@ export function PublishScreen({
                   <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
                     {translationResults.map((t) => (
                       <div
-                        key={t.language}
+                        key={t.id}
                         className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
                       >
                         <span className="text-xl">
@@ -1538,9 +1627,18 @@ export function PublishScreen({
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium">
+                              {t.contentName}
+                            </span>
+                            <Badge variant="outline" className="text-[10px]">
                               {LANG_INFO[t.language as SupportedLanguage]?.name ||
                                 t.language}
-                            </span>
+                            </Badge>
+                            {t.contentType === 'shorts-group' && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                <Smartphone className="mr-0.5 h-2.5 w-2.5" />
+                                Short
+                              </Badge>
+                            )}
                             {t.status === 'pending' && (
                               <span className="text-xs text-gray-400">
                                 Pending

@@ -99,6 +99,7 @@ const TranslateMetadataSchema = z.object({
 /**
  * Translate metadata (title, description) to target language using LLM
  * In production, queues via SQS for background processing.
+ * @deprecated Use batchTranslateMetadataAction for better efficiency
  */
 export const translateMetadataAction = enhanceAction(
   async ({
@@ -146,3 +147,70 @@ export const translateMetadataAction = enhanceAction(
   },
   { schema: TranslateMetadataSchema },
 );
+
+/**
+ * Item to be translated in a batch
+ */
+const TranslationItemSchema = z.object({
+  id: z.string(), // Unique identifier (e.g., 'full-video-hi', 'group-123-es')
+  contentType: z.enum(['full-video', 'shorts-group']),
+  title: z.string(),
+  description: z.string(),
+  targetLanguage: z.string(),
+  groupId: z.string().optional(), // For shorts groups
+  groupName: z.string().optional(), // For display purposes
+});
+
+const BatchTranslateSchema = z.object({
+  items: z.array(TranslationItemSchema),
+});
+
+export type TranslationItem = z.infer<typeof TranslationItemSchema>;
+
+/**
+ * Batch translate multiple content items in a single LLM call.
+ * More cost-effective than individual translations.
+ * Results delivered via WebSocket.
+ */
+export const batchTranslateMetadataAction = enhanceAction(
+  async ({
+    items,
+  }): Promise<{
+    success: boolean;
+    queued: boolean;
+    itemCount: number;
+  }> => {
+    // Filter out English items (no translation needed)
+    const itemsToTranslate = items.filter((item) => item.targetLanguage !== 'en');
+
+    if (itemsToTranslate.length === 0) {
+      return {
+        success: true,
+        queued: false,
+        itemCount: 0,
+      };
+    }
+
+    // Queue batch job to Lambda
+    const { queueLlmJob } = await import('@kit/prompt-engine/server');
+
+    // Get actual userId from session for WebSocket delivery
+    const client = getSupabaseServerClient();
+    const { data: { user } } = await client.auth.getUser();
+    const userId = user?.id || 'system';
+
+    await queueLlmJob({
+      jobType: 'batch-translate-metadata',
+      userId,
+      payload: { items: itemsToTranslate },
+    });
+
+    return {
+      success: true,
+      queued: true,
+      itemCount: itemsToTranslate.length,
+    };
+  },
+  { schema: BatchTranslateSchema },
+);
+

@@ -40,6 +40,7 @@ export type LlmJobType =
   | 'screenplay-conversion'
   | 'shot-generation'
   | 'publish-metadata'
+  | 'batch-translate-metadata'
   | 'analytics-insights'
   | 'language-insights'
   | 'translate-dialogue'

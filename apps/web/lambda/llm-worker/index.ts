@@ -204,6 +204,12 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
       );
       return processPublishMetadata(job.payload, supabase);
     }
+    case 'batch-translate-metadata': {
+      const { processBatchTranslateMetadata } = await import(
+        './handlers/batch-translate-metadata'
+      );
+      return processBatchTranslateMetadata(job.payload, supabase);
+    }
     case 'analytics-insights': {
       const { processAnalyticsInsights } = await import(
         './handlers/analytics-insights'

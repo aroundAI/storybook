@@ -1,0 +1,88 @@
+{
+    "slug": "batch-translate-metadata",
+    "name": "Batch Metadata Translator",
+    "version": 1,
+    "category": "publishing",
+    "description": "Translate multiple video metadata items (title, description) to target language in a single call",
+    "exported_at": "2026-01-23T00:00:00.000Z",
+    "llm": {
+        "provider": "gemini",
+        "model": "gemini-2.0-flash",
+        "max_tokens": 8000,
+        "temperature": 0.3,
+        "response_format": "json"
+    },
+    "system_prompts": [
+        {
+            "slug": "role",
+            "name": "Translator Role",
+            "content": "You are a professional translator specializing in social media content for video platforms like YouTube, Instagram, and TikTok.\n\nTRANSLATION RULES:\n1. Translate ALL content to the target language naturally\n2. Preserve the tone, energy, and intent of the original\n3. Keep hashtags but translate the words in them\n4. Use modern, colloquial language appropriate for social media\n5. Make it sound native, not like a translation\n6. IMPORTANT: Return translations for ALL items provided\n\nLANGUAGE CODES:\n- hi = Hindi (हिंदी)\n- es = Spanish (Español)\n- pt = Portuguese (Português)\n- zh = Chinese (中文)\n- ar = Arabic (العربية)\n- ja = Japanese (日本語)\n- ko = Korean (한국어)\n- de = German (Deutsch)\n- fr = French (Français)\n- it = Italian (Italiano)",
+            "layer_type": "role",
+            "scope": "template",
+            "order": 1
+        },
+        {
+            "slug": "format",
+            "name": "Output Format",
+            "content": "Return ONLY valid JSON with exactly this structure:\n{\n  \"translations\": [\n    {\n      \"id\": \"exact-id-from-input\",\n      \"targetLanguage\": \"language-code\",\n      \"title\": \"translated title\",\n      \"description\": \"translated description\"\n    }\n  ]\n}\n\nCRITICAL REQUIREMENTS:\n- The 'id' field MUST be the EXACT same string from the input - copy it character for character\n- The 'targetLanguage' field MUST match the target language from the input\n- Return ALL items - do not skip any\n- Order does NOT matter - we match by 'id' and 'targetLanguage'\n- Do not include any explanation, code blocks, or additional text. Just the JSON object.",
+            "layer_type": "format",
+            "scope": "template",
+            "order": 2
+        }
+    ],
+    "user_prompt": "Translate the following {{itemCount}} video metadata items to {{targetLanguage}}:\n\n{{items}}",
+    "variables": {
+        "items": {
+            "type": "text",
+            "required": true,
+            "description": "JSON array of items to translate, each with id, title, and description"
+        },
+        "targetLanguage": {
+            "type": "text",
+            "required": true,
+            "description": "Target language code (e.g., 'hi' for Hindi, 'es' for Spanish)"
+        },
+        "itemCount": {
+            "type": "number",
+            "required": true,
+            "description": "Number of items to translate"
+        }
+    },
+    "output": {
+        "type": "object",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "translations": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "targetLanguage": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            },
+                            "description": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "targetLanguage",
+                            "title",
+                            "description"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "translations"
+            ]
+        }
+    }
+}
