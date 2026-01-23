@@ -42,7 +42,7 @@ interface ScheduledPublish {
     final_video_url: string | null;
     thumbnail_url: string | null;
     localized_videos: Record<string, string> | null;
-    shorts_groups: Array<{ videos: Record<string, string> }> | null;
+    shorts_groups: Array<{ id: string; videos: Record<string, string> }> | null;
   } | null;
 }
 
@@ -132,7 +132,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
   const now = new Date();
 
   // Find scheduled publishes that are due (with retry for transient failures)
-  const { data: duePublishes, error } = await queryWithRetry<ScheduledPublish[]>(
+  const { data: duePublishes, error } = await queryWithRetry<
+    ScheduledPublish[]
+  >(
     async () => {
       const result = await client
         .from('publishes')
@@ -191,7 +193,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     { ...ctx, count: duePublishes.length },
     'Processing scheduled publishes',
   );
-  console.log(`[ScheduledPublish] Processing ${duePublishes.length} due publishes`);
+  console.log(
+    `[ScheduledPublish] Processing ${duePublishes.length} due publishes`,
+  );
 
   const results: ProcessScheduledResult = {
     processed: duePublishes.length,
@@ -246,6 +250,10 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       const localizedVideos = episode.localized_videos ?? {};
       const shortsGroups = episode.shorts_groups ?? [];
 
+      // Get shortsGroupId from metadata
+      const shortsGroupId = (publish.metadata as Record<string, unknown> | null)
+        ?.shortsGroupId as string | undefined;
+
       // Log all available data for debugging
       const debugData = {
         publishId: publish.id,
@@ -256,8 +264,12 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         localizedVideoLanguages: Object.keys(localizedVideos),
         shortsGroupCount: shortsGroups.length,
         hasFinalVideoUrl: !!episode.final_video_url,
+        shortsGroupId,
       };
-      console.log(`[ScheduledPublish] Resolving video URL:`, JSON.stringify(debugData));
+      console.log(
+        `[ScheduledPublish] Resolving video URL:`,
+        JSON.stringify(debugData),
+      );
       logger.info(
         {
           ...publishCtx,
@@ -270,7 +282,15 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       const getShortsVideoUrl = (language: string): string | null => {
         for (let i = 0; i < shortsGroups.length; i++) {
           const group = shortsGroups[i];
-          if (group?.videos && group.videos[language]) {
+
+          if (!group) continue;
+
+          // If a specific group ID was requested, ensure we match it
+          if (shortsGroupId && group.id !== shortsGroupId) {
+            continue;
+          }
+
+          if (group.videos && group.videos[language]) {
             logger.debug(
               { ...publishCtx, groupIndex: i, language },
               'Found shorts video in group',
@@ -285,7 +305,8 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
       if (isShort) {
         // Try shorts first, fall back to full video
         const shortsUrl = getShortsVideoUrl(lang);
-        videoUrl = shortsUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
+        videoUrl =
+          shortsUrl ?? localizedVideos[lang] ?? episode.final_video_url ?? null;
         logger.info(
           {
             ...publishCtx,
@@ -324,8 +345,12 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
           },
           'No video available for scheduled publish',
         );
-        console.error(`[ScheduledPublish] ERROR: No video for language=${lang}, content_type=${publish.content_type}, availableLanguages=${Object.keys(localizedVideos).join(',')}`);
-        throw new Error(`No video available for language: ${lang}, content_type: ${publish.content_type}`);
+        console.error(
+          `[ScheduledPublish] ERROR: No video for language=${lang}, content_type=${publish.content_type}, availableLanguages=${Object.keys(localizedVideos).join(',')}`,
+        );
+        throw new Error(
+          `No video available for language: ${lang}, content_type: ${publish.content_type}`,
+        );
       }
 
       logger.info(
@@ -360,7 +385,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         .eq('id', publish.id);
 
       results.published++;
-      console.log(`[ScheduledPublish] SUCCESS: Published ${publish.id} to ${publish.platform}, url=${uploadResult.url}`);
+      console.log(
+        `[ScheduledPublish] SUCCESS: Published ${publish.id} to ${publish.platform}, url=${uploadResult.url}`,
+      );
       logger.info(
         { ...publishCtx, url: uploadResult.url },
         'Scheduled publish completed',
@@ -384,7 +411,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
         })
         .eq('id', publish.id);
 
-      console.error(`[ScheduledPublish] FAILED: ${publish.id} - ${errorMessage}`);
+      console.error(
+        `[ScheduledPublish] FAILED: ${publish.id} - ${errorMessage}`,
+      );
       if (errorStack) {
         console.error(`[ScheduledPublish] Stack trace:\n${errorStack}`);
       }
@@ -398,7 +427,9 @@ export async function processScheduledPublishes(): Promise<ProcessScheduledResul
     await sleep(500);
   }
 
-  console.log(`[ScheduledPublish] COMPLETE: ${results.published}/${results.processed} published, ${results.failed} failed`);
+  console.log(
+    `[ScheduledPublish] COMPLETE: ${results.published}/${results.processed} published, ${results.failed} failed`,
+  );
   logger.info(
     { ...ctx, ...results },
     `Scheduled publish job complete: ${results.published}/${results.processed} published, ${results.failed} failed`,

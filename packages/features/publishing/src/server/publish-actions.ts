@@ -16,6 +16,7 @@ import {
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
 import type { Platform, PublishResult } from '../lib/types';
+import { validateContentUrl } from '../lib/url-validation';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
@@ -24,7 +25,6 @@ import { TwitterProvider } from '../providers/twitter';
 // Import providers
 import { YouTubeProvider } from '../providers/youtube';
 import { getAccessToken } from './connection-actions';
-import { validateContentUrl } from '../lib/url-validation';
 
 /**
  * Replace localhost URLs with tunnel URL for external platform uploads.
@@ -172,14 +172,18 @@ export const publishToAllAction = enhanceAction(
               // Use contentType from input (full or short) - not hardcoded!
               content_type: platform.contentType || 'full',
               // For shorts: store the group ID so cron can find the right video
-              source_shot_id: platform.shortsGroupId ?? null,
+              // Note: We cannot use source_shot_id as it expects a UUID, but our group IDs are strings
+              source_shot_id: null,
               title: platform.title,
               description: platform.description,
               tags: platform.tags,
               thumbnail_url: platform.thumbnailUrl ?? episode.thumbnail_url,
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
-              metadata: JSON.parse(JSON.stringify(platform.platformSpecific)),
+              metadata: {
+                ...JSON.parse(JSON.stringify(platform.platformSpecific)),
+                shortsGroupId: platform.shortsGroupId,
+              },
               // Language from explicit request or connection fallback
               language: publishLanguage,
             })
@@ -880,12 +884,12 @@ export const getEpisodePublishesAction = enhanceAction(
         createdAt: p.created_at,
         analytics: analytics
           ? {
-            views: analytics.views,
-            likes: analytics.likes,
-            comments: analytics.comments,
-            shares: analytics.shares,
-            watchTimeSeconds: analytics.watch_time_seconds,
-          }
+              views: analytics.views,
+              likes: analytics.likes,
+              comments: analytics.comments,
+              shares: analytics.shares,
+              watchTimeSeconds: analytics.watch_time_seconds,
+            }
           : null,
         error: (p.metadata as { error?: string } | null)?.error,
       };
