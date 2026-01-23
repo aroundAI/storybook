@@ -320,7 +320,6 @@ export function PublishScreen({
   }>('batch-translate-metadata');
 
   // Handle batch translation results from WebSocket
-  // Handle batch translation results from WebSocket
   useEffect(() => {
     if (llmStatus === 'success' && llmResult && isScheduleTranslating) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -328,17 +327,19 @@ export function PublishScreen({
       const items = resultData?.items || [];
 
       if (items.length > 0) {
-        // Update all translations at once
-        const newTranslations: Record<string, { title: string; description: string }> = {};
+        // Store translations keyed by item ID (e.g., 'full-video-hi', 'group-123-hi')
+        const newTranslations: Record<string, { title: string; description: string; contentType?: string; language: string }> = {};
         for (const item of items) {
-          newTranslations[item.targetLanguage] = {
+          newTranslations[item.id] = {
             title: item.translatedTitle,
             description: item.translatedDescription,
+            contentType: item.id.startsWith('full-video-') ? 'full-video' : 'shorts-group',
+            language: item.targetLanguage,
           };
         }
 
         setScheduledTranslations((prev) => ({ ...prev, ...newTranslations }));
-        toast.success(`Translated ${items.length} language${items.length > 1 ? 's' : ''}`);
+        toast.success(`Translated ${items.length} item${items.length > 1 ? 's' : ''}`);
       }
 
       setIsScheduleTranslating(false);

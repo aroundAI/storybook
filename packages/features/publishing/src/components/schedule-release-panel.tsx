@@ -84,8 +84,8 @@ interface ScheduleReleasePanelProps {
     onPublishNow: () => void;
     /** Callback to trigger translations for languages */
     onTranslate?: (languages: string[]) => void;
-    /** Translated metadata by language */
-    translatedMetadata?: Record<string, { title: string; description: string }>;
+    /** Translated metadata by item ID (e.g., 'full-video-hi', 'group-123-hi') */
+    translatedMetadata?: Record<string, { title: string; description: string; contentType?: string; language?: string }>;
     /** Is translation in progress */
     isTranslating?: boolean;
     /** Is publishing in progress */
@@ -274,27 +274,55 @@ export function ScheduleReleasePanel({
         );
     }, [date, time, staggerMinutes, fullVideoLanguages, shortsGroups]);
 
-    // Get unique languages that need translation
-    const languagesToTranslate = useMemo(() => {
-        const allLangs = new Set([
-            ...fullVideoLanguages,
-            ...shortsGroups.flatMap(g => g.videoLanguages),
-        ]);
-        return [...allLangs].filter(lang => lang !== 'en').sort();
+    // Build list of all items to translate (Full Video + Shorts Groups, non-English only)
+    const itemsToTranslate = useMemo(() => {
+        const items: Array<{ id: string; label: string; language: string }> = [];
+
+        // Full videos
+        for (const lang of fullVideoLanguages) {
+            if (lang !== 'en') {
+                items.push({
+                    id: `full-video-${lang}`,
+                    label: 'Full Video',
+                    language: lang,
+                });
+            }
+        }
+
+        // Shorts groups
+        for (const group of shortsGroups) {
+            for (const lang of group.videoLanguages) {
+                if (lang !== 'en') {
+                    items.push({
+                        id: `group-${group.id}-${lang}`,
+                        label: group.name || 'Shorts',
+                        language: lang,
+                    });
+                }
+            }
+        }
+
+        return items;
     }, [fullVideoLanguages, shortsGroups]);
 
-    // Check translation status for each language
+    // Get unique languages (for backward compatibility)
+    const languagesToTranslate = useMemo(() => {
+        const allLangs = new Set(itemsToTranslate.map(item => item.language));
+        return [...allLangs].sort();
+    }, [itemsToTranslate]);
+
+    // Check translation status for each item
     const translationStatus = useMemo(() => {
-        const status: Record<string, boolean> = { en: true }; // English doesn't need translation
-        languagesToTranslate.forEach(lang => {
-            status[lang] = !!translatedMetadata[lang];
+        const status: Record<string, boolean> = {};
+        itemsToTranslate.forEach(item => {
+            status[item.id] = !!translatedMetadata[item.id];
         });
         return status;
-    }, [languagesToTranslate, translatedMetadata]);
+    }, [itemsToTranslate, translatedMetadata]);
 
     const allTranslated = useMemo(() => {
-        return languagesToTranslate.every(lang => translatedMetadata[lang]);
-    }, [languagesToTranslate, translatedMetadata]);
+        return itemsToTranslate.length === 0 || itemsToTranslate.every(item => translatedMetadata[item.id]);
+    }, [itemsToTranslate, translatedMetadata]);
 
     // Calculate total duration
     const totalDuration = useMemo(() => {
@@ -532,23 +560,23 @@ export function ScheduleReleasePanel({
                             <div className="flex items-center gap-2 py-4">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 <span className="text-sm">
-                                    Translating metadata for {languagesToTranslate.length} language{languagesToTranslate.length !== 1 ? 's' : ''}...
+                                    Translating {itemsToTranslate.length} item{itemsToTranslate.length !== 1 ? 's' : ''}...
                                 </span>
                             </div>
                         ) : (
                             <div className="space-y-2 mb-4">
-                                {languagesToTranslate.length === 0 ? (
+                                {itemsToTranslate.length === 0 ? (
                                     <p className="text-muted-foreground text-sm">
                                         Only English videos - no translation needed.
                                     </p>
                                 ) : (
-                                    languagesToTranslate.map(lang => {
-                                        const langInfo = getLangDisplay(lang);
-                                        const isReady = translationStatus[lang];
-                                        const translated = translatedMetadata[lang];
+                                    itemsToTranslate.map(item => {
+                                        const langInfo = getLangDisplay(item.language);
+                                        const isReady = translationStatus[item.id];
+                                        const translated = translatedMetadata[item.id];
                                         return (
                                             <div
-                                                key={lang}
+                                                key={item.id}
                                                 className="bg-background flex items-center gap-3 rounded-md p-3"
                                             >
                                                 <span className="text-lg">{langInfo.flag}</span>
@@ -557,7 +585,7 @@ export function ScheduleReleasePanel({
                                                         {translated?.title || baseMetadata.title}
                                                     </p>
                                                     <p className="text-muted-foreground text-xs">
-                                                        {langInfo.name}
+                                                        {item.label} · {langInfo.name}
                                                     </p>
                                                 </div>
                                                 {isReady ? (
