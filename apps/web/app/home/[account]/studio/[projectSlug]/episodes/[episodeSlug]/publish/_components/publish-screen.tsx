@@ -317,9 +317,9 @@ export function PublishScreen({
       llmResult &&
       (publishStage === 'translating' || isScheduleTranslating)
     ) {
-      // llmResult is already the result object from message.result (contains {translatedTitle, etc.})
+      // Handler returns { success: true, data: { translatedTitle, translatedDescription, targetLanguage } }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultData = llmResult as any;
+      const resultData = (llmResult as any)?.data || llmResult;
       if (resultData?.translatedTitle) {
         const lang = resultData.targetLanguage as SupportedLanguage;
         setTranslationResults((prev) => [
