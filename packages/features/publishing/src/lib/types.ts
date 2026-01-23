@@ -11,6 +11,8 @@ export type Platform =
   | 'twitter'
   | 'linkedin';
 
+export type ConnectionStatus = 'active' | 'expired' | 'error';
+
 export type PublishStatus =
   | 'pending'
   | 'publishing'
@@ -50,6 +52,11 @@ export interface PlatformConnection {
   followerCount?: number | null;
   scopes?: string[] | null;
   language: string; // Target language for this channel (en, hi, es, pt)
+  // Unified fields for compatibility with Settings page
+  status?: ConnectionStatus;
+  errorMessage?: string;
+  profileImageUrl?: string;
+  accountName?: string;
 }
 
 /**

@@ -173,7 +173,6 @@ export const publishToAllAction = enhanceAction(
               content_type: platform.contentType || 'full',
               // For shorts: store the group ID so cron can find the right video
               // Note: We cannot use source_shot_id as it expects a UUID, but our group IDs are strings
-              source_shot_id: null,
               title: platform.title,
               description: platform.description,
               tags: platform.tags,

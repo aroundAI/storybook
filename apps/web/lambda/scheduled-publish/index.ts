@@ -9,6 +9,7 @@
  * - Publish Worker Lambda: Processes each upload (up to 5 min per video)
  */
 import { createClient } from '@supabase/supabase-js';
+
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 import type { PublishJobMessage } from '../publish-worker/index';
@@ -54,7 +55,6 @@ interface ScheduledPublish {
   thumbnail_url: string | null;
   metadata: Record<string, unknown> | null;
   content_type: string | null;
-  source_shot_id: string | null; // UUID of shorts group for shorts
   language: string | null; // Direct language field
   episodes: {
     final_video_url: string | null;
@@ -77,30 +77,39 @@ function resolveVideoUrl(publish: ScheduledPublish): string | null {
   const episode = publish.episodes;
   if (!episode) return null;
 
-  const lang = publish.language || (publish.metadata?.language as string) || 'en';
+  const lang =
+    publish.language || (publish.metadata?.language as string) || 'en';
   const isShort = publish.content_type === 'short';
   const localizedVideos = episode.localized_videos ?? {};
   const shortsGroups = episode.shorts_groups ?? [];
 
   // SHORTS: Use source_shot_id to find the exact group
   if (isShort) {
-    if (!publish.source_shot_id) {
-      console.error(`[Cron] Short publish ${publish.id} missing source_shot_id`);
+    const shortsGroupId = publish.metadata?.shortsGroupId as string;
+
+    if (!shortsGroupId) {
+      console.error(
+        `[Cron] Short publish ${publish.id} missing shortsGroupId in metadata`,
+      );
       return null;
     }
 
     for (const group of shortsGroups) {
-      if (group?.id === publish.source_shot_id) {
+      if (group?.id === shortsGroupId) {
         if (group.videos?.[lang]) {
           console.log(`[Cron] Resolved short: group=${group.id}, lang=${lang}`);
           return group.videos[lang];
         }
-        console.warn(`[Cron] Shorts group ${group.id} has no video for lang=${lang}`);
+        console.warn(
+          `[Cron] Shorts group ${group.id} has no video for lang=${lang}`,
+        );
         return null;
       }
     }
 
-    console.warn(`[Cron] source_shot_id ${publish.source_shot_id} not found in shorts_groups`);
+    console.warn(
+      `[Cron] shortsGroupId ${shortsGroupId} not found in shorts_groups`,
+    );
     return null;
   }
 
@@ -130,7 +139,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
   // Query for due publishes - join with episodes and projects to get account_id
   const { data: duePublishes, error } = await supabase
     .from('publishes')
-    .select(`
+    .select(
+      `
       id,
       episode_id,
       platform_connection_id,
@@ -141,7 +151,6 @@ export async function handler(): Promise<ScheduledPublishResult> {
       thumbnail_url,
       metadata,
       content_type,
-      source_shot_id,
       language,
       episodes(
         final_video_url,
@@ -150,7 +159,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
         shorts_groups,
         projects(account_id)
       )
-    `)
+    `,
+    )
     .eq('status', 'scheduled')
     .lte('scheduled_at', now.toISOString())
     .order('scheduled_at', { ascending: true })
@@ -196,7 +206,10 @@ export async function handler(): Promise<ScheduledPublishResult> {
       .eq('id', publish.id);
 
     if (updateError) {
-      console.error(`[Cron] Failed to update status for ${publish.id}:`, updateError);
+      console.error(
+        `[Cron] Failed to update status for ${publish.id}:`,
+        updateError,
+      );
       skipped++;
       continue;
     }
@@ -215,7 +228,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
       title: publish.title || '',
       description: publish.description || '',
       tags: publish.tags || [],
-      thumbnailUrl: publish.thumbnail_url || publish.episodes?.thumbnail_url || undefined,
+      thumbnailUrl:
+        publish.thumbnail_url || publish.episodes?.thumbnail_url || undefined,
       metadata: publish.metadata || {},
     };
 
@@ -245,9 +259,7 @@ export async function handler(): Promise<ScheduledPublishResult> {
     }
   }
 
-  console.log(
-    `[Cron] Complete: ${queued} queued, ${skipped} skipped`,
-  );
+  console.log(`[Cron] Complete: ${queued} queued, ${skipped} skipped`);
 
   return { success: true, queued, skipped };
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 
-import { addMinutes, format } from 'date-fns';
+import { addMinutes, format, isSameDay } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
 import {
   AlertCircle,
@@ -173,12 +173,23 @@ function calculateSchedule(
 function TimePicker({
   value,
   onChange,
+  minTime,
 }: {
   value: { hours: number; minutes: number };
   onChange: (value: { hours: number; minutes: number }) => void;
+  minTime?: { hours: number; minutes: number } | null;
 }) {
-  const hours = Array.from({ length: 24 }, (_, i) => i);
+  const hours = Array.from({ length: 24 }, (_, i) => i).filter(
+    (h) => !minTime || h >= minTime.hours,
+  );
+
   const minutes = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
+  // Filter minutes if the selected hour is the minimum hour
+  const getFilteredMinutes = (selectedHour: number) => {
+    if (!minTime || selectedHour > minTime.hours) return minutes;
+    return minutes.filter((m) => m >= minTime.minutes);
+  };
 
   return (
     <div className="flex items-center gap-2">
@@ -206,7 +217,7 @@ function TimePicker({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {minutes.map((m) => (
+          {getFilteredMinutes(value.hours).map((m) => (
             <SelectItem key={m} value={m.toString().padStart(2, '0')}>
               {m.toString().padStart(2, '0')}
             </SelectItem>
@@ -239,6 +250,36 @@ export function ScheduleReleasePanel({
   const [staggerMinutes, setStaggerMinutes] = useState(15);
   const [showPreview, setShowPreview] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  // Calculate minimum time if today is selected
+  const minTime = useMemo(() => {
+    if (date && isSameDay(date, new Date())) {
+      const now = new Date();
+      // Add a small buffer (e.g. 5 mins) so user doesn't select immediate past
+      return { hours: now.getHours(), minutes: now.getMinutes() };
+    }
+    return null;
+  }, [date]);
+
+  // Ensure selected time is valid when date changes
+  useMemo(() => {
+    if (minTime) {
+      if (
+        time.hours < minTime.hours ||
+        (time.hours === minTime.hours && time.minutes < minTime.minutes)
+      ) {
+        // Reset to next available slot
+        // Round up to next 5 minutes
+        const nextMinutes = Math.ceil(minTime.minutes / 5) * 5;
+        if (nextMinutes < 60) {
+          setTime({ hours: minTime.hours, minutes: nextMinutes });
+        } else {
+          setTime({ hours: minTime.hours + 1, minutes: 0 });
+        }
+      }
+    }
+  }, [minTime, time]);
 
   // Get user's local timezone
   const userTimezone = useMemo(() => {
@@ -416,7 +457,7 @@ export function ScheduleReleasePanel({
           {/* Date Picker */}
           <div className="space-y-2">
             <Label>Start Date</Label>
-            <Popover>
+            <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -430,7 +471,10 @@ export function ScheduleReleasePanel({
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(d) => {
+                    setDate(d);
+                    setIsCalendarOpen(false);
+                  }}
                   disabled={(d) =>
                     d < new Date(new Date().setHours(0, 0, 0, 0))
                   }
@@ -445,7 +489,7 @@ export function ScheduleReleasePanel({
             <Label>Start Time</Label>
             <div className="flex items-center gap-2">
               <Clock className="text-muted-foreground h-4 w-4" />
-              <TimePicker value={time} onChange={setTime} />
+              <TimePicker value={time} onChange={setTime} minTime={minTime} />
             </div>
             <p className="text-muted-foreground text-xs">
               🌐 Times shown in your local timezone (
