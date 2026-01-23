@@ -169,7 +169,10 @@ export const publishToAllAction = enhanceAction(
               episode_id: episodeId,
               platform_connection_id: platform.connectionId,
               platform: platform.platform,
-              content_type: 'full',
+              // Use contentType from input (full or short) - not hardcoded!
+              content_type: platform.contentType || 'full',
+              // For shorts: store the group ID so cron can find the right video
+              source_shot_id: platform.shortsGroupId ?? null,
               title: platform.title,
               description: platform.description,
               tags: platform.tags,

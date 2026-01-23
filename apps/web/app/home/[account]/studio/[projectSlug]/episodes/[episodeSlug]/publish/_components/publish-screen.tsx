@@ -840,6 +840,8 @@ export function PublishScreen({
             platform: channel.platform,
             connectionId: channel.id,
             contentType: 'short',
+            // Pass shorts group ID so cron can resolve the correct video
+            shortsGroupId: item.groupId,
             // For shorts, prefer group title, then translated, then base
             title: group?.title || itemTitle,
             description: group?.description || itemDescription,

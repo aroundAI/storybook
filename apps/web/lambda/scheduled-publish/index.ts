@@ -54,11 +54,16 @@ interface ScheduledPublish {
   thumbnail_url: string | null;
   metadata: Record<string, unknown> | null;
   content_type: string | null;
+  source_shot_id: string | null; // UUID of shorts group for shorts
+  language: string | null; // Direct language field
   episodes: {
     final_video_url: string | null;
     thumbnail_url: string | null;
     localized_videos: Record<string, string> | null;
-    shorts_groups: Array<{ videos?: Record<string, string> }> | null;
+    shorts_groups: Array<{
+      id?: string; // Group UUID for matching
+      videos?: Record<string, string>;
+    }> | null;
     projects: {
       account_id: string;
     } | null;
@@ -66,34 +71,78 @@ interface ScheduledPublish {
 }
 
 /**
- * Resolve video URL based on language and content type
+ * Resolve video URL based on content type, language, and shorts group ID
+ *
+ * ALGORITHM:
+ * 1. For shorts (content_type === 'short'):
+ *    a. If source_shot_id exists: find matching group by ID, return videos[lang]
+ *    b. Fallback: return first group's videos[lang] (legacy data)
+ * 2. For full videos:
+ *    a. If localized_videos[lang] exists: return it
+ *    b. Fallback: return final_video_url
  */
 function resolveVideoUrl(publish: ScheduledPublish): string | null {
   const episode = publish.episodes;
   if (!episode) return null;
 
-  // Get language from metadata (default to 'en')
-  const lang = (publish.metadata?.language as string) || 'en';
+  // Get language from publish record (direct field) or metadata fallback
+  const lang = publish.language || (publish.metadata?.language as string) || 'en';
   const isShort = publish.content_type === 'short';
   const localizedVideos = episode.localized_videos ?? {};
   const shortsGroups = episode.shorts_groups ?? [];
 
-  // For shorts, check shorts_groups first
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SHORTS RESOLUTION
+  // ═══════════════════════════════════════════════════════════════════════════
   if (isShort) {
+    // CASE A: We have source_shot_id - find exact group
+    if (publish.source_shot_id) {
+      for (const group of shortsGroups) {
+        if (group?.id === publish.source_shot_id) {
+          if (group.videos?.[lang]) {
+            console.log(
+              `[Cron] Resolved short: group=${group.id}, lang=${lang}`,
+            );
+            return group.videos[lang];
+          }
+          console.warn(
+            `[Cron] Shorts group ${group.id} has no video for lang=${lang}`,
+          );
+          return null;
+        }
+      }
+      console.warn(
+        `[Cron] source_shot_id ${publish.source_shot_id} not found in shorts_groups`,
+      );
+    }
+
+    // CASE B: Fallback to first group with matching language (legacy)
     for (const group of shortsGroups) {
-      if (group?.videos && group.videos[lang]) {
+      if (group?.videos?.[lang]) {
+        console.log(`[Cron] Resolved short (fallback): first group with lang=${lang}`);
         return group.videos[lang];
       }
     }
+
+    console.error(`[Cron] No shorts video found for lang=${lang}`);
+    return null;
   }
 
-  // Check localized videos
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FULL VIDEO RESOLUTION
+  // ═══════════════════════════════════════════════════════════════════════════
   if (localizedVideos[lang]) {
+    console.log(`[Cron] Resolved full video: localized_videos.${lang}`);
     return localizedVideos[lang];
   }
 
-  // Fall back to final_video_url
-  return episode.final_video_url;
+  if (episode.final_video_url) {
+    console.log(`[Cron] Resolved full video: final_video_url (fallback)`);
+    return episode.final_video_url;
+  }
+
+  console.error(`[Cron] No video URL found for lang=${lang}`);
+  return null;
 }
 
 /**
@@ -118,6 +167,8 @@ export async function handler(): Promise<ScheduledPublishResult> {
       thumbnail_url,
       metadata,
       content_type,
+      source_shot_id,
+      language,
       episodes(
         final_video_url,
         thumbnail_url,
