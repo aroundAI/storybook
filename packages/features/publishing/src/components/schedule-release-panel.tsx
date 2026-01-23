@@ -349,21 +349,12 @@ export function ScheduleReleasePanel({
         const startDateTime = new Date(date);
         startDateTime.setHours(time.hours, time.minutes, 0, 0);
 
-        // Build schedule with translated metadata (lookup by item ID)
-        const scheduleWithTranslations = schedulePreview.map(item => {
-            // Build item ID matching storage format
-            const itemId = item.type === 'full'
-                ? `full-video-${item.language}`
-                : `group-${item.groupId}-${item.language}`;
-
-            const translation = translatedMetadata[itemId];
-
-            return {
-                ...item,
-                title: translation?.title || baseMetadata.title,
-                description: translation?.description || baseMetadata.description,
-            };
-        });
+        // Build schedule with translated metadata
+        const scheduleWithTranslations = schedulePreview.map(item => ({
+            ...item,
+            title: translatedMetadata[item.language]?.title || baseMetadata.title,
+            description: translatedMetadata[item.language]?.description || baseMetadata.description,
+        }));
 
         onSchedule({
             startDateTime,
