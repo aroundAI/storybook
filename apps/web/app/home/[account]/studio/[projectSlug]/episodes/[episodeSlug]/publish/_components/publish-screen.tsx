@@ -276,6 +276,7 @@ export function PublishScreen({
       tags: string[];
       thumbnailUrl?: string | null;
       language: string;
+      shortsGroupId?: string;
       platformSpecific: Record<string, unknown>;
     }>
   >([]);
@@ -399,6 +400,7 @@ export function PublishScreen({
           tags: string[];
           thumbnailUrl?: string | null;
           language: string;
+          shortsGroupId?: string;
           platformSpecific: Record<string, unknown>;
         }> = [];
 
@@ -459,6 +461,7 @@ export function PublishScreen({
                   : metadata.tags ? metadata.tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
                 thumbnailUrl: getThumbnailForLanguage(lang),
                 language: lang,
+                shortsGroupId: group.id, // Identify which group's video to use
                 platformSpecific: channel.platform === 'facebook' ? { isReel: true } : {},
               });
             }
@@ -1212,6 +1215,7 @@ export function PublishScreen({
             platform: channel.platform,
             connectionId: channel.id,
             contentType: 'short',
+            shortsGroupId: group.id, // Identify which group's video to use
             title: groupMeta.title,
             description: groupMeta.description,
             tags:
