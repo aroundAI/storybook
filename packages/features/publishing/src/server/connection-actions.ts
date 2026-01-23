@@ -132,7 +132,8 @@ const RefreshSchema = z.object({
  */
 export const refreshConnectionAction = enhanceAction(
   async ({ connectionId }) => {
-    const result = await ensureValidToken(connectionId);
+    // Force refresh to handle cases where token is valid in DB but revoked on provider
+    const result = await ensureValidToken(connectionId, true);
 
     if (!result.valid) {
       throw new Error(result.error ?? 'Failed to refresh token');

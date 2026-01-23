@@ -57,10 +57,12 @@ const inFlightRefreshes = new Map<string, Promise<TokenValidationResult>>();
  * Uses deduplication to prevent race conditions on concurrent refresh attempts.
  *
  * @param connectionId The platform connection ID
+ * @param force Force a refresh even if the token is not expired (default: false)
  * @returns TokenValidationResult with valid access token or error
  */
 export async function ensureValidToken(
   connectionId: string,
+  force: boolean = false,
 ): Promise<TokenValidationResult> {
   // Check if a refresh is already in progress for this connection
   const inFlight = inFlightRefreshes.get(connectionId);
@@ -70,7 +72,7 @@ export async function ensureValidToken(
   }
 
   // Start the refresh and track it
-  const refreshPromise = doEnsureValidToken(connectionId);
+  const refreshPromise = doEnsureValidToken(connectionId, force);
   inFlightRefreshes.set(connectionId, refreshPromise);
 
   try {
@@ -87,6 +89,7 @@ export async function ensureValidToken(
  */
 async function doEnsureValidToken(
   connectionId: string,
+  force: boolean,
 ): Promise<TokenValidationResult> {
   const client = getSupabaseServerAdminClient();
 
@@ -112,13 +115,33 @@ async function doEnsureValidToken(
     return { valid: false, error: 'CONNECTION_INACTIVE', requiresReauth: true };
   }
 
-  // 2. Check if token is still valid with buffer
+  // Check for distributed lock via metadata
+  const metadata = (connection.metadata as Record<string, unknown>) || {};
+  const isRefreshing = metadata.is_refreshing === true;
+  const refreshStartedAt = metadata.refresh_started_at
+    ? new Date(metadata.refresh_started_at as string)
+    : null;
+  const now = new Date();
+
+  // If locked and less than 2 minutes old, wait and retry
+  if (
+    isRefreshing &&
+    refreshStartedAt &&
+    now.getTime() - refreshStartedAt.getTime() < 2 * 60 * 1000
+  ) {
+    await sleep(2000); // Wait 2s
+    return ensureValidToken(connectionId, force); // Recurse/Retry
+  }
+
+  // 2. Check if token is still valid with buffer (unless forced)
   const expiresAt = connection.token_expires_at
     ? new Date(connection.token_expires_at)
     : null;
-  const now = new Date();
+
   const needsRefresh =
-    !expiresAt || expiresAt.getTime() - now.getTime() < EXPIRY_BUFFER_MS;
+    force ||
+    !expiresAt ||
+    expiresAt.getTime() - now.getTime() < EXPIRY_BUFFER_MS;
 
   if (!needsRefresh && connection.access_token_encrypted) {
     // Token still valid
@@ -132,6 +155,30 @@ async function doEnsureValidToken(
     return { valid: false, error: 'NO_REFRESH_TOKEN', requiresReauth: true };
   }
 
+  // 3b. Acquire Optimistic Lock
+  // Attempt to set is_refreshing=true, relying on updated_at to ensure we are the only one
+  const lockMetadata = {
+    ...metadata,
+    is_refreshing: true,
+    refresh_started_at: new Date().toISOString(),
+  };
+
+  const { data: lockResult, error: lockError } = await client
+    .from('platform_connections' as 'accounts')
+    .update({
+      metadata: lockMetadata,
+      updated_at: new Date().toISOString(),
+    } as Record<string, unknown>)
+    .eq('id', connectionId)
+    .eq('updated_at', connection.updated_at) // Optimistic Lock
+    .select();
+
+  // If lock failed (race condition), retry
+  if (lockError || !lockResult || lockResult.length === 0) {
+    await sleep(1000);
+    return ensureValidToken(connectionId, force);
+  }
+
   // 4. Attempt refresh
   try {
     const refreshToken = await decrypt(connection.refresh_token_encrypted);
@@ -141,10 +188,16 @@ async function doEnsureValidToken(
       connection.account_id,
     );
 
-    // 5. Update stored tokens
-    const updateData: Record<string, string | boolean> = {
+    // 5. Update stored tokens & Release Lock & Clear Errors
+    const cleanMetadata = { ...metadata };
+    delete cleanMetadata.is_refreshing;
+    delete cleanMetadata.refresh_started_at;
+    delete cleanMetadata.last_error; // Fix: Clear stale errors
+
+    const updateData: Record<string, string | boolean | object> = {
       access_token_encrypted: await encrypt(refreshed.accessToken),
       token_expires_at: refreshed.expiresAt.toISOString(),
+      metadata: cleanMetadata,
       updated_at: new Date().toISOString(),
     };
 
@@ -172,6 +225,11 @@ async function doEnsureValidToken(
       `Failed to refresh ${connection.platform}`,
     );
 
+    // Release lock even on error (but keep is_active=false marking logic)
+    // We could clear is_refreshing here before marking inactive, but markConnectionInactive overwrites updated_at anyway.
+    // However, markConnectionInactive doesn't clear metadata.is_refreshing.
+    // We should clear it to avoid stuck locks if we ever reactivate it manually without full auth.
+
     // 6. Mark connection as inactive
     await markConnectionInactive(connectionId);
 
@@ -190,14 +248,31 @@ async function doEnsureValidToken(
 }
 
 /**
- * Marks a connection as inactive
+ * Marks a connection as inactive and clears lock
  */
 async function markConnectionInactive(connectionId: string): Promise<void> {
   const client = getSupabaseServerAdminClient();
+
+  // First fetch current metadata to remove lock flags
+  const { data: current } = (await client
+    .from('platform_connections' as 'accounts')
+    .select('metadata')
+    .eq('id', connectionId)
+    .single()) as {
+    data: { metadata: Record<string, unknown> } | null;
+    error: unknown;
+  };
+
+  const metadata = current?.metadata || {};
+  const cleanMetadata = { ...metadata };
+  delete cleanMetadata.is_refreshing;
+  delete cleanMetadata.refresh_started_at;
+
   await client
     .from('platform_connections' as 'accounts')
     .update({
       is_active: false,
+      metadata: cleanMetadata,
       updated_at: new Date().toISOString(),
     } as Record<string, unknown>)
     .eq('id', connectionId);
@@ -455,6 +530,13 @@ async function sendReauthNotification(
   //     url: `/settings/platforms?reconnect=${platform}`,
   //   },
   // });
+}
+
+/**
+ * Utility function for async sleep
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
