@@ -30,17 +30,12 @@
             "order": 2
         }
     ],
-    "user_prompt": "Translate the following {{itemCount}} video metadata items to {{targetLanguage}}:\n\n{{items}}",
+    "user_prompt": "Translate each of the following {{itemCount}} video metadata items to its specified targetLanguage. Each item has its own target language.\n\n{{items}}",
     "variables": {
         "items": {
             "type": "text",
             "required": true,
-            "description": "JSON array of items to translate, each with id, title, and description"
-        },
-        "targetLanguage": {
-            "type": "text",
-            "required": true,
-            "description": "Target language code (e.g., 'hi' for Hindi, 'es' for Spanish)"
+            "description": "JSON array of items to translate, each with id, targetLanguage, title, and description"
         },
         "itemCount": {
             "type": "number",

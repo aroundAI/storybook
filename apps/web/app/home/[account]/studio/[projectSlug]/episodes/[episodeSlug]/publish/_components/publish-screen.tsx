@@ -4,6 +4,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   useTransition,
 } from 'react';
@@ -260,6 +261,7 @@ export function PublishScreen({
   const [translationResults, setTranslationResults] = useState<
     TranslationResult[]
   >([]);
+  const translationResultsRef = useRef<TranslationResult[]>([]);
   const [platformStatuses, setPlatformStatuses] = useState<
     PlatformUploadStatus[]
   >([]);
@@ -332,6 +334,11 @@ export function PublishScreen({
     }>;
   }>('batch-translate-metadata');
 
+  // Sync ref with state for stale closure fix
+  useEffect(() => {
+    translationResultsRef.current = translationResults;
+  }, [translationResults]);
+
   // Handle batch WebSocket translation results (main publish flow)
   useEffect(() => {
     if (batchLlmStatus === 'success' && batchLlmResult && publishStage === 'translating') {
@@ -340,8 +347,11 @@ export function PublishScreen({
       const items = resultData?.items || [];
 
       if (items.length > 0) {
+        // Use ref to avoid stale closure - get current translation items
+        const currentTranslations = translationResultsRef.current;
+
         // Update each item's translation result
-        const updatedTranslations = translationResults.map((tr) => {
+        const updatedTranslations = currentTranslations.map((tr) => {
           const translated = items.find((item: { id: string }) => item.id === tr.id);
           if (translated) {
             return {
