@@ -90,63 +90,7 @@ export const updateShortsGroupsAction = enhanceAction(
   { schema: UpdateShortsGroupsSchema },
 );
 
-const TranslateMetadataSchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  targetLanguage: z.string(),
-});
 
-/**
- * Translate metadata (title, description) to target language using LLM
- * In production, queues via SQS for background processing.
- * @deprecated Use batchTranslateMetadataAction for better efficiency
- */
-export const translateMetadataAction = enhanceAction(
-  async ({
-    title,
-    description,
-    targetLanguage,
-  }): Promise<{
-    success: boolean;
-    translatedTitle: string;
-    translatedDescription: string;
-    targetLanguage: string;
-    queued?: boolean;
-  }> => {
-    // Skip translation for English
-    if (targetLanguage === 'en') {
-      return {
-        success: true,
-        translatedTitle: title,
-        translatedDescription: description,
-        targetLanguage,
-      };
-    }
-
-    // Always queue to Lambda for processing
-    const { queueLlmJob } = await import('@kit/prompt-engine/server');
-
-    // Get actual userId from session for WebSocket delivery
-    const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-    const userId = user?.id || 'system';
-
-    await queueLlmJob({
-      jobType: 'publish-metadata',
-      userId,
-      payload: { title, description, targetLanguage },
-    });
-
-    return {
-      success: true,
-      translatedTitle: title,
-      translatedDescription: description,
-      targetLanguage,
-      queued: true,
-    };
-  },
-  { schema: TranslateMetadataSchema },
-);
 
 /**
  * Item to be translated in a batch
