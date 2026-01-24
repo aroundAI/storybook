@@ -71,3 +71,24 @@ export async function uploadToFacebook(
     url: `https://www.facebook.com/${pageId}/videos/${videoId}`,
   };
 }
+
+export async function deleteFromFacebook(
+  accessToken: string,
+  videoId: string,
+): Promise<void> {
+  console.log(`[Facebook] Deleting video: ${videoId}`);
+
+  const response = await fetch(
+    `https://graph.facebook.com/v19.0/${videoId}?access_token=${accessToken}`,
+    {
+      method: 'DELETE',
+    },
+  );
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Facebook delete failed: ${error}`);
+  }
+
+  console.log(`[Facebook] Video deleted: ${videoId}`);
+}

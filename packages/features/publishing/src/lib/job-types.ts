@@ -1,6 +1,12 @@
-export interface PublishJobMessage {
-  publishId: string;
+export interface BaseJobMessage {
   userId: string;
+  platformConnectionId: string;
+  episodeId: string;
+}
+
+export interface PublishJobMessage extends BaseJobMessage {
+  type: 'publish';
+  publishId: string;
   platform:
     | 'youtube'
     | 'tiktok'
@@ -8,8 +14,6 @@ export interface PublishJobMessage {
     | 'facebook'
     | 'twitter'
     | 'linkedin';
-  platformConnectionId: string;
-  episodeId: string;
   videoUrl: string;
   title: string;
   description: string;
@@ -17,3 +21,19 @@ export interface PublishJobMessage {
   thumbnailUrl?: string;
   metadata: Record<string, unknown>;
 }
+
+export interface DeleteJobMessage extends BaseJobMessage {
+  type: 'delete';
+  publishId: string;
+  platform:
+    | 'youtube'
+    | 'tiktok'
+    | 'instagram'
+    | 'facebook'
+    | 'twitter'
+    | 'linkedin';
+  platformContentId: string;
+  platformAccountId?: string;
+}
+
+export type JobMessage = PublishJobMessage | DeleteJobMessage;

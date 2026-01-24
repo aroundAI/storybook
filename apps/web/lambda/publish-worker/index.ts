@@ -24,7 +24,11 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
-import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+import type {
+  DeleteJobMessage,
+  JobMessage,
+  PublishJobMessage,
+} from '@kit/publishing/lib/job-types';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
@@ -88,7 +92,7 @@ async function sendToUser(
 
   const messageStr = JSON.stringify(message);
 
-  for (const conn of connections.Items) {
+  const promises = connections.Items.map(async (conn) => {
     try {
       await wsClient.send(
         new PostToConnectionCommand({
@@ -110,7 +114,9 @@ async function sendToUser(
         );
       }
     }
-  }
+  });
+
+  await Promise.all(promises);
 }
 
 /**
@@ -225,6 +231,37 @@ async function uploadToPlatform(
 }
 
 /**
+ * Delete content from platform
+ */
+async function deleteFromPlatform(
+  job: DeleteJobMessage,
+  accessToken: string,
+): Promise<void> {
+  console.log(`[Publish Worker] Deleting from ${job.platform}...`);
+
+  switch (job.platform) {
+    case 'youtube': {
+      const { deleteFromYouTube } = await import('./handlers/youtube');
+      return deleteFromYouTube(accessToken, job.platformContentId);
+    }
+    case 'facebook': {
+      const { deleteFromFacebook } = await import('./handlers/facebook');
+      return deleteFromFacebook(accessToken, job.platformContentId);
+    }
+    case 'tiktok':
+    case 'instagram':
+    case 'linkedin':
+    case 'twitter':
+      console.warn(
+        `[Publish Worker] Delete not implemented for ${job.platform}, skipping platform deletion.`,
+      );
+      return;
+    default:
+      throw new Error(`Unsupported platform: ${job.platform}`);
+  }
+}
+
+/**
  * Update publish status in database
  */
 async function updatePublishStatus(
@@ -309,63 +346,151 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
 }
 
 /**
+ * Process a single delete job
+ */
+async function processDelete(job: DeleteJobMessage): Promise<void> {
+  console.log(
+    `[Publish Worker] Processing delete ${job.publishId} from ${job.platform}`,
+  );
+
+  // 1. Get valid access token
+  const tokenResult = await ensureValidToken(
+    job.platformConnectionId,
+    supabase,
+  );
+  if (!tokenResult.valid) {
+    // If token invalid, we might still want to delete the record locally
+    // but warn about platform deletion failure
+    console.warn(
+      `[Publish Worker] Token invalid for ${job.platform}, skipping platform deletion: ${tokenResult.error}`,
+    );
+  } else {
+    // 2. Delete from platform
+    try {
+      await deleteFromPlatform(job, tokenResult.accessToken!);
+    } catch (platformError) {
+      console.error(
+        `[Publish Worker] Platform deletion failed for ${job.platform}:`,
+        platformError,
+      );
+      // We continue to delete from DB even if platform deletion fails,
+      // but we notify the user about the partial failure
+      await sendToUser(job.userId, {
+        type: 'delete-warning',
+        publishId: job.publishId,
+        platform: job.platform,
+        message: 'Deleted from records but failed to remove from platform',
+        error:
+          platformError instanceof Error
+            ? platformError.message
+            : String(platformError),
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
+
+  // 3. Delete from DB
+  const { error: dbError } = await supabase
+    .from('publishes')
+    .delete()
+    .eq('id', job.publishId);
+
+  if (dbError) {
+    throw new Error(`Database deletion failed: ${dbError.message}`);
+  }
+
+  // 4. Notify user via WebSocket
+  await sendToUser(job.userId, {
+    type: 'delete-success',
+    publishId: job.publishId,
+    platform: job.platform,
+    timestamp: new Date().toISOString(),
+  });
+
+  console.log(`[Publish Worker] DELETE SUCCESS: ${job.publishId}`);
+}
+
+/**
  * Main Lambda handler
- * Processes batch of SQS messages containing publish jobs
+ * Processes batch of SQS messages containing publish or delete jobs
  */
 export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
   console.log(`[Publish Worker] Received ${event.Records.length} job(s)`);
 
-  const batchItemFailures: { itemIdentifier: string }[] = [];
+  const results = await Promise.allSettled(
+    event.Records.map(async (record) => {
+      let job: JobMessage | undefined;
+      try {
+        job = JSON.parse(record.body) as JobMessage;
 
-  for (const record of event.Records) {
-    let job: PublishJobMessage | undefined;
+        // Default to 'publish' type for backward compatibility
+        const jobType = 'type' in job ? job.type : 'publish';
 
-    try {
-      job = JSON.parse(record.body) as PublishJobMessage;
-
-      console.log(
-        `[Publish Worker] Processing job ${job.publishId} for ${job.platform}`,
-      );
-
-      await processPublish(job);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : String(error);
-      const errorStack = error instanceof Error ? error.stack : undefined;
-
-      console.error(`[Publish Worker] FAILED: ${errorMessage}`);
-      if (errorStack) {
-        console.error(`[Publish Worker] Stack trace:\n${errorStack}`);
-      }
-
-      // Update status to failed if we have the job
-      if (job) {
-        try {
-          await updatePublishStatus(job.publishId, 'failed', {
-            error: errorMessage,
-            errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
-            failedAt: new Date().toISOString(),
-          });
-
-          await sendToUser(job.userId, {
-            type: 'publish-error',
-            publishId: job.publishId,
-            platform: job.platform,
-            error: errorMessage,
-            timestamp: new Date().toISOString(),
-          });
-        } catch (notifyError) {
-          console.error(
-            `[Publish Worker] Failed to update status or notify user:`,
-            notifyError,
-          );
+        if (jobType === 'delete') {
+          await processDelete(job as DeleteJobMessage);
+        } else {
+          await processPublish(job as PublishJobMessage);
         }
-      }
 
-      // Add to failures for retry/DLQ
-      batchItemFailures.push({ itemIdentifier: record.messageId });
-    }
-  }
+        return { itemIdentifier: record.messageId, status: 'fulfilled' };
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        const errorStack = error instanceof Error ? error.stack : undefined;
+
+        console.error(`[Publish Worker] FAILED: ${errorMessage}`);
+        if (errorStack) {
+          console.error(`[Publish Worker] Stack trace:\n${errorStack}`);
+        }
+
+        // Notify user about failure
+        if (job) {
+          try {
+            const isDelete = 'type' in job && job.type === 'delete';
+            const type = isDelete ? 'delete-error' : 'publish-error';
+
+            if (!isDelete) {
+              // Only update status for publish jobs, delete jobs are just retried or failed
+              await updatePublishStatus(
+                (job as PublishJobMessage).publishId,
+                'failed',
+                {
+                  error: errorMessage,
+                  errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
+                  failedAt: new Date().toISOString(),
+                },
+              );
+            }
+
+            await sendToUser(job.userId, {
+              type,
+              publishId: job.publishId, // Both types have publishId
+              platform: job.platform as string,
+              error: errorMessage,
+              timestamp: new Date().toISOString(),
+            });
+          } catch (notifyError) {
+            console.error(
+              `[Publish Worker] Failed to update status or notify user:`,
+              notifyError,
+            );
+          }
+        }
+
+        throw error; // Re-throw to be caught by Promise.allSettled
+      }
+    }),
+  );
+
+  // Collect failures for SQS batch reporting
+  const batchItemFailures = results
+    .map((result, index) => {
+      if (result.status === 'rejected') {
+        return { itemIdentifier: event.Records[index]!.messageId };
+      }
+      return null;
+    })
+    .filter((item): item is { itemIdentifier: string } => item !== null);
 
   console.log(
     `[Publish Worker] Completed: ${event.Records.length - batchItemFailures.length} succeeded, ${batchItemFailures.length} failed`,
