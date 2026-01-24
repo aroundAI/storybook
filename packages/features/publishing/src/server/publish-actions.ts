@@ -182,6 +182,7 @@ export const publishToAllAction = enhanceAction(
               metadata: {
                 ...JSON.parse(JSON.stringify(platform.platformSpecific)),
                 shortsGroupId: platform.shortsGroupId,
+                createdBy: _user.id,
               },
               // Language from explicit request or connection fallback
               language: publishLanguage,

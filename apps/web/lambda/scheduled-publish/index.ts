@@ -217,10 +217,15 @@ export async function handler(): Promise<ScheduledPublishResult> {
     // Get language from metadata
     const language = (publish.metadata?.language as string) || 'en';
 
+    // Get user ID for notifications
+    // Prefer createdBy from metadata (scheduled by user)
+    // Fallback to accountId (Team ID) for legacy records - notifications might miss if user subscribes to user-channel
+    const userId = (publish.metadata?.createdBy as string) || accountId;
+
     // Build the job message
     const message: PublishJobMessage = {
       publishId: publish.id,
-      userId: accountId, // Use account_id as the user identifier
+      userId,
       platform: publish.platform as PublishJobMessage['platform'],
       platformConnectionId: publish.platform_connection_id,
       episodeId: publish.episode_id,

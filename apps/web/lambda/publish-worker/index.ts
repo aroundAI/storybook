@@ -24,6 +24,8 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
 
+import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
+
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
 const ddb = DynamoDBDocumentClient.from(ddbClient);
@@ -46,29 +48,6 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
     persistSession: false,
   },
 });
-
-/**
- * Publish Job Message Structure
- */
-export interface PublishJobMessage {
-  publishId: string;
-  userId: string;
-  platform:
-    | 'youtube'
-    | 'tiktok'
-    | 'instagram'
-    | 'facebook'
-    | 'twitter'
-    | 'linkedin';
-  platformConnectionId: string;
-  episodeId: string;
-  videoUrl: string;
-  title: string;
-  description: string;
-  tags: string[];
-  thumbnailUrl?: string;
-  metadata: Record<string, unknown>;
-}
 
 /**
  * Send message to user via WebSocket
