@@ -336,6 +336,7 @@ async function processPublish(job: PublishJobMessage): Promise<void> {
   // 4. Notify user via WebSocket
   await sendToUser(job.userId, {
     type: 'publish-success',
+    jobType: 'publish-status',
     publishId: job.publishId,
     platform: job.platform,
     url: result.url,
@@ -377,6 +378,7 @@ async function processDelete(job: DeleteJobMessage): Promise<void> {
       // but we notify the user about the partial failure
       await sendToUser(job.userId, {
         type: 'delete-warning',
+        jobType: 'publish-status',
         publishId: job.publishId,
         platform: job.platform,
         message: 'Deleted from records but failed to remove from platform',
@@ -402,6 +404,7 @@ async function processDelete(job: DeleteJobMessage): Promise<void> {
   // 4. Notify user via WebSocket
   await sendToUser(job.userId, {
     type: 'delete-success',
+    jobType: 'publish-status',
     publishId: job.publishId,
     platform: job.platform,
     timestamp: new Date().toISOString(),
@@ -464,6 +467,7 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
 
             await sendToUser(job.userId, {
               type,
+              jobType: 'publish-status',
               publishId: job.publishId, // Both types have publishId
               platform: job.platform as string,
               error: errorMessage,

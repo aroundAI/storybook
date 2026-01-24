@@ -756,6 +756,7 @@ export default $config({
         ...Array.from(buckets.values()),
         queue,
         llmJobsQueue,
+        publishQueue,
         connectionsTable,
         websocket,
       ],

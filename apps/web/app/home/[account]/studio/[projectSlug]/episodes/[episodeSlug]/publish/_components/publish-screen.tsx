@@ -78,7 +78,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@kit/ui/dialog';
-import { useLlmJob } from '@kit/ui/hooks';
+import { useLlmJob, useLlmWebSocket } from '@kit/ui/hooks';
 import { Input } from '@kit/ui/input';
 import { Label } from '@kit/ui/label';
 import {
@@ -299,6 +299,15 @@ export function PublishScreen({
 
   // Scheduling state for schedule release panel
   const [isScheduling, setIsScheduling] = useState(false);
+
+  // Ref for debouncing toast notifications
+  const unpublishToastRef = useRef<NodeJS.Timeout | undefined>(undefined);
+
+
+  // WebSocket subscription for publish/delete updates
+  const { subscribe } = useLlmWebSocket();
+
+
 
   // Sorting state for published content (default: asc = lowest to greatest)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -663,6 +672,74 @@ export function PublishScreen({
     queryFn: () => getEpisodePublishesAction({ episodeId: episode.id }),
   });
 
+  useEffect(() => {
+    const unsubscribe = subscribe('publish-status', (msg: any) => {
+      // Handle delete events
+      if (
+        msg.type === 'delete-success' ||
+        msg.type === 'delete-error' ||
+        msg.type === 'delete-warning'
+      ) {
+        setDeleteStatuses((prev) =>
+          prev.map((s) => {
+            if (s.publishId === msg.publishId) {
+              if (msg.type === 'delete-success') {
+                return { ...s, status: 'success' };
+              }
+              if (msg.type === 'delete-error') {
+                return { ...s, status: 'error', error: msg.error };
+              }
+              if (msg.type === 'delete-warning') {
+                return {
+                  ...s,
+                  status: 'error', // Show as error/warning in UI
+                  error: msg.message,
+                };
+              }
+            }
+            return s;
+          }),
+        );
+
+        if (msg.type === 'delete-success') {
+          // Debounce the success toast to avoid duplicates for multi-platform/batch deletes
+          if (unpublishToastRef.current) {
+            clearTimeout(unpublishToastRef.current);
+          }
+          unpublishToastRef.current = setTimeout(() => {
+            toast.success('Unpublish complete');
+            refetchPublishes();
+            unpublishToastRef.current = undefined;
+          }, 500);
+        } else if (msg.type === 'delete-error') {
+          toast.error(`Unpublish failed: ${msg.error}`);
+        } else if (msg.type === 'delete-warning') {
+          toast.warning(`Unpublish warning: ${msg.message}`);
+        }
+      }
+
+      // Handle publish events
+      if (msg.type === 'publish-success' || msg.type === 'publish-error') {
+        const platform = msg.platform;
+        setPlatformStatuses((prev) =>
+          prev.map((s) => {
+            if (s.platform === platform) {
+              if (msg.type === 'publish-success') {
+                return { ...s, status: 'success', url: msg.url };
+              }
+              if (msg.type === 'publish-error') {
+                return { ...s, status: 'error', error: msg.error };
+              }
+            }
+            return s;
+          }),
+        );
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribe, refetchPublishes]);
+
   // Sort publishes by scheduled/published time
   const sortedPublishes = useMemo(() => {
     if (!publishes) return [];
@@ -809,9 +886,9 @@ export function PublishScreen({
             const updatedGroups = shortsGroups.map((g) =>
               g.id === selectedGroupId
                 ? {
-                    ...g,
-                    videos: { ...g.videos, [selectedLanguage]: result.url },
-                  }
+                  ...g,
+                  videos: { ...g.videos, [selectedLanguage]: result.url },
+                }
                 : g,
             );
             const updateResult = await updateShortsGroupsAction({
@@ -1134,9 +1211,9 @@ export function PublishScreen({
           description: langMeta.description,
           tags: metadata.tags
             ? metadata.tags
-                .split(',')
-                .map((t) => t.trim())
-                .filter(Boolean)
+              .split(',')
+              .map((t) => t.trim())
+              .filter(Boolean)
             : [],
           thumbnailUrl: getThumbnailForLanguage(lang as SupportedLanguage),
           language: lang,
@@ -1177,9 +1254,9 @@ export function PublishScreen({
                 ? group.tags
                 : metadata.tags
                   ? metadata.tags
-                      .split(',')
-                      .map((t) => t.trim())
-                      .filter(Boolean)
+                    .split(',')
+                    .map((t) => t.trim())
+                    .filter(Boolean)
                   : [],
             thumbnailUrl: getThumbnailForLanguage(lang),
             language: lang,
@@ -1264,10 +1341,10 @@ export function PublishScreen({
             prev.map((s, idx) =>
               idx === i
                 ? {
-                    ...s,
-                    status: 'error' as const,
-                    error: result?.error || 'Unknown error',
-                  }
+                  ...s,
+                  status: 'error' as const,
+                  error: result?.error || 'Unknown error',
+                }
                 : s,
             ),
           );
@@ -1344,15 +1421,11 @@ export function PublishScreen({
     );
 
     try {
+      toast.info('Deletion started...');
       await unpublishAction({ publishId: pendingDeletePublish.id });
 
-      setDeleteStatuses((prev) =>
-        prev.map((s) => ({
-          ...s,
-          status: 'success' as const,
-        })),
-      );
-      setDeleteStage('complete');
+      // Close dialog immediately for background processing
+      cancelDelete();
       refetchPublishes();
     } catch (error) {
       const errorMessage =
@@ -1440,8 +1513,8 @@ export function PublishScreen({
       type === 'full'
         ? channels.filter((c) => ['youtube', 'facebook'].includes(c.platform))
         : channels.filter((c) =>
-            ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
-          );
+          ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
+        );
 
     const thumbnailUrl = getThumbnailForLanguage(lang);
     const thumbnailInputId = `thumbnail-input-${type}-${lang}`;
@@ -1579,68 +1652,68 @@ export function PublishScreen({
             {/* Translation Stage */}
             {(publishStage === 'translating' ||
               publishStage === 'confirm-translation') && (
-              <div className="space-y-3">
-                <p className="text-sm text-gray-500">
-                  {publishStage === 'translating'
-                    ? 'Translating titles and descriptions for each language...'
-                    : 'Review the translated metadata before publishing:'}
-                </p>
-                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                  {translationResults.map((t) => (
-                    <div
-                      key={t.id}
-                      className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-                    >
-                      <span className="text-xl">
-                        {LANG_INFO[t.language as SupportedLanguage]?.flag ||
-                          '🌐'}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {t.contentName}
-                          </span>
-                          <Badge variant="outline" className="text-[10px]">
-                            {LANG_INFO[t.language as SupportedLanguage]?.name ||
-                              t.language}
-                          </Badge>
-                          {t.contentType === 'shorts-group' && (
-                            <Badge variant="secondary" className="text-[10px]">
-                              <Smartphone className="mr-0.5 h-2.5 w-2.5" />
-                              Short
-                            </Badge>
-                          )}
-                          {t.status === 'pending' && (
-                            <span className="text-xs text-gray-400">
-                              Pending
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-500">
+                    {publishStage === 'translating'
+                      ? 'Translating titles and descriptions for each language...'
+                      : 'Review the translated metadata before publishing:'}
+                  </p>
+                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                    {translationResults.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+                      >
+                        <span className="text-xl">
+                          {LANG_INFO[t.language as SupportedLanguage]?.flag ||
+                            '🌐'}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium">
+                              {t.contentName}
                             </span>
+                            <Badge variant="outline" className="text-[10px]">
+                              {LANG_INFO[t.language as SupportedLanguage]?.name ||
+                                t.language}
+                            </Badge>
+                            {t.contentType === 'shorts-group' && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                <Smartphone className="mr-0.5 h-2.5 w-2.5" />
+                                Short
+                              </Badge>
+                            )}
+                            {t.status === 'pending' && (
+                              <span className="text-xs text-gray-400">
+                                Pending
+                              </span>
+                            )}
+                            {t.status === 'translating' && (
+                              <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
+                            )}
+                            {t.status === 'success' && (
+                              <Check className="h-3 w-3 text-green-500" />
+                            )}
+                            {t.status === 'error' && (
+                              <X className="h-3 w-3 text-red-500" />
+                            )}
+                          </div>
+                          {t.status === 'success' && t.title && (
+                            <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
+                              {t.title}
+                            </p>
                           )}
-                          {t.status === 'translating' && (
-                            <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
-                          )}
-                          {t.status === 'success' && (
-                            <Check className="h-3 w-3 text-green-500" />
-                          )}
-                          {t.status === 'error' && (
-                            <X className="h-3 w-3 text-red-500" />
+                          {t.error && (
+                            <p className="mt-0.5 text-xs text-red-500">
+                              {t.error}
+                            </p>
                           )}
                         </div>
-                        {t.status === 'success' && t.title && (
-                          <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
-                            {t.title}
-                          </p>
-                        )}
-                        {t.error && (
-                          <p className="mt-0.5 text-xs text-red-500">
-                            {t.error}
-                          </p>
-                        )}
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             {/* Uploading Stage */}
             {(publishStage === 'uploading' || publishStage === 'complete') && (
@@ -1743,11 +1816,11 @@ export function PublishScreen({
               )}
               {(publishStage === 'translating' ||
                 publishStage === 'uploading') && (
-                <Button variant="outline" disabled>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Please wait...
-                </Button>
-              )}
+                  <Button variant="outline" disabled>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Please wait...
+                  </Button>
+                )}
             </div>
           </div>
         </DialogContent>
@@ -2588,28 +2661,28 @@ export function PublishScreen({
                       uploadType === 'full'
                         ? ['youtube', 'facebook'].includes(c.platform)
                         : [
-                            'youtube',
-                            'instagram',
-                            'facebook',
-                            'tiktok',
-                          ].includes(c.platform),
+                          'youtube',
+                          'instagram',
+                          'facebook',
+                          'tiktok',
+                        ].includes(c.platform),
                     )
                     .map((conn) => (
                       <ChannelBadge key={conn.id} conn={conn} size="md" />
                     ))}
                   {(channelsByLanguage[selectedLanguage] ?? []).length ===
                     0 && (
-                    <p className="text-sm text-amber-600">
-                      No channels connected for{' '}
-                      {LANG_INFO[selectedLanguage].name}.
-                      <a
-                        href={`/home/${accountSlug}/settings/platforms`}
-                        className="ml-1 underline"
-                      >
-                        Connect channels
-                      </a>
-                    </p>
-                  )}
+                      <p className="text-sm text-amber-600">
+                        No channels connected for{' '}
+                        {LANG_INFO[selectedLanguage].name}.
+                        <a
+                          href={`/home/${accountSlug}/settings/platforms`}
+                          className="ml-1 underline"
+                        >
+                          Connect channels
+                        </a>
+                      </p>
+                    )}
                 </div>
               </div>
 
@@ -2617,11 +2690,10 @@ export function PublishScreen({
                 <Label>Video File</Label>
                 <div
                   {...getRootProps()}
-                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-                    isDragActive
-                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                      : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
-                  }`}
+                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragActive
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                    : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
+                    }`}
                 >
                   <input {...getInputProps()} />
                   {selectedFile ? (
