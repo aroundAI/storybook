@@ -236,7 +236,7 @@ type DeleteItemStatus = {
   note?: string; // For platform limitations like Instagram
 };
 
-interface PlatformConnection {
+export interface PlatformConnection {
   id: string;
   platform: Platform;
   platformAccountName: string;
@@ -715,6 +715,7 @@ export function PublishScreen({
   });
 
   useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const unsubscribe = subscribe('publish-status', (msg: any) => {
       // Handle delete events
       if (
