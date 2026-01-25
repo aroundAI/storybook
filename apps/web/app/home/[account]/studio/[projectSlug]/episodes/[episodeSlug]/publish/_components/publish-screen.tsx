@@ -338,86 +338,7 @@ export function PublishScreen({
   }>('batch-translate-metadata');
 
   // Handle batch translation results from WebSocket
-  // Handle batch translation results from WebSocket
-  useEffect(() => {
-    const isPublishTranslating = publishStage === 'translating';
 
-    if (llmStatus === 'success' && llmResult && (isScheduleTranslating || isPublishTranslating)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultData = (llmResult as any)?.data || llmResult;
-      const items = resultData?.items || [];
-
-      if (items.length > 0) {
-        // Store translations keyed by item ID (e.g., 'full-video-hi', 'group-123-hi')
-        const newTranslations: Record<
-          string,
-          {
-            title: string;
-            description: string;
-            contentType?: string;
-            language: string;
-          }
-        > = {};
-
-        // Also build array for buildPlatformConfigs if needed
-        const translationResults: TranslationResult[] = [];
-
-        for (const item of items) {
-          const trans = {
-            title: item.translatedTitle,
-            description: item.translatedDescription,
-            contentType: item.id.startsWith('full-video-')
-              ? 'full-video'
-              : 'shorts-group',
-            language: item.targetLanguage,
-          };
-
-          newTranslations[item.id] = trans;
-
-          if (isPublishTranslating) {
-            translationResults.push({
-              id: item.id,
-              contentType: trans.contentType as any,
-              contentName: item.contentName || 'Content',
-              language: item.targetLanguage,
-              title: item.translatedTitle,
-              description: item.translatedDescription,
-              status: 'success',
-              groupId: item.groupId
-            });
-          }
-        }
-
-        setScheduledTranslations((prev) => ({ ...prev, ...newTranslations }));
-        toast.success(
-          `Translated ${items.length} item${items.length > 1 ? 's' : ''}`,
-        );
-
-        // If this was the "Publish Now" flow, proceed to confirmation
-        if (isPublishTranslating) {
-          const baseTitle = metadata.title || episode.title;
-          const baseDescription = metadata.description || episode.description || '';
-          const conns = (connections ?? []) as PlatformConnection[];
-
-          buildPlatformConfigsAndConfirm(
-            translationResults,
-            conns,
-            baseTitle,
-            baseDescription
-          );
-        }
-      }
-
-      setIsScheduleTranslating(false);
-    } else if (llmStatus === 'error' && (isScheduleTranslating || isPublishTranslating)) {
-      toast.error(llmError || 'Translation failed');
-      setIsScheduleTranslating(false);
-      if (isPublishTranslating) {
-        setPublishError(llmError || 'Translation failed');
-        setPublishStage('error');
-      }
-    }
-  }, [llmStatus, llmResult, llmError, isScheduleTranslating, publishStage, metadata, episode, connections]);
 
   // Handler for ScheduleReleasePanel translation requests - SINGLE batch call
   const handleScheduleTranslate = async (languages: string[]) => {
@@ -701,6 +622,87 @@ export function PublishScreen({
         : Promise.resolve([]),
     enabled: !!accountId,
   });
+
+  // Handle batch translation results from WebSocket
+  useEffect(() => {
+    const isPublishTranslating = publishStage === 'translating';
+
+    if (llmStatus === 'success' && llmResult && (isScheduleTranslating || isPublishTranslating)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const resultData = (llmResult as any)?.data || llmResult;
+      const items = resultData?.items || [];
+
+      if (items.length > 0) {
+        // Store translations keyed by item ID (e.g., 'full-video-hi', 'group-123-hi')
+        const newTranslations: Record<
+          string,
+          {
+            title: string;
+            description: string;
+            contentType?: string;
+            language: string;
+          }
+        > = {};
+
+        // Also build array for buildPlatformConfigs if needed
+        const translationResults: TranslationResult[] = [];
+
+        for (const item of items) {
+          const trans = {
+            title: item.translatedTitle,
+            description: item.translatedDescription,
+            contentType: item.id.startsWith('full-video-')
+              ? 'full-video'
+              : 'shorts-group',
+            language: item.targetLanguage,
+          };
+
+          newTranslations[item.id] = trans;
+
+          if (isPublishTranslating) {
+            translationResults.push({
+              id: item.id,
+              contentType: trans.contentType as any,
+              contentName: item.contentName || 'Content',
+              language: item.targetLanguage,
+              title: item.translatedTitle,
+              description: item.translatedDescription,
+              status: 'success',
+              groupId: item.groupId
+            });
+          }
+        }
+
+        setScheduledTranslations((prev) => ({ ...prev, ...newTranslations }));
+        toast.success(
+          `Translated ${items.length} item${items.length > 1 ? 's' : ''}`,
+        );
+
+        // If this was the "Publish Now" flow, proceed to confirmation
+        if (isPublishTranslating) {
+          const baseTitle = metadata.title || episode.title;
+          const baseDescription = metadata.description || episode.description || '';
+          const conns = (connections ?? []) as PlatformConnection[];
+
+          buildPlatformConfigsAndConfirm(
+            translationResults,
+            conns,
+            baseTitle,
+            baseDescription
+          );
+        }
+      }
+
+      setIsScheduleTranslating(false);
+    } else if (llmStatus === 'error' && (isScheduleTranslating || isPublishTranslating)) {
+      toast.error(llmError || 'Translation failed');
+      setIsScheduleTranslating(false);
+      if (isPublishTranslating) {
+        setPublishError(llmError || 'Translation failed');
+        setPublishStage('error');
+      }
+    }
+  }, [llmStatus, llmResult, llmError, isScheduleTranslating, publishStage, metadata, episode, connections]);
 
   // Fetch published content
   const {
