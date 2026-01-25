@@ -1,7 +1,7 @@
 /**
  * Instagram Upload Handler (via Meta Graph API)
  */
-import type { PublishJobMessage } from '../index';
+import type { PublishJobMessage } from '@kit/publishing/lib/job-types';
 
 export async function uploadToInstagram(
     accessToken: string,
