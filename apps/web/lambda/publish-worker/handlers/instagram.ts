@@ -29,7 +29,8 @@ export async function uploadToInstagram(
                 video_url: job.videoUrl,
                 caption: `${job.title}\n\n${job.description}`,
                 share_to_feed: true,
-                ...(job.thumbnailUrl && { cover_url: job.thumbnailUrl }),
+                // Thumbnails removed as per request
+                // ...(job.thumbnailUrl && { cover_url: job.thumbnailUrl }),
             }),
         },
     );
@@ -103,9 +104,45 @@ export async function uploadToInstagram(
 
     console.log(`[Instagram] Published: ${mediaId}`);
 
-    // Construct URL (approximate, as Instagram doesn't return direct URL)
-    return {
-        contentId: mediaId,
-        url: `https://www.instagram.com/reel/${mediaId}`,
-    };
+    // Step 4: Robust Polling for Permalink
+    // We poll until the permalink is available or timeout.
+    // Guaranteed "tight" system: No fallback to broken links.
+    const permalinkAttempts = 10;
+    const permalinkInterval = 2000; // 2 seconds
+
+    for (let i = 0; i < permalinkAttempts; i++) {
+        await new Promise((resolve) => setTimeout(resolve, permalinkInterval));
+
+        try {
+            const detailsResponse = await fetch(
+                `https://graph.facebook.com/v19.0/${mediaId}?fields=shortcode,permalink&access_token=${accessToken}`,
+            );
+
+            if (detailsResponse.ok) {
+                const details = await detailsResponse.json();
+
+                // Return immediately if we have the permalink (Preferred)
+                if (details.permalink) {
+                    return {
+                        contentId: mediaId,
+                        url: details.permalink,
+                    };
+                }
+
+                // Or if we have a shortcode (acceptable alternative)
+                if (details.shortcode) {
+                    return {
+                        contentId: mediaId,
+                        url: `https://www.instagram.com/reel/${details.shortcode}/`,
+                    };
+                }
+            }
+        } catch (err) {
+            console.warn(`[Instagram] Error polling for details (attempt ${i + 1}/${permalinkAttempts}):`, err);
+        }
+    }
+
+    // If we reach here, we failed to get a valid link.
+    // Throw error to mark job as failed/warning rather than storing bad data.
+    throw new Error(`Instagram published (ID: ${mediaId}) but failed to retrieve valid permalink after ${permalinkAttempts} attempts.`);
 }
