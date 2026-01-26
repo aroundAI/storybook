@@ -708,6 +708,7 @@ export function PublishScreen({
   const {
     data: publishes,
     isLoading: loadingPublishes,
+    isFetching: fetchingPublishes,
     refetch: refetchPublishes,
   } = useQuery({
     queryKey: ['episode-publishes', episode.id],
@@ -2356,11 +2357,11 @@ export function PublishScreen({
                         variant="ghost"
                         size="sm"
                         onClick={() => refetchPublishes()}
-                        disabled={loadingPublishes}
+                        disabled={loadingPublishes || fetchingPublishes}
                         title="Refresh"
                       >
                         <RefreshCw
-                          className={`h-4 w-4 ${loadingPublishes ? 'animate-spin' : ''}`}
+                          className={`h-4 w-4 ${fetchingPublishes ? 'animate-spin' : ''}`}
                         />
                       </Button>
                       <Button
