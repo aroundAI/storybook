@@ -2553,6 +2553,8 @@ export function PublishScreen({
               shortsGroups={shortsGroups.map((g) => ({
                 id: g.id,
                 name: g.name || `Group ${shortsGroups.indexOf(g) + 1}`,
+                title: g.title,
+                description: g.description,
                 videoLanguages: Object.keys(g.videos).filter(
                   (lang) => g.videos[lang],
                 ),

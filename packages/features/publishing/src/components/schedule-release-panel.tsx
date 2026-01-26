@@ -75,6 +75,8 @@ interface ScheduleReleasePanelProps {
   shortsGroups: Array<{
     id: string;
     name: string;
+    title?: string;
+    description?: string;
     videoLanguages: string[];
   }>;
   /** Base metadata to translate */
@@ -410,12 +412,19 @@ export function ScheduleReleasePanel({
           ? `full-video-${item.language}`
           : `group-${item.groupId}-${item.language}`;
 
+      // For shorts, use group's own metadata as fallback (not baseMetadata)
+      const group = item.type === 'shorts'
+        ? shortsGroups.find(g => g.id === item.groupId)
+        : null;
+
+      const fallbackTitle = group?.title || baseMetadata.title;
+      const fallbackDescription = group?.description || baseMetadata.description;
+
       return {
         ...item,
-        title: translatedMetadata[lookupKey]?.title || baseMetadata.title,
+        title: translatedMetadata[lookupKey]?.title || fallbackTitle,
         description:
-          translatedMetadata[lookupKey]?.description ||
-          baseMetadata.description,
+          translatedMetadata[lookupKey]?.description || fallbackDescription,
       };
     });
 
@@ -548,7 +557,7 @@ export function ScheduleReleasePanel({
                   {format(schedulePreview[0]?.scheduledAt ?? date, 'PPp')} →{' '}
                   {format(
                     schedulePreview[schedulePreview.length - 1]?.scheduledAt ??
-                      date,
+                    date,
                     'h:mm a',
                   )}
                   <span className="ml-2 text-xs">
