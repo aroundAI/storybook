@@ -1058,11 +1058,13 @@ export function PublishScreen({
             contentType: 'short',
             // Pass shorts group ID so cron can resolve the correct video
             shortsGroupId: item.groupId,
-            // For shorts, prefer group title, then translated, then base
-            title: group?.title || itemTitle,
-            description: group?.description || itemDescription,
+            // itemTitle/itemDescription already contain translated values from ScheduleReleasePanel
+            // with proper fallback chain: translation -> group metadata -> base metadata
+            title: itemTitle,
+            description: itemDescription,
             tags: group?.tags?.length ? group.tags : baseTags,
-            thumbnailUrl: getThumbnailForLanguage(item.language),
+            // Shorts don't use custom thumbnails - platforms generate from video
+            thumbnailUrl: undefined,
             language: item.language,
             scheduledAt: item.scheduledAt.toISOString(),
             platformSpecific:
