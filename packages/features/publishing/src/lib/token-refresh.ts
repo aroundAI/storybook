@@ -22,11 +22,11 @@ export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
-    | 'EXPIRED'
-    | 'REFRESH_FAILED'
-    | 'CONNECTION_INACTIVE'
-    | 'NOT_FOUND'
-    | 'NO_REFRESH_TOKEN';
+  | 'EXPIRED'
+  | 'REFRESH_FAILED'
+  | 'CONNECTION_INACTIVE'
+  | 'NOT_FOUND'
+  | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 
@@ -186,6 +186,10 @@ async function doEnsureValidToken(
       connection.platform as Platform,
       refreshToken,
       connection.account_id,
+      {
+        platformAccountId: connection.platform_account_id ?? '',
+        metadata: connection.metadata as Record<string, unknown>,
+      },
     );
 
     // 5. Update stored tokens & Release Lock & Clear Errors
@@ -259,9 +263,9 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
     .select('metadata')
     .eq('id', connectionId)
     .single()) as {
-    data: { metadata: Record<string, unknown> } | null;
-    error: unknown;
-  };
+      data: { metadata: Record<string, unknown> } | null;
+      error: unknown;
+    };
 
   const metadata = current?.metadata || {};
   const cleanMetadata = { ...metadata };
@@ -279,12 +283,21 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
 }
 
 /**
+ * Context for platform token refresh (needed for Meta to fetch Page tokens)
+ */
+interface RefreshContext {
+  platformAccountId: string;
+  metadata?: Record<string, unknown>;
+}
+
+/**
  * Platform-specific token refresh implementations
  */
 async function refreshTokenForPlatform(
   platform: Platform,
   refreshToken: string,
   accountId: string,
+  context?: RefreshContext,
 ): Promise<TokenRefreshResult> {
   switch (platform) {
     case 'youtube':
@@ -293,7 +306,7 @@ async function refreshTokenForPlatform(
       return refreshTikTokToken(refreshToken, accountId);
     case 'instagram':
     case 'facebook':
-      return refreshMetaToken(refreshToken, platform, accountId);
+      return refreshMetaToken(refreshToken, platform, accountId, context);
     case 'linkedin':
       return refreshLinkedInToken(refreshToken, accountId);
     default:
@@ -395,12 +408,14 @@ async function refreshTikTokToken(
 
 /**
  * Refreshes a Meta (Instagram/Facebook) OAuth token
- * Meta uses long-lived tokens that need to be exchanged before expiry
+ * Meta uses long-lived User tokens that need to be exchanged before expiry.
+ * After refreshing the User token, we fetch a fresh Page Access Token.
  */
 async function refreshMetaToken(
-  accessToken: string,
-  _platform: 'instagram' | 'facebook',
+  userAccessToken: string,
+  platform: 'instagram' | 'facebook',
   accountId: string,
+  context?: RefreshContext,
 ): Promise<TokenRefreshResult> {
   // Fetch credentials from database (using admin client for background jobs)
   const { getAccountOAuthAppAdmin } = await import(
@@ -412,24 +427,66 @@ async function refreshMetaToken(
     throw new Error('Meta OAuth credentials not configured for this account');
   }
 
-  const url = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
-  url.searchParams.set('grant_type', 'fb_exchange_token');
-  url.searchParams.set('client_id', oauthApp.clientId);
-  url.searchParams.set('client_secret', oauthApp.clientSecret);
-  url.searchParams.set('fb_exchange_token', accessToken);
+  // Step 1: Refresh the User Access Token
+  const refreshUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+  refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
+  refreshUrl.searchParams.set('client_id', oauthApp.clientId);
+  refreshUrl.searchParams.set('client_secret', oauthApp.clientSecret);
+  refreshUrl.searchParams.set('fb_exchange_token', userAccessToken);
 
-  const response = await fetch(url.toString());
+  const refreshResponse = await fetch(refreshUrl.toString());
+  const refreshData = await refreshResponse.json();
 
-  if (!response.ok) {
-    throw new Error('Meta refresh failed');
+  if (refreshData.error || !refreshData.access_token) {
+    throw new Error(`Meta user token refresh failed: ${refreshData.error?.message || 'Unknown error'}`);
   }
 
-  const data = await response.json();
+  const newUserToken = refreshData.access_token;
+  const expiresAt = new Date(Date.now() + (refreshData.expires_in ?? 5184000) * 1000);
+
+  // Step 2: Fetch fresh Page Access Token using the refreshed User token
+  // For Instagram, use linked_page_id from metadata; for Facebook, use platformAccountId
+  const pageId = platform === 'instagram'
+    ? (context?.metadata?.linked_page_id as string) || context?.platformAccountId
+    : context?.platformAccountId;
+
+  if (!pageId) {
+    // Fallback: If no page ID, return user token (will likely fail on publish)
+    const logger = await getLogger();
+    logger.warn(
+      { name: 'token-refresh.meta', platform, accountId },
+      'No page ID found in context, returning user token (may lack publish permissions)',
+    );
+    return {
+      accessToken: newUserToken,
+      expiresAt,
+    };
+  }
+
+  // Fetch pages to get fresh Page Access Token
+  const pagesUrl = new URL('https://graph.facebook.com/v18.0/me/accounts');
+  pagesUrl.searchParams.set('access_token', newUserToken);
+  pagesUrl.searchParams.set('fields', 'id,access_token');
+
+  const pagesResponse = await fetch(pagesUrl.toString());
+  const pagesData = await pagesResponse.json();
+
+  if (pagesData.error) {
+    throw new Error(`Failed to fetch pages: ${pagesData.error.message}`);
+  }
+
+  const pages = pagesData.data || [];
+  const page = pages.find((p: { id: string; access_token: string }) => p.id === pageId);
+
+  if (!page?.access_token) {
+    throw new Error(`Page ${pageId} not found or no access token. User may need to re-authorize.`);
+  }
+
+  // Return Page Access Token (for API calls) and new User Token (for next refresh)
   return {
-    accessToken: data.access_token,
-    // Meta tokens are long-lived, expires_in is in seconds
-    // Default 60 days if not specified
-    expiresAt: new Date(Date.now() + (data.expires_in ?? 5184000) * 1000),
+    accessToken: page.access_token,
+    refreshToken: newUserToken, // Store refreshed user token for next cycle
+    expiresAt,
   };
 }
 
