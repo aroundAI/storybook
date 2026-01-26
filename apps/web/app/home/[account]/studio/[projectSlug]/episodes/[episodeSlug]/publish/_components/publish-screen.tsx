@@ -662,7 +662,7 @@ export function PublishScreen({
           if (isPublishTranslating) {
             translationResults.push({
               id: item.id,
-              contentType: trans.contentType as any,
+              contentType: trans.contentType as 'full-video' | 'shorts-group',
               contentName: item.contentName || 'Content',
               language: item.targetLanguage,
               title: item.translatedTitle,
