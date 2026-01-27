@@ -44,6 +44,9 @@ export const PlatformConfigSchema = z.object({
   connectionId: z.string().uuid(),
   // Content type: 'full' for long-form videos, 'short' for shorts/reels
   contentType: z.enum(['full', 'short']).default('full'),
+  // Shorts group ID: identifies which shorts group to use (required when contentType is 'short')
+  // Note: group IDs are like 'group-1234567890' not UUIDs
+  shortsGroupId: z.string().optional().nullable(),
   title: z.string().min(1).max(5000),
   description: z.string().max(70000).default(''),
   tags: z.array(z.string()).default([]),

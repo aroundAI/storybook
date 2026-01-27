@@ -21,7 +21,7 @@ import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-ref
 // Publishing Prompts
 // =============================================================================
 import magicClips from '../../prompts/publishing/magic-clips.json';
-import translateMetadata from '../../prompts/publishing/translate-metadata.json';
+import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
 import sceneShotGeneration from '../../prompts/story-generation/scene-shot-generation.json';
 import screenplayConversion from '../../prompts/story-generation/screenplay-conversion.json';
 import seasonGeneration from '../../prompts/story-generation/season-generation.json';
@@ -59,7 +59,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'scene-audio-refinement': sceneAudioRefinement as unknown as PromptTemplate,
 
   // Publishing
-  'translate-metadata': translateMetadata as unknown as PromptTemplate,
+  'batch-translate-metadata': batchTranslateMetadata as unknown as PromptTemplate,
   'magic-clips': magicClips as unknown as PromptTemplate,
 };
 

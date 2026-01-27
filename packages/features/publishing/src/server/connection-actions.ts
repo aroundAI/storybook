@@ -11,7 +11,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import type { PlatformConnection as DBPlatformConnection } from '../lib/database-types';
 import { GetConnectedPlatformsSchema } from '../lib/schemas/publish.schema';
 import { ensureValidToken } from '../lib/token-refresh';
-import type { Platform, PlatformConnection } from '../lib/types';
+import type { Platform } from '../lib/types';
 import { disconnectMetaAction } from '../oauth/meta/disconnect';
 import { disconnectTikTokAction } from '../oauth/tiktok/disconnect';
 import { disconnectYouTubeAction } from '../oauth/youtube/disconnect';
@@ -40,9 +40,9 @@ export const getConnectionsAction = enhanceAction(
       )
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false })) as {
-      data: DBPlatformConnection[] | null;
-      error: unknown;
-    };
+        data: DBPlatformConnection[] | null;
+        error: unknown;
+      };
 
     if (error) {
       throw new Error('Failed to fetch connections');
@@ -51,22 +51,26 @@ export const getConnectionsAction = enhanceAction(
     return (
       connections?.map((conn) => {
         const connWithLanguage = conn as typeof conn & { language?: string };
+        const status = determineStatus(conn);
+        const profileImageUrl =
+          conn.metadata && typeof conn.metadata === 'object'
+            ? ((conn.metadata as Record<string, unknown>).profile_image_url as
+              | string
+              | undefined)
+            : undefined;
+
         return {
           id: conn.id,
           platform: conn.platform as PlatformType,
           platformAccountId: conn.platform_account_id ?? '',
           accountName: conn.platform_account_name ?? 'Unknown Account',
-          profileImageUrl:
-            conn.metadata && typeof conn.metadata === 'object'
-              ? ((conn.metadata as Record<string, unknown>)
-                  .profile_image_url as string | undefined)
-              : undefined,
-          status: determineStatus(conn),
+          profileImageUrl,
+          status,
           errorMessage:
             conn.metadata && typeof conn.metadata === 'object'
               ? ((conn.metadata as Record<string, unknown>).last_error as
-                  | string
-                  | undefined)
+                | string
+                | undefined)
               : undefined,
           scopes: conn.scopes ?? [],
           tokenExpiresAt: conn.token_expires_at,
@@ -74,6 +78,16 @@ export const getConnectionsAction = enhanceAction(
           updatedAt: conn.updated_at,
           accountSlug: '', // Will be set by the caller
           language: connWithLanguage.language ?? 'en',
+          // Unified fields for Publish Page compatibility
+          isActive: conn.is_active,
+          tokenValid: status === 'active',
+          avatarUrl: profileImageUrl, // Alias for avatarUrl
+          followerCount:
+            conn.metadata && typeof conn.metadata === 'object'
+              ? ((conn.metadata as Record<string, unknown>).follower_count as
+                | number
+                | undefined)
+              : 0,
         };
       }) ?? []
     );
@@ -132,7 +146,8 @@ const RefreshSchema = z.object({
  */
 export const refreshConnectionAction = enhanceAction(
   async ({ connectionId }) => {
-    const result = await ensureValidToken(connectionId);
+    // Force refresh to handle cases where token is valid in DB but revoked on provider
+    const result = await ensureValidToken(connectionId, true);
 
     if (!result.valid) {
       throw new Error(result.error ?? 'Failed to refresh token');
@@ -269,28 +284,34 @@ export const getConnectedPlatformsAction = enhanceAction(
     // Transform to PlatformConnection type
     // Note: metadata column exists in schema but may not be in generated types yet
     // We cast to access it safely
-    const platformConnections: PlatformConnection[] = (connections ?? []).map(
-      (conn) => {
-        const connWithMetadata = conn as typeof conn & {
-          metadata?: Record<string, unknown> | null;
-          language?: string;
-        };
-        const metadata = connWithMetadata.metadata;
-        return {
-          id: conn.id,
-          platform: conn.platform as Platform,
-          platformAccountId: conn.platform_account_id,
-          platformAccountName: conn.platform_account_name ?? '',
-          avatarUrl: (metadata?.avatar_url as string) ?? null,
-          isActive: conn.is_active ?? true,
-          tokenValid: conn.is_active && isTokenValid(conn.token_expires_at),
-          tokenExpiresAt: conn.token_expires_at ?? null,
-          followerCount: (metadata?.follower_count as number) ?? null,
-          scopes: conn.scopes ?? null,
-          language: connWithMetadata.language ?? 'en', // Target language for this channel
-        };
-      },
-    );
+    // We return a unified structure compatible with both Publish Page and Settings Page
+    const platformConnections = (connections ?? []).map((conn) => {
+      const connWithMetadata = conn as typeof conn & {
+        metadata?: Record<string, unknown> | null;
+        language?: string;
+      };
+      const metadata = connWithMetadata.metadata;
+      const status = determineStatus(conn as unknown as DBPlatformConnection);
+
+      return {
+        id: conn.id,
+        platform: conn.platform as Platform,
+        platformAccountId: conn.platform_account_id,
+        platformAccountName: conn.platform_account_name ?? '',
+        avatarUrl: (metadata?.avatar_url as string) ?? null,
+        isActive: conn.is_active ?? true,
+        tokenValid: conn.is_active && isTokenValid(conn.token_expires_at),
+        tokenExpiresAt: conn.token_expires_at ?? null,
+        followerCount: (metadata?.follower_count as number) ?? null,
+        scopes: conn.scopes ?? null,
+        language: connWithMetadata.language ?? 'en', // Target language for this channel
+        // Unified fields for Settings Page compatibility
+        status,
+        errorMessage: metadata?.last_error as string | undefined,
+        profileImageUrl: (metadata?.avatar_url as string) ?? undefined, // Alias for avatarUrl
+        accountName: conn.platform_account_name ?? '', // Alias for platformAccountName
+      };
+    });
 
     logger.info(
       { ...ctx, count: platformConnections.length },

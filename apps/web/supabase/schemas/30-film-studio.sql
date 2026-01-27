@@ -514,13 +514,13 @@ create table if not exists public.publishes (
   created_at timestamp with time zone default now() not null,
   check (platform in ('youtube', 'tiktok', 'instagram', 'facebook', 'twitter', 'linkedin')),
   check (content_type in ('full', 'short', 'teaser', 'trailer')),
-  check (status in ('draft', 'scheduled', 'publishing', 'published', 'failed', 'unlisted', 'deleted'))
+  check (status in ('draft', 'scheduled', 'queued', 'publishing', 'published', 'failed', 'unlisted', 'deleted'))
 );
 
 comment on table public.publishes is 'Tracks published content across platforms';
 comment on column public.publishes.platform is 'Platform: youtube, tiktok, instagram, facebook, twitter, linkedin';
 comment on column public.publishes.content_type is 'Content variant: full, short, teaser, trailer';
-comment on column public.publishes.status is 'Publish status: draft, scheduled, publishing, published, failed, unlisted, deleted';
+comment on column public.publishes.status is 'Publish status: draft, scheduled, queued, publishing, published, failed, unlisted, deleted';
 comment on column public.publishes.platform_content_id is 'Platform video/post ID';
 
 -- Indexes for publishes

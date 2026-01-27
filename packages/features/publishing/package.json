@@ -38,6 +38,7 @@
     "./lib/url-validation": "./src/lib/url-validation.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-sqs": "^3.968.0",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",

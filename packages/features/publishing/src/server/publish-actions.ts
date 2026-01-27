@@ -4,18 +4,21 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { DeleteJobMessage } from '../lib/job-types';
 import {
   GetPublishStatusSchema,
   PublishToAllSchema,
   RetryPublishSchema,
 } from '../lib/schemas/publish.schema';
 import type { Platform, PublishResult } from '../lib/types';
+import { validateContentUrl } from '../lib/url-validation';
 import { FacebookProvider } from '../providers/facebook';
 import { InstagramProvider } from '../providers/instagram';
 import { LinkedInProvider } from '../providers/linkedin';
@@ -24,7 +27,12 @@ import { TwitterProvider } from '../providers/twitter';
 // Import providers
 import { YouTubeProvider } from '../providers/youtube';
 import { getAccessToken } from './connection-actions';
-import { validateContentUrl } from '../lib/url-validation';
+
+// Initialize SQS client
+const sqsClient = new SQSClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+});
+const PUBLISH_QUEUE_URL = process.env.PUBLISH_QUEUE_URL!;
 
 /**
  * Replace localhost URLs with tunnel URL for external platform uploads.
@@ -169,14 +177,21 @@ export const publishToAllAction = enhanceAction(
               episode_id: episodeId,
               platform_connection_id: platform.connectionId,
               platform: platform.platform,
-              content_type: 'full',
+              // Use contentType from input (full or short) - not hardcoded!
+              content_type: platform.contentType || 'full',
+              // For shorts: store the group ID so cron can find the right video
+              // Note: We cannot use source_shot_id as it expects a UUID, but our group IDs are strings
               title: platform.title,
               description: platform.description,
               tags: platform.tags,
               thumbnail_url: platform.thumbnailUrl ?? episode.thumbnail_url,
               status: useServerScheduling ? 'scheduled' : 'publishing',
               scheduled_at: platform.scheduledAt ?? null,
-              metadata: JSON.parse(JSON.stringify(platform.platformSpecific)),
+              metadata: {
+                ...JSON.parse(JSON.stringify(platform.platformSpecific)),
+                shortsGroupId: platform.shortsGroupId,
+                createdBy: _user.id,
+              },
               // Language from explicit request or connection fallback
               language: publishLanguage,
             })
@@ -877,12 +892,12 @@ export const getEpisodePublishesAction = enhanceAction(
         createdAt: p.created_at,
         analytics: analytics
           ? {
-            views: analytics.views,
-            likes: analytics.likes,
-            comments: analytics.comments,
-            shares: analytics.shares,
-            watchTimeSeconds: analytics.watch_time_seconds,
-          }
+              views: analytics.views,
+              likes: analytics.likes,
+              comments: analytics.comments,
+              shares: analytics.shares,
+              watchTimeSeconds: analytics.watch_time_seconds,
+            }
           : null,
         error: (p.metadata as { error?: string } | null)?.error,
       };
@@ -896,14 +911,15 @@ export const getEpisodePublishesAction = enhanceAction(
 
 /**
  * Deletes all publish records for an episode AND removes content from platforms
- * Used for cleanup/testing purposes
+ * Used for cleanup/testing purposes.
+ * Now uses async worker to avoid timeouts.
  */
 export const deleteEpisodePublishesAction = enhanceAction(
   async ({ episodeId }, _user) => {
     const logger = await getLogger();
     const ctx = { name: 'publishing.deleteEpisodePublishes', episodeId };
 
-    logger.info(ctx, 'Deleting all publish records for episode');
+    logger.info(ctx, 'Deleting all publish records for episode (async)');
 
     const client = getSupabaseServerClient();
 
@@ -918,94 +934,60 @@ export const deleteEpisodePublishesAction = enhanceAction(
       return { success: true, deletedCount: 0, platformErrors: [] };
     }
 
-    const platformErrors: string[] = [];
-
-    // Delete from each platform before removing database records
-    for (const pub of publishes) {
-      const contentId = pub.platform_content_id;
-      const platform = pub.platform as Platform;
-
-      if (contentId && pub.platform_connection_id) {
-        try {
-          const tokenResult = await getAccessToken(pub.platform_connection_id);
-          if (tokenResult.accessToken) {
-            const accessToken = tokenResult.accessToken;
-
-            switch (platform) {
-              case 'youtube': {
-                const yt = new YouTubeProvider(accessToken);
-                await yt.deleteVideo(contentId);
-                logger.info(
-                  { ...ctx, platform, contentId },
-                  'Deleted from YouTube',
-                );
-                break;
-              }
-              case 'facebook': {
-                // Get page ID from connection
-                const { data: conn } = await client
-                  .from('platform_connections')
-                  .select('platform_account_id')
-                  .eq('id', pub.platform_connection_id)
-                  .single();
-                const pageId = conn?.platform_account_id ?? '';
-                const fb = new FacebookProvider(accessToken, pageId);
-                await fb.deleteVideo(contentId);
-                logger.info(
-                  { ...ctx, platform, contentId },
-                  'Deleted from Facebook',
-                );
-                break;
-              }
-              case 'instagram':
-              case 'tiktok':
-              case 'twitter':
-              case 'linkedin':
-                // These platforms may not support deletion via API
-                logger.warn(
-                  { ...ctx, platform },
-                  'Platform may not support API deletion',
-                );
-                break;
-            }
-          }
-        } catch (deleteError) {
-          const errorMsg = `Failed to delete ${platform} content ${contentId}: ${deleteError instanceof Error ? deleteError.message : 'Unknown error'}`;
-          logger.warn({ ...ctx, error: deleteError, platform }, errorMsg);
-          platformErrors.push(errorMsg);
-          // Continue - we still want to remove from database
-        }
-      }
+    if (!PUBLISH_QUEUE_URL) {
+      logger.error(ctx, 'PUBLISH_QUEUE_URL not configured');
+      throw new Error('System configuration error: Queue URL missing');
     }
 
-    // Delete analytics for these publishes
+    // Mark all as 'deleting' in database
+    await client
+      .from('publishes')
+      .update({ status: 'deleting' })
+      .eq('episode_id', episodeId);
+
+    // Enqueue delete jobs
+    const messages = publishes.map((pub) => {
+      const message: DeleteJobMessage = {
+        type: 'delete',
+        publishId: pub.id,
+        userId: _user.id,
+        platformConnectionId: pub.platform_connection_id!,
+        episodeId,
+        platform: pub.platform as DeleteJobMessage['platform'],
+        platformContentId: pub.platform_content_id || '',
+      };
+      return message;
+    });
+
+    // Send to SQS in batches (parallel)
+    await Promise.all(
+      messages.map((msg) =>
+        sqsClient.send(
+          new SendMessageCommand({
+            QueueUrl: PUBLISH_QUEUE_URL,
+            MessageBody: JSON.stringify(msg),
+          }),
+        ),
+      ),
+    );
+
+    // Delete analytics immediately (optional, but cleaner)
     const publishIds = publishes.map((p) => p.id);
     await client
       .from('content_analytics')
       .delete()
       .in('publish_id', publishIds);
 
-    // Delete publish records
-    const { error } = await client
-      .from('publishes')
-      .delete()
-      .eq('episode_id', episodeId);
-
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to delete publish records');
-      throw new Error(`Failed to delete publish records: ${error.message}`);
-    }
-
     logger.info(
-      {
-        ...ctx,
-        count: publishes.length,
-        platformErrors: platformErrors.length,
-      },
-      'Deleted publish records',
+      { ...ctx, count: publishes.length },
+      'Enqueued delete jobs for publish records',
     );
 
-    return { success: true, deletedCount: publishes.length, platformErrors };
+    return {
+      success: true,
+      deletedCount: publishes.length,
+      platformErrors: [],
+    };
   },
   {
     schema: GetPublishStatusSchema,
@@ -1015,13 +997,14 @@ export const deleteEpisodePublishesAction = enhanceAction(
 
 /**
  * Unpublish a single publish record - deletes from platform AND database
+ * Now uses async worker to avoid timeouts.
  */
 export const unpublishAction = enhanceAction(
   async ({ publishId }, _user) => {
     const logger = await getLogger();
     const ctx = { name: 'publishing.unpublish', publishId };
 
-    logger.info(ctx, 'Unpublishing content from platform');
+    logger.info(ctx, 'Unpublishing content from platform (async)');
 
     const client = getSupabaseServerClient();
 
@@ -1030,10 +1013,7 @@ export const unpublishAction = enhanceAction(
       .from('publishes')
       .select(
         `
-        id, episode_id, platform_connection_id, platform, content_type, status,
-        title, description, tags, thumbnail_url, platform_content_id, platform_url,
-        scheduled_at, published_at, language, metadata, created_at,
-        platform_connections(id, platform_account_id)
+        id, episode_id, platform_connection_id, platform, platform_content_id
       `,
       )
       .eq('id', publishId)
@@ -1044,78 +1024,36 @@ export const unpublishAction = enhanceAction(
       throw new Error('Publish record not found');
     }
 
-    const platform = publish.platform as Platform;
-    const contentId = publish.platform_content_id;
-
-    // Try to delete from platform if we have a content ID
-    if (contentId && publish.platform_connection_id) {
-      try {
-        const tokenResult = await getAccessToken(
-          publish.platform_connection_id,
-        );
-        if (tokenResult.accessToken) {
-          const accessToken = tokenResult.accessToken;
-
-          switch (platform) {
-            case 'youtube': {
-              const yt = new YouTubeProvider(accessToken);
-              await yt.deleteVideo(contentId);
-              logger.info({ ...ctx, platform }, 'Deleted from YouTube');
-              break;
-            }
-            case 'facebook': {
-              const pageId =
-                (
-                  publish.platform_connections as {
-                    platform_account_id?: string;
-                  }
-                )?.platform_account_id ?? '';
-              const fb = new FacebookProvider(accessToken, pageId);
-              await fb.deleteVideo(contentId);
-              logger.info({ ...ctx, platform }, 'Deleted from Facebook');
-              break;
-            }
-            case 'instagram':
-            case 'tiktok':
-            case 'twitter':
-            case 'linkedin':
-              // These platforms may not support deletion via API or have different flows
-              logger.warn(
-                { ...ctx, platform },
-                'Platform may not support API deletion, removing from database only',
-              );
-              break;
-          }
-        }
-      } catch (deleteError) {
-        // Log but continue - we still want to remove from our database
-        logger.warn(
-          { ...ctx, error: deleteError, platform },
-          'Failed to delete from platform, removing from database only',
-        );
-      }
+    if (!PUBLISH_QUEUE_URL) {
+      logger.error(ctx, 'PUBLISH_QUEUE_URL not configured');
+      throw new Error('System configuration error: Queue URL missing');
     }
 
-    // Delete analytics first
-    await client.from('content_analytics').delete().eq('publish_id', publishId);
-
-    // Delete publish record
-    const { error: deleteError } = await client
+    // Mark as deleting
+    await client
       .from('publishes')
-      .delete()
+      .update({ status: 'deleting' })
       .eq('id', publishId);
 
-    if (deleteError) {
-      logger.error(
-        { ...ctx, error: deleteError },
-        'Failed to delete publish record',
-      );
-      throw new Error(
-        `Failed to delete publish record: ${deleteError.message}`,
-      );
-    }
+    // Enqueue delete job
+    const message: DeleteJobMessage = {
+      type: 'delete',
+      publishId: publish.id,
+      userId: _user.id,
+      platformConnectionId: publish.platform_connection_id!,
+      episodeId: publish.episode_id!,
+      platform: publish.platform as DeleteJobMessage['platform'],
+      platformContentId: publish.platform_content_id || '',
+    };
 
-    logger.info(ctx, 'Unpublished successfully');
+    await sqsClient.send(
+      new SendMessageCommand({
+        QueueUrl: PUBLISH_QUEUE_URL,
+        MessageBody: JSON.stringify(message),
+      }),
+    );
+
+    logger.info(ctx, 'Unpublish job enqueued');
 
     return { success: true };
   },
