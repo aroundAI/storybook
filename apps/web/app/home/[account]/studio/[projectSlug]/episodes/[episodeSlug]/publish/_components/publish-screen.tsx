@@ -2093,6 +2093,7 @@ export function PublishScreen({
               episodeId={episode.id}
               masterVideoAssetId={episode.masterVideoAssetId}
               masterTitleCardAssetId={episode.masterTitleCardAssetId}
+              version={episode.version}
               onUpdate={refetchEpisode}
             />
 

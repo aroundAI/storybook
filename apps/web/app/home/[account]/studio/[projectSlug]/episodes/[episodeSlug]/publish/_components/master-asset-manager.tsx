@@ -1,12 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Asset, AssetType } from '@kit/assets';
 import { checkAssetHashAction, createAssetAction, getAssetAction } from '@kit/assets/mutations';
 import { updateEpisodeAction } from '@kit/episodes/server';
 import { calculateFileHash } from '@kit/shared/utils';
-import { Alert, AlertDescription, AlertTitle } from '@kit/ui/alert';
 import { Button } from '@kit/ui/button';
 import {
     Card,
@@ -26,16 +25,12 @@ import {
 import { Separator } from '@kit/ui/separator';
 import { toast } from '@kit/ui/sonner';
 import {
-    AlertCircle,
-    Check,
     CheckCircle2,
     Clock,
     Database,
     FileText,
     Loader2,
-    Trash2,
     Upload,
-    X,
     FileVideo,
     AlertTriangle,
 } from 'lucide-react';
@@ -66,6 +61,7 @@ export function MasterAssetManager({
                 projectId={projectId}
                 episodeId={episodeId}
                 currentAssetId={masterVideoAssetId}
+                version={version}
                 onUpdate={onUpdate}
             />
             <Separator />
@@ -76,6 +72,7 @@ export function MasterAssetManager({
                 projectId={projectId}
                 episodeId={episodeId}
                 currentAssetId={masterTitleCardAssetId}
+                version={version}
                 onUpdate={onUpdate}
             />
         </div>
@@ -89,6 +86,7 @@ interface MasterAssetSectionProps {
     projectId: string;
     episodeId: string;
     currentAssetId?: string | null;
+    version: number;
     onUpdate?: () => void;
 }
 
@@ -99,6 +97,7 @@ function MasterAssetSection({
     projectId,
     episodeId,
     currentAssetId,
+    version,
     onUpdate,
 }: MasterAssetSectionProps) {
     const [asset, setAsset] = useState<Asset | null>(null);
@@ -131,9 +130,14 @@ function MasterAssetSection({
     const handleLinkAsset = async (assetId: string) => {
         startTransition(async () => {
             try {
-                const updateData: any = {
-                    id: episodeId,
-                    projectId,
+                const updateData: {
+                    episodeId: string;
+                    version: number;
+                    masterVideoAssetId?: string | null;
+                    masterTitleCardAssetId?: string | null;
+                } = {
+                    episodeId,
+                    version,
                 };
 
                 if (type === 'master_video') {
@@ -191,7 +195,6 @@ function MasterAssetSection({
 
             // 3. Upload to R2
             setProgress(30);
-            const ext = file.name.split('.').pop() || 'bin';
             const timestamp = Date.now();
             const storagePath = `projects/${projectId}/assets/${type}/${timestamp}-${file.name}`;
 
@@ -244,9 +247,14 @@ function MasterAssetSection({
     const handleRemoveLink = async () => {
         startTransition(async () => {
             try {
-                const updateData: any = {
-                    id: episodeId,
-                    projectId,
+                const updateData: {
+                    episodeId: string;
+                    version: number;
+                    masterVideoAssetId?: string | null;
+                    masterTitleCardAssetId?: string | null;
+                } = {
+                    episodeId,
+                    version,
                 };
 
                 if (type === 'master_video') {
