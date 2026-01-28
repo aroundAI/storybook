@@ -197,8 +197,12 @@ function MasterAssetSection({
 
             // 3. Upload to R2
             setProgress(30);
-            const timestamp = Date.now();
-            const storagePath = `projects/${projectId}/assets/${type}/${timestamp}-${file.name}`;
+
+            // SECURITY: Use UUID for storage path to prevent path traversal
+            const fileUuid = crypto.randomUUID();
+            const fileExtension = file.name.split('.').pop() || '';
+            const safeStorageName = fileExtension ? `${fileUuid}.${fileExtension}` : fileUuid;
+            const storagePath = `projects/${projectId}/assets/${type}/${safeStorageName}`;
 
             // We use 'project-assets' bucket
             const uploadResult = await uploadWithPresignedUrl(
@@ -221,8 +225,8 @@ function MasterAssetSection({
             });
 
             if (!createResult.success) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                throw new Error((createResult as any).error || 'Failed to create asset record');
+                const errorMessage = 'error' in createResult ? (createResult.error as string) : 'Failed to create asset record';
+                throw new Error(errorMessage);
             }
 
             if (!createResult.data) {
