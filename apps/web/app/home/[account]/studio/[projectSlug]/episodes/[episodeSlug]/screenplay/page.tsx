@@ -14,16 +14,40 @@ import { ScreenplayScreen } from './_components/screenplay-screen';
 
 export default function ScreenplayPage() {
   const router = useRouter();
-  const { episode, accountSlug, projectSlug, refetchEpisode } =
-    useEpisodeContext();
+  const {
+    episode,
+    accountSlug,
+    projectSlug,
+    refetchEpisode,
+    isGenerating: isContextGenerating,
+    setIsGenerating,
+  } = useEpisodeContext();
 
   // Check if screenplay already has data - skip polling if so
   const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
 
   // Check for active screenplay conversion job (only if no data exists)
-  const { isGenerating } = useActiveGenerationJob(episode.id, 'screenplay', {
-    enabled: !hasScreenplay,
-  });
+  const { isGenerating: isGeneratingJob } = useActiveGenerationJob(
+    episode.id,
+    'screenplay',
+    {
+      enabled: !hasScreenplay,
+    },
+  );
+
+  const isGenerating = isGeneratingJob || isContextGenerating;
+
+  // Safety mechanism: If context says generating, but we have data, clear it.
+  // If context says generating and we DON'T have data, refetch to be safe (handles race conditions).
+  useEffect(() => {
+    if (isContextGenerating) {
+      if (hasScreenplay) {
+        setIsGenerating(false);
+      } else {
+        refetchEpisode();
+      }
+    }
+  }, [isContextGenerating, hasScreenplay, setIsGenerating, refetchEpisode]);
 
   // Subscribe to WebSocket for screenplay-conversion results
   // This subscriber MUST be at page level so it's active during GeneratingState

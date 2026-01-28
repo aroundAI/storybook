@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { convertToScreenplayAction } from '@kit/episodes/server';
+import { useEpisodeContext } from '../../_components/episode-context-provider';
 import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
@@ -39,6 +40,7 @@ export function StoryScreen({
   onScreenplayComplete,
   refetchEpisode,
 }: StoryScreenProps) {
+  const { setIsGenerating } = useEpisodeContext(); // Add context hook
   const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -73,9 +75,10 @@ export function StoryScreen({
         onScreenplayComplete();
       }
     } else if (llmStatus === 'error') {
+      setIsGenerating(false); // Reset on error
       toast.error(llmError || 'Failed to convert to screenplay');
     }
-  }, [llmStatus, llmResult, llmError, refetchEpisode, onScreenplayComplete]);
+  }, [llmStatus, llmResult, llmError, refetchEpisode, onScreenplayComplete, setIsGenerating]);
 
   // Handle story-generation result (refresh to show generated story)
   useEffect(() => {
@@ -92,6 +95,7 @@ export function StoryScreen({
   }, [storyGenStatus, storyGenResult, storyGenError, refetchEpisode]);
 
   const handleConvertToScreenplay = () => {
+    setIsGenerating(true); // Set generating state at start
     triggerLlm(async () => {
       const result = await convertToScreenplayAction({
         episodeId: episode.id,
@@ -110,6 +114,7 @@ export function StoryScreen({
         toast.info('Converting to screenplay in background...');
         return { success: true, queued: true };
       }
+      setIsGenerating(false); // Reset on synchronous error
       throw new Error('Failed to convert to screenplay');
     });
   };
@@ -477,7 +482,7 @@ export function StoryScreen({
                                 className={cn(
                                   'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
                                   ROLE_COLORS[character.role.toLowerCase()] ??
-                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                  'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
                                 )}
                               >
                                 {character.role}
