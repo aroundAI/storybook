@@ -27,6 +27,7 @@ export type AssetType =
 export interface Asset {
   id: string;
   projectId: string;
+  episodeId: string | null;
   type: AssetType;
   name: string;
   description: string | null;
@@ -148,6 +149,7 @@ export interface Voice extends Omit<Asset, 'type' | 'metadata'> {
 export interface AssetRow {
   id: string;
   project_id: string;
+  episode_id: string | null;
   type: string;
   name: string;
   description: string | null;
@@ -169,6 +171,7 @@ export function mapRowToAsset(row: AssetRow): Asset {
   return {
     id: row.id,
     projectId: row.project_id,
+    episodeId: row.episode_id,
     type: row.type as AssetType,
     name: row.name,
     description: row.description,

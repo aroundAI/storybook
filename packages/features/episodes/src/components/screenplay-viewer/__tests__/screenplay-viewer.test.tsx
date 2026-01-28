@@ -205,6 +205,8 @@ describe('ScreenplayViewer', () => {
     deletedAt: null,
     shots: [],
     season: null,
+    titleCards: [],
+    masterVideoAsset: null,
   };
 
   const mockOnApprove = vi.fn();

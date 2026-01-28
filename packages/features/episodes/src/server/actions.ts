@@ -8,6 +8,8 @@ import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { AssetRow } from '@kit/assets';
+import { mapRowToAsset } from '@kit/assets';
 
 import {
   CreateEpisodeSchema,
@@ -189,7 +191,8 @@ export const getEpisodeWithShotsAction = enhanceAction(
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        master_video_asset_id, master_title_card_asset_id,
+        master_video_asset_id,
+        master_video:assets!episodes_master_video_asset_id_fkey(*),
         season:seasons(id, name, number)
       `,
       )
@@ -223,7 +226,24 @@ export const getEpisodeWithShotsAction = enhanceAction(
       throw new Error('Failed to fetch episode shots');
     }
 
+    // Fetch title cards (Asset[])
+    const { data: titleCards, error: titleCardsError } = await client
+      .from('assets')
+      .select('*')
+      .eq('episode_id', data.episodeId)
+      .eq('type', 'master_title_card')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (titleCardsError) {
+      logger.error({ ...ctx, error: titleCardsError }, 'Failed to fetch title cards');
+      // Non-critical, continue without title cards
+    }
+
     logger.info(ctx, 'Episode fetched with shots');
+
+    // Map titleCards with runtime safety check
+    const mappedTitleCards = (Array.isArray(titleCards) ? titleCards as AssetRow[] : []).map(mapRowToAsset);
 
     // Transform snake_case database fields to camelCase TypeScript properties
     const transformedEpisode: EpisodeWithShots = {
@@ -249,7 +269,6 @@ export const getEpisodeWithShotsAction = enhanceAction(
       updatedAt: episode.updated_at,
       deletedAt: episode.deleted_at,
       masterVideoAssetId: episode.master_video_asset_id,
-      masterTitleCardAssetId: episode.master_title_card_asset_id,
       shots: (shots ?? []).map((shot: Record<string, unknown>) => ({
         id: shot.id,
         episodeId: shot.episode_id,
@@ -273,6 +292,10 @@ export const getEpisodeWithShotsAction = enhanceAction(
         deletedAt: shot.deleted_at,
       })),
       season: episode.season?.[0] ?? null,
+      titleCards: mappedTitleCards,
+      masterVideoAsset: episode.master_video
+        ? mapRowToAsset(episode.master_video as AssetRow)
+        : null,
     };
 
     return {
@@ -531,10 +554,27 @@ export const updateEpisodeAction = enhanceAction(
       updates.screenplay_data = data.screenplayData as Json;
     if (data.shotList !== undefined) updates.shot_list = data.shotList as Json;
     if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
-    if (data.masterVideoAssetId !== undefined)
+
+    // Security: Verify masterVideoAssetId belongs to the same project
+    if (data.masterVideoAssetId !== undefined) {
+      if (data.masterVideoAssetId !== null) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: assetCheck, error: assetError } = await (client as any)
+          .from('assets')
+          .select('id, project_id')
+          .eq('id', data.masterVideoAssetId)
+          .single();
+
+        if (assetError || !assetCheck) {
+          throw new Error('Failed to verify asset access');
+        }
+
+        if (assetCheck.project_id !== currentEpisode.project_id) {
+          throw new Error('Asset does not belong to this project');
+        }
+      }
       updates.master_video_asset_id = data.masterVideoAssetId;
-    if (data.masterTitleCardAssetId !== undefined)
-      updates.master_title_card_asset_id = data.masterTitleCardAssetId;
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: updateError } = await (client as any)

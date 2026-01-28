@@ -44,11 +44,29 @@ export const createAssetAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    // Security: Verify episodeId belongs to the same project if provided
+    if (data.episodeId) {
+      const { data: episodeCheck, error: episodeError } = await client
+        .from('episodes')
+        .select('id, project_id')
+        .eq('id', data.episodeId)
+        .single();
+
+      if (episodeError || !episodeCheck) {
+        throw new Error('Failed to verify episode access');
+      }
+
+      if (episodeCheck.project_id !== data.projectId) {
+        throw new Error('Episode does not belong to this project');
+      }
+    }
+
     // Insert asset (RLS will enforce project access)
     const { data: asset, error } = await client
       .from('assets')
       .insert({
         project_id: data.projectId,
+        episode_id: data.episodeId ?? null,
         type: data.type,
         name: data.name,
         description: data.description ?? null,

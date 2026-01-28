@@ -2091,8 +2091,8 @@ export function PublishScreen({
             <MasterAssetManager
               projectId={episode.projectId}
               episodeId={episode.id}
-              masterVideoAssetId={episode.masterVideoAssetId}
-              masterTitleCardAssetId={episode.masterTitleCardAssetId}
+              masterVideoAsset={episode.masterVideoAsset}
+              titleCards={episode.titleCards}
               version={episode.version}
               onUpdate={refetchEpisode}
             />

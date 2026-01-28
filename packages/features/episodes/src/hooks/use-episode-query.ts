@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
+import { AssetRow, mapRowToAsset } from '@kit/assets';
 import type { EpisodeWithShots, Shot } from '../lib/types';
 
 const POLL_INTERVAL = 5000; // 5 seconds during generation
@@ -33,6 +34,7 @@ interface DatabaseEpisode {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  master_video_asset_id: string | null;
   season: Array<{
     id: string;
     name: string;
@@ -41,6 +43,8 @@ interface DatabaseEpisode {
   project: {
     metadata: Record<string, unknown>;
   } | null;
+  master_video: AssetRow | null;
+  title_cards: AssetRow[];
 }
 
 interface DatabaseShot {
@@ -120,6 +124,7 @@ function transformEpisodeResponse(
     createdAt: episode.created_at,
     updatedAt: episode.updated_at,
     deletedAt: episode.deleted_at,
+    masterVideoAssetId: episode.master_video_asset_id,
     shots: shots.map(transformShot),
     season: episode.season?.[0] ?? null,
     projectMetadata: (episode.project?.metadata ?? {}) as {
@@ -128,6 +133,8 @@ function transformEpisodeResponse(
       description?: string;
       projectAestheticStyle?: string;
     },
+    titleCards: (episode.title_cards ?? []).filter(card => card.type === 'master_title_card').map(mapRowToAsset),
+    masterVideoAsset: episode.master_video ? mapRowToAsset(episode.master_video) : null,
   };
 }
 
@@ -149,8 +156,11 @@ export function useEpisodeQuery(
           status, duration_seconds, thumbnail_url, final_video_url,
           localized_videos, story_data, screenplay_data, shot_list,
           metadata, version, created_at, updated_at, deleted_at,
+          master_video_asset_id,
           season:seasons(id, name, number),
-          project:projects(metadata)
+          project:projects(metadata),
+          master_video:assets!episodes_master_video_asset_id_fkey(*),
+          title_cards:assets!assets_episode_id_fkey(*)
         `,
         )
         .eq('id', episodeId)

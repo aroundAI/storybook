@@ -11,6 +11,7 @@ import type {
   ShotListData,
   StoryData,
 } from '@kit/episodes/types';
+import { AssetRow, mapRowToAsset } from '@kit/assets';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -18,6 +19,37 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { EpisodeContextProvider } from './_components/episode-context-provider';
 import { EpisodeWorkspaceHeader } from './_components/episode-workspace-header';
 import { EpisodeWorkspaceTabs } from './_components/episode-workspace-tabs';
+
+// Local interface extending the Supabase query result with joined relations
+interface EpisodeDataWithRelations {
+  id: string;
+  slug: string | null;
+  project_id: string;
+  season_id: string | null;
+  number: number;
+  title: string;
+  description: string | null;
+  status: string;
+  duration_seconds: number | null;
+  thumbnail_url: string | null;
+  final_video_url: string | null;
+  localized_videos: Record<string, string> | null;
+  shorts_groups: ShortsGroup[] | null;
+  story_data: StoryData | null;
+  screenplay_data: ScreenplayData | null;
+  shot_list: ShotListData | null;
+  metadata: EpisodeMetadata | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  master_video_asset_id: string | null;
+  master_video: AssetRow | null;
+  title_cards: AssetRow[] | null;
+  // Supabase returns season as single object when using .single() or as array from joins
+  // We normalize to single object in the transform below
+  season: { id: string; name: string | null; number: number } | null;
+}
 
 interface EpisodeWorkspaceLayoutProps {
   children: React.ReactNode;
@@ -95,7 +127,10 @@ async function EpisodeWorkspaceLayout({
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        season:seasons(id, name, number)
+        master_video_asset_id,
+        season:seasons(id, name, number),
+        master_video:assets!episodes_master_video_asset_id_fkey(*),
+        title_cards:assets!assets_episode_id_fkey(*)
       `,
     )
     .eq('slug', episodeSlug)
@@ -155,6 +190,13 @@ async function EpisodeWorkspaceLayout({
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,
+    masterVideoAssetId: (episodeData as EpisodeDataWithRelations).master_video_asset_id,
+    masterVideoAsset: (episodeData as EpisodeDataWithRelations).master_video
+      ? mapRowToAsset((episodeData as EpisodeDataWithRelations).master_video!)
+      : null,
+    titleCards: ((episodeData as EpisodeDataWithRelations).title_cards ?? [])
+      .filter((asset: AssetRow) => asset.type === 'master_title_card')
+      .map(mapRowToAsset),
     shots:
       shotsData?.map((shot) => ({
         id: shot.id,

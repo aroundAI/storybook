@@ -93,6 +93,7 @@ export const VoiceMetadataSchema = z.object({
  */
 export const CreateAssetSchema = z.object({
   projectId: z.string().uuid(),
+  episodeId: z.string().uuid().optional(),
   type: AssetTypeSchema,
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional(),
