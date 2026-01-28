@@ -67,7 +67,6 @@ export function ScreenplayScreen({
     status: screenplayStatus,
     result: screenplayResult,
     error: screenplayError,
-    trigger: triggerScreenplay,
   } = useLlmJob<{ success: boolean }>('screenplay-conversion');
 
   // Handle shot-generation async result
