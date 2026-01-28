@@ -5,6 +5,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useMemo,
   useState,
   useTransition,
 } from 'react';
@@ -145,5 +146,5 @@ export function useEpisodeGenerationCheck({
     }
   }, [isContextGenerating, hasData, setIsGenerating, refetchEpisode]);
 
-  return { isGenerating };
+  return useMemo(() => ({ isGenerating }), [isGenerating]);
 }
