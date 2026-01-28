@@ -13,7 +13,7 @@ export function DocsNavLink({
   url,
   children,
 }: React.PropsWithChildren<{ label: string; url: string }>) {
-  const currentPath = usePathname();
+  const currentPath = usePathname() ?? '';
   const ref = useRef<HTMLElement>(null);
   const isCurrent = isRouteActive(url, currentPath, true);
 

@@ -16,8 +16,8 @@ import { isBrowser } from '@kit/shared/utils';
 type AnalyticsMapping<
   T extends ConsumerProvidedEventTypes = NonNullable<unknown>,
 > = {
-  [K in AppEventType<T>]?: (event: AppEvent<T, K>) => unknown;
-};
+    [K in AppEventType<T>]?: (event: AppEvent<T, K>) => unknown;
+  };
 
 /**
  * Hook to subscribe to app events and map them to analytics actions
@@ -93,8 +93,8 @@ export function AnalyticsProvider(props: React.PropsWithChildren) {
  * @param reportAnalyticsFn
  */
 function useReportPageView(reportAnalyticsFn: (url: string) => unknown) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const pathname = usePathname() ?? '';
+  const searchParams = useSearchParams() ?? new URLSearchParams();
 
   useEffect(() => {
     const url = [pathname, searchParams.toString()].filter(Boolean).join('?');

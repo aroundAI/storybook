@@ -12,7 +12,7 @@ export function DocsNavigationCollapsible(
     prefix: string;
   }>,
 ) {
-  const currentPath = usePathname();
+  const currentPath = usePathname() ?? '';
   const prefix = props.prefix;
 
   const isChildActive = props.node.children.some((child) =>

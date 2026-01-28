@@ -30,7 +30,7 @@ export function BorderedNavigationMenuItem(props: {
   className?: string;
   buttonClassName?: string;
 }) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
 
   const active = props.active ?? isRouteActive(props.path, pathname, props.end);
 

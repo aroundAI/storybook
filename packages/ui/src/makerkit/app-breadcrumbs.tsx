@@ -21,7 +21,7 @@ export function AppBreadcrumbs(props: {
   values?: Record<string, string>;
   maxDepth?: number;
 }) {
-  const pathName = usePathname();
+  const pathName = usePathname() ?? '';
   const splitPath = pathName.split('/').filter(Boolean);
   const values = props.values ?? {};
   const maxDepth = props.maxDepth ?? 6;

@@ -37,7 +37,7 @@ export function TeamAccountCheckoutForm(params: {
   accountId: string;
   customerId: string | null | undefined;
 }) {
-  const routeParams = useParams();
+  const routeParams = useParams() ?? {};
   const [pending, startTransition] = useTransition();
   const appEvents = useAppEvents();
 

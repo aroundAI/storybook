@@ -98,7 +98,7 @@ function getTabUnlockState(
 }
 
 export function EpisodeWorkspaceTabs() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const { episode, accountSlug, projectSlug } = useEpisodeContext();
 
   // Check if any shots have completed videos

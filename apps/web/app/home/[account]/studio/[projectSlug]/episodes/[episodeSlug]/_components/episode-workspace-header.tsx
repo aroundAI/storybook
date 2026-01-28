@@ -10,7 +10,7 @@ import { useEpisodeContext } from './episode-context-provider';
 import { StudioSwitcher } from './studio-switcher';
 
 export function EpisodeWorkspaceHeader() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const isEditingStudio = pathname.includes('/editing-studio');
   const { episode, projectSlug, accountSlug, projectName } =
     useEpisodeContext();

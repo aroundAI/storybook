@@ -42,6 +42,7 @@ interface MasterAssetManagerProps {
     episodeId: string;
     masterVideoAssetId?: string | null;
     masterTitleCardAssetId?: string | null;
+    version: number;
     onUpdate?: () => void;
 }
 
@@ -50,6 +51,7 @@ export function MasterAssetManager({
     episodeId,
     masterVideoAssetId,
     masterTitleCardAssetId,
+    version,
     onUpdate,
 }: MasterAssetManagerProps) {
     return (

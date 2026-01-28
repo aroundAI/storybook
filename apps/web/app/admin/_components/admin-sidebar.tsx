@@ -21,7 +21,7 @@ import { AppLogo } from '~/components/app-logo';
 import { ProfileAccountDropdownContainer } from '~/components/personal-account-dropdown-container';
 
 export function AdminSidebar() {
-  const path = usePathname();
+  const path = usePathname() ?? '';
 
   return (
     <Sidebar collapsible="icon">

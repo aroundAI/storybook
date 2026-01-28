@@ -1,0 +1,56 @@
+
+> web@0.1.0 typecheck /Users/shaurya/Work/projects/storybook/apps/web
+> tsc --noEmit
+
+app/(marketing)/_components/site-navigation-item.tsx(28,40): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+app/(marketing)/docs/_components/docs-nav-link.tsx(18,40): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+app/(marketing)/docs/_components/docs-navigation-collapsible.tsx(19,45): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+app/admin/_components/admin-sidebar.tsx(46,27): error TS18047: 'path' is possibly 'null'.
+app/admin/_components/admin-sidebar.tsx(59,27): error TS18047: 'path' is possibly 'null'.
+app/home/[account]/_components/conditional-sidebar-layout.tsx(43,5): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/_components/conditional-sidebar-layout.tsx(43,40): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/billing/_components/team-account-checkout-form.tsx(82,28): error TS18047: 'routeParams' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx(120,12): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx(258,23): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx(259,23): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx(269,23): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx(270,23): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/mobile-studio-header.tsx(278,31): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx(185,12): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx(443,19): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx(443,51): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx(453,19): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx(453,51): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/_components/studio-sidebar.tsx(461,27): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx(14,27): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx(117,9): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx(118,9): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx(119,9): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx(120,9): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx(121,9): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-tabs.tsx(122,9): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/studio-switcher.tsx(22,25): error TS18047: 'pathname' is possibly 'null'.
+app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/studio-switcher.tsx(27,23): error TS18047: 'pathname' is possibly 'null'.
+components/analytics-provider.tsx(100,28): error TS18047: 'searchParams' is possibly 'null'.
+../../packages/features/assets/src/components/asset-gallery.tsx(48,22): error TS18047: 'searchParams' is possibly 'null'.
+../../packages/features/assets/src/components/asset-gallery.tsx(80,42): error TS18047: 'searchParams' is possibly 'null'.
+../../packages/features/auth/src/components/existing-account-hint.tsx(41,20): error TS18047: 'params' is possibly 'null'.
+../../packages/features/auth/src/components/otp-sign-in-container.tsx(84,18): error TS18047: 'params' is possibly 'null'.
+../../packages/features/episodes/src/components/episode-tabs.tsx(39,29): error TS18047: 'params' is possibly 'null'.
+../../packages/features/episodes/src/components/episode-tabs.tsx(39,54): error TS18047: 'params' is possibly 'null'.
+../../packages/features/episodes/src/components/episode-tabs.tsx(39,83): error TS18047: 'params' is possibly 'null'.
+../../packages/features/episodes/src/components/episode-tabs.tsx(48,13): error TS18047: 'pathname' is possibly 'null'.
+../../packages/features/episodes/src/hooks/use-url-tab-state.ts(29,20): error TS18047: 'searchParams' is possibly 'null'.
+../../packages/features/episodes/src/hooks/use-url-tab-state.ts(35,42): error TS18047: 'searchParams' is possibly 'null'.
+../../packages/supabase/src/hooks/use-auth-change-listener.ts(51,33): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+../../packages/supabase/src/hooks/use-auth-change-listener.ts(64,39): error TS18047: 'pathName' is possibly 'null'.
+../../packages/ui/src/makerkit/app-breadcrumbs.tsx(25,21): error TS18047: 'pathName' is possibly 'null'.
+../../packages/ui/src/makerkit/bordered-navigation-menu.tsx(35,60): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+/Users/shaurya/Work/projects/storybook/apps/web:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  web@0.1.0 typecheck: `tsc --noEmit`
+Exit status 1

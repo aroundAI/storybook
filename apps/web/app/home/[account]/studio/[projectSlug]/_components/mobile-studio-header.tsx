@@ -107,7 +107,7 @@ export function MobileStudioHeader({
   user,
   counts,
 }: MobileStudioHeaderProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);
