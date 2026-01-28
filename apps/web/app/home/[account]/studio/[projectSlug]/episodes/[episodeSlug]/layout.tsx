@@ -11,6 +11,7 @@ import type {
   ShotListData,
   StoryData,
 } from '@kit/episodes/types';
+import { AssetRow, mapRowToAsset } from '@kit/assets';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -95,7 +96,10 @@ async function EpisodeWorkspaceLayout({
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        season:seasons(id, name, number)
+        master_video_asset_id,
+        season:seasons(id, name, number),
+        master_video:assets!episodes_master_video_asset_id_fkey(*),
+        title_cards:assets!assets_episode_id_fkey(*)
       `,
     )
     .eq('slug', episodeSlug)
@@ -155,6 +159,13 @@ async function EpisodeWorkspaceLayout({
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,
+    masterVideoAssetId: (episodeData as any).master_video_asset_id,
+    masterVideoAsset: (episodeData as any).master_video
+      ? mapRowToAsset((episodeData as any).master_video)
+      : null,
+    titleCards: ((episodeData as any).title_cards ?? [])
+      .filter((asset: AssetRow) => asset.type === 'master_title_card')
+      .map(mapRowToAsset),
     shots:
       shotsData?.map((shot) => ({
         id: shot.id,
