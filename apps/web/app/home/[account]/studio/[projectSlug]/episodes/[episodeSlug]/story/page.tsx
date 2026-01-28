@@ -14,16 +14,40 @@ import { StoryScreen } from './_components/story-screen';
 
 export default function StoryPage() {
   const router = useRouter();
-  const { episode, accountSlug, projectSlug, refetchEpisode } =
-    useEpisodeContext();
+  const {
+    episode,
+    accountSlug,
+    projectSlug,
+    refetchEpisode,
+    isGenerating: isContextGenerating,
+    setIsGenerating,
+  } = useEpisodeContext();
 
   // Check if story already has data - skip polling if so
   const hasStory = Boolean(episode.storyData?.fullStory);
 
   // Check for active story generation job (only if no data exists)
-  const { isGenerating } = useActiveGenerationJob(episode.id, 'story', {
+  const { isGenerating: isGeneratingJob } = useActiveGenerationJob(episode.id, 'story', {
     enabled: !hasStory,
   });
+
+  // Combine both sources of truth
+  const isGenerating = isGeneratingJob || isContextGenerating;
+
+  // Clear context generating state when story loads
+  useEffect(() => {
+    if (hasStory && isContextGenerating) {
+      setIsGenerating(false);
+    }
+  }, [hasStory, isContextGenerating, setIsGenerating]);
+
+  // Safety: If we think we are generating (from context) but have no story,
+  // we might have navigated before the refresh completed. Force a refresh.
+  useEffect(() => {
+    if (isContextGenerating && !hasStory) {
+      refetchEpisode();
+    }
+  }, [isContextGenerating, hasStory, refetchEpisode]);
 
   // Subscribe to WebSocket for story-generation results
   // This subscriber MUST be at page level so it's active during GeneratingState

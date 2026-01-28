@@ -46,7 +46,6 @@ export default function IdeationPage() {
       const resultData = llmResult as any;
       if (resultData?.success) {
         toast.success('Story generated successfully');
-        setIsGenerating(false);
         refetchEpisode();
         router.push(
           `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/story`,
@@ -68,6 +67,8 @@ export default function IdeationPage() {
     episode.slug,
     episode.id,
   ]);
+
+
 
   // Extract project defaults for duration and content style
   const defaultDuration =
