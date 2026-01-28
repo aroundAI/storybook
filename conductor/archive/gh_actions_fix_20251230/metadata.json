@@ -1,0 +1,8 @@
+{
+"track_id": "gh_actions_fix_20251230",
+"type": "bug",
+"status": "new",
+"created_at": "2025-12-30T07:45:23Z",
+"updated_at": "2025-12-30T07:45:23Z",
+"description": "Investigate and fix failing GitHub Actions workflows using the GitHub CLI, and commit the necessary fixes."
+}
