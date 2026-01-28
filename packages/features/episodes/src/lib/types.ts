@@ -163,14 +163,14 @@ export interface ScreenplayScene {
   heading: string;
   location: string;
   timeOfDay:
-    | 'dawn'
-    | 'morning'
-    | 'midday'
-    | 'afternoon'
-    | 'golden-hour'
-    | 'dusk'
-    | 'night'
-    | 'day';
+  | 'dawn'
+  | 'morning'
+  | 'midday'
+  | 'afternoon'
+  | 'golden-hour'
+  | 'dusk'
+  | 'night'
+  | 'day';
   description: string;
   dialogue: ScreenplayDialogueLine[];
   estimatedDuration: number;
@@ -343,6 +343,8 @@ export interface Episode {
     projectAestheticStyle?: string;
     [key: string]: unknown;
   };
+  masterVideoAssetId?: string | null;
+  masterTitleCardAssetId?: string | null;
 }
 
 /**
@@ -394,12 +396,12 @@ export interface ShortsMetadata {
   viralScore: number;
   /** Type of hook this shot contains */
   hookType?:
-    | 'question'
-    | 'reveal'
-    | 'conflict'
-    | 'visual'
-    | 'humor'
-    | 'cliffhanger';
+  | 'question'
+  | 'reveal'
+  | 'conflict'
+  | 'visual'
+  | 'humor'
+  | 'cliffhanger';
   /** Suggested offset from shot start for optimal clip (seconds) */
   suggestedStartOffset?: number;
   /** Suggested clip duration (seconds) */

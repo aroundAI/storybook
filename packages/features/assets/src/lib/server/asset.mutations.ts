@@ -10,9 +10,11 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
   CreateAssetSchema,
+  CheckAssetHashSchema,
   DeleteAssetSchema,
   GetProjectAssetsSchema,
   UpdateAssetSchema,
+  GetAssetSchema,
 } from '../schemas/asset.schema';
 import type {
   Asset,
@@ -21,7 +23,7 @@ import type {
   GetProjectAssetsResponse,
 } from '../types';
 import { mapRowToAsset } from '../types';
-import { isAssetInUse } from './asset.queries';
+import { isAssetInUse, checkAssetHashQuery, getAsset } from './asset.queries';
 
 /**
  * Create a new asset for a project
@@ -53,6 +55,9 @@ export const createAssetAction = enhanceAction(
         file_url: data.fileUrl ?? null,
         thumbnail_url: data.thumbnailUrl ?? null,
         metadata: (data.metadata as Json) ?? ({} as Json),
+        file_hash: data.fileHash ?? null,
+        file_size_bytes: data.fileSizeBytes ?? null,
+        content_type: data.contentType ?? null,
       })
       .select()
       .single();
@@ -134,6 +139,42 @@ export const getProjectAssetsAction = enhanceAction(
   },
   {
     schema: GetProjectAssetsSchema,
+  },
+);
+
+/**
+ * Check if an asset with the given hash exists
+ *
+ * @throws {Error} If user lacks project access
+ */
+export const checkAssetHashAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'assets.checkHash', projectId: data.projectId };
+
+    logger.info(ctx, 'Checking asset hash');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    const existingAsset = await checkAssetHashQuery(data.projectId, data.fileHash, data.type);
+
+    logger.info(
+      { ...ctx, found: !!existingAsset },
+      'Asset hash check completed',
+    );
+
+    return {
+      success: true,
+      data: existingAsset,
+    };
+  },
+  {
+    schema: CheckAssetHashSchema,
   },
 );
 
@@ -252,5 +293,41 @@ export const deleteAssetAction = enhanceAction(
   },
   {
     schema: DeleteAssetSchema,
+  },
+);
+
+/**
+ * Get a single asset by ID (Server Action wrapper)
+ *
+ * @throws {Error} If user lacks project access (via RLS) or asset not found
+ */
+export const getAssetAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'assets.get', assetId: data.assetId };
+
+    logger.info(ctx, 'Getting asset via action');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Reuse the existing query function logic which handles RLS via Supabase client
+    const asset = await getAsset(data.assetId);
+
+    if (!asset) {
+      logger.warn(ctx, 'Asset not found');
+      return { success: true, data: null };
+    }
+
+    logger.info(ctx, 'Asset retrieved successfully');
+
+    return { success: true, data: asset };
+  },
+  {
+    schema: GetAssetSchema,
   },
 );

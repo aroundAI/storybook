@@ -36,7 +36,7 @@ export function useAuthChangeListener({
   onEvent?: (event: AuthChangeEvent, user: Session | null) => void;
 }) {
   const client = useSupabase();
-  const pathName = usePathname();
+  const pathName = usePathname() ?? '';
 
   useEffect(() => {
     // keep this running for the whole session unless the component was unmounted

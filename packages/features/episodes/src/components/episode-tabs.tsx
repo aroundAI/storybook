@@ -29,14 +29,14 @@ const EPISODE_TABS = [
  * ```
  */
 export function EpisodeTabs() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const params = useParams<{
     account: string;
     projectId: string;
     episodeId: string;
-  }>();
+  }>() ?? { account: '', projectId: '', episodeId: '' };
 
-  const basePath = `/home/${params.account}/studio/${params.projectId}/episodes/${params.episodeId}`;
+  const basePath = `/home/${params?.account ?? ''}/studio/${params?.projectId ?? ''}/episodes/${params?.episodeId ?? ''}`;
 
   return (
     <div className="border-b">

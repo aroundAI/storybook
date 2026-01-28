@@ -15,7 +15,7 @@ import {
 type StudioMode = 'story' | 'audio';
 
 export function StudioSwitcher() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const router = useRouter();
 
   // Determine current studio mode based on path

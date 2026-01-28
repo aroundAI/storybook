@@ -33,7 +33,7 @@ export function ConditionalSidebarLayout({
   user,
   accountId,
 }: ConditionalSidebarLayoutProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
 
   // Hide main sidebar when in Studio project routes
   // Pattern: /home/{account}/studio/{projectId} or /home/{account}/studio/{projectId}/*

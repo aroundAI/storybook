@@ -35,7 +35,7 @@ export function ExistingAccountHintImpl({
   const { hasLastMethod, methodType, providerName, isOAuth } =
     useLastAuthMethod();
 
-  const params = useSearchParams();
+  const params = useSearchParams() ?? new URLSearchParams();
   const { t } = useTranslation();
 
   const isInvite = params.get('invite_token');

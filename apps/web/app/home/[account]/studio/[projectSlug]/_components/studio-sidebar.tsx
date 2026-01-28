@@ -154,7 +154,7 @@ export function StudioSidebar({
   user,
   counts = {},
 }: StudioSidebarProps) {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? '';
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [isProjectSwitcherOpen, setIsProjectSwitcherOpen] = useState(false);

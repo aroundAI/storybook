@@ -42,7 +42,7 @@ export function AssetGallery({
 }: AssetGalleryProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams() ?? new URLSearchParams();
 
   // Get active tab from URL or use initial
   const activeTab = (searchParams.get('tab') as TabType) ?? initialTab;

@@ -102,6 +102,8 @@ import {
   uploadWithPresignedUrl,
 } from '~/lib/presigned-upload';
 
+import { MasterAssetManager } from './master-asset-manager';
+
 interface PublishScreenProps {
   episode: EpisodeWithShots;
   refetchEpisode: () => void;
@@ -2085,6 +2087,16 @@ export function PublishScreen({
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left: Video Uploads */}
           <div className="space-y-6 lg:col-span-2">
+            {/* Master Assets Record Keeping */}
+            <MasterAssetManager
+              projectId={episode.projectId}
+              episodeId={episode.id}
+              masterVideoAssetId={episode.masterVideoAssetId}
+              masterTitleCardAssetId={episode.masterTitleCardAssetId}
+              version={episode.version}
+              onUpdate={refetchEpisode}
+            />
+
             {/* Full Videos Section */}
             <Card>
               <CardHeader className="pb-3">

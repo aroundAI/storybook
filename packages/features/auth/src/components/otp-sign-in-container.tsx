@@ -43,7 +43,7 @@ export function OtpSignInContainer(props: OtpSignInContainerProps) {
   const verifyMutation = useVerifyOtp();
   const router = useRouter();
   const { recordAuthMethod } = useLastAuthMethod();
-  const params = useSearchParams();
+  const params = useSearchParams() ?? new URLSearchParams();
 
   const otpForm = useForm({
     resolver: zodResolver(OtpSchema.merge(EmailSchema)),

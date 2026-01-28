@@ -24,7 +24,7 @@ export function SiteNavigationItem({
 }: React.PropsWithChildren<{
   path: string;
 }>) {
-  const currentPathName = usePathname();
+  const currentPathName = usePathname() ?? '';
   const className = getClassName(path, currentPathName);
 
   return (

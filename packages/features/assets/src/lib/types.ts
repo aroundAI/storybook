@@ -17,7 +17,9 @@ export type AssetType =
   | 'prop'
   | 'voice'
   | 'music'
-  | 'sfx';
+  | 'sfx'
+  | 'master_video'
+  | 'master_title_card';
 
 /**
  * Base asset interface matching database schema
@@ -30,6 +32,9 @@ export interface Asset {
   description: string | null;
   fileUrl: string | null;
   thumbnailUrl: string | null;
+  fileHash: string | null;
+  fileSizeBytes: number | null;
+  contentType: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
@@ -148,6 +153,9 @@ export interface AssetRow {
   description: string | null;
   file_url: string | null;
   thumbnail_url: string | null;
+  file_hash: string | null;
+  file_size_bytes: number | null;
+  content_type: string | null;
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -166,6 +174,9 @@ export function mapRowToAsset(row: AssetRow): Asset {
     description: row.description,
     fileUrl: row.file_url,
     thumbnailUrl: row.thumbnail_url,
+    fileHash: row.file_hash,
+    fileSizeBytes: row.file_size_bytes,
+    contentType: row.content_type,
     metadata: row.metadata,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
