@@ -46,7 +46,9 @@ interface EpisodeDataWithRelations {
   master_video_asset_id: string | null;
   master_video: AssetRow | null;
   title_cards: AssetRow[] | null;
-  season: Array<{ id: string; name: string | null; number: number }> | { id: string; name: string | null; number: number } | null;
+  // Supabase returns season as single object when using .single() or as array from joins
+  // We normalize to single object in the transform below
+  season: { id: string; name: string | null; number: number } | null;
 }
 
 interface EpisodeWorkspaceLayoutProps {

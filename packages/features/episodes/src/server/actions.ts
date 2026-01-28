@@ -566,7 +566,7 @@ export const updateEpisodeAction = enhanceAction(
           .single();
 
         if (assetError || !assetCheck) {
-          throw new Error('Asset not found');
+          throw new Error('Failed to verify asset access');
         }
 
         if (assetCheck.project_id !== currentEpisode.project_id) {

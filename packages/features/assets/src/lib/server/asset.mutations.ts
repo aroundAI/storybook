@@ -53,7 +53,7 @@ export const createAssetAction = enhanceAction(
         .single();
 
       if (episodeError || !episodeCheck) {
-        throw new Error('Episode not found');
+        throw new Error('Failed to verify episode access');
       }
 
       if (episodeCheck.project_id !== data.projectId) {

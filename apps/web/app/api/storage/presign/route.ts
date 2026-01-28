@@ -43,7 +43,20 @@ export async function POST(request: NextRequest) {
 
     // Security: Validate path pattern to prevent path traversal
     // Expected pattern: projects/{projectId}/assets/{type}/{filename}
-    const pathPattern = /^projects\/([a-f0-9-]+)\/assets\/(master_video|master_title_card|thumbnail|frame|video|audio|image)\/[a-f0-9-]+\.[a-z0-9]+$/i;
+    const ALLOWED_ASSET_TYPES = [
+      'master_video',
+      'master_title_card',
+      'thumbnail',
+      'frame',
+      'video',
+      'audio',
+      'image',
+    ];
+    const typesPattern = ALLOWED_ASSET_TYPES.join('|');
+    const pathPattern = new RegExp(
+      `^projects\\/([a-f0-9-]+)\\/assets\\/(${typesPattern})\\/[a-f0-9-]+\\.[a-z0-9]+$`,
+      'i'
+    );
     const pathMatch = path.match(pathPattern);
 
     if (!pathMatch) {
