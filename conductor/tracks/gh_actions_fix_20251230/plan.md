@@ -16,8 +16,8 @@
 - [x] Task: Conductor - User Manual Verification 'Remediation' (Protocol in workflow.md) [d148eaf]
 
 ## Phase 3: Verification & Commit
-- [ ] Task: Push fixes and verify CI stability.
-  - [ ] Sub-task: Commit changes with a descriptive message (e.g., `fix(ci): resolve build timeout in test workflow`).
-  - [ ] Sub-task: Push changes to a branch/PR.
-  - [ ] Sub-task: Monitor the new workflow run using `gh run watch` to ensure it passes.
+- [x] Task: Push fixes and verify CI stability. [70d88a4f]
+  - [x] Sub-task: Commit changes with a descriptive message (e.g., `fix(ci): resolve build timeout in test workflow`).
+  - [x] Sub-task: Push changes to a branch/PR.
+  - [x] Sub-task: Monitor the new workflow run using `gh run watch` to ensure it passes.
 - [ ] Task: Conductor - User Manual Verification 'Verification & Commit' (Protocol in workflow.md)
