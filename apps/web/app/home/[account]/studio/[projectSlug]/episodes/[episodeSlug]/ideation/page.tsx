@@ -68,8 +68,6 @@ export default function IdeationPage() {
     episode.id,
   ]);
 
-
-
   // Extract project defaults for duration and content style
   const defaultDuration =
     (projectMetadata?.defaultEpisodeDuration as number | undefined) ?? 300;
