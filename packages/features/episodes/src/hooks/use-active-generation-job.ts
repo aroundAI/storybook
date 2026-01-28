@@ -4,11 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getSupabaseBrowserClient } from '@kit/supabase/browser-client';
 
-type GenerationJobType =
-  | 'story'
-  | 'screenplay'
-  | 'shot_list'
-  | 'translate-dialogue';
+import type { GenerationJobType } from '../lib/types';
+export type { GenerationJobType };
 
 type GenerationJobStatus = 'queued' | 'processing' | 'completed' | 'failed';
 

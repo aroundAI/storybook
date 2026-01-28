@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 
 import { generateShotListAction } from '@kit/episodes/server';
+import { useEpisodeContext } from '../../_components/episode-context-provider';
 import type {
   EpisodeWithShots,
   ScreenplayData,
@@ -43,6 +44,7 @@ export function ScreenplayScreen({
   onShotListComplete,
   refetchEpisode,
 }: ScreenplayScreenProps) {
+  const { setIsGenerating } = useEpisodeContext();
   const [isPending, _startTransition] = useTransition();
   const [activeSceneNumber, setActiveSceneNumber] = useState(1);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
@@ -80,9 +82,10 @@ export function ScreenplayScreen({
         onShotListComplete();
       }
     } else if (llmStatus === 'error') {
+      setIsGenerating(false); // Reset on error
       toast.error(llmError || 'Failed to generate shot list');
     }
-  }, [llmStatus, llmResult, llmError, refetchEpisode, onShotListComplete]);
+  }, [llmStatus, llmResult, llmError, refetchEpisode, onShotListComplete, setIsGenerating]);
 
   // Handle screenplay-conversion result (refresh to show generated screenplay)
   useEffect(() => {
@@ -138,6 +141,7 @@ export function ScreenplayScreen({
   }, [scenes]);
 
   const handleGenerateShotList = () => {
+    setIsGenerating(true); // Set generating state at start
     triggerLlm(async () => {
       const result = await generateShotListAction({
         episodeId: episode.id,
@@ -164,6 +168,7 @@ export function ScreenplayScreen({
         onShotListComplete();
         return { success: true, data: { shotsCreated } };
       }
+      setIsGenerating(false); // Reset on synchronous error
       throw new Error('Failed to generate shot list');
     });
   };

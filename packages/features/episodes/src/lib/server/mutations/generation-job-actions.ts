@@ -9,17 +9,15 @@ import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { GenerationJobType } from '../../types';
+
 const logger = await getLogger();
 
 /**
  * Job types for generation jobs
  * Maps to job_type column in generation_jobs table
  */
-export type GenerationJobType =
-  | 'story'
-  | 'screenplay'
-  | 'shot_list'
-  | 'translate-dialogue';
+export type { GenerationJobType };
 
 export type GenerationJobStatus =
   | 'queued'

@@ -4,25 +4,34 @@ import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useActiveGenerationJob } from '@kit/episodes/hooks';
+// import { useActiveGenerationJob } from '@kit/episodes/hooks'; // Removed
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
-import { useEpisodeContext } from '../_components/episode-context-provider';
+import {
+  useEpisodeContext,
+  useEpisodeGenerationCheck,
+} from '../_components/episode-context-provider';
 import { GeneratingState } from '../_components/generating-state';
 import { ScreenplayScreen } from './_components/screenplay-screen';
 
 export default function ScreenplayPage() {
   const router = useRouter();
-  const { episode, accountSlug, projectSlug, refetchEpisode } =
-    useEpisodeContext();
+  const {
+    episode,
+    accountSlug,
+    projectSlug,
+    refetchEpisode,
+  } = useEpisodeContext();
 
-  // Check if screenplay already has data - skip polling if so
+  // Check if screenplay already has data
   const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
 
-  // Check for active screenplay conversion job (only if no data exists)
-  const { isGenerating } = useActiveGenerationJob(episode.id, 'screenplay', {
-    enabled: !hasScreenplay,
+  // Consolidated generation check
+  const { isGenerating } = useEpisodeGenerationCheck({
+    episodeId: episode.id,
+    jobType: 'screenplay', // Note: useActiveGenerationJob supports 'screenplay' alias
+    hasData: hasScreenplay,
   });
 
   // Subscribe to WebSocket for screenplay-conversion results

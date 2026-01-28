@@ -46,7 +46,6 @@ export default function IdeationPage() {
       const resultData = llmResult as any;
       if (resultData?.success) {
         toast.success('Story generated successfully');
-        setIsGenerating(false);
         refetchEpisode();
         router.push(
           `/home/${accountSlug}/studio/${projectSlug}/episodes/${episode.slug ?? episode.id}/story`,
@@ -77,6 +76,7 @@ export default function IdeationPage() {
     'dialogue-heavy';
 
   const handleComplete = async (selection: StoryIdeaWithSettings) => {
+    setIsGenerating(true); // Set generating state at start
     triggerLlm(async () => {
       // Generate the full story using the selected idea
       const result = await generateFullStoryAction({
@@ -94,6 +94,7 @@ export default function IdeationPage() {
         toast.info('Generating story in background... This may take a minute.');
         return { queued: true };
       }
+      setIsGenerating(false); // Reset on synchronous error
       throw new Error('Failed to generate story');
     });
   };
