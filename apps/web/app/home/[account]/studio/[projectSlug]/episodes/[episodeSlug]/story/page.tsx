@@ -28,7 +28,7 @@ export default function StoryPage() {
   const hasStory = Boolean(episode.storyData?.fullStory);
 
   // Consolidated generation check
-  const { isGenerating } = useEpisodeGenerationCheck({
+  const { isGenerating, isLoading } = useEpisodeGenerationCheck({
     episodeId: episode.id,
     jobType: 'story',
     hasData: hasStory,
@@ -64,12 +64,16 @@ export default function StoryPage() {
     );
   };
 
-  // Show generating state if story is being generated
-  if (isGenerating && !hasStory) {
+  // Show generating state if story is being generated or status is loading
+  if ((isGenerating || isLoading) && !hasStory) {
     return (
       <GeneratingState
         title="Story"
-        description="Your story is being generated. This usually takes 15-30 seconds."
+        description={
+          isLoading
+            ? 'Checking status...'
+            : 'Your story is being generated. This usually takes 15-30 seconds.'
+        }
       />
     );
   }

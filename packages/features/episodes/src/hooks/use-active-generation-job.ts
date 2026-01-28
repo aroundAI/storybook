@@ -30,6 +30,7 @@ interface UseActiveGenerationJobResult {
   job: GenerationJob | null;
   status: GenerationJobStatus | 'idle';
   error: string | null;
+  isLoading: boolean;
   refetch: () => Promise<GenerationJob | null | undefined>;
 }
 
@@ -173,6 +174,7 @@ export function useActiveGenerationJob(
     job,
     status,
     error,
+    isLoading: _loading,
     refetch: fetchJob,
   };
 }

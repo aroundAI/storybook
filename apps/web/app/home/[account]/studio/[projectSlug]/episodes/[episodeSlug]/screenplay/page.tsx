@@ -28,7 +28,7 @@ export default function ScreenplayPage() {
   const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);
 
   // Consolidated generation check
-  const { isGenerating } = useEpisodeGenerationCheck({
+  const { isGenerating, isLoading } = useEpisodeGenerationCheck({
     episodeId: episode.id,
     jobType: 'screenplay', // Note: useActiveGenerationJob supports 'screenplay' alias
     hasData: hasScreenplay,
@@ -65,11 +65,15 @@ export default function ScreenplayPage() {
   };
 
   // Show generating state if screenplay is being generated
-  if (isGenerating && !hasScreenplay) {
+  if ((isGenerating || isLoading) && !hasScreenplay) {
     return (
       <GeneratingState
         title="Screenplay"
-        description="Your screenplay is being generated. This usually takes 20-40 seconds."
+        description={
+          isLoading
+            ? 'Checking status...'
+            : 'Your screenplay is being generated. This usually takes 20-40 seconds.'
+        }
       />
     );
   }

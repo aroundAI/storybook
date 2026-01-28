@@ -23,7 +23,7 @@ export default function VisualStudioPage() {
   const hasShots = episode.shots.length > 0 || Boolean(episode.shotList);
 
   // Consolidated generation check
-  const { isGenerating } = useEpisodeGenerationCheck({
+  const { isGenerating, isLoading } = useEpisodeGenerationCheck({
     episodeId: episode.id,
     jobType: 'shot_list',
     hasData: hasShots,
@@ -52,12 +52,22 @@ export default function VisualStudioPage() {
     }
   }, [wsStatus, wsResult, wsError, refetchEpisode]);
 
+  // Handle shot list completion - refetch episode data
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleShotListComplete = () => {
+    refetchEpisode();
+  };
+
   // Show generating state if shots are being generated
-  if (isGenerating && !hasShots) {
+  if ((isGenerating || isLoading) && !hasShots) {
     return (
       <GeneratingState
-        title="Shot List"
-        description="Your shots are being generated. This usually takes 30-60 seconds."
+        title="Visual Studio"
+        description={
+          isLoading
+            ? 'Checking status...'
+            : 'Your shots are being generated. This usually takes 30-60 seconds.'
+        }
       />
     );
   }

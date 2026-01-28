@@ -124,15 +124,15 @@ export function useEpisodeGenerationCheck({
   } = useEpisodeContext();
 
   // Check for active generation job (only if no data exists)
-  const { isGenerating: isGeneratingJob } = useActiveGenerationJob(
-    episodeId,
-    jobType,
-    {
-      enabled: !hasData,
-    },
-  );
+  const {
+    isGenerating: isGeneratingJob,
+    isLoading: isJobLoading,
+  } = useActiveGenerationJob(episodeId, jobType, {
+    enabled: !hasData,
+  });
 
   const isGenerating = isGeneratingJob || isContextGenerating;
+  const isLoading = isJobLoading && !hasData; // Only loading if checking job AND no data
 
   // Safety mechanism: If context says generating, but we have data, clear it.
   // If context says generating and we DON'T have data, refetch to be safe (handles race conditions).
@@ -146,5 +146,5 @@ export function useEpisodeGenerationCheck({
     }
   }, [isContextGenerating, hasData, setIsGenerating, refetchEpisode]);
 
-  return useMemo(() => ({ isGenerating }), [isGenerating]);
+  return useMemo(() => ({ isGenerating, isLoading }), [isGenerating, isLoading]);
 }
