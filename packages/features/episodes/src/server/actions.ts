@@ -189,7 +189,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
-        master_video_asset_id, master_title_card_asset_id,
+        master_video_asset_id,
         season:seasons(id, name, number)
       `,
       )
@@ -223,6 +223,21 @@ export const getEpisodeWithShotsAction = enhanceAction(
       throw new Error('Failed to fetch episode shots');
     }
 
+    // Fetch master title cards (1:N)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: titleCards, error: titleCardsError } = await (client as any)
+      .from('assets')
+      .select('id, name, type, file_url, file_hash, content_type, file_size_bytes, created_at')
+      .eq('episode_id', data.episodeId)
+      .eq('type', 'master_title_card')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false });
+
+    if (titleCardsError) {
+      logger.error({ ...ctx, error: titleCardsError }, 'Failed to fetch title cards');
+      // Non-critical, continue without title cards
+    }
+
     logger.info(ctx, 'Episode fetched with shots');
 
     // Transform snake_case database fields to camelCase TypeScript properties
@@ -249,7 +264,6 @@ export const getEpisodeWithShotsAction = enhanceAction(
       updatedAt: episode.updated_at,
       deletedAt: episode.deleted_at,
       masterVideoAssetId: episode.master_video_asset_id,
-      masterTitleCardAssetId: episode.master_title_card_asset_id,
       shots: (shots ?? []).map((shot: Record<string, unknown>) => ({
         id: shot.id,
         episodeId: shot.episode_id,
@@ -273,6 +287,16 @@ export const getEpisodeWithShotsAction = enhanceAction(
         deletedAt: shot.deleted_at,
       })),
       season: episode.season?.[0] ?? null,
+      titleCards: (titleCards ?? []).map((card: Record<string, unknown>) => ({
+        id: card.id as string,
+        name: card.name as string,
+        type: card.type as string,
+        fileUrl: card.file_url as string | null,
+        fileHash: card.file_hash as string | null,
+        contentType: card.content_type as string | null,
+        fileSizeBytes: card.file_size_bytes as number | null,
+        createdAt: card.created_at as string,
+      })),
     };
 
     return {
@@ -533,8 +557,6 @@ export const updateEpisodeAction = enhanceAction(
     if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
     if (data.masterVideoAssetId !== undefined)
       updates.master_video_asset_id = data.masterVideoAssetId;
-    if (data.masterTitleCardAssetId !== undefined)
-      updates.master_title_card_asset_id = data.masterTitleCardAssetId;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: updateError } = await (client as any)

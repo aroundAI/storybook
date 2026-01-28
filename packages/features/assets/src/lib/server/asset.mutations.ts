@@ -49,6 +49,7 @@ export const createAssetAction = enhanceAction(
       .from('assets')
       .insert({
         project_id: data.projectId,
+        episode_id: data.episodeId ?? null,
         type: data.type,
         name: data.name,
         description: data.description ?? null,

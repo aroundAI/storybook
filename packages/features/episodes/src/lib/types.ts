@@ -344,11 +344,24 @@ export interface Episode {
     [key: string]: unknown;
   };
   masterVideoAssetId?: string | null;
-  masterTitleCardAssetId?: string | null;
 }
 
 /**
  * Episode with related shots and season info
+ */
+export interface EpisodeAsset {
+  id: string;
+  name: string;
+  type: string;
+  fileUrl: string | null;
+  fileHash: string | null;
+  contentType: string | null;
+  fileSizeBytes: number | null;
+  createdAt: string;
+}
+
+/**
+ * Episode with related shots, season info, and assets
  */
 export interface EpisodeWithShots extends Episode {
   shots: Shot[];
@@ -357,6 +370,7 @@ export interface EpisodeWithShots extends Episode {
     name: string;
     number: number;
   } | null;
+  titleCards: EpisodeAsset[];
 }
 
 /**

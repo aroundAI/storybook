@@ -108,7 +108,6 @@ export const UpdateEpisodeSchema = z.object({
   shotList: z.record(z.unknown()).optional(),
   metadata: z.record(z.unknown()).optional(),
   masterVideoAssetId: z.string().uuid().optional().nullable(),
-  masterTitleCardAssetId: z.string().uuid().optional().nullable(),
 });
 
 /**
