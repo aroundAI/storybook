@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Asset, AssetType } from '@kit/assets';
 import { checkAssetHashAction, createAssetAction, deleteAssetAction } from '@kit/assets/mutations';
@@ -25,7 +25,6 @@ import {
 import { Separator } from '@kit/ui/separator';
 import { toast } from '@kit/ui/sonner';
 import {
-    CheckCircle2,
     Clock,
     Database,
     FileText,

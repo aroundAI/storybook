@@ -159,11 +159,19 @@ async function EpisodeWorkspaceLayout({
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,
-    masterVideoAssetId: (episodeData as any).master_video_asset_id,
-    masterVideoAsset: (episodeData as any).master_video
-      ? mapRowToAsset((episodeData as any).master_video)
+    masterVideoAssetId: (
+      episodeData as unknown as { master_video_asset_id: string | null }
+    ).master_video_asset_id,
+    masterVideoAsset: (episodeData as unknown as { master_video: AssetRow | null })
+      .master_video
+      ? mapRowToAsset(
+        (episodeData as unknown as { master_video: AssetRow }).master_video,
+      )
       : null,
-    titleCards: ((episodeData as any).title_cards ?? [])
+    titleCards: (
+      (episodeData as unknown as { title_cards: AssetRow[] | null }).title_cards ??
+      []
+    )
       .filter((asset: AssetRow) => asset.type === 'master_title_card')
       .map(mapRowToAsset),
     shots:

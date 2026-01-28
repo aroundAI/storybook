@@ -283,7 +283,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
       updatedAt: episode.updated_at,
       deletedAt: episode.deleted_at,
       masterVideoAssetId: episode.master_video_asset_id,
-      shots: (shots ?? []).map((shot: any) => ({
+      shots: (shots ?? []).map((shot: Record<string, unknown>) => ({
         id: shot.id,
         episodeId: shot.episode_id,
         sceneNumber: shot.scene_number,
