@@ -191,3 +191,58 @@ export async function assetExists(assetId: string): Promise<boolean> {
   const asset = await getAsset(assetId);
   return asset !== null;
 }
+
+/**
+ * Check if an asset with the given hash exists in the project.
+ * Used for deduplication.
+ *
+ * @param projectId - The project UUID
+ * @param fileHash - The SHA-256 hash of the file
+ * @param type - The asset type
+ * @returns Metadata of the existing asset or null if not found
+ */
+export async function checkAssetHashQuery(
+  projectId: string,
+  fileHash: string,
+  type: AssetType,
+): Promise<{
+  id: string;
+  name: string;
+  type: AssetType;
+  fileUrl: string | null;
+  fileHash: string | null;
+  fileSizeBytes: number | null;
+  contentType: string | null;
+  createdAt: string;
+} | null> {
+  const client = getSupabaseServerClient();
+
+  const { data, error } = await client
+    .from('assets')
+    .select('id, name, type, file_url, file_hash, file_size_bytes, content_type, created_at')
+    .eq('project_id', projectId)
+    .eq('file_hash', fileHash)
+    .eq('type', type)
+    .eq('type', type)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to check asset hash: ${error.message}`);
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const assetData = data as any;
+
+  if (!assetData) return null;
+
+  return {
+    id: assetData.id,
+    name: assetData.name,
+    type: assetData.type as AssetType,
+    fileUrl: assetData.file_url,
+    fileHash: assetData.file_hash,
+    fileSizeBytes: assetData.file_size_bytes,
+    contentType: assetData.content_type,
+    createdAt: assetData.created_at,
+  };
+}

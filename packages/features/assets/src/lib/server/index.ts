@@ -12,6 +12,7 @@ export {
   isAssetInUse,
   getAssetsByType,
   assetExists,
+  checkAssetHashQuery,
 } from './asset.queries';
 
 // Re-export asset mutations
@@ -20,6 +21,8 @@ export {
   getProjectAssetsAction,
   updateAssetAction,
   deleteAssetAction,
+  checkAssetHashAction,
+  getAssetAction,
 } from './asset.mutations';
 
 // Re-export character queries (FILM-202)

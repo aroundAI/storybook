@@ -21,3 +21,5 @@ export function formatCurrency(params: {
     currency: params.currencyCode,
   }).format(Number(params.value));
 }
+
+export * from './utils/file-hashing';

@@ -10,7 +10,18 @@ export const AssetTypeSchema = z.enum([
   'voice',
   'music',
   'sfx',
+  'master_video',
+  'master_title_card',
 ]);
+
+/**
+ * Check asset hash schema
+ */
+export const CheckAssetHashSchema = z.object({
+  projectId: z.string().uuid(),
+  fileHash: z.string(),
+  type: AssetTypeSchema,
+});
 
 /**
  * Physical attributes for character assets
@@ -88,6 +99,9 @@ export const CreateAssetSchema = z.object({
   fileUrl: z.string().url().optional(),
   thumbnailUrl: z.string().url().optional(),
   metadata: z.record(z.unknown()).optional(),
+  fileHash: z.string().optional(),
+  fileSizeBytes: z.number().int().optional(),
+  contentType: z.string().optional(),
 });
 
 /**

@@ -189,6 +189,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
         status, duration_seconds, thumbnail_url, final_video_url,
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
+        master_video_asset_id, master_title_card_asset_id,
         season:seasons(id, name, number)
       `,
       )
@@ -247,6 +248,8 @@ export const getEpisodeWithShotsAction = enhanceAction(
       createdAt: episode.created_at,
       updatedAt: episode.updated_at,
       deletedAt: episode.deleted_at,
+      masterVideoAssetId: episode.master_video_asset_id,
+      masterTitleCardAssetId: episode.master_title_card_asset_id,
       shots: (shots ?? []).map((shot: Record<string, unknown>) => ({
         id: shot.id,
         episodeId: shot.episode_id,
@@ -528,6 +531,10 @@ export const updateEpisodeAction = enhanceAction(
       updates.screenplay_data = data.screenplayData as Json;
     if (data.shotList !== undefined) updates.shot_list = data.shotList as Json;
     if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
+    if (data.masterVideoAssetId !== undefined)
+      updates.master_video_asset_id = data.masterVideoAssetId;
+    if (data.masterTitleCardAssetId !== undefined)
+      updates.master_title_card_asset_id = data.masterTitleCardAssetId;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: updateError } = await (client as any)
