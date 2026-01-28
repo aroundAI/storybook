@@ -133,7 +133,7 @@ function transformEpisodeResponse(
       description?: string;
       projectAestheticStyle?: string;
     },
-    titleCards: (episode.title_cards ?? []).map(mapRowToAsset),
+    titleCards: (episode.title_cards ?? []).filter(card => card.type === 'master_title_card').map(mapRowToAsset),
     masterVideoAsset: episode.master_video ? mapRowToAsset(episode.master_video) : null,
   };
 }

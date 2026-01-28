@@ -430,7 +430,7 @@ function TitleCardsSection({
                 episodeId, // Link!
             });
 
-            if (!createResult.success) {
+            if (!createResult.success || !createResult.data) {
                 const errorMsg = 'error' in createResult && typeof createResult.error === 'string'
                     ? createResult.error
                     : 'Failed to create asset';
