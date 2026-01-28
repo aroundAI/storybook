@@ -128,6 +128,7 @@ function transformEpisodeResponse(
       description?: string;
       projectAestheticStyle?: string;
     },
+    titleCards: [],
   };
 }
 

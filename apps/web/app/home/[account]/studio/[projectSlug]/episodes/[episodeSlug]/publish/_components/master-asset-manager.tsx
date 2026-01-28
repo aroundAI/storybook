@@ -235,9 +235,8 @@ function MasterVideoSection({
             });
 
             if (!createResult.success || !createResult.data) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const errorMsg = (createResult as any).error || 'Failed to create asset record';
-                throw new Error(errorMsg);
+                const errorMsg = 'error' in createResult ? createResult.error : 'Failed to create asset record';
+                throw new Error(errorMsg as string);
             }
 
             setProgress(90);
