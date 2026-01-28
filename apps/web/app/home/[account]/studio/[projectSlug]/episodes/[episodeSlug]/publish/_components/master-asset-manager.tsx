@@ -224,6 +224,11 @@ function MasterAssetSection({
                 contentType: file.type,
             });
 
+            if (!createResult.success) {
+                const errorMessage = 'error' in createResult ? (createResult.error as string) : 'Failed to create asset record';
+                throw new Error(errorMessage);
+            }
+
             if (!createResult.data) {
                 throw new Error('Failed to create asset record');
             }
