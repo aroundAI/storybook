@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { Edit, MapPin, Mic, MoreVertical, Trash2, User } from 'lucide-react';
+import { Edit, MapPin, Mic, MoreVertical, Trash2, User, Film, Layout } from 'lucide-react';
 
 import {
   AlertDialog,
@@ -37,6 +37,8 @@ const ASSET_ICONS: Record<
   prop: User,
   music: Mic,
   sfx: Mic,
+  master_video: Film,
+  master_title_card: Layout,
 };
 
 const COLOR_SCHEMES: Record<
@@ -103,6 +105,24 @@ const COLOR_SCHEMES: Record<
     badge:
       'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 hover:bg-emerald-200',
     lightBg: 'bg-emerald-50 dark:bg-emerald-950/30',
+  },
+  master_video: {
+    border: 'border-purple-500/50',
+    bg: 'hover:shadow-purple-500/10',
+    text: 'text-purple-700 dark:text-purple-300',
+    icon: 'text-purple-500',
+    badge:
+      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 hover:bg-purple-200',
+    lightBg: 'bg-purple-50 dark:bg-purple-950/30',
+  },
+  master_title_card: {
+    border: 'border-indigo-500/50',
+    bg: 'hover:shadow-indigo-500/10',
+    text: 'text-indigo-700 dark:text-indigo-300',
+    icon: 'text-indigo-500',
+    badge:
+      'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200',
+    lightBg: 'bg-indigo-50 dark:bg-indigo-950/30',
   },
 };
 
