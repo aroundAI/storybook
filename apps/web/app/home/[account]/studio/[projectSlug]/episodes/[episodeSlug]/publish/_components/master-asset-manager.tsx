@@ -333,6 +333,14 @@ function TitleCardsSection({
     const [isPending, startTransition] = useTransition();
 
     const handleReuseAsset = async (existingAsset: Asset) => {
+        // Validate existing asset has required data
+        if (!existingAsset.fileUrl || !existingAsset.contentType) {
+            toast.error('Cannot reuse asset: missing file URL or content type');
+            setDuplicateDialogOpen(false);
+            setDuplicateAsset(null);
+            return;
+        }
+
         startTransition(async () => {
             try {
                 // Reuse: Create NEW Asset Row pointing to SAME file (URL/Hash)
@@ -343,10 +351,10 @@ function TitleCardsSection({
                     projectId,
                     name: existingAsset.name,
                     type: 'master_title_card',
-                    fileUrl: existingAsset.fileUrl || '',
-                    fileHash: existingAsset.fileHash || '',
-                    fileSizeBytes: existingAsset.fileSizeBytes || 0,
-                    contentType: existingAsset.contentType || 'image/png',
+                    fileUrl: existingAsset.fileUrl!, // Validated above
+                    fileHash: existingAsset.fileHash ?? undefined,
+                    fileSizeBytes: existingAsset.fileSizeBytes ?? undefined,
+                    contentType: existingAsset.contentType!, // Validated above
                     episodeId, // Critical: Link to current episode
                 });
 

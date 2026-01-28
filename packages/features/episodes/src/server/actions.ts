@@ -242,8 +242,8 @@ export const getEpisodeWithShotsAction = enhanceAction(
 
     logger.info(ctx, 'Episode fetched with shots');
 
-    // Import mapRowToAsset if needed or cast
-    const mappedTitleCards = ((titleCards ?? []) as AssetRow[]).map(mapRowToAsset);
+    // Map titleCards with runtime safety check
+    const mappedTitleCards = (Array.isArray(titleCards) ? titleCards as AssetRow[] : []).map(mapRowToAsset);
 
     // Transform snake_case database fields to camelCase TypeScript properties
     const transformedEpisode: EpisodeWithShots = {
@@ -554,8 +554,27 @@ export const updateEpisodeAction = enhanceAction(
       updates.screenplay_data = data.screenplayData as Json;
     if (data.shotList !== undefined) updates.shot_list = data.shotList as Json;
     if (data.metadata !== undefined) updates.metadata = data.metadata as Json;
-    if (data.masterVideoAssetId !== undefined)
+
+    // Security: Verify masterVideoAssetId belongs to the same project
+    if (data.masterVideoAssetId !== undefined) {
+      if (data.masterVideoAssetId !== null) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: assetCheck, error: assetError } = await (client as any)
+          .from('assets')
+          .select('id, project_id')
+          .eq('id', data.masterVideoAssetId)
+          .single();
+
+        if (assetError || !assetCheck) {
+          throw new Error('Asset not found');
+        }
+
+        if (assetCheck.project_id !== currentEpisode.project_id) {
+          throw new Error('Asset does not belong to this project');
+        }
+      }
       updates.master_video_asset_id = data.masterVideoAssetId;
+    }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: episode, error: updateError } = await (client as any)

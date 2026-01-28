@@ -41,6 +41,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Security: Validate path pattern to prevent path traversal
+    // Expected pattern: projects/{projectId}/assets/{type}/{filename}
+    const pathPattern = /^projects\/([a-f0-9-]+)\/assets\/(master_video|master_title_card|thumbnail|frame|video|audio|image)\/[a-f0-9-]+\.[a-z0-9]+$/i;
+    const pathMatch = path.match(pathPattern);
+
+    if (!pathMatch) {
+      return NextResponse.json(
+        { error: 'Invalid storage path format' },
+        { status: 400 },
+      );
+    }
+
+    // Security: Verify user has access to the project
+    const projectId = pathMatch[1];
+    const { data: projectAccess, error: accessError } = await client
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .single();
+
+    if (accessError || !projectAccess) {
+      return NextResponse.json(
+        { error: 'Access denied to project' },
+        { status: 403 },
+      );
+    }
+
     // Validate content type
     const allowedPrefixes = ['video/', 'audio/', 'image/', 'application/'];
     const isAllowed = allowedPrefixes.some((prefix) =>
