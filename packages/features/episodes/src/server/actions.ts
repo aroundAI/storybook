@@ -8,7 +8,8 @@ import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import type { AssetRow, AssetType } from '@kit/assets';
+import type { AssetRow } from '@kit/assets';
+import { mapRowToAsset } from '@kit/assets';
 
 import {
   CreateEpisodeSchema,
@@ -191,6 +192,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
         localized_videos, shorts_groups, story_data, screenplay_data, shot_list,
         metadata, version, created_at, updated_at, deleted_at,
         master_video_asset_id,
+        master_video:assets!episodes_master_video_asset_id_fkey(*),
         season:seasons(id, name, number)
       `,
       )
@@ -241,23 +243,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
     logger.info(ctx, 'Episode fetched with shots');
 
     // Import mapRowToAsset if needed or cast
-    const mappedTitleCards = ((titleCards as unknown as AssetRow[]) ?? []).map(card => ({
-      id: card.id,
-      projectId: card.project_id,
-      episodeId: card.episode_id,
-      type: card.type as AssetType,
-      name: card.name,
-      description: card.description,
-      fileUrl: card.file_url,
-      thumbnailUrl: card.thumbnail_url,
-      fileHash: card.file_hash,
-      fileSizeBytes: card.file_size_bytes,
-      contentType: card.content_type,
-      metadata: typeof card.metadata === 'object' ? card.metadata as Record<string, unknown> : {},
-      createdAt: card.created_at,
-      updatedAt: card.updated_at,
-      deletedAt: card.deleted_at ?? null,
-    }));
+    const mappedTitleCards = ((titleCards ?? []) as AssetRow[]).map(mapRowToAsset);
 
     // Transform snake_case database fields to camelCase TypeScript properties
     const transformedEpisode: EpisodeWithShots = {
@@ -307,7 +293,9 @@ export const getEpisodeWithShotsAction = enhanceAction(
       })),
       season: episode.season?.[0] ?? null,
       titleCards: mappedTitleCards,
-      masterVideoAsset: null,
+      masterVideoAsset: episode.master_video
+        ? mapRowToAsset(episode.master_video as AssetRow)
+        : null,
     };
 
     return {

@@ -20,6 +20,35 @@ import { EpisodeContextProvider } from './_components/episode-context-provider';
 import { EpisodeWorkspaceHeader } from './_components/episode-workspace-header';
 import { EpisodeWorkspaceTabs } from './_components/episode-workspace-tabs';
 
+// Local interface extending the Supabase query result with joined relations
+interface EpisodeDataWithRelations {
+  id: string;
+  slug: string | null;
+  project_id: string;
+  season_id: string | null;
+  number: number;
+  title: string;
+  description: string | null;
+  status: string;
+  duration_seconds: number | null;
+  thumbnail_url: string | null;
+  final_video_url: string | null;
+  localized_videos: Record<string, string> | null;
+  shorts_groups: ShortsGroup[] | null;
+  story_data: StoryData | null;
+  screenplay_data: ScreenplayData | null;
+  shot_list: ShotListData | null;
+  metadata: EpisodeMetadata | null;
+  version: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  master_video_asset_id: string | null;
+  master_video: AssetRow | null;
+  title_cards: AssetRow[] | null;
+  season: Array<{ id: string; name: string | null; number: number }> | { id: string; name: string | null; number: number } | null;
+}
+
 interface EpisodeWorkspaceLayoutProps {
   children: React.ReactNode;
   params: Promise<{
@@ -159,19 +188,11 @@ async function EpisodeWorkspaceLayout({
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,
-    masterVideoAssetId: (
-      episodeData as unknown as { master_video_asset_id: string | null }
-    ).master_video_asset_id,
-    masterVideoAsset: (episodeData as unknown as { master_video: AssetRow | null })
-      .master_video
-      ? mapRowToAsset(
-        (episodeData as unknown as { master_video: AssetRow }).master_video,
-      )
+    masterVideoAssetId: (episodeData as EpisodeDataWithRelations).master_video_asset_id,
+    masterVideoAsset: (episodeData as EpisodeDataWithRelations).master_video
+      ? mapRowToAsset((episodeData as EpisodeDataWithRelations).master_video!)
       : null,
-    titleCards: (
-      (episodeData as unknown as { title_cards: AssetRow[] | null }).title_cards ??
-      []
-    )
+    titleCards: ((episodeData as EpisodeDataWithRelations).title_cards ?? [])
       .filter((asset: AssetRow) => asset.type === 'master_title_card')
       .map(mapRowToAsset),
     shots:

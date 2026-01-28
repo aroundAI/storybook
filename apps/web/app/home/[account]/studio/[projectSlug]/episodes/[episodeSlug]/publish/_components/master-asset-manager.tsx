@@ -326,6 +326,9 @@ function TitleCardsSection({
     const [duplicateAsset, setDuplicateAsset] = useState<Asset | null>(null);
     const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
+    // Delete confirmation
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
 
@@ -420,8 +423,9 @@ function TitleCardsSection({
             });
 
             if (!createResult.success) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const errorMsg = (createResult as any).error || 'Failed to create asset';
+                const errorMsg = 'error' in createResult && typeof createResult.error === 'string'
+                    ? createResult.error
+                    : 'Failed to create asset';
                 throw new Error(errorMsg);
             }
 
@@ -439,12 +443,11 @@ function TitleCardsSection({
     };
 
     const handleDelete = async (assetId: string) => {
-        if (!confirm('Are you sure you want to remove this title card?')) return;
-
         startTransition(async () => {
             const result = await deleteAssetAction({ assetId });
             if (result.success) {
                 toast.success('Title card removed');
+                setDeleteConfirmId(null);
                 onUpdate?.();
                 router.refresh();
             } else {
@@ -467,7 +470,7 @@ function TitleCardsSection({
                     <AssetCard
                         key={card.id}
                         asset={card}
-                        onRemove={() => handleDelete(card.id as string)}
+                        onRemove={() => setDeleteConfirmId(card.id as string)}
                         isPending={isPending}
                     />
                 ))}
@@ -508,6 +511,31 @@ function TitleCardsSection({
                     assetName={duplicateAsset?.name}
                     isPending={isPending}
                 />
+
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Remove Title Card</DialogTitle>
+                            <DialogDescription>
+                                Are you sure you want to remove this title card? This action cannot be undone.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setDeleteConfirmId(null)} disabled={isPending}>
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="destructive"
+                                onClick={() => deleteConfirmId && handleDelete(deleteConfirmId)}
+                                disabled={isPending}
+                            >
+                                {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                Remove
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
             </CardContent>
         </Card>
     );
