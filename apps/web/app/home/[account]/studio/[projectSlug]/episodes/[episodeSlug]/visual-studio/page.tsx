@@ -2,11 +2,14 @@
 
 import { useEffect } from 'react';
 
-import { useActiveGenerationJob } from '@kit/episodes/hooks';
+// import { useActiveGenerationJob } from '@kit/episodes/hooks'; // Removed
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
-import { useEpisodeContext } from '../_components/episode-context-provider';
+import {
+  useEpisodeContext,
+  useEpisodeGenerationCheck,
+} from '../_components/episode-context-provider';
 import { GeneratingState } from '../_components/generating-state';
 import { VisualStudioScreen } from './_components/visual-studio-screen';
 
@@ -14,33 +17,17 @@ export default function VisualStudioPage() {
   const {
     episode,
     refetchEpisode,
-    isGenerating: isContextGenerating,
-    setIsGenerating,
   } = useEpisodeContext();
 
-  // Check if visual studio already has data - skip polling if so
+  // Check if visual studio already has data
   const hasShots = episode.shots.length > 0 || Boolean(episode.shotList);
 
-  // Check for active shot generation job (only if no data exists)
-  const { isGenerating: isGeneratingJob } = useActiveGenerationJob(
-    episode.id,
-    'shot_list',
-    { enabled: !hasShots }, // Don't poll if data already exists
-  );
-
-  const isGenerating = isGeneratingJob || isContextGenerating;
-
-  // Safety mechanism: If context says generating, but we have data, clear it.
-  // If context says generating and we DON'T have data, refetch to be safe (handles race conditions).
-  useEffect(() => {
-    if (isContextGenerating) {
-      if (hasShots) {
-        setIsGenerating(false);
-      } else {
-        refetchEpisode();
-      }
-    }
-  }, [isContextGenerating, hasShots, setIsGenerating, refetchEpisode]);
+  // Consolidated generation check
+  const { isGenerating } = useEpisodeGenerationCheck({
+    episodeId: episode.id,
+    jobType: 'shot_list',
+    hasData: hasShots,
+  });
 
   // Subscribe to WebSocket for shot-generation results
   // This subscriber MUST be at page level so it's active during GeneratingState

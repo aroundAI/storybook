@@ -10,4 +10,7 @@ export {
   type VideoInfo,
   type VideoUploadError,
 } from './use-video-upload';
-export { useActiveGenerationJob } from './use-active-generation-job';
+export {
+  useActiveGenerationJob,
+  type GenerationJobType,
+} from './use-active-generation-job';

@@ -4,11 +4,14 @@ import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { useActiveGenerationJob } from '@kit/episodes/hooks';
+// import { useActiveGenerationJob } from '@kit/episodes/hooks'; // Removed
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
-import { useEpisodeContext } from '../_components/episode-context-provider';
+import {
+  useEpisodeContext,
+  useEpisodeGenerationCheck,
+} from '../_components/episode-context-provider';
 import { GeneratingState } from '../_components/generating-state';
 import { StoryScreen } from './_components/story-screen';
 
@@ -19,33 +22,17 @@ export default function StoryPage() {
     accountSlug,
     projectSlug,
     refetchEpisode,
-    isGenerating: isContextGenerating,
-    setIsGenerating,
   } = useEpisodeContext();
 
-  // Check if story already has data - skip polling if so
+  // Check if story already has data
   const hasStory = Boolean(episode.storyData?.fullStory);
 
-  // Check for active story generation job (only if no data exists)
-  const { isGenerating: isGeneratingJob } = useActiveGenerationJob(episode.id, 'story', {
-    enabled: !hasStory,
+  // Consolidated generation check
+  const { isGenerating } = useEpisodeGenerationCheck({
+    episodeId: episode.id,
+    jobType: 'story',
+    hasData: hasStory,
   });
-
-  // Combine both sources of truth
-  const isGenerating = isGeneratingJob || isContextGenerating;
-
-  // Handle context generating state:
-  // 1. If we have story data, clear the generating state (we are done)
-  // 2. If we lack story data but context says generating, force a refresh (safety net)
-  useEffect(() => {
-    if (isContextGenerating) {
-      if (hasStory) {
-        setIsGenerating(false);
-      } else {
-        refetchEpisode();
-      }
-    }
-  }, [hasStory, isContextGenerating, setIsGenerating, refetchEpisode]);
 
   // Subscribe to WebSocket for story-generation results
   // This subscriber MUST be at page level so it's active during GeneratingState

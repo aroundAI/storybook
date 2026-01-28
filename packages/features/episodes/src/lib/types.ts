@@ -598,3 +598,9 @@ export interface GenerateShotListResponse {
     processingMethod?: 'parallel-batches' | 'scene-by-scene' | 'monolithic';
   };
 }
+
+export type GenerationJobType =
+  | 'story'
+  | 'screenplay'
+  | 'shot_list'
+  | 'translate-dialogue';
