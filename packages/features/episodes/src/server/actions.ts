@@ -8,6 +8,7 @@ import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { AssetRow, AssetType } from '@kit/assets';
 
 import {
   CreateEpisodeSchema,
@@ -223,11 +224,10 @@ export const getEpisodeWithShotsAction = enhanceAction(
       throw new Error('Failed to fetch episode shots');
     }
 
-    // Fetch master title cards (1:N)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: titleCards, error: titleCardsError } = await (client as any)
+    // Fetch title cards (Asset[])
+    const { data: titleCards, error: titleCardsError } = await client
       .from('assets')
-      .select('id, name, type, file_url, file_hash, content_type, file_size_bytes, created_at')
+      .select('*')
       .eq('episode_id', data.episodeId)
       .eq('type', 'master_title_card')
       .is('deleted_at', null)
@@ -239,6 +239,25 @@ export const getEpisodeWithShotsAction = enhanceAction(
     }
 
     logger.info(ctx, 'Episode fetched with shots');
+
+    // Import mapRowToAsset if needed or cast
+    const mappedTitleCards = ((titleCards as unknown as AssetRow[]) ?? []).map(card => ({
+      id: card.id,
+      projectId: card.project_id,
+      episodeId: card.episode_id,
+      type: card.type as AssetType,
+      name: card.name,
+      description: card.description,
+      fileUrl: card.file_url,
+      thumbnailUrl: card.thumbnail_url,
+      fileHash: card.file_hash,
+      fileSizeBytes: card.file_size_bytes,
+      contentType: card.content_type,
+      metadata: typeof card.metadata === 'object' ? card.metadata as Record<string, unknown> : {},
+      createdAt: card.created_at,
+      updatedAt: card.updated_at,
+      deletedAt: card.deleted_at ?? null,
+    }));
 
     // Transform snake_case database fields to camelCase TypeScript properties
     const transformedEpisode: EpisodeWithShots = {
@@ -264,7 +283,7 @@ export const getEpisodeWithShotsAction = enhanceAction(
       updatedAt: episode.updated_at,
       deletedAt: episode.deleted_at,
       masterVideoAssetId: episode.master_video_asset_id,
-      shots: (shots ?? []).map((shot: Record<string, unknown>) => ({
+      shots: (shots ?? []).map((shot: any) => ({
         id: shot.id,
         episodeId: shot.episode_id,
         sceneNumber: shot.scene_number,
@@ -287,16 +306,8 @@ export const getEpisodeWithShotsAction = enhanceAction(
         deletedAt: shot.deleted_at,
       })),
       season: episode.season?.[0] ?? null,
-      titleCards: (titleCards ?? []).map((card: Record<string, unknown>) => ({
-        id: card.id as string,
-        name: card.name as string,
-        type: card.type as string,
-        fileUrl: card.file_url as string | null,
-        fileHash: card.file_hash as string | null,
-        contentType: card.content_type as string | null,
-        fileSizeBytes: card.file_size_bytes as number | null,
-        createdAt: card.created_at as string,
-      })),
+      titleCards: mappedTitleCards,
+      masterVideoAsset: null,
     };
 
     return {

@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Asset, AssetType } from '@kit/assets';
-import { checkAssetHashAction, createAssetAction, getAssetAction, deleteAssetAction } from '@kit/assets/mutations';
+import { checkAssetHashAction, createAssetAction, deleteAssetAction } from '@kit/assets/mutations';
 import { updateEpisodeAction } from '@kit/episodes/server';
 import { calculateFileHash } from '@kit/shared/utils';
 import { Button } from '@kit/ui/button';
@@ -40,22 +40,13 @@ import {
 
 import { uploadWithPresignedUrl } from '~/lib/presigned-upload';
 
-interface EpisodeAsset {
-    id: string;
-    name: string;
-    type: string;
-    fileUrl: string | null;
-    fileHash: string | null;
-    contentType: string | null;
-    fileSizeBytes: number | null;
-    createdAt: string;
-}
+// EpisodeAsset interface removed in favor of @kit/assets Asset type
 
 interface MasterAssetManagerProps {
     projectId: string;
     episodeId: string;
-    masterVideoAssetId?: string | null;
-    titleCards: EpisodeAsset[];
+    masterVideoAsset?: Asset | null;
+    titleCards: Asset[];
     version: number;
     onUpdate?: () => void;
 }
@@ -63,7 +54,7 @@ interface MasterAssetManagerProps {
 export function MasterAssetManager({
     projectId,
     episodeId,
-    masterVideoAssetId,
+    masterVideoAsset,
     titleCards,
     version,
     onUpdate,
@@ -76,7 +67,7 @@ export function MasterAssetManager({
                 description="Upload the clean, subtitle-free master video file for record keeping."
                 projectId={projectId}
                 episodeId={episodeId}
-                currentAssetId={masterVideoAssetId}
+                currentAsset={masterVideoAsset}
                 version={version}
                 onUpdate={onUpdate}
             />
@@ -103,7 +94,7 @@ interface MasterVideoSectionProps {
     description: string;
     projectId: string;
     episodeId: string;
-    currentAssetId?: string | null;
+    currentAsset?: Asset | null;
     version: number;
     onUpdate?: () => void;
 }
@@ -114,12 +105,15 @@ function MasterVideoSection({
     description,
     projectId,
     episodeId,
-    currentAssetId,
+    currentAsset,
     version,
     onUpdate,
 }: MasterVideoSectionProps) {
-    const [asset, setAsset] = useState<Asset | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
+    // Determine active asset from prop or optimistic state could be handled here, 
+    // but typically we rely on prop updates from parent.
+    const asset = currentAsset;
+
+    // Loading state is now implicit via parent fetch, or local upload
     const [isUploading, setIsUploading] = useState(false);
 
     // Duplicate handling
@@ -131,22 +125,7 @@ function MasterVideoSection({
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
 
-    // Load asset details if ID exists
-    useEffect(() => {
-        if (currentAssetId) {
-            setIsLoading(true);
-            getAssetAction({ assetId: currentAssetId })
-                .then((result) => {
-                    if (result.success && result.data) {
-                        setAsset(result.data as Asset);
-                    }
-                })
-                .catch(console.error)
-                .finally(() => setIsLoading(false));
-        } else {
-            setAsset(null);
-        }
-    }, [currentAssetId]);
+    // No local fetch needed anymore
 
     const handleReuseAsset = async (existingAsset: Asset) => {
         startTransition(async () => {
@@ -272,7 +251,7 @@ function MasterVideoSection({
 
                 if (result.success) {
                     toast.success('Video unlinked');
-                    setAsset(null);
+                    // setAsset(null); // Removed: rely on prop update
                     onUpdate?.();
                     router.refresh();
                 } else {
@@ -292,13 +271,9 @@ function MasterVideoSection({
                 <CardDescription>{description}</CardDescription>
             </CardHeader>
             <CardContent>
-                {isLoading ? (
-                    <div className="flex items-center justify-center p-4">
-                        <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
-                    </div>
-                ) : asset ? (
+                {asset ? (
                     <AssetCard
-                        asset={asset as unknown as EpisodeAsset}
+                        asset={asset}
                         onRemove={handleRemoveLink}
                         isPending={isPending}
                     />
@@ -333,7 +308,7 @@ interface TitleCardsSectionProps {
     description: string;
     projectId: string;
     episodeId: string;
-    titleCards: EpisodeAsset[];
+    titleCards: Asset[];
     onUpdate?: () => void;
 }
 
@@ -543,7 +518,7 @@ function TitleCardsSection({
 // Shared Components
 // ----------------------------------------------------------------------------
 
-function AssetCard({ asset, onRemove, isPending }: { asset: EpisodeAsset, onRemove: () => void, isPending: boolean }) {
+function AssetCard({ asset, onRemove, isPending }: { asset: Asset, onRemove: () => void, isPending: boolean }) {
     return (
         <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
             <div className="flex items-center gap-3">

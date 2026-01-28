@@ -346,19 +346,7 @@ export interface Episode {
   masterVideoAssetId?: string | null;
 }
 
-/**
- * Episode with related shots and season info
- */
-export interface EpisodeAsset {
-  id: string;
-  name: string;
-  type: string;
-  fileUrl: string | null;
-  fileHash: string | null;
-  contentType: string | null;
-  fileSizeBytes: number | null;
-  createdAt: string;
-}
+import type { Asset } from '@kit/assets';
 
 /**
  * Episode with related shots, season info, and assets
@@ -370,7 +358,8 @@ export interface EpisodeWithShots extends Episode {
     name: string;
     number: number;
   } | null;
-  titleCards: EpisodeAsset[];
+  titleCards: Asset[];
+  masterVideoAsset: Asset | null;
 }
 
 /**
