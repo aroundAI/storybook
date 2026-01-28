@@ -71,7 +71,7 @@ export async function initializeServerI18n(
 
   // Otherwise, wait for all namespaces to be loaded
 
-  const maxWaitTime = 0.1; // 100 milliseconds
+  const maxWaitTime = 100; // 100 milliseconds
   const checkIntervalMs = 5; // 5 milliseconds
 
   async function waitForNamespaces() {
