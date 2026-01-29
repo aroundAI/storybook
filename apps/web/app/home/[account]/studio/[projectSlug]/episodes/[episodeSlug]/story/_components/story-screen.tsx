@@ -542,7 +542,7 @@ export function StoryScreen({
                   episodeId={episode.id}
                   episodeNumber={episode.number ?? 1}
                   season={typeof episode.season === 'object' ? episode.season?.number ?? 1 : 1}
-                  canonEnabled={true}
+                  canonEnabled={(episode as { project?: { metadata?: { canon?: { enabled?: boolean } } } }).project?.metadata?.canon?.enabled ?? false}
                 />
               )}
             </div>

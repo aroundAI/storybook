@@ -59,11 +59,13 @@ type AddThreadFormData = z.infer<typeof addThreadSchema>;
 
 interface AddThreadDialogProps {
     projectId: string;
+    episodeId: string;
     onThreadAdded?: () => void;
 }
 
 export function AddThreadDialog({
     projectId,
+    episodeId,
     onThreadAdded,
 }: AddThreadDialogProps) {
     const [open, setOpen] = useState(false);
@@ -91,7 +93,7 @@ export function AddThreadDialog({
                     threadName: data.threadName,
                     threadType: data.threadType,
                     description: data.description,
-                    openedAt: new Date().toISOString(),
+                    openedAt: episodeId,
                     promises,
                 });
 

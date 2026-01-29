@@ -234,6 +234,7 @@ export function CanonDashboard({
                                     </p>
                                     <AddThreadDialog
                                         projectId={projectId}
+                                        episodeId={episodeId}
                                         onThreadAdded={loadData}
                                     />
                                 </div>

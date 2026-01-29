@@ -95,9 +95,11 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
                         currentState: c.currentStates?.[0]?.stateType ?? 'unknown',
                     })),
                     tokenBudget: {
-                        used: (result.tokenBudget as { used?: number })?.used ?? 0,
-                        max: (result.tokenBudget as { max?: number })?.max ?? 6000,
-                        percentage: (result.tokenBudget as { percentage?: number })?.percentage ?? 0,
+                        used: (result.tokenBudget as { allocated?: number })?.allocated ?? 0,
+                        max: (result.tokenBudget as { total?: number })?.total ?? 6000,
+                        percentage: ((result.tokenBudget as { total?: number })?.total ?? 0) > 0
+                            ? (((result.tokenBudget as { allocated?: number })?.allocated ?? 0) / ((result.tokenBudget as { total?: number })?.total ?? 6000)) * 100
+                            : 0,
                     },
                 });
             }
