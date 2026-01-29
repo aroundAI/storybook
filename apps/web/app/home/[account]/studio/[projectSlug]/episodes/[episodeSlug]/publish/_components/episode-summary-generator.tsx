@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
@@ -44,14 +44,7 @@ export function EpisodeSummaryGenerator({
     const [extractedEvents, setExtractedEvents] = useState<ExtractedChange[]>([]);
     const [hasExtracted, setHasExtracted] = useState(false);
 
-    // Extract canon changes on mount if story content exists
-    useEffect(() => {
-        if (storyContent && storyContent.length > 100 && !hasExtracted) {
-            handleExtract();
-        }
-    }, [storyContent]);
-
-    async function handleExtract() {
+    const handleExtract = useCallback(async () => {
         if (!storyContent) {
             toast.error('No story content to analyze');
             return;
@@ -78,7 +71,14 @@ export function EpisodeSummaryGenerator({
         } finally {
             setIsExtracting(false);
         }
-    }
+    }, [projectId, episodeId, storyContent, onSummaryGenerated]);
+
+    // Extract canon changes on mount if story content exists
+    useEffect(() => {
+        if (storyContent && storyContent.length > 100 && !hasExtracted) {
+            handleExtract();
+        }
+    }, [storyContent, hasExtracted, handleExtract]);
 
     async function handleCommit() {
         setIsCommitting(true);

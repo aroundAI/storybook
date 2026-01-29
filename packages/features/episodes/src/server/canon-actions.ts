@@ -441,6 +441,11 @@ export const createNarrativeThreadAction = enhanceAction(
 
 /**
  * Updates a narrative thread's status or adds payoffs.
+ *
+ * TODO: This action is vulnerable to race conditions. Consider implementing
+ * optimistic locking by adding a `version` column to the `narrative_threads`
+ * table and ensuring the update only succeeds if the version matches the one
+ * that was read. See PR #153 review for details.
  */
 export const updateNarrativeThreadAction = enhanceAction(
     async (data: {

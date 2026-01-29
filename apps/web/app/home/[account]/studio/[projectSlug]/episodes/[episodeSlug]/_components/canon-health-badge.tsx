@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Badge } from '@kit/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@kit/ui/tooltip';
-import { CheckCircle2, AlertTriangle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, XCircle, Loader2, HelpCircle } from 'lucide-react';
 import { getCanonHealthAction } from '@kit/episodes/server';
 
 interface CanonHealthBadgeProps {
@@ -11,7 +11,7 @@ interface CanonHealthBadgeProps {
     className?: string;
 }
 
-type HealthStatus = 'ok' | 'warning' | 'error' | 'loading';
+type HealthStatus = 'ok' | 'warning' | 'error' | 'loading' | 'unknown';
 
 /**
  * Canon Health Badge - Displays canon validation status in episode header
@@ -22,42 +22,43 @@ export function CanonHealthBadge({ projectId, className }: CanonHealthBadgeProps
     const [issueCount, setIssueCount] = useState(0);
     const [message, setMessage] = useState('');
 
-    useEffect(() => {
-        async function checkCanonHealth() {
-            try {
-                const result = await getCanonHealthAction({ projectId });
+    const checkCanonHealth = useCallback(async () => {
+        try {
+            const result = await getCanonHealthAction({ projectId });
 
-                if (!result) {
-                    setStatus('ok');
-                    setMessage('Canon not configured');
-                    return;
-                }
-
-                // Use health status from the action
-                const { health, stats } = result;
-
-                if (health.status === 'ok') {
-                    setStatus('ok');
-                    setMessage(`${stats.immutableEvents} canon events tracked`);
-                    setIssueCount(0);
-                } else if (health.status === 'warning') {
-                    setStatus('warning');
-                    setMessage(`${health.issueCount} issue${health.issueCount > 1 ? 's' : ''} detected`);
-                    setIssueCount(health.issueCount);
-                } else {
-                    setStatus('error');
-                    setMessage(`${health.issueCount} violation${health.issueCount > 1 ? 's' : ''}`);
-                    setIssueCount(health.issueCount);
-                }
-            } catch (error) {
-                console.error('Error checking canon health:', error);
+            if (!result) {
                 setStatus('ok');
-                setMessage('Unable to check');
+                setMessage('Canon not configured');
+                return;
             }
-        }
 
-        checkCanonHealth();
+            // Use health status from the action
+            const { health, stats } = result;
+
+            if (health.status === 'ok') {
+                setStatus('ok');
+                setMessage(`${stats.immutableEvents} canon events tracked`);
+                setIssueCount(0);
+            } else if (health.status === 'warning') {
+                setStatus('warning');
+                setMessage(`${health.issueCount} issue${health.issueCount > 1 ? 's' : ''} detected`);
+                setIssueCount(health.issueCount);
+            } else {
+                setStatus('error');
+                setMessage(`${health.issueCount} violation${health.issueCount > 1 ? 's' : ''}`);
+                setIssueCount(health.issueCount);
+            }
+        } catch (error) {
+            console.error('Error checking canon health:', error);
+            // Set to 'unknown' instead of 'ok' to avoid misleading the user
+            setStatus('unknown');
+            setMessage('Unable to check canon status');
+        }
     }, [projectId]);
+
+    useEffect(() => {
+        checkCanonHealth();
+    }, [checkCanonHealth]);
 
     const statusConfig = {
         loading: {
@@ -83,6 +84,12 @@ export function CanonHealthBadge({ projectId, className }: CanonHealthBadgeProps
             variant: 'destructive' as const,
             label: `${issueCount} Error${issueCount > 1 ? 's' : ''}`,
             className: 'text-red-600',
+        },
+        unknown: {
+            icon: HelpCircle,
+            variant: 'outline' as const,
+            label: 'Unknown',
+            className: 'text-gray-500',
         },
     };
 

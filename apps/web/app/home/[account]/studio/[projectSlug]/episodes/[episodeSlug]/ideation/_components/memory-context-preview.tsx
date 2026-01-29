@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { ChevronDown, ChevronRight, BookOpen, Users, GitBranch, Clock } from 'lucide-react';
@@ -9,6 +9,25 @@ import { buildMemoryContextAction } from '@kit/episodes/server';
 interface MemoryContextPreviewProps {
     projectId: string;
     episodeNumber: number;
+}
+
+interface MemoryContextEvent {
+    id: string;
+    eventType: string;
+    description: string;
+    episodeNumber: number;
+}
+
+interface MemoryContextThread {
+    id: string;
+    threadName: string;
+    status: string;
+}
+
+interface MemoryContextCharacter {
+    characterId: string;
+    characterName: string;
+    currentStates?: Array<{ stateType: string }>;
 }
 
 interface MemoryContext {
@@ -44,13 +63,7 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
     const [context, setContext] = useState<MemoryContext | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    useEffect(() => {
-        if (isExpanded && !context) {
-            loadContext();
-        }
-    }, [isExpanded]);
-
-    async function loadContext() {
+    const loadContext = useCallback(async () => {
         setIsLoading(true);
         try {
             const result = await buildMemoryContextAction({
@@ -59,13 +72,10 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
             });
 
             if (result) {
-                // Transform to simpler structure - using explicit types for server action response
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const events = result.immutableEvents as any[];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const threads = result.activeThreads as any[];
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const characters = result.characterStates as any[];
+                // Transform to simpler structure with proper types
+                const events = result.immutableEvents as MemoryContextEvent[];
+                const threads = result.activeThreads as MemoryContextThread[];
+                const characters = result.characterStates as MemoryContextCharacter[];
 
                 setContext({
                     immutableEvents: events.map((e) => ({
@@ -96,7 +106,13 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
         } finally {
             setIsLoading(false);
         }
-    }
+    }, [projectId, episodeNumber]);
+
+    useEffect(() => {
+        if (isExpanded && !context) {
+            loadContext();
+        }
+    }, [isExpanded, context, loadContext]);
 
     const tokenPercentage = context?.tokenBudget.percentage ?? 0;
 

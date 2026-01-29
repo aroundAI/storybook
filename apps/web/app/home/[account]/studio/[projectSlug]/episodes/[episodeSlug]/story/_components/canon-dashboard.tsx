@@ -59,9 +59,18 @@ export function CanonDashboard({
     const [isPending, startTransition] = useTransition();
     const [events, setEvents] = useState<ImmutableEvent[]>([]);
     const [threads, setThreads] = useState<NarrativeThread[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [characterStates, setCharacterStates] = useState<any[]>([]);
     const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
+
+    // Type for character states from getProjectCharacterStatesAction
+    interface CharacterStateRow {
+        id: string;
+        character_id: string;
+        state_type: string;
+        state_value: unknown;
+        trigger_event: string | null;
+        characters?: { name: string } | null;
+    }
+    const [characterStates, setCharacterStates] = useState<CharacterStateRow[]>([]);
 
     const loadData = useCallback(() => {
         if (!canonEnabled) return;
