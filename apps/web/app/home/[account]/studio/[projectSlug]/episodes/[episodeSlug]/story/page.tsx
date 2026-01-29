@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 
 import { useRouter } from 'next/navigation';
 
+import type { CanonSettings } from '@kit/episodes';
 // import { useActiveGenerationJob } from '@kit/episodes/hooks'; // Removed
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
@@ -95,13 +96,16 @@ export default function StoryPage() {
     );
   }
 
+  // Type-safe extraction of canon settings from projectMetadata
+  const isCanonEnabled = (projectMetadata as { canon?: CanonSettings } | null)?.canon?.enabled ?? false;
+
   return (
     <div className="h-full overflow-y-auto p-8">
       <StoryScreen
         episode={episode}
         onScreenplayComplete={handleScreenplayComplete}
         refetchEpisode={refetchEpisode}
-        canonEnabled={(projectMetadata as { canon?: { enabled?: boolean } } | null)?.canon?.enabled ?? false}
+        canonEnabled={isCanonEnabled}
       />
     </div>
   );

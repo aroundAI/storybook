@@ -5,43 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { ChevronDown, ChevronRight, BookOpen, Users, GitBranch, Clock } from 'lucide-react';
 import { buildMemoryContextAction } from '@kit/episodes/server';
-
+import type {
+    MemoryContext as CanonMemoryContext,
+    ImmutableEvent,
+    NarrativeThread,
+    CharacterStateContext,
+} from '@kit/episodes';
 interface MemoryContextPreviewProps {
     projectId: string;
     episodeNumber: number;
 }
 
-interface MemoryContextEvent {
-    id: string;
-    eventType: string;
-    description: string;
-    episodeNumber: number;
-}
-
-interface MemoryContextThread {
-    id: string;
-    threadName: string;
-    status: string;
-}
-
-interface MemoryContextCharacter {
-    characterId: string;
-    characterName: string;
-    currentStates?: Array<{ stateType: string }>;
-}
-
-interface MemoryContext {
-    immutableEvents: Array<{
-        id: string;
-        eventType: string;
-        description: string;
-        episodeNumber: number;
-    }>;
-    activeThreads: Array<{
-        id: string;
-        threadName: string;
-        status: string;
-    }>;
+/**
+ * Simplified types for UI display, derived from @kit/episodes types.
+ * These contain only the fields needed for rendering.
+ */
+interface UIMemoryContext {
+    immutableEvents: Pick<ImmutableEvent, 'id' | 'eventType' | 'description' | 'episodeNumber'>[];
+    activeThreads: Pick<NarrativeThread, 'id' | 'threadName' | 'status'>[];
     characterStates: Array<{
         characterId: string;
         characterName: string;
@@ -60,7 +41,7 @@ interface MemoryContext {
  */
 export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContextPreviewProps) {
     const [isExpanded, setIsExpanded] = useState(false);
-    const [context, setContext] = useState<MemoryContext | null>(null);
+    const [context, setContext] = useState<UIMemoryContext | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const loadContext = useCallback(async () => {
@@ -72,32 +53,30 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
             });
 
             if (result) {
-                // Transform to simpler structure with proper types
-                const events = result.immutableEvents as MemoryContextEvent[];
-                const threads = result.activeThreads as MemoryContextThread[];
-                const characters = result.characterStates as MemoryContextCharacter[];
+                // Result is CanonMemoryContext from @kit/episodes
+                const canonResult = result as CanonMemoryContext;
 
                 // Default token budget aligns with memory-context-builder.ts DEFAULT_TOKEN_BUDGET
                 const DEFAULT_TOKEN_BUDGET_MAX = 6000;
-                const used = (result.tokenBudget as { allocated?: number })?.allocated ?? 0;
-                const max = (result.tokenBudget as { total?: number })?.total ?? DEFAULT_TOKEN_BUDGET_MAX;
+                const used = canonResult.tokenBudget?.allocated ?? 0;
+                const max = canonResult.tokenBudget?.total ?? DEFAULT_TOKEN_BUDGET_MAX;
                 const percentage = max > 0 ? (used / max) * 100 : 0;
 
                 setContext({
-                    immutableEvents: events.map((e) => ({
+                    immutableEvents: canonResult.immutableEvents.map((e) => ({
                         id: e.id,
                         eventType: e.eventType,
                         description: e.description,
                         episodeNumber: e.episodeNumber,
                     })),
-                    activeThreads: threads.map((t) => ({
+                    activeThreads: canonResult.activeThreads.map((t) => ({
                         id: t.id,
                         threadName: t.threadName,
                         status: t.status,
                     })),
-                    characterStates: characters.map((c) => ({
+                    characterStates: canonResult.characterStates.map((c) => ({
                         characterId: c.characterId,
-                        characterName: c.characterName ?? 'Unknown',
+                        characterName: c.characterName,
                         currentState: c.currentStates?.[0]?.stateType ?? 'unknown',
                     })),
                     tokenBudget: { used, max, percentage },

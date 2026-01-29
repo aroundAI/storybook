@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft, Settings } from 'lucide-react';
 
+import type { CanonSettings } from '@kit/episodes';
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
 import {
   getAvailableProjectMembers,
@@ -323,13 +324,7 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <CanonSettingsForm
               projectId={project.id}
               currentSettings={
-                (project.metadata as Record<string, unknown>)?.canon as {
-                  enabled: boolean;
-                  roleSeparation: boolean;
-                  memoryHorizon: number;
-                  enforcement: 'flexible' | 'strict';
-                  contentType: 'series' | 'movie' | 'factual' | 'news';
-                } | null | undefined
+                (project.metadata as { canon?: CanonSettings } | null)?.canon ?? null
               }
             />
           </If>
