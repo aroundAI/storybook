@@ -1,7 +1,7 @@
 ---
 id: FILM-1005
 title: Canon Server Actions
-status: draft
+status: implemented
 effort: M
 dependencies: [FILM-1003, FILM-1004]
 ---

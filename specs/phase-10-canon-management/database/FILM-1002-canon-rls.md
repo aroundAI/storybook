@@ -1,7 +1,7 @@
 ---
 id: FILM-1002
 title: Canon Management RLS Policies
-status: draft
+status: implemented
 effort: S
 dependencies: [FILM-1001]
 ---

@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1007
 title: Canon UI Components
-status: draft
+status: implemented
 priority: high
 effort: L
 ---

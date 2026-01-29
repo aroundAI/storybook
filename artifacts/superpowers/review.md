@@ -25,7 +25,7 @@ Phase 10 Canon Management implementation is **partially complete**. Core backend
 
 | ID | Location | Issue |
 |----|----------|-------|
-| B-1 | `apps/web/supabase/` | **Migration not applied** - Supabase local instance not running. Tables don't exist in database. |
+| B-1 | `apps/web/supabase/` | **Migration not applied** - Supabase local instance not running. Tables don't exist in database. | # But its not needed to since we are using Supabase DB at apps/web/.env.localprod
 | B-2 | `packages/features/episodes/src` | **`@ts-nocheck` comments** - Both `memory-context-builder.ts` and `canon-actions.ts` use `@ts-nocheck` to bypass type errors. Will cause runtime failures if tables don't exist. |
 | B-3 | FILM-1007 | **No UI components built** - All 9 UI components from spec are missing (Canon Dashboard, Events Editor, Threads Visualization, etc.) |
 

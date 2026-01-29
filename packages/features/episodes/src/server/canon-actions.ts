@@ -697,3 +697,109 @@ export const updateCanonSettingsAction = enhanceAction(
         }),
     }
 );
+
+// =============================================================================
+// INLINE VALIDATION ACTION (Step 3)
+// =============================================================================
+
+/**
+ * Validates story content inline against canon rules.
+ * Used for real-time Story tab validation.
+ */
+export const validateContentInlineAction = enhanceAction(
+    async (data: {
+        projectId: string;
+        episodeId: string;
+        content: string;
+    }): Promise<{
+        valid: boolean;
+        violations: Array<{
+            code: string;
+            severity: 'error' | 'warning' | 'info';
+            message: string;
+            suggestion: string;
+        }>;
+    }> => {
+        const client = getSupabaseServerClient();
+
+        // Get immutable events for this project
+        const { data: immutableEvents } = await client
+            .from('immutable_events')
+            .select('*')
+            .eq('project_id', data.projectId);
+
+        const violations: Array<{
+            code: string;
+            severity: 'error' | 'warning' | 'info';
+            message: string;
+            suggestion: string;
+        }> = [];
+
+        const lowerContent = data.content.toLowerCase();
+
+        // Check for resurrection violations (CANON_001)
+        const deathEvents = (immutableEvents ?? []).filter(
+            (e) => e.event_type === 'death'
+        );
+
+        for (const death of deathEvents) {
+            // Extract character name from event key
+            const parts = death.event_key.split(':');
+            const charName = parts[1] ?? '';
+
+            // Check if dead character appears as active in content
+            if (charName && lowerContent.includes(charName.toLowerCase())) {
+                // Check for active verbs suggesting they're alive
+                const activePatterns = ['said', 'walked', 'entered', 'appeared', 'spoke'];
+                const hasActiveVerb = activePatterns.some((pattern) => {
+                    const regex = new RegExp(`${charName}[^.]*${pattern}`, 'i');
+                    return regex.test(data.content);
+                });
+
+                if (hasActiveVerb) {
+                    violations.push({
+                        code: 'CANON_001',
+                        severity: 'error',
+                        message: `${charName} appears to be active but was established as dead in Episode ${death.episode_number}`,
+                        suggestion:
+                            'Use flashback, memory, dream, or hallucination framing if referencing this character.',
+                    });
+                }
+            }
+        }
+
+        // Check for world fact contradictions (CANON_005)
+        const worldFacts = (immutableEvents ?? []).filter(
+            (e) => e.event_type === 'world_fact' || e.event_type === 'location_destruction'
+        );
+
+        for (const fact of worldFacts) {
+            // Check if content references destroyed locations as intact
+            const factDesc = fact.description.toLowerCase();
+            if (fact.event_type === 'location_destruction') {
+                // Extract location name (simplified)
+                const locationWords = factDesc.split(' ').slice(0, 3).join(' ');
+                if (lowerContent.includes(locationWords)) {
+                    violations.push({
+                        code: 'CANON_005',
+                        severity: 'warning',
+                        message: `Reference to "${locationWords}" may conflict with established world fact`,
+                        suggestion: 'Verify this aligns with established canon.',
+                    });
+                }
+            }
+        }
+
+        return {
+            valid: violations.filter((v) => v.severity === 'error').length === 0,
+            violations,
+        };
+    },
+    {
+        schema: z.object({
+            projectId: z.string().uuid(),
+            episodeId: z.string().uuid(),
+            content: z.string(),
+        }),
+    }
+);
