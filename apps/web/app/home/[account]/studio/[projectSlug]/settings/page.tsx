@@ -34,6 +34,7 @@ import { DeleteProjectDialog } from '../../../_components/delete-project-dialog'
 import { EditProjectDialog } from '../../../_components/edit-project-dialog';
 import { loadTeamWorkspace } from '../../../_lib/server/team-account-workspace.loader';
 import { AudioSettingsForm } from './_components/audio-settings-form';
+import { CanonSettingsForm } from './_components/canon-settings-form';
 import { ProjectCoverSettings } from './_components/project-cover-settings';
 import { ProjectIntroSettings } from './_components/project-intro-settings';
 import { StudioSettingsForm } from './_components/studio-settings-form';
@@ -236,8 +237,8 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               projectId={project.id}
               currentCoverUrl={
                 (project.metadata as Record<string, unknown>)?.coverImageUrl as
-                  | string
-                  | undefined
+                | string
+                | undefined
               }
             />
           </If>
@@ -288,12 +289,12 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                 recurringElement: (project.metadata as Record<string, unknown>)
                   ?.recurringElement as
                   | {
-                      enabled?: boolean;
-                      location?: string;
-                      purpose?: string;
-                      placement?: 'beginning' | 'middle' | 'end' | 'throughout';
-                      dialogueHints?: string;
-                    }
+                    enabled?: boolean;
+                    location?: string;
+                    purpose?: string;
+                    placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+                    dialogueHints?: string;
+                  }
                   | undefined,
               }}
             />
@@ -313,6 +314,22 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                   };
                   voice_provider?: 'elevenlabs' | 'playht' | 'azure' | 'google';
                 } | null
+              }
+            />
+          </If>
+
+          {/* Canon Management Settings */}
+          <If condition={permissions.canEdit}>
+            <CanonSettingsForm
+              projectId={project.id}
+              currentSettings={
+                (project.metadata as Record<string, unknown>)?.canon as {
+                  enabled: boolean;
+                  roleSeparation: boolean;
+                  memoryHorizon: number;
+                  enforcement: 'flexible' | 'strict';
+                  contentType: 'series' | 'movie' | 'factual' | 'news';
+                } | null | undefined
               }
             />
           </If>
