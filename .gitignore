@@ -92,5 +92,4 @@ cdk.context.json
 # ts-node cache
 node-compile-cache/
 
-.gemini/
 gha-creds-*.json

@@ -9,7 +9,6 @@ import type {
     MemoryContext as CanonMemoryContext,
     ImmutableEvent,
     NarrativeThread,
-    CharacterStateContext,
 } from '@kit/episodes';
 interface MemoryContextPreviewProps {
     projectId: string;
