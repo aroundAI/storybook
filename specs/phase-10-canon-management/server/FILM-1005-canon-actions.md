@@ -2,6 +2,7 @@
 id: FILM-1005
 title: Canon Server Actions
 status: implemented
+priority: high
 effort: M
 dependencies: [FILM-1003, FILM-1004]
 ---

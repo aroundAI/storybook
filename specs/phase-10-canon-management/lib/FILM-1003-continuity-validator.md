@@ -1,7 +1,8 @@
 ---
 id: FILM-1003
 title: Continuity Validator Service
-status: draft
+status: implemented
+priority: high
 effort: L
 dependencies: [FILM-1001]
 ---

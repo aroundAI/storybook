@@ -1,6 +1,6 @@
 ---
 title: Canon Management Routes
-status: draft
+status: implemented
 ---
 
 # Canon Management Routes

@@ -1,7 +1,8 @@
 ---
 id: FILM-1004
 title: Memory Context Builder
-status: draft
+status: implemented
+priority: high
 effort: M
 dependencies: [FILM-1001]
 ---

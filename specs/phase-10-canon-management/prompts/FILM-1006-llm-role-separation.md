@@ -2,6 +2,7 @@
 id: FILM-1006
 title: LLM Role Separation
 status: implemented
+priority: high
 effort: M
 dependencies: [FILM-304]
 ---

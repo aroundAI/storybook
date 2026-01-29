@@ -2,6 +2,7 @@
 id: FILM-1001
 title: Canon Management Database Tables
 status: implemented
+priority: high
 effort: L
 dependencies: [FILM-101]
 ---
