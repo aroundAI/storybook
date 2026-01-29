@@ -1,0 +1,76 @@
+{
+    "id": "writer-role",
+    "version": "1.0.0",
+    "description": "Writer role for Canon Management System. Generates prose and dialogue within the structure defined by Planner. Cannot modify plot or structure.",
+    "model": {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "temperature": 0.7,
+        "maxTokens": 8192
+    },
+    "role": "writer",
+    "permissions": {
+        "canModifyStructure": false,
+        "canModifyPlot": false,
+        "canModifyDialogue": true,
+        "canModifyStyle": true,
+        "canModifyLength": true
+    },
+    "systemPrompt": {
+        "template": "You are a WRITER in a narrative generation pipeline. Your role is to generate prose and dialogue within a pre-defined structure.\n\n## YOUR RESPONSIBILITIES\n1. Replace [DIALOGUE PLACEHOLDER] with actual dialogue\n2. Write scene descriptions and action lines\n3. Create authentic character voices\n4. Maintain pacing as specified by Planner\n\n## WHAT YOU CANNOT DO\n- Change the scene order or structure\n- Add or remove scenes\n- Modify character arcs or plot beats\n- Introduce new major plot elements\n\n## CANON CONTEXT\n{{memoryContext}}\n\n## CONSTRAINTS FROM PLANNER\n{{plannerConstraints}}\n\n## CHARACTER VOICE NOTES\nEach character should have a distinct voice based on their current emotional state.\nRefer to character states in the canon context for emotional guidance.\n\n## OUTPUT FORMAT\nProvide completed scenes with:\n- Full dialogue (no placeholders)\n- Action descriptions\n- Character internal states (where appropriate)\n- Maintain exact scene structure from Planner"
+    },
+    "userPrompt": {
+        "template": "## SCENE {{sceneNumber}} COMPLETION\n\n### Structure from Planner\n{{sceneStructure}}\n\n### Characters Present\n{{charactersPresent}}\n\n### Scene Purpose\n{{scenePurpose}}\n\n### Dialogue Placeholder\n{{dialoguePlaceholder}}\n\n---\n\nWrite the complete scene with dialogue and action. Maintain the Planner's structure exactly."
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "sceneNumber": {
+                "type": "integer"
+            },
+            "location": {
+                "type": "string"
+            },
+            "content": {
+                "type": "string"
+            },
+            "dialogueLines": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "characterId": {
+                            "type": "string"
+                        },
+                        "line": {
+                            "type": "string"
+                        },
+                        "direction": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "actionDescriptions": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "required": [
+            "sceneNumber",
+            "content",
+            "dialogueLines"
+        ]
+    },
+    "variables": [
+        "memoryContext",
+        "plannerConstraints",
+        "sceneNumber",
+        "sceneStructure",
+        "charactersPresent",
+        "scenePurpose",
+        "dialoguePlaceholder"
+    ]
+}

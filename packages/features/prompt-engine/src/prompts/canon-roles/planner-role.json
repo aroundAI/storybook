@@ -1,0 +1,127 @@
+{
+    "id": "planner-role",
+    "version": "1.0.0",
+    "description": "Planner role for Canon Management System. Creates structural skeleton with plot beats, character arcs, and scene organization. Sets constraints for downstream roles.",
+    "model": {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "temperature": 0.3,
+        "maxTokens": 4096
+    },
+    "role": "planner",
+    "permissions": {
+        "canModifyStructure": true,
+        "canModifyPlot": true,
+        "canModifyDialogue": false,
+        "canModifyStyle": false,
+        "canModifyLength": true
+    },
+    "systemPrompt": {
+        "template": "You are a PLANNER in a narrative generation pipeline. Your role is to create the structural skeleton of the story.\n\n## YOUR RESPONSIBILITIES\n1. Define episode structure (3-act framework)\n2. Establish character arcs and emotional beats\n3. Plan scene sequences and pacing\n4. Set constraints for downstream roles (Writer, Editor, Stylist)\n\n## WHAT YOU CANNOT DO\n- Write dialogue (leave as [DIALOGUE PLACEHOLDER])\n- Add stylistic flourishes\n- Include prose descriptions beyond structure notes\n\n## CANON CONTEXT\n{{memoryContext}}\n\n## CONTINUITY RULES\nYou MUST respect all immutable events. Characters listed as DEAD cannot appear alive.\nYou MUST maintain forward-only character development - no state reversals.\nAll major character changes require Authorization Triplet (trigger, cost, constraint).\n\n## OUTPUT FORMAT\nProvide a structured outline with:\n- Episode premise (1-2 sentences)\n- Act breakdown with key beats\n- Scene list with: number, location, characters, purpose\n- Character arcs for this episode\n- New constraints introduced"
+    },
+    "userPrompt": {
+        "template": "## EPISODE {{episodeNumber}} PLANNING\n\n### Premise\n{{premise}}\n\n### Target Duration\n{{targetDuration}} minutes\n\n### Required Characters\n{{characterList}}\n\n### Active Narrative Threads to Address\n{{activeThreads}}\n\n---\n\nCreate the structural skeleton for this episode. Remember:\n- Dead characters CANNOT appear alive (check immutable events)\n- Character states must progress forward, not reverse\n- Address at least one active narrative thread\n- Leave dialogue as placeholders"
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "premise": {
+                "type": "string"
+            },
+            "acts": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "actNumber": {
+                            "type": "integer"
+                        },
+                        "purpose": {
+                            "type": "string"
+                        },
+                        "keyBeats": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "scenes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "sceneNumber": {
+                            "type": "integer"
+                        },
+                        "location": {
+                            "type": "string"
+                        },
+                        "charactersPresent": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "purpose": {
+                            "type": "string"
+                        },
+                        "dialoguePlaceholder": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "characterArcs": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "characterId": {
+                            "type": "string"
+                        },
+                        "startState": {
+                            "type": "string"
+                        },
+                        "endState": {
+                            "type": "string"
+                        },
+                        "trigger": {
+                            "type": "string"
+                        },
+                        "cost": {
+                            "type": "string"
+                        },
+                        "newConstraints": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "constraintsPropagated": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "required": [
+            "premise",
+            "scenes",
+            "characterArcs"
+        ]
+    },
+    "variables": [
+        "memoryContext",
+        "episodeNumber",
+        "premise",
+        "targetDuration",
+        "characterList",
+        "activeThreads"
+    ]
+}

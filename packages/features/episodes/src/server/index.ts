@@ -34,3 +34,6 @@ export * from '../lib/server/mutations/publish-actions';
 
 // Generation job tracking
 export * from '../lib/server/mutations/generation-job-actions';
+
+// Canon Management System (Phase 10)
+export * from './canon-actions';

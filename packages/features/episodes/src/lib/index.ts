@@ -9,3 +9,6 @@ export * from './duration-scaling';
 export * from './slug-utils';
 export * from './transitions';
 export * from './export-utils';
+
+// Canon Management System (Phase 10)
+export * from './canon';
