@@ -9,7 +9,7 @@
 export * from './types';
 
 // Services
-export { buildMemoryContext, formatMemoryContextForPrompt } from './memory-context-builder';
+export { buildMemoryContext, formatMemoryContextForPrompt, DEFAULT_TOKEN_BUDGET_MAX } from './memory-context-builder';
 export {
     validatePlotSkeleton,
     validateSceneBlocks,

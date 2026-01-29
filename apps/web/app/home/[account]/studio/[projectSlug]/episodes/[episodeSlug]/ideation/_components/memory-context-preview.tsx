@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { ChevronDown, ChevronRight, BookOpen, Users, GitBranch, Clock } from 'lucide-react';
 import { buildMemoryContextAction } from '@kit/episodes/server';
-import type {
-    MemoryContext as CanonMemoryContext,
-    ImmutableEvent,
-    NarrativeThread,
+import {
+    DEFAULT_TOKEN_BUDGET_MAX,
+    type MemoryContext as CanonMemoryContext,
+    type ImmutableEvent,
+    type NarrativeThread,
 } from '@kit/episodes';
 interface MemoryContextPreviewProps {
     projectId: string;
@@ -55,8 +56,7 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
                 // Result is CanonMemoryContext from @kit/episodes
                 const canonResult = result as CanonMemoryContext;
 
-                // Default token budget aligns with memory-context-builder.ts DEFAULT_TOKEN_BUDGET
-                const DEFAULT_TOKEN_BUDGET_MAX = 6000;
+                // Use shared constant from @kit/episodes/lib/canon/memory-context-builder
                 const used = canonResult.tokenBudget?.allocated ?? 0;
                 const max = canonResult.tokenBudget?.total ?? DEFAULT_TOKEN_BUDGET_MAX;
                 const percentage = max > 0 ? (used / max) * 100 : 0;

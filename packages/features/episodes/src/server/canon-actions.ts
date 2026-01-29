@@ -793,7 +793,7 @@ export const validateContentInlineAction = enhanceAction(
                 // Escape regex special characters to prevent ReDoS attacks
                 const escapedCharName = charName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const hasActiveVerb = activePatterns.some((pattern) => {
-                    const regex = new RegExp(`${escapedCharName}[^.]*${pattern}`, 'i');
+                    const regex = new RegExp(`${escapedCharName}[^.]{0,100}${pattern}`, 'i');
                     return regex.test(data.content);
                 });
 

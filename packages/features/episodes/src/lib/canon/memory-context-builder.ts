@@ -33,6 +33,14 @@ const DEFAULT_TOKEN_BUDGET_PERCENT = 15;
 const DEFAULT_CONTEXT_WINDOW_SIZE = 40000;
 const DEFAULT_MEMORY_HORIZON = 10;
 
+/**
+ * Default token budget max (exported for UI consistency)
+ * Computed as: DEFAULT_CONTEXT_WINDOW_SIZE * (DEFAULT_TOKEN_BUDGET_PERCENT / 100)
+ */
+export const DEFAULT_TOKEN_BUDGET_MAX = Math.floor(
+    DEFAULT_CONTEXT_WINDOW_SIZE * (DEFAULT_TOKEN_BUDGET_PERCENT / 100)
+); // 6000 tokens
+
 // Token budget allocation percentages
 const BUDGET_ALLOCATION = {
     immutableEvents: 0.35, // 35% - always included
