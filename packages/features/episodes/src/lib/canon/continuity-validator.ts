@@ -134,14 +134,13 @@ function _extractEventKey(text: string, characterNames: string[]): string | null
     // Check for character mentions with death indicators
     for (const name of characterNames) {
         const lowerName = name.toLowerCase();
-        if (lowerText.includes(lowerName)) {
-            // Check for alive/present indicators
-            if (
-                lowerText.includes('appears') ||
-                lowerText.includes('walks') ||
-                lowerText.includes('speaks') ||
-                lowerText.includes('enters')
-            ) {
+        // Escape special regex characters in name to prevent errors
+        const escapedName = lowerName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+        const nameRegex = new RegExp(`\\b${escapedName}\\b`);
+
+        if (nameRegex.test(lowerText)) {
+            // Check for alive/present indicators using word boundaries
+            if (/\b(appears|walks|speaks|enters)\b/.test(lowerText)) {
                 return `character:${lowerName}:alive`;
             }
         }
