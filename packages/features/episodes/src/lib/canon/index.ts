@@ -3,17 +3,18 @@
  * Phase 10: FILM-1001 to FILM-1006
  *
  * Re-exports all canon types, services, and utilities.
+ * NOTE: Server-only exports (buildMemoryContext, runRolePipeline) are in server/index.ts
  */
 
-// Types
+// Types (client-safe)
 export * from './types';
 
-// Services
-export { buildMemoryContext, formatMemoryContextForPrompt, DEFAULT_TOKEN_BUDGET_MAX } from './memory-context-builder';
+// Client-safe validation functions
 export {
     validatePlotSkeleton,
     validateSceneBlocks,
     getRulesForCheckpoint,
 } from './continuity-validator';
-export { runRolePipeline } from './llm-role-orchestrator';
-export type { RolePipelineInput, RolePipelineResult } from './llm-role-orchestrator';
+
+// Constants (client-safe) - duplicated here to avoid server-only import
+export const DEFAULT_TOKEN_BUDGET_MAX = 6000;

@@ -4,7 +4,7 @@ export * from './constants';
 export * from './status-workflow';
 export * from './continuity-types';
 export * from './continuity-schemas';
-export * from './auto-stitch';
+// NOTE: auto-stitch is server-only, exported from @kit/episodes/server
 export * from './duration-scaling';
 export * from './slug-utils';
 export * from './transitions';
