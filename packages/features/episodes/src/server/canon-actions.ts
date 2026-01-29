@@ -368,12 +368,31 @@ export const getCharacterStatesAction = enhanceAction(
 
 /**
  * Gets all character states for a project (latest state per character).
+ * Note: character_states links to assets via character_id, and assets has project_id.
  */
 export const getProjectCharacterStatesAction = enhanceAction(
     async (data: { projectId: string; limit?: number }) => {
         const client = getSupabaseServerClient();
 
-        // Get the latest state for each character in the project
+        // First, get all character asset IDs for this project
+        const { data: characterAssets, error: assetsError } = await client
+            .from('assets')
+            .select('id')
+            .eq('project_id', data.projectId)
+            .eq('asset_type', 'character');
+
+        if (assetsError) {
+            console.error('Error getting project character assets:', assetsError);
+            throw new Error(`Failed to get project character assets: ${assetsError.message}`);
+        }
+
+        if (!characterAssets || characterAssets.length === 0) {
+            return [];
+        }
+
+        const characterIds = characterAssets.map((a) => a.id);
+
+        // Now get character states for those character IDs
         const { data: states, error } = await client
             .from('character_states')
             .select(`
@@ -383,7 +402,7 @@ export const getProjectCharacterStatesAction = enhanceAction(
                     name
                 )
             `)
-            .eq('project_id', data.projectId)
+            .in('character_id', characterIds)
             .order('created_at', { ascending: false })
             .limit(data.limit ?? 50);
 

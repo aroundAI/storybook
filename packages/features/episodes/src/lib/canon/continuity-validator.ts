@@ -192,13 +192,6 @@ function checkResurrectionFailure(
 
     if (deathEvents.length === 0) return violations;
 
-    // Extract dead character IDs
-    const _deadCharacterNames = deathEvents.map((e) => {
-        // Extract name from event key (format: "character:name:dead")
-        const parts = e.eventKey.split(':');
-        return parts[1] ?? '';
-    });
-
     // Check each scene for dead characters appearing
     for (const scene of skeleton.scenes) {
         for (const charId of scene.charactersPresent) {
@@ -240,12 +233,6 @@ function checkStateReversal(
     context: MemoryContext
 ): ContinuityViolation[] {
     const violations: ContinuityViolation[] = [];
-
-    // Map of character emotional progressions that shouldn't reverse
-    const _progressionMap: Record<string, string[]> = {
-        emotional: ['grieving', 'accepting', 'hopeful', 'determined'],
-        trust: ['betrayed', 'cautious', 'trusting'],
-    };
 
     for (const charContext of context.characterStates) {
         const latestEmotional = charContext.currentStates.find(

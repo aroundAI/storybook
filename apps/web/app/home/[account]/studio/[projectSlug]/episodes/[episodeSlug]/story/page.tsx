@@ -21,6 +21,7 @@ export default function StoryPage() {
     episode,
     accountSlug,
     projectSlug,
+    projectMetadata,
     refetchEpisode,
   } = useEpisodeContext();
 
@@ -100,6 +101,7 @@ export default function StoryPage() {
         episode={episode}
         onScreenplayComplete={handleScreenplayComplete}
         refetchEpisode={refetchEpisode}
+        canonEnabled={(projectMetadata as { canon?: { enabled?: boolean } } | null)?.canon?.enabled ?? false}
       />
     </div>
   );

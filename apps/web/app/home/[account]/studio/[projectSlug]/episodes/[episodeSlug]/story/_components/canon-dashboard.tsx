@@ -322,9 +322,9 @@ function EventIcon({ eventType }: { eventType: string }) {
     switch (eventType) {
         case 'death':
             return <Skull className="h-4 w-4 text-red-500" />;
-        case 'injury':
+        case 'ability_loss':
             return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-        case 'revelation':
+        case 'location_destruction':
             return <Shield className="h-4 w-4 text-purple-500" />;
         default:
             return <Calendar className="h-4 w-4 text-blue-500" />;

@@ -28,6 +28,7 @@ interface StoryScreenProps {
   episode: EpisodeWithShots;
   onScreenplayComplete: () => void;
   refetchEpisode: () => void;
+  canonEnabled?: boolean;
 }
 
 const ROLE_COLORS: Record<string, string> = {
@@ -42,6 +43,7 @@ export function StoryScreen({
   episode,
   onScreenplayComplete,
   refetchEpisode,
+  canonEnabled = false,
 }: StoryScreenProps) {
   const { setIsGenerating } = useEpisodeContext(); // Add context hook
   const [isPending, _startTransition] = useTransition();
@@ -542,7 +544,7 @@ export function StoryScreen({
                   episodeId={episode.id}
                   episodeNumber={episode.number ?? 1}
                   season={typeof episode.season === 'object' ? episode.season?.number ?? 1 : 1}
-                  canonEnabled={false}
+                  canonEnabled={canonEnabled}
                 />
               )}
             </div>
