@@ -66,9 +66,9 @@ export function EpisodeSummaryGenerator({
             if (result) {
                 setSummary(result.episodeSummary);
                 setSentimentScore(result.sentimentScore);
-                // Add unique IDs for stable React keys
-                const eventsWithIds = result.immutableEvents.map((event) => ({
-                    id: crypto.randomUUID(),
+                // Add unique IDs for stable React keys (using eventKey + index for stability)
+                const eventsWithIds = result.immutableEvents.map((event, index) => ({
+                    id: `${event.eventKey}-${index}`,
                     ...event,
                 }));
                 setExtractedEvents(eventsWithIds);
