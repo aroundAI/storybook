@@ -13,7 +13,7 @@ interface EpisodeSummaryGeneratorProps {
     projectId: string;
     episodeId: string;
     episodeNumber: number;
-    season: number;
+    season?: number; // Optional to handle episodes without season
     storyContent: string;
     onSummaryGenerated?: (summary: string) => void;
 }
@@ -66,9 +66,9 @@ export function EpisodeSummaryGenerator({
             if (result) {
                 setSummary(result.episodeSummary);
                 setSentimentScore(result.sentimentScore);
-                // Add unique IDs for stable React keys (using eventKey + index for stability)
-                const eventsWithIds = result.immutableEvents.map((event, index) => ({
-                    id: `${event.eventKey}-${index}`,
+                // Add unique IDs for stable React keys (eventKey should be unique per event)
+                const eventsWithIds = result.immutableEvents.map((event) => ({
+                    id: event.eventKey,
                     ...event,
                 }));
                 setExtractedEvents(eventsWithIds);
@@ -96,7 +96,7 @@ export function EpisodeSummaryGenerator({
             const result = await commitCanonChangesAction({
                 projectId,
                 episodeId,
-                season,
+                season: season ?? 1, // Default to 1 only when committing if not provided
                 episodeNumber,
                 changes: {
                     immutableEvents: extractedEvents,

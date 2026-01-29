@@ -2103,7 +2103,7 @@ export function PublishScreen({
               projectId={episode.projectId}
               episodeId={episode.id}
               episodeNumber={episode.number}
-              season={episode.season?.number || 1}
+              season={episode.season?.number}
               storyContent={episode.storyData?.fullStory || ''}
             />
 
