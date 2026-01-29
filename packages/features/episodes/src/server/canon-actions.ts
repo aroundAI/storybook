@@ -3,19 +3,17 @@
  * Phase 10: FILM-1005
  *
  * Server actions for Canon Management System CRUD operations.
- *
- * NOTE: This file uses @ts-nocheck temporarily until database migration is applied
- * and types are regenerated with: pnpm --filter web supabase:web:typegen
  */
-
-// @ts-nocheck - Canon tables pending migration
-/* eslint-disable @typescript-eslint/no-explicit-any */
 
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { enhanceAction } from '@kit/next/actions';
 import { z } from 'zod';
+
+import type { Database } from '@kit/supabase/database';
+
+type Json = Database['public']['Tables']['immutable_events']['Row']['metadata'];
 
 import type {
     AddImmutableEventInput,
@@ -100,6 +98,74 @@ const GetCanonHealthSchema = z.object({
 });
 
 // =============================================================================
+// MAPPER FUNCTIONS
+// =============================================================================
+
+type ImmutableEventRow = {
+    id: string;
+    project_id: string;
+    event_type: string;
+    event_key: string;
+    established_in: string;
+    season: number;
+    episode_number: number;
+    description: string;
+    metadata: unknown;
+    created_at: string | null;
+    created_by: string | null;
+};
+
+type NarrativeThreadRow = {
+    id: string;
+    project_id: string;
+    thread_name: string;
+    thread_type: string | null;
+    status: string | null;
+    opened_at: string;
+    resolved_at: string | null;
+    episodes_touched: string[] | null;
+    promises: string[] | null;
+    payoffs: string[] | null;
+    description: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+};
+
+function mapImmutableEvent(row: ImmutableEventRow): ImmutableEvent {
+    return {
+        id: row.id,
+        projectId: row.project_id,
+        eventType: row.event_type as ImmutableEvent['eventType'],
+        eventKey: row.event_key,
+        establishedIn: row.established_in,
+        season: row.season,
+        episodeNumber: row.episode_number,
+        description: row.description,
+        metadata: (row.metadata as Record<string, unknown>) ?? undefined,
+        createdAt: row.created_at ?? new Date().toISOString(),
+        createdBy: row.created_by ?? undefined,
+    };
+}
+
+function mapNarrativeThread(row: NarrativeThreadRow): NarrativeThread {
+    return {
+        id: row.id,
+        projectId: row.project_id,
+        threadName: row.thread_name,
+        threadType: (row.thread_type ?? 'plot') as NarrativeThread['threadType'],
+        status: (row.status ?? 'open') as NarrativeThread['status'],
+        openedAt: row.opened_at,
+        resolvedAt: row.resolved_at ?? undefined,
+        episodesTouched: row.episodes_touched ?? undefined,
+        promises: row.promises ?? undefined,
+        payoffs: row.payoffs ?? undefined,
+        description: row.description ?? undefined,
+        createdAt: row.created_at ?? new Date().toISOString(),
+        updatedAt: row.updated_at ?? new Date().toISOString(),
+    };
+}
+
+// =============================================================================
 // IMMUTABLE EVENTS ACTIONS
 // =============================================================================
 
@@ -134,7 +200,7 @@ export const addImmutableEventAction = enhanceAction(
                 season: data.season,
                 episode_number: data.episodeNumber,
                 description: data.description,
-                metadata: data.metadata ?? {},
+                metadata: (data.metadata ?? null) as Json,
             })
             .select()
             .single();
@@ -144,7 +210,7 @@ export const addImmutableEventAction = enhanceAction(
             throw new Error(`Failed to add immutable event: ${error.message}`);
         }
 
-        return event as ImmutableEvent;
+        return mapImmutableEvent(event as ImmutableEventRow);
     },
     {
         schema: AddImmutableEventSchema,
@@ -169,7 +235,7 @@ export const getImmutableEventsAction = enhanceAction(
             throw new Error(`Failed to get immutable events: ${error.message}`);
         }
 
-        return events as ImmutableEvent[];
+        return (events ?? []).map(e => mapImmutableEvent(e as ImmutableEventRow));
     },
     {
         schema: z.object({ projectId: z.string().uuid() }),
@@ -234,7 +300,7 @@ export const updateCharacterStateAction = enhanceAction(
                 character_id: data.characterId,
                 episode_id: data.episodeId,
                 state_type: data.stateType,
-                state_value: data.stateValue,
+                state_value: data.stateValue as Json,
                 trigger_event: data.triggerEvent,
                 cost: data.cost ?? null,
                 new_constraints: data.newConstraints ?? null,
@@ -319,7 +385,7 @@ export const createNarrativeThreadAction = enhanceAction(
             throw new Error(`Failed to create narrative thread: ${error.message}`);
         }
 
-        return thread as NarrativeThread;
+        return mapNarrativeThread(thread as NarrativeThreadRow);
     },
     {
         schema: CreateNarrativeThreadSchema,
@@ -386,7 +452,7 @@ export const updateNarrativeThreadAction = enhanceAction(
             throw new Error(`Failed to update narrative thread: ${error.message}`);
         }
 
-        return thread as NarrativeThread;
+        return mapNarrativeThread(thread as NarrativeThreadRow);
     },
     {
         schema: z.object({
@@ -418,7 +484,7 @@ export const getActiveThreadsAction = enhanceAction(
             throw new Error(`Failed to get active threads: ${error.message}`);
         }
 
-        return threads as NarrativeThread[];
+        return (threads ?? []).map(t => mapNarrativeThread(t as NarrativeThreadRow));
     },
     {
         schema: z.object({ projectId: z.string().uuid() }),
@@ -476,9 +542,9 @@ export const getCanonHealthAction = enhanceAction(
                 .in('status', ['open', 'progressed']),
             client
                 .from('episodes')
-                .select('episode_number')
+                .select('number')
                 .eq('project_id', data.projectId)
-                .order('episode_number', { ascending: false })
+                .order('number', { ascending: false })
                 .limit(1)
                 .single(),
         ]);
@@ -505,7 +571,7 @@ export const getCanonHealthAction = enhanceAction(
             immutableEvents: immutableResult.count ?? 0,
             activeThreads: threadsResult.count ?? 0,
             characterArcs: 0, // Would need character query
-            lastEpisode: episodesResult.data?.episode_number ?? 0,
+            lastEpisode: episodesResult.data?.number ?? 0,
         };
 
         const health: CanonHealthStatus = {
@@ -518,7 +584,7 @@ export const getCanonHealthAction = enhanceAction(
             health,
             stats,
             config: canonSettings,
-            orphanedThreads: orphanedThreads as NarrativeThread[] | undefined,
+            orphanedThreads: orphanedThreads?.map(t => mapNarrativeThread(t as NarrativeThreadRow)),
         };
     },
     {

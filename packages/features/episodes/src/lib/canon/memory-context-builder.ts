@@ -4,13 +4,7 @@
  *
  * Builds token-budgeted context from canon data for LLM generation.
  * 15% of total token budget by default.
- *
- * NOTE: This file uses @ts-nocheck temporarily until database migration is applied
- * and types are regenerated with: pnpm --filter web supabase:web:typegen
  */
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-// @ts-nocheck - Canon tables pending migration
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -18,10 +12,15 @@ import type {
     BuildMemoryContextInput,
     CharacterState,
     CharacterStateContext,
+    CharacterStateType,
+    CharacterStateValue,
     EpisodeSummary,
     ImmutableEvent,
+    ImmutableEventType,
     MemoryContext,
     NarrativeThread,
+    NarrativeThreadStatus,
+    NarrativeThreadType,
     TokenBudget,
     WorldState,
 } from './types';
@@ -97,14 +96,14 @@ async function loadImmutableEvents(
     const events: ImmutableEvent[] = (data ?? []).map((row) => ({
         id: row.id,
         projectId: row.project_id,
-        eventType: row.event_type,
+        eventType: row.event_type as ImmutableEventType,
         eventKey: row.event_key,
         establishedIn: row.established_in,
         season: row.season,
         episodeNumber: row.episode_number,
         description: row.description,
-        metadata: row.metadata ?? undefined,
-        createdAt: row.created_at,
+        metadata: (row.metadata as Record<string, unknown>) ?? undefined,
+        createdAt: row.created_at ?? new Date().toISOString(),
         createdBy: row.created_by ?? undefined,
     }));
 
@@ -162,13 +161,13 @@ async function loadCharacterStates(
             id: row.id,
             characterId: row.character_id,
             episodeId: row.episode_id,
-            stateType: row.state_type,
-            stateValue: row.state_value,
+            stateType: row.state_type as CharacterStateType,
+            stateValue: row.state_value as CharacterStateValue,
             triggerEvent: row.trigger_event,
             cost: row.cost ?? undefined,
             newConstraints: row.new_constraints ?? undefined,
             previousStateId: row.previous_state_id ?? undefined,
-            createdAt: row.created_at,
+            createdAt: row.created_at ?? new Date().toISOString(),
             createdBy: row.created_by ?? undefined,
         }));
 
@@ -230,9 +229,9 @@ async function loadWorldState(
         activeConflicts: data.active_conflicts ?? undefined,
         atmosphere: data.atmosphere ?? undefined,
         constraints: data.constraints ?? undefined,
-        environmentData: data.environment_data ?? undefined,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
+        environmentData: (data.environment_data as Record<string, unknown>) ?? undefined,
+        createdAt: data.created_at ?? new Date().toISOString(),
+        updatedAt: data.updated_at ?? new Date().toISOString(),
     };
 
     // Check budget
@@ -274,16 +273,16 @@ async function loadActiveThreads(
         id: row.id,
         projectId: row.project_id,
         threadName: row.thread_name,
-        threadType: row.thread_type,
-        status: row.status,
+        threadType: (row.thread_type ?? 'plot') as NarrativeThreadType,
+        status: (row.status ?? 'open') as NarrativeThreadStatus,
         openedAt: row.opened_at,
         resolvedAt: row.resolved_at ?? undefined,
         episodesTouched: row.episodes_touched ?? undefined,
         promises: row.promises ?? undefined,
         payoffs: row.payoffs ?? undefined,
         description: row.description ?? undefined,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+        createdAt: row.created_at ?? new Date().toISOString(),
+        updatedAt: row.updated_at ?? new Date().toISOString(),
     }));
 
     // Fit within budget
@@ -347,8 +346,8 @@ async function loadEpisodeSummaries(
         newConstraints: row.new_constraints ?? undefined,
         sentimentScore: row.sentiment_score ?? undefined,
         estimatedTokens: row.estimated_tokens ?? undefined,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+        createdAt: row.created_at ?? new Date().toISOString(),
+        updatedAt: row.updated_at ?? new Date().toISOString(),
     }));
 
     // Fit within budget

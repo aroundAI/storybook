@@ -254,7 +254,7 @@ function checkStateReversal(
 
         if (!latestEmotional) continue;
 
-        const currentState = latestEmotional.stateValue.state;
+        const currentState = (latestEmotional.stateValue as Record<string, unknown>).state as string | undefined;
         const constraints = charContext.constraints;
 
         // Check if proposed arc contradicts constraints
@@ -304,8 +304,9 @@ function checkKnowledgeViolation(
 
         const facts = new Set<string>();
         for (const state of knowledgeStates) {
-            if (state.stateValue.fact) {
-                facts.add(state.stateValue.fact.toLowerCase());
+            const fact = (state.stateValue as Record<string, unknown>).fact;
+            if (typeof fact === 'string') {
+                facts.add(fact.toLowerCase());
             }
         }
 

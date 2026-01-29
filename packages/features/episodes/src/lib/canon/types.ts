@@ -62,20 +62,7 @@ export type CharacterStateType =
     | 'location'
     | 'goal';
 
-export interface CharacterStateValue {
-    state: string;
-    intensity?: number;
-    cause?: string;
-    duration?: string;
-    targetId?: string;
-    type?: string;
-    status?: string;
-    trust?: number;
-    fact?: string;
-    source?: string;
-    confidence?: string;
-    [key: string]: unknown;
-}
+export type CharacterStateValue = Record<string, unknown>;
 
 /**
  * World/environment state tracking.
