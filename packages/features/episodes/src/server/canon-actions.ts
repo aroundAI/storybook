@@ -366,6 +366,42 @@ export const getCharacterStatesAction = enhanceAction(
     }
 );
 
+/**
+ * Gets all character states for a project (latest state per character).
+ */
+export const getProjectCharacterStatesAction = enhanceAction(
+    async (data: { projectId: string; limit?: number }) => {
+        const client = getSupabaseServerClient();
+
+        // Get the latest state for each character in the project
+        const { data: states, error } = await client
+            .from('character_states')
+            .select(`
+                *,
+                characters:character_id (
+                    id,
+                    name
+                )
+            `)
+            .eq('project_id', data.projectId)
+            .order('created_at', { ascending: false })
+            .limit(data.limit ?? 50);
+
+        if (error) {
+            console.error('Error getting project character states:', error);
+            throw new Error(`Failed to get project character states: ${error.message}`);
+        }
+
+        return states ?? [];
+    },
+    {
+        schema: z.object({
+            projectId: z.string().uuid(),
+            limit: z.number().int().positive().optional(),
+        }),
+    }
+);
+
 // =============================================================================
 // NARRATIVE THREAD ACTIONS
 // =============================================================================

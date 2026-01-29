@@ -21,7 +21,7 @@ import type {
     ImmutableEvent,
     NarrativeThread,
 } from '@kit/episodes';
-import { getActiveThreadsAction, getImmutableEventsAction } from '@kit/episodes/server';
+import { getActiveThreadsAction, getImmutableEventsAction, getProjectCharacterStatesAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -60,15 +60,18 @@ export function CanonDashboard({
     const [isPending, startTransition] = useTransition();
     const [events, setEvents] = useState<ImmutableEvent[]>([]);
     const [threads, setThreads] = useState<NarrativeThread[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [characterStates, setCharacterStates] = useState<any[]>([]);
     const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
     const loadData = useCallback(() => {
         if (!canonEnabled) return;
 
         startTransition(async () => {
-            const [eventsResult, threadsResult] = await Promise.all([
+            const [eventsResult, threadsResult, statesResult] = await Promise.all([
                 getImmutableEventsAction({ projectId }),
                 getActiveThreadsAction({ projectId }),
+                getProjectCharacterStatesAction({ projectId, limit: 20 }),
             ]);
 
             // Actions return arrays directly
@@ -77,6 +80,9 @@ export function CanonDashboard({
             }
             if (Array.isArray(threadsResult)) {
                 setThreads(threadsResult);
+            }
+            if (Array.isArray(statesResult)) {
+                setCharacterStates(statesResult);
             }
         });
     }, [projectId, canonEnabled]);
@@ -260,12 +266,41 @@ export function CanonDashboard({
                     {/* Characters Tab */}
                     <TabsContent value="characters" className="mt-3">
                         <ScrollArea className="h-[300px]">
-                            <div className="flex flex-col items-center justify-center py-8 text-center">
-                                <User className="mb-2 h-8 w-8 text-muted-foreground" />
-                                <p className="text-sm text-muted-foreground">
-                                    Character states coming soon
-                                </p>
-                            </div>
+                            {characterStates.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-8 text-center">
+                                    <User className="mb-2 h-8 w-8 text-muted-foreground" />
+                                    <p className="text-sm text-muted-foreground">
+                                        No character states tracked yet
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        States are recorded during story generation
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {characterStates.map((state) => (
+                                        <div
+                                            key={state.id}
+                                            className="flex items-start gap-3 rounded-lg border p-3"
+                                        >
+                                            <User className="h-4 w-4 text-green-500 mt-0.5" />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium truncate">
+                                                    {state.characters?.name ?? state.character_id}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Type: {state.state_type}
+                                                </p>
+                                                {state.trigger_event && (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Trigger: {state.trigger_event}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </ScrollArea>
                     </TabsContent>
                 </Tabs>
