@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 
 import {
   ArrowRight,
+  BookOpen,
   ChevronRight,
   Loader2,
   Maximize2,
@@ -20,6 +21,7 @@ import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
 import { ActDivider } from './act-divider';
+import { CanonDashboard } from './canon-dashboard';
 
 interface StoryScreenProps {
   episode: EpisodeWithShots;
@@ -44,6 +46,7 @@ export function StoryScreen({
   const [isPending, _startTransition] = useTransition();
   const [isReadingMode, setIsReadingMode] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
+  const [sidebarTab, setSidebarTab] = useState<'info' | 'canon'>('info');
   const storyData = episode.storyData;
 
   // WebSocket for screenplay-conversion async LLM results
@@ -339,165 +342,198 @@ export function StoryScreen({
           )}
         >
           <div className="flex h-full flex-col">
-            {/* Header */}
-            <div className="border-b border-white/20 p-6 dark:border-gray-700/30">
-              <h3 className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
-                Story Info
-              </h3>
-              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Details, structure & characters
-              </p>
+            {/* Tabbed Header */}
+            <div className="border-b border-white/20 dark:border-gray-700/30">
+              <div className="flex">
+                <button
+                  onClick={() => setSidebarTab('info')}
+                  className={cn(
+                    'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                    sidebarTab === 'info'
+                      ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Users className="h-4 w-4" />
+                    Story Info
+                  </div>
+                </button>
+                <button
+                  onClick={() => setSidebarTab('canon')}
+                  className={cn(
+                    'flex-1 px-4 py-3 text-sm font-medium transition-colors',
+                    sidebarTab === 'canon'
+                      ? 'border-b-2 border-violet-500 text-violet-600 dark:text-violet-400'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                  )}
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <BookOpen className="h-4 w-4" />
+                    Canon
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4">
-              <div className="space-y-4">
-                {/* Story Details */}
-                <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                  <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                    Story Details
-                  </h3>
-                  <div className="space-y-2 text-xs">
-                    {storyData.tone && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Tone
-                        </span>
-                        <span className="text-right font-medium text-gray-900 dark:text-white">
-                          {storyData.tone}
-                        </span>
-                      </div>
-                    )}
-                    {storyData.estimatedSceneCount && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Est. Scenes
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {storyData.estimatedSceneCount}
-                        </span>
-                      </div>
-                    )}
-                    {storyData.targetDuration && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Target Duration
-                        </span>
-                        <span className="font-medium text-gray-900 dark:text-white">
-                          {Math.floor(storyData.targetDuration / 60)}m
-                        </span>
-                      </div>
-                    )}
-                    {storyData.contentStyle && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">
-                          Style
-                        </span>
-                        <span className="font-medium text-gray-900 capitalize dark:text-white">
-                          {storyData.contentStyle.replace('-', ' ')}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Act Breakdown */}
-                {storyData.actBreakdown && (
+              {sidebarTab === 'info' ? (
+                <div className="space-y-4">
+                  {/* Story Details */}
                   <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
                     <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                      Act Breakdown
+                      Story Details
                     </h3>
-                    <div className="space-y-3">
-                      <div>
-                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                          Act 1
-                        </span>
-                        <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                          {storyData.actBreakdown.act1}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                          Act 2
-                        </span>
-                        <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                          {storyData.actBreakdown.act2}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-                          Act 3
-                        </span>
-                        <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                          {storyData.actBreakdown.act3}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Themes */}
-                {storyData.themes && storyData.themes.length > 0 && (
-                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                    <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
-                      Themes
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {storyData.themes.map((theme, i) => (
-                        <span
-                          key={i}
-                          className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300"
-                        >
-                          {theme}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Characters */}
-                {storyData.characters && storyData.characters.length > 0 && (
-                  <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
-                    <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                      <Users className="h-4 w-4" />
-                      Characters
-                    </h3>
-                    <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
-                      {storyData.characters.length} character
-                      {storyData.characters.length !== 1 ? 's' : ''} in this
-                      story
-                    </p>
-                    <div className="space-y-3">
-                      {storyData.characters.map(
-                        (character: StoryCharacterArc, index: number) => (
-                          <div
-                            key={index}
-                            className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
-                          >
-                            <div className="mb-2 flex items-start justify-between">
-                              <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
-                                {character.name}
-                              </h4>
-                              <span
-                                className={cn(
-                                  'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-                                  ROLE_COLORS[character.role.toLowerCase()] ??
-                                  'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-                                )}
-                              >
-                                {character.role}
-                              </span>
-                            </div>
-                            <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
-                              {character.arc}
-                            </p>
-                          </div>
-                        ),
+                    <div className="space-y-2 text-xs">
+                      {storyData.tone && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Tone
+                          </span>
+                          <span className="text-right font-medium text-gray-900 dark:text-white">
+                            {storyData.tone}
+                          </span>
+                        </div>
+                      )}
+                      {storyData.estimatedSceneCount && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Est. Scenes
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {storyData.estimatedSceneCount}
+                          </span>
+                        </div>
+                      )}
+                      {storyData.targetDuration && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Target Duration
+                          </span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {Math.floor(storyData.targetDuration / 60)}m
+                          </span>
+                        </div>
+                      )}
+                      {storyData.contentStyle && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 dark:text-gray-400">
+                            Style
+                          </span>
+                          <span className="font-medium text-gray-900 capitalize dark:text-white">
+                            {storyData.contentStyle.replace('-', ' ')}
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Act Breakdown */}
+                  {storyData.actBreakdown && (
+                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        Act Breakdown
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            Act 1
+                          </span>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                            {storyData.actBreakdown.act1}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            Act 2
+                          </span>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                            {storyData.actBreakdown.act2}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+                            Act 3
+                          </span>
+                          <p className="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                            {storyData.actBreakdown.act3}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Themes */}
+                  {storyData.themes && storyData.themes.length > 0 && (
+                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                      <h3 className="mb-3 text-sm font-semibold text-gray-900 dark:text-white">
+                        Themes
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {storyData.themes.map((theme, i) => (
+                          <span
+                            key={i}
+                            className="rounded-full bg-gray-100 px-2.5 py-1 text-xs text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                          >
+                            {theme}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Characters */}
+                  {storyData.characters && storyData.characters.length > 0 && (
+                    <div className="bg-card/80 rounded-xl p-4 shadow-sm backdrop-blur-sm">
+                      <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                        <Users className="h-4 w-4" />
+                        Characters
+                      </h3>
+                      <p className="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                        {storyData.characters.length} character
+                        {storyData.characters.length !== 1 ? 's' : ''} in this
+                        story
+                      </p>
+                      <div className="space-y-3">
+                        {storyData.characters.map(
+                          (character: StoryCharacterArc, index: number) => (
+                            <div
+                              key={index}
+                              className="rounded-lg border border-gray-100 bg-gray-50/50 p-3 dark:border-gray-700 dark:bg-gray-800/50"
+                            >
+                              <div className="mb-2 flex items-start justify-between">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">
+                                  {character.name}
+                                </h4>
+                                <span
+                                  className={cn(
+                                    'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
+                                    ROLE_COLORS[character.role.toLowerCase()] ??
+                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                  )}
+                                >
+                                  {character.role}
+                                </span>
+                              </div>
+                              <p className="text-xs leading-relaxed text-gray-600 dark:text-gray-300">
+                                {character.arc}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <CanonDashboard
+                  projectId={episode.projectId ?? ''}
+                  episodeId={episode.id}
+                  episodeNumber={episode.number ?? 1}
+                  canonEnabled={true}
+                />
+              )}
             </div>
           </div>
         </div>
