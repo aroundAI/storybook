@@ -173,7 +173,7 @@ function mapNarrativeThread(row: NarrativeThreadRow): NarrativeThread {
  * Adds an immutable event to the canon.
  */
 export const addImmutableEventAction = enhanceAction(
-    async (data: AddImmutableEventInput) => {
+    async (data: AddImmutableEventInput, user) => {
         const client = getSupabaseServerClient();
 
         // Check for existing conflicting event
@@ -201,6 +201,7 @@ export const addImmutableEventAction = enhanceAction(
                 episode_number: data.episodeNumber,
                 description: data.description,
                 metadata: (data.metadata ?? null) as Json,
+                created_by: user.id,
             })
             .select()
             .single();
@@ -287,7 +288,7 @@ export const updateCharacterStateAction = enhanceAction(
         // Get previous state for audit chain
         const { data: previousState } = await client
             .from('character_states')
-            .select('id')
+            .select('id, state_value')
             .eq('character_id', data.characterId)
             .eq('state_type', data.stateType)
             .order('created_at', { ascending: false })
@@ -313,6 +314,16 @@ export const updateCharacterStateAction = enhanceAction(
             console.error('Error updating character state:', error);
             throw new Error(`Failed to update character state: ${error.message}`);
         }
+
+        // Record state delta for audit trail (FILM-1005)
+        await client.from('state_deltas').insert({
+            episode_id: data.episodeId,
+            entity_type: 'character',
+            entity_id: data.characterId,
+            before_state: (previousState?.state_value ?? null) as Json,
+            after_state: data.stateValue as Json,
+            change_reason: data.triggerEvent,
+        });
 
         return state;
     },
@@ -530,7 +541,7 @@ export const getCanonHealthAction = enhanceAction(
             DEFAULT_CANON_SETTINGS;
 
         // Count stats in parallel
-        const [immutableResult, threadsResult, episodesResult] = await Promise.all([
+        const [immutableResult, threadsResult, episodesResult, characterArcsResult] = await Promise.all([
             client
                 .from('immutable_events')
                 .select('id', { count: 'exact', head: true })
@@ -547,6 +558,10 @@ export const getCanonHealthAction = enhanceAction(
                 .order('number', { ascending: false })
                 .limit(1)
                 .single(),
+            client
+                .from('character_states')
+                .select('character_id', { count: 'exact', head: true })
+                .eq('project_id', data.projectId),
         ]);
 
         // Get orphaned threads (open with old promises)
@@ -570,7 +585,7 @@ export const getCanonHealthAction = enhanceAction(
         const stats: CanonStats = {
             immutableEvents: immutableResult.count ?? 0,
             activeThreads: threadsResult.count ?? 0,
-            characterArcs: 0, // Would need character query
+            characterArcs: characterArcsResult.count ?? 0,
             lastEpisode: episodesResult.data?.number ?? 0,
         };
 

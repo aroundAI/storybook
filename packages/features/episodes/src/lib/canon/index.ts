@@ -15,3 +15,5 @@ export {
     validateSceneBlocks,
     getRulesForCheckpoint,
 } from './continuity-validator';
+export { runRolePipeline } from './llm-role-orchestrator';
+export type { RolePipelineInput, RolePipelineResult } from './llm-role-orchestrator';

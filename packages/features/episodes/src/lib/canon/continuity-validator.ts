@@ -92,7 +92,7 @@ const VALIDATION_RULES: ValidationRule[] = [
  * Checks if two event keys conflict.
  * Keys conflict if they refer to same entity in contradictory states.
  */
-function keysConflict(key1: string, key2: string): boolean {
+function _keysConflict(key1: string, key2: string): boolean {
     const parts1 = key1.split(':');
     const parts2 = key2.split(':');
 
@@ -128,7 +128,7 @@ function keysConflict(key1: string, key2: string): boolean {
  * Generates an event key from text content.
  * Format: "{entity}:{id}:{state}"
  */
-function extractEventKey(text: string, characterNames: string[]): string | null {
+function _extractEventKey(text: string, characterNames: string[]): string | null {
     const lowerText = text.toLowerCase();
 
     // Check for character mentions with death indicators
@@ -155,7 +155,7 @@ function extractEventKey(text: string, characterNames: string[]): string | null 
  */
 function suggestAlternative(
     violationType: string,
-    content: string
+    _content: string
 ): string {
     switch (violationType) {
         case 'resurrection':
@@ -193,7 +193,7 @@ function checkResurrectionFailure(
     if (deathEvents.length === 0) return violations;
 
     // Extract dead character IDs
-    const deadCharacterNames = deathEvents.map((e) => {
+    const _deadCharacterNames = deathEvents.map((e) => {
         // Extract name from event key (format: "character:name:dead")
         const parts = e.eventKey.split(':');
         return parts[1] ?? '';
@@ -242,7 +242,7 @@ function checkStateReversal(
     const violations: ContinuityViolation[] = [];
 
     // Map of character emotional progressions that shouldn't reverse
-    const progressionMap: Record<string, string[]> = {
+    const _progressionMap: Record<string, string[]> = {
         emotional: ['grieving', 'accepting', 'hopeful', 'determined'],
         trust: ['betrayed', 'cautious', 'trusting'],
     };
