@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { BookOpen, Info, Loader2, Save, Shield } from 'lucide-react';
@@ -63,7 +63,6 @@ export function CanonSettingsForm({
     currentSettings,
 }: CanonSettingsFormProps) {
     const [isPending, startTransition] = useTransition();
-    const [hasChanges, setHasChanges] = useState(false);
 
     const settings: CanonSettings = {
         ...DEFAULT_CANON_SETTINGS,
@@ -92,7 +91,7 @@ export function CanonSettingsForm({
                         settings: data,
                     });
                     toast.success('Canon settings saved');
-                    setHasChanges(false);
+                    form.reset(data);
                 } catch (error) {
                     toast.error(
                         error instanceof Error ? error.message : 'Failed to save settings',
@@ -144,10 +143,7 @@ export function CanonSettingsForm({
                                     <FormControl>
                                         <Switch
                                             checked={field.value}
-                                            onCheckedChange={(checked) => {
-                                                field.onChange(checked);
-                                                setHasChanges(true);
-                                            }}
+                                            onCheckedChange={field.onChange}
                                         />
                                     </FormControl>
                                 </FormItem>
@@ -170,10 +166,7 @@ export function CanonSettingsForm({
                                             <FormLabel>Content Type</FormLabel>
                                             <Select
                                                 value={field.value}
-                                                onValueChange={(value) => {
-                                                    field.onChange(value);
-                                                    setHasChanges(true);
-                                                }}
+                                                onValueChange={field.onChange}
                                             >
                                                 <FormControl>
                                                     <SelectTrigger>
@@ -209,10 +202,7 @@ export function CanonSettingsForm({
                                             <FormLabel>Enforcement Level</FormLabel>
                                             <Select
                                                 value={field.value}
-                                                onValueChange={(value) => {
-                                                    field.onChange(value);
-                                                    setHasChanges(true);
-                                                }}
+                                                onValueChange={field.onChange}
                                             >
                                                 <FormControl>
                                                     <SelectTrigger>
@@ -253,10 +243,7 @@ export function CanonSettingsForm({
                                                     max={20}
                                                     step={1}
                                                     value={[field.value]}
-                                                    onValueChange={([value]) => {
-                                                        field.onChange(value);
-                                                        setHasChanges(true);
-                                                    }}
+                                                    onValueChange={([value]) => field.onChange(value)}
                                                 />
                                             </FormControl>
                                             <FormDescription>
@@ -281,10 +268,7 @@ export function CanonSettingsForm({
                                             <FormControl>
                                                 <Switch
                                                     checked={field.value}
-                                                    onCheckedChange={(checked) => {
-                                                        field.onChange(checked);
-                                                        setHasChanges(true);
-                                                    }}
+                                                    onCheckedChange={field.onChange}
                                                 />
                                             </FormControl>
                                         </FormItem>
@@ -304,7 +288,7 @@ export function CanonSettingsForm({
 
                         {/* Save Button */}
                         <div className="flex justify-end">
-                            <Button type="submit" disabled={isPending || !hasChanges}>
+                            <Button type="submit" disabled={isPending || !form.formState.isDirty}>
                                 {isPending ? (
                                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 ) : (

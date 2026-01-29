@@ -77,6 +77,10 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
                 const threads = result.activeThreads as MemoryContextThread[];
                 const characters = result.characterStates as MemoryContextCharacter[];
 
+                const used = (result.tokenBudget as { allocated?: number })?.allocated ?? 0;
+                const max = (result.tokenBudget as { total?: number })?.total ?? 6000;
+                const percentage = max > 0 ? (used / max) * 100 : 0;
+
                 setContext({
                     immutableEvents: events.map((e) => ({
                         id: e.id,
@@ -94,13 +98,7 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
                         characterName: c.characterName ?? 'Unknown',
                         currentState: c.currentStates?.[0]?.stateType ?? 'unknown',
                     })),
-                    tokenBudget: {
-                        used: (result.tokenBudget as { allocated?: number })?.allocated ?? 0,
-                        max: (result.tokenBudget as { total?: number })?.total ?? 6000,
-                        percentage: ((result.tokenBudget as { total?: number })?.total ?? 0) > 0
-                            ? (((result.tokenBudget as { allocated?: number })?.allocated ?? 0) / ((result.tokenBudget as { total?: number })?.total ?? 6000)) * 100
-                            : 0,
-                    },
+                    tokenBudget: { used, max, percentage },
                 });
             }
         } catch (error) {
