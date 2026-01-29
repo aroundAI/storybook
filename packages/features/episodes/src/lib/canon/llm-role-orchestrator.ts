@@ -285,6 +285,19 @@ async function validateRoleOutput(
         if (skeleton) {
             return validatePlotSkeleton(skeleton, memoryContext);
         }
+        // Failed to parse plot skeleton - return validation failure
+        return {
+            valid: false,
+            violations: [{
+                code: 'CANON_010',
+                severity: 'error',
+                message: 'Could not extract plot skeleton from planner output',
+                suggestion: 'The planner output must contain a valid JSON plot skeleton',
+            }],
+            passedRules: [],
+            summary: { errors: 1, warnings: 0, infos: 0 },
+            validatedAt: new Date().toISOString(),
+        };
     }
 
     // For other roles: return valid result

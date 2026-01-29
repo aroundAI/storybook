@@ -3,8 +3,8 @@
     "version": "1.0.0",
     "description": "Editor role for Canon Management System. Refines dialogue and prose for consistency, pacing, and clarity. Cannot change structure or length significantly.",
     "model": {
-        "provider": "openai",
-        "model": "gpt-4o",
+        "provider": "gemini",
+        "model": "gemini-3-pro-preview",
         "temperature": 0.4,
         "maxTokens": 8192
     },

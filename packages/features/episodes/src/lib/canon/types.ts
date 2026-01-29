@@ -216,7 +216,8 @@ export type ViolationCode =
     | 'CANON_006' // Reference Violation
     | 'CANON_007' // Connectivity Failure
     | 'CANON_008' // Escalation Overflow
-    | 'CANON_009'; // Tone Drift
+    | 'CANON_009' // Tone Drift
+    | 'CANON_010'; // Planner Output Malformed
 
 /**
  * Severity levels for violations.

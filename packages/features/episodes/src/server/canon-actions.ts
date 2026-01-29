@@ -790,8 +790,10 @@ export const validateContentInlineAction = enhanceAction(
             if (charName && lowerContent.includes(charName.toLowerCase())) {
                 // Check for active verbs suggesting they're alive
                 const activePatterns = ['said', 'walked', 'entered', 'appeared', 'spoke'];
+                // Escape regex special characters to prevent ReDoS attacks
+                const escapedCharName = charName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 const hasActiveVerb = activePatterns.some((pattern) => {
-                    const regex = new RegExp(`${charName}[^.]*${pattern}`, 'i');
+                    const regex = new RegExp(`${escapedCharName}[^.]*${pattern}`, 'i');
                     return regex.test(data.content);
                 });
 

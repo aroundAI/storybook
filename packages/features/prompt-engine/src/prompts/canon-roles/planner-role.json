@@ -3,8 +3,8 @@
     "version": "1.0.0",
     "description": "Planner role for Canon Management System. Creates structural skeleton with plot beats, character arcs, and scene organization. Sets constraints for downstream roles.",
     "model": {
-        "provider": "openai",
-        "model": "gpt-4o",
+        "provider": "gemini",
+        "model": "gemini-3-pro-preview",
         "temperature": 0.3,
         "maxTokens": 4096
     },

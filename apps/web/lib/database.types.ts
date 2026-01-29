@@ -2015,6 +2015,7 @@ export type Database = {
           thread_name: string
           thread_type: string | null
           updated_at: string | null
+          version: number
         }
         Insert: {
           created_at?: string | null
@@ -2030,6 +2031,7 @@ export type Database = {
           thread_name: string
           thread_type?: string | null
           updated_at?: string | null
+          version?: number
         }
         Update: {
           created_at?: string | null
@@ -2045,6 +2047,7 @@ export type Database = {
           thread_name?: string
           thread_type?: string | null
           updated_at?: string | null
+          version?: number
         }
         Relationships: [
           {

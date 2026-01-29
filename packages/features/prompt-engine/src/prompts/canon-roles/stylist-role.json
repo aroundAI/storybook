@@ -3,8 +3,8 @@
     "version": "1.0.0",
     "description": "Stylist role for Canon Management System. Final polish pass for stylistic consistency, tone, and genre adherence. Most constrained role.",
     "model": {
-        "provider": "openai",
-        "model": "gpt-4o",
+        "provider": "gemini",
+        "model": "gemini-3-pro-preview",
         "temperature": 0.5,
         "maxTokens": 8192
     },
