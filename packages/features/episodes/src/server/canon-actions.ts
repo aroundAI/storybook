@@ -959,11 +959,18 @@ export const commitCanonChangesAction = enhanceAction(
             }
         }
 
-        // Update episode metadata with summary
+        // Update episode metadata with summary (merge with existing)
+        const { data: existing } = await client
+            .from('episodes')
+            .select('metadata')
+            .eq('id', data.episodeId)
+            .single();
+
         const { error: metaError } = await client
             .from('episodes')
             .update({
                 metadata: {
+                    ...((existing?.metadata as Record<string, unknown>) || {}),
                     canonSummary: data.changes.episodeSummary,
                     sentimentScore: data.changes.sentimentScore,
                 },

@@ -103,6 +103,7 @@ import {
 } from '~/lib/presigned-upload';
 
 import { MasterAssetManager } from './master-asset-manager';
+import { EpisodeSummaryGenerator } from './episode-summary-generator';
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
@@ -2095,6 +2096,15 @@ export function PublishScreen({
               titleCards={episode.titleCards}
               version={episode.version}
               onUpdate={refetchEpisode}
+            />
+
+            {/* Canon Summary Generator */}
+            <EpisodeSummaryGenerator
+              projectId={episode.projectId}
+              episodeId={episode.id}
+              episodeNumber={episode.number}
+              season={episode.season?.number || 1}
+              storyContent={episode.storyData?.fullStory || ''}
             />
 
             {/* Full Videos Section */}

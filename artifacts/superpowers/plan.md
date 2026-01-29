@@ -1,31 +1,30 @@
-# Superpowers Plan: Finish Canon Management
+# Superpowers Plan: Complete Canon Management Integration
 
 ## Goal
 
-Complete Phase 10 Canon Management by implementing remaining UI components and advanced server actions per specs in `specs/phase-10-canon-management/`.
+Integrate the 4 new Canon Management components into their parent screens and fix review issues (M1, m3, n1) so the feature is fully working.
 
 ## Assumptions
 
-1. Database tables and RLS policies are complete (FILM-1001, FILM-1002)
-2. Core server actions exist in `canon-actions.ts` (CRUD working)
-3. LLM role prompts exist in `canon-roles/` (all 4 files confirmed)
-4. Basic Canon Dashboard exists in Story sidebar
-5. Branch `feature/FILM-1001-canon-management` is up to date
+1. All 4 components exist and pass typecheck
+2. Parent screens exist: `layout.tsx`, `story-screen.tsx`, `publish-screen.tsx`
+3. Components need projectId/episodeId which are available in context
+4. Branch `feature/FILM-1001-canon-management` is up to date
 
 ## Plan
 
 ---
 
-### Step 1: Add Canon Health Badge to Episode Header
+### Step 1: Integrate CanonHealthBadge into Episode Header
 
 **Files**:
-- [NEW] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/canon-health-badge.tsx`
-- [MOD] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/layout.tsx`
+- [MOD] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/_components/episode-workspace-header.tsx`
 
 **Change**:
-- Create `CanonHealthBadge` component showing OK/Warning/Error status
-- Displays violation count from `getProjectCanonAction`
-- Add to episode header layout
+- Import `CanonHealthBadge` from `./canon-health-badge`
+- Find the episode header badges area (near status badge)
+- Add `<CanonHealthBadge projectId={project.id} />` next to existing badges
+- Pass projectId from the component props
 
 **Verify**:
 ```bash
@@ -34,52 +33,16 @@ pnpm --filter web typecheck
 
 ---
 
-### Step 2: Add Memory Context Preview to Ideation Tab
+### Step 2: Integrate InlineViolationWarning into StoryScreen
 
 **Files**:
-- [NEW] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/memory-context-preview.tsx`
-- [MOD] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/ideation/_components/story-ideation.tsx`
-
-**Change**:
-- Create collapsible panel showing what AI knows
-- Display immutable facts, active threads, character states
-- Show token budget bar (used/max)
-- Uses `buildEpisodeContextAction`
-
-**Verify**:
-```bash
-pnpm --filter web typecheck
-```
-
----
-
-### Step 3: Add validateContentInlineAction Server Action
-
-**Files**:
-- [MOD] `packages/features/episodes/src/server/canon-actions.ts`
-
-**Change**:
-- Add `validateContentInlineAction` that checks story text against canon rules
-- Returns violations with severity, suggestions
-- Uses `continuity-validator.ts` functions
-
-**Verify**:
-```bash
-pnpm --filter web typecheck
-```
-
----
-
-### Step 4: Add Inline Violation Warnings to Story Tab
-
-**Files**:
-- [NEW] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/inline-violation-warning.tsx`
 - [MOD] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/story-screen.tsx`
 
 **Change**:
-- Create warning banner component that displays violations
-- Call `validateContentInlineAction` on story content changes (debounced)
-- Show actionable suggestions
+- Import `InlineViolationWarning` from `./inline-violation-warning`
+- Add component above story content area (around line 300-350 in JSX)
+- Pass props: `projectId={episode.projectId}`, `episodeId={episode.id}`, `storyContent={storyData?.story || ''}`
+- Only render when storyData exists: `{storyData?.story && <InlineViolationWarning ... />}`
 
 **Verify**:
 ```bash
@@ -88,15 +51,44 @@ pnpm --filter web typecheck
 
 ---
 
-### Step 5: Add Canon Extraction Actions for Publish
+### Step 3: Integrate EpisodeSummaryGenerator into PublishScreen
+
+**Files**:
+- [MOD] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx`
+
+**Change**:
+- Import `EpisodeSummaryGenerator` from `./episode-summary-generator`
+- Add component in the publish screen above or below MasterAssetManager (around line 100-150 in JSX)
+- Pass props: `projectId={episode.projectId}`, `episodeId={episode.id}`, `episodeNumber={episode.number}`, `season={episode.season?.number || 1}`, `storyContent={episode.storyData?.story || ''}`
+
+**Verify**:
+```bash
+pnpm --filter web typecheck
+```
+
+---
+
+### Step 4: Fix Metadata Merge in commitCanonChangesAction
 
 **Files**:
 - [MOD] `packages/features/episodes/src/server/canon-actions.ts`
 
 **Change**:
-- Add `extractCanonChangesAction` - analyzes episode content for canon-worthy events
-- Add `commitCanonChangesAction` - persists extracted changes to canon tables
-- Returns structured list of detected events/threads/state changes
+- In `commitCanonChangesAction` (around line 962-970)
+- Before updating, fetch existing metadata: 
+  ```ts
+  const { data: existing } = await client.from('episodes').select('metadata').eq('id', data.episodeId).single();
+  ```
+- Merge with new values:
+  ```ts
+  .update({
+      metadata: {
+          ...(existing?.metadata || {}),
+          canonSummary: data.changes.episodeSummary,
+          sentimentScore: data.changes.sentimentScore,
+      },
+  })
+  ```
 
 **Verify**:
 ```bash
@@ -105,51 +97,35 @@ pnpm --filter web typecheck
 
 ---
 
-### Step 6: Add Episode Summary Generator to Publish Tab
+### Step 5: Fix Unused Import and Minor Issues
 
 **Files**:
-- [NEW] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/episode-summary-generator.tsx`
-- [MOD] `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/publish/_components/publish-screen.tsx`
+- [MOD] `apps/web/.../publish/_components/episode-summary-generator.tsx`
+- [MOD] `apps/web/.../story/_components/inline-violation-warning.tsx`
 
 **Change**:
-- Component to generate/review episode summary before publish
-- Shows extracted canon changes for review
-- Uses `extractCanonChangesAction`
+- episode-summary-generator.tsx: Remove `Check` from lucide imports (line 8)
+- inline-violation-warning.tsx: Extract debounce constant:
+  ```ts
+  const VALIDATION_DEBOUNCE_MS = 1500;
+  // Then use in setTimeout
+  ```
 
 **Verify**:
 ```bash
-pnpm --filter web typecheck
+pnpm --filter web lint --fix && pnpm --filter web typecheck
 ```
 
 ---
 
-### Step 7: Update Spec Statuses
-
-**Files**:
-- [MOD] `specs/phase-10-canon-management/database/FILM-1001-canon-tables.md`
-- [MOD] `specs/phase-10-canon-management/database/FILM-1002-canon-rls-policies.md`
-- [MOD] `specs/phase-10-canon-management/server/FILM-1005-canon-server-actions.md`
-- [MOD] `specs/phase-10-canon-management/prompts/FILM-1006-llm-role-separation.md`
-- [MOD] `specs/phase-10-canon-management/ui/FILM-1007-canon-ui-components.md`
-
-**Change**:
-- Update frontmatter `status: draft` → `status: implemented`
-
-**Verify**:
-```bash
-grep -r "status:" specs/phase-10-canon-management/ | head -10
-```
-
----
-
-### Step 8: Run Full Verification and Commit
+### Step 6: Run Full Verification and Commit
 
 **Files**: None (verification only)
 
 **Change**:
 - Run typecheck, lint
-- Commit all changes
-- Push to branch
+- Manually verify in browser: navigate to episode, check Story tab shows warnings, check Publish tab shows summary generator
+- Commit and push
 
 **Verify**:
 ```bash
@@ -162,18 +138,18 @@ pnpm --filter web typecheck && pnpm --filter web lint && git status
 
 | Risk | Likelihood | Mitigation |
 |------|------------|------------|
-| Continuity validator missing functions | Medium | Check existing exports in `continuity-validator.ts` before Step 3 |
-| Episode layout structure differs from expected | Low | View layout.tsx before modifying |
-| Token counting not implemented | Medium | Use simple word-count estimate if `countTokens` unavailable |
+| EpisodeWorkspaceHeader props differ | Low | View file before modifying |
+| PublishScreen has complex layout | Medium | Place component in clear section |
+| Metadata column is JSONB, merge may fail | Low | Use spread operator safely |
 
 ## Rollback Plan
 
 1. All changes on feature branch - can revert commits
-2. No database changes required
-3. Existing functionality unaffected (additive changes only)
+2. No database schema changes
+3. Components remain unused until integrated (safe)
 
 ---
 
-**Estimated Total Time**: 3-4 hours
+**Estimated Total Time**: 1-2 hours
 
-**Scope Note**: Continuity Sidebar (Component 7 in spec) deferred - complex timeline visualization better suited for dedicated ticket.
+**Note**: LLM-powered extraction (M2) deferred to Phase 11.

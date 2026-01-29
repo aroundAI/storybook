@@ -6,13 +6,14 @@ import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { ArrowLeft, MapPin, MoreVertical, Sparkles, User } from 'lucide-react';
 
+import { CanonHealthBadge } from './canon-health-badge';
 import { useEpisodeContext } from './episode-context-provider';
 import { StudioSwitcher } from './studio-switcher';
 
 export function EpisodeWorkspaceHeader() {
   const pathname = usePathname() ?? '';
   const isEditingStudio = pathname.includes('/editing-studio');
-  const { episode, projectSlug, accountSlug, projectName } =
+  const { episode, projectSlug, accountSlug, projectName, projectId } =
     useEpisodeContext();
 
   const characterIds = (episode.metadata?.character_ids as string[]) ?? [];
@@ -107,6 +108,7 @@ export function EpisodeWorkspaceHeader() {
                               ? 'Published'
                               : 'Draft'}
               </span>
+              <CanonHealthBadge projectId={projectId} />
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 Ep {episode.number}
                 {episode.season && ` • S${episode.season.number}`}

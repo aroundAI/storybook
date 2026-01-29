@@ -10,7 +10,6 @@ import {
     ChevronRight,
     GitBranch,
     Loader2,
-    Plus,
     RefreshCw,
     Shield,
     Skull,

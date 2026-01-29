@@ -22,6 +22,7 @@ import { cn } from '@kit/ui/utils';
 
 import { ActDivider } from './act-divider';
 import { CanonDashboard } from './canon-dashboard';
+import { InlineViolationWarning } from './inline-violation-warning';
 
 interface StoryScreenProps {
   episode: EpisodeWithShots;
@@ -243,6 +244,15 @@ export function StoryScreen({
   return (
     <div className="relative min-h-full p-8">
       <div className="mx-auto max-w-5xl">
+        {/* Canon Violation Warnings */}
+        {storyData?.fullStory && (
+          <InlineViolationWarning
+            projectId={episode.projectId}
+            episodeId={episode.id}
+            storyContent={storyData.fullStory}
+          />
+        )}
+
         {/* Story Card */}
         <div className="cinema-focus relative">
           {/* Label */}

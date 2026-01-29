@@ -20,6 +20,9 @@ interface Violation {
     suggestion: string;
 }
 
+/** Debounce time in milliseconds for validation */
+const VALIDATION_DEBOUNCE_MS = 1500;
+
 /**
  * Inline Violation Warning - Displays canon violations in Story tab
  * FILM-1007 Component (Step 4)
@@ -63,7 +66,7 @@ export function InlineViolationWarning({
     useEffect(() => {
         const timer = setTimeout(() => {
             validate();
-        }, 1500); // 1.5s debounce
+        }, VALIDATION_DEBOUNCE_MS);
 
         return () => clearTimeout(timer);
     }, [validate]);

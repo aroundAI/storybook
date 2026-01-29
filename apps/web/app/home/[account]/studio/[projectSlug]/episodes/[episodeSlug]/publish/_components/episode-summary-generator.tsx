@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
 import { Textarea } from '@kit/ui/textarea';
-import { Loader2, Sparkles, Check, AlertTriangle, Save } from 'lucide-react';
+import { Loader2, Sparkles, AlertTriangle, Save } from 'lucide-react';
 import { extractCanonChangesAction, commitCanonChangesAction } from '@kit/episodes/server';
 import { toast } from '@kit/ui/sonner';
 
@@ -221,7 +221,7 @@ export function EpisodeSummaryGenerator({
 
                 {!hasExtracted && !isExtracting && (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                        Click "Analyze" to extract canon changes from the episode story.
+                        Click &quot;Analyze&quot; to extract canon changes from the episode story.
                     </p>
                 )}
             </CardContent>
