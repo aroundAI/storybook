@@ -531,6 +531,7 @@ export function StoryScreen({
                   projectId={episode.projectId ?? ''}
                   episodeId={episode.id}
                   episodeNumber={episode.number ?? 1}
+                  season={typeof episode.season === 'object' ? episode.season?.number ?? 1 : 1}
                   canonEnabled={true}
                 />
               )}

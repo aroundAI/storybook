@@ -39,17 +39,22 @@ import {
 import { ScrollArea } from '@kit/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
+import { AddEventDialog } from './add-event-dialog';
+import { AddThreadDialog } from './add-thread-dialog';
+
 interface CanonDashboardProps {
     projectId: string;
     episodeId: string;
     episodeNumber: number;
+    season?: number;
     canonEnabled: boolean;
 }
 
 export function CanonDashboard({
     projectId,
-    episodeId: _episodeId,
+    episodeId,
     episodeNumber,
+    season = 1,
     canonEnabled,
 }: CanonDashboardProps) {
     const [isPending, startTransition] = useTransition();
@@ -158,10 +163,13 @@ export function CanonDashboard({
                                     <p className="text-sm text-muted-foreground">
                                         No immutable events recorded yet
                                     </p>
-                                    <Button variant="outline" size="sm" className="mt-3">
-                                        <Plus className="mr-1 h-3 w-3" />
-                                        Add Event
-                                    </Button>
+                                    <AddEventDialog
+                                        projectId={projectId}
+                                        episodeId={episodeId}
+                                        season={season}
+                                        episodeNumber={episodeNumber}
+                                        onEventAdded={loadData}
+                                    />
                                 </div>
                             ) : (
                                 <div className="space-y-2">
@@ -210,10 +218,10 @@ export function CanonDashboard({
                                     <p className="text-sm text-muted-foreground">
                                         No narrative threads yet
                                     </p>
-                                    <Button variant="outline" size="sm" className="mt-3">
-                                        <Plus className="mr-1 h-3 w-3" />
-                                        Add Thread
-                                    </Button>
+                                    <AddThreadDialog
+                                        projectId={projectId}
+                                        onThreadAdded={loadData}
+                                    />
                                 </div>
                             ) : (
                                 <div className="space-y-2">
