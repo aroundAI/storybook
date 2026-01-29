@@ -803,3 +803,199 @@ export const validateContentInlineAction = enhanceAction(
         }),
     }
 );
+
+// =============================================================================
+// CANON EXTRACTION ACTIONS (Step 5)
+// =============================================================================
+
+interface ExtractedCanonChange {
+    type: 'death' | 'world_fact' | 'relationship' | 'timeline' | 'ability_loss' | 'location_destruction';
+    eventKey: string;
+    description: string;
+    confidence: 'high' | 'medium' | 'low';
+}
+
+interface ExtractedThreadUpdate {
+    threadId?: string;
+    threadName: string;
+    action: 'open' | 'progress' | 'resolve';
+    description: string;
+}
+
+interface ExtractedStateChange {
+    characterName: string;
+    stateType: 'emotional' | 'physical' | 'relationship' | 'knowledge' | 'ability' | 'location' | 'goal';
+    fromState: string;
+    toState: string;
+    triggerEvent: string;
+}
+
+export interface CanonExtractionResult {
+    immutableEvents: ExtractedCanonChange[];
+    threadUpdates: ExtractedThreadUpdate[];
+    stateChanges: ExtractedStateChange[];
+    episodeSummary: string;
+    sentimentScore: number;
+}
+
+/**
+ * Extracts canon changes from episode content for review before publish.
+ */
+export const extractCanonChangesAction = enhanceAction(
+    async (data: {
+        projectId: string;
+        episodeId: string;
+        storyContent: string;
+    }): Promise<CanonExtractionResult> => {
+        // Simple heuristic extraction (production would use LLM)
+        const content = data.storyContent.toLowerCase();
+        const immutableEvents: ExtractedCanonChange[] = [];
+        const threadUpdates: ExtractedThreadUpdate[] = [];
+        const stateChanges: ExtractedStateChange[] = [];
+
+        // Detect death events
+        const deathPatterns = [
+            /(\w+) (?:died|was killed|passed away|perished)/gi,
+            /the death of (\w+)/gi,
+        ];
+        for (const pattern of deathPatterns) {
+            const matches = content.matchAll(pattern);
+            for (const match of matches) {
+                const name = match[1];
+                if (name && name.length > 2) {
+                    immutableEvents.push({
+                        type: 'death',
+                        eventKey: `character:${name}:dead`,
+                        description: `${name} died`,
+                        confidence: 'medium',
+                    });
+                }
+            }
+        }
+
+        // Detect world facts / location changes
+        if (content.includes('destroyed') || content.includes('fallen')) {
+            immutableEvents.push({
+                type: 'location_destruction',
+                eventKey: 'location:unknown:destroyed',
+                description: 'A location was destroyed',
+                confidence: 'low',
+            });
+        }
+
+        // Detect thread resolutions (e.g., mystery solved, conflict resolved)
+        if (content.includes('finally') || content.includes('resolved') || content.includes('discovered the truth')) {
+            threadUpdates.push({
+                threadName: 'Detected thread resolution',
+                action: 'resolve',
+                description: 'A narrative thread appears to be resolved',
+            });
+        }
+
+        // Generate simple summary
+        const words = data.storyContent.split(/\s+/).slice(0, 50).join(' ');
+        const episodeSummary = words.length > 100 ? words.substring(0, 200) + '...' : words;
+
+        // Simple sentiment (positive words vs negative words)
+        const positiveWords = ['love', 'happy', 'peace', 'hope', 'joy', 'victory'];
+        const negativeWords = ['death', 'war', 'fear', 'hate', 'loss', 'pain'];
+        const positiveCount = positiveWords.filter((w) => content.includes(w)).length;
+        const negativeCount = negativeWords.filter((w) => content.includes(w)).length;
+        const sentimentScore = (positiveCount - negativeCount + 5) / 10; // Normalize to 0-1
+
+        return {
+            immutableEvents,
+            threadUpdates,
+            stateChanges,
+            episodeSummary,
+            sentimentScore: Math.max(0, Math.min(1, sentimentScore)),
+        };
+    },
+    {
+        schema: z.object({
+            projectId: z.string().uuid(),
+            episodeId: z.string().uuid(),
+            storyContent: z.string(),
+        }),
+    }
+);
+
+/**
+ * Commits extracted canon changes to the database.
+ */
+export const commitCanonChangesAction = enhanceAction(
+    async (data: {
+        projectId: string;
+        episodeId: string;
+        season: number;
+        episodeNumber: number;
+        changes: {
+            immutableEvents: ExtractedCanonChange[];
+            threadUpdates: ExtractedThreadUpdate[];
+            episodeSummary: string;
+            sentimentScore: number;
+        };
+    }) => {
+        const client = getSupabaseServerClient();
+        const results = {
+            eventsCreated: 0,
+            threadsUpdated: 0,
+            summaryStored: false,
+        };
+
+        // Store immutable events
+        for (const event of data.changes.immutableEvents) {
+            if (event.confidence === 'high') {
+                const { error } = await client.from('immutable_events').insert({
+                    project_id: data.projectId,
+                    event_type: event.type,
+                    event_key: event.eventKey,
+                    description: event.description,
+                    established_in: data.episodeId,
+                    season: data.season,
+                    episode_number: data.episodeNumber,
+                });
+                if (!error) results.eventsCreated++;
+            }
+        }
+
+        // Update episode metadata with summary
+        const { error: metaError } = await client
+            .from('episodes')
+            .update({
+                metadata: {
+                    canonSummary: data.changes.episodeSummary,
+                    sentimentScore: data.changes.sentimentScore,
+                },
+            })
+            .eq('id', data.episodeId);
+
+        if (!metaError) results.summaryStored = true;
+
+        return results;
+    },
+    {
+        schema: z.object({
+            projectId: z.string().uuid(),
+            episodeId: z.string().uuid(),
+            season: z.number().int().positive(),
+            episodeNumber: z.number().int().positive(),
+            changes: z.object({
+                immutableEvents: z.array(z.object({
+                    type: z.enum(['death', 'world_fact', 'relationship', 'timeline', 'ability_loss', 'location_destruction']),
+                    eventKey: z.string(),
+                    description: z.string(),
+                    confidence: z.enum(['high', 'medium', 'low']),
+                })),
+                threadUpdates: z.array(z.object({
+                    threadId: z.string().optional(),
+                    threadName: z.string(),
+                    action: z.enum(['open', 'progress', 'resolve']),
+                    description: z.string(),
+                })),
+                episodeSummary: z.string(),
+                sentimentScore: z.number().min(0).max(1),
+            }),
+        }),
+    }
+);
