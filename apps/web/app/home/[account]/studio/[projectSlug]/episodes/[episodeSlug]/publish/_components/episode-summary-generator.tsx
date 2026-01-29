@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@kit/ui/card';
 import { Button } from '@kit/ui/button';
 import { Badge } from '@kit/ui/badge';
@@ -45,6 +45,10 @@ export function EpisodeSummaryGenerator({
     const [extractedEvents, setExtractedEvents] = useState<ExtractedChange[]>([]);
     const [hasExtracted, setHasExtracted] = useState(false);
 
+    // Use ref for callback to avoid re-renders if parent provides unstable function
+    const onSummaryGeneratedRef = useRef(onSummaryGenerated);
+    onSummaryGeneratedRef.current = onSummaryGenerated;
+
     const handleExtract = useCallback(async () => {
         if (!storyContent) {
             toast.error('No story content to analyze');
@@ -69,7 +73,7 @@ export function EpisodeSummaryGenerator({
                 }));
                 setExtractedEvents(eventsWithIds);
                 setHasExtracted(true);
-                onSummaryGenerated?.(result.episodeSummary);
+                onSummaryGeneratedRef.current?.(result.episodeSummary);
             }
         } catch (error) {
             console.error('Extraction error:', error);
@@ -77,7 +81,7 @@ export function EpisodeSummaryGenerator({
         } finally {
             setIsExtracting(false);
         }
-    }, [projectId, episodeId, storyContent, onSummaryGenerated]);
+    }, [projectId, episodeId, storyContent]);
 
     // Extract canon changes on mount if story content exists
     useEffect(() => {
