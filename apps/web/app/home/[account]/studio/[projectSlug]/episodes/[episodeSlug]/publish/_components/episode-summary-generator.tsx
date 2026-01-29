@@ -19,6 +19,7 @@ interface EpisodeSummaryGeneratorProps {
 }
 
 interface ExtractedChange {
+    id: string; // Unique identifier for stable React keys
     type: 'death' | 'world_fact' | 'relationship' | 'timeline' | 'ability_loss' | 'location_destruction';
     eventKey: string;
     description: string;
@@ -61,7 +62,12 @@ export function EpisodeSummaryGenerator({
             if (result) {
                 setSummary(result.episodeSummary);
                 setSentimentScore(result.sentimentScore);
-                setExtractedEvents(result.immutableEvents);
+                // Add unique IDs for stable React keys
+                const eventsWithIds = result.immutableEvents.map((event, index) => ({
+                    id: `${event.eventKey}-${Date.now()}-${index}`,
+                    ...event,
+                }));
+                setExtractedEvents(eventsWithIds);
                 setHasExtracted(true);
                 onSummaryGenerated?.(result.episodeSummary);
             }
@@ -177,9 +183,9 @@ export function EpisodeSummaryGenerator({
                             Detected Canon Changes ({extractedEvents.length})
                         </h4>
                         <ul className="space-y-2">
-                            {extractedEvents.map((event, i) => (
+                            {extractedEvents.map((event) => (
                                 <li
-                                    key={`${event.eventKey}-${i}`}
+                                    key={event.id}
                                     className="flex items-center justify-between p-2 bg-muted rounded text-sm"
                                 >
                                     <span>

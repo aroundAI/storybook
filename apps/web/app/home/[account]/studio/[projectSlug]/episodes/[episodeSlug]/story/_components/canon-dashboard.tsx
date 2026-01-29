@@ -49,6 +49,15 @@ interface CanonDashboardProps {
     canonEnabled: boolean;
 }
 
+interface CharacterStateRow {
+    id: string;
+    character_id: string;
+    state_type: string;
+    state_value: unknown;
+    trigger_event: string | null;
+    characters?: { name: string } | null;
+}
+
 export function CanonDashboard({
     projectId,
     episodeId,
@@ -61,15 +70,6 @@ export function CanonDashboard({
     const [threads, setThreads] = useState<NarrativeThread[]>([]);
     const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
-    // Type for character states from getProjectCharacterStatesAction
-    interface CharacterStateRow {
-        id: string;
-        character_id: string;
-        state_type: string;
-        state_value: unknown;
-        trigger_event: string | null;
-        characters?: { name: string } | null;
-    }
     const [characterStates, setCharacterStates] = useState<CharacterStateRow[]>([]);
 
     const loadData = useCallback(() => {
