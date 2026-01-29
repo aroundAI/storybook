@@ -539,13 +539,19 @@ export function StoryScreen({
                   )}
                 </div>
               ) : (
-                <CanonDashboard
-                  projectId={episode.projectId ?? ''}
-                  episodeId={episode.id}
-                  episodeNumber={episode.number ?? 1}
-                  season={typeof episode.season === 'object' ? episode.season?.number ?? 1 : 1}
-                  canonEnabled={canonEnabled}
-                />
+                (() => {
+                  // Extract season number - episode.season is always an object or null based on EpisodeWithShots type
+                  const seasonNumber = episode.season?.number ?? 1;
+                  return (
+                    <CanonDashboard
+                      projectId={episode.projectId ?? ''}
+                      episodeId={episode.id}
+                      episodeNumber={episode.number ?? 1}
+                      season={seasonNumber}
+                      canonEnabled={canonEnabled}
+                    />
+                  );
+                })()
               )}
             </div>
           </div>

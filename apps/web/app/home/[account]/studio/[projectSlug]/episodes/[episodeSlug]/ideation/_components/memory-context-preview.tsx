@@ -77,8 +77,10 @@ export function MemoryContextPreview({ projectId, episodeNumber }: MemoryContext
                 const threads = result.activeThreads as MemoryContextThread[];
                 const characters = result.characterStates as MemoryContextCharacter[];
 
+                // Default token budget aligns with memory-context-builder.ts DEFAULT_TOKEN_BUDGET
+                const DEFAULT_TOKEN_BUDGET_MAX = 6000;
                 const used = (result.tokenBudget as { allocated?: number })?.allocated ?? 0;
-                const max = (result.tokenBudget as { total?: number })?.total ?? 6000;
+                const max = (result.tokenBudget as { total?: number })?.total ?? DEFAULT_TOKEN_BUDGET_MAX;
                 const percentage = max > 0 ? (used / max) * 100 : 0;
 
                 setContext({

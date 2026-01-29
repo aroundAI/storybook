@@ -460,15 +460,12 @@ export const createNarrativeThreadAction = enhanceAction(
 
 /**
  * Updates a narrative thread's status or adds payoffs.
- *
- * TODO: This action is vulnerable to race conditions. Consider implementing
- * optimistic locking by adding a `version` column to the `narrative_threads`
- * table and ensuring the update only succeeds if the version matches the one
- * that was read. See PR #153 review for details.
+ * Uses optimistic locking via version column to prevent race conditions.
  */
 export const updateNarrativeThreadAction = enhanceAction(
     async (data: {
         threadId: string;
+        expectedVersion: number;
         status?: 'open' | 'progressed' | 'resolved' | 'abandoned';
         payoffs?: string[];
         episodeTouched?: string;
@@ -476,7 +473,7 @@ export const updateNarrativeThreadAction = enhanceAction(
     }) => {
         const client = getSupabaseServerClient();
 
-        // Get current thread
+        // Get current thread to merge arrays
         const { data: current, error: fetchError } = await client
             .from('narrative_threads')
             .select('*')
@@ -487,9 +484,19 @@ export const updateNarrativeThreadAction = enhanceAction(
             throw new Error('Thread not found');
         }
 
-        // Build update object
+        // Verify version matches (optimistic locking)
+        // Note: version column added in migration 20260129194541
+        const currentVersion = (current as { version?: number }).version ?? 1;
+        if (currentVersion !== data.expectedVersion) {
+            throw new Error(
+                'Thread was modified by another user. Please refresh and try again.'
+            );
+        }
+
+        // Build update object with incremented version
         const updates: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
+            version: data.expectedVersion + 1,
         };
 
         if (data.status) {
@@ -511,14 +518,21 @@ export const updateNarrativeThreadAction = enhanceAction(
             updates.resolved_at = data.resolvedAt;
         }
 
+        // Update with version check in WHERE clause for extra safety
         const { data: thread, error } = await client
             .from('narrative_threads')
             .update(updates)
             .eq('id', data.threadId)
+            .eq('version', data.expectedVersion)
             .select()
             .single();
 
         if (error) {
+            if (error.code === 'PGRST116') {
+                throw new Error(
+                    'Thread was modified by another user. Please refresh and try again.'
+                );
+            }
             console.error('Error updating narrative thread:', error);
             throw new Error(`Failed to update narrative thread: ${error.message}`);
         }
@@ -528,6 +542,7 @@ export const updateNarrativeThreadAction = enhanceAction(
     {
         schema: z.object({
             threadId: z.string().uuid(),
+            expectedVersion: z.number().int().positive(),
             status: z.enum(['open', 'progressed', 'resolved', 'abandoned']).optional(),
             payoffs: z.array(z.string()).optional(),
             episodeTouched: z.string().uuid().optional(),
