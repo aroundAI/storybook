@@ -420,6 +420,16 @@ CREATE TABLE verified_facts (
 > [!IMPORTANT]
 > FILM-1135 supersedes the news-specific provider design. It creates a unified `ExternalContextProvider` interface that works for news, research papers, historical archives, and other external sources. FILM-1130-1132 should be implemented using this unified architecture.
 
+### UI Integration Specs
+
+- [FILM-1140: Research Hub UI](ui-integration/FILM-1140-research-hub-ui.md)
+- [FILM-1141: Fact Source Upload & Extraction](ui-integration/FILM-1141-fact-source-upload.md)
+- [FILM-1142: Canon Dashboard Facts Tab](ui-integration/FILM-1142-canon-dashboard-facts.md)
+- [FILM-1143: Generate Season Content Type Integration](ui-integration/FILM-1143-generate-season-integration.md)
+
+> [!NOTE]
+> These UI specs define how the external context system surfaces to users. They integrate with the existing Studio sidebar, Canon Dashboard, and Generate Season dialog.
+
 ---
 
 ## File Changes Matrix
