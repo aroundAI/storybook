@@ -1,0 +1,847 @@
+---
+id: FILM-1004
+title: Memory Context Builder
+status: implemented
+priority: high
+effort: M
+dependencies: [FILM-1001]
+---
+
+# FILM-1004: Memory Context Builder
+
+## Overview
+
+Service that builds token-budgeted context for LLM calls from canon data, enforcing the 15% memory injection limit.
+
+## Problem Statement
+
+Injecting too much historical context causes:
+- Token budget overflow
+- "Nostalgia spam" (over-referencing past events)
+- Reduced capacity for new content generation
+
+## Solution
+
+A context builder that:
+- Loads canon data from database
+- Prioritizes content by importance
+- Tracks token usage
+- Enforces configurable budget limits
+
+---
+
+## File Location
+
+`packages/features/episodes/src/lib/services/memory-context-builder.ts`
+
+---
+
+## Interface
+
+```typescript
+export interface MemoryContext {
+  // Canon data
+  immutableEvents: ImmutableEvent[];
+  characterStates: Map<string, CharacterStateSnapshot>;
+  worldState: WorldState;
+  activeThreads: NarrativeThread[];
+  recentEpisodeSummaries: EpisodeSummary[];
+  
+  // Meta
+  currentEpisodeNumber: number;
+  projectCanonSettings: ProjectCanonSettings;
+  
+  // Budget tracking
+  tokenBudget: TokenBudget;
+}
+
+export interface TokenBudget {
+  used: number;
+  max: number;
+  percentage: number;
+  breakdown: {
+    immutable: number;
+    characters: number;
+    world: number;
+    threads: number;
+    summaries: number;
+  };
+  withinLimit: boolean;
+}
+
+export interface BuildContextOptions {
+  maxTokenPercentage?: number;  // Default: 15
+  contextWindowSize?: number;   // Default: 40000
+  memoryHorizon?: number;       // Episodes to include
+  priority?: 'recency' | 'importance' | 'balanced';
+}
+```
+
+---
+
+## Main Function
+
+```typescript
+export async function buildMemoryContext(
+  projectId: string,
+  currentEpisodeNumber: number,
+  options: BuildContextOptions = {}
+): Promise<MemoryContext> {
+  const {
+    maxTokenPercentage = 15,
+    contextWindowSize = 40000,
+    memoryHorizon = 10,
+    priority = 'balanced',
+  } = options;
+  
+  const maxTokens = Math.floor(contextWindowSize * (maxTokenPercentage / 100));
+  const client = getSupabaseServerClient();
+  
+  // Load project settings
+  const settings = await loadProjectCanonSettings(projectId);
+  
+  // Allocate token budgets by category
+  const budgetAllocation = {
+    immutable: 0.35,    // 35% - always included
+    characters: 0.25,   // 25% - current character states
+    world: 0.10,        // 10% - world state
+    threads: 0.15,      // 15% - active threads
+    summaries: 0.15,    // 15% - episode summaries
+  };
+  
+  // 1. Load immutable events (prioritized)
+  const immutableBudget = Math.floor(maxTokens * budgetAllocation.immutable);
+  const immutableEvents = await loadImmutableEvents(projectId, immutableBudget);
+  
+  // 2. Load character states (latest per character)
+  const characterBudget = Math.floor(maxTokens * budgetAllocation.characters);
+  const characterStates = await loadCharacterStates(projectId, characterBudget);
+  
+  // 3. Load world state
+  const worldBudget = Math.floor(maxTokens * budgetAllocation.world);
+  const worldState = await loadWorldState(projectId, worldBudget);
+  
+  // 4. Load active threads
+  const threadBudget = Math.floor(maxTokens * budgetAllocation.threads);
+  const activeThreads = await loadActiveThreads(projectId, threadBudget);
+  
+  // 5. Load episode summaries within horizon
+  const summaryBudget = Math.floor(maxTokens * budgetAllocation.summaries);
+  const summaries = await loadEpisodeSummaries(
+    projectId, 
+    currentEpisodeNumber, 
+    memoryHorizon, 
+    summaryBudget
+  );
+  
+  // Calculate actual token usage
+  const breakdown = {
+    immutable: estimateTokens(immutableEvents),
+    characters: estimateTokens(Array.from(characterStates.values())),
+    world: estimateTokens(worldState),
+    threads: estimateTokens(activeThreads),
+    summaries: estimateTokens(summaries),
+  };
+  
+  const totalUsed = Object.values(breakdown).reduce((a, b) => a + b, 0);
+  
+  return {
+    immutableEvents,
+    characterStates: new Map(characterStates.map(c => [c.characterId, c])),
+    worldState,
+    activeThreads,
+    recentEpisodeSummaries: summaries,
+    currentEpisodeNumber,
+    projectCanonSettings: settings,
+    tokenBudget: {
+      used: totalUsed,
+      max: maxTokens,
+      percentage: (totalUsed / maxTokens) * 100,
+      breakdown,
+      withinLimit: totalUsed <= maxTokens,
+    },
+  };
+}
+```
+
+---
+
+## Token Estimation
+
+```typescript
+function estimateTokens(content: unknown): number {
+  const str = JSON.stringify(content);
+  // Rough estimate: 1 token ≈ 4 characters
+  return Math.ceil(str.length / 4);
+}
+```
+
+---
+
+## Prompt Formatting
+
+```typescript
+export function formatContextForPrompt(context: MemoryContext): string {
+  const sections: string[] = [];
+  
+  // Hard canon section
+  if (context.immutableEvents.length > 0) {
+    sections.push('## ESTABLISHED FACTS (DO NOT CONTRADICT)');
+    sections.push('The following facts are PERMANENT and cannot be changed:\n');
+    context.immutableEvents.forEach(event => {
+      sections.push(`• ${event.description} [S${event.season}E${event.episodeNumber}]`);
+    });
+  }
+  
+  // Character states section
+  sections.push('\n## CURRENT CHARACTER STATES');
+  context.characterStates.forEach((state, id) => {
+    sections.push(`• ${state.characterName}: ${state.summary}`);
+    if (state.constraints.length > 0) {
+      sections.push(`  Constraints: ${state.constraints.join(', ')}`);
+    }
+  });
+  
+  // Active threads section
+  if (context.activeThreads.length > 0) {
+    sections.push('\n## ACTIVE PLOT THREADS');
+    sections.push('These threads are open and expecting resolution:\n');
+    context.activeThreads.forEach(thread => {
+      sections.push(`• ${thread.threadName} (${thread.status})`);
+      if (thread.promises.length > 0) {
+        sections.push(`  Promises made: ${thread.promises.join('; ')}`);
+      }
+    });
+  }
+  
+  // Recent events section
+  if (context.recentEpisodeSummaries.length > 0) {
+    sections.push('\n## RECENT EPISODE CONTEXT');
+    context.recentEpisodeSummaries.forEach(summary => {
+      sections.push(`• E${summary.episodeNumber}: ${summary.plotSummary}`);
+    });
+  }
+  
+  return sections.join('\n');
+}
+```
+
+---
+
+## Algorithms
+
+### Algorithm 1: Token Budget Allocation Strategy
+
+**Problem**: How to divide limited token budget across multiple data categories fairly while prioritizing critical information.
+
+**Strategy**: Hierarchical allocation with dynamic redistribution.
+
+```typescript
+interface BudgetAllocation {
+  immutable: number;    // 35% - Non-negotiable hard canon
+  characters: number;   // 25% - Current character states
+  world: number;        // 10% - World state
+  threads: number;      // 15% - Active narrative threads
+  summaries: number;    // 15% - Recent episode context
+}
+
+function allocateBudget(
+  totalTokens: number,
+  projectSettings: ProjectCanonSettings
+): BudgetAllocation {
+  // Base allocation (percentages sum to 100%)
+  const base: BudgetAllocation = {
+    immutable: 0.35,
+    characters: 0.25,
+    world: 0.10,
+    threads: 0.15,
+    summaries: 0.15,
+  };
+  
+  // Adjust based on project settings
+  if (projectSettings.characterFocus) {
+    // Character-driven story: boost character budget
+    base.characters += 0.10;
+    base.world -= 0.05;
+    base.threads -= 0.05;
+  }
+  
+  if (projectSettings.serializedFormat) {
+    // Highly serialized: boost thread tracking
+    base.threads += 0.10;
+    base.summaries += 0.05;
+    base.characters -= 0.10;
+    base.world -= 0.05;
+  }
+  
+  // Convert percentages to token counts
+  return {
+    immutable: Math.floor(totalTokens * base.immutable),
+    characters: Math.floor(totalTokens * base.characters),
+    world: Math.floor(totalTokens * base.world),
+    threads: Math.floor(totalTokens * base.threads),
+    summaries: Math.floor(totalTokens * base.summaries),
+  };
+}
+```
+
+**Budget Allocation Visualization**:
+
+```
+Total Budget: 6000 tokens (15% of 40K context window)
+┌────────────────────────────────────────────────────────────────────┐
+│████████████████████████████████████│ Immutable Events (2100, 35%) │
+├────────────────────────────────────┤                               │
+│████████████████████████│ Characters│ Character States (1500, 25%)  │
+├────────────────────────┤           │                               │
+│█████████│ World State  │           │ World State (600, 10%)        │
+├─────────┤              │           │                               │
+│██████████████│ Threads │           │ Active Threads (900, 15%)     │
+├──────────────┤         │           │                               │
+│██████████████│Summaries│           │ Episode Summaries (900, 15%)  │
+└──────────────┴─────────┴───────────┴───────────────────────────────┘
+```
+
+---
+
+### Algorithm 2: Priority-Based Loading
+
+**Problem**: When content exceeds budget, which items to include?
+
+**Algorithm**: Score each item by importance, load in order until budget exhausted.
+
+```typescript
+interface ScoredItem<T> {
+  item: T;
+  score: number;
+  tokens: number;
+}
+
+function priorityLoad<T>(
+  items: T[],
+  budget: number,
+  scorer: (item: T) => number,
+  tokenizer: (item: T) => number
+): T[] {
+  // Step 1: Score and measure all items
+  const scored: ScoredItem<T>[] = items.map(item => ({
+    item,
+    score: scorer(item),
+    tokens: tokenizer(item),
+  }));
+  
+  // Step 2: Sort by score (highest priority first)
+  scored.sort((a, b) => b.score - a.score);
+  
+  // Step 3: Greedy selection within budget
+  const selected: T[] = [];
+  let remaining = budget;
+  
+  for (const { item, tokens } of scored) {
+    if (tokens <= remaining) {
+      selected.push(item);
+      remaining -= tokens;
+    }
+    // Note: We DON'T skip and try smaller items
+    // This preserves priority ordering
+  }
+  
+  return selected;
+}
+
+// Scoring functions for each category
+function scoreImmutableEvent(event: ImmutableEvent, context: LoadContext): number {
+  let score = 0;
+  
+  // Recent events score higher
+  const episodeAge = context.currentEpisode - event.episodeNumber;
+  score += Math.max(0, 100 - episodeAge * 5);  // -5 per episode distance
+  
+  // Character deaths always top priority
+  if (event.eventType === 'death') score += 1000;
+  
+  // Events involving main characters score higher
+  if (event.involvesMainCharacter) score += 200;
+  
+  // Explicitly referenced events boost
+  if (context.referencedEventIds.has(event.id)) score += 500;
+  
+  return score;
+}
+
+function scoreCharacterState(state: CharacterState, context: LoadContext): number {
+  let score = 0;
+  
+  // Main characters always included
+  if (state.isMainCharacter) score += 1000;
+  
+  // Characters in current episode skeleton
+  if (context.skeletonCharacterIds.has(state.characterId)) score += 500;
+  
+  // Recent state changes score higher
+  const lastChangeAge = context.currentEpisode - state.lastUpdatedEpisode;
+  score += Math.max(0, 50 - lastChangeAge * 10);
+  
+  return score;
+}
+```
+
+---
+
+### Algorithm 3: Dynamic Budget Redistribution
+
+**Problem**: Some categories may use less than allocated; redistribute surplus.
+
+```typescript
+interface UsageReport {
+  category: keyof BudgetAllocation;
+  allocated: number;
+  used: number;
+  surplus: number;
+}
+
+function redistributeBudget(
+  allocation: BudgetAllocation,
+  usage: Map<keyof BudgetAllocation, number>
+): BudgetAllocation {
+  // Calculate surplus from each category
+  const reports: UsageReport[] = [];
+  let totalSurplus = 0;
+  
+  for (const [category, allocated] of Object.entries(allocation)) {
+    const used = usage.get(category as keyof BudgetAllocation) ?? 0;
+    const surplus = Math.max(0, allocated - used);
+    totalSurplus += surplus;
+    reports.push({ 
+      category: category as keyof BudgetAllocation, 
+      allocated, 
+      used, 
+      surplus 
+    });
+  }
+  
+  if (totalSurplus === 0) return allocation;
+  
+  // Find categories that could use more
+  const overflowing = reports.filter(r => r.used >= r.allocated * 0.95);
+  
+  if (overflowing.length === 0) return allocation;
+  
+  // Redistribute surplus proportionally
+  const surplusPerCategory = Math.floor(totalSurplus / overflowing.length);
+  
+  const newAllocation = { ...allocation };
+  for (const { category } of overflowing) {
+    newAllocation[category] += surplusPerCategory;
+  }
+  
+  return newAllocation;
+}
+```
+
+**Redistribution Example**:
+
+```
+Before Redistribution:
+┌──────────────┬───────────┬──────┬─────────┐
+│ Category     │ Allocated │ Used │ Surplus │
+├──────────────┼───────────┼──────┼─────────┤
+│ immutable    │ 2100      │ 1800 │ 300     │
+│ characters   │ 1500      │ 1480 │ 20      │ ← Near limit
+│ world        │ 600       │ 200  │ 400     │ ← Lots unused
+│ threads      │ 900       │ 890  │ 10      │ ← Near limit
+│ summaries    │ 900       │ 500  │ 400     │
+├──────────────┼───────────┼──────┼─────────┤
+│ TOTAL        │ 6000      │ 4870 │ 1130    │
+└──────────────┴───────────┴──────┴─────────┘
+
+After Redistribution:
+- Surplus of 1130 tokens identified
+- 2 categories overflowing (characters, threads)  
+- Each receives: 1130 / 2 = 565 additional tokens
+
+┌──────────────┬──────────────┐
+│ Category     │ New Budget   │
+├──────────────┼──────────────┤
+│ characters   │ 1500 + 565   │
+│ threads      │ 900 + 565    │
+└──────────────┴──────────────┘
+```
+
+---
+
+### Algorithm 4: Memory Horizon Windowing
+
+**Problem**: How far back should we look for context? Too far = noise, too close = missed connections.
+
+```typescript
+interface HorizonWindow {
+  hardLimit: number;      // Absolute max episodes
+  softTarget: number;     // Preferred episodes
+  decayFactor: number;    // Score penalty per episode distance
+}
+
+function calculateHorizon(
+  currentEpisode: number,
+  projectSettings: ProjectCanonSettings
+): HorizonWindow {
+  // Base horizon depends on content type
+  const baseHorizon = {
+    SERIES: { hardLimit: 50, softTarget: 10, decayFactor: 0.95 },
+    MOVIE: { hardLimit: 10, softTarget: 3, decayFactor: 0.80 },
+    FACTUAL: { hardLimit: 5, softTarget: 2, decayFactor: 0.50 },
+  };
+  
+  const base = baseHorizon[projectSettings.contentType] ?? baseHorizon.SERIES;
+  
+  // Early in series: smaller horizon (less history exists)
+  if (currentEpisode < base.softTarget) {
+    return {
+      hardLimit: currentEpisode,
+      softTarget: currentEpisode,
+      decayFactor: base.decayFactor,
+    };
+  }
+  
+  return base;
+}
+
+function applyHorizonDecay(
+  items: ScoredItem[],
+  currentEpisode: number,
+  decayFactor: number
+): ScoredItem[] {
+  return items.map(item => {
+    const episodeDistance = currentEpisode - item.episodeNumber;
+    const decay = Math.pow(decayFactor, episodeDistance);
+    
+    return {
+      ...item,
+      score: item.score * decay,
+    };
+  });
+}
+```
+
+**Decay Curve Visualization**:
+
+```
+Score Multiplier
+  1.0 ┤●
+      │ ●
+  0.8 ┤   ●
+      │     ●
+  0.6 ┤       ●
+      │         ●
+  0.4 ┤           ●
+      │             ●
+  0.2 ┤               ●
+      │                 ●
+  0.0 ┼─────┬─────┬─────┬─────●────●────●
+      0     5    10    15    20   25   30
+              Episodes in the Past
+              
+      Decay Factor: 0.95 per episode
+      At 10 episodes back: 0.95^10 = 0.60 score multiplier
+      At 20 episodes back: 0.95^20 = 0.36 score multiplier
+```
+
+---
+
+### Algorithm 5: Token Estimation Accuracy
+
+**Problem**: JSON.stringify / 4 is rough. Need more accurate estimation.
+
+```typescript
+function estimateTokensAccurate(content: unknown): number {
+  const str = typeof content === 'string' 
+    ? content 
+    : JSON.stringify(content, null, 0);
+  
+  // GPT-4 tokenizer rules (simplified):
+  // 1. Average ~4 characters per token for English text
+  // 2. Punctuation and special chars often get their own tokens
+  // 3. Common words may be single tokens
+  // 4. Uncommon words may be split into multiple tokens
+  
+  let estimate = 0;
+  
+  // Count base tokens (characters / 4)
+  estimate += str.length / 4;
+  
+  // Add for JSON structure overhead
+  const jsonStructureChars = (str.match(/[{}\[\]:,]/g) || []).length;
+  estimate += jsonStructureChars * 0.5;  // Structure chars often individual tokens
+  
+  // Add for multi-byte characters (names, locations)
+  const nonAscii = (str.match(/[^\x00-\x7F]/g) || []).length;
+  estimate += nonAscii * 0.5;
+  
+  // Add safety margin (10%)
+  estimate *= 1.1;
+  
+  return Math.ceil(estimate);
+}
+
+// Comparison:
+// "John died in battle" 
+//   - Naive: 21 / 4 = 5.25 → 6 tokens
+//   - Accurate: 4 words typically = 4-5 tokens, JSON adds ~2 → 7 tokens
+//   - Actual (GPT-4): 6 tokens
+```
+
+---
+
+### Algorithm 6: Overflow Handling
+
+**Problem**: What happens when even after priority selection, we exceed budget?
+
+```typescript
+interface OverflowStrategy {
+  type: 'truncate' | 'summarize' | 'drop_lowest';
+  threshold: number;  // % over budget to trigger
+}
+
+async function handleOverflow(
+  context: MemoryContext,
+  overflow: number,
+  strategy: OverflowStrategy
+): Promise<MemoryContext> {
+  const overflowPercent = overflow / context.tokenBudget.max;
+  
+  if (overflowPercent < strategy.threshold) {
+    // Small overflow - accept it
+    return context;
+  }
+  
+  switch (strategy.type) {
+    case 'truncate':
+      // Remove characters from string descriptions
+      return truncateDescriptions(context, overflow);
+      
+    case 'summarize':
+      // Use LLM to compress episode summaries
+      return await summarizeContent(context, overflow);
+      
+    case 'drop_lowest':
+      // Remove lowest-priority items until under budget
+      return dropLowestPriority(context, overflow);
+  }
+}
+
+function truncateDescriptions(
+  context: MemoryContext,
+  overflowTokens: number
+): MemoryContext {
+  // Estimate chars to remove: overflow * 4 characters per token
+  let charsToRemove = overflowTokens * 4;
+  
+  // Start with summaries (lowest priority for exact wording)
+  for (const summary of context.recentEpisodeSummaries) {
+    if (charsToRemove <= 0) break;
+    
+    const original = summary.plotSummary.length;
+    const target = Math.floor(original * 0.7);  // Reduce by 30%
+    
+    summary.plotSummary = summary.plotSummary.substring(0, target) + '...';
+    charsToRemove -= (original - target);
+  }
+  
+  return context;
+}
+```
+
+---
+
+## Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| First episode (no history) | Return minimal context, skip decay |
+| Character not in skeleton | Lower priority but still included if budget allows |
+| All immutable events deleted | Return empty immutable array (valid state) |
+| Token budget set to 0 | Throw ConfigurationError |
+| Extremely long event description | Truncate to 500 chars with ellipsis |
+| Circular thread references | Detect with visited set, break cycle |
+
+---
+
+## Performance Considerations
+
+| Operation | Target Time | Strategy |
+|-----------|-------------|----------|
+| Database queries | < 100ms total | Single query with joins, indexed |
+| Token estimation | < 10ms | No regex, simple math |
+| Priority scoring | < 20ms | O(n) scoring, O(n log n) sort |
+| Redistribution | < 5ms | Simple arithmetic |
+| Formatting | < 5ms | Template strings, no JSON.parse |
+| **Total build time** | **< 200ms** | Cached settings, connection pooling |
+
+**Query Optimization**:
+
+```sql
+-- Single optimized query for all context data
+WITH ranked_events AS (
+  SELECT *, ROW_NUMBER() OVER (ORDER BY season DESC, episode_number DESC) as rn
+  FROM immutable_events
+  WHERE project_id = $1
+),
+latest_states AS (
+  SELECT DISTINCT ON (character_id) *
+  FROM character_states
+  WHERE project_id = $1
+  ORDER BY character_id, updated_at DESC
+)
+SELECT 
+  (SELECT json_agg(e.*) FROM ranked_events e WHERE e.rn <= 50) as immutable_events,
+  (SELECT json_agg(s.*) FROM latest_states s) as character_states,
+  (SELECT json_agg(t.*) FROM narrative_threads t WHERE t.project_id = $1 AND t.status = 'open') as threads,
+  (SELECT json_agg(w.*) FROM world_states w WHERE w.project_id = $1) as world_state
+```
+
+---
+
+## UI Display Format
+
+The Memory Context Preview panel displays context to users before generation.
+
+### Memory Context Preview Panel
+
+**Location**: `/ideation` tab (collapsible panel)
+
+```
+┌── MEMORY CONTEXT PREVIEW ─────────────────────────────────────┐
+│ 📚 What the AI Knows                              [▼ Expand] │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
+│ ┌─ IMMUTABLE FACTS (3) ──────────────────────── 1,247 tokens │
+│ │ • Marcus died in Episode 15                                │
+│ │ • The Crown was destroyed in Episode 22                    │
+│ │ • Elena revealed as double-agent in Episode 27             │
+│ │ [+ Show 2 more]                                            │
+│ └─────────────────────────────────────────────────────────────│
+│                                                               │
+│ ┌─ ACTIVE THREADS (2) ──────────────────────────  842 tokens │
+│ │ ○ Mystery of the Lost Kingdom (Ep 8, OPEN)                │
+│ │   "Ancient ruins hold the key..."                         │
+│ │ ● Sarah's redemption arc (Ep 20, RESOLVED)                │
+│ │   "She accepted her role..."                              │
+│ └─────────────────────────────────────────────────────────────│
+│                                                               │
+│ ┌─ CHARACTER STATES (2) ────────────────────────  623 tokens │
+│ │ 👤 Sarah: acceptance → determination                       │
+│ │    Last update: Episode 28                                 │
+│ │ 👤 Elena: revealed_traitor → escaped                       │
+│ │    Last update: Episode 27                                 │
+│ └─────────────────────────────────────────────────────────────│
+│                                                               │
+│ ┌─ RECENT SUMMARIES (3) ────────────────────────  892 tokens │
+│ │ Ep 28: Sarah confronted Elena...                          │
+│ │ Ep 27: The betrayal was revealed...                       │
+│ │ Ep 26: Tensions rise at court...                          │
+│ └─────────────────────────────────────────────────────────────│
+│                                                               │
+│ ═══════════════════════════════════════════════════════════  │
+│ TOKEN BUDGET: 3,604 / 6,000 (60%)                            │
+│ ██████████████████████████░░░░░░░░░░░░░░░░░                  │
+│ Remaining: 2,396 tokens                                       │
+│ ═══════════════════════════════════════════════════════════  │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
+```
+
+### Collapsible Section Structure
+
+Each section is expandable to show full details:
+
+```typescript
+interface ContextPanelSection {
+  title: string;
+  itemCount: number;
+  tokenCount: number;
+  items: ContextItem[];
+  expanded: boolean;
+  priority: 'high' | 'medium' | 'low';
+}
+
+interface ContextItem {
+  summary: string;      // One-line summary
+  fullContent: string;  // Expandable details
+  source: string;       // Episode reference
+  tokenEstimate: number;
+}
+```
+
+### Token Budget Display
+
+```typescript
+interface TokenBudgetDisplay {
+  used: number;         // Current tokens used
+  total: number;        // Total budget (15% of context window)
+  percentage: number;   // used / total * 100
+  breakdown: {
+    immutableEvents: number;
+    characterStates: number;
+    activeThreads: number;
+    episodeSummaries: number;
+    worldState: number;
+  };
+}
+
+function formatTokenBar(budget: TokenBudgetDisplay): string {
+  const filled = Math.round((budget.percentage / 100) * 40);
+  return '█'.repeat(filled) + '░'.repeat(40 - filled);
+}
+```
+
+### UI Component Integration
+
+```typescript
+// packages/features/episodes/src/components/memory-context-preview.tsx
+
+interface MemoryContextPreviewProps {
+  projectId: string;
+  episodeNumber: number;
+  canonSettings: CanonSettings;
+  onContextLoaded?: (context: MemoryContext) => void;
+}
+
+export function MemoryContextPreview({
+  projectId,
+  episodeNumber,
+  canonSettings,
+}: MemoryContextPreviewProps) {
+  const { data: context, isLoading } = useQuery({
+    queryKey: ['memory-context', projectId, episodeNumber],
+    queryFn: () => buildMemoryContextAction({
+      projectId,
+      episodeNumber,
+      horizon: canonSettings.memoryHorizon,
+    }),
+  });
+  
+  // Render collapsible sections...
+}
+```
+
+**See also**: [FILM-1007: Canon UI Components](../ui/FILM-1007-canon-ui-components.md)
+
+---
+
+## Acceptance Criteria
+
+- [ ] Builds complete context from database
+- [ ] Tracks token usage accurately (±10% of actual)
+- [ ] Enforces budget limits with configurable threshold
+- [ ] Prioritizes content by scoring algorithm
+- [ ] Redistributes unused budget dynamically
+- [ ] Applies memory horizon decay
+- [ ] Handles overflow gracefully
+- [ ] Formats context for prompt injection
+- [ ] **New**: Formats context for UI display (Memory Context Preview)
+- [ ] Performance: < 200ms build time
+- [ ] Unit tests for budget calculations
+- [ ] Unit tests for priority scoring
+- [ ] Integration test with real database
+
+

@@ -1,0 +1,186 @@
+---
+id: FILM-1131
+title: External Content Cache (News/Research)
+status: draft
+priority: medium
+effort: M
+dependencies: [FILM-1135]
+---
+
+# FILM-1131: External Content Cache
+
+## Overview
+
+> [!IMPORTANT]
+> This spec has been revised to use the **unified** `external_content` table defined in [FILM-1135](../providers/FILM-1135-external-context-provider.md) instead of a news-specific cache table. The unified architecture supports caching news articles, research papers, historical documents, and other external content.
+
+See FILM-1135 for the complete database schema.
+
+## This Spec's Focus
+
+This spec covers:
+1. **Cache management strategies** for news content
+2. **TTL configuration** for different content freshness requirements
+3. **Entity extraction integration** with cached content
+
+---
+
+## News-Specific Cache Configuration
+
+News content requires shorter cache TTLs than research or historical content:
+
+```typescript
+// packages/features/episodes/src/lib/canon/cache-config.ts
+
+import type { SourceCategory } from '../types/external-context';
+
+/**
+ * Cache TTL by content category (in hours)
+ */
+export const CACHE_TTL_HOURS: Record<SourceCategory, number> = {
+  news: 6,           // News expires quickly
+  research: 168,     // Research papers - 7 days
+  encyclopedia: 168, // Encyclopedia - 7 days
+  historical: 720,   // Historical archives - 30 days
+  official: 24,      // Government docs - 1 day
+  multimedia: 48,    // Video/podcast transcripts - 2 days
+};
+
+/**
+ * Check if cached content is still fresh
+ */
+export function isCacheFresh(
+  cacheExpiresAt: Date,
+  category: SourceCategory
+): boolean {
+  const now = new Date();
+  return cacheExpiresAt > now;
+}
+
+/**
+ * Calculate expiry time for new cache entry
+ */
+export function getCacheExpiry(category: SourceCategory): Date {
+  const ttlHours = CACHE_TTL_HOURS[category];
+  return new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+}
+```
+
+---
+
+## Entity Extraction for News
+
+When news articles are cached, entities should be extracted:
+
+```typescript
+// packages/features/episodes/src/lib/server/services/entity-extractor.ts
+
+import { executeLLM } from '@kit/prompt-engine';
+import type { ExtractedEntities } from '../../types/external-context';
+
+/**
+ * Extract named entities from news article content
+ */
+export async function extractEntitiesFromArticle(
+  title: string,
+  content: string
+): Promise<ExtractedEntities> {
+  const result = await executeLLM({
+    promptId: 'news-generation/entity-extraction',
+    variables: {
+      title,
+      content: content.slice(0, 2000), // Limit for token budget
+    },
+  });
+
+  // Parse LLM response
+  const parsed = JSON.parse(result.content);
+  
+  return {
+    people: parsed.people ?? [],
+    organizations: parsed.organizations ?? [],
+    locations: parsed.locations ?? [],
+    topics: parsed.topics ?? [],
+    events: parsed.events ?? [],
+    extractedAt: new Date(),
+  };
+}
+```
+
+---
+
+## Entity Extraction Prompt
+
+Create the prompt for entity extraction:
+
+```json
+// packages/features/prompt-engine/src/prompts/news-generation/entity-extraction.json
+{
+  "id": "entity-extraction",
+  "version": "1.0.0",
+  "name": "Entity Extraction",
+  "description": "Extract named entities from news article content",
+  "category": "news-generation",
+  "llm": {
+    "provider": "google",
+    "model": "gemini-2.0-flash",
+    "temperature": 0.1,
+    "maxOutputTokens": 1000
+  },
+  "template": "Extract named entities from this news article.\n\nTitle: {{title}}\n\nContent:\n{{content}}\n\nReturn a JSON object with these arrays:\n{\n  \"people\": [{\"name\": \"...\", \"role\": \"...\"}],\n  \"organizations\": [{\"name\": \"...\", \"type\": \"...\"}],\n  \"locations\": [{\"name\": \"...\", \"type\": \"city|country|region\"}],\n  \"topics\": [\"topic1\", \"topic2\"],\n  \"events\": [{\"name\": \"...\", \"date\": \"...\"}]\n}\n\nBe precise. Only include clearly mentioned entities.",
+  "outputFormat": "json",
+  "variables": {
+    "title": { "type": "string", "required": true },
+    "content": { "type": "string", "required": true }
+  }
+}
+```
+
+---
+
+## Integration with FILM-1135
+
+The `external_content` table from FILM-1135 already handles:
+- ✅ Content storage (title, description, content, URL)
+- ✅ Source reference (source_id → external_sources)
+- ✅ Category field (news, research, etc.)
+- ✅ Entities JSONB column
+- ✅ Cache expiry tracking (cache_expires_at)
+- ✅ Full-text search index
+
+This spec adds:
+- Cache TTL configuration by category
+- Entity extraction service
+- Entity extraction prompt
+
+---
+
+## Acceptance Criteria
+
+- [ ] `CACHE_TTL_HOURS` configuration created
+- [ ] `getCacheExpiry()` returns correct expiry per category
+- [ ] `extractEntitiesFromArticle()` calls LLM
+- [ ] Entity extraction prompt created
+- [ ] Entities stored in `external_content.entities` JSONB
+
+---
+
+## Estimated Effort
+
+| Task | Time |
+|------|------|
+| Create cache config | 30 min |
+| Create entity extractor service | 1 hour |
+| Create entity extraction prompt | 30 min |
+| Testing | 30 min |
+| **Total** | **~2.5 hours** (M) |
+
+---
+
+## Dependencies
+
+- **FILM-1135**: External Context Provider (defines `external_content` table)
+
+## Blocks
+
+- **FILM-1132**: News Aggregator (uses cache)

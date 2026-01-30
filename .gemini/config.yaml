@@ -1,0 +1,16 @@
+version: 1
+
+# Controls when Gemini acts automatically
+pull_request:
+  # Triggers a summary and review when a PR is first opened
+  opened:
+    summary: true
+    code_review: true
+  
+  # Triggers a review when you push new commits (synchronize)
+  synchronize:
+    code_review: true
+
+# Optional: Fine-tune the review strictness
+code_review:
+  comment_severity_threshold: "LOW" # Options: LOW, MEDIUM, HIGH, CRITICAL

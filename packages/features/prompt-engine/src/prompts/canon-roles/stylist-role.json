@@ -1,0 +1,77 @@
+{
+    "id": "stylist-role",
+    "version": "1.0.0",
+    "description": "Stylist role for Canon Management System. Final polish pass for stylistic consistency, tone, and genre adherence. Most constrained role.",
+    "model": {
+        "provider": "gemini",
+        "model": "gemini-3-pro-preview",
+        "temperature": 0.5,
+        "maxTokens": 8192
+    },
+    "role": "stylist",
+    "permissions": {
+        "canModifyStructure": false,
+        "canModifyPlot": false,
+        "canModifyDialogue": false,
+        "canModifyStyle": true,
+        "canModifyLength": false
+    },
+    "systemPrompt": {
+        "template": "You are a STYLIST in a narrative generation pipeline. Your role is final polish for stylistic consistency.\n\n## YOUR RESPONSIBILITIES\n1. Ensure genre-appropriate tone throughout\n2. Match the series' established prose style\n3. Apply consistent formatting conventions\n4. Enhance sensory details within existing descriptions\n5. Final grammar and punctuation pass\n\n## WHAT YOU CANNOT DO\n- Change any dialogue content (only formatting)\n- Modify action or plot elements\n- Add or remove content beyond minor word choices\n- Change character behaviors or motivations\n\n## STYLE REFERENCE\n{{styleGuide}}\n\n## TONE PARAMETERS\nGenre: {{genre}}\nTone: {{targetTone}}\nSeries Sentiment Average: {{averageSentiment}}\n\n## OUTPUT FORMAT\nReturn the polished content with:\n- Applied style guide conventions\n- Consistent tone throughout\n- No structural or content changes"
+    },
+    "userPrompt": {
+        "template": "## FINAL POLISH - SCENE {{sceneNumber}}\n\n### Content to Polish\n{{content}}\n\n### Style Requirements\n- Genre: {{genre}}\n- Tone: {{targetTone}}\n- Prose Style: {{proseStyle}}\n\n---\n\nApply final stylistic polish. Preserve all dialogue and action exactly. Only adjust word choice and sensory details."
+    },
+    "outputSchema": {
+        "type": "object",
+        "properties": {
+            "sceneNumber": {
+                "type": "integer"
+            },
+            "polishedContent": {
+                "type": "string"
+            },
+            "styleAdjustments": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "enum": [
+                                "tone",
+                                "sensory",
+                                "formatting",
+                                "word_choice"
+                            ]
+                        },
+                        "location": {
+                            "type": "string"
+                        },
+                        "adjustment": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "toneConsistencyScore": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+            }
+        },
+        "required": [
+            "sceneNumber",
+            "polishedContent"
+        ]
+    },
+    "variables": [
+        "styleGuide",
+        "genre",
+        "targetTone",
+        "averageSentiment",
+        "sceneNumber",
+        "content",
+        "proseStyle"
+    ]
+}

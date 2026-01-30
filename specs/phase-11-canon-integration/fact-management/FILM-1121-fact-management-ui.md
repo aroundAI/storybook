@@ -1,0 +1,587 @@
+---
+id: FILM-1121
+title: Fact Management UI Components
+status: draft
+priority: high
+effort: L
+dependencies: [FILM-1120]
+---
+
+# FILM-1121: Fact Management UI Components
+
+## Overview
+
+Create UI components for managing verified facts: adding facts with sources, searching the fact database, verifying facts, and using facts in content generation.
+
+## Problem Statement
+
+Documentary creators need to:
+- Add facts with proper citations
+- Search existing facts by keyword/category
+- Mark facts as verified
+- See fact usage across episodes
+- Import facts from external sources (DOI lookup)
+
+## Solution
+
+Build a Fact Management UI accessible from project settings for DOCUMENTARY content types.
+
+---
+
+## Route Structure
+
+```
+/studio/[projectSlug]/settings/facts/
+├── page.tsx              → Fact library with search/filter
+├── add/page.tsx          → Add new fact form
+├── [factId]/page.tsx     → Fact detail with usage history
+└── import/page.tsx       → Bulk import from DOI/bibtex
+```
+
+---
+
+## Components
+
+### 1. FactLibrary
+
+Main list view with search and filters.
+
+```tsx
+// File: packages/features/episodes/src/components/facts/FactLibrary.tsx
+
+interface FactLibraryProps {
+  projectId: string;
+}
+
+export function FactLibrary({ projectId }: FactLibraryProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
+  const [status, setStatus] = useState<VerificationStatus | null>(null);
+  
+  const { data: facts, isLoading } = useVerifiedFacts({
+    projectId,
+    search: searchQuery,
+    category,
+    status,
+  });
+  
+  return (
+    <div className="space-y-6">
+      {/* Search and Filters */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search facts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            leftIcon={<SearchIcon />}
+          />
+        </div>
+        
+        <Select value={category} onValueChange={setCategory}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="physics">Physics</SelectItem>
+            <SelectItem value="biology">Biology</SelectItem>
+            <SelectItem value="history">History</SelectItem>
+            {/* ... more categories */}
+          </SelectContent>
+        </Select>
+        
+        <Select value={status} onValueChange={setStatus}>
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="unverified">Unverified</SelectItem>
+            <SelectItem value="verified">Verified</SelectItem>
+            <SelectItem value="disputed">Disputed</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Button asChild>
+          <Link href="facts/add">
+            <PlusIcon /> Add Fact
+          </Link>
+        </Button>
+      </div>
+      
+      {/* Fact List */}
+      <div className="space-y-3">
+        {facts?.map((fact) => (
+          <FactCard key={fact.id} fact={fact} />
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+### 2. FactCard
+
+Display card for a single fact.
+
+```tsx
+// File: packages/features/episodes/src/components/facts/FactCard.tsx
+
+interface FactCardProps {
+  fact: VerifiedFact;
+  onVerify?: () => void;
+}
+
+export function FactCard({ fact, onVerify }: FactCardProps) {
+  const statusColors = {
+    unverified: 'bg-yellow-100 text-yellow-800',
+    verified: 'bg-green-100 text-green-800',
+    disputed: 'bg-red-100 text-red-800',
+    pending_review: 'bg-blue-100 text-blue-800',
+    retracted: 'bg-gray-100 text-gray-800',
+  };
+  
+  return (
+    <Card className="p-4">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <p className="font-medium text-foreground">{fact.claim}</p>
+          
+          {/* Citation */}
+          <p className="text-sm text-muted-foreground mt-2">
+            {fact.sourceCitation}
+          </p>
+          
+          {/* Tags */}
+          <div className="flex gap-1 mt-2">
+            {fact.tags.map((tag) => (
+              <Badge key={tag} variant="secondary" size="sm">
+                {tag}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex flex-col items-end gap-2">
+          {/* Status Badge */}
+          <Badge className={statusColors[fact.verificationStatus]}>
+            {fact.verificationStatus}
+          </Badge>
+          
+          {/* Confidence */}
+          {fact.confidenceScore && (
+            <span className="text-xs text-muted-foreground">
+              {Math.round(fact.confidenceScore * 100)}% confident
+            </span>
+          )}
+          
+          {/* Usage count */}
+          <span className="text-xs text-muted-foreground">
+            Used {fact.timesUsed} times
+          </span>
+        </div>
+      </div>
+      
+      {/* Actions */}
+      <div className="flex gap-2 mt-3 pt-3 border-t">
+        <Button variant="ghost" size="sm" asChild>
+          <Link href={`facts/${fact.id}`}>Details</Link>
+        </Button>
+        
+        {fact.verificationStatus === 'unverified' && (
+          <Button variant="ghost" size="sm" onClick={onVerify}>
+            <CheckIcon /> Verify
+          </Button>
+        )}
+        
+        {fact.sourceUrl && (
+          <Button variant="ghost" size="sm" asChild>
+            <a href={fact.sourceUrl} target="_blank" rel="noopener">
+              <ExternalLinkIcon /> Source
+            </a>
+          </Button>
+        )}
+      </div>
+    </Card>
+  );
+}
+```
+
+### 3. AddFactForm
+
+Form for adding a new fact with citation.
+
+```tsx
+// File: packages/features/episodes/src/components/facts/AddFactForm.tsx
+
+const addFactSchema = z.object({
+  claim: z.string().min(10, 'Claim must be at least 10 characters'),
+  category: z.string().optional(),
+  subcategory: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  sourceType: z.enum([
+    'research_paper',
+    'textbook',
+    'encyclopedia',
+    'expert_interview',
+    'official_document',
+    'historical_record',
+    'news_article',
+    'other',
+  ]),
+  sourceUrl: z.string().url().optional().or(z.literal('')),
+  sourceCitation: z.string().min(10, 'Citation required'),
+  sourceTitle: z.string().optional(),
+  sourceAuthors: z.string().optional(), // Comma-separated
+  sourceDoi: z.string().optional(),
+  confidenceScore: z.number().min(0).max(1).optional(),
+});
+
+export function AddFactForm({ projectId }: { projectId: string }) {
+  const form = useForm({
+    resolver: zodResolver(addFactSchema),
+    defaultValues: {
+      sourceType: 'research_paper',
+      tags: [],
+    },
+  });
+  
+  const [doiLookup, setDoiLookup] = useState('');
+  const [isLoadingDoi, setIsLoadingDoi] = useState(false);
+  
+  // DOI lookup to auto-fill citation
+  async function handleDoiLookup() {
+    setIsLoadingDoi(true);
+    try {
+      const response = await fetch(
+        `https://api.crossref.org/works/${encodeURIComponent(doiLookup)}`
+      );
+      const data = await response.json();
+      
+      const work = data.message;
+      const authors = work.author?.map(
+        (a: any) => `${a.family}, ${a.given?.[0] ?? ''}.`
+      ) ?? [];
+      
+      form.setValue('sourceTitle', work.title?.[0] ?? '');
+      form.setValue('sourceAuthors', authors.join(', '));
+      form.setValue('sourceDoi', doiLookup);
+      form.setValue(
+        'sourceCitation',
+        generateAPACitation(
+          authors,
+          work.published?.['date-parts']?.[0]?.[0] ?? new Date().getFullYear(),
+          work.title?.[0] ?? '',
+          work['container-title']?.[0] ?? '',
+          undefined,
+          doiLookup
+        )
+      );
+    } catch (error) {
+      toast.error('Failed to lookup DOI');
+    }
+    setIsLoadingDoi(false);
+  }
+  
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {/* DOI Lookup Helper */}
+        <Card className="p-4 bg-muted/50">
+          <p className="text-sm font-medium mb-2">Quick Add via DOI</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="10.1234/example.doi"
+              value={doiLookup}
+              onChange={(e) => setDoiLookup(e.target.value)}
+            />
+            <Button
+              type="button"
+              onClick={handleDoiLookup}
+              disabled={isLoadingDoi}
+            >
+              {isLoadingDoi ? <Spinner /> : 'Lookup'}
+            </Button>
+          </div>
+        </Card>
+        
+        {/* Claim */}
+        <FormField
+          control={form.control}
+          name="claim"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Factual Claim</FormLabel>
+              <Textarea
+                placeholder="The speed of light in a vacuum is approximately 299,792,458 meters per second."
+                {...field}
+              />
+              <FormDescription>
+                State the fact clearly and precisely
+              </FormDescription>
+            </FormItem>
+          )}
+        />
+        
+        {/* Category */}
+        <div className="grid grid-cols-2 gap-4">
+          <FormField name="category" /* ... */ />
+          <FormField name="subcategory" /* ... */ />
+        </div>
+        
+        {/* Source Type */}
+        <FormField
+          control={form.control}
+          name="sourceType"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Source Type</FormLabel>
+              <Select {...field}>
+                {/* ... source type options */}
+              </Select>
+            </FormItem>
+          )}
+        />
+        
+        {/* Citation */}
+        <FormField
+          control={form.control}
+          name="sourceCitation"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Full Citation (APA Format)</FormLabel>
+              <Textarea
+                placeholder="Smith, J. (2023). The Science of Everything. Nature. https://doi.org/10.1234/..."
+                {...field}
+              />
+            </FormItem>
+          )}
+        />
+        
+        {/* Confidence */}
+        <FormField
+          control={form.control}
+          name="confidenceScore"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Confidence Level</FormLabel>
+              <Slider
+                min={0}
+                max={100}
+                step={5}
+                value={[field.value * 100]}
+                onValueChange={([v]) => field.onChange(v / 100)}
+              />
+              <FormDescription>
+                How confident are you in this source?
+              </FormDescription>
+            </FormItem>
+          )}
+        />
+        
+        <Button type="submit">Add Fact</Button>
+      </form>
+    </Form>
+  );
+}
+```
+
+### 4. FactVerificationDialog
+
+Dialog for verifying a fact.
+
+```tsx
+// File: packages/features/episodes/src/components/facts/FactVerificationDialog.tsx
+
+export function FactVerificationDialog({ fact, onVerified }) {
+  const [notes, setNotes] = useState('');
+  
+  async function handleVerify() {
+    await verifyFactAction({
+      factId: fact.id,
+      verificationNotes: notes,
+    });
+    onVerified();
+  }
+  
+  return (
+    <Dialog>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Verify Fact</DialogTitle>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <div>
+            <p className="font-medium">Claim:</p>
+            <p className="text-muted-foreground">{fact.claim}</p>
+          </div>
+          
+          <div>
+            <p className="font-medium">Source:</p>
+            <p className="text-muted-foreground">{fact.sourceCitation}</p>
+            {fact.sourceUrl && (
+              <a href={fact.sourceUrl} target="_blank" className="text-blue-500">
+                View Source →
+              </a>
+            )}
+          </div>
+          
+          <Textarea
+            placeholder="Verification notes..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+          
+          <div className="flex gap-2">
+            <Button onClick={handleVerify} className="bg-green-600">
+              <CheckIcon /> Confirm Verified
+            </Button>
+            <Button variant="destructive">
+              <XIcon /> Mark Disputed
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+```
+
+---
+
+## Server Actions
+
+```typescript
+// File: packages/features/episodes/src/server/fact-actions.ts
+
+export const addVerifiedFactAction = enhanceAction(
+  async (data: CreateVerifiedFactInput) => {
+    const client = getSupabaseServerClient();
+    
+    // Generate simplified claim for search
+    const simplifiedClaim = data.claim.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .trim();
+    
+    const { data: fact, error } = await client
+      .from('verified_facts')
+      .insert({
+        ...data,
+        simplified_claim: simplifiedClaim,
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return { fact };
+  },
+  {
+    schema: createVerifiedFactSchema,
+    auth: true,
+  }
+);
+
+export const verifyFactAction = enhanceAction(
+  async (data: { factId: string; verificationNotes?: string }) => {
+    const client = getSupabaseServerClient();
+    const user = await requireUser(client);
+    
+    const { error } = await client
+      .from('verified_facts')
+      .update({
+        verification_status: 'verified',
+        verified_by: user.id,
+        verified_at: new Date().toISOString(),
+        verification_notes: data.verificationNotes,
+      })
+      .eq('id', data.factId);
+    
+    if (error) throw error;
+    return { success: true };
+  },
+  {
+    schema: z.object({
+      factId: z.string().uuid(),
+      verificationNotes: z.string().optional(),
+    }),
+    auth: true,
+  }
+);
+
+export const searchFactsAction = enhanceAction(
+  async (data: {
+    projectId: string;
+    query: string;
+    category?: string;
+    limit?: number;
+  }) => {
+    const client = getSupabaseServerClient();
+    
+    let query = client
+      .from('verified_facts')
+      .select('*')
+      .eq('project_id', data.projectId)
+      .eq('verification_status', 'verified');
+    
+    if (data.query) {
+      query = query.textSearch('claim', data.query);
+    }
+    
+    if (data.category) {
+      query = query.eq('category', data.category);
+    }
+    
+    const { data: facts } = await query.limit(data.limit ?? 20);
+    
+    return { facts: facts ?? [] };
+  },
+  {
+    schema: z.object({
+      projectId: z.string().uuid(),
+      query: z.string(),
+      category: z.string().optional(),
+      limit: z.number().optional(),
+    }),
+    auth: true,
+  }
+);
+```
+
+---
+
+## Acceptance Criteria
+
+- [ ] FactLibrary shows all facts with search/filter
+- [ ] FactCard displays claim, citation, status, usage
+- [ ] AddFactForm validates input and creates fact
+- [ ] DOI lookup auto-fills citation
+- [ ] FactVerificationDialog allows marking verified/disputed
+- [ ] Only DOCUMENTARY projects see Facts section
+- [ ] addVerifiedFactAction creates fact with simplified claim
+- [ ] searchFactsAction uses full-text search
+
+---
+
+## Estimated Effort
+
+| Task | Time |
+|------|------|
+| FactLibrary component | 1 hour |
+| FactCard component | 30 min |
+| AddFactForm component | 1.5 hours |
+| FactVerificationDialog | 30 min |
+| Server actions | 1 hour |
+| Route pages | 30 min |
+| Testing | 1 hour |
+| **Total** | **~6 hours** |
+
+---
+
+## Dependencies
+
+- **FILM-1120**: Verified facts table exists
+
+## Blocks
+
+- **FILM-1122**: Researcher role uses fact search
+- **FILM-1123**: Fact-checker uses verification
