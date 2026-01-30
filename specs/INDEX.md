@@ -456,6 +456,45 @@ graph TD
 | FILM-905 | [generation-settings](./phase-9-integration/settings/FILM-905-generation-settings.md) | ✅ DONE | M | - |
 | FILM-906 | [platform-connections](./phase-9-integration/settings/FILM-906-platform-connections.md) | ✅ DONE | M | FILM-706 |
 
+### Phase 10: Canon Management (7 specs)
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1001 | [canon-tables](./phase-10-canon-management/database/FILM-1001-canon-tables.md) | ✅ DONE | L | FILM-101 |
+| FILM-1002 | [canon-rls](./phase-10-canon-management/database/FILM-1002-canon-rls.md) | ✅ DONE | S | FILM-1001 |
+| FILM-1003 | [continuity-validator](./phase-10-canon-management/lib/FILM-1003-continuity-validator.md) | ✅ DONE | L | FILM-1001 |
+| FILM-1004 | [memory-context-builder](./phase-10-canon-management/lib/FILM-1004-memory-context-builder.md) | ✅ DONE | M | FILM-1001 |
+| FILM-1005 | [canon-actions](./phase-10-canon-management/server/FILM-1005-canon-actions.md) | ✅ DONE | M | FILM-1003, FILM-1004 |
+| FILM-1006 | [llm-role-separation](./phase-10-canon-management/prompts/FILM-1006-llm-role-separation.md) | ✅ DONE | M | FILM-304 |
+| FILM-1007 | [canon-ui-components](./phase-10-canon-management/ui/FILM-1007-canon-ui-components.md) | ✅ DONE | L | FILM-1005 |
+
+### Phase 11: Canon Integration & Content Types (17 specs)
+
+> **Status**: 🔴 NOT STARTED - Detailed specs created, waiting for implementation
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1101 | [Register Canon Prompts](./phase-11-canon-integration/integration/FILM-1101-register-canon-prompts.md) | Draft | S | FILM-1006 |
+| FILM-1102 | [Memory Context Injection](./phase-11-canon-integration/integration/FILM-1102-memory-context-injection.md) | Draft | M | FILM-1004 |
+| FILM-1103 | [LLM-based Canon Extraction](./phase-11-canon-integration/integration/FILM-1103-llm-canon-extraction.md) | Draft | M | FILM-1005 |
+| FILM-1104 | [Validation Integration](./phase-11-canon-integration/integration/FILM-1104-validation-integration.md) | Draft | M | FILM-1003 |
+| FILM-1110 | [Content Type Enum](./phase-11-canon-integration/content-types/FILM-1110-content-type-enum.md) | Draft | S | - |
+| FILM-1111 | [Content Type Configs](./phase-11-canon-integration/content-types/FILM-1111-content-type-configs.md) | Draft | M | FILM-1110 |
+| FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.md) | Draft | L | FILM-1110 |
+| FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.md) | Draft | M | FILM-1110 |
+| FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.md) | Draft | M | - |
+| FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.md) | Draft | L | FILM-1120 |
+| FILM-1122 | [Researcher Role Prompt](./phase-11-canon-integration/fact-management/FILM-1122-researcher-role.md) | Draft | M | FILM-304 |
+| FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.md) | Draft | M | FILM-304 |
+| FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.md) | Draft | M | FILM-1135 |
+| FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.md) | Draft | M | FILM-1135 |
+| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.md) | Draft | L | FILM-1135 |
+| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | Draft | M | FILM-1132 |
+| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | Draft | M | FILM-1133 |
+| FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | Draft | L | - |
+
+See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
+
 ### Spikes (5 specs)
 
 | Task ID | Name | Status | Effort | Dependencies |

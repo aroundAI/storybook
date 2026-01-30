@@ -1,0 +1,388 @@
+---
+id: FILM-1122
+title: Researcher LLM Role Prompt
+status: draft
+priority: medium
+effort: M
+dependencies: [FILM-1120, FILM-304]
+---
+
+# FILM-1122: Researcher LLM Role Prompt
+
+## Overview
+
+Create an LLM role prompt for the "Researcher" role in documentary content generation. The Researcher identifies what facts need to be verified and what claims should be sourced.
+
+## Problem Statement
+
+For documentary content:
+- LLM should NOT make up facts
+- LLM should NOT generate statistics without sources
+- Need to identify claims requiring verification BEFORE generating content
+- Need to match claims to existing verified facts
+
+## Solution
+
+Create a Researcher role that:
+1. Analyzes a topic/premise
+2. Breaks down into claims that need verification
+3. Searches existing verified facts
+4. Flags claims needing new sources
+
+---
+
+## Role Description
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           RESEARCHER ROLE                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  INPUT:                                                                     │
+│  ───────                                                                    │
+│  • Topic/premise for documentary segment                                    │
+│  • Existing verified facts from database                                    │
+│  • Desired claims/statistics to include                                     │
+│                                                                             │
+│  OUTPUT:                                                                    │
+│  ────────                                                                   │
+│  • Research outline with required facts                                     │
+│  • Matched claims → verified facts                                          │
+│  • Unmatched claims → "needs source"                                        │
+│  • Suggested research queries                                               │
+│                                                                             │
+│  DOES NOT:                                                                  │
+│  ───────────                                                                │
+│  • Generate or fabricate facts                                              │
+│  • Create statistics                                                        │
+│  • Make unsourced claims                                                    │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Prompt Template
+
+### File: `packages/features/prompt-engine/src/prompts/documentary/researcher-role.json`
+
+```json
+{
+  "slug": "researcher-role",
+  "name": "Documentary Researcher",
+  "version": "1.0",
+  "description": "Identifies facts needing verification for documentary content",
+  
+  "variables": {
+    "topic": {
+      "type": "string",
+      "required": true
+    },
+    "premise": {
+      "type": "string",
+      "required": false
+    },
+    "existing_facts": {
+      "type": "string",
+      "required": false,
+      "default": ""
+    },
+    "target_claims": {
+      "type": "string",
+      "required": false,
+      "default": ""
+    },
+    "episode_context": {
+      "type": "string",
+      "required": false,
+      "default": ""
+    }
+  },
+  
+  "llm": {
+    "provider": "google",
+    "model": "gemini-2.0-flash",
+    "max_tokens": 2500,
+    "temperature": 0.2,
+    "response_format": "json_object"
+  },
+  
+  "system_prompt": "You are a research assistant for documentary production. Your role is to:\n\n1. IDENTIFY what factual claims need to be made in the content\n2. MATCH claims to existing verified facts when possible\n3. FLAG claims that need new sources\n4. SUGGEST research queries for unverified claims\n\n## CRITICAL RULES:\n- NEVER fabricate facts or statistics\n- NEVER make up numbers, dates, or figures\n- ALWAYS indicate when a claim needs verification\n- Mark confidence as 'needs_source' if not matched to existing facts\n\n## Output each claim with:\n- claim: The factual statement needed\n- matched_fact_id: ID if matched to existing fact, null if not\n- confidence: 'verified', 'likely', or 'needs_source'\n- suggested_search: Research query to find source",
+  
+  "user_prompt": "I'm creating documentary content about: {{topic}}\n\n{{#if premise}}\nPremise/Angle: {{{premise}}}\n{{/if}}\n\n{{#if existing_facts}}\n## EXISTING VERIFIED FACTS:\n{{{existing_facts}}}\n{{/if}}\n\n{{#if target_claims}}\n## CLAIMS I WANT TO MAKE:\n{{{target_claims}}}\n{{/if}}\n\nIdentify all factual claims needed for this content. For each claim, tell me if it's already verified or needs sourcing.",
+  
+  "output": {
+    "type": "object",
+    "wrapper_key": "research",
+    "schema_for_llm": "{\n  \"topic_summary\": \"Brief summary of what we're researching\",\n  \"claims\": [{\n    \"claim\": \"The factual statement\",\n    \"category\": \"physics|biology|history|etc\",\n    \"matched_fact_id\": \"uuid or null\",\n    \"confidence\": \"verified|likely|needs_source\",\n    \"priority\": \"critical|important|nice_to_have\",\n    \"suggested_search\": \"Research query for Google Scholar or similar\"\n  }],\n  \"research_gaps\": [\"Topics needing more research\"],\n  \"recommended_sources\": [\"Types of sources to consult\"]\n}"
+  }
+}
+```
+
+---
+
+## Integration
+
+### Researcher Service Function
+
+```typescript
+// File: packages/features/episodes/src/lib/documentary/researcher.ts
+
+import { executeLLM } from '@kit/prompt-engine/server';
+import { searchFactsAction } from '../../server/fact-actions';
+
+export interface ResearchClaim {
+  claim: string;
+  category: string;
+  matchedFactId: string | null;
+  confidence: 'verified' | 'likely' | 'needs_source';
+  priority: 'critical' | 'important' | 'nice_to_have';
+  suggestedSearch: string;
+}
+
+export interface ResearchResult {
+  topicSummary: string;
+  claims: ResearchClaim[];
+  researchGaps: string[];
+  recommendedSources: string[];
+  verifiedCount: number;
+  needsSourceCount: number;
+}
+
+/**
+ * Run research phase for documentary topic
+ */
+export async function runResearchPhase(
+  projectId: string,
+  topic: string,
+  premise?: string,
+  targetClaims?: string[],
+  supabase: SupabaseClient
+): Promise<ResearchResult> {
+  
+  // Get existing verified facts for this project
+  const { facts } = await searchFactsAction({
+    projectId,
+    query: topic,
+    limit: 50,
+  });
+  
+  // Format existing facts for prompt
+  const existingFactsText = facts.length > 0
+    ? facts.map(f => `[${f.id}] ${f.claim} (Source: ${f.sourceCitation})`).join('\n')
+    : 'No existing facts in database.';
+  
+  // Run researcher LLM
+  const result = await executeLLM<{
+    research: {
+      topic_summary: string;
+      claims: Array<{
+        claim: string;
+        category: string;
+        matched_fact_id: string | null;
+        confidence: string;
+        priority: string;
+        suggested_search: string;
+      }>;
+      research_gaps: string[];
+      recommended_sources: string[];
+    };
+  }>({
+    templateSlug: 'researcher-role',
+    variables: {
+      topic,
+      premise: premise ?? '',
+      existing_facts: existingFactsText,
+      target_claims: targetClaims?.join('\n') ?? '',
+    },
+    context: { name: 'researcher-role', projectId },
+    supabaseClient: supabase,
+  });
+  
+  const research = result.data.research;
+  
+  // Validate matched fact IDs actually exist
+  const validatedClaims = research.claims.map(c => {
+    const matchedFact = c.matched_fact_id
+      ? facts.find(f => f.id === c.matched_fact_id)
+      : null;
+    
+    return {
+      claim: c.claim,
+      category: c.category,
+      matchedFactId: matchedFact ? c.matched_fact_id : null,
+      confidence: (matchedFact ? 'verified' : c.confidence) as ResearchClaim['confidence'],
+      priority: c.priority as ResearchClaim['priority'],
+      suggestedSearch: c.suggested_search,
+    };
+  });
+  
+  return {
+    topicSummary: research.topic_summary,
+    claims: validatedClaims,
+    researchGaps: research.research_gaps,
+    recommendedSources: research.recommended_sources,
+    verifiedCount: validatedClaims.filter(c => c.confidence === 'verified').length,
+    needsSourceCount: validatedClaims.filter(c => c.confidence === 'needs_source').length,
+  };
+}
+```
+
+### UI Component: Research Phase
+
+```tsx
+// Shows research results before content generation
+
+export function ResearchPhaseView({ projectId, topic }) {
+  const [research, setResearch] = useState<ResearchResult | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  async function handleRunResearch() {
+    setIsLoading(true);
+    const result = await runResearchPhaseAction({ projectId, topic });
+    setResearch(result);
+    setIsLoading(false);
+  }
+  
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2>Research Phase</h2>
+        <Button onClick={handleRunResearch} disabled={isLoading}>
+          {isLoading ? <Spinner /> : 'Analyze Topic'}
+        </Button>
+      </div>
+      
+      {research && (
+        <>
+          {/* Summary Stats */}
+          <div className="grid grid-cols-3 gap-4">
+            <Card>
+              <CardHeader>Total Claims</CardHeader>
+              <CardContent className="text-2xl font-bold">
+                {research.claims.length}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>Verified</CardHeader>
+              <CardContent className="text-2xl font-bold text-green-600">
+                {research.verifiedCount}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>Needs Source</CardHeader>
+              <CardContent className="text-2xl font-bold text-yellow-600">
+                {research.needsSourceCount}
+              </CardContent>
+            </Card>
+          </div>
+          
+          {/* Claims List */}
+          <div className="space-y-3">
+            {research.claims.map((claim, i) => (
+              <ClaimCard key={i} claim={claim} />
+            ))}
+          </div>
+          
+          {/* Research Gaps */}
+          {research.researchGaps.length > 0 && (
+            <Alert variant="warning">
+              <AlertTitle>Research Gaps</AlertTitle>
+              <ul className="list-disc pl-4">
+                {research.researchGaps.map((gap, i) => (
+                  <li key={i}>{gap}</li>
+                ))}
+              </ul>
+            </Alert>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+```
+
+---
+
+## Acceptance Criteria
+
+- [ ] `researcher-role.json` prompt template created
+- [ ] Prompt registered in Lambda worker
+- [ ] `runResearchPhase` function works correctly
+- [ ] Claims correctly matched to existing verified facts
+- [ ] Unverified claims marked as 'needs_source'
+- [ ] Research gaps identified
+- [ ] UI shows research results with stats
+- [ ] Cannot proceed to generation if critical claims unverified
+
+---
+
+## Testing
+
+### Unit Test
+
+```typescript
+describe('Researcher Role', () => {
+  it('should match claims to existing facts', async () => {
+    // Add verified fact
+    await addVerifiedFactAction({
+      projectId,
+      claim: 'The speed of light is 299,792,458 m/s',
+      category: 'physics',
+      sourceCitation: 'NIST...',
+    });
+    
+    const result = await runResearchPhase(
+      projectId,
+      'Speed of electromagnetic radiation',
+      undefined,
+      ['Include speed of light fact'],
+      supabase
+    );
+    
+    const speedClaim = result.claims.find(
+      c => c.claim.includes('speed of light')
+    );
+    
+    expect(speedClaim?.confidence).toBe('verified');
+    expect(speedClaim?.matchedFactId).toBeDefined();
+  });
+  
+  it('should flag unverified claims', async () => {
+    const result = await runResearchPhase(
+      projectId,
+      'Black holes and wormholes',
+      undefined,
+      undefined,
+      supabase
+    );
+    
+    // Without pre-added facts, should flag as needs_source
+    expect(result.needsSourceCount).toBeGreaterThan(0);
+  });
+});
+```
+
+---
+
+## Estimated Effort
+
+| Task | Time |
+|------|------|
+| Create prompt template | 45 min |
+| Implement runResearchPhase | 1 hour |
+| Register in Lambda | 15 min |
+| UI components | 1 hour |
+| Testing | 1 hour |
+| **Total** | **~4 hours** |
+
+---
+
+## Dependencies
+
+- **FILM-1120**: Verified facts table
+- **FILM-304**: Prompt templates system
+
+## Blocks
+
+- Documentary content generation pipeline
