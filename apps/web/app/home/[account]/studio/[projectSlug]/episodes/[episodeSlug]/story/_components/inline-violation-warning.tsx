@@ -124,8 +124,8 @@ export function InlineViolationWarning({
             </AlertTitle>
             <AlertDescription>
                 <ul className="mt-2 space-y-2">
-                    {violations.map((v, i) => (
-                        <li key={`${v.code}-${v.severity}-${v.message}-${i}`} className="flex gap-2 text-sm">
+                    {violations.map((v) => (
+                        <li key={`${v.code}-${v.severity}-${v.message}`} className="flex gap-2 text-sm">
                             {getIcon(v.severity)}
                             <div>
                                 <span className="font-medium">[{v.code}]</span> {v.message}
