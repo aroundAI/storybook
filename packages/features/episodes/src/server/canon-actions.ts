@@ -978,73 +978,38 @@ export const commitCanonChangesAction = enhanceAction(
         };
     }) => {
         const client = getSupabaseServerClient();
-        const results = {
-            eventsCreated: 0,
-            threadsUpdated: 0,
-            summaryStored: false,
-        };
 
         // Filter high-confidence events for storage
         const highConfidenceEvents = data.changes.immutableEvents
             .filter((event) => event.confidence === 'high')
             .map((event) => ({
-                project_id: data.projectId,
-                event_type: event.type,
-                event_key: event.eventKey,
+                type: event.type,
+                eventKey: event.eventKey,
                 description: event.description,
-                established_in: data.episodeId,
-                season: data.season,
-                episode_number: data.episodeNumber,
             }));
 
-        // Batch insert immutable events (single operation for better atomicity)
-        if (highConfidenceEvents.length > 0) {
-            const { data: insertedEvents, error: eventsError } = await client
-                .from('immutable_events')
-                .insert(highConfidenceEvents)
-                .select('id');
+        // Use atomic RPC function for transaction safety
+        // This ensures either all changes commit or none do
+        const { data: result, error } = await client.rpc('commit_canon_changes', {
+            p_project_id: data.projectId,
+            p_episode_id: data.episodeId,
+            p_season: data.season,
+            p_episode_number: data.episodeNumber,
+            p_events: highConfidenceEvents,
+            p_episode_summary: data.changes.episodeSummary,
+            p_sentiment_score: data.changes.sentimentScore,
+        });
 
-            if (eventsError) {
-                console.error('Failed to insert immutable events:', eventsError);
-                throw new Error(`Failed to commit canon events: ${eventsError.message}`);
-            }
-            results.eventsCreated = insertedEvents?.length ?? 0;
+        if (error) {
+            console.error('Failed to commit canon changes:', error);
+            throw new Error(`Failed to commit canon changes: ${error.message}`);
         }
 
-        // Update episode metadata with summary
-        // Fetch existing metadata first
-        const { data: existing, error: fetchError } = await client
-            .from('episodes')
-            .select('metadata')
-            .eq('id', data.episodeId)
-            .single();
-
-        if (fetchError) {
-            console.error('Failed to fetch episode metadata:', fetchError);
-            // Note: Events already committed - log for manual cleanup if needed
-            console.warn(`Partial commit: ${results.eventsCreated} events created but metadata update failed`);
-        }
-
-        const { error: metaError } = await client
-            .from('episodes')
-            .update({
-                metadata: {
-                    ...((existing?.metadata as Record<string, unknown>) || {}),
-                    canonSummary: data.changes.episodeSummary,
-                    sentimentScore: data.changes.sentimentScore,
-                },
-            })
-            .eq('id', data.episodeId);
-
-        if (metaError) {
-            console.error('Failed to update episode metadata:', metaError);
-            // Note: Events already committed - log for manual cleanup if needed
-            console.warn(`Partial commit: ${results.eventsCreated} events created but metadata update failed`);
-        } else {
-            results.summaryStored = true;
-        }
-
-        return results;
+        return {
+            eventsCreated: (result as { eventsCreated: number; summaryStored: boolean })?.eventsCreated ?? 0,
+            threadsUpdated: 0, // Thread updates not yet implemented in RPC
+            summaryStored: (result as { eventsCreated: number; summaryStored: boolean })?.summaryStored ?? false,
+        };
     },
     {
         schema: z.object({

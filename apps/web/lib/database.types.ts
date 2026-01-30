@@ -3829,6 +3829,18 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_oauth_states: { Args: never; Returns: number }
+      commit_canon_changes: {
+        Args: {
+          p_episode_id: string
+          p_episode_number: number
+          p_episode_summary: string
+          p_events: Json
+          p_project_id: string
+          p_season: number
+          p_sentiment_score: number
+        }
+        Returns: Json
+      }
       create_character_with_details: {
         Args: {
           p_description: string
