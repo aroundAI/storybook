@@ -213,6 +213,10 @@ function MasterVideoSection({
             });
 
             if (!createResult.success || !createResult.data) {
+                // CLEANUP: If DB insert fails, try to delete the uploaded file to avoid orphans
+                // Note: We need a server action to delete by path since we don't have an asset ID
+                // For now, we'll just log it. Real implementation needs `deleteFileAction`.
+                console.warn('Orphaned file potentially created:', uploadResult.url);
                 const errorMsg = 'error' in createResult && typeof createResult.error === 'string'
                     ? createResult.error
                     : 'Failed to create asset record';
@@ -235,6 +239,7 @@ function MasterVideoSection({
         } catch (error) {
             console.error('Upload failed:', error);
             toast.error('Failed to upload master video');
+            // TODO: Ensure we clean up if we have a path but no DB record
         } finally {
             setIsUploading(false);
             e.target.value = ''; // Reset input
