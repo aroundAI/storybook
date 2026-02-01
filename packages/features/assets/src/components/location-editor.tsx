@@ -28,6 +28,7 @@ const LocationFormSchema = z.object({
   timeOfDay: z.string().optional(),
   weather: z.string().optional(),
   atmosphere: z.string().optional(),
+  referenceImages: z.array(z.string()).optional(),
 });
 
 export type LocationFormData = z.infer<typeof LocationFormSchema>;
@@ -62,6 +63,7 @@ export function LocationEditor({
       timeOfDay: existingMetadata?.timeOfDay ?? '',
       weather: existingMetadata?.weather ?? '',
       atmosphere: existingMetadata?.atmosphere ?? '',
+      referenceImages: existingMetadata?.referenceImages ?? [],
     },
   });
 
@@ -74,6 +76,7 @@ export function LocationEditor({
           timeOfDay: data.timeOfDay,
           weather: data.weather,
           atmosphere: data.atmosphere,
+          referenceImages: data.referenceImages,
         };
 
         if (isEditMode && location) {

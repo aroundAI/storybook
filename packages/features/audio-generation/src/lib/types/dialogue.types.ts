@@ -35,13 +35,31 @@ export interface DialogueVoiceGenerationMetadata {
 /**
  * Supported languages for multi-language content
  */
-export type SupportedLanguage = 'en' | 'hi' | 'es' | 'pt';
+export type SupportedLanguage =
+  | 'en'
+  | 'hi'
+  | 'es'
+  | 'pt'
+  | 'fr'
+  | 'de'
+  | 'ja'
+  | 'ko'
+  | 'zh'
+  | 'ar'
+  | 'bn';
 
 export const SUPPORTED_LANGUAGES: Record<SupportedLanguage, string> = {
   en: 'English',
   hi: 'Hindi',
   es: 'Spanish',
   pt: 'Portuguese',
+  fr: 'French',
+  de: 'German',
+  ja: 'Japanese',
+  ko: 'Korean',
+  zh: 'Chinese',
+  ar: 'Arabic',
+  bn: 'Bengali',
 };
 
 /**

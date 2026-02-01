@@ -14,7 +14,18 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  */
 const TranslateDialogueSchema = z.object({
   episodeId: z.string().uuid(),
-  targetLanguage: z.enum(['hi', 'es', 'pt']),
+  targetLanguage: z.enum([
+    'hi',
+    'es',
+    'pt',
+    'fr',
+    'de',
+    'ja',
+    'ko',
+    'zh',
+    'ar',
+    'bn',
+  ]),
   preserveTiming: z.boolean().default(true),
 });
 

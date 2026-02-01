@@ -121,6 +121,9 @@ export function useImageUpload(
   /**
    * Upload a file to the server
    */
+  /**
+   * Upload a file to the server
+   */
   const upload = useCallback(
     async (file: File): Promise<void> => {
       // 1. Validate first
@@ -135,114 +138,120 @@ export function useImageUpload(
         return;
       }
 
-      // 2. Prepare FormData
+      // 2. Client-side dimension calculation
+      let dimensions = { width: 0, height: 0 };
+      try {
+        const img = new Image();
+        const objectUrl = URL.createObjectURL(file);
+
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            dimensions = { width: img.naturalWidth, height: img.naturalHeight };
+            URL.revokeObjectURL(objectUrl);
+            resolve();
+          };
+          img.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Failed to load image for dimension calculation'));
+          };
+          img.src = objectUrl;
+        });
+      } catch (e) {
+        console.warn('Failed to calculate image dimensions client-side', e);
+        // Continue upload even if local dimension check fails, validation happened earlier
+      }
+
+      // 3. Prepare Upload
       setState('uploading');
       setProgress({ loaded: 0, total: file.size, percentage: 0 });
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('assetType', assetType);
-      if (assetId) {
-        formData.append('assetId', assetId);
-      }
+      try {
+        // 3a. Get Presigned URL
+        const ext = file.name.split('.').pop() || 'jpg';
+        // Use a consistent naming convention like the server did, or random UUID
+        const filename = `${crypto.randomUUID()}.${ext}`;
+        // Match the path structure expected by policies or conventions
+        // /projects/[projectId]/assets/[type]/[filename]
+        const storagePath = `projects/${projectId}/assets/${assetType}/${filename}`;
 
-      // 3. Upload with XMLHttpRequest for progress tracking
-      return new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr;
-
-        // Track upload progress
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percentage = Math.round((event.loaded / event.total) * 100);
-            setProgress({
-              loaded: event.loaded,
-              total: event.total,
-              percentage,
-            });
-          }
+        const presignRes = await fetch('/api/storage/presign', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            bucket: 'project-assets', // Hardcoded bucket name matching server config
+            path: storagePath,
+            contentType: file.type,
+          }),
         });
 
-        // Handle successful response
-        xhr.addEventListener('load', () => {
-          xhrRef.current = null;
+        if (!presignRes.ok) {
+          throw new Error('Failed to obtain upload URL');
+        }
 
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText) as UploadResponse;
-              setState('success');
-              setImageInfo({
-                url: response.imageUrl,
-                thumbnailUrl: response.thumbnailUrl,
-                width: response.width,
-                height: response.height,
-                size: response.size,
-                contentType: response.contentType,
-                name: file.name,
-              });
-              onUploadComplete?.(response.imageUrl, response.thumbnailUrl);
-              resolve();
-            } catch {
-              setState('error');
-              setError({
-                code: 'PARSE_ERROR',
-                message: 'Failed to parse server response',
-              });
-              reject(new Error('Failed to parse response'));
-            }
-          } else {
-            // Handle HTTP errors
-            try {
-              const errorResponse = JSON.parse(xhr.responseText) as Record<
-                string,
-                unknown
-              > | null;
-              setState('error');
-              setError({
-                code:
-                  typeof errorResponse?.code === 'string'
-                    ? errorResponse.code
-                    : 'UPLOAD_FAILED',
-                message:
-                  typeof errorResponse?.error === 'string'
-                    ? errorResponse.error
-                    : 'Upload failed',
-                details: errorResponse?.details as Record<string, unknown>,
-              });
-            } catch {
-              setState('error');
-              setError({
-                code: 'UPLOAD_FAILED',
-                message: `Upload failed with status ${xhr.status}`,
+        const { uploadUrl, publicUrl } = await presignRes.json();
+
+        // 3b. Upload to R2 with Progress
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhrRef.current = xhr;
+
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percentage = Math.round((event.loaded / event.total) * 100);
+              setProgress({
+                loaded: event.loaded,
+                total: event.total,
+                percentage,
               });
             }
-            reject(new Error('Upload failed'));
-          }
-        });
-
-        // Handle network errors
-        xhr.addEventListener('error', () => {
-          xhrRef.current = null;
-          setState('error');
-          setError({
-            code: 'NETWORK_ERROR',
-            message: 'Network error occurred. Please check your connection.',
           });
-          reject(new Error('Network error'));
+
+          xhr.addEventListener('load', () => {
+            xhrRef.current = null;
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve();
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
+          xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+          xhr.open('PUT', uploadUrl);
+          xhr.setRequestHeader('Content-Type', file.type);
+          xhr.send(file);
         });
 
-        // Handle abort
-        xhr.addEventListener('abort', () => {
-          xhrRef.current = null;
-          setState('idle');
-          setProgress({ loaded: 0, total: 0, percentage: 0 });
-          resolve();
-        });
+        // 4. Handle Success
+        setState('success');
 
-        // Send request
-        xhr.open('POST', `/api/projects/${projectId}/assets/upload`);
-        xhr.send(formData);
-      });
+        // Since we bypassed server generation, we use the main URL as thumbnail 
+        // or rely on frontend to load the main image.
+        const resultInfo: ImageInfo = {
+          url: publicUrl,
+          thumbnailUrl: publicUrl, // Use same URL as fallback since we skip sharp generation
+          width: dimensions.width,
+          height: dimensions.height,
+          size: file.size,
+          contentType: file.type,
+          name: file.name,
+        };
+
+        setImageInfo(resultInfo);
+        onUploadComplete?.(publicUrl, publicUrl);
+
+      } catch (err) {
+        setState('error');
+        const message = err instanceof Error ? err.message : 'Upload failed';
+        setError({
+          code: 'UPLOAD_FAILED',
+          message,
+          details: { error: err }
+        });
+      }
     },
     [projectId, assetType, assetId, validate, onUploadComplete],
   );

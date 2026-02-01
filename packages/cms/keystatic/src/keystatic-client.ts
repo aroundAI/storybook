@@ -36,8 +36,8 @@ class KeystaticClient implements CmsClient {
 
         const categoryMatch = options?.categories?.length
           ? options.categories.find((category) =>
-              item.entry.categories.includes(category),
-            )
+            item.entry.categories.includes(category),
+          )
           : true;
 
         if (!categoryMatch) {
@@ -148,6 +148,7 @@ class KeystaticClient implements CmsClient {
 
         // If the parent is already set, we don't need to do anything
         if (item.entry.parent !== null) {
+          results[i] = item;
           continue;
         }
 
@@ -241,6 +242,16 @@ class KeystaticClient implements CmsClient {
       return Promise.resolve(undefined);
     }
 
+    if (collection === 'documentation') {
+      return this.mapDocumentationPost(
+        {
+          entry: doc as DocumentationEntryProps,
+          slug: params.slug,
+        },
+        { fetchContent: true },
+      );
+    }
+
     return this.mapPost({ entry: doc as PostEntryProps, slug: params.slug });
   }
 
@@ -270,8 +281,8 @@ class KeystaticClient implements CmsClient {
     params: {
       fetchContent: boolean;
     } = {
-      fetchContent: true,
-    },
+        fetchContent: true,
+      },
   ): Promise<Cms.ContentItem> {
     const publishedAt = item.entry.publishedAt
       ? new Date(item.entry.publishedAt)
@@ -324,8 +335,8 @@ class KeystaticClient implements CmsClient {
     params: {
       fetchContent: boolean;
     } = {
-      fetchContent: true,
-    },
+        fetchContent: true,
+      },
   ): Promise<Cms.ContentItem> {
     const publishedAt = item.entry.publishedAt
       ? new Date(item.entry.publishedAt)

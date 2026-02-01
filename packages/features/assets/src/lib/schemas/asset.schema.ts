@@ -66,6 +66,7 @@ export const LocationMetadataSchema = z.object({
   timeOfDay: z.string().optional(),
   weather: z.string().optional(),
   atmosphere: z.string().optional(),
+  referenceImages: z.array(z.string().url()).optional(),
 });
 
 /**

@@ -60,10 +60,17 @@ export async function POST(request: NextRequest) {
     // Regex explanation:
     // ^projects\/([a-f0-9-]+)\/assets\/ -> Matches projects/{uuid}/assets/
     // ^episodes\/([a-f0-9-]+)\/ -> Matches episodes/{uuid}/
+    // ^projects\/([a-f0-9-]+)\/shots\/([a-f0-9-]+)\/ -> Matches projects/{uuid}/shots/{uuid}/
     // ([a-zA-Z0-9_-]+) -> Matches asset type / category
     // \/[a-zA-Z0-9-.]+$ -> Matches filename
+
+    // We need to handle three main cases:
+    // 1. Project Assets: projects/{projectId}/assets/{type}/{filename}
+    // 2. Episode Assets: episodes/{episodeId}/{type}/{filename}
+    // 3. Shot Assets: projects/{projectId}/shots/{shotId}/{type}/{filename}
+
     const pathPattern = new RegExp(
-      `^(?:projects\\/([a-f0-9-]+)\\/assets|episodes\\/([a-f0-9-]+))\\/([a-zA-Z0-9_-]+)\\/[a-zA-Z0-9-.]+$`,
+      `^(?:projects\\/([a-f0-9-]+)\\/(?:assets|shots\\/[a-f0-9-]+)|episodes\\/([a-f0-9-]+))\\/([a-zA-Z0-9_-]+)\\/[a-zA-Z0-9-.]+$`,
       'i'
     );
 
