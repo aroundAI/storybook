@@ -42,7 +42,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Security: Validate path pattern to prevent path traversal
-    // Expected pattern: projects/{projectId}/assets/{type}/{filename}
+    // Expected pattern: 
+    // 1. projects/{projectId}/assets/{type}/{filename}
+    // 2. episodes/{episodeId}/{category}/{filename}
     const ALLOWED_ASSET_TYPES = [
       'master_video',
       'master_title_card',
@@ -51,12 +53,20 @@ export async function POST(request: NextRequest) {
       'video',
       'audio',
       'image',
+      'thumbnails', // Added for legacy/episode paths
+      'videos',     // Added for legacy/episode paths
     ];
-    const typesPattern = ALLOWED_ASSET_TYPES.join('|');
+
+    // Regex explanation:
+    // ^projects\/([a-f0-9-]+)\/assets\/ -> Matches projects/{uuid}/assets/
+    // ^episodes\/([a-f0-9-]+)\/ -> Matches episodes/{uuid}/
+    // ([a-zA-Z0-9_-]+) -> Matches asset type / category
+    // \/[a-zA-Z0-9-.]+$ -> Matches filename
     const pathPattern = new RegExp(
-      `^projects\\/([a-f0-9-]+)\\/assets\\/(${typesPattern})\\/[a-f0-9-]+\\.[a-z0-9]+$`,
+      `^(?:projects\\/([a-f0-9-]+)\\/assets|episodes\\/([a-f0-9-]+))\\/([a-zA-Z0-9_-]+)\\/[a-zA-Z0-9-.]+$`,
       'i'
     );
+
     const pathMatch = path.match(pathPattern);
 
     if (!pathMatch) {
@@ -67,11 +77,42 @@ export async function POST(request: NextRequest) {
     }
 
     // Security: Verify user has access to the project
-    const projectId = pathMatch[1];
+    // pathMatch[1] is projectId (if projects/ path)
+    // pathMatch[2] is episodeId (if episodes/ path)
+    const projectIdFromPath = pathMatch[1];
+    const episodeIdFromPath = pathMatch[2];
+
+    let projectIdToCheck = projectIdFromPath;
+
+    // If we have an episode ID, we need to find its project ID
+    if (episodeIdFromPath) {
+      const { data: episode, error: episodeError } = await client
+        .from('episodes')
+        .select('project_id')
+        .eq('id', episodeIdFromPath)
+        .single();
+
+      if (episodeError || !episode) {
+        return NextResponse.json(
+          { error: 'Invalid episode ID or access denied' },
+          { status: 403 },
+        );
+      }
+
+      projectIdToCheck = episode.project_id;
+    }
+
+    if (!projectIdToCheck) {
+      return NextResponse.json(
+        { error: 'Could not determine project context' },
+        { status: 400 },
+      );
+    }
+
     const { data: projectAccess, error: accessError } = await client
       .from('projects')
       .select('id')
-      .eq('id', projectId)
+      .eq('id', projectIdToCheck)
       .single();
 
     if (accessError || !projectAccess) {

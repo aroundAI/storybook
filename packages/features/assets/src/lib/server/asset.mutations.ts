@@ -62,36 +62,43 @@ export const createAssetAction = enhanceAction(
     }
 
     // Insert asset (RLS will enforce project access)
-    const { data: asset, error } = await client
-      .from('assets')
-      .insert({
-        project_id: data.projectId,
-        episode_id: data.episodeId ?? null,
-        type: data.type,
-        name: data.name,
-        description: data.description ?? null,
-        file_url: data.fileUrl ?? null,
-        thumbnail_url: data.thumbnailUrl ?? null,
-        metadata: (data.metadata as Json) ?? ({} as Json),
-        file_hash: data.fileHash ?? null,
-        file_size_bytes: data.fileSizeBytes ?? null,
-        content_type: data.contentType ?? null,
-      })
-      .select()
-      .single();
+    try {
+      logger.info({ ...ctx, data }, 'Attempting to create asset');
 
-    if (error) {
-      logger.error({ ...ctx, error }, 'Failed to create asset');
-      throw new Error(`Failed to create asset: ${error.message}`);
+      const { data: asset, error } = await client
+        .from('assets')
+        .insert({
+          project_id: data.projectId,
+          episode_id: data.episodeId ?? null,
+          type: data.type,
+          name: data.name,
+          description: data.description ?? null,
+          file_url: data.fileUrl ?? null,
+          thumbnail_url: data.thumbnailUrl ?? null,
+          metadata: (data.metadata as Json) ?? ({} as Json),
+          file_hash: data.fileHash ?? null,
+          file_size_bytes: data.fileSizeBytes ?? null,
+          content_type: data.contentType ?? null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        logger.error({ ...ctx, error, data }, 'Failed to create asset - DB Error');
+        throw new Error(`Failed to create asset: ${error.message}`);
+      }
+
+      logger.info({ ...ctx, assetId: asset.id }, 'Asset created successfully');
+
+      // Revalidate asset pages
+      revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
+      revalidatePath('/home/[account]/studio/[projectId]', 'page');
+
+      return { success: true, data: mapRowToAsset(asset as AssetRow) };
+    } catch (error) {
+      logger.error({ ...ctx, error }, 'Failed to create asset - Exception');
+      throw new Error(`Failed to create asset: ${error instanceof Error ? error.message : String(error)}`);
     }
-
-    logger.info({ ...ctx, assetId: asset.id }, 'Asset created successfully');
-
-    // Revalidate asset pages
-    revalidatePath('/home/[account]/studio/[projectId]/assets', 'page');
-    revalidatePath('/home/[account]/studio/[projectId]', 'page');
-
-    return { success: true, data: mapRowToAsset(asset as AssetRow) };
   },
   {
     schema: CreateAssetSchema,
@@ -179,17 +186,23 @@ export const checkAssetHashAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    const existingAsset = await checkAssetHashQuery(data.projectId, data.fileHash, data.type);
+    try {
+      const existingAsset = await checkAssetHashQuery(data.projectId, data.fileHash, data.type);
 
-    logger.info(
-      { ...ctx, found: !!existingAsset },
-      'Asset hash check completed',
-    );
+      logger.info(
+        { ...ctx, found: !!existingAsset },
+        'Asset hash check completed',
+      );
 
-    return {
-      success: true,
-      data: existingAsset,
-    };
+      return {
+        success: true,
+        data: existingAsset,
+      };
+    } catch (error) {
+      logger.error({ ...ctx, error }, 'Failed to check asset hash');
+      // Rethrow to let enhanceAction handle it, but now we have a log
+      throw new Error(`Failed to check asset hash: ${error instanceof Error ? error.message : String(error)}`);
+    }
   },
   {
     schema: CheckAssetHashSchema,
