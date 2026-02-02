@@ -48,17 +48,6 @@ export async function POST(request: NextRequest) {
     // Expected pattern: 
     // 1. projects/{projectId}/assets/{type}/{filename}
     // 2. episodes/{episodeId}/{category}/{filename}
-    const ALLOWED_ASSET_TYPES = [
-      'master_video',
-      'master_title_card',
-      'thumbnail',
-      'frame',
-      'video',
-      'audio',
-      'image',
-      'thumbnails', // Added for legacy/episode paths
-      'videos',     // Added for legacy/episode paths
-    ];
 
     // Regex explanation:
     // ^projects\/([a-f0-9-]+)\/assets\/ -> Matches projects/{uuid}/assets/
