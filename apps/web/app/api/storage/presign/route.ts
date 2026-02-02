@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     // Regex explanation:
     // ^projects\/([a-f0-9-]+)\/assets\/ -> Matches projects/{uuid}/assets/
     // ^episodes\/([a-f0-9-]+)\/ -> Matches episodes/{uuid}/
-    // ^projects\/([a-f0-9-]+)\/shots\/([a-f0-9-]+)\/ -> Matches projects/{uuid}/shots/{uuid}/
+    // ^projects\/([a-f0-9-]+)\/shots\/([a-f0-9-]+)\/ -> Matches projects/{uuid}/shots/{uuid}/ (Note: shot ID is present in path but not captured by main regex group 2)
     // ([a-zA-Z0-9_-]+) -> Matches asset type / category
     // \/[a-zA-Z0-9-.]+$ -> Matches filename
 

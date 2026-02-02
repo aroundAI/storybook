@@ -10,6 +10,7 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { validateUpload } from '@kit/assets/upload-validation';
+import { PROJECT_ASSETS_BUCKET } from '../../lib/constants';
 
 import type {
   ImageInfo,
@@ -141,7 +142,7 @@ export function useImageUpload(
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            bucket: 'project-assets', // Hardcoded bucket name matching server config
+            bucket: PROJECT_ASSETS_BUCKET,
             path: storagePath,
             contentType: file.type,
           }),
