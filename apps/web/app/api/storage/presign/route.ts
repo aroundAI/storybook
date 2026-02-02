@@ -12,6 +12,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 
+import { getLogger } from '@kit/shared/logger';
 import { getStorageAdapter } from '@kit/storage';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -20,6 +21,8 @@ const MAX_EXPIRES_IN = 3600; // 1 hour max
 const DEFAULT_EXPIRES_IN = 900; // 15 minutes default
 
 export async function POST(request: NextRequest) {
+  const logger = await getLogger();
+
   try {
     // Auth check
     const client = getSupabaseServerClient();
@@ -165,7 +168,7 @@ export async function POST(request: NextRequest) {
       expiresIn: result.expiresIn,
     });
   } catch (error) {
-    console.error('[Presign URL] Error:', error);
+    logger.error({ error }, 'Presign URL error');
 
     // Check if presigned URLs aren't supported
     if (error instanceof Error && error.message.includes('presigned')) {
