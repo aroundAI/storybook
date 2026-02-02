@@ -58,7 +58,7 @@ export async function processStoryIdeation(
 
   // 2. Prepare variables for prompt template (same logic as local server action)
   const variables = {
-    premise: episodeContext.premise,
+    premise: data.premise || episodeContext.premise,
     number_of_ideas: data.numberOfIdeas || 3,
     characters: formatCharactersForPrompt(episodeContext.characters),
     locations: formatLocationsForPrompt(episodeContext.locations),

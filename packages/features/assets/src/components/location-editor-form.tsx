@@ -20,6 +20,7 @@ import {
 import { Textarea } from '@kit/ui/textarea';
 
 import { ImageUploader } from './image-uploader/ImageUploader';
+import { MultiImageUploader } from './image-uploader/MultiImageUploader';
 import type { LocationFormData } from './location-editor';
 
 interface LocationEditorFormProps {
@@ -40,36 +41,53 @@ export function LocationEditorForm({
     <div className="space-y-6">
       <div className="flex flex-col gap-6 md:flex-row">
         {/* Left Column: Image */}
-        <div className="w-full shrink-0 md:w-64">
-          <FormLabel className="mb-2 block">Visual Reference</FormLabel>
-          <ImageUploader
-            projectId={projectId}
-            assetType="location"
-            assetId={assetId}
-            initialImageUrl={fileUrl}
-            initialThumbnailUrl={thumbnailUrl}
-            onUploadComplete={(url, thumb) => {
-              form.setValue('fileUrl', url, {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-              form.setValue('thumbnailUrl', thumb, {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-            }}
-            onRemove={() => {
-              form.setValue('fileUrl', '', {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-              form.setValue('thumbnailUrl', '', {
-                shouldValidate: true,
-                shouldDirty: true,
-              });
-            }}
-            className="h-48 w-full md:w-64"
-          />
+        <div className="w-full shrink-0 space-y-6 md:w-64">
+          <div>
+            <FormLabel className="mb-2 block">Visual Reference</FormLabel>
+            <ImageUploader
+              projectId={projectId}
+              assetType="location"
+              assetId={assetId}
+              initialImageUrl={fileUrl}
+              initialThumbnailUrl={thumbnailUrl}
+              onUploadComplete={(url, thumb) => {
+                form.setValue('fileUrl', url, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                form.setValue('thumbnailUrl', thumb, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+              onRemove={() => {
+                form.setValue('fileUrl', '', {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+                form.setValue('thumbnailUrl', '', {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+              className="h-48 w-full md:w-64"
+            />
+          </div>
+
+          <div>
+            <FormLabel className="mb-2 block">Additional References</FormLabel>
+            <MultiImageUploader
+              projectId={projectId}
+              assetId={assetId}
+              images={form.watch('referenceImages') || []}
+              onImagesChange={(images) => {
+                form.setValue('referenceImages', images, {
+                  shouldValidate: true,
+                  shouldDirty: true,
+                });
+              }}
+            />
+          </div>
         </div>
 
         {/* Right Column: Fields */}

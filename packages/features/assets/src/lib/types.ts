@@ -98,6 +98,7 @@ export interface LocationMetadata {
   timeOfDay?: string;
   weather?: string;
   atmosphere?: string;
+  referenceImages?: string[];
 }
 
 /**

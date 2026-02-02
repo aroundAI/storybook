@@ -1599,13 +1599,32 @@ export function PublishScreen({
 
           {/* Thumbnail Preview and Upload */}
           <div className="mb-2 flex items-center gap-2">
-            <div className="relative h-10 w-16 flex-shrink-0 overflow-hidden rounded border border-gray-200 dark:border-gray-600">
+            <input
+              type="file"
+              id={thumbnailInputId}
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handleThumbnailUpload(lang, file);
+              }}
+            />
+            <label
+              htmlFor={thumbnailInputId}
+              className="group/thumb relative h-10 w-16 flex-shrink-0 cursor-pointer overflow-hidden rounded border border-gray-200 hover:border-indigo-400 dark:border-gray-600 dark:hover:border-indigo-500"
+            >
               {/* Upload spinner overlay */}
               {uploadingThumbnails[lang] && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
                   <Loader2 className="h-4 w-4 animate-spin text-white" />
                 </div>
               )}
+
+              {/* Hover overlay */}
+              <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/0 transition-colors group-hover/thumb:bg-black/20">
+                <Upload className="h-4 w-4 text-white opacity-0 transition-opacity group-hover/thumb:opacity-100" />
+              </div>
+
               {thumbnailUrl ? (
                 <img
                   src={thumbnailUrl}
@@ -1617,17 +1636,8 @@ export function PublishScreen({
                   <Film className="h-4 w-4 text-gray-400" />
                 </div>
               )}
-            </div>
-            <input
-              type="file"
-              id={thumbnailInputId}
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handleThumbnailUpload(lang, file);
-              }}
-            />
+            </label>
+
             <label
               htmlFor={thumbnailInputId}
               className="flex cursor-pointer items-center gap-1 rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 transition-colors hover:bg-indigo-100 hover:text-indigo-600 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-indigo-900 dark:hover:text-indigo-400"
@@ -2148,7 +2158,7 @@ export function PublishScreen({
                 {uploadedFullLanguages.length === 0 ? (
                   <button
                     onClick={() => handleOpenUploadDialog('full')}
-                    className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50"
+                    className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50"
                   >
                     <Upload className="h-8 w-8" />
                     <span className="font-medium">
@@ -2169,7 +2179,7 @@ export function PublishScreen({
                     {getAvailableLanguages().length > 0 && (
                       <button
                         onClick={() => handleOpenUploadDialog('full')}
-                        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-gray-700/50 dark:hover:text-indigo-400"
+                        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-gray-700/50 dark:hover:text-indigo-400"
                       >
                         <Plus className="h-6 w-6" />
                         <span className="text-sm font-medium">
@@ -2211,7 +2221,7 @@ export function PublishScreen({
                 {shortsGroups.length === 0 ? (
                   <button
                     onClick={addShortsGroup}
-                    className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50"
+                    className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50"
                   >
                     <Upload className="h-8 w-8" />
                     <span className="font-medium">
@@ -2336,7 +2346,7 @@ export function PublishScreen({
                             onClick={() =>
                               handleOpenUploadDialog('shorts', group.id)
                             }
-                            className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-pink-500 dark:hover:bg-gray-700/50 dark:hover:text-pink-400"
+                            className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-pink-500 dark:hover:bg-gray-700/50 dark:hover:text-pink-400"
                           >
                             <Plus className="h-6 w-6" />
                             <span className="text-sm font-medium">

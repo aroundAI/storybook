@@ -12,6 +12,8 @@ export const SUPPORTED_LANGUAGES = [
     'ja',
     'ko',
     'zh',
+    'ar',
+    'bn',
 ] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
@@ -27,6 +29,8 @@ export const LANG_INFO: Record<SupportedLanguage, { name: string; flag: string }
     ja: { name: 'Japanese', flag: '🇯🇵' },
     ko: { name: 'Korean', flag: '🇰🇷' },
     zh: { name: 'Chinese', flag: '🇨🇳' },
+    ar: { name: 'Arabic', flag: '🇸🇦' },
+    bn: { name: 'Bengali', flag: '🇧🇩' },
 };
 
 export const getLangDisplay = (

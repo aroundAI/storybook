@@ -213,6 +213,10 @@ function MasterVideoSection({
             });
 
             if (!createResult.success || !createResult.data) {
+                // CLEANUP: If DB insert fails, try to delete the uploaded file to avoid orphans
+                // Note: We need a server action to delete by path since we don't have an asset ID
+                // For now, we'll just log it. Real implementation needs `deleteFileAction`.
+                console.warn('Orphaned file potentially created:', uploadResult.url);
                 const errorMsg = 'error' in createResult && typeof createResult.error === 'string'
                     ? createResult.error
                     : 'Failed to create asset record';
@@ -235,6 +239,7 @@ function MasterVideoSection({
         } catch (error) {
             console.error('Upload failed:', error);
             toast.error('Failed to upload master video');
+            // TODO: Ensure we clean up if we have a path but no DB record
         } finally {
             setIsUploading(false);
             e.target.value = ''; // Reset input
@@ -486,7 +491,7 @@ function TitleCardsSection({
                 ))}
 
                 {/* Upload Area */}
-                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-muted/50 transition-colors">
+                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2 hover:bg-muted/50 transition-colors relative cursor-pointer">
                     {isUploading ? (
                         <div className="text-center w-full max-w-xs">
                             <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-primary" />
@@ -496,21 +501,21 @@ function TitleCardsSection({
                             </div>
                         </div>
                     ) : (
-                        <div className="flex flex-col items-center">
-                            <div className="relative">
-                                <input
-                                    type="file"
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    onChange={handleFileUpload}
-                                    accept="video/*,image/*"
-                                    disabled={isPending}
-                                />
+                        <>
+                            <input
+                                type="file"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                onChange={handleFileUpload}
+                                accept="video/*,image/*"
+                                disabled={isPending}
+                            />
+                            <div className="flex flex-col items-center pointer-events-none">
                                 <Button variant="ghost" size="sm" className="h-8 gap-2">
                                     <Plus className="h-4 w-4" />
                                     Add Title Card
                                 </Button>
                             </div>
-                        </div>
+                        </>
                     )}
                 </div>
 
@@ -614,7 +619,7 @@ function UploadDropzone({
     isPending: boolean
 }) {
     return (
-        <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-4 hover:bg-muted/50 transition-colors">
+        <div className="border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center gap-4 hover:bg-muted/50 transition-colors relative cursor-pointer">
             {isUploading ? (
                 <div className="text-center w-full max-w-xs">
                     <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
@@ -625,23 +630,23 @@ function UploadDropzone({
                 </div>
             ) : (
                 <>
-                    <div className="p-3 bg-muted rounded-full">
-                        <FileVideo className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <div className="text-center">
-                        <p className="text-sm font-medium">Click to upload {title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            SHA-256 deduplication enabled
-                        </p>
-                    </div>
-                    <div className="relative">
-                        <input
-                            type="file"
-                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            onChange={onUpload}
-                            accept="video/*,image/*"
-                            disabled={isPending}
-                        />
+                    <input
+                        type="file"
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                        onChange={onUpload}
+                        accept="video/*,image/*"
+                        disabled={isPending}
+                    />
+                    <div className="flex flex-col items-center pointer-events-none">
+                        <div className="p-3 bg-muted rounded-full mb-4">
+                            <FileVideo className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                        <div className="text-center mb-4">
+                            <p className="text-sm font-medium">Click to upload {title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                                SHA-256 deduplication enabled
+                            </p>
+                        </div>
                         <Button variant="outline" size="sm">
                             <Upload className="h-4 w-4 mr-2" />
                             Select File

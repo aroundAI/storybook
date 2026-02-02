@@ -16,3 +16,5 @@ export const DEFAULT_VOICE_SETTINGS = {
   stability: 0.5,
   similarityBoost: 0.75,
 } as const;
+
+export const PROJECT_ASSETS_BUCKET = 'project-assets';

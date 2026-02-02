@@ -25,6 +25,13 @@ const LANG_INFO: Record<SupportedLanguage, { name: string; flag: string }> = {
   hi: { name: 'Hindi', flag: '🇮🇳' },
   es: { name: 'Spanish', flag: '🇪🇸' },
   pt: { name: 'Portuguese', flag: '🇧🇷' },
+  fr: { name: 'French', flag: '🇫🇷' },
+  de: { name: 'German', flag: '🇩🇪' },
+  ja: { name: 'Japanese', flag: '🇯🇵' },
+  ko: { name: 'Korean', flag: '🇰🇷' },
+  zh: { name: 'Chinese', flag: '🇨🇳' },
+  ar: { name: 'Arabic', flag: '🇸🇦' },
+  bn: { name: 'Bengali', flag: '🇧🇩' },
 };
 
 interface LanguageTabBarProps {
@@ -84,11 +91,11 @@ export function LanguageTabBar({
     onLanguageChange,
   ]);
 
-  const missingLanguages = (['hi', 'es', 'pt'] as const).filter(
-    (lang) => !availableLanguages.includes(lang),
-  );
+  const missingLanguages = (
+    Object.keys(LANG_INFO) as SupportedLanguage[]
+  ).filter((lang) => lang !== 'en' && !availableLanguages.includes(lang));
 
-  const handleTranslate = (targetLang: 'hi' | 'es' | 'pt') => {
+  const handleTranslate = (targetLang: SupportedLanguage) => {
     setTranslatingTo(targetLang);
     triggerLlm(async () => {
       const result = await translateDialogueToLanguageAction({
@@ -127,11 +134,10 @@ export function LanguageTabBar({
         <button
           key={lang}
           onClick={() => onLanguageChange(lang)}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-            selectedLanguage === lang
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${selectedLanguage === lang
               ? 'bg-indigo-600 text-white shadow-sm'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-          }`}
+            }`}
         >
           <span>{LANG_INFO[lang].flag}</span>
           <span>{LANG_INFO[lang].name}</span>

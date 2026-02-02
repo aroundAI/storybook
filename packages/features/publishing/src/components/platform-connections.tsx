@@ -79,6 +79,7 @@ const LANGUAGE_NAMES: Record<string, string> = {
   ko: 'Korean',
   zh: 'Chinese',
   ar: 'Arabic',
+  bn: 'Bengali',
 };
 
 const PLATFORMS: PlatformConfig[] = [
@@ -350,7 +351,7 @@ function ConnectionRow({
             </div>
             <p className="text-muted-foreground text-xs">
               {connection.createdAt &&
-              !isNaN(new Date(connection.createdAt).getTime()) ? (
+                !isNaN(new Date(connection.createdAt).getTime()) ? (
                 <Trans
                   i18nKey="platforms:connectedTimeAgo"
                   defaults="Connected {time}"

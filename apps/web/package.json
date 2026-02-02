@@ -104,7 +104,7 @@
     "react-icons": "^5.5.0",
     "react-markdown": "^10.1.0",
     "recharts": "2.15.3",
-    "sharp": "^0.33.5",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^3.3.1",
     "ws": "^8.18.3",
     "zod": "^3.25.74"
@@ -148,5 +148,9 @@
     "last 1 versions",
     "> 0.7%",
     "not dead"
-  ]
+  ],
+  "optionalDependencies": {
+    "@img/sharp-linux-arm64": "^0.34.5",
+    "@img/sharp-linux-x64": "^0.34.5"
+  }
 }

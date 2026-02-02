@@ -111,21 +111,27 @@ export const POST = enhanceRouteHandler(
     }
 
     // 5. Validate image dimensions
-    const dimensionValidation = await validateImageDimensions(buffer);
+    // NOTE: This uses sharp, may crash here
+    try {
+      const dimensionValidation = await validateImageDimensions(buffer);
 
-    if (!dimensionValidation.valid) {
-      logger.warn(
-        { ...ctx, code: dimensionValidation.error?.code },
-        'Dimension validation failed',
-      );
-      return NextResponse.json(
-        {
-          error: dimensionValidation.error?.message,
-          code: dimensionValidation.error?.code,
-          details: dimensionValidation.error?.details,
-        },
-        { status: 400 },
-      );
+      if (!dimensionValidation.valid) {
+        logger.warn(
+          { ...ctx, code: dimensionValidation.error?.code },
+          'Dimension validation failed',
+        );
+        return NextResponse.json(
+          {
+            error: dimensionValidation.error?.message,
+            code: dimensionValidation.error?.code,
+            details: dimensionValidation.error?.details,
+          },
+          { status: 400 },
+        );
+      }
+    } catch (error) {
+      logger.error({ ...ctx, error }, 'Error during dimension validation');
+      throw error;
     }
 
     // 6. Get image dimensions for response

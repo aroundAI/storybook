@@ -4,11 +4,13 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { format } from 'date-fns';
-import { ArrowLeft, MapPin, MoreVertical, Sparkles, User } from 'lucide-react';
+import { ArrowLeft, MapPin, Sparkles, User } from 'lucide-react';
 
 import { CanonHealthBadge } from './canon-health-badge';
 import { useEpisodeContext } from './episode-context-provider';
 import { StudioSwitcher } from './studio-switcher';
+
+import { QuickActionsMenu } from './quick-actions-menu';
 
 export function EpisodeWorkspaceHeader() {
   const pathname = usePathname() ?? '';
@@ -76,9 +78,12 @@ export function EpisodeWorkspaceHeader() {
 
         <div className="flex items-center gap-1.5">
           <StudioSwitcher />
-          <button className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 dark:text-[#A3A3A3] dark:hover:bg-[#1A1A1A]">
-            <MoreVertical className="h-4 w-4" />
-          </button>
+          <QuickActionsMenu
+            episodeId={episode.id}
+            episodeTitle={episode.title}
+            projectId={projectId}
+            account={accountSlug}
+          />
         </div>
       </div>
 
