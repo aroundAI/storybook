@@ -493,6 +493,20 @@ graph TD
 | FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | Draft | M | FILM-1133 |
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | Draft | L | - |
 
+### Phase 12: Scale & Network Strategy (2 specs)
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1201 | [clickhouse-migration](./phase-12-scale/database/FILM-1201-clickhouse-migration.md) | Draft | L | FILM-804 |
+| FILM-1202 | [network-strategy](./phase-12-scale/strategy/FILM-1202-network-strategy.md) | Draft | M | FILM-805, FILM-810 |
+
+### Phase 13: Hook Optimization (2 specs)
+
+| Task ID | Name | Status | Effort | Dependencies |
+|---------|------|--------|--------|--------------|
+| FILM-1301 | [hook-testing-engine](./phase-13-hook-optimization/FILM-1301-hook-testing-engine.md) | Draft | L | FILM-1201, FILM-716 |
+| FILM-1302 | [cultural-audit-workflow](./phase-13-hook-optimization/FILM-1302-cultural-audit-workflow.md) | Draft | M | FILM-1301 |
+
 See [phase-11-canon-integration/README.md](./phase-11-canon-integration/README.md) for full specification.
 
 ### Spikes (5 specs)
