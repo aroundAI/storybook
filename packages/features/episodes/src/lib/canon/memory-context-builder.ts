@@ -402,7 +402,13 @@ export async function buildMemoryContext(
 
     // Use content-type-specific allocations when a projectType is provided,
     // otherwise fall back to the hardcoded defaults for backward compatibility.
-    let allocation: Record<string, number>;
+    let allocation: {
+        immutableEvents: number;
+        characterStates: number;
+        worldStates: number;
+        narrativeThreads: number;
+        episodeSummaries: number;
+    };
     let memoryHorizon: number;
 
     if (projectType) {
