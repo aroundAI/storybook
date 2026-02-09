@@ -9,6 +9,7 @@ export const ProjectTypeSchema = z.enum([
   'documentary',
   'ad',
   'educational',
+  'news',
 ]);
 
 // Target Platforms

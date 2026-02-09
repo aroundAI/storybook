@@ -392,23 +392,51 @@ export async function buildMemoryContext(
         projectId,
         episodeNumber,
         tokenBudgetPercent = DEFAULT_TOKEN_BUDGET_PERCENT,
-        memoryHorizon = DEFAULT_MEMORY_HORIZON,
+        memoryHorizon: memoryHorizonOverride,
+        projectType,
     } = input;
 
     const maxTokens = Math.floor(
         DEFAULT_CONTEXT_WINDOW_SIZE * (tokenBudgetPercent / 100)
     );
 
+    // Use content-type-specific allocations when a projectType is provided,
+    // otherwise fall back to the hardcoded defaults for backward compatibility.
+    let allocation: {
+        immutableEvents: number;
+        characterStates: number;
+        worldStates: number;
+        narrativeThreads: number;
+        episodeSummaries: number;
+    };
+    let memoryHorizon: number;
+
+    if (projectType) {
+        const { getMemoryOptionsForContentType } = await import('./memory-strategies');
+        const options = getMemoryOptionsForContentType(projectType);
+        allocation = {
+            immutableEvents: options.allocation.immutableEvents / 100,
+            characterStates: options.allocation.characterStates / 100,
+            worldStates: options.allocation.worldStates / 100,
+            narrativeThreads: options.allocation.narrativeThreads / 100,
+            episodeSummaries: options.allocation.episodeSummaries / 100,
+        };
+        memoryHorizon = memoryHorizonOverride ?? options.memoryHorizon;
+    } else {
+        allocation = BUDGET_ALLOCATION;
+        memoryHorizon = memoryHorizonOverride ?? DEFAULT_MEMORY_HORIZON;
+    }
+
     // Calculate per-category budgets
     const budgets = {
-        immutableEvents: Math.floor(maxTokens * BUDGET_ALLOCATION.immutableEvents),
-        characterStates: Math.floor(maxTokens * BUDGET_ALLOCATION.characterStates),
-        worldStates: Math.floor(maxTokens * BUDGET_ALLOCATION.worldStates),
+        immutableEvents: Math.floor(maxTokens * allocation.immutableEvents),
+        characterStates: Math.floor(maxTokens * allocation.characterStates),
+        worldStates: Math.floor(maxTokens * allocation.worldStates),
         narrativeThreads: Math.floor(
-            maxTokens * BUDGET_ALLOCATION.narrativeThreads
+            maxTokens * allocation.narrativeThreads
         ),
         episodeSummaries: Math.floor(
-            maxTokens * BUDGET_ALLOCATION.episodeSummaries
+            maxTokens * allocation.episodeSummaries
         ),
     };
 
