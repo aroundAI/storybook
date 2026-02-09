@@ -156,8 +156,8 @@ export async function processScreenplayConversion(
     // Average scene duration for prompt
     const avgSceneDuration = Math.round(
       targetDuration /
-        ((scaling.screenplay.sceneCountMin + scaling.screenplay.sceneCountMax) /
-          2),
+      ((scaling.screenplay.sceneCountMin + scaling.screenplay.sceneCountMax) /
+        2),
     );
 
     const variables = {
@@ -197,7 +197,41 @@ export async function processScreenplayConversion(
     const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
     const generatedAt = new Date().toISOString();
 
-    // 4. Prepare screenplay_data with full metadata for episode header display
+    // 4. FILM-1104: Run SCREENPLAY validation checkpoint
+    try {
+      const { runValidationCheckpoint } = await import(
+        '../utils/validation-checkpoint'
+      );
+
+      const sceneBlocks = result.data.screenplay.scenes.map((scene) => ({
+        sceneNumber: scene.number,
+        content: `${scene.heading}\n${scene.description}\n${scene.action?.join('\n') ?? ''}`,
+      }));
+
+      const validation = await runValidationCheckpoint(
+        {
+          checkpoint: 'SCREENPLAY',
+          enforcement: 'flexible', // Warn, don't block
+          projectId: data.projectId,
+          episodeNumber: episode.number ?? 1,
+          supabase,
+        },
+        { sceneBlocks },
+      );
+
+      if (validation.messages.length > 0) {
+        console.log(
+          `[Screenplay Conversion] Continuity validation: ${validation.messages.join(' | ')}`,
+        );
+      }
+    } catch (err) {
+      console.warn(
+        '[Screenplay Conversion] Validation checkpoint skipped:',
+        err,
+      );
+    }
+
+    // 5. Prepare screenplay_data with full metadata for episode header display
     // Extract unique locations from all scenes
     const uniqueLocations = [
       ...new Set(
