@@ -194,8 +194,10 @@ export function getMemoryOptionsForContentType(
     contextWindowSize = DEFAULT_CONTEXT_WINDOW_SIZE,
 ): ContentTypeMemoryOptions {
     const config: ContentTypeConfig = getContentTypeConfig(projectType);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const allocation: MemoryAllocation = MEMORY_ALLOCATIONS[projectType]!;
+    const allocation = MEMORY_ALLOCATIONS[projectType];
+    if (!allocation) {
+        return getMemoryOptionsForContentType('series', contextWindowSize);
+    }
 
     return {
         maxTokenPercentage: config.contextWindowPercent,

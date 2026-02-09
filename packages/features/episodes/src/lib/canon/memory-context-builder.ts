@@ -423,14 +423,14 @@ export async function buildMemoryContext(
 
     // Calculate per-category budgets
     const budgets = {
-        immutableEvents: Math.floor(maxTokens * (allocation.immutableEvents ?? BUDGET_ALLOCATION.immutableEvents)),
-        characterStates: Math.floor(maxTokens * (allocation.characterStates ?? BUDGET_ALLOCATION.characterStates)),
-        worldStates: Math.floor(maxTokens * (allocation.worldStates ?? BUDGET_ALLOCATION.worldStates)),
+        immutableEvents: Math.floor(maxTokens * allocation.immutableEvents),
+        characterStates: Math.floor(maxTokens * allocation.characterStates),
+        worldStates: Math.floor(maxTokens * allocation.worldStates),
         narrativeThreads: Math.floor(
-            maxTokens * (allocation.narrativeThreads ?? BUDGET_ALLOCATION.narrativeThreads)
+            maxTokens * allocation.narrativeThreads
         ),
         episodeSummaries: Math.floor(
-            maxTokens * (allocation.episodeSummaries ?? BUDGET_ALLOCATION.episodeSummaries)
+            maxTokens * allocation.episodeSummaries
         ),
     };
 

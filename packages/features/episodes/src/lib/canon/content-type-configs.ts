@@ -180,8 +180,11 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
 export function getContentTypeConfig(
     projectType: ProjectType,
 ): ContentTypeConfig {
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return CONTENT_TYPE_CONFIGS[projectType]!;
+    const config = CONTENT_TYPE_CONFIGS[projectType];
+    if (!config) {
+        return CONTENT_TYPE_CONFIGS.series;
+    }
+    return config;
 }
 
 /**
