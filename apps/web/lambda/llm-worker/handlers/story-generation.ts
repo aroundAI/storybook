@@ -95,7 +95,32 @@ export async function processStoryGeneration(
       contentStyle,
     });
 
-    // 3. Prepare variables for prompt template (same logic as local server action)
+    // 3. Build canon memory context (FILM-1102)
+    let canonContext = '';
+    try {
+      const { buildMemoryContext, formatMemoryContextForPrompt } =
+        await import(
+          '../../../../packages/features/episodes/src/lib/canon/memory-context-builder'
+        );
+
+      const memoryCtx = await buildMemoryContext({
+        projectId: data.projectId,
+        episodeNumber: episodeContext.episodeNumber ?? 1,
+      });
+
+      canonContext = formatMemoryContextForPrompt(memoryCtx);
+      console.log(
+        `[Story Generation] Memory context built: ${memoryCtx.tokenBudget.allocated} tokens used`,
+      );
+    } catch (err) {
+      console.warn(
+        '[Story Generation] Memory context build failed, continuing without:',
+        err,
+      );
+      // Non-fatal: continue without canon context
+    }
+
+    // 4. Prepare variables for prompt template (same logic as local server action)
     const variables = {
       title: data.title,
       logline: data.logline,
@@ -122,6 +147,8 @@ export async function processStoryGeneration(
       recurring_element: formatRecurringElementForPrompt(
         episodeContext.recurringElement,
       ),
+      // Canon context injected via FILM-1102
+      canon_context: canonContext,
       plot_beats: formatBeatsForPrompt({
         synopsis: episodeContext.synopsis,
         beats: episodeContext.beats,
@@ -146,6 +173,46 @@ export async function processStoryGeneration(
 
     const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
     const generatedAt = new Date().toISOString();
+
+    // 5. FILM-1104: Run STORY validation checkpoint
+    try {
+      const { runValidationCheckpoint } = await import(
+        '../utils/validation-checkpoint'
+      );
+
+      const plotSkeleton = {
+        premise: data.logline,
+        episodeNumber: episodeContext.episodeNumber ?? 1,
+        scenes: (result.data.story.actBreakdown ?? []).map((act, i) => ({
+          sceneNumber: i + 1,
+          summary: act.summary,
+          charactersPresent: result.data.story.characters ?? [],
+        })),
+        characters: (result.data.story.characters ?? []).map((name) => ({
+          characterId: name.toLowerCase().replace(/\s+/g, '-'),
+          name,
+        })),
+      };
+
+      const validation = await runValidationCheckpoint(
+        {
+          checkpoint: 'STORY',
+          enforcement: 'flexible', // Warn, don't block
+          projectId: data.projectId,
+          episodeNumber: episodeContext.episodeNumber ?? 1,
+          supabase,
+        },
+        { plotSkeleton },
+      );
+
+      if (validation.messages.length > 0) {
+        console.log(
+          `[Story Generation] Continuity validation: ${validation.messages.join(' | ')}`,
+        );
+      }
+    } catch (err) {
+      console.warn('[Story Generation] Validation checkpoint skipped:', err);
+    }
 
     // 5. Prepare story_data for episode
     const storyData = {

@@ -24,12 +24,20 @@
       "order": 1
     },
     {
+      "slug": "continuity",
+      "name": "Canon Continuity Context",
+      "content": "## CONTINUITY CONTEXT\nThe following canon data represents established facts, character states, and narrative threads from previous episodes. You MUST respect all immutable events (deaths, world facts, etc.) and maintain continuity with character states and active threads.\n\n{{canon_context}}\n\nIf no canon context is provided, this is the first episode or canon data is unavailable — proceed without continuity constraints.",
+      "layer_type": "context",
+      "scope": "template",
+      "order": 2
+    },
+    {
       "slug": "format",
       "name": "JSON Output Format",
       "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
       "layer_type": "format",
       "scope": "template",
-      "order": 2
+      "order": 3
     }
   ],
   "user_prompt": "Write a complete story based on this concept:\n\n**Title**: {{title}}\n**Logline**: {{logline}}\n**Premise**: {{premise}}\n**Target Duration**: {{target_duration}} seconds ({{duration_description}})\n**Genre**: {{genre}}\n**Target Audience**: {{target_audience}}\n**Visual Style**: {{visual_style}}\n**Content Style**: {{content_style}}\n\n{{plot_beats}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: You MUST use ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: The story MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Reference events from previous episodes where relevant. Maintain character development.\n4. **Season Arc**: Align this episode with the season premise and theme.\n5. **Follow Plot Beats**: If plot beats are provided above, follow them closely. They represent the creator's intended story structure.\n\n**Story Requirements**:\n1. **Length**: {{word_count_min}}-{{word_count_max}} words (calibrated for {{target_duration}} seconds of screen time)\n2. **Structure**: If plot beats are provided, follow that structure. Otherwise, use clear three-act structure (setup, confrontation, resolution)\n3. **Character Arc**: Protagonist should undergo meaningful change\n4. **Visual Storytelling**: Focus on showing, not telling - include vivid imagery\n5. **Pacing**: Maintain engagement throughout with clear story beats\n6. **Conflict**: Include central conflict and stakes\n7. **Resolution**: Satisfying conclusion that ties up main threads\n8. **Scene Estimate**: Target approximately {{estimated_scene_count_min}}-{{estimated_scene_count_max}} scenes\n9. **Moral/Theme**: If a moral is specified, weave it naturally into the resolution\n10. **Signature Line**: If a signature line/catchphrase is specified, include it at an appropriate moment\n\n**Story Guidelines**:\n- Write in present tense for immediacy\n- Use vivid, sensory descriptions\n- Include emotional moments\n- Create visual variety (different locations, actions)\n- Keep dialogue natural and purposeful\n- Consider what can be shown visually vs. narrated\n- For dialogue-heavy content, include rich character interactions\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"story\": {\n    \"title\": \"string\",\n    \"fullText\": \"string ({{word_count_min}}-{{word_count_max}} words)\",\n    \"actBreakdown\": {\n      \"act1\": \"string (setup summary)\",\n      \"act2\": \"string (confrontation summary)\",\n      \"act3\": \"string (resolution summary)\"\n    },\n    \"characters\": [\n      {\n        \"name\": \"string\",\n        \"role\": \"string (protagonist/antagonist/supporting)\",\n        \"arc\": \"string (character journey)\"\n      }\n    ],\n    \"themes\": [\"string\"],\n    \"tone\": \"string\",\n    \"estimatedSceneCount\": number,\n    \"episodeSummary\": \"string (2-3 sentence plot summary for continuity - include main conflict, character actions, resolution)\",\n    \"sentimentScore\": number (0-1 emotional tone: 0=dark/tragic, 0.5=neutral, 1=uplifting/joyful),\n    \"keyEvents\": [\"string (major plot points that affect future episodes)\"]\n  }\n}\n```",
@@ -123,6 +131,11 @@
       "type": "text",
       "required": false,
       "description": "Visual style. Defaults to 'balanced'"
+    },
+    "canon_context": {
+      "type": "text",
+      "required": false,
+      "description": "Canon memory context (immutable events, character states, active threads) from the Memory Context Builder. Injected automatically when canon data is available."
     }
   },
   "output": {

@@ -888,69 +888,76 @@ export const extractCanonChangesAction = enhanceAction(
         episodeId: string;
         storyContent: string;
     }): Promise<CanonExtractionResult> => {
-        // Simple heuristic extraction (production would use LLM)
-        const content = data.storyContent.toLowerCase();
-        const immutableEvents: ExtractedCanonChange[] = [];
-        const threadUpdates: ExtractedThreadUpdate[] = [];
-        const stateChanges: ExtractedStateChange[] = [];
+        try {
+            // FILM-1103: Use LLM for intelligent canon extraction
+            const { executeLLM } = await import('@kit/prompt-engine/server');
 
-        // Detect death events
-        const deathPatterns = [
-            /(\w+) (?:died|was killed|passed away|perished)/gi,
-            /the death of (\w+)/gi,
-        ];
-        for (const pattern of deathPatterns) {
-            const matches = content.matchAll(pattern);
-            for (const match of matches) {
-                const name = match[1];
-                if (name && name.length > 2) {
-                    immutableEvents.push({
-                        type: 'death',
-                        eventKey: `character:${name}:dead`,
-                        description: `${name} died`,
-                        confidence: 'medium',
-                    });
-                }
-            }
-        }
-
-        // Detect world facts / location changes
-        if (content.includes('destroyed') || content.includes('fallen')) {
-            immutableEvents.push({
-                type: 'location_destruction',
-                eventKey: 'location:unknown:destroyed',
-                description: 'A location was destroyed',
-                confidence: 'low',
+            const result = await executeLLM<{
+                extraction: {
+                    immutableEvents: ExtractedCanonChange[];
+                    characterStateChanges: Array<{
+                        characterName: string;
+                        stateType: ExtractedStateChange['stateType'];
+                        fromState: string;
+                        toState: string;
+                        triggerEvent: string;
+                    }>;
+                    threadUpdates: ExtractedThreadUpdate[];
+                    episodeSummary: string;
+                    sentimentScore: number;
+                    keyEvents: string[];
+                };
+            }>({
+                templateSlug: 'canon-extraction',
+                variables: {
+                    story_content: data.storyContent,
+                    existing_characters: '', // TODO: inject from project assets
+                    existing_threads: '', // TODO: inject from active threads
+                },
+                context: {
+                    name: 'canon-extraction',
+                    accountId: data.projectId, // Project-level context
+                },
             });
+
+            const extraction = result.data.extraction;
+
+            // Map LLM output to CanonExtractionResult interface
+            return {
+                immutableEvents: (extraction.immutableEvents ?? []).map((e) => ({
+                    type: e.type,
+                    eventKey: e.eventKey,
+                    description: e.description,
+                    confidence: e.confidence ?? 'medium',
+                })),
+                threadUpdates: (extraction.threadUpdates ?? []).map((t) => ({
+                    threadName: t.threadName,
+                    action: t.action,
+                    description: t.description,
+                })),
+                stateChanges: (extraction.characterStateChanges ?? []).map((s) => ({
+                    characterName: s.characterName,
+                    stateType: s.stateType,
+                    fromState: s.fromState,
+                    toState: s.toState,
+                    triggerEvent: s.triggerEvent,
+                })),
+                episodeSummary: extraction.episodeSummary ?? '',
+                sentimentScore: Math.max(0, Math.min(1, extraction.sentimentScore ?? 0.5)),
+            };
+        } catch (err) {
+            console.warn('[Canon Extraction] LLM extraction failed, falling back to basic:', err);
+
+            // Fallback: return minimal extraction with truncated summary
+            const words = data.storyContent.split(/\s+/).slice(0, 50).join(' ');
+            return {
+                immutableEvents: [],
+                threadUpdates: [],
+                stateChanges: [],
+                episodeSummary: words.length > 100 ? words.substring(0, 200) + '...' : words,
+                sentimentScore: 0.5,
+            };
         }
-
-        // Detect thread resolutions (e.g., mystery solved, conflict resolved)
-        if (content.includes('finally') || content.includes('resolved') || content.includes('discovered the truth')) {
-            threadUpdates.push({
-                threadName: 'Detected thread resolution',
-                action: 'resolve',
-                description: 'A narrative thread appears to be resolved',
-            });
-        }
-
-        // Generate simple summary
-        const words = data.storyContent.split(/\s+/).slice(0, 50).join(' ');
-        const episodeSummary = words.length > 100 ? words.substring(0, 200) + '...' : words;
-
-        // Simple sentiment (positive words vs negative words)
-        const positiveWords = ['love', 'happy', 'peace', 'hope', 'joy', 'victory'];
-        const negativeWords = ['death', 'war', 'fear', 'hate', 'loss', 'pain'];
-        const positiveCount = positiveWords.filter((w) => content.includes(w)).length;
-        const negativeCount = negativeWords.filter((w) => content.includes(w)).length;
-        const sentimentScore = (positiveCount - negativeCount + 5) / 10; // Normalize to 0-1
-
-        return {
-            immutableEvents,
-            threadUpdates,
-            stateChanges,
-            episodeSummary,
-            sentimentScore: Math.max(0, Math.min(1, sentimentScore)),
-        };
     },
     {
         schema: z.object({

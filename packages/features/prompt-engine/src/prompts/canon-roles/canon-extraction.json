@@ -1,0 +1,37 @@
+{
+    "slug": "canon-extraction",
+    "name": "Canon Extraction",
+    "version": "1.0.0",
+    "description": "Extracts canon changes (immutable events, character state changes, thread updates) from episode content using LLM analysis.",
+    "variables": {
+        "story_content": {
+            "type": "string",
+            "required": true,
+            "default": ""
+        },
+        "existing_characters": {
+            "type": "string",
+            "required": false,
+            "default": ""
+        },
+        "existing_threads": {
+            "type": "string",
+            "required": false,
+            "default": ""
+        }
+    },
+    "llm": {
+        "provider": "google",
+        "model": "gemini-2.0-flash",
+        "max_tokens": 4096,
+        "temperature": 0.2,
+        "response_format": "json"
+    },
+    "system_prompt": "You are a narrative canon analyst. Your task is to extract all meaningful canon changes from episode content.\n\n## EXTRACTION RULES\n1. **Immutable Events** — Permanent, irreversible changes: character deaths, location destructions, world-altering facts, relationship formations/dissolutions, ability losses, timeline anchors.\n2. **Character State Changes** — Emotional, physical, relationship, knowledge, ability, location, or goal changes for named characters.\n3. **Thread Updates** — New narrative threads opened, existing threads progressed, or threads resolved.\n4. **Episode Summary** — A 2-3 sentence plot summary capturing the main arc.\n5. **Sentiment Score** — Overall emotional tone from 0.0 (darkest) to 1.0 (most positive).\n\n## CONFIDENCE LEVELS\n- **high** — Explicitly stated in text (e.g., \"Marcus died\")\n- **medium** — Strongly implied (e.g., \"she would never see him again\")\n- **low** — Ambiguous, could be interpreted differently\n\n## KEY EVENTS\nExtract the 3-5 most significant plot events as brief phrases.\n\n## OUTPUT FORMAT\nRespond with valid JSON matching the schema exactly. Do not include any text outside the JSON.",
+    "user_prompt": "## EPISODE CONTENT\n{{story_content}}\n\n## KNOWN CHARACTERS\n{{existing_characters}}\n\n## ACTIVE THREADS\n{{existing_threads}}\n\n---\n\nAnalyze the episode content above and extract all canon changes. Return a JSON object with the following structure:\n- immutableEvents: array of { type, eventKey, description, confidence }\n- characterStateChanges: array of { characterName, stateType, fromState, toState, triggerEvent }\n- threadUpdates: array of { threadName, action, description }\n- episodeSummary: string (2-3 sentences)\n- sentimentScore: number (0.0-1.0)\n- keyEvents: array of strings (3-5 key events)",
+    "output": {
+        "type": "object",
+        "wrapper_key": "extraction",
+        "schema_for_llm": "{ immutableEvents: [{ type: 'death'|'world_fact'|'relationship'|'timeline'|'ability_loss'|'location_destruction', eventKey: string, description: string, confidence: 'high'|'medium'|'low' }], characterStateChanges: [{ characterName: string, stateType: 'emotional'|'physical'|'relationship'|'knowledge'|'ability'|'location'|'goal', fromState: string, toState: string, triggerEvent: string }], threadUpdates: [{ threadName: string, action: 'open'|'progress'|'resolve', description: string }], episodeSummary: string, sentimentScore: number, keyEvents: string[] }"
+    }
+}

@@ -21,6 +21,12 @@ import seasonOutline from '../../../../packages/features/prompt-engine/src/promp
 import shotList from '../../../../packages/features/prompt-engine/src/prompts/story-generation/shot-list-generation.json';
 import storyGen from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-generation.json';
 import storyIdeation from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-ideation.json';
+// Canon Role Prompts (FILM-1101)
+import canonExtraction from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json';
+import editorRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/editor-role.json';
+import plannerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/planner-role.json';
+import stylistRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/stylist-role.json';
+import writerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/writer-role.json';
 
 export interface PromptTemplate {
   slug?: string;
@@ -96,6 +102,18 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'translate-dialogue': dialogueTranslation as PromptTemplate, // alias
   'audio-generation/dialogue-translation':
     dialogueTranslation as PromptTemplate,
+  // Canon Roles (FILM-1101)
+  'planner-role': plannerRole as PromptTemplate,
+  'writer-role': writerRole as PromptTemplate,
+  'editor-role': editorRole as PromptTemplate,
+  'stylist-role': stylistRole as PromptTemplate,
+  'canon-extraction': canonExtraction as PromptTemplate,
+  // Nested aliases
+  'canon-roles/planner-role': plannerRole as PromptTemplate,
+  'canon-roles/writer-role': writerRole as PromptTemplate,
+  'canon-roles/editor-role': editorRole as PromptTemplate,
+  'canon-roles/stylist-role': stylistRole as PromptTemplate,
+  'canon-roles/canon-extraction': canonExtraction as PromptTemplate,
 };
 
 /**
