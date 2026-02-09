@@ -187,7 +187,7 @@ export function validateAgainstBridge(
         // Escape special regex characters in character name
         const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const pattern = new RegExp(
-            `\\b${escaped}\\b.{0,30}(said|walked|ran|looked|smiled|laughed|spoke|whispered|shouted|nodded)`,
+            `\\b${escaped}\\b.{0,30}(said|walked|ran|looked|smiled|laughed|spoke|whispered|shouted|nodded|grabbed|moved|reacted|cried|yelled)`,
             'i',
         );
         if (pattern.test(nextActContent)) {

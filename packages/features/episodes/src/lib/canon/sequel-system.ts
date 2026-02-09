@@ -140,6 +140,7 @@ export async function linkAsSequel(
     await (supabase as any).from('sequel_parent_contexts').upsert({
         sequel_project_id: sequelProjectId,
         parent_project_id: parentProjectId,
+        parent_project_name: parentProject.name,
         parent_summary: parentContext.parentSummary,
         parent_immutable_events: parentContext.immutableEvents,
         parent_final_character_states: parentContext.finalCharacterStates,
@@ -292,13 +293,20 @@ export async function buildParentContext(
     }
 
     // Build final character states
+    // Use immutable_events as source of truth for character deaths (PR #177 review)
     const finalCharStates: ParentCharacterState[] = latestCharacterStates.map(
         (cs) => {
             const asset = characterMap.get(cs.character_id);
+            const isDead = immutableEvents.some(
+                (e) =>
+                    e.event_type === 'death' &&
+                    e.event_key.includes(cs.character_id),
+            );
+
             return {
                 characterId: cs.character_id,
                 characterName: asset?.name ?? 'Unknown',
-                isAlive: (cs.state_value?.isAlive as boolean) ?? true,
+                isAlive: !isDead,
                 finalEmotionalState:
                     (cs.state_value?.emotionalState as string) ?? 'neutral',
                 finalLocation:
@@ -353,6 +361,7 @@ export async function buildParentContext(
 
 interface SequelParentRow {
     parent_project_id: string;
+    parent_project_name: string;
     parent_summary: string;
     parent_immutable_events: ParentImmutableEvent[];
     parent_final_character_states: ParentCharacterState[];
@@ -385,7 +394,7 @@ export async function getSequelParentContexts(
         (row) =>
             ({
                 parentProjectId: row.parent_project_id,
-                parentProjectName: '',
+                parentProjectName: row.parent_project_name ?? '',
                 parentSummary: row.parent_summary,
                 immutableEvents: row.parent_immutable_events,
                 finalCharacterStates: row.parent_final_character_states,
