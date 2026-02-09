@@ -121,9 +121,13 @@ export async function processStoryGeneration(
     }
 
     // 4. Prepare variables for prompt template (same logic as local server action)
+    const { sanitizePromptInput } = await import(
+      '../utils/sanitize-prompt-input'
+    );
+
     const variables = {
-      title: data.title,
-      logline: data.logline,
+      title: sanitizePromptInput(data.title, 500),
+      logline: sanitizePromptInput(data.logline, 2000),
       premise: episodeContext.premise,
       target_duration: data.targetDuration,
       duration_description: formatDuration(data.targetDuration),
@@ -186,7 +190,7 @@ export async function processStoryGeneration(
         scenes: (result.data.story.actBreakdown ?? []).map((act, i) => ({
           sceneNumber: i + 1,
           summary: act.summary,
-          charactersPresent: result.data.story.characters ?? [],
+          charactersPresent: [], // Per-scene character data not available from story output
         })),
         characters: (result.data.story.characters ?? []).map((name) => ({
           characterId: name.toLowerCase().replace(/\s+/g, '-'),
@@ -214,7 +218,7 @@ export async function processStoryGeneration(
       console.warn('[Story Generation] Validation checkpoint skipped:', err);
     }
 
-    // 5. Prepare story_data for episode
+    // 6. Prepare story_data for episode
     const storyData = {
       premise: data.logline,
       fullStory: result.data.story.fullText,

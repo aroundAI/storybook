@@ -231,7 +231,7 @@ export async function processScreenplayConversion(
       );
     }
 
-    // 4. Prepare screenplay_data with full metadata for episode header display
+    // 5. Prepare screenplay_data with full metadata for episode header display
     // Extract unique locations from all scenes
     const uniqueLocations = [
       ...new Set(

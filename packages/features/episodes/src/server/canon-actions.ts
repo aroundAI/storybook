@@ -892,6 +892,15 @@ export const extractCanonChangesAction = enhanceAction(
             // FILM-1103: Use LLM for intelligent canon extraction
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
+            // Sanitize user-provided content to prevent prompt injection
+            const sanitizedContent = data.storyContent
+                .replace(/\b(system|assistant)\s*:\s*/gi, '')
+                .replace(/\bignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi, '')
+                .replace(/\byou\s+are\s+now\b/gi, '')
+                .replace(/\bforget\s+(all\s+)?(previous|your)\s+(instructions?|rules?|context)\b/gi, '')
+                .substring(0, 50_000)
+                .trim();
+
             const result = await executeLLM<{
                 extraction: {
                     immutableEvents: ExtractedCanonChange[];
@@ -910,7 +919,7 @@ export const extractCanonChangesAction = enhanceAction(
             }>({
                 templateSlug: 'canon-extraction',
                 variables: {
-                    story_content: data.storyContent,
+                    story_content: sanitizedContent,
                     existing_characters: '', // TODO: inject from project assets
                     existing_threads: '', // TODO: inject from active threads
                 },
