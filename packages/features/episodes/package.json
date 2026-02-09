@@ -26,6 +26,7 @@
     "@kit/assets": "workspace:*",
     "@kit/cache": "workspace:*",
     "@kit/film-studio": "workspace:*",
+    "@kit/film-studio-schemas": "workspace:*",
     "@kit/projects": "workspace:*",
     "@kit/prompt-engine": "workspace:*",
     "@kit/storage": "workspace:*",

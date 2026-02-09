@@ -5,6 +5,8 @@
  * TypeScript interfaces for narrative continuity enforcement.
  */
 
+import type { ProjectType } from '@kit/film-studio-schemas/project';
+
 // =============================================================================
 // DATABASE ENTITY TYPES (matching Supabase schema)
 // =============================================================================
@@ -457,4 +459,6 @@ export interface BuildMemoryContextInput {
     episodeNumber: number;
     tokenBudgetPercent?: number;
     memoryHorizon?: number;
+    /** When provided, uses content-type-specific allocations and horizon */
+    projectType?: ProjectType;
 }
