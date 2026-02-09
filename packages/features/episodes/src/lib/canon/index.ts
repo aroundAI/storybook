@@ -8,6 +8,16 @@
 
 // Types (client-safe)
 export * from './types';
+export type * from '../../types/act-context';
+export type {
+    ParentContext,
+    ParentImmutableEvent,
+    ParentCharacterState,
+    ParentResolvedThread,
+    ParentWorldFact,
+    CharacterVisualRef,
+    LocationRef,
+} from './sequel-system';
 
 // Client-safe validation functions
 export {

@@ -1,0 +1,18 @@
+{
+    "slug": "act-context-extraction",
+    "name": "Extract Act End Context",
+    "version": "1.0",
+    "description": "Extracts complete narrative state from end of movie act for continuity bridging",
+    "llm": {
+        "provider": "google",
+        "model": "gemini-2.0-flash",
+        "max_tokens": 3000,
+        "temperature": 0.1
+    },
+    "system_prompt": "You are a script supervisor extracting the EXACT state at the end of a movie act. Be precise about:\n- Who is alive vs dead\n- Exact emotional states\n- What each character knows\n- Physical locations and props\n- Unresolved plot threads\n\nThis data will be used to maintain continuity in the next act. Accuracy is critical — any errors here will create continuity violations.",
+    "user_prompt": "Extract the complete state at the end of Act {{act_number}}:\n\n---\n{{{act_content}}}\n---\n\nReturn a JSON object with the full ActContextBridge structure including:\n- characterStates (each character with isAlive, emotionalState, location, injuries, knowsFacts, doesNotKnow)\n- openThreads and resolvedThreads\n- promises (plot setups needing payoff)\n- currentLocation (name, presentCharacters, establishedDetails)\n- toneVector (humor, darkness, romance, action, suspense as 0-1)\n- stakesLevel and tensionLevel (1-10)\n- mustResolve, mustNotInclude, setupsToPayoff\n- carryForwardContext (2-3 sentence summary paragraph)",
+    "output": {
+        "type": "object",
+        "wrapper_key": "bridge"
+    }
+}
