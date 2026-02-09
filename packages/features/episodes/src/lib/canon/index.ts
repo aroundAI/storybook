@@ -26,5 +26,18 @@ export {
     getRulesForCheckpoint,
 } from './continuity-validator';
 
+// Verified facts types (FILM-1120)
+export type * from '../../types/verified-facts';
+export { generateAPACitation } from '../../types/verified-facts';
+
+// Documentary module types (FILM-1122, FILM-1123)
+export type {
+    ResearchClaim,
+    ResearchResult,
+    FactCheckIssue,
+    FactCheckResult,
+} from '../documentary';
+export { shouldBlockContent } from '../documentary';
+
 // Constants (client-safe) - duplicated here to avoid server-only import
 export const DEFAULT_TOKEN_BUDGET_MAX = 6000;

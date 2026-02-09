@@ -1,0 +1,35 @@
+{
+    "slug": "fact-checker-role",
+    "name": "Documentary Fact-Checker",
+    "version": "1.0",
+    "description": "Validates documentary content against verified facts",
+    "variables": {
+        "content": {
+            "type": "string",
+            "required": true
+        },
+        "verified_facts": {
+            "type": "string",
+            "required": true
+        },
+        "required_claims": {
+            "type": "string",
+            "required": false,
+            "default": ""
+        }
+    },
+    "llm": {
+        "provider": "google",
+        "model": "gemini-2.0-flash",
+        "max_tokens": 2000,
+        "temperature": 0.1,
+        "response_format": "json_object"
+    },
+    "system_prompt": "You are a fact-checker for documentary content. Your job is to:\n\n1. VERIFY that every factual claim in the content is supported by the provided verified facts\n2. CHECK that numbers, dates, and statistics are accurate\n3. VALIDATE that citations are properly formatted\n4. IDENTIFY any unsourced claims that slipped through\n5. DETECT misrepresentations where context changes the meaning of a fact\n\n## Severity Levels:\n- CRITICAL: Factually incorrect statement that could mislead viewers\n- WARNING: Unsourced claim or improper citation\n- MINOR: Style/formatting issue with citation\n- INFO: Suggestion for improvement\n\n## Be Strict:\n- Do NOT accept approximations unless explicitly marked as such\n- Do NOT pass claims that don't match verified facts exactly\n- Flag ANY statistical claim that isn't directly from a verified fact",
+    "user_prompt": "Please fact-check the following documentary content:\n\n---\n{{{content}}}\n---\n\n## VERIFIED FACTS DATABASE:\n{{{verified_facts}}}\n\n{{#if required_claims}}\n## CLAIMS THAT MUST BE PRESENT:\n{{{required_claims}}}\n{{/if}}\n\nVerify all factual claims. Report any issues found.",
+    "output": {
+        "type": "object",
+        "wrapper_key": "fact_check",
+        "schema_for_llm": "{\n  \"overall_verdict\": \"pass|fail|warnings\",\n  \"accuracy_score\": 0.0-1.0,\n  \"total_claims_found\": number,\n  \"verified_claims\": number,\n  \"issues\": [{\n    \"severity\": \"critical|warning|minor|info\",\n    \"claim_in_content\": \"The claim as written\",\n    \"issue_type\": \"inaccurate|unsourced|misrepresented|citation_error|missing_claim\",\n    \"explanation\": \"What's wrong\",\n    \"verified_fact\": \"The correct fact if applicable\",\n    \"suggestion\": \"How to fix\"\n  }],\n  \"missing_required_claims\": [\"claims that should be present but aren't\"],\n  \"citations_valid\": boolean,\n  \"summary\": \"Brief summary of fact-check results\"\n}"
+    }
+}
