@@ -138,7 +138,7 @@ export function safeValidatePromptTemplate(data: unknown) {
 }
 
 /**
- * Validate that variable placeholders in user_prompt match variables object
+ * Validate that variable placeholders in user_prompt and system_prompts match variables object
  *
  * @param template - Validated prompt template
  * @returns Array of validation errors (empty if valid)
@@ -148,16 +148,21 @@ export function validateVariablePlaceholders(
 ): string[] {
   const errors: string[] = [];
 
-  // Extract all {{variable}} placeholders from user_prompt
+  // Extract all {{variable}} placeholders from user_prompt and system_prompts
   const placeholderRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
-  const matches = template.user_prompt.matchAll(placeholderRegex);
   const usedVariables = new Set<string>();
 
-  for (const match of matches) {
-    const varName = match[1];
+  // Check user_prompt
+  for (const match of template.user_prompt.matchAll(placeholderRegex)) {
+    if (match[1]) usedVariables.add(match[1]);
+  }
 
-    if (varName) {
-      usedVariables.add(varName);
+  // Check system_prompts (variables can be used in system prompts too)
+  if (template.system_prompts) {
+    for (const sp of template.system_prompts) {
+      for (const match of sp.content.matchAll(placeholderRegex)) {
+        if (match[1]) usedVariables.add(match[1]);
+      }
     }
   }
 
