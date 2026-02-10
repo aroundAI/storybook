@@ -17,7 +17,7 @@ export interface ResearchClaim {
     claim: string;
     category: string;
     matchedFactId: string | null;
-    confidence: 'verified' | 'likely' | 'needs_source';
+    confidence: 'verified' | 'needs_source';
     priority: 'critical' | 'important' | 'nice_to_have';
     suggestedSearch: string;
 }
@@ -129,13 +129,9 @@ export async function runResearchPhase(
         const isValidMatch =
             c.matched_fact_id !== null && factIdSet.has(c.matched_fact_id);
 
-        // If the LLM hallucinated a matched_fact_id, downgrade 'verified' to
-        // 'needs_source' so unverified claims are never trusted as verified.
-        const finalConfidence = isValidMatch
-            ? 'verified'
-            : c.confidence === 'verified'
-                ? 'needs_source'
-                : c.confidence;
+        // Binary confidence: valid DB match = verified, otherwise needs_source.
+        // Removes ambiguity from LLM-reported 'likely' on unmatched claims.
+        const finalConfidence = isValidMatch ? 'verified' : 'needs_source';
 
         return {
             claim: c.claim,
