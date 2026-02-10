@@ -28,13 +28,20 @@ CREATE TABLE verified_facts (
 
   -- Source information
   source_type VARCHAR(50) CHECK (source_type IN (
-    'research_paper',
-    'textbook',
-    'encyclopedia',
-    'expert_interview',
-    'official_document',
-    'historical_record',
+    'academic_paper',
+    'book',
     'news_article',
+    'government_report',
+    'documentary',
+    'expert_interview',
+    'dataset',
+    'website',
+    'encyclopedia',
+    'court_document',
+    'historical_record',
+    'textbook',
+    'research_paper',
+    'official_document',
     'other'
   )),
 
@@ -116,6 +123,8 @@ CREATE POLICY "Users can insert facts for their projects"
     AND (verification_status IS NULL OR verification_status = 'unverified')
     AND verified_by IS NULL
     AND verified_at IS NULL
+    AND (created_by IS NULL OR created_by = auth.uid())
+    AND (updated_by IS NULL OR updated_by = auth.uid())
   );
 
 -- UPDATE: users can edit fact content but cannot change verification status
@@ -131,6 +140,8 @@ CREATE POLICY "Users can update facts for their projects"
     verification_status = OLD.verification_status
     AND verified_by IS NOT DISTINCT FROM OLD.verified_by
     AND verified_at IS NOT DISTINCT FROM OLD.verified_at
+    AND created_by = OLD.created_by
+    AND (updated_by IS NULL OR updated_by = auth.uid())
   );
 
 -- DELETE: users can remove facts from their own projects

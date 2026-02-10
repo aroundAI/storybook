@@ -167,6 +167,9 @@ export async function runFactCheck(
  * - Accuracy score below 0.8
  */
 export function shouldBlockContent(result: FactCheckResult): boolean {
+    const WARNING_THRESHOLD = 3;
+    const MINIMUM_ACCURACY_SCORE = 0.8;
+
     // Block on any critical issues
     if (result.issues.some((i) => i.severity === 'critical')) {
         return true;
@@ -176,12 +179,12 @@ export function shouldBlockContent(result: FactCheckResult): boolean {
     const warningCount = result.issues.filter(
         (i) => i.severity === 'warning',
     ).length;
-    if (warningCount >= 3) {
+    if (warningCount >= WARNING_THRESHOLD) {
         return true;
     }
 
     // Block if accuracy too low
-    if (result.accuracyScore < 0.8) {
+    if (result.accuracyScore < MINIMUM_ACCURACY_SCORE) {
         return true;
     }
 

@@ -92,7 +92,7 @@ export async function runResearchPhase(
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
         .eq('verification_status', 'verified')
-        .limit(50);
+        .limit(200);
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 

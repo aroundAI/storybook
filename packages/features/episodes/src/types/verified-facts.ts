@@ -11,13 +11,20 @@
 // =============================================================================
 
 export type SourceType =
-    | 'research_paper'
-    | 'textbook'
-    | 'encyclopedia'
-    | 'expert_interview'
-    | 'official_document'
-    | 'historical_record'
+    | 'academic_paper'
+    | 'book'
     | 'news_article'
+    | 'government_report'
+    | 'documentary'
+    | 'expert_interview'
+    | 'dataset'
+    | 'website'
+    | 'encyclopedia'
+    | 'court_document'
+    | 'historical_record'
+    | 'textbook'
+    | 'research_paper'
+    | 'official_document'
     | 'other';
 
 export type VerificationStatus =
