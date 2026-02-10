@@ -36,15 +36,17 @@ export interface ExtractedEntities {
     extractedAt: Date;
 }
 
-/** Default empty entities object */
-export const EMPTY_ENTITIES: ExtractedEntities = {
-    people: [],
-    organizations: [],
-    locations: [],
-    topics: [],
-    events: [],
-    extractedAt: new Date(),
-};
+/** Create a default empty entities object with current timestamp. */
+export function createEmptyEntities(): ExtractedEntities {
+    return {
+        people: [],
+        organizations: [],
+        locations: [],
+        topics: [],
+        events: [],
+        extractedAt: new Date(),
+    };
+}
 
 // =============================================================================
 // EXTERNAL CONTENT

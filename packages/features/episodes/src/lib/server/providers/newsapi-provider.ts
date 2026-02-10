@@ -12,7 +12,7 @@ import type {
     ExternalContent,
     SourceCategory,
 } from '../../../types/external-context';
-import { EMPTY_ENTITIES } from '../../../types/external-context';
+import { createEmptyEntities } from '../../../types/external-context';
 
 interface NewsAPIArticle {
     source: { id: string | null; name: string };
@@ -71,6 +71,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
 
         const response = await fetch(url.toString(), {
             headers: { 'X-Api-Key': this.apiKey },
+            signal: AbortSignal.timeout(10_000),
         });
 
         if (!response.ok) {
@@ -97,7 +98,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
             language: params.language ?? 'en',
             category: 'news' as SourceCategory,
             topics: [],
-            entities: { ...EMPTY_ENTITIES, extractedAt: now },
+            entities: createEmptyEntities(),
             imageUrl: article.urlToImage ?? undefined,
             credibilityTier: 'tier_2' as const,
             fetchedAt: now,

@@ -7,6 +7,7 @@
  */
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import type { Database } from '@kit/supabase/database';
 
 type Json = Database['public']['Tables']['external_content']['Insert']['entities'];
@@ -27,12 +28,48 @@ import { SemanticScholarProvider } from '../providers/semantic-scholar-provider'
 import { ArchiveOrgProvider } from '../providers/archive-org-provider';
 
 // =============================================================================
+// ROW MAPPER (shared — also re-exported for use in server actions)
+// =============================================================================
+
+/** Map a database row to the application-level ExternalContent model. */
+export function rowToExternalContent(row: ExternalContentRow): ExternalContent {
+    return {
+        id: row.id,
+        externalId: row.external_id,
+        sourceId: row.source_id,
+        title: row.title,
+        description: row.description ?? '',
+        content: row.content,
+        url: row.url,
+        authors: row.authors ?? [],
+        publishedAt: new Date(row.published_at ?? Date.now()),
+        language: row.language,
+        category: row.category as SourceCategory,
+        topics: row.topics ?? [],
+        entities: (row.entities ?? {}) as unknown as ExtractedEntities,
+        doi: row.doi ?? undefined,
+        journal: row.journal ?? undefined,
+        citations: row.citations ?? undefined,
+        peerReviewed: row.peer_reviewed,
+        imageUrl: row.image_url ?? undefined,
+        credibilityTier: (row.credibility_tier ?? 'tier_3') as CredibilityTier,
+        biasLabel: row.bias_label ?? undefined,
+        fetchedAt: new Date(row.fetched_at),
+        cacheExpiresAt: new Date(row.cache_expires_at ?? Date.now()),
+    };
+}
+
+// =============================================================================
 // AGGREGATOR
 // =============================================================================
+
+/** TTL for singleton re-initialisation (5 minutes). */
+const REINIT_TTL_MS = 5 * 60 * 1000;
 
 export class ExternalContextAggregator {
     private providers = new Map<string, ExternalContextProvider>();
     private providersByCategory = new Map<SourceCategory, ExternalContextProvider[]>();
+    private initializedAt = 0;
 
     /**
      * Initialize by loading active sources from the database
@@ -41,7 +78,6 @@ export class ExternalContextAggregator {
     async initialize(): Promise<void> {
         const supabase = getSupabaseServerClient();
 
-        // NOTE: external_sources table is FILM-1135 — types will be generated after migration.
         const { data: sources, error } = await supabase
             .from('external_sources')
             .select('*')
@@ -51,6 +87,10 @@ export class ExternalContextAggregator {
             console.error('[context-aggregator] Failed to load sources:', error.message);
             return;
         }
+
+        // Clear previous state for re-init
+        this.providers.clear();
+        this.providersByCategory.clear();
 
         for (const source of (sources ?? []) as ExternalSourceRow[]) {
             const provider = this.createProvider(source);
@@ -62,6 +102,13 @@ export class ExternalContextAggregator {
                 this.providersByCategory.set(source.category as SourceCategory, existing);
             }
         }
+
+        this.initializedAt = Date.now();
+    }
+
+    /** Whether the singleton has gone stale and should re-initialize. */
+    isStale(): boolean {
+        return Date.now() - this.initializedAt > REINIT_TTL_MS;
     }
 
     /**
@@ -103,7 +150,7 @@ export class ExternalContextAggregator {
             }
         }
 
-        // 3. Cache fresh content
+        // 3. Cache fresh content (uses admin client to bypass RLS)
         const cachedCount = await this.cacheContent(freshContent);
 
         // 4. Combine, deduplicate, and return
@@ -114,7 +161,7 @@ export class ExternalContextAggregator {
             content: unique.slice(0, params.pageSize ?? 20),
             totalCount: unique.length,
             fromCache: false,
-            fetchedNew: cachedCount,
+            fetchedNew: freshContent.length,
             providers: usedProviders,
         };
     }
@@ -168,7 +215,6 @@ export class ExternalContextAggregator {
     ): Promise<ExternalContent[]> {
         const supabase = getSupabaseServerClient();
 
-        // NOTE: external_content table is FILM-1135 — types will be generated after migration.
         let query = supabase
             .from('external_content')
             .select('*')
@@ -178,7 +224,7 @@ export class ExternalContextAggregator {
             .limit(params.pageSize ?? 20);
 
         if (params.query) {
-            query = query.textSearch('title', params.query, { type: 'websearch' });
+            query = query.textSearch('fts', params.query, { type: 'websearch' });
         }
 
         if (params.from) {
@@ -210,11 +256,16 @@ export class ExternalContextAggregator {
         return ((data ?? []) as ExternalContentRow[]).map(rowToExternalContent);
     }
 
+    /**
+     * Write fetched content to the cache.
+     * Uses the admin client to bypass RLS (only service_role can INSERT).
+     */
     private async cacheContent(content: ExternalContent[]): Promise<number> {
         if (content.length === 0) return 0;
 
-        const supabase = getSupabaseServerClient();
+        const adminClient = getSupabaseServerAdminClient();
 
+        const now = new Date().toISOString();
         const rows = content.map((c) => ({
             external_id: c.externalId,
             source_id: c.sourceId,
@@ -224,6 +275,7 @@ export class ExternalContextAggregator {
             url: c.url,
             authors: c.authors,
             published_at: c.publishedAt.toISOString(),
+            updated_at: now,
             language: c.language,
             category: c.category as string,
             topics: c.topics,
@@ -239,7 +291,7 @@ export class ExternalContextAggregator {
             cache_expires_at: c.cacheExpiresAt.toISOString(),
         }));
 
-        const { data, error } = await supabase
+        const { data, error } = await adminClient
             .from('external_content')
             .upsert(rows, { onConflict: 'external_id' })
             .select('id');
@@ -263,37 +315,6 @@ export class ExternalContextAggregator {
 }
 
 // =============================================================================
-// ROW MAPPER
-// =============================================================================
-
-function rowToExternalContent(row: ExternalContentRow): ExternalContent {
-    return {
-        id: row.id,
-        externalId: row.external_id,
-        sourceId: row.source_id,
-        title: row.title,
-        description: row.description ?? '',
-        content: row.content,
-        url: row.url,
-        authors: row.authors ?? [],
-        publishedAt: new Date(row.published_at ?? Date.now()),
-        language: row.language,
-        category: row.category as SourceCategory,
-        topics: row.topics ?? [],
-        entities: (row.entities ?? {}) as unknown as ExtractedEntities,
-        doi: row.doi ?? undefined,
-        journal: row.journal ?? undefined,
-        citations: row.citations ?? undefined,
-        peerReviewed: row.peer_reviewed,
-        imageUrl: row.image_url ?? undefined,
-        credibilityTier: (row.credibility_tier ?? 'tier_3') as CredibilityTier,
-        biasLabel: row.bias_label ?? undefined,
-        fetchedAt: new Date(row.fetched_at),
-        cacheExpiresAt: new Date(row.cache_expires_at ?? Date.now()),
-    };
-}
-
-// =============================================================================
 // SINGLETON
 // =============================================================================
 
@@ -302,9 +323,10 @@ let aggregatorInstance: ExternalContextAggregator | null = null;
 /**
  * Get the singleton ExternalContextAggregator instance.
  * Initializes on first call by loading active sources from the database.
+ * Re-initializes automatically if the instance is stale (>5 minutes old).
  */
 export async function getContextAggregator(): Promise<ExternalContextAggregator> {
-    if (!aggregatorInstance) {
+    if (!aggregatorInstance || aggregatorInstance.isStale()) {
         aggregatorInstance = new ExternalContextAggregator();
         await aggregatorInstance.initialize();
     }

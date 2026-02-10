@@ -12,7 +12,7 @@ import type {
     ExternalContent,
     SourceCategory,
 } from '../../../types/external-context';
-import { EMPTY_ENTITIES } from '../../../types/external-context';
+import { createEmptyEntities } from '../../../types/external-context';
 
 interface ArchiveOrgDoc {
     identifier: string;
@@ -56,7 +56,9 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
             url.searchParams.set('page', String(params.page));
         }
 
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), {
+            signal: AbortSignal.timeout(10_000),
+        });
 
         if (!response.ok) {
             throw new Error(`Archive.org error: ${response.status} ${response.statusText}`);
@@ -79,7 +81,7 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
             language: doc.language ?? 'en',
             category: 'historical' as SourceCategory,
             topics: [],
-            entities: { ...EMPTY_ENTITIES, extractedAt: now },
+            entities: createEmptyEntities(),
             credibilityTier: 'tier_2' as const,
             fetchedAt: now,
             cacheExpiresAt: cacheExpiry,

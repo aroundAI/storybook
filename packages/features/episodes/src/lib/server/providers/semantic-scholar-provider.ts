@@ -12,7 +12,7 @@ import type {
     ExternalContent,
     SourceCategory,
 } from '../../../types/external-context';
-import { EMPTY_ENTITIES } from '../../../types/external-context';
+import { createEmptyEntities } from '../../../types/external-context';
 
 interface SemanticScholarAuthor {
     authorId: string;
@@ -67,6 +67,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
 
         const response = await fetch(url.toString(), {
             headers: { Accept: 'application/json' },
+            signal: AbortSignal.timeout(10_000),
         });
 
         if (!response.ok) {
@@ -93,7 +94,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
             language: 'en',
             category: 'research' as SourceCategory,
             topics: [],
-            entities: { ...EMPTY_ENTITIES, extractedAt: now },
+            entities: createEmptyEntities(),
             doi: paper.externalIds?.DOI,
             journal: paper.venue ?? undefined,
             citations: paper.citationCount ?? undefined,

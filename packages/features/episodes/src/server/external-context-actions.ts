@@ -17,10 +17,8 @@ import type {
     SourceCategory,
     ExternalSourceRow,
     ExternalContentRow,
-    CredibilityTier,
-    ExtractedEntities,
 } from '../types/external-context';
-import { getContextAggregator } from '../lib/server/services/context-aggregator';
+import { getContextAggregator, rowToExternalContent } from '../lib/server/services/context-aggregator';
 
 // =============================================================================
 // SCHEMAS
@@ -92,7 +90,6 @@ export const listExternalSourcesAction = enhanceAction(
         const supabase = getSupabaseServerClient();
         const activeOnly = data.activeOnly ?? true;
 
-        // NOTE: external_sources table is FILM-1135 — types will be generated after migration.
         let query = supabase
             .from('external_sources')
             .select('*')
@@ -169,7 +166,6 @@ export const getExternalContentByIdAction = enhanceAction(
     async (data: z.infer<typeof GetContentByIdSchema>): Promise<ExternalContent | null> => {
         const supabase = getSupabaseServerClient();
 
-        // NOTE: external_content table is FILM-1135 — types will be generated after migration.
         const { data: rawRow, error } = await supabase
             .from('external_content')
             .select('*')
@@ -178,32 +174,7 @@ export const getExternalContentByIdAction = enhanceAction(
 
         if (error || !rawRow) return null;
 
-        const row = rawRow as ExternalContentRow;
-
-        return {
-            id: row.id,
-            externalId: row.external_id,
-            sourceId: row.source_id,
-            title: row.title,
-            description: row.description ?? '',
-            content: row.content,
-            url: row.url,
-            authors: row.authors ?? [],
-            publishedAt: new Date(row.published_at ?? Date.now()),
-            language: row.language,
-            category: row.category as SourceCategory,
-            topics: row.topics ?? [],
-            entities: (row.entities ?? {}) as unknown as ExtractedEntities,
-            doi: row.doi ?? undefined,
-            journal: row.journal ?? undefined,
-            citations: row.citations ?? undefined,
-            peerReviewed: row.peer_reviewed,
-            imageUrl: row.image_url ?? undefined,
-            credibilityTier: (row.credibility_tier ?? 'tier_3') as CredibilityTier,
-            biasLabel: row.bias_label ?? undefined,
-            fetchedAt: new Date(row.fetched_at),
-            cacheExpiresAt: new Date(row.cache_expires_at ?? Date.now()),
-        };
+        return rowToExternalContent(rawRow as ExternalContentRow);
     },
     {
         schema: GetContentByIdSchema,

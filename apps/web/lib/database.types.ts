@@ -1647,6 +1647,7 @@ export type Database = {
           entities: Json | null
           external_id: string
           fetched_at: string | null
+          fts: unknown
           id: string
           image_url: string | null
           journal: string | null
@@ -1672,6 +1673,7 @@ export type Database = {
           entities?: Json | null
           external_id: string
           fetched_at?: string | null
+          fts?: unknown
           id?: string
           image_url?: string | null
           journal?: string | null
@@ -1697,6 +1699,7 @@ export type Database = {
           entities?: Json | null
           external_id?: string
           fetched_at?: string | null
+          fts?: unknown
           id?: string
           image_url?: string | null
           journal?: string | null
