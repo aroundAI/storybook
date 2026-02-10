@@ -3193,7 +3193,7 @@ export type Database = {
           parent_immutable_events: Json
           parent_last_updated: string | null
           parent_project_id: string
-          parent_project_name: string
+          parent_project_name: string | null
           parent_resolved_threads: Json
           parent_summary: string
           parent_world_facts: Json
@@ -3209,7 +3209,7 @@ export type Database = {
           parent_immutable_events?: Json
           parent_last_updated?: string | null
           parent_project_id: string
-          parent_project_name?: string
+          parent_project_name?: string | null
           parent_resolved_threads?: Json
           parent_summary?: string
           parent_world_facts?: Json
@@ -3225,7 +3225,7 @@ export type Database = {
           parent_immutable_events?: Json
           parent_last_updated?: string | null
           parent_project_id?: string
-          parent_project_name?: string
+          parent_project_name?: string | null
           parent_resolved_threads?: Json
           parent_summary?: string
           parent_world_facts?: Json
@@ -3819,7 +3819,7 @@ export type Database = {
           source_metadata: Json | null
           source_publication_date: string | null
           source_title: string | null
-          source_type: string
+          source_type: Database["public"]["Enums"]["source_type_enum"]
           source_url: string | null
           subcategory: string | null
           tags: string[] | null
@@ -3827,7 +3827,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           verification_notes: string | null
-          verification_status: string
+          verification_status: Database["public"]["Enums"]["verification_status_enum"]
           verified_at: string | null
           verified_by: string | null
         }
@@ -3848,7 +3848,7 @@ export type Database = {
           source_metadata?: Json | null
           source_publication_date?: string | null
           source_title?: string | null
-          source_type: string
+          source_type: Database["public"]["Enums"]["source_type_enum"]
           source_url?: string | null
           subcategory?: string | null
           tags?: string[] | null
@@ -3856,7 +3856,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           verification_notes?: string | null
-          verification_status?: string
+          verification_status?: Database["public"]["Enums"]["verification_status_enum"]
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -3877,7 +3877,7 @@ export type Database = {
           source_metadata?: Json | null
           source_publication_date?: string | null
           source_title?: string | null
-          source_type?: string
+          source_type?: Database["public"]["Enums"]["source_type_enum"]
           source_url?: string | null
           subcategory?: string | null
           tags?: string[] | null
@@ -3885,7 +3885,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           verification_notes?: string | null
-          verification_status?: string
+          verification_status?: Database["public"]["Enums"]["verification_status_enum"]
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -4624,6 +4624,20 @@ export type Database = {
         | "project.settings.view"
         | "project.settings.edit"
       project_role: "owner" | "admin" | "member" | "viewer"
+      source_type_enum:
+        | "research_paper"
+        | "book"
+        | "news_article"
+        | "official_document"
+        | "documentary"
+        | "expert_interview"
+        | "dataset"
+        | "website"
+        | "encyclopedia"
+        | "court_document"
+        | "historical_record"
+        | "textbook"
+        | "other"
       subscription_item_type: "flat" | "per_seat" | "metered"
       subscription_status:
         | "active"
@@ -4634,6 +4648,12 @@ export type Database = {
         | "incomplete"
         | "incomplete_expired"
         | "paused"
+      verification_status_enum:
+        | "unverified"
+        | "pending_review"
+        | "verified"
+        | "disputed"
+        | "retracted"
     }
     CompositeTypes: {
       invitation: {
@@ -4804,6 +4824,21 @@ export const Constants = {
         "project.settings.edit",
       ],
       project_role: ["owner", "admin", "member", "viewer"],
+      source_type_enum: [
+        "research_paper",
+        "book",
+        "news_article",
+        "official_document",
+        "documentary",
+        "expert_interview",
+        "dataset",
+        "website",
+        "encyclopedia",
+        "court_document",
+        "historical_record",
+        "textbook",
+        "other",
+      ],
       subscription_item_type: ["flat", "per_seat", "metered"],
       subscription_status: [
         "active",
@@ -4814,6 +4849,13 @@ export const Constants = {
         "incomplete",
         "incomplete_expired",
         "paused",
+      ],
+      verification_status_enum: [
+        "unverified",
+        "pending_review",
+        "verified",
+        "disputed",
+        "retracted",
       ],
     },
   },
