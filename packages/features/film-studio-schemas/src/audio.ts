@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
-import { URLSchema, UUIDSchema } from './common';
-import { GenerationStatusSchema } from './video';
+import { GenerationStatusSchema, URLSchema, UUIDSchema } from './common';
 
 // Audio Provider
 export const AudioProviderSchema = z.enum(['elevenlabs', 'suno']);

@@ -379,34 +379,3 @@ export const getProjectIntrosAction = enhanceAction(
   },
 );
 
-// ============================================================================
-// Get Intro for Language (Internal helper for rendering)
-// ============================================================================
-
-/**
- * Get the active intro for a specific project and language
- * Used internally by the render-video-action
- */
-export async function getIntroForLanguage(
-  projectId: string,
-  language: string,
-): Promise<{ videoUrl: string; durationSeconds: number } | null> {
-  const client = getSupabaseServerClient();
-
-  const { data: intro } = await client
-    .from('project_intros')
-    .select('video_url, duration_seconds')
-    .eq('project_id', projectId)
-    .eq('language', language)
-    .eq('is_active', true)
-    .single();
-
-  if (!intro) {
-    return null;
-  }
-
-  return {
-    videoUrl: intro.video_url,
-    durationSeconds: Number(intro.duration_seconds),
-  };
-}

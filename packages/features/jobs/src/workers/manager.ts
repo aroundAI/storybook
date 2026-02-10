@@ -42,22 +42,6 @@ async function getProcessor<T extends QueueName>(
     queueName: T,
 ): Promise<WorkerProcessor<T> | null> {
     switch (queueName) {
-        case QueueName.VIDEO_GENERATION:
-            // Placeholder - will integrate with actual video generation
-            return async (job) => {
-                console.log(`[Worker] Processing video generation: ${job.id}`);
-                // const { generateVideoForShot } = await import('@kit/video-generation/server');
-                // return generateVideoForShot(job.data);
-                return { videoUrl: '', duration: 0 } as JobResult[T];
-            };
-
-        case QueueName.AUDIO_GENERATION:
-            // Placeholder - will integrate with actual audio generation
-            return async (job) => {
-                console.log(`[Worker] Processing audio generation: ${job.id}`);
-                return { audioUrl: '', duration: 0 } as JobResult[T];
-            };
-
         case QueueName.ANALYTICS_SYNC:
             return async (job) => {
                 console.log(`[Worker] Processing analytics sync: ${job.id}`);
@@ -72,12 +56,6 @@ async function getProcessor<T extends QueueName>(
                     likes: 0,
                     synced: result.success,
                 } as JobResult[T];
-            };
-
-        case QueueName.IMAGE_PROCESSING:
-            return async (job) => {
-                console.log(`[Worker] Processing image: ${job.id}`);
-                return { outputUrl: '', size: 0 } as JobResult[T];
             };
 
         default:

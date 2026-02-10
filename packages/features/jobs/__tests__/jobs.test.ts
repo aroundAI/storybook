@@ -52,10 +52,7 @@ describe('Queue Definitions', () => {
 
     it('should export QueueName constants', async () => {
         const { QueueName } = await import('../src/queues/definitions');
-        expect(QueueName.VIDEO_GENERATION).toBe('video-generation');
-        expect(QueueName.AUDIO_GENERATION).toBe('audio-generation');
         expect(QueueName.ANALYTICS_SYNC).toBe('analytics-sync');
-        expect(QueueName.IMAGE_PROCESSING).toBe('image-processing');
     });
 });
 

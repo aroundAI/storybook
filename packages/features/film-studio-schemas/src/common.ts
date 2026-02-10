@@ -17,8 +17,18 @@ export const SortOrderSchema = z.enum(['asc', 'desc']);
 
 export const MetadataSchema = z.record(z.unknown());
 
+export const GenerationStatusSchema = z.enum([
+  'pending',
+  'queued',
+  'processing',
+  'completed',
+  'failed',
+  'cancelled',
+]);
+
 // Type exports
 export type UUID = z.infer<typeof UUIDSchema>;
 export type Pagination = z.infer<typeof PaginationSchema>;
 export type SortOrder = z.infer<typeof SortOrderSchema>;
 export type Metadata = z.infer<typeof MetadataSchema>;
+export type GenerationStatus = z.infer<typeof GenerationStatusSchema>;

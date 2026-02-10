@@ -14,10 +14,7 @@ import { getRedisConnection } from './connection';
  * Available queue names
  */
 export const QueueName = {
-    VIDEO_GENERATION: 'video-generation',
-    AUDIO_GENERATION: 'audio-generation',
     ANALYTICS_SYNC: 'analytics-sync',
-    IMAGE_PROCESSING: 'image-processing',
 } as const;
 
 export type QueueName = (typeof QueueName)[keyof typeof QueueName];
@@ -26,27 +23,9 @@ export type QueueName = (typeof QueueName)[keyof typeof QueueName];
  * Job data types for each queue
  */
 export interface JobData {
-    'video-generation': {
-        shotId: string;
-        episodeId: string;
-        prompt: string;
-        provider: 'runway' | 'flux' | 'kling';
-    };
-    'audio-generation': {
-        sceneId: string;
-        episodeId: string;
-        type: 'voice' | 'music' | 'sfx';
-        text?: string;
-        voiceId?: string;
-    };
     'analytics-sync': {
         publishId: string;
         platform: 'youtube' | 'tiktok' | 'instagram';
-    };
-    'image-processing': {
-        assetId: string;
-        operation: 'resize' | 'thumbnail' | 'optimize';
-        options: Record<string, unknown>;
     };
 }
 
@@ -54,22 +33,10 @@ export interface JobData {
  * Job result types
  */
 export interface JobResult {
-    'video-generation': {
-        videoUrl: string;
-        duration: number;
-    };
-    'audio-generation': {
-        audioUrl: string;
-        duration: number;
-    };
     'analytics-sync': {
         views: number;
         likes: number;
         synced: boolean;
-    };
-    'image-processing': {
-        outputUrl: string;
-        size: number;
     };
 }
 
