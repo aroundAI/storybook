@@ -32,7 +32,8 @@ export interface ResearchResult {
     needsSourceCount: number;
 }
 
-
+// Valid values for runtime validation
+const VALID_PRIORITIES = new Set(['critical', 'important', 'nice_to_have']);
 
 // LLM response shape
 interface ResearchLLMResponse {
@@ -129,7 +130,6 @@ export async function runResearchPhase(
         const finalConfidence = isValidMatch ? 'verified' : 'needs_source';
 
         // Runtime-validate priority from LLM
-        const VALID_PRIORITIES = new Set(['critical', 'important', 'nice_to_have']);
         const priority = VALID_PRIORITIES.has(c.priority)
             ? (c.priority as ResearchClaim['priority'])
             : 'important';
