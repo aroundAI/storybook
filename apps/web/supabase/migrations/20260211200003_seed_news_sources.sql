@@ -16,7 +16,7 @@ INSERT INTO external_sources (
 
   ('Agence France-Presse', 'afp', 'French news agency', 'https://afp.com',
    'news', 'newsapi', 'tier_1', 'center', 100, 6,
-   '{"source_id": "afp", "api_key_env": "NEWSAPI_KEY"}'::jsonb),
+   '{"source_id": "agence-france-presse", "api_key_env": "NEWSAPI_KEY"}'::jsonb),
 
   -- Tier 2: Major outlets (with political bias labels from Ad Fontes / AllSides)
   ('BBC News', 'bbc-news', 'British Broadcasting Corporation', 'https://bbc.com/news',

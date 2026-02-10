@@ -44,20 +44,20 @@ export const BIAS_LABEL_DESCRIPTIONS: Record<BiasLabel, string> = {
 export function getBalancedSources<T extends { biasLabel?: string }>(
     items: T[],
 ): { left: T[]; center: T[]; right: T[] } {
-    return {
-        left: items.filter(
-            (s) =>
-                s.biasLabel === 'left' || s.biasLabel === 'center_left',
-        ),
-        center: items.filter(
-            (s) =>
-                s.biasLabel === 'center' ||
-                s.biasLabel === 'unknown' ||
-                !s.biasLabel,
-        ),
-        right: items.filter(
-            (s) =>
-                s.biasLabel === 'right' || s.biasLabel === 'center_right',
-        ),
-    };
+    return items.reduce<{ left: T[]; center: T[]; right: T[] }>(
+        (acc, item) => {
+            const bias = item.biasLabel;
+
+            if (bias === 'left' || bias === 'center_left') {
+                acc.left.push(item);
+            } else if (bias === 'right' || bias === 'center_right') {
+                acc.right.push(item);
+            } else {
+                acc.center.push(item);
+            }
+
+            return acc;
+        },
+        { left: [], center: [], right: [] },
+    );
 }

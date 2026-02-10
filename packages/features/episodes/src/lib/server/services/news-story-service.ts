@@ -138,6 +138,12 @@ export class NewsStoryService {
     /** Max articles to run entity extraction on (controls LLM cost) */
     private static readonly MAX_ARTICLES_TO_EXTRACT = 30;
 
+    /** Max articles per perspective bucket in balanced output */
+    private static readonly MAX_ARTICLES_PER_PERSPECTIVE = 2;
+
+    /** Max headlines to feed into the topic summarization prompt */
+    private static readonly MAX_HEADLINES_FOR_SUMMARY = 10;
+
     /**
      * Cluster articles by entity overlap.
      *
@@ -217,7 +223,9 @@ export class NewsStoryService {
                 .map((o) => o.name)
                 .join(',') ?? '';
 
-        return `${people}|${orgs}`.toLowerCase() || 'general';
+        return people || orgs
+            ? `${people}|${orgs}`.toLowerCase()
+            : 'general';
     }
 
     /**
@@ -229,9 +237,18 @@ export class NewsStoryService {
         return {
             ...cluster,
             perspectives: {
-                left: perspectives.left.slice(0, 2),
-                center: perspectives.center.slice(0, 2),
-                right: perspectives.right.slice(0, 2),
+                left: perspectives.left.slice(
+                    0,
+                    NewsStoryService.MAX_ARTICLES_PER_PERSPECTIVE,
+                ),
+                center: perspectives.center.slice(
+                    0,
+                    NewsStoryService.MAX_ARTICLES_PER_PERSPECTIVE,
+                ),
+                right: perspectives.right.slice(
+                    0,
+                    NewsStoryService.MAX_ARTICLES_PER_PERSPECTIVE,
+                ),
             },
         };
     }
@@ -248,7 +265,7 @@ export class NewsStoryService {
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
             const headlines = articles
-                .slice(0, 10)
+                .slice(0, NewsStoryService.MAX_HEADLINES_FOR_SUMMARY)
                 .map((a) => a.title)
                 .join('\n');
 
