@@ -13,6 +13,7 @@ import type {
     SourceCategory,
 } from '../../../types/external-context';
 import { createEmptyEntities } from '../../../types/external-context';
+import { createHash } from 'node:crypto';
 
 interface NewsAPIArticle {
     source: { id: string | null; name: string };
@@ -107,6 +108,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
     }
 
     private generateExternalId(url: string): string {
-        return `newsapi:${Buffer.from(url).toString('base64url').slice(0, 64)}`;
+        const hash = createHash('sha256').update(url).digest('hex');
+        return `newsapi:${hash}`;
     }
 }
