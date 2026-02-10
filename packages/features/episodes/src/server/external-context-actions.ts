@@ -93,8 +93,7 @@ export const listExternalSourcesAction = enhanceAction(
         const activeOnly = data.activeOnly ?? true;
 
         // NOTE: external_sources table is FILM-1135 — types will be generated after migration.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let query = (supabase as any)
+        let query = supabase
             .from('external_sources')
             .select('*')
             .order('category')
@@ -171,8 +170,7 @@ export const getExternalContentByIdAction = enhanceAction(
         const supabase = getSupabaseServerClient();
 
         // NOTE: external_content table is FILM-1135 — types will be generated after migration.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: rawRow, error } = await (supabase as any)
+        const { data: rawRow, error } = await supabase
             .from('external_content')
             .select('*')
             .eq('id', data.contentId)

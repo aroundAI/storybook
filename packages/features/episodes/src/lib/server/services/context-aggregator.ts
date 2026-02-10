@@ -7,6 +7,9 @@
  */
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import type { Database } from '@kit/supabase/database';
+
+type Json = Database['public']['Tables']['external_content']['Insert']['entities'];
 
 import type {
     ExternalContextProvider,
@@ -39,8 +42,7 @@ export class ExternalContextAggregator {
         const supabase = getSupabaseServerClient();
 
         // NOTE: external_sources table is FILM-1135 — types will be generated after migration.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: sources, error } = await (supabase as any)
+        const { data: sources, error } = await supabase
             .from('external_sources')
             .select('*')
             .eq('is_active', true);
@@ -167,8 +169,7 @@ export class ExternalContextAggregator {
         const supabase = getSupabaseServerClient();
 
         // NOTE: external_content table is FILM-1135 — types will be generated after migration.
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let query = (supabase as any)
+        let query = supabase
             .from('external_content')
             .select('*')
             .in('category', categories)
@@ -224,9 +225,9 @@ export class ExternalContextAggregator {
             authors: c.authors,
             published_at: c.publishedAt.toISOString(),
             language: c.language,
-            category: c.category,
+            category: c.category as string,
             topics: c.topics,
-            entities: c.entities as unknown as Record<string, unknown>,
+            entities: JSON.parse(JSON.stringify(c.entities)) as Json,
             doi: c.doi ?? null,
             journal: c.journal ?? null,
             citations: c.citations ?? null,
@@ -238,8 +239,7 @@ export class ExternalContextAggregator {
             cache_expires_at: c.cacheExpiresAt.toISOString(),
         }));
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data, error } = await (supabase as any)
+        const { data, error } = await supabase
             .from('external_content')
             .upsert(rows, { onConflict: 'external_id' })
             .select('id');

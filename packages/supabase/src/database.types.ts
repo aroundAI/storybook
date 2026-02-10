@@ -1633,6 +1633,164 @@ export type Database = {
           },
         ]
       }
+      external_content: {
+        Row: {
+          authors: string[] | null
+          bias_label: string | null
+          cache_expires_at: string | null
+          category: string
+          citations: number | null
+          content: string | null
+          credibility_tier: string | null
+          description: string | null
+          doi: string | null
+          entities: Json | null
+          external_id: string
+          fetched_at: string | null
+          id: string
+          image_url: string | null
+          journal: string | null
+          language: string | null
+          peer_reviewed: boolean | null
+          published_at: string | null
+          source_id: string
+          title: string
+          topics: string[] | null
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          authors?: string[] | null
+          bias_label?: string | null
+          cache_expires_at?: string | null
+          category: string
+          citations?: number | null
+          content?: string | null
+          credibility_tier?: string | null
+          description?: string | null
+          doi?: string | null
+          entities?: Json | null
+          external_id: string
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          journal?: string | null
+          language?: string | null
+          peer_reviewed?: boolean | null
+          published_at?: string | null
+          source_id: string
+          title: string
+          topics?: string[] | null
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          authors?: string[] | null
+          bias_label?: string | null
+          cache_expires_at?: string | null
+          category?: string
+          citations?: number | null
+          content?: string | null
+          credibility_tier?: string | null
+          description?: string | null
+          doi?: string | null
+          entities?: Json | null
+          external_id?: string
+          fetched_at?: string | null
+          id?: string
+          image_url?: string | null
+          journal?: string | null
+          language?: string | null
+          peer_reviewed?: boolean | null
+          published_at?: string | null
+          source_id?: string
+          title?: string
+          topics?: string[] | null
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_content_source_id_fkey"
+            columns: ["source_id"]
+            isOneToOne: false
+            referencedRelation: "external_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      external_sources: {
+        Row: {
+          api_endpoint: string | null
+          api_key_env: string | null
+          bias_label: string | null
+          cache_ttl_hours: number | null
+          category: string
+          config: Json | null
+          created_at: string | null
+          credibility_tier: string | null
+          current_usage: number | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          name: string
+          peer_reviewed: boolean | null
+          provider_type: string
+          rate_limit_per_hour: number | null
+          slug: string
+          updated_at: string | null
+          usage_reset_at: string | null
+          website_url: string | null
+        }
+        Insert: {
+          api_endpoint?: string | null
+          api_key_env?: string | null
+          bias_label?: string | null
+          cache_ttl_hours?: number | null
+          category: string
+          config?: Json | null
+          created_at?: string | null
+          credibility_tier?: string | null
+          current_usage?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name: string
+          peer_reviewed?: boolean | null
+          provider_type: string
+          rate_limit_per_hour?: number | null
+          slug: string
+          updated_at?: string | null
+          usage_reset_at?: string | null
+          website_url?: string | null
+        }
+        Update: {
+          api_endpoint?: string | null
+          api_key_env?: string | null
+          bias_label?: string | null
+          cache_ttl_hours?: number | null
+          category?: string
+          config?: Json | null
+          created_at?: string | null
+          credibility_tier?: string | null
+          current_usage?: number | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          name?: string
+          peer_reviewed?: boolean | null
+          provider_type?: string
+          rate_limit_per_hour?: number | null
+          slug?: string
+          updated_at?: string | null
+          usage_reset_at?: string | null
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       generation_jobs: {
         Row: {
           account_id: string
