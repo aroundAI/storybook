@@ -135,15 +135,15 @@ export class NewsStoryService {
 
     // ─── Private Helpers ─────────────────────────────────────────────────────
 
+    /** Max articles to run entity extraction on (controls LLM cost) */
+    private static readonly MAX_ARTICLES_TO_EXTRACT = 30;
+
     /**
      * Cluster articles by entity overlap.
      *
      * Strategy: extract entities, then group by primary person + organization.
      * Simple but effective for news clustering.
      */
-    /** Max articles to run entity extraction on (controls LLM cost) */
-    private static readonly MAX_ARTICLES_TO_EXTRACT = 30;
-
     private async clusterByStory(
         articles: ExternalContent[],
         accountId: string,
