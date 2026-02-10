@@ -14,6 +14,9 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * Used by researcher and fact-checker to:
  * 1. Get account_id for LLM context logging
  * 2. Get user ID for audit logging
+ *
+ * @returns The returned `supabase` client uses the request-scoped auth context
+ *          (i.e. the current user's session). It is NOT a service-role client.
  */
 export async function getProjectContext(projectId: string) {
     const supabase = getSupabaseServerClient();

@@ -78,12 +78,16 @@ export async function runResearchPhase(
 
     // Fetch verified facts for this project
     // Limit to 1000 as a safeguard. If hit, the LLM may miss valid facts.
-    const { data: rawFacts } = await supabase
+    const { data: rawFacts, error: factsError } = await supabase
         .from('verified_facts')
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
         .eq('verification_status', 'verified')
         .limit(1000);
+
+    if (factsError) {
+        console.warn(`[researcher] verified_facts query failed for project ${projectId}:`, factsError.message);
+    }
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 
