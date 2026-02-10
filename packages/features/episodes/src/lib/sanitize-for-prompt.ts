@@ -16,7 +16,7 @@ export function sanitizeForPrompt(input: string): string {
         .replace(/\{\{/g, '{ {')
         .replace(/\}\}/g, '} }')
         .replace(
-            /\b(?:IGNORE (?:ALL )?(?:PREVIOUS|ABOVE)|SYSTEM OVERRIDE)\b/gi,
+            /\bIGNORE\s+(?:ALL\s+)?(?:PREVIOUS|ABOVE)\b|\bSYSTEM\s+OVERRIDE\b/gi,
             '[FILTERED]',
         );
 
