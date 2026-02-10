@@ -6,6 +6,8 @@
  * (news, research papers, historical archives, etc.)
  */
 
+import type { Database } from '@kit/supabase/database';
+
 // =============================================================================
 // SOURCE CATEGORY
 // =============================================================================
@@ -165,8 +167,6 @@ export interface AggregatorSearchResult {
 // =============================================================================
 // DATABASE ROW TYPES (derived from generated Supabase types)
 // =============================================================================
-
-import type { Database } from '@kit/supabase/database';
 
 /** Row shape from external_sources table — auto-derived from generated types. */
 export type ExternalSourceRow =

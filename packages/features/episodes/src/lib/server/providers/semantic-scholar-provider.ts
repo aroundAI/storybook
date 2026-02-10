@@ -11,8 +11,10 @@ import type {
     ExternalSearchParams,
     ExternalContent,
     SourceCategory,
+    CredibilityTier,
 } from '../../../types/external-context';
 import { createEmptyEntities } from '../../../types/external-context';
+import { randomUUID } from 'node:crypto';
 
 interface SemanticScholarAuthor {
     authorId: string;
@@ -46,8 +48,8 @@ export class SemanticScholarProvider extends BaseExternalProvider {
     readonly category: SourceCategory = 'research';
     readonly sourceId: string;
 
-    constructor(sourceId: string) {
-        super();
+    constructor(sourceId: string, credibilityTier: CredibilityTier = 'tier_1') {
+        super(credibilityTier);
         this.sourceId = sourceId;
         this.cacheTTLHours = 168; // 7 days — research papers rarely change
     }
@@ -65,6 +67,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
             url.searchParams.set('offset', String((params.page - 1) * (params.pageSize ?? 20)));
         }
 
+        // AbortSignal.timeout requires Node 17.3+ / modern Edge runtimes
         const response = await fetch(url.toString(), {
             headers: { Accept: 'application/json' },
             signal: AbortSignal.timeout(10_000),
@@ -74,7 +77,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
             if (response.status === 429) {
                 this.updateRateLimit(0, new Date(Date.now() + 300000)); // 5 min cooldown
             }
-            throw new Error(`Semantic Scholar error: ${response.status} ${response.statusText}`);
+            throw new Error(`Semantic Scholar error: ${response.status}${response.statusText ? ' ' + response.statusText : ''}`);
         }
 
         const data = (await response.json()) as SemanticScholarResponse;
@@ -82,7 +85,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
         const now = new Date();
 
         return (data.data ?? []).map((paper) => ({
-            id: '',
+            id: randomUUID(), // Temporary client-side ID; replaced by DB on upsert
             externalId: `ss:${paper.paperId}`,
             sourceId: this.sourceId,
             title: paper.title,
@@ -98,8 +101,10 @@ export class SemanticScholarProvider extends BaseExternalProvider {
             doi: paper.externalIds?.DOI,
             journal: paper.venue ?? undefined,
             citations: paper.citationCount ?? undefined,
+            // Note: Not all Semantic Scholar results are peer-reviewed (e.g. ArXiv preprints).
+            // Defaulting to true is a V1 simplification; refine with venue-based heuristics later.
             peerReviewed: true,
-            credibilityTier: 'tier_1',
+            credibilityTier: this.credibilityTier,
             fetchedAt: now,
             cacheExpiresAt: cacheExpiry,
         }));

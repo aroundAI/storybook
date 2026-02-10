@@ -12,6 +12,7 @@ import type {
     ExternalContent,
     RateLimitStatus,
     SourceCategory,
+    CredibilityTier,
 } from '../../../types/external-context';
 
 export abstract class BaseExternalProvider implements ExternalContextProvider {
@@ -19,9 +20,16 @@ export abstract class BaseExternalProvider implements ExternalContextProvider {
     abstract readonly category: SourceCategory;
     abstract readonly sourceId: string;
 
+    /** Credibility tier — configurable from source row, defaults to tier_3. */
+    readonly credibilityTier: CredibilityTier;
+
     protected rateLimitRemaining = 100;
     protected rateLimitResetAt = new Date();
     protected cacheTTLHours = 24;
+
+    constructor(credibilityTier: CredibilityTier = 'tier_3') {
+        this.credibilityTier = credibilityTier;
+    }
 
     abstract fetchContent(params: ExternalSearchParams): Promise<ExternalContent[]>;
 
@@ -46,6 +54,12 @@ export abstract class BaseExternalProvider implements ExternalContextProvider {
         if (resetAt) {
             this.rateLimitResetAt = resetAt;
         }
+    }
+
+    /** Reset rate-limit counters (called on aggregator re-init for Lambda warm-start safety). */
+    resetRateLimit(): void {
+        this.rateLimitRemaining = 100;
+        this.rateLimitResetAt = new Date();
     }
 
     /** Calculate cache expiry from now based on provider TTL */

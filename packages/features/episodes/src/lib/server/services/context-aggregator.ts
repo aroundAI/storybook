@@ -26,6 +26,7 @@ import { createEmptyEntities } from '../../../types/external-context';
 import { NewsAPIProvider } from '../providers/newsapi-provider';
 import { SemanticScholarProvider } from '../providers/semantic-scholar-provider';
 import { ArchiveOrgProvider } from '../providers/archive-org-provider';
+import type { BaseExternalProvider } from '../providers/base-provider';
 
 // =============================================================================
 // ROW MAPPER (shared — also re-exported for use in server actions)
@@ -94,7 +95,11 @@ export class ExternalContextAggregator {
             return;
         }
 
-        // Clear previous state for re-init
+        // Clear previous state for re-init (including stale rate-limit counters
+        // that may persist across Lambda warm invocations).
+        for (const provider of this.providers.values()) {
+            (provider as BaseExternalProvider).resetRateLimit?.();
+        }
         this.providers.clear();
         this.providersByCategory.clear();
 
@@ -193,13 +198,15 @@ export class ExternalContextAggregator {
     // ---------------------------------------------------------------------------
 
     private createProvider(source: ExternalSourceRow): ExternalContextProvider | null {
+        const tier = (source.credibility_tier ?? 'tier_3') as CredibilityTier;
+
         switch (source.provider_type) {
             case 'newsapi':
-                return new NewsAPIProvider(source.id);
+                return new NewsAPIProvider(source.id, tier);
             case 'semantic_scholar':
-                return new SemanticScholarProvider(source.id);
+                return new SemanticScholarProvider(source.id, tier);
             case 'archive_org':
-                return new ArchiveOrgProvider(source.id);
+                return new ArchiveOrgProvider(source.id, tier);
             default:
                 console.warn(`[context-aggregator] Unknown provider_type: ${source.provider_type}`);
                 return null;
@@ -289,7 +296,10 @@ export class ExternalContextAggregator {
             language: c.language,
             category: c.category,
             topics: c.topics,
-            entities: JSON.parse(JSON.stringify(c.entities)) as Json,
+            entities: {
+                ...c.entities,
+                extractedAt: c.entities.extractedAt.toISOString(),
+            } as unknown as Json,
             doi: c.doi ?? null,
             journal: c.journal ?? null,
             citations: c.citations ?? null,

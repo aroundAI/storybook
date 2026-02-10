@@ -11,9 +11,10 @@ import type {
     ExternalSearchParams,
     ExternalContent,
     SourceCategory,
+    CredibilityTier,
 } from '../../../types/external-context';
 import { createEmptyEntities } from '../../../types/external-context';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 
 interface NewsAPIArticle {
     source: { id: string | null; name: string };
@@ -39,8 +40,8 @@ export class NewsAPIProvider extends BaseExternalProvider {
 
     private apiKey: string | null;
 
-    constructor(sourceId: string) {
-        super();
+    constructor(sourceId: string, credibilityTier: CredibilityTier = 'tier_2') {
+        super(credibilityTier);
         this.sourceId = sourceId;
         this.apiKey = process.env.NEWSAPI_KEY ?? null;
         this.cacheTTLHours = 6; // News expires faster
@@ -70,6 +71,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
             url.searchParams.set('language', params.language);
         }
 
+        // AbortSignal.timeout requires Node 17.3+ / modern Edge runtimes
         const response = await fetch(url.toString(), {
             headers: { 'X-Api-Key': this.apiKey },
             signal: AbortSignal.timeout(10_000),
@@ -79,7 +81,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
             if (response.status === 429) {
                 this.updateRateLimit(0, new Date(Date.now() + 3600000));
             }
-            throw new Error(`NewsAPI error: ${response.status} ${response.statusText}`);
+            throw new Error(`NewsAPI error: ${response.status}${response.statusText ? ' ' + response.statusText : ''}`);
         }
 
         const data = (await response.json()) as NewsAPIResponse;
@@ -87,7 +89,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
         const now = new Date();
 
         return data.articles.map((article) => ({
-            id: '', // Set by cache manager on insert
+            id: randomUUID(), // Temporary client-side ID; replaced by DB on upsert
             externalId: this.generateExternalId(article.url),
             sourceId: this.sourceId,
             title: article.title,
@@ -101,7 +103,7 @@ export class NewsAPIProvider extends BaseExternalProvider {
             topics: [],
             entities: createEmptyEntities(),
             imageUrl: article.urlToImage ?? undefined,
-            credibilityTier: 'tier_2',
+            credibilityTier: this.credibilityTier,
             fetchedAt: now,
             cacheExpiresAt: cacheExpiry,
         }));

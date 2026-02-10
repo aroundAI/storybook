@@ -11,8 +11,10 @@ import type {
     ExternalSearchParams,
     ExternalContent,
     SourceCategory,
+    CredibilityTier,
 } from '../../../types/external-context';
 import { createEmptyEntities } from '../../../types/external-context';
+import { randomUUID } from 'node:crypto';
 
 interface ArchiveOrgDoc {
     identifier: string;
@@ -36,8 +38,8 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
     readonly category: SourceCategory = 'historical';
     readonly sourceId: string;
 
-    constructor(sourceId: string) {
-        super();
+    constructor(sourceId: string, credibilityTier: CredibilityTier = 'tier_2') {
+        super(credibilityTier);
         this.sourceId = sourceId;
         this.cacheTTLHours = 720; // 30 days — historical content doesn't change
     }
@@ -56,12 +58,13 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
             url.searchParams.set('page', String(params.page));
         }
 
+        // AbortSignal.timeout requires Node 17.3+ / modern Edge runtimes
         const response = await fetch(url.toString(), {
             signal: AbortSignal.timeout(10_000),
         });
 
         if (!response.ok) {
-            throw new Error(`Archive.org error: ${response.status} ${response.statusText}`);
+            throw new Error(`Archive.org error: ${response.status}${response.statusText ? ' ' + response.statusText : ''}`);
         }
 
         const data = (await response.json()) as ArchiveOrgResponse;
@@ -69,7 +72,7 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
         const now = new Date();
 
         return (data.response?.docs ?? []).map((doc) => ({
-            id: '',
+            id: randomUUID(), // Temporary client-side ID; replaced by DB on upsert
             externalId: `archive:${doc.identifier}`,
             sourceId: this.sourceId,
             title: doc.title,
@@ -82,7 +85,7 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
             category: 'historical',
             topics: [],
             entities: createEmptyEntities(),
-            credibilityTier: 'tier_2',
+            credibilityTier: this.credibilityTier,
             fetchedAt: now,
             cacheExpiresAt: cacheExpiry,
         }));
