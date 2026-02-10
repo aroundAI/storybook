@@ -12,3 +12,4 @@ export * from './export-utils';
 
 // Canon Management System (Phase 10)
 export * from './canon';
+export * from '../types/external-context';

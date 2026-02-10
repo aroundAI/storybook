@@ -1,10 +1,12 @@
 ---
 id: FILM-1135
 title: External Context Provider Interface
-status: draft
+status: done
 priority: high
 effort: L
 dependencies: []
+branch: feature/FILM-1135-external-context-provider
+commits: 8
 ---
 
 # FILM-1135: External Context Provider Interface
@@ -842,18 +844,18 @@ export function getExternalContentRequirements(contentType: ContentType): {
 
 ## Acceptance Criteria
 
-- [ ] `ExternalContextProvider` interface defined with all methods
-- [ ] `ExternalContent` unified data model created
-- [ ] `external_sources` table replaces `news_sources`
-- [ ] `external_content` table replaces `news_articles`
-- [ ] `NewsAPIProvider` implements interface
-- [ ] `SemanticScholarProvider` implements interface
-- [ ] `ArchiveOrgProvider` implements interface
-- [ ] `ExternalContextAggregator` routes to correct providers
-- [ ] Cache TTL varies by content type
-- [ ] Content types correctly map to provider categories
-- [ ] RLS policies protect data access
-- [ ] Full-text search works on cached content
+- [x] `ExternalContextProvider` interface defined with all methods — `types/external-context.ts`
+- [x] `ExternalContent` unified data model created — `types/external-context.ts`
+- [x] `external_sources` table created — migration `20260211200000`
+- [x] `external_content` table created — migration `20260211200000`
+- [x] `NewsAPIProvider` implements interface — `providers/newsapi-provider.ts`
+- [x] `SemanticScholarProvider` implements interface — `providers/semantic-scholar-provider.ts`
+- [x] `ArchiveOrgProvider` implements interface — `providers/archive-org-provider.ts`
+- [x] `ExternalContextAggregator` routes to correct providers — `services/context-aggregator.ts`
+- [x] Cache TTL varies by content type (6h news, 168h research, 720h historical)
+- [x] Content types correctly map to provider categories
+- [x] RLS policies protect data access — authenticated read, admin write for cache
+- [x] Full-text search works on cached content — generated `fts` tsvector + GIN index (migration `20260211200001`)
 
 ---
 
