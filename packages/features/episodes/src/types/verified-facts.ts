@@ -11,10 +11,10 @@
 // =============================================================================
 
 export type SourceType =
-    | 'academic_paper'
+    | 'research_paper'
     | 'book'
     | 'news_article'
-    | 'government_report'
+    | 'official_document'
     | 'documentary'
     | 'expert_interview'
     | 'dataset'
@@ -23,8 +23,6 @@ export type SourceType =
     | 'court_document'
     | 'historical_record'
     | 'textbook'
-    | 'research_paper'
-    | 'official_document'
     | 'other';
 
 export type VerificationStatus =

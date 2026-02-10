@@ -28,10 +28,10 @@ CREATE TABLE verified_facts (
 
   -- Source information
   source_type VARCHAR(50) CHECK (source_type IN (
-    'academic_paper',
+    'research_paper',
     'book',
     'news_article',
-    'government_report',
+    'official_document',
     'documentary',
     'expert_interview',
     'dataset',
@@ -40,8 +40,6 @@ CREATE TABLE verified_facts (
     'court_document',
     'historical_record',
     'textbook',
-    'research_paper',
-    'official_document',
     'other'
   )),
 

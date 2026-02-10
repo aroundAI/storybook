@@ -84,6 +84,17 @@ export async function runResearchPhase(
     const { executeLLM } = await import('@kit/prompt-engine/server');
     const supabase = getSupabaseServerClient();
 
+    // Fetch project to get account_id for LLM context logging
+    const { data: project } = await supabase
+        .from('projects')
+        .select('account_id')
+        .eq('id', projectId)
+        .single();
+
+    if (!project) {
+        throw new Error(`Project not found: ${projectId}`);
+    }
+
     // Fetch verified facts for this project
     // verified_facts table added by migration 20260211100000 — not in generated types yet
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +127,7 @@ export async function runResearchPhase(
             existing_facts: sanitizeForPrompt(existingFactsText),
             target_claims: sanitizeForPrompt(targetClaims?.join('\n') ?? ''),
         },
-        context: { name: 'researcher-role', accountId: '', userId: '' },
+        context: { name: 'researcher-role', accountId: project.account_id, userId: '' },
         supabaseClient: supabase,
     });
 
