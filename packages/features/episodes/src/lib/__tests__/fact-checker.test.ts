@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { shouldBlockContent } from '../documentary/fact-checker';
-import type { FactCheckResult } from '../documentary/fact-checker';
+import { shouldBlockContent } from '../documentary/fact-checker-shared';
+import type { FactCheckResult } from '../documentary/fact-checker-shared';
 
 function makeResult(
     overrides: Partial<FactCheckResult> = {},

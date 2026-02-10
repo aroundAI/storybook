@@ -5,40 +5,22 @@
  * LLM-powered fact-checking for documentary content.
  * Validates claims against verified facts, checks citations,
  * and determines whether content should be blocked.
+ *
+ * NOTE: This file imports server-only deps (Supabase, prompt-engine).
+ * Client-safe types and pure functions are in fact-checker-shared.ts.
  */
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 
-// =============================================================================
-// TYPES
-// =============================================================================
+// Re-export types and pure functions from client-safe shared module
+export type { FactCheckIssue, FactCheckResult } from './fact-checker-shared';
+export { shouldBlockContent } from './fact-checker-shared';
 
-export interface FactCheckIssue {
-    severity: 'critical' | 'warning' | 'minor' | 'info';
-    claimInContent: string;
-    issueType:
-    | 'inaccurate'
-    | 'unsourced'
-    | 'misrepresented'
-    | 'citation_error'
-    | 'missing_claim';
-    explanation: string;
-    verifiedFact?: string;
-    suggestion: string;
-}
-
-export interface FactCheckResult {
-    overallVerdict: 'pass' | 'fail' | 'warnings';
-    accuracyScore: number;
-    totalClaimsFound: number;
-    verifiedClaims: number;
-    issues: FactCheckIssue[];
-    missingRequiredClaims: string[];
-    citationsValid: boolean;
-    summary: string;
-}
+// Import types locally for use in this file
+import type { FactCheckResult } from './fact-checker-shared';
+import type { FactCheckIssue } from './fact-checker-shared';
 
 // Row shape returned from the verified_facts table
 interface VerifiedFactRow {
@@ -160,41 +142,4 @@ export async function runFactCheck(
         citationsValid: check.citations_valid,
         summary: check.summary,
     };
-}
-
-// =============================================================================
-// PURE FUNCTIONS
-// =============================================================================
-
-/**
- * Determine whether content should be blocked based on fact-check results.
- *
- * Blocks when:
- * - Any critical issues exist
- * - 3 or more warning-level issues
- * - Accuracy score below 0.8
- */
-export function shouldBlockContent(result: FactCheckResult): boolean {
-    const WARNING_THRESHOLD = 3;
-    const MINIMUM_ACCURACY_SCORE = 0.8;
-
-    // Block on any critical issues
-    if (result.issues.some((i) => i.severity === 'critical')) {
-        return true;
-    }
-
-    // Block if too many warnings
-    const warningCount = result.issues.filter(
-        (i) => i.severity === 'warning',
-    ).length;
-    if (warningCount >= WARNING_THRESHOLD) {
-        return true;
-    }
-
-    // Block if accuracy too low
-    if (result.accuracyScore < MINIMUM_ACCURACY_SCORE) {
-        return true;
-    }
-
-    return false;
 }
