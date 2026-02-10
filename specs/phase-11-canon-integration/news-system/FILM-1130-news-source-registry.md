@@ -1,7 +1,7 @@
 ---
 id: FILM-1130
 title: External Source Registry (News/Research)
-status: draft
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1135]
@@ -161,11 +161,11 @@ This spec only adds:
 
 ## Acceptance Criteria
 
-- [ ] Default news sources seeded into `external_sources`
-- [ ] Wire services (Reuters, AP, AFP) marked as tier_1
-- [ ] Major outlets marked as tier_2 with bias labels
-- [ ] `getBalancedSources()` returns balanced coverage
-- [ ] Types exported from @kit/episodes
+- [x] Default news sources seeded into `external_sources`
+- [x] Wire services (Reuters, AP, AFP) marked as tier_1
+- [x] Major outlets marked as tier_2 with bias labels
+- [x] `getBalancedSources()` returns balanced coverage
+- [x] Types exported from @kit/episodes
 
 ---
 

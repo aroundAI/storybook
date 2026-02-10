@@ -1,7 +1,7 @@
 ---
 id: FILM-1132
 title: News Aggregator Service
-status: draft
+status: done
 priority: high
 effort: L
 dependencies: [FILM-1135, FILM-1130, FILM-1131]
@@ -319,12 +319,12 @@ export const getNewsTopicContextAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] `NewsStoryService` created using `ExternalContextAggregator`
-- [ ] `discoverTopStories()` returns clustered stories
-- [ ] Stories include balanced perspectives (left, center, right)
-- [ ] Entity extraction merges across articles
-- [ ] Topic context includes summary
-- [ ] Server actions exported
+- [x] `NewsStoryService` created using `ExternalContextAggregator`
+- [x] `discoverTopStories()` returns clustered stories
+- [x] Stories include balanced perspectives (left, center, right)
+- [x] Entity extraction merges across articles
+- [x] Topic context includes summary
+- [x] Server actions exported
 
 ---
 

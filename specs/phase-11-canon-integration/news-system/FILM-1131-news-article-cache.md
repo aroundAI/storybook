@@ -1,7 +1,7 @@
 ---
 id: FILM-1131
 title: External Content Cache (News/Research)
-status: draft
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1135]
@@ -157,11 +157,11 @@ This spec adds:
 
 ## Acceptance Criteria
 
-- [ ] `CACHE_TTL_HOURS` configuration created
-- [ ] `getCacheExpiry()` returns correct expiry per category
-- [ ] `extractEntitiesFromArticle()` calls LLM
-- [ ] Entity extraction prompt created
-- [ ] Entities stored in `external_content.entities` JSONB
+- [x] `CACHE_TTL_HOURS` configuration created
+- [x] `getCacheExpiry()` returns correct expiry per category
+- [x] `extractEntitiesFromArticle()` calls LLM
+- [x] Entity extraction prompt created
+- [x] Entities stored in `external_content.entities` JSONB
 
 ---
 
