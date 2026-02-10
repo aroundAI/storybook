@@ -159,57 +159,15 @@ export interface AggregatorSearchResult {
 }
 
 // =============================================================================
-// DATABASE ROW TYPES
+// DATABASE ROW TYPES (derived from generated Supabase types)
 // =============================================================================
 
-/** Row shape from external_sources table */
-export interface ExternalSourceRow {
-    id: string;
-    name: string;
-    slug: string;
-    description: string | null;
-    website_url: string | null;
-    logo_url: string | null;
-    category: string;
-    provider_type: string;
-    api_endpoint: string | null;
-    api_key_env: string | null;
-    config: Record<string, unknown>;
-    credibility_tier: string;
-    bias_label: string | null;
-    peer_reviewed: boolean;
-    rate_limit_per_hour: number;
-    current_usage: number;
-    usage_reset_at: string | null;
-    cache_ttl_hours: number;
-    is_active: boolean;
-    created_at: string;
-    updated_at: string;
-}
+import type { Database } from '@kit/supabase/database';
 
-/** Row shape from external_content table */
-export interface ExternalContentRow {
-    id: string;
-    external_id: string;
-    source_id: string;
-    title: string;
-    description: string | null;
-    content: string | null;
-    url: string;
-    authors: string[];
-    published_at: string | null;
-    updated_at: string | null;
-    language: string;
-    category: string;
-    topics: string[];
-    entities: Record<string, unknown>;
-    doi: string | null;
-    journal: string | null;
-    citations: number | null;
-    peer_reviewed: boolean;
-    image_url: string | null;
-    credibility_tier: string | null;
-    bias_label: string | null;
-    fetched_at: string;
-    cache_expires_at: string | null;
-}
+/** Row shape from external_sources table — auto-derived from generated types. */
+export type ExternalSourceRow =
+    Database['public']['Tables']['external_sources']['Row'];
+
+/** Row shape from external_content table — auto-derived from generated types. */
+export type ExternalContentRow =
+    Database['public']['Tables']['external_content']['Row'];
