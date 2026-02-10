@@ -104,16 +104,38 @@ CREATE POLICY "Users can view facts for their projects"
     )
   );
 
+-- INSERT: users can add facts but NOT set verification status/verified_by
+-- Those columns use defaults (unverified/null) and can only be set via
+-- server-side service-role calls after proper review.
 CREATE POLICY "Users can insert facts for their projects"
   ON verified_facts FOR INSERT
   WITH CHECK (
     project_id IN (
       SELECT id FROM projects WHERE account_id = auth.uid()
     )
+    AND (verification_status IS NULL OR verification_status = 'unverified')
+    AND verified_by IS NULL
+    AND verified_at IS NULL
   );
 
+-- UPDATE: users can edit fact content but cannot change verification status
 CREATE POLICY "Users can update facts for their projects"
   ON verified_facts FOR UPDATE
+  USING (
+    project_id IN (
+      SELECT id FROM projects WHERE account_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    -- Prevent users from modifying verification columns
+    verification_status = OLD.verification_status
+    AND verified_by IS NOT DISTINCT FROM OLD.verified_by
+    AND verified_at IS NOT DISTINCT FROM OLD.verified_at
+  );
+
+-- DELETE: users can remove facts from their own projects
+CREATE POLICY "Users can delete facts for their projects"
+  ON verified_facts FOR DELETE
   USING (
     project_id IN (
       SELECT id FROM projects WHERE account_id = auth.uid()

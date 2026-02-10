@@ -13,11 +13,9 @@ describe('generateAPACitation', () => {
             '10.1234/nature.12345',
         );
 
-        expect(citation).toContain('Smith, J., Doe, A.');
-        expect(citation).toContain('(2023)');
-        expect(citation).toContain('The Science of Everything');
-        expect(citation).toContain('Nature.');
-        expect(citation).toContain('https://doi.org/10.1234/nature.12345');
+        expect(citation).toBe(
+            'Smith, J., Doe, A. (2023). The Science of Everything. Nature. https://doi.org/10.1234/nature.12345',
+        );
     });
 
     it('should generate citation with URL when no DOI provided', () => {
@@ -29,10 +27,9 @@ describe('generateAPACitation', () => {
             'https://example.com/article',
         );
 
-        expect(citation).toContain('Johnson, R.');
-        expect(citation).toContain('(2022)');
-        expect(citation).toContain('Retrieved from https://example.com/article');
-        expect(citation).not.toContain('doi.org');
+        expect(citation).toBe(
+            'Johnson, R. (2022). History of Science. Oxford Press. Retrieved from https://example.com/article',
+        );
     });
 
     it('should prefer DOI over URL when both provided', () => {
@@ -45,8 +42,9 @@ describe('generateAPACitation', () => {
             '10.5678/science.9999',
         );
 
-        expect(citation).toContain('https://doi.org/10.5678/science.9999');
-        expect(citation).not.toContain('Retrieved from');
+        expect(citation).toBe(
+            'Lee, K. (2024). Quantum Computing. Science. https://doi.org/10.5678/science.9999',
+        );
     });
 
     it('should use "Unknown Author" when authors array is empty', () => {
@@ -57,9 +55,9 @@ describe('generateAPACitation', () => {
             'Government Publication',
         );
 
-        expect(citation).toContain('Unknown Author');
-        expect(citation).toContain('(2020)');
-        expect(citation).toContain('Anonymous Report');
+        expect(citation).toBe(
+            'Unknown Author (2020). Anonymous Report. Government Publication.',
+        );
     });
 
     it('should handle citation with no DOI and no URL', () => {
@@ -83,8 +81,9 @@ describe('generateAPACitation', () => {
             'Annalen der Physik',
         );
 
-        expect(citation).toContain('Einstein, A.');
-        expect(citation).toContain('(1905)');
+        expect(citation).toBe(
+            'Einstein, A. (1905). On the Electrodynamics of Moving Bodies. Annalen der Physik.',
+        );
     });
 
     it('should handle multiple authors', () => {
@@ -95,6 +94,8 @@ describe('generateAPACitation', () => {
             'Nature',
         );
 
-        expect(citation).toContain('Watson, J. D., Crick, F. H. C.');
+        expect(citation).toBe(
+            'Watson, J. D., Crick, F. H. C. (1953). Molecular Structure of Nucleic Acids. Nature.',
+        );
     });
 });

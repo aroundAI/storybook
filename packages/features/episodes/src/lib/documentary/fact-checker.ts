@@ -9,6 +9,15 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+// Sanitize strings to prevent prompt injection via delimiters
+function sanitizeForPrompt(input: string): string {
+    return input
+        .replace(/---/g, '—')
+        .replace(/```/g, "'''")
+        .replace(/\{\{/g, '{ {')
+        .replace(/\}\}/g, '} }');
+}
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -93,7 +102,8 @@ export async function runFactCheck(
         .from('verified_facts')
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
-        .eq('verification_status', 'verified');
+        .eq('verification_status', 'verified')
+        .limit(200);
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 
@@ -115,9 +125,9 @@ export async function runFactCheck(
     const result = await executeLLM<FactCheckLLMResponse>({
         templateSlug: 'fact-checker-role',
         variables: {
-            content,
-            verified_facts: verifiedFactsText,
-            required_claims: requiredClaims?.join('\n') ?? '',
+            content: sanitizeForPrompt(content),
+            verified_facts: sanitizeForPrompt(verifiedFactsText),
+            required_claims: sanitizeForPrompt(requiredClaims?.join('\n') ?? ''),
         },
         context: { name: 'fact-checker-role', accountId: '', userId: '' },
         supabaseClient: supabase,

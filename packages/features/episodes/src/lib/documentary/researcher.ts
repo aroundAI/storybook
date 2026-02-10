@@ -8,6 +8,15 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+// Sanitize strings to prevent prompt injection via delimiters
+function sanitizeForPrompt(input: string): string {
+    return input
+        .replace(/---/g, '—')
+        .replace(/```/g, "'''")
+        .replace(/\{\{/g, '{ {')
+        .replace(/\}\}/g, '} }');
+}
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -102,10 +111,10 @@ export async function runResearchPhase(
     const result = await executeLLM<ResearchLLMResponse>({
         templateSlug: 'researcher-role',
         variables: {
-            topic,
-            premise: premise ?? '',
-            existing_facts: existingFactsText,
-            target_claims: targetClaims?.join('\n') ?? '',
+            topic: sanitizeForPrompt(topic),
+            premise: sanitizeForPrompt(premise ?? ''),
+            existing_facts: sanitizeForPrompt(existingFactsText),
+            target_claims: sanitizeForPrompt(targetClaims?.join('\n') ?? ''),
         },
         context: { name: 'researcher-role', accountId: '', userId: '' },
         supabaseClient: supabase,
@@ -119,14 +128,19 @@ export async function runResearchPhase(
         const isValidMatch =
             c.matched_fact_id !== null && factIdSet.has(c.matched_fact_id);
 
+        // If the LLM hallucinated a matched_fact_id, downgrade 'verified' to
+        // 'needs_source' so unverified claims are never trusted as verified.
+        const finalConfidence = isValidMatch
+            ? 'verified'
+            : c.confidence === 'verified'
+                ? 'needs_source'
+                : c.confidence;
+
         return {
             claim: c.claim,
             category: c.category,
             matchedFactId: isValidMatch ? c.matched_fact_id : null,
-            confidence: (isValidMatch ? 'verified' : c.confidence) as
-                | 'verified'
-                | 'likely'
-                | 'needs_source',
+            confidence: finalConfidence as ResearchClaim['confidence'],
             priority: c.priority as 'critical' | 'important' | 'nice_to_have',
             suggestedSearch: c.suggested_search,
         };
