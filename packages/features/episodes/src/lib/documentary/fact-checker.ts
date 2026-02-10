@@ -9,16 +9,7 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-// Sanitize strings to prevent prompt injection via delimiters
-function sanitizeForPrompt(input: string): string {
-    return input
-        .replace(/---/g, '—')
-        .replace(/```/g, "'''")
-        .replace(/\{\{/g, '{ {')
-        .replace(/\}\}/g, '} }')
-        .replace(/<\/?(?:system|user|assistant|prompt|instruction)[^>]*>/gi, '')
-        .replace(/\b(?:IGNORE (?:ALL )?(?:PREVIOUS|ABOVE)|SYSTEM OVERRIDE)\b/gi, '[FILTERED]');
-}
+import { sanitizeForPrompt } from '../sanitize-for-prompt';
 
 // =============================================================================
 // TYPES

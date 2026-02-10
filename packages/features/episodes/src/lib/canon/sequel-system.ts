@@ -9,6 +9,8 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { sanitizeForPrompt } from '../sanitize-for-prompt';
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -415,16 +417,6 @@ export async function getSequelParentContexts(
  * Produces sections: deceased characters, returning characters,
  * inherited world rules, and resolved plot threads.
  */
-// Sanitize strings to prevent prompt injection via delimiters
-function sanitizeForPrompt(input: string): string {
-    return input
-        .replace(/---/g, '—')
-        .replace(/```/g, "'''")
-        .replace(/\{\{/g, '{ {')
-        .replace(/\}\}/g, '} }')
-        .replace(/<\/?(?:system|user|assistant|prompt|instruction)[^>]*>/gi, '')
-        .replace(/\b(?:IGNORE (?:ALL )?(?:PREVIOUS|ABOVE)|SYSTEM OVERRIDE)\b/gi, '[FILTERED]');
-}
 
 export function formatParentContextsForPrompt(
     contexts: ParentContext[],
