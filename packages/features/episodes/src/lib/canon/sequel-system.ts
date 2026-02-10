@@ -415,6 +415,17 @@ export async function getSequelParentContexts(
  * Produces sections: deceased characters, returning characters,
  * inherited world rules, and resolved plot threads.
  */
+// Sanitize strings to prevent prompt injection via delimiters
+function sanitizeForPrompt(input: string): string {
+    return input
+        .replace(/---/g, '—')
+        .replace(/```/g, "'''")
+        .replace(/\{\{/g, '{ {')
+        .replace(/\}\}/g, '} }')
+        .replace(/<\/?(?:system|user|assistant|prompt|instruction)[^>]*>/gi, '')
+        .replace(/\b(?:IGNORE (?:ALL )?(?:PREVIOUS|ABOVE)|SYSTEM OVERRIDE)\b/gi, '[FILTERED]');
+}
+
 export function formatParentContextsForPrompt(
     contexts: ParentContext[],
 ): string {
@@ -426,14 +437,14 @@ export function formatParentContextsForPrompt(
 
     for (const ctx of contexts) {
         const header = ctx.parentProjectName
-            ? `## FROM: "${ctx.parentProjectName}"`
+            ? `## FROM: "${sanitizeForPrompt(ctx.parentProjectName)}"`
             : '## FROM PARENT MOVIE';
         sections.push(header);
         sections.push('');
 
         if (ctx.parentSummary) {
             sections.push(`### Summary`);
-            sections.push(ctx.parentSummary);
+            sections.push(sanitizeForPrompt(ctx.parentSummary));
             sections.push('');
         }
 
@@ -444,7 +455,7 @@ export function formatParentContextsForPrompt(
                 '### DECEASED CHARACTERS (MUST NOT APPEAR AS ALIVE)',
             );
             for (const c of deceased) {
-                sections.push(`• ${c.characterName} - DEAD`);
+                sections.push(`• ${sanitizeForPrompt(c.characterName)} - DEAD`);
             }
             sections.push('');
         }
@@ -455,7 +466,7 @@ export function formatParentContextsForPrompt(
             sections.push('### RETURNING CHARACTERS (Available for sequel)');
             for (const c of alive) {
                 sections.push(
-                    `• ${c.characterName}: ${c.finalEmotionalState} (last seen at ${c.finalLocation})`,
+                    `• ${sanitizeForPrompt(c.characterName)}: ${sanitizeForPrompt(c.finalEmotionalState)} (last seen at ${sanitizeForPrompt(c.finalLocation)})`,
                 );
             }
             sections.push('');
@@ -465,7 +476,7 @@ export function formatParentContextsForPrompt(
         if (ctx.worldFacts.length > 0) {
             sections.push('### ESTABLISHED WORLD RULES');
             for (const f of ctx.worldFacts) {
-                sections.push(`• ${f.description}`);
+                sections.push(`• ${sanitizeForPrompt(f.description)}`);
             }
             sections.push('');
         }
@@ -474,7 +485,7 @@ export function formatParentContextsForPrompt(
         if (ctx.resolvedThreads.length > 0) {
             sections.push('### RESOLVED THREADS (DO NOT REOPEN)');
             for (const t of ctx.resolvedThreads) {
-                sections.push(`• ${t.threadName}: ${t.resolution}`);
+                sections.push(`• ${sanitizeForPrompt(t.threadName)}: ${sanitizeForPrompt(t.resolution)}`);
             }
             sections.push('');
         }

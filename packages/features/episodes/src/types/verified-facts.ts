@@ -78,6 +78,7 @@ export interface VerifiedFact {
     createdAt: Date;
     createdBy?: string;
     updatedAt: Date;
+    updatedBy?: string;
 }
 
 /** Input for creating a verified fact */

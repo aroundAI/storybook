@@ -165,9 +165,13 @@ CREATE POLICY "Users can update facts for their projects"
       -- If claim and all source fields are unchanged, keep existing verification status
       (
         claim IS NOT DISTINCT FROM OLD.claim AND
+        source_type IS NOT DISTINCT FROM OLD.source_type AND
         source_citation IS NOT DISTINCT FROM OLD.source_citation AND
         source_url IS NOT DISTINCT FROM OLD.source_url AND
         source_title IS NOT DISTINCT FROM OLD.source_title AND
+        source_authors IS NOT DISTINCT FROM OLD.source_authors AND
+        source_publication_date IS NOT DISTINCT FROM OLD.source_publication_date AND
+        source_doi IS NOT DISTINCT FROM OLD.source_doi AND
         verification_status IS NOT DISTINCT FROM OLD.verification_status
       ) OR (
         -- If any content/source field changed, status MUST reset to unverified
