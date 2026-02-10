@@ -9,6 +9,8 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { Json } from '@kit/supabase/database';
+
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 
 // =============================================================================
@@ -97,16 +99,14 @@ export async function linkAsSequel(
         throw new Error('Project not found');
     }
 
-    // Read sequel_of from project metadata (column added by migration 20260210041000)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: sequelRow } = await (supabase as any)
+    // Read sequel_of from project (column added by migration 20260210041000)
+    const { data: sequelRow } = await supabase
         .from('projects')
         .select('sequel_of')
         .eq('id', sequelProjectId)
         .single();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: parentRow } = await (supabase as any)
+    const { data: parentRow } = await supabase
         .from('projects')
         .select('sequel_of')
         .eq('id', parentProjectId)
@@ -121,8 +121,7 @@ export async function linkAsSequel(
     // Update sequel_of array on the sequel project
     const currentSequelOf = (sequelRow?.sequel_of as string[]) ?? [];
     if (!currentSequelOf.includes(parentProjectId)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
             .from('projects')
             .update({
                 sequel_of: [...currentSequelOf, parentProjectId],
@@ -137,19 +136,17 @@ export async function linkAsSequel(
     );
 
     // Upsert the cached context
-    // sequel_parent_contexts table added by migration 20260210041000
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('sequel_parent_contexts').upsert({
+    await supabase.from('sequel_parent_contexts').upsert({
         sequel_project_id: sequelProjectId,
         parent_project_id: parentProjectId,
         parent_project_name: parentProject.name,
         parent_summary: parentContext.parentSummary,
-        parent_immutable_events: parentContext.immutableEvents,
-        parent_final_character_states: parentContext.finalCharacterStates,
-        parent_resolved_threads: parentContext.resolvedThreads,
-        parent_world_facts: parentContext.worldFacts,
-        character_visual_registry: parentContext.characterVisualRegistry,
-        location_registry: parentContext.locationRegistry,
+        parent_immutable_events: parentContext.immutableEvents as unknown as Json,
+        parent_final_character_states: parentContext.finalCharacterStates as unknown as Json,
+        parent_resolved_threads: parentContext.resolvedThreads as unknown as Json,
+        parent_world_facts: parentContext.worldFacts as unknown as Json,
+        character_visual_registry: parentContext.characterVisualRegistry as unknown as Json,
+        location_registry: parentContext.locationRegistry as unknown as Json,
         cached_at: new Date().toISOString(),
         is_stale: false,
     });
@@ -382,9 +379,8 @@ export async function getSequelParentContexts(
 ): Promise<ParentContext[]> {
     const supabase = getSupabaseServerClient();
 
-    // sequel_parent_contexts table added by migration 20260210041000
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    // Fetch cached parent contexts
+    const { data } = await supabase
         .from('sequel_parent_contexts')
         .select('*')
         .eq('sequel_project_id', sequelProjectId)
@@ -392,7 +388,7 @@ export async function getSequelParentContexts(
 
     if (!data || data.length === 0) return [];
 
-    return (data as SequelParentRow[]).map(
+    return (data as unknown as SequelParentRow[]).map(
         (row) =>
             ({
                 parentProjectId: row.parent_project_id,

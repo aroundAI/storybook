@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
  * Prompt Format Validation Tests
@@ -89,9 +89,12 @@ describe('Prompt Template Format Validation', () => {
         let content: string;
         let template: Record<string, unknown>;
 
-        // Parse file once for all tests in this describe block
-        content = fs.readFileSync(filePath, 'utf-8');
-        template = JSON.parse(content);
+        // Parse file in beforeAll so invalid JSON causes a clean test failure
+        // with file name in output, rather than crashing the entire suite.
+        beforeAll(() => {
+            content = fs.readFileSync(filePath, 'utf-8');
+            template = JSON.parse(content);
+        });
 
         it('should be valid JSON', () => {
             expect(() => JSON.parse(content)).not.toThrow();
@@ -165,6 +168,8 @@ describe('Prompt Template Format Validation', () => {
                 // Find all {{ patterns and ensure they are simple {{variable_name}} format
                 // Valid: {{variable}}, {{variable_name}}, {{variableName}}
                 // Invalid: {{{triple}}}, {{#if}}, {{/if}}, {{> partial}}, {{else}}
+                // NOTE: Dot-notation (e.g. {{object.property}}) is intentionally
+                // unsupported — our interpolation uses simple string replacement.
                 const allBracePatterns = text.match(/\{\{[^}]*\}\}/g) || [];
 
                 for (const pattern of allBracePatterns) {

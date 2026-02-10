@@ -10,9 +10,8 @@
  * Client-safe types and pure functions are in fact-checker-shared.ts.
  */
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
+import { getProjectContext } from './helpers';
 
 // Re-export types and pure functions from client-safe shared module
 export type { FactCheckIssue, FactCheckResult } from './fact-checker-shared';
@@ -68,27 +67,11 @@ export async function runFactCheck(
     requiredClaims?: string[],
 ): Promise<FactCheckResult> {
     const { executeLLM } = await import('@kit/prompt-engine/server');
-    const supabase = getSupabaseServerClient();
-
-    // Fetch project to get account_id for LLM context logging
-    const { data: project } = await supabase
-        .from('projects')
-        .select('account_id')
-        .eq('id', projectId)
-        .single();
-
-    if (!project) {
-        throw new Error(`Project not found: ${projectId}`);
-    }
-
-    // Get authenticated user for audit logging
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id ?? '';
+    const { accountId, userId, supabase } = await getProjectContext(projectId);
 
     // Fetch all verified facts for this project
-    // verified_facts table added by migration 20260211100000 — not in generated types yet
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rawFacts } = await (supabase as any)
+    // Limit to 1000 as a safeguard. If hit, the LLM may miss citation errors.
+    const { data: rawFacts } = await supabase
         .from('verified_facts')
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
@@ -97,10 +80,31 @@ export async function runFactCheck(
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 
-    if (facts.length === 0) {
-        throw new Error(
-            'No verified facts found. Add facts before fact-checking.',
+    if (facts.length === 1000) {
+        console.warn(
+            `[fact-checker] Project ${projectId} has ≥1000 verified facts — results may be truncated. Consider pagination.`,
         );
+    }
+
+    // Return a descriptive result instead of throwing when no facts exist,
+    // so automated pipelines don't crash unexpectedly.
+    if (facts.length === 0) {
+        return {
+            overallVerdict: 'fail',
+            accuracyScore: 0,
+            totalClaimsFound: 0,
+            verifiedClaims: 0,
+            issues: [{
+                severity: 'critical',
+                claimInContent: '',
+                issueType: 'unsourced',
+                explanation: 'No verified facts found. Add facts before fact-checking.',
+                suggestion: 'Add verified facts to the project before running the fact-checker.',
+            }],
+            missingRequiredClaims: requiredClaims ?? [],
+            citationsValid: false,
+            summary: 'No verified facts in project — cannot fact-check content.',
+        };
     }
 
     // Format facts for prompt
@@ -119,7 +123,7 @@ export async function runFactCheck(
             verified_facts: sanitizeForPrompt(verifiedFactsText),
             required_claims: sanitizeForPrompt(requiredClaims?.join('\n') ?? ''),
         },
-        context: { name: 'fact-checker-role', accountId: project.account_id, userId },
+        context: { name: 'fact-checker-role', accountId, userId },
         supabaseClient: supabase,
     });
 

@@ -22,11 +22,6 @@
             "type": "string",
             "required": false,
             "default": ""
-        },
-        "episode_context": {
-            "type": "string",
-            "required": false,
-            "default": ""
         }
     },
     "llm": {

@@ -85,7 +85,7 @@ export const getProject = cache(async (projectId: string) => {
       `
       id, name, slug, description, account_id, metadata, status, visibility,
       audio_settings, created_by, updated_by, public_slug, seo_metadata,
-      created_at, updated_at
+      sequel_of, created_at, updated_at
     `,
     )
     .eq('id', projectId)

@@ -3819,7 +3819,7 @@ export type Database = {
           source_metadata: Json | null
           source_publication_date: string | null
           source_title: string | null
-          source_type: string | null
+          source_type: string
           source_url: string | null
           subcategory: string | null
           tags: string[] | null
@@ -3827,7 +3827,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           verification_notes: string | null
-          verification_status: string | null
+          verification_status: string
           verified_at: string | null
           verified_by: string | null
         }
@@ -3848,7 +3848,7 @@ export type Database = {
           source_metadata?: Json | null
           source_publication_date?: string | null
           source_title?: string | null
-          source_type?: string | null
+          source_type: string
           source_url?: string | null
           subcategory?: string | null
           tags?: string[] | null
@@ -3856,7 +3856,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           verification_notes?: string | null
-          verification_status?: string | null
+          verification_status?: string
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -3877,7 +3877,7 @@ export type Database = {
           source_metadata?: Json | null
           source_publication_date?: string | null
           source_title?: string | null
-          source_type?: string | null
+          source_type?: string
           source_url?: string | null
           subcategory?: string | null
           tags?: string[] | null
@@ -3885,7 +3885,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           verification_notes?: string | null
-          verification_status?: string | null
+          verification_status?: string
           verified_at?: string | null
           verified_by?: string | null
         }
@@ -4818,5 +4818,3 @@ export const Constants = {
     },
   },
 } as const
-A new version of Supabase CLI is available: v2.75.0 (currently installed v2.62.10)
-We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli

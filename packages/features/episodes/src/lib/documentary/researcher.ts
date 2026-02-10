@@ -6,9 +6,8 @@
  * Identifies claims, matches to verified facts, flags unverified claims.
  */
 
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
+import { getProjectContext } from './helpers';
 
 // =============================================================================
 // TYPES
@@ -75,27 +74,11 @@ export async function runResearchPhase(
     targetClaims?: string[],
 ): Promise<ResearchResult> {
     const { executeLLM } = await import('@kit/prompt-engine/server');
-    const supabase = getSupabaseServerClient();
-
-    // Fetch project to get account_id for LLM context logging
-    const { data: project } = await supabase
-        .from('projects')
-        .select('account_id')
-        .eq('id', projectId)
-        .single();
-
-    if (!project) {
-        throw new Error(`Project not found: ${projectId}`);
-    }
-
-    // Get authenticated user for audit logging
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id ?? '';
+    const { accountId, userId, supabase } = await getProjectContext(projectId);
 
     // Fetch verified facts for this project
-    // verified_facts table added by migration 20260211100000 — not in generated types yet
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: rawFacts } = await (supabase as any)
+    // Limit to 1000 as a safeguard. If hit, the LLM may miss valid facts.
+    const { data: rawFacts } = await supabase
         .from('verified_facts')
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
@@ -103,6 +86,12 @@ export async function runResearchPhase(
         .limit(1000);
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
+
+    if (facts.length === 1000) {
+        console.warn(
+            `[researcher] Project ${projectId} has ≥1000 verified facts — results may be truncated. Consider pagination.`,
+        );
+    }
 
     // Format existing facts for prompt
     const existingFactsText =
@@ -124,7 +113,7 @@ export async function runResearchPhase(
             existing_facts: sanitizeForPrompt(existingFactsText),
             target_claims: sanitizeForPrompt(targetClaims?.join('\n') ?? ''),
         },
-        context: { name: 'researcher-role', accountId: project.account_id, userId },
+        context: { name: 'researcher-role', accountId, userId },
         supabaseClient: supabase,
     });
 
