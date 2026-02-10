@@ -220,14 +220,12 @@ export class ExternalContextAggregator {
             .select('*')
             .in('category', categories)
             .gt('cache_expires_at', new Date().toISOString())
-            .order('published_at', { ascending: false })
-            .limit(params.pageSize ?? 20);
+            .order('published_at', { ascending: false });
 
-        // Apply pagination offset
-        if (params.page && params.page > 1) {
-            const offset = ((params.page - 1) * (params.pageSize ?? 20));
-            query = query.range(offset, offset + (params.pageSize ?? 20) - 1);
-        }
+        // Apply pagination via .range() (handles both page 1 and subsequent pages)
+        const pageSize = params.pageSize ?? 20;
+        const offset = ((params.page ?? 1) - 1) * pageSize;
+        query = query.range(offset, offset + pageSize - 1);
 
         if (params.query) {
             query = query.textSearch('fts', params.query, { type: 'websearch' });
