@@ -9,6 +9,26 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { Json } from '@kit/supabase/database';
+
+import { sanitizeForPrompt } from '../sanitize-for-prompt';
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Cast a typed value to the Supabase `Json` column type.
+ *
+ * This is a deliberate boundary cast: we trust our well-typed interfaces
+ * (ParentImmutableEvent[], etc.) to be JSON-serializable. The helper
+ * documents this intent in one place rather than scattering `as unknown
+ * as Json` across the codebase.
+ */
+function toJsonb<T>(value: T): Json {
+    return value as unknown as Json;
+}
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -95,16 +115,14 @@ export async function linkAsSequel(
         throw new Error('Project not found');
     }
 
-    // Read sequel_of from project metadata (column added by migration 20260210041000)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: sequelRow } = await (supabase as any)
+    // Read sequel_of from project (column added by migration 20260210041000)
+    const { data: sequelRow } = await supabase
         .from('projects')
         .select('sequel_of')
         .eq('id', sequelProjectId)
         .single();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: parentRow } = await (supabase as any)
+    const { data: parentRow } = await supabase
         .from('projects')
         .select('sequel_of')
         .eq('id', parentProjectId)
@@ -119,8 +137,7 @@ export async function linkAsSequel(
     // Update sequel_of array on the sequel project
     const currentSequelOf = (sequelRow?.sequel_of as string[]) ?? [];
     if (!currentSequelOf.includes(parentProjectId)) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (supabase as any)
+        await supabase
             .from('projects')
             .update({
                 sequel_of: [...currentSequelOf, parentProjectId],
@@ -135,18 +152,17 @@ export async function linkAsSequel(
     );
 
     // Upsert the cached context
-    // sequel_parent_contexts table added by migration 20260210041000
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('sequel_parent_contexts').upsert({
+    await supabase.from('sequel_parent_contexts').upsert({
         sequel_project_id: sequelProjectId,
         parent_project_id: parentProjectId,
+        parent_project_name: parentProject.name,
         parent_summary: parentContext.parentSummary,
-        parent_immutable_events: parentContext.immutableEvents,
-        parent_final_character_states: parentContext.finalCharacterStates,
-        parent_resolved_threads: parentContext.resolvedThreads,
-        parent_world_facts: parentContext.worldFacts,
-        character_visual_registry: parentContext.characterVisualRegistry,
-        location_registry: parentContext.locationRegistry,
+        parent_immutable_events: toJsonb(parentContext.immutableEvents),
+        parent_final_character_states: toJsonb(parentContext.finalCharacterStates),
+        parent_resolved_threads: toJsonb(parentContext.resolvedThreads),
+        parent_world_facts: toJsonb(parentContext.worldFacts),
+        character_visual_registry: toJsonb(parentContext.characterVisualRegistry),
+        location_registry: toJsonb(parentContext.locationRegistry),
         cached_at: new Date().toISOString(),
         is_stale: false,
     });
@@ -292,13 +308,20 @@ export async function buildParentContext(
     }
 
     // Build final character states
+    // Use immutable_events as source of truth for character deaths (PR #177 review)
     const finalCharStates: ParentCharacterState[] = latestCharacterStates.map(
         (cs) => {
             const asset = characterMap.get(cs.character_id);
+            const isDead = immutableEvents.some(
+                (e) =>
+                    e.event_type === 'death' &&
+                    e.event_key.includes(cs.character_id),
+            );
+
             return {
                 characterId: cs.character_id,
                 characterName: asset?.name ?? 'Unknown',
-                isAlive: (cs.state_value?.isAlive as boolean) ?? true,
+                isAlive: !isDead,
                 finalEmotionalState:
                     (cs.state_value?.emotionalState as string) ?? 'neutral',
                 finalLocation:
@@ -353,6 +376,7 @@ export async function buildParentContext(
 
 interface SequelParentRow {
     parent_project_id: string;
+    parent_project_name: string;
     parent_summary: string;
     parent_immutable_events: ParentImmutableEvent[];
     parent_final_character_states: ParentCharacterState[];
@@ -371,9 +395,8 @@ export async function getSequelParentContexts(
 ): Promise<ParentContext[]> {
     const supabase = getSupabaseServerClient();
 
-    // sequel_parent_contexts table added by migration 20260210041000
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    // Fetch cached parent contexts
+    const { data } = await supabase
         .from('sequel_parent_contexts')
         .select('*')
         .eq('sequel_project_id', sequelProjectId)
@@ -381,11 +404,11 @@ export async function getSequelParentContexts(
 
     if (!data || data.length === 0) return [];
 
-    return (data as SequelParentRow[]).map(
+    return (data as unknown as SequelParentRow[]).map(
         (row) =>
             ({
                 parentProjectId: row.parent_project_id,
-                parentProjectName: '',
+                parentProjectName: row.parent_project_name ?? '',
                 parentSummary: row.parent_summary,
                 immutableEvents: row.parent_immutable_events,
                 finalCharacterStates: row.parent_final_character_states,
@@ -406,6 +429,7 @@ export async function getSequelParentContexts(
  * Produces sections: deceased characters, returning characters,
  * inherited world rules, and resolved plot threads.
  */
+
 export function formatParentContextsForPrompt(
     contexts: ParentContext[],
 ): string {
@@ -417,14 +441,14 @@ export function formatParentContextsForPrompt(
 
     for (const ctx of contexts) {
         const header = ctx.parentProjectName
-            ? `## FROM: "${ctx.parentProjectName}"`
+            ? `## FROM: "${sanitizeForPrompt(ctx.parentProjectName)}"`
             : '## FROM PARENT MOVIE';
         sections.push(header);
         sections.push('');
 
         if (ctx.parentSummary) {
             sections.push(`### Summary`);
-            sections.push(ctx.parentSummary);
+            sections.push(sanitizeForPrompt(ctx.parentSummary));
             sections.push('');
         }
 
@@ -435,7 +459,7 @@ export function formatParentContextsForPrompt(
                 '### DECEASED CHARACTERS (MUST NOT APPEAR AS ALIVE)',
             );
             for (const c of deceased) {
-                sections.push(`• ${c.characterName} - DEAD`);
+                sections.push(`• ${sanitizeForPrompt(c.characterName)} - DEAD`);
             }
             sections.push('');
         }
@@ -446,7 +470,7 @@ export function formatParentContextsForPrompt(
             sections.push('### RETURNING CHARACTERS (Available for sequel)');
             for (const c of alive) {
                 sections.push(
-                    `• ${c.characterName}: ${c.finalEmotionalState} (last seen at ${c.finalLocation})`,
+                    `• ${sanitizeForPrompt(c.characterName)}: ${sanitizeForPrompt(c.finalEmotionalState)} (last seen at ${sanitizeForPrompt(c.finalLocation)})`,
                 );
             }
             sections.push('');
@@ -456,7 +480,7 @@ export function formatParentContextsForPrompt(
         if (ctx.worldFacts.length > 0) {
             sections.push('### ESTABLISHED WORLD RULES');
             for (const f of ctx.worldFacts) {
-                sections.push(`• ${f.description}`);
+                sections.push(`• ${sanitizeForPrompt(f.description)}`);
             }
             sections.push('');
         }
@@ -465,7 +489,7 @@ export function formatParentContextsForPrompt(
         if (ctx.resolvedThreads.length > 0) {
             sections.push('### RESOLVED THREADS (DO NOT REOPEN)');
             for (const t of ctx.resolvedThreads) {
-                sections.push(`• ${t.threadName}: ${t.resolution}`);
+                sections.push(`• ${sanitizeForPrompt(t.threadName)}: ${sanitizeForPrompt(t.resolution)}`);
             }
             sections.push('');
         }

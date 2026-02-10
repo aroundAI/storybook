@@ -179,6 +179,53 @@ export type Database = {
           },
         ]
       }
+      act_context_bridges: {
+        Row: {
+          act_end_time: number
+          act_number: number
+          act_start_time: number
+          act_title: string
+          carry_forward_text: string
+          context_state: Json
+          created_at: string | null
+          episode_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          act_end_time?: number
+          act_number: number
+          act_start_time?: number
+          act_title: string
+          carry_forward_text?: string
+          context_state?: Json
+          created_at?: string | null
+          episode_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          act_end_time?: number
+          act_number?: number
+          act_start_time?: number
+          act_title?: string
+          carry_forward_text?: string
+          context_state?: Json
+          created_at?: string | null
+          episode_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "act_context_bridges_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: false
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assets: {
         Row: {
           content_type: string | null
@@ -2647,6 +2694,7 @@ export type Database = {
           name: string
           public_slug: string | null
           seo_metadata: Json | null
+          sequel_of: string[] | null
           slug: string | null
           status: string
           updated_at: string | null
@@ -2664,6 +2712,7 @@ export type Database = {
           name: string
           public_slug?: string | null
           seo_metadata?: Json | null
+          sequel_of?: string[] | null
           slug?: string | null
           status?: string
           updated_at?: string | null
@@ -2681,6 +2730,7 @@ export type Database = {
           name?: string
           public_slug?: string | null
           seo_metadata?: Json | null
+          sequel_of?: string[] | null
           slug?: string | null
           status?: string
           updated_at?: string | null
@@ -3126,6 +3176,72 @@ export type Database = {
           {
             foreignKeyName: "seasons_project_id_fkey"
             columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sequel_parent_contexts: {
+        Row: {
+          cached_at: string | null
+          character_visual_registry: Json
+          id: string
+          is_stale: boolean | null
+          location_registry: Json
+          parent_final_character_states: Json
+          parent_immutable_events: Json
+          parent_last_updated: string | null
+          parent_project_id: string
+          parent_project_name: string | null
+          parent_resolved_threads: Json
+          parent_summary: string
+          parent_world_facts: Json
+          sequel_project_id: string
+        }
+        Insert: {
+          cached_at?: string | null
+          character_visual_registry?: Json
+          id?: string
+          is_stale?: boolean | null
+          location_registry?: Json
+          parent_final_character_states?: Json
+          parent_immutable_events?: Json
+          parent_last_updated?: string | null
+          parent_project_id: string
+          parent_project_name?: string | null
+          parent_resolved_threads?: Json
+          parent_summary?: string
+          parent_world_facts?: Json
+          sequel_project_id: string
+        }
+        Update: {
+          cached_at?: string | null
+          character_visual_registry?: Json
+          id?: string
+          is_stale?: boolean | null
+          location_registry?: Json
+          parent_final_character_states?: Json
+          parent_immutable_events?: Json
+          parent_last_updated?: string | null
+          parent_project_id?: string
+          parent_project_name?: string | null
+          parent_resolved_threads?: Json
+          parent_summary?: string
+          parent_world_facts?: Json
+          sequel_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sequel_parent_contexts_parent_project_id_fkey"
+            columns: ["parent_project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sequel_parent_contexts_sequel_project_id_fkey"
+            columns: ["sequel_project_id"]
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
@@ -3681,6 +3797,104 @@ export type Database = {
             columns: ["billing_customer_id"]
             isOneToOne: false
             referencedRelation: "billing_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verified_facts: {
+        Row: {
+          category: string | null
+          claim: string
+          confidence_score: number | null
+          created_at: string | null
+          created_by: string | null
+          episodes_used_in: string[] | null
+          id: string
+          last_used_at: string | null
+          project_id: string
+          simplified_claim: string | null
+          source_authors: string[] | null
+          source_citation: string | null
+          source_doi: string | null
+          source_metadata: Json | null
+          source_publication_date: string | null
+          source_title: string | null
+          source_type: Database["public"]["Enums"]["source_type_enum"]
+          source_url: string | null
+          subcategory: string | null
+          tags: string[] | null
+          times_used: number | null
+          updated_at: string | null
+          updated_by: string | null
+          verification_notes: string | null
+          verification_status: Database["public"]["Enums"]["verification_status_enum"]
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          category?: string | null
+          claim: string
+          confidence_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          episodes_used_in?: string[] | null
+          id?: string
+          last_used_at?: string | null
+          project_id: string
+          simplified_claim?: string | null
+          source_authors?: string[] | null
+          source_citation?: string | null
+          source_doi?: string | null
+          source_metadata?: Json | null
+          source_publication_date?: string | null
+          source_title?: string | null
+          source_type: Database["public"]["Enums"]["source_type_enum"]
+          source_url?: string | null
+          subcategory?: string | null
+          tags?: string[] | null
+          times_used?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+          verification_notes?: string | null
+          verification_status?: Database["public"]["Enums"]["verification_status_enum"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          category?: string | null
+          claim?: string
+          confidence_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          episodes_used_in?: string[] | null
+          id?: string
+          last_used_at?: string | null
+          project_id?: string
+          simplified_claim?: string | null
+          source_authors?: string[] | null
+          source_citation?: string | null
+          source_doi?: string | null
+          source_metadata?: Json | null
+          source_publication_date?: string | null
+          source_title?: string | null
+          source_type?: Database["public"]["Enums"]["source_type_enum"]
+          source_url?: string | null
+          subcategory?: string | null
+          tags?: string[] | null
+          times_used?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+          verification_notes?: string | null
+          verification_status?: Database["public"]["Enums"]["verification_status_enum"]
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verified_facts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -4410,6 +4624,20 @@ export type Database = {
         | "project.settings.view"
         | "project.settings.edit"
       project_role: "owner" | "admin" | "member" | "viewer"
+      source_type_enum:
+        | "research_paper"
+        | "book"
+        | "news_article"
+        | "official_document"
+        | "documentary"
+        | "expert_interview"
+        | "dataset"
+        | "website"
+        | "encyclopedia"
+        | "court_document"
+        | "historical_record"
+        | "textbook"
+        | "other"
       subscription_item_type: "flat" | "per_seat" | "metered"
       subscription_status:
         | "active"
@@ -4420,6 +4648,12 @@ export type Database = {
         | "incomplete"
         | "incomplete_expired"
         | "paused"
+      verification_status_enum:
+        | "unverified"
+        | "pending_review"
+        | "verified"
+        | "disputed"
+        | "retracted"
     }
     CompositeTypes: {
       invitation: {
@@ -4590,6 +4824,21 @@ export const Constants = {
         "project.settings.edit",
       ],
       project_role: ["owner", "admin", "member", "viewer"],
+      source_type_enum: [
+        "research_paper",
+        "book",
+        "news_article",
+        "official_document",
+        "documentary",
+        "expert_interview",
+        "dataset",
+        "website",
+        "encyclopedia",
+        "court_document",
+        "historical_record",
+        "textbook",
+        "other",
+      ],
       subscription_item_type: ["flat", "per_seat", "metered"],
       subscription_status: [
         "active",
@@ -4600,6 +4849,13 @@ export const Constants = {
         "incomplete",
         "incomplete_expired",
         "paused",
+      ],
+      verification_status_enum: [
+        "unverified",
+        "pending_review",
+        "verified",
+        "disputed",
+        "retracted",
       ],
     },
   },

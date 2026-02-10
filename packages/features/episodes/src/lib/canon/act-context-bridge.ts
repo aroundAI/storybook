@@ -8,6 +8,18 @@
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import type { Json } from '@kit/supabase/database';
+
+import { sanitizeForPrompt } from '../sanitize-for-prompt';
+
+/**
+ * Cast a typed value to the Supabase `Json` column type.
+ * See sequel-system.ts for detailed rationale.
+ */
+function toJsonb<T>(value: T): Json {
+    return value as unknown as Json;
+}
+
 import type {
     ActContextBridge,
     CharacterActState,
@@ -40,19 +52,30 @@ export async function buildActContextBridge(
     });
 
     const bridge = extraction.data.bridge;
+
+    // Runtime-validate critical bridge fields before persisting
+    if (
+        !bridge ||
+        typeof bridge.actNumber !== 'number' ||
+        typeof bridge.characterStates !== 'object' ||
+        !Array.isArray(bridge.openThreads)
+    ) {
+        throw new Error(
+            `[act-context-bridge] LLM returned invalid bridge shape for episode ${episodeId} act ${actNumber}`,
+        );
+    }
+
     bridge.movieId = episodeId;
     bridge.actNumber = actNumber;
 
     // Persist to database
-    // act_context_bridges table added by migration 20260210041000 — not in generated types yet
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase as any).from('act_context_bridges').upsert({
+    await supabase.from('act_context_bridges').upsert({
         episode_id: episodeId,
         act_number: actNumber,
         act_title: bridge.actTitle,
         act_start_time: bridge.actStartTime,
         act_end_time: bridge.actEndTime,
-        context_state: bridge,
+        context_state: toJsonb(bridge),
         carry_forward_text: bridge.carryForwardContext,
     });
 
@@ -73,9 +96,7 @@ export async function getActContextBridge(
 ): Promise<ActContextBridge | null> {
     const supabase = getSupabaseServerClient();
 
-    // act_context_bridges table added by migration 20260210041000 — not in generated types yet
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase as any)
+    const { data } = await supabase
         .from('act_context_bridges')
         .select('context_state')
         .eq('episode_id', episodeId)
@@ -84,7 +105,7 @@ export async function getActContextBridge(
 
     if (!data) return null;
 
-    return data.context_state as ActContextBridge;
+    return data.context_state as unknown as ActContextBridge;
 }
 
 // =============================================================================
@@ -95,6 +116,9 @@ export async function getActContextBridge(
  * Format a bridge into structured text sections for LLM prompt injection.
  * Produces sections: characters alive, dead characters, open threads,
  * current scene state, tone continuation, and carry-forward context.
+ *
+ * All user-derived text is sanitized for prompt safety, consistent with
+ * researcher.ts, fact-checker.ts, and sequel-system.ts.
  */
 export function formatBridgeForPrompt(bridge: ActContextBridge): string {
     const sections: string[] = [];
@@ -106,10 +130,10 @@ export function formatBridgeForPrompt(bridge: ActContextBridge): string {
     for (const [, state] of entries) {
         if (state.isAlive) {
             sections.push(
-                `• ${state.characterName}: ${state.emotionalState} (at ${state.location})`,
+                `• ${sanitizeForPrompt(state.characterName)}: ${sanitizeForPrompt(state.emotionalState)} (at ${sanitizeForPrompt(state.location)})`,
             );
             if (state.injuries.length > 0) {
-                sections.push(`  Injuries: ${state.injuries.join(', ')}`);
+                sections.push(`  Injuries: ${state.injuries.map(sanitizeForPrompt).join(', ')}`);
             }
         }
     }
@@ -122,7 +146,7 @@ export function formatBridgeForPrompt(bridge: ActContextBridge): string {
         sections.push('');
         sections.push('## DEAD CHARACTERS (DO NOT INCLUDE)');
         for (const d of dead) {
-            sections.push(`• ${d.characterName} - DECEASED`);
+            sections.push(`• ${sanitizeForPrompt(d.characterName)} - DECEASED`);
         }
     }
 
@@ -134,18 +158,18 @@ export function formatBridgeForPrompt(bridge: ActContextBridge): string {
             (p) => !bridge.resolvedThreads.includes(p.id),
         );
         for (const p of unresolvedPromises) {
-            sections.push(`• ${p.description} (priority: ${p.priority})`);
+            sections.push(`• ${sanitizeForPrompt(p.description)} (priority: ${sanitizeForPrompt(p.priority)})`);
         }
     }
 
     // ---- Current scene state ----
     sections.push('');
     sections.push('## CURRENT SCENE STATE');
-    sections.push(`Location: ${bridge.currentLocation.locationName}`);
-    sections.push(`Time: ${bridge.timeOfDay}`);
+    sections.push(`Location: ${sanitizeForPrompt(bridge.currentLocation.locationName)}`);
+    sections.push(`Time: ${sanitizeForPrompt(bridge.timeOfDay)}`);
     if (bridge.currentLocation.establishedDetails.length > 0) {
         sections.push(
-            `Details: ${bridge.currentLocation.establishedDetails.join(', ')}`,
+            `Details: ${bridge.currentLocation.establishedDetails.map(sanitizeForPrompt).join(', ')}`,
         );
     }
 
@@ -159,7 +183,7 @@ export function formatBridgeForPrompt(bridge: ActContextBridge): string {
     // ---- Carry-forward summary ----
     sections.push('');
     sections.push('## CARRY FORWARD');
-    sections.push(bridge.carryForwardContext);
+    sections.push(sanitizeForPrompt(bridge.carryForwardContext));
 
     return sections.join('\n');
 }
@@ -187,7 +211,7 @@ export function validateAgainstBridge(
         // Escape special regex characters in character name
         const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const pattern = new RegExp(
-            `\\b${escaped}\\b.{0,30}(said|walked|ran|looked|smiled|laughed|spoke|whispered|shouted|nodded)`,
+            `\\b${escaped}\\b.{0,30}(said|walked|ran|looked|smiled|laughed|spoke|whispered|shouted|nodded|grabbed|moved|reacted|cried|yelled)`,
             'i',
         );
         if (pattern.test(nextActContent)) {
