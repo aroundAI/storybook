@@ -115,8 +115,7 @@ export async function runFactCheck(
         .from('verified_facts')
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
-        .eq('verification_status', 'verified')
-        .limit(1000);
+        .eq('verification_status', 'verified');
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 

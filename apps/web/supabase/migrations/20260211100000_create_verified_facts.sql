@@ -149,7 +149,7 @@ CREATE POLICY "Users can insert facts for their projects"
     AND (updated_by IS NULL OR updated_by = auth.uid())
   );
 
--- UPDATE: users can edit fact content but cannot change verification columns
+-- UPDATE: users can edit facts — if claim or source changes, status resets to unverified
 CREATE POLICY "Users can update facts for their projects"
   ON verified_facts FOR UPDATE
   USING (
@@ -161,8 +161,17 @@ CREATE POLICY "Users can update facts for their projects"
     )
   )
   WITH CHECK (
-    -- Prevent users from modifying verification columns
-    verification_status = OLD.verification_status
+    (
+      -- If claim and source are unchanged, keep existing verification status
+      (
+        claim = OLD.claim AND
+        source_citation = OLD.source_citation AND
+        verification_status = OLD.verification_status
+      ) OR (
+        -- If claim or source changed, status MUST reset to unverified
+        verification_status = 'unverified'
+      )
+    )
     AND verified_by IS NOT DISTINCT FROM OLD.verified_by
     AND verified_at IS NOT DISTINCT FROM OLD.verified_at
     AND created_by = OLD.created_by
