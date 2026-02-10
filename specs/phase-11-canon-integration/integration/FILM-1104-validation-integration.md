@@ -1,7 +1,7 @@
 ---
 id: FILM-1104
 title: Validation Integration at Generation Checkpoints
-status: draft
+status: done
 priority: high
 effort: M
 dependencies: [FILM-1003, FILM-1102]
@@ -234,15 +234,15 @@ if (canonSettings?.enabled) {
 
 ## Acceptance Criteria
 
-- [ ] `runValidationCheckpoint` utility created
-- [ ] Story generation runs checkpoint 1 when canon enabled
-- [ ] Screenplay conversion runs checkpoint 2 when canon enabled
-- [ ] Shot generation runs checkpoint 3 when canon enabled
-- [ ] CRITICAL violations always block generation
-- [ ] HARD_FAIL violations block in strict mode only
-- [ ] SOFT_FAIL violations logged as warnings
-- [ ] Validation failure updates job status correctly
-- [ ] Validation latency < 200ms per checkpoint
+- [x] `runValidationCheckpoint` utility created
+- [x] Story generation runs checkpoint 1 when canon enabled
+- [x] Screenplay conversion runs checkpoint 2 when canon enabled
+- [x] Shot generation runs checkpoint 3 when canon enabled
+- [x] CRITICAL violations always block generation
+- [x] HARD_FAIL violations block in strict mode only
+- [x] SOFT_FAIL violations logged as warnings
+- [x] Validation failure updates job status correctly
+- [x] Validation latency < 200ms per checkpoint
 
 ---
 
@@ -315,3 +315,9 @@ describe('Validation Checkpoint', () => {
 ## Blocks
 
 - None (enhances generation pipeline)
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #175 — merged 2026-02-09

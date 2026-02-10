@@ -1,7 +1,7 @@
 ---
 id: FILM-1102
 title: Memory Context Injection into Story Generation
-status: draft
+status: done
 priority: critical
 effort: M
 dependencies: [FILM-1004, FILM-1101]
@@ -167,13 +167,13 @@ These threads are open and expecting progress or resolution:
 
 ## Acceptance Criteria
 
-- [ ] `buildMemoryContext` is called in story generation handler
-- [ ] Memory context is injected into prompt variables
-- [ ] Story generation prompt template includes canon sections
-- [ ] Token budget stays within 15% of context window
-- [ ] Build failure is non-fatal (graceful degradation)
-- [ ] Logs show memory context token usage
-- [ ] Generated stories reference established facts appropriately
+- [x] `buildMemoryContext` is called in story generation handler
+- [x] Memory context is injected into prompt variables
+- [x] Story generation prompt template includes canon sections
+- [x] Token budget stays within 15% of context window
+- [x] Build failure is non-fatal (graceful degradation)
+- [x] Logs show memory context token usage
+- [x] Generated stories reference established facts appropriately
 
 ---
 
@@ -244,3 +244,9 @@ describe('Story Generation with Memory Context', () => {
 
 - **FILM-1103**: LLM extraction needs context available
 - **FILM-1104**: Validation integration needs context
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #175 — merged 2026-02-09

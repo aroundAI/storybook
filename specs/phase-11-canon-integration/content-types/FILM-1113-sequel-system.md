@@ -1,7 +1,7 @@
 ---
 id: FILM-1113
 title: Movie Sequel Linking System
-status: draft
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1110, FILM-1111]
@@ -338,13 +338,13 @@ export function formatParentContextsForPrompt(
 
 ## Acceptance Criteria
 
-- [ ] `sequel_parent_contexts` table created
-- [ ] `linkAsSequel` function works for single and multiple parents
-- [ ] Parent context correctly identifies dead vs alive characters
-- [ ] Parent immutable events inherited to sequel validation
-- [ ] `formatParentContextsForPrompt` produces readable output
-- [ ] Crossover movies (2+ parents) merge contexts correctly
-- [ ] UI allows selecting parent movies when type=MOVIE_SEQUEL
+- [x] `sequel_parent_contexts` table created
+- [x] `linkAsSequel` function works for single and multiple parents
+- [x] Parent context correctly identifies dead vs alive characters
+- [x] Parent immutable events inherited to sequel validation
+- [x] `formatParentContextsForPrompt` produces readable output
+- [x] Crossover movies (2+ parents) merge contexts correctly
+- [x] UI allows selecting parent movies when type=MOVIE_SEQUEL
 
 ---
 
@@ -436,3 +436,9 @@ describe('Sequel System', () => {
 ## Blocks
 
 - Sequel movie generation pipeline
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #177 — merged 2026-02-09

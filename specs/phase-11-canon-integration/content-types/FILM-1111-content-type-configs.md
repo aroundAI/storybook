@@ -1,7 +1,7 @@
 ---
 id: FILM-1111
 title: Content Type Configurations and Memory Strategies
-status: draft
+status: done
 priority: high
 effort: M
 dependencies: [FILM-1110]
@@ -315,14 +315,14 @@ export async function buildMemoryContext(
 
 ## Acceptance Criteria
 
-- [ ] `memory-strategies.ts` created with all exports
-- [ ] `MEMORY_ALLOCATIONS` defined for all 6 content types
-- [ ] `getDecayFactor` returns correct value per type
-- [ ] `getMemoryOptionsForContentType` works for all types
-- [ ] `buildMemoryContext` uses content-type strategies
-- [ ] Unit tests for all decay functions
-- [ ] Documentary type allocates 50% to sources
-- [ ] News type has zero memory horizon
+- [x] `memory-strategies.ts` created with all exports
+- [x] `MEMORY_ALLOCATIONS` defined for all 6 content types
+- [x] `getDecayFactor` returns correct value per type
+- [x] `getMemoryOptionsForContentType` works for all types
+- [x] `buildMemoryContext` uses content-type strategies
+- [x] Unit tests for all decay functions
+- [x] Documentary type allocates 50% to sources
+- [x] News type has zero memory horizon
 
 ---
 
@@ -382,3 +382,9 @@ describe('Memory Strategies', () => {
 
 - **FILM-1112**: Act context bridge uses strategies
 - **FILM-1113**: Sequel system uses parent context allocation
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #176 — merged 2026-02-09

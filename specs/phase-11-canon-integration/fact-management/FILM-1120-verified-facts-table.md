@@ -1,7 +1,7 @@
 ---
 id: FILM-1120
 title: Verified Facts Database Table
-status: draft
+status: done
 priority: high
 effort: M
 dependencies: []
@@ -282,13 +282,13 @@ export function generateAPACitation(
 
 ## Acceptance Criteria
 
-- [ ] `verified_facts` table created with all columns
-- [ ] RLS policies protect project-level access
-- [ ] TypeScript types exported from @kit/episodes
-- [ ] Full-text search index works for claim matching
-- [ ] Tags are indexed with GIN
-- [ ] `generateAPACitation` produces valid APA format
-- [ ] Types regenerated after migration
+- [x] `verified_facts` table created with all columns
+- [x] RLS policies protect project-level access
+- [x] TypeScript types exported from @kit/episodes
+- [x] Full-text search index works for claim matching
+- [x] Tags are indexed with GIN
+- [x] `generateAPACitation` produces valid APA format
+- [x] Types regenerated after migration
 
 ---
 
@@ -348,3 +348,9 @@ psql -c "\\d verified_facts"
 - **FILM-1121**: Fact Management UI
 - **FILM-1122**: Researcher Role
 - **FILM-1123**: Fact-Checker Role
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #178 — merged 2026-02-10

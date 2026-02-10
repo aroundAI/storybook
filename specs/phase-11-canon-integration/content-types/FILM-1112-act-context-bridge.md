@@ -1,7 +1,7 @@
 ---
 id: FILM-1112
 title: Movie Act Context Bridge
-status: draft
+status: done
 priority: medium
 effort: L
 dependencies: [FILM-1110, FILM-1111]
@@ -384,13 +384,13 @@ export function validateAgainstBridge(
 
 ## Acceptance Criteria
 
-- [ ] `ActContextBridge` type fully defined
-- [ ] `act_context_bridges` table created with migration
-- [ ] `buildActContextBridge` extracts state via LLM
-- [ ] `formatBridgeForPrompt` produces readable output
-- [ ] `validateAgainstBridge` catches dead character resurrection
-- [ ] Movie generation uses bridges between acts
-- [ ] Context is correctly populated for 3-act and 5-act structures
+- [x] `ActContextBridge` type fully defined
+- [x] `act_context_bridges` table created with migration
+- [x] `buildActContextBridge` extracts state via LLM
+- [x] `formatBridgeForPrompt` produces readable output
+- [x] `validateAgainstBridge` catches dead character resurrection
+- [x] Movie generation uses bridges between acts
+- [x] Context is correctly populated for 3-act and 5-act structures
 
 ---
 
@@ -467,3 +467,9 @@ describe('Act Context Bridge', () => {
 ## Blocks
 
 - Movie content type generation pipeline
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #177 — merged 2026-02-09

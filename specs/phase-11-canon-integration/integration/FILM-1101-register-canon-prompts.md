@@ -1,7 +1,7 @@
 ---
 id: FILM-1101
 title: Register Canon Prompts in Lambda Worker
-status: draft
+status: done
 priority: critical
 effort: S
 dependencies: [FILM-1006]
@@ -73,11 +73,11 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
 ## Acceptance Criteria
 
-- [ ] All 4 canon-role prompts are imported in `prompt-registry.ts`
-- [ ] All 4 prompts are registered with both short and nested slug aliases
-- [ ] TypeScript compilation passes without errors
-- [ ] Lambda worker can access prompts via `getPromptTemplate('planner-role')`
-- [ ] Unit test: Registry returns valid PromptTemplate for all 4 slugs
+- [x] All 4 canon-role prompts are imported in `prompt-registry.ts`
+- [x] All 4 prompts are registered with both short and nested slug aliases
+- [x] TypeScript compilation passes without errors
+- [x] Lambda worker can access prompts via `getPromptTemplate('planner-role')`
+- [x] Unit test: Registry returns valid PromptTemplate for all 4 slugs
 
 ---
 
@@ -136,3 +136,9 @@ describe('Canon Role Prompts Registration', () => {
 
 - **FILM-1102**: Memory context injection needs prompts registered first
 - **FILM-1104**: Validation integration needs role pipeline working
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #175 — merged 2026-02-09

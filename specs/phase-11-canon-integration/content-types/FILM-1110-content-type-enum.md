@@ -1,7 +1,7 @@
 ---
 id: FILM-1110
 title: Content Type Configurations
-status: draft
+status: done
 priority: high
 effort: S
 dependencies: []
@@ -268,12 +268,12 @@ The existing project creation form already handles this. No changes needed to UI
 
 ## Acceptance Criteria
 
-- [ ] `ContentTypeConfig` interface defined
-- [ ] `CONTENT_TYPE_CONFIGS` mapping created for all project types
-- [ ] `getContentTypeConfig()` helper function works
-- [ ] Memory context builder uses config for budget allocation
-- [ ] Project type retrieved from settings.projectType (not new column)
-- [ ] Optional: Add 'news' to ProjectTypeSchema if needed
+- [x] `ContentTypeConfig` interface defined
+- [x] `CONTENT_TYPE_CONFIGS` mapping created for all project types
+- [x] `getContentTypeConfig()` helper function works
+- [x] Memory context builder uses config for budget allocation
+- [x] Project type retrieved from settings.projectType (not new column)
+- [x] Optional: Add 'news' to ProjectTypeSchema if needed
 
 ---
 
@@ -324,3 +324,9 @@ describe('getContentTypeConfig', () => {
 
 - FILM-1111: Memory Strategy Integration
 - FILM-1102: Memory Context Injection
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #176 — merged 2026-02-09

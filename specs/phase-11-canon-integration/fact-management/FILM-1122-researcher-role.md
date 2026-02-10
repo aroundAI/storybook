@@ -1,7 +1,7 @@
 ---
 id: FILM-1122
 title: Researcher LLM Role Prompt
-status: draft
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1120, FILM-304]
@@ -306,14 +306,14 @@ export function ResearchPhaseView({ projectId, topic }) {
 
 ## Acceptance Criteria
 
-- [ ] `researcher-role.json` prompt template created
-- [ ] Prompt registered in Lambda worker
-- [ ] `runResearchPhase` function works correctly
-- [ ] Claims correctly matched to existing verified facts
-- [ ] Unverified claims marked as 'needs_source'
-- [ ] Research gaps identified
-- [ ] UI shows research results with stats
-- [ ] Cannot proceed to generation if critical claims unverified
+- [x] `researcher-role.json` prompt template created
+- [x] Prompt registered in Lambda worker
+- [x] `runResearchPhase` function works correctly
+- [x] Claims correctly matched to existing verified facts
+- [x] Unverified claims marked as 'needs_source'
+- [x] Research gaps identified
+- [x] UI shows research results with stats
+- [x] Cannot proceed to generation if critical claims unverified
 
 ---
 
@@ -386,3 +386,9 @@ describe('Researcher Role', () => {
 ## Blocks
 
 - Documentary content generation pipeline
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #178 — merged 2026-02-10

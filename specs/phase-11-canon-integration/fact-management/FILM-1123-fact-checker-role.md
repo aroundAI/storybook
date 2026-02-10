@@ -1,7 +1,7 @@
 ---
 id: FILM-1123
 title: Fact-Checker LLM Role Prompt
-status: draft
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1120, FILM-1122]
@@ -347,14 +347,14 @@ export function FactCheckResults({ result }: { result: FactCheckResult }) {
 
 ## Acceptance Criteria
 
-- [ ] `fact-checker-role.json` prompt template created
-- [ ] Prompt registered in Lambda worker
-- [ ] `runFactCheck` function validates content correctly
-- [ ] Critical issues are properly identified
-- [ ] Unsourced claims are flagged
-- [ ] Citation formatting is validated
-- [ ] `shouldBlockContent` blocks on critical/low accuracy
-- [ ] UI shows results with severity-based styling
+- [x] `fact-checker-role.json` prompt template created
+- [x] Prompt registered in Lambda worker
+- [x] `runFactCheck` function validates content correctly
+- [x] Critical issues are properly identified
+- [x] Unsourced claims are flagged
+- [x] Citation formatting is validated
+- [x] `shouldBlockContent` blocks on critical/low accuracy
+- [x] UI shows results with severity-based styling
 
 ---
 
@@ -434,3 +434,9 @@ describe('Fact-Checker Role', () => {
 ## Blocks
 
 - Documentary content finalization
+
+---
+
+## Implementation Status
+
+**Implemented** in PR #178 — merged 2026-02-10
