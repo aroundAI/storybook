@@ -12,6 +12,14 @@ import type { Json } from '@kit/supabase/database';
 
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 
+/**
+ * Cast a typed value to the Supabase `Json` column type.
+ * See sequel-system.ts for detailed rationale.
+ */
+function toJsonb<T>(value: T): Json {
+    return value as unknown as Json;
+}
+
 import type {
     ActContextBridge,
     CharacterActState,
@@ -44,6 +52,19 @@ export async function buildActContextBridge(
     });
 
     const bridge = extraction.data.bridge;
+
+    // Runtime-validate critical bridge fields before persisting
+    if (
+        !bridge ||
+        typeof bridge.actNumber !== 'number' ||
+        typeof bridge.characterStates !== 'object' ||
+        !Array.isArray(bridge.openThreads)
+    ) {
+        throw new Error(
+            `[act-context-bridge] LLM returned invalid bridge shape for episode ${episodeId} act ${actNumber}`,
+        );
+    }
+
     bridge.movieId = episodeId;
     bridge.actNumber = actNumber;
 
@@ -54,7 +75,7 @@ export async function buildActContextBridge(
         act_title: bridge.actTitle,
         act_start_time: bridge.actStartTime,
         act_end_time: bridge.actEndTime,
-        context_state: bridge as unknown as Json,
+        context_state: toJsonb(bridge),
         carry_forward_text: bridge.carryForwardContext,
     });
 

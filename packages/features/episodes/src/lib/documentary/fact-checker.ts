@@ -21,7 +21,6 @@ export {
     type FactCheckResult,
 } from './fact-checker-shared';
 
-// Import types locally for use in this file
 import type { FactCheckResult, FactCheckIssue } from './fact-checker-shared';
 
 // LLM response shape
