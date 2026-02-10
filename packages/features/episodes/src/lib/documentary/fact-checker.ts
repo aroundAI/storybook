@@ -108,6 +108,10 @@ export async function runFactCheck(
         throw new Error(`Project not found: ${projectId}`);
     }
 
+    // Get authenticated user for audit logging
+    const { data: { user } } = await supabase.auth.getUser();
+    const userId = user?.id ?? '';
+
     // Fetch all verified facts for this project
     // verified_facts table added by migration 20260211100000 — not in generated types yet
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,7 +119,8 @@ export async function runFactCheck(
         .from('verified_facts')
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
-        .eq('verification_status', 'verified');
+        .eq('verification_status', 'verified')
+        .limit(1000);
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 
@@ -141,7 +146,7 @@ export async function runFactCheck(
             verified_facts: sanitizeForPrompt(verifiedFactsText),
             required_claims: sanitizeForPrompt(requiredClaims?.join('\n') ?? ''),
         },
-        context: { name: 'fact-checker-role', accountId: project.account_id, userId: '' },
+        context: { name: 'fact-checker-role', accountId: project.account_id, userId },
         supabaseClient: supabase,
     });
 
