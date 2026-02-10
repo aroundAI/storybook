@@ -4,7 +4,7 @@
     "version": "1.0",
     "description": "Extracts complete narrative state from end of movie act for continuity bridging",
     "llm": {
-        "provider": "google",
+        "provider": "gemini",
         "model": "gemini-2.0-flash",
         "max_tokens": 3000,
         "temperature": 0.1
