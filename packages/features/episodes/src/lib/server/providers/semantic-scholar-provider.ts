@@ -90,7 +90,7 @@ export class SemanticScholarProvider extends BaseExternalProvider {
             content: paper.abstract,
             url: `https://www.semanticscholar.org/paper/${paper.paperId}`,
             authors: paper.authors.map((a) => a.name),
-            publishedAt: paper.year ? new Date(`${paper.year}-01-01`) : new Date(),
+            publishedAt: paper.year ? new Date(`${paper.year}-01-01`) : new Date(0), // epoch = unknown date
             language: 'en',
             category: 'research',
             topics: [],

@@ -77,7 +77,7 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
             content: null, // Archive.org doesn't return full text in search
             url: `https://archive.org/details/${doc.identifier}`,
             authors: this.normalizeCreator(doc.creator),
-            publishedAt: doc.date ? new Date(doc.date) : new Date(),
+            publishedAt: doc.date ? new Date(doc.date) : new Date(0), // epoch = unknown date
             language: doc.language ?? 'en',
             category: 'historical',
             topics: [],

@@ -133,9 +133,10 @@ CREATE TRIGGER set_external_sources_updated_at
 ALTER TABLE external_sources ENABLE ROW LEVEL SECURITY;
 ALTER TABLE external_content ENABLE ROW LEVEL SECURITY;
 
--- Sources: anyone can view active sources (public metadata)
+-- Sources: authenticated users can view active sources
 CREATE POLICY "Anyone can view active sources"
   ON external_sources FOR SELECT
+  TO authenticated
   USING (is_active = true);
 
 -- Sources: only service role can insert/update/delete

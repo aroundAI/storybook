@@ -16,6 +16,7 @@ import type {
     AggregatorSearchResult,
     SourceCategory,
 } from '../types/external-context';
+import { SOURCE_CATEGORIES } from '../types/external-context';
 import { getContextAggregator, rowToExternalContent } from '../lib/server/services/context-aggregator';
 
 // =============================================================================
@@ -26,8 +27,8 @@ const SearchExternalContentSchema = z.object({
     query: z.string().min(1),
     category: z
         .union([
-            z.enum(['news', 'research', 'encyclopedia', 'historical', 'official', 'multimedia']),
-            z.array(z.enum(['news', 'research', 'encyclopedia', 'historical', 'official', 'multimedia'])),
+            z.enum(SOURCE_CATEGORIES),
+            z.array(z.enum(SOURCE_CATEGORIES)),
         ])
         .optional(),
     from: z.string().datetime().optional(),
@@ -42,7 +43,7 @@ const SearchExternalContentSchema = z.object({
 
 const ListSourcesSchema = z.object({
     category: z
-        .enum(['news', 'research', 'encyclopedia', 'historical', 'official', 'multimedia'])
+        .enum(SOURCE_CATEGORIES)
         .optional(),
     activeOnly: z.boolean().optional(),
 });
@@ -129,9 +130,7 @@ export const getAvailableProvidersAction = enhanceAction(
     async () => {
         const aggregator = await getContextAggregator();
 
-        const categories: SourceCategory[] = [
-            'news', 'research', 'encyclopedia', 'historical', 'official', 'multimedia',
-        ];
+        const categories = SOURCE_CATEGORIES;
 
         const result: Record<string, string[]> = {};
         for (const cat of categories) {

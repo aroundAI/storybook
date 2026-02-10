@@ -10,14 +10,18 @@
 // SOURCE CATEGORY
 // =============================================================================
 
+/** All valid source category values — single source of truth for Zod schemas. */
+export const SOURCE_CATEGORIES = [
+    'news',          // Real-time news articles
+    'research',      // Academic papers, journals
+    'encyclopedia',  // Wikipedia, Britannica
+    'historical',    // Archives, historical records
+    'official',      // Government documents, reports
+    'multimedia',    // Video transcripts, podcasts
+] as const;
+
 /** Content type categories for external sources */
-export type SourceCategory =
-    | 'news'          // Real-time news articles
-    | 'research'      // Academic papers, journals
-    | 'encyclopedia'  // Wikipedia, Britannica
-    | 'historical'    // Archives, historical records
-    | 'official'      // Government documents, reports
-    | 'multimedia';   // Video transcripts, podcasts
+export type SourceCategory = (typeof SOURCE_CATEGORIES)[number];
 
 /** Credibility tier for sources */
 export type CredibilityTier = 'tier_1' | 'tier_2' | 'tier_3';
