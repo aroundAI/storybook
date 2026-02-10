@@ -15,8 +15,6 @@ import type {
     ExternalContent,
     AggregatorSearchResult,
     SourceCategory,
-    ExternalSourceRow,
-    ExternalContentRow,
 } from '../types/external-context';
 import { getContextAggregator, rowToExternalContent } from '../lib/server/services/context-aggregator';
 
@@ -111,7 +109,7 @@ export const listExternalSourcesAction = enhanceAction(
             throw new Error(`Failed to list sources: ${error.message}`);
         }
 
-        return (sources ?? []) as ExternalSourceRow[];
+        return sources ?? [];
     },
     {
         schema: ListSourcesSchema,
@@ -174,7 +172,7 @@ export const getExternalContentByIdAction = enhanceAction(
 
         if (error || !rawRow) return null;
 
-        return rowToExternalContent(rawRow as ExternalContentRow);
+        return rowToExternalContent(rawRow);
     },
     {
         schema: GetContentByIdSchema,

@@ -92,7 +92,7 @@ export class ExternalContextAggregator {
         this.providers.clear();
         this.providersByCategory.clear();
 
-        for (const source of (sources ?? []) as ExternalSourceRow[]) {
+        for (const source of (sources ?? [])) {
             const provider = this.createProvider(source);
             if (provider) {
                 this.providers.set(source.id, provider);
@@ -223,6 +223,12 @@ export class ExternalContextAggregator {
             .order('published_at', { ascending: false })
             .limit(params.pageSize ?? 20);
 
+        // Apply pagination offset
+        if (params.page && params.page > 1) {
+            const offset = ((params.page - 1) * (params.pageSize ?? 20));
+            query = query.range(offset, offset + (params.pageSize ?? 20) - 1);
+        }
+
         if (params.query) {
             query = query.textSearch('fts', params.query, { type: 'websearch' });
         }
@@ -253,7 +259,7 @@ export class ExternalContextAggregator {
             return [];
         }
 
-        return ((data ?? []) as ExternalContentRow[]).map(rowToExternalContent);
+        return (data ?? []).map(rowToExternalContent);
     }
 
     /**
