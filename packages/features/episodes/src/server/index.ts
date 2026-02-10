@@ -41,6 +41,11 @@ export * from '../lib/server/mutations/generation-job-actions';
 // Canon Management System (Phase 10)
 export * from './canon-actions';
 
+// External Context Provider (Phase 11: FILM-1135)
+export * from './external-context-actions';
+
 // NOTE: Server-only canon functions (buildMemoryContext, runRolePipeline) must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
 // import { runRolePipeline } from '@kit/episodes/lib/canon/llm-role-orchestrator';
+// NOTE: Context aggregator must be imported directly:
+// import { getContextAggregator } from '@kit/episodes/lib/server/services/context-aggregator';
