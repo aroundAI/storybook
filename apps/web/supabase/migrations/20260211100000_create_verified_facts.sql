@@ -161,7 +161,9 @@ CREATE POLICY "Users can update facts for their projects"
     )
   )
   WITH CHECK (
-    (
+    -- Prevent moving facts between projects
+    project_id IS NOT DISTINCT FROM OLD.project_id
+    AND (
       -- If claim and all source fields are unchanged, keep existing verification status
       (
         claim IS NOT DISTINCT FROM OLD.claim AND
