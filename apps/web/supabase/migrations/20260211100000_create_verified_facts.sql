@@ -149,7 +149,7 @@ CREATE POLICY "Users can insert facts for their projects"
     AND (updated_by IS NULL OR updated_by = auth.uid())
   );
 
--- UPDATE: users can edit facts — if claim or source fields change, status resets to unverified
+-- UPDATE: project members can edit facts (content-change rules enforced by trigger below)
 CREATE POLICY "Users can update facts for their projects"
   ON verified_facts FOR UPDATE
   USING (
@@ -159,32 +159,49 @@ CREATE POLICY "Users can update facts for their projects"
         AND pm.user_id = auth.uid()
         AND pm.role IN ('owner', 'admin', 'member')
     )
-  )
-  WITH CHECK (
-    -- Prevent moving facts between projects
-    project_id IS NOT DISTINCT FROM OLD.project_id
-    AND (
-      -- If claim and all source fields are unchanged, keep existing verification status
-      (
-        claim IS NOT DISTINCT FROM OLD.claim AND
-        source_type IS NOT DISTINCT FROM OLD.source_type AND
-        source_citation IS NOT DISTINCT FROM OLD.source_citation AND
-        source_url IS NOT DISTINCT FROM OLD.source_url AND
-        source_title IS NOT DISTINCT FROM OLD.source_title AND
-        source_authors IS NOT DISTINCT FROM OLD.source_authors AND
-        source_publication_date IS NOT DISTINCT FROM OLD.source_publication_date AND
-        source_doi IS NOT DISTINCT FROM OLD.source_doi AND
-        verification_status IS NOT DISTINCT FROM OLD.verification_status
-      ) OR (
-        -- If any content/source field changed, status MUST reset to unverified
-        verification_status = 'unverified'
-      )
-    )
-    AND verified_by IS NOT DISTINCT FROM OLD.verified_by
-    AND verified_at IS NOT DISTINCT FROM OLD.verified_at
-    AND created_by IS NOT DISTINCT FROM OLD.created_by
-    AND (updated_by IS NULL OR updated_by = auth.uid())
   );
+
+-- Trigger: enforce business rules on UPDATE that require OLD reference
+-- (RLS WITH CHECK cannot access OLD in PostgreSQL)
+CREATE OR REPLACE FUNCTION enforce_verified_facts_update_rules()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Prevent moving facts between projects
+  IF NEW.project_id IS DISTINCT FROM OLD.project_id THEN
+    RAISE EXCEPTION 'Cannot move a fact to a different project';
+  END IF;
+
+  -- Protect audit columns
+  IF NEW.created_by IS DISTINCT FROM OLD.created_by THEN
+    RAISE EXCEPTION 'Cannot change created_by';
+  END IF;
+
+  -- If any content or source field changed, reset verification to unverified
+  IF NEW.claim IS DISTINCT FROM OLD.claim
+     OR NEW.source_type IS DISTINCT FROM OLD.source_type
+     OR NEW.source_citation IS DISTINCT FROM OLD.source_citation
+     OR NEW.source_url IS DISTINCT FROM OLD.source_url
+     OR NEW.source_title IS DISTINCT FROM OLD.source_title
+     OR NEW.source_authors IS DISTINCT FROM OLD.source_authors
+     OR NEW.source_publication_date IS DISTINCT FROM OLD.source_publication_date
+     OR NEW.source_doi IS DISTINCT FROM OLD.source_doi
+  THEN
+    NEW.verification_status := 'unverified';
+    NEW.verified_by := NULL;
+    NEW.verified_at := NULL;
+  END IF;
+
+  -- Set updated_by to current user
+  NEW.updated_by := auth.uid();
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER enforce_verified_facts_update
+  BEFORE UPDATE ON verified_facts
+  FOR EACH ROW
+  EXECUTE FUNCTION enforce_verified_facts_update_rules();
 
 -- DELETE: only owners and admins can remove facts
 CREATE POLICY "Users can delete facts for their projects"
