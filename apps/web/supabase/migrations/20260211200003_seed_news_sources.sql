@@ -45,6 +45,20 @@ INSERT INTO external_sources (
 
   ('NPR', 'npr', 'National Public Radio', 'https://npr.org',
    'news', 'newsapi', 'tier_2', 'center_left', 100, 6,
-   '{"source_id": "npr", "api_key_env": "NEWSAPI_KEY"}'::jsonb)
+   '{"source_id": "npr", "api_key_env": "NEWSAPI_KEY"}'::jsonb),
 
-ON CONFLICT (slug) DO NOTHING;
+  -- Tier 2: Right-leaning sources for perspective balance
+  ('Fox News', 'fox-news', 'American news network', 'https://foxnews.com',
+   'news', 'newsapi', 'tier_2', 'center_right', 100, 6,
+   '{"source_id": "fox-news", "api_key_env": "NEWSAPI_KEY"}'::jsonb),
+
+  ('The Daily Telegraph', 'daily-telegraph', 'British broadsheet newspaper', 'https://telegraph.co.uk',
+   'news', 'newsapi', 'tier_2', 'center_right', 100, 6,
+   '{"source_id": "the-telegraph", "api_key_env": "NEWSAPI_KEY"}'::jsonb)
+
+ON CONFLICT (slug) DO UPDATE SET
+  description = EXCLUDED.description,
+  bias_label = EXCLUDED.bias_label,
+  rate_limit_per_hour = EXCLUDED.rate_limit_per_hour,
+  cache_ttl_hours = EXCLUDED.cache_ttl_hours,
+  config = EXCLUDED.config;

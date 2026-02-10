@@ -70,7 +70,7 @@ export class NewsStoryService {
         endOfDay.setUTCHours(23, 59, 59, 999);
 
         const searchParams: ExternalSearchParams = {
-            query: topics?.join(' OR ') || '*',
+            query: topics?.length ? topics.join(' OR ') : 'latest news today',
             category: 'news',
             from: startOfDay,
             to: endOfDay,
@@ -141,13 +141,22 @@ export class NewsStoryService {
      * Strategy: extract entities, then group by primary person + organization.
      * Simple but effective for news clustering.
      */
+    /** Max articles to run entity extraction on (controls LLM cost) */
+    private static readonly MAX_ARTICLES_TO_EXTRACT = 30;
+
     private async clusterByStory(
         articles: ExternalContent[],
         accountId: string,
     ): Promise<StoryCluster[]> {
-        // Extract entities for all articles (parallel, best-effort)
+        // Cap entity extraction to avoid LLM cost explosion
+        const toExtract = articles.slice(
+            0,
+            NewsStoryService.MAX_ARTICLES_TO_EXTRACT,
+        );
+
+        // Extract entities (parallel, best-effort)
         const articlesWithEntities = await Promise.all(
-            articles.map(async (article) => ({
+            toExtract.map(async (article) => ({
                 article,
                 entities: await extractEntitiesFromArticle(
                     article.title,
@@ -158,6 +167,8 @@ export class NewsStoryService {
         );
 
         // Group by cluster key (primary person + org)
+        // Note: entity-based clustering works well for named events but may
+        // over-merge for generic topics sharing the same key figures.
         const clusters = new Map<
             string,
             Array<{
@@ -173,7 +184,8 @@ export class NewsStoryService {
             clusters.set(key, existing);
         }
 
-        // Convert to StoryCluster format, sorted by importance (article count)
+        // Convert to StoryCluster format, sorted by importance
+        // Importance = article share with a minimum floor of 0.1
         return Array.from(clusters.entries())
             .map(([topic, items]) => ({
                 topic,
@@ -181,7 +193,10 @@ export class NewsStoryService {
                 articles: items.map((i) => i.article),
                 perspectives: { left: [], center: [], right: [] },
                 entities: mergeEntities(items.map((i) => i.entities)),
-                importance: items.length / articles.length,
+                importance: Math.max(
+                    0.1,
+                    items.length / toExtract.length,
+                ),
             }))
             .sort((a, b) => b.importance - a.importance);
     }

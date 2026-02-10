@@ -97,15 +97,24 @@ export function mergeEntities(
     return merged;
 }
 
+/** Deduplicate by name, preferring the entry with more non-empty fields */
 function dedupeByName<T extends { name: string }>(items: T[]): T[] {
-    const seen = new Set<string>();
+    const seen = new Map<string, T>();
 
-    return items.filter((item) => {
+    for (const item of items) {
         const key = item.name.toLowerCase();
+        const existing = seen.get(key);
 
-        if (seen.has(key)) return false;
-        seen.add(key);
+        if (!existing || countFields(item) > countFields(existing)) {
+            seen.set(key, item);
+        }
+    }
 
-        return true;
-    });
+    return Array.from(seen.values());
+}
+
+function countFields(obj: Record<string, unknown>): number {
+    return Object.values(obj).filter(
+        (v) => v !== undefined && v !== null && v !== '',
+    ).length;
 }

@@ -10,7 +10,13 @@ import { z } from 'zod';
 
 import { NewsStoryService } from '../lib/server/services/news-story-service';
 
-const service = new NewsStoryService();
+let _service: NewsStoryService | null = null;
+
+function getNewsStoryService(): NewsStoryService {
+    _service ??= new NewsStoryService();
+
+    return _service;
+}
 
 // ─── Discover Top Stories ────────────────────────────────────────────────────
 
@@ -22,7 +28,7 @@ const DiscoverTopStoriesSchema = z.object({
 
 export const discoverTopStoriesAction = enhanceAction(
     async (params, user) => {
-        return service.discoverTopStories({
+        return getNewsStoryService().discoverTopStories({
             date: new Date(params.date),
             topics: params.topics,
             maxStories: params.maxStories,
@@ -43,7 +49,7 @@ const GetNewsTopicContextSchema = z.object({
 
 export const getNewsTopicContextAction = enhanceAction(
     async (params, user) => {
-        return service.getTopicContext(params.topic, user.id);
+        return getNewsStoryService().getTopicContext(params.topic, user.id);
     },
     {
         schema: GetNewsTopicContextSchema,
