@@ -1,0 +1,35 @@
+{
+    "slug": "entity-extraction",
+    "name": "Entity Extraction",
+    "version": 1,
+    "category": "news-generation",
+    "description": "Extract named entities from news article content for clustering and context enrichment.",
+    "exported_at": "2026-02-10T00:00:00.000Z",
+    "llm": {
+        "provider": "gemini",
+        "model": "gemini-2.0-flash",
+        "max_tokens": 1000,
+        "temperature": 0.1,
+        "response_format": {
+            "type": "json_object"
+        }
+    },
+    "system_prompt": "You are a named entity recognition specialist. Extract structured entities from news articles with high precision. Only include clearly mentioned entities — do not infer or hallucinate. Return valid JSON only.",
+    "user_prompt": "Extract named entities from this article:\n\n**Title**: {{title}}\n\n**Content**:\n{{content}}\n\nReturn JSON:\n{\n  \"people\": [{ \"name\": \"...\", \"role\": \"...\" }],\n  \"organizations\": [{ \"name\": \"...\", \"type\": \"...\" }],\n  \"locations\": [{ \"name\": \"...\", \"type\": \"city|country|region\" }],\n  \"topics\": [\"topic1\", \"topic2\"],\n  \"events\": [{ \"name\": \"...\", \"date\": \"...\" }]\n}\n\nBe precise. Only include entities explicitly mentioned in the text.",
+    "variables": {
+        "title": {
+            "type": "text",
+            "required": true,
+            "description": "Article headline"
+        },
+        "content": {
+            "type": "text",
+            "required": true,
+            "description": "Article body (truncated)"
+        }
+    },
+    "output": {
+        "type": "object",
+        "schema_for_llm": "{ people: [{ name: string, role?: string }], organizations: [{ name: string, type?: string }], locations: [{ name: string, type: 'city'|'country'|'region' }], topics: string[], events: [{ name: string, date?: string }] }"
+    }
+}
