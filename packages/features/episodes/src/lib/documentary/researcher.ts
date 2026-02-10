@@ -176,7 +176,7 @@ export function formatResearchForPrompt(result: ResearchResult): string {
     }
 
     const sections: string[] = [
-        `## Research Summary\n${result.topicSummary}`,
+        `## Research Summary\n${sanitizeForPrompt(result.topicSummary)}`,
         `\n## Verified Claims (${result.verifiedCount})`,
     ];
 
@@ -184,7 +184,7 @@ export function formatResearchForPrompt(result: ResearchResult): string {
     if (verified.length > 0) {
         sections.push(
             verified
-                .map((c) => `- ✅ ${c.claim} [fact:${c.matchedFactId}]`)
+                .map((c) => `- ✅ ${sanitizeForPrompt(c.claim)} [fact:${c.matchedFactId}]`)
                 .join('\n'),
         );
     }
@@ -196,14 +196,14 @@ export function formatResearchForPrompt(result: ResearchResult): string {
         sections.push(`\n## Needs Source (${needsSource.length})`);
         sections.push(
             needsSource
-                .map((c) => `- ⚠️ ${c.claim} (search: "${c.suggestedSearch}")`)
+                .map((c) => `- ⚠️ ${sanitizeForPrompt(c.claim)} (search: "${sanitizeForPrompt(c.suggestedSearch)}")`)
                 .join('\n'),
         );
     }
 
     if (result.researchGaps.length > 0) {
         sections.push('\n## Research Gaps');
-        sections.push(result.researchGaps.map((g) => `- ${g}`).join('\n'));
+        sections.push(result.researchGaps.map((g) => `- ${sanitizeForPrompt(g)}`).join('\n'));
     }
 
     return sections.join('\n');

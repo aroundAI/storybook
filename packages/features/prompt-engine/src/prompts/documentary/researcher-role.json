@@ -30,7 +30,7 @@
         }
     },
     "llm": {
-        "provider": "google",
+        "provider": "gemini",
         "model": "gemini-2.0-flash",
         "max_tokens": 2500,
         "temperature": 0.2,
