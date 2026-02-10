@@ -21,8 +21,8 @@ import type {
     ExternalSourceRow,
     ExternalContentRow,
     CredibilityTier,
-    ExtractedEntities,
 } from '../../../types/external-context';
+import { createEmptyEntities } from '../../../types/external-context';
 import { NewsAPIProvider } from '../providers/newsapi-provider';
 import { SemanticScholarProvider } from '../providers/semantic-scholar-provider';
 import { ArchiveOrgProvider } from '../providers/archive-org-provider';
@@ -46,7 +46,13 @@ export function rowToExternalContent(row: ExternalContentRow): ExternalContent {
         language: row.language ?? 'en',
         category: row.category as SourceCategory,
         topics: row.topics ?? [],
-        entities: (row.entities ?? {}) as unknown as ExtractedEntities,
+        entities: {
+            ...createEmptyEntities(),
+            ...((row.entities ?? {}) as Record<string, unknown>),
+            extractedAt: new Date(
+                ((row.entities as Record<string, unknown> | null)?.extractedAt as string) ?? Date.now(),
+            ),
+        },
         doi: row.doi ?? undefined,
         journal: row.journal ?? undefined,
         citations: row.citations ?? undefined,
@@ -151,7 +157,7 @@ export class ExternalContextAggregator {
         }
 
         // 3. Cache fresh content (uses admin client to bypass RLS)
-        const cachedCount = await this.cacheContent(freshContent);
+        await this.cacheContent(freshContent);
 
         // 4. Combine, deduplicate, and return
         const allContent = [...cachedContent, ...freshContent];
@@ -281,7 +287,7 @@ export class ExternalContextAggregator {
             published_at: c.publishedAt.toISOString(),
             updated_at: now,
             language: c.language,
-            category: c.category as string,
+            category: c.category,
             topics: c.topics,
             entities: JSON.parse(JSON.stringify(c.entities)) as Json,
             doi: c.doi ?? null,

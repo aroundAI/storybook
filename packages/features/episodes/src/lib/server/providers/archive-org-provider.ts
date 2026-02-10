@@ -79,10 +79,10 @@ export class ArchiveOrgProvider extends BaseExternalProvider {
             authors: this.normalizeCreator(doc.creator),
             publishedAt: doc.date ? new Date(doc.date) : new Date(),
             language: doc.language ?? 'en',
-            category: 'historical' as SourceCategory,
+            category: 'historical',
             topics: [],
             entities: createEmptyEntities(),
-            credibilityTier: 'tier_2' as const,
+            credibilityTier: 'tier_2',
             fetchedAt: now,
             cacheExpiresAt: cacheExpiry,
         }));

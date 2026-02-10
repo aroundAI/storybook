@@ -72,6 +72,7 @@ export const searchExternalContentAction = enhanceAction(
         });
     },
     {
+        auth: true,
         schema: SearchExternalContentSchema,
     },
 );
@@ -112,6 +113,7 @@ export const listExternalSourcesAction = enhanceAction(
         return sources ?? [];
     },
     {
+        auth: true,
         schema: ListSourcesSchema,
     },
 );
@@ -145,6 +147,7 @@ export const getAvailableProvidersAction = enhanceAction(
         };
     },
     {
+        auth: true,
         schema: z.object({}),
     },
 );
@@ -175,6 +178,7 @@ export const getExternalContentByIdAction = enhanceAction(
         return rowToExternalContent(rawRow);
     },
     {
+        auth: true,
         schema: GetContentByIdSchema,
     },
 );

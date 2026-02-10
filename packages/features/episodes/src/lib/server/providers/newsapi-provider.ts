@@ -96,11 +96,11 @@ export class NewsAPIProvider extends BaseExternalProvider {
             authors: article.author ? [article.author] : [],
             publishedAt: new Date(article.publishedAt),
             language: params.language ?? 'en',
-            category: 'news' as SourceCategory,
+            category: 'news',
             topics: [],
             entities: createEmptyEntities(),
             imageUrl: article.urlToImage ?? undefined,
-            credibilityTier: 'tier_2' as const,
+            credibilityTier: 'tier_2',
             fetchedAt: now,
             cacheExpiresAt: cacheExpiry,
         }));
