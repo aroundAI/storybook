@@ -104,8 +104,21 @@ ALTER TABLE verified_facts ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view facts for their projects"
   ON verified_facts FOR SELECT
   USING (
-    project_id IN (
-      SELECT id FROM projects WHERE account_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM projects p
+      WHERE p.id = verified_facts.project_id
+      AND (
+        -- Personal account: user is the primary owner
+        EXISTS (
+          SELECT 1 FROM public.accounts a
+          WHERE a.id = p.account_id
+            AND a.primary_owner_user_id = auth.uid()
+            AND a.is_personal_account = true
+        )
+        OR
+        -- Team account: user has a role on the account
+        public.has_role_on_account(p.account_id)
+      )
     )
   );
 
@@ -115,8 +128,19 @@ CREATE POLICY "Users can view facts for their projects"
 CREATE POLICY "Users can insert facts for their projects"
   ON verified_facts FOR INSERT
   WITH CHECK (
-    project_id IN (
-      SELECT id FROM projects WHERE account_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM projects p
+      WHERE p.id = verified_facts.project_id
+      AND (
+        EXISTS (
+          SELECT 1 FROM public.accounts a
+          WHERE a.id = p.account_id
+            AND a.primary_owner_user_id = auth.uid()
+            AND a.is_personal_account = true
+        )
+        OR
+        public.has_role_on_account(p.account_id)
+      )
     )
     AND (verification_status IS NULL OR verification_status = 'unverified')
     AND verified_by IS NULL
@@ -125,12 +149,15 @@ CREATE POLICY "Users can insert facts for their projects"
     AND (updated_by IS NULL OR updated_by = auth.uid())
   );
 
--- UPDATE: users can edit fact content but cannot change verification status
+-- UPDATE: users can edit fact content but cannot change verification columns
 CREATE POLICY "Users can update facts for their projects"
   ON verified_facts FOR UPDATE
   USING (
-    project_id IN (
-      SELECT id FROM projects WHERE account_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM public.project_members pm
+      WHERE pm.project_id = verified_facts.project_id
+        AND pm.user_id = auth.uid()
+        AND pm.role IN ('owner', 'admin', 'member')
     )
   )
   WITH CHECK (
@@ -142,11 +169,14 @@ CREATE POLICY "Users can update facts for their projects"
     AND (updated_by IS NULL OR updated_by = auth.uid())
   );
 
--- DELETE: users can remove facts from their own projects
+-- DELETE: only owners and admins can remove facts
 CREATE POLICY "Users can delete facts for their projects"
   ON verified_facts FOR DELETE
   USING (
-    project_id IN (
-      SELECT id FROM projects WHERE account_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM public.project_members pm
+      WHERE pm.project_id = verified_facts.project_id
+        AND pm.user_id = auth.uid()
+        AND pm.role IN ('owner', 'admin')
     )
   );

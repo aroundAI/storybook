@@ -15,7 +15,9 @@ function sanitizeForPrompt(input: string): string {
         .replace(/---/g, '—')
         .replace(/```/g, "'''")
         .replace(/\{\{/g, '{ {')
-        .replace(/\}\}/g, '} }');
+        .replace(/\}\}/g, '} }')
+        .replace(/<\/?(?:system|user|assistant|prompt|instruction)[^>]*>/gi, '')
+        .replace(/\b(?:IGNORE (?:ALL )?(?:PREVIOUS|ABOVE)|SYSTEM OVERRIDE)\b/gi, '[FILTERED]');
 }
 
 // =============================================================================
@@ -114,7 +116,7 @@ export async function runFactCheck(
         .select('id, claim, source_citation, category')
         .eq('project_id', projectId)
         .eq('verification_status', 'verified')
-        .limit(200);
+        .limit(1000);
 
     const facts = (rawFacts ?? []) as VerifiedFactRow[];
 
