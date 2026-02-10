@@ -12,22 +12,17 @@
 
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 import { getProjectContext } from './helpers';
+import type { VerifiedFactRow } from './types';
 
 // Re-export types and pure functions from client-safe shared module
-export type { FactCheckIssue, FactCheckResult } from './fact-checker-shared';
-export { shouldBlockContent } from './fact-checker-shared';
+export {
+    shouldBlockContent,
+    type FactCheckIssue,
+    type FactCheckResult,
+} from './fact-checker-shared';
 
 // Import types locally for use in this file
-import type { FactCheckResult } from './fact-checker-shared';
-import type { FactCheckIssue } from './fact-checker-shared';
-
-// Row shape returned from the verified_facts table
-interface VerifiedFactRow {
-    id: string;
-    claim: string;
-    source_citation: string;
-    category: string | null;
-}
+import type { FactCheckResult, FactCheckIssue } from './fact-checker-shared';
 
 // LLM response shape
 interface FactCheckLLMResponse {
@@ -49,6 +44,17 @@ interface FactCheckLLMResponse {
         summary: string;
     };
 }
+
+// Valid values for runtime validation
+const VALID_VERDICTS = new Set(['pass', 'fail', 'warnings']);
+const VALID_SEVERITIES = new Set(['critical', 'warning', 'minor', 'info']);
+const VALID_ISSUE_TYPES = new Set([
+    'inaccurate',
+    'unsourced',
+    'misrepresented',
+    'citation_error',
+    'missing_claim',
+]);
 
 // =============================================================================
 // SERVICE FUNCTIONS
@@ -133,15 +139,24 @@ export async function runFactCheck(
 
     const check = result.data.fact_check;
 
+    // Runtime-validate LLM output to catch unexpected values
+    const verdict = VALID_VERDICTS.has(check.overall_verdict)
+        ? (check.overall_verdict as FactCheckResult['overallVerdict'])
+        : 'fail';
+
     return {
-        overallVerdict: check.overall_verdict as FactCheckResult['overallVerdict'],
+        overallVerdict: verdict,
         accuracyScore: check.accuracy_score,
         totalClaimsFound: check.total_claims_found,
         verifiedClaims: check.verified_claims,
         issues: check.issues.map((i) => ({
-            severity: i.severity as FactCheckIssue['severity'],
+            severity: (VALID_SEVERITIES.has(i.severity)
+                ? i.severity
+                : 'warning') as FactCheckIssue['severity'],
             claimInContent: i.claim_in_content,
-            issueType: i.issue_type as FactCheckIssue['issueType'],
+            issueType: (VALID_ISSUE_TYPES.has(i.issue_type)
+                ? i.issue_type
+                : 'unsourced') as FactCheckIssue['issueType'],
             explanation: i.explanation,
             verifiedFact: i.verified_fact,
             suggestion: i.suggestion,

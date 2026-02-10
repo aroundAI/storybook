@@ -14,6 +14,22 @@ import type { Json } from '@kit/supabase/database';
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Cast a typed value to the Supabase `Json` column type.
+ *
+ * This is a deliberate boundary cast: we trust our well-typed interfaces
+ * (ParentImmutableEvent[], etc.) to be JSON-serializable. The helper
+ * documents this intent in one place rather than scattering `as unknown
+ * as Json` across the codebase.
+ */
+function toJsonb<T>(value: T): Json {
+    return value as unknown as Json;
+}
+
+// =============================================================================
 // TYPES
 // =============================================================================
 
@@ -141,12 +157,12 @@ export async function linkAsSequel(
         parent_project_id: parentProjectId,
         parent_project_name: parentProject.name,
         parent_summary: parentContext.parentSummary,
-        parent_immutable_events: parentContext.immutableEvents as unknown as Json,
-        parent_final_character_states: parentContext.finalCharacterStates as unknown as Json,
-        parent_resolved_threads: parentContext.resolvedThreads as unknown as Json,
-        parent_world_facts: parentContext.worldFacts as unknown as Json,
-        character_visual_registry: parentContext.characterVisualRegistry as unknown as Json,
-        location_registry: parentContext.locationRegistry as unknown as Json,
+        parent_immutable_events: toJsonb(parentContext.immutableEvents),
+        parent_final_character_states: toJsonb(parentContext.finalCharacterStates),
+        parent_resolved_threads: toJsonb(parentContext.resolvedThreads),
+        parent_world_facts: toJsonb(parentContext.worldFacts),
+        character_visual_registry: toJsonb(parentContext.characterVisualRegistry),
+        location_registry: toJsonb(parentContext.locationRegistry),
         cached_at: new Date().toISOString(),
         is_stale: false,
     });

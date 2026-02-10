@@ -53,7 +53,7 @@ export interface VerifiedFact {
     // Source
     sourceType: SourceType;
     sourceUrl?: string;
-    sourceCitation: string;
+    sourceCitation?: string;
     sourceTitle?: string;
     sourceAuthors?: string[];
     sourcePublicationDate?: string;

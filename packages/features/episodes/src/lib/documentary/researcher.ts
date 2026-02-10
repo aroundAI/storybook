@@ -8,6 +8,7 @@
 
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 import { getProjectContext } from './helpers';
+import type { VerifiedFactRow } from './types';
 
 // =============================================================================
 // TYPES
@@ -31,13 +32,7 @@ export interface ResearchResult {
     needsSourceCount: number;
 }
 
-// Row shape returned from the verified_facts table
-interface VerifiedFactRow {
-    id: string;
-    claim: string;
-    source_citation: string;
-    category: string | null;
-}
+
 
 // LLM response shape
 interface ResearchLLMResponse {
@@ -133,12 +128,18 @@ export async function runResearchPhase(
         // Removes ambiguity from LLM-reported 'likely' on unmatched claims.
         const finalConfidence = isValidMatch ? 'verified' : 'needs_source';
 
+        // Runtime-validate priority from LLM
+        const VALID_PRIORITIES = new Set(['critical', 'important', 'nice_to_have']);
+        const priority = VALID_PRIORITIES.has(c.priority)
+            ? (c.priority as ResearchClaim['priority'])
+            : 'important';
+
         return {
             claim: c.claim,
             category: c.category,
             matchedFactId: isValidMatch ? c.matched_fact_id : null,
-            confidence: finalConfidence as ResearchClaim['confidence'],
-            priority: c.priority as 'critical' | 'important' | 'nice_to_have',
+            confidence: finalConfidence,
+            priority,
             suggestedSearch: c.suggested_search,
         };
     });
