@@ -37,7 +37,7 @@
             "order": 3
         }
     ],
-    "user_prompt": "Translate the following dialogue lines to {{target_language}}.\n{{#if preserve_timing}}IMPORTANT: Keep each translation roughly the same speaking duration as the original. Shorten or rephrase if needed to maintain similar timing.{{/if}}\n\nDialogue to translate:\n{{dialogue_lines}}",
+    "user_prompt": "Translate the following dialogue lines to {{target_language}}.\n{{preserve_timing}}\n\nDialogue to translate:\n{{dialogue_lines}}",
     "variables": {
         "target_language": {
             "type": "text",

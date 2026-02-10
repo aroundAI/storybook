@@ -56,14 +56,14 @@ export interface VerifiedFact {
     sourceCitation: string;
     sourceTitle?: string;
     sourceAuthors?: string[];
-    sourcePublicationDate?: Date;
+    sourcePublicationDate?: string;
     sourceDoi?: string;
     sourceMetadata?: Record<string, unknown>;
 
     // Verification
     verificationStatus: VerificationStatus;
     verifiedBy?: string;
-    verifiedAt?: Date;
+    verifiedAt?: string;
     verificationNotes?: string;
 
     // Confidence
@@ -71,13 +71,13 @@ export interface VerifiedFact {
 
     // Usage
     timesUsed: number;
-    lastUsedAt?: Date;
+    lastUsedAt?: string;
     episodesUsedIn: string[];
 
     // Audit
-    createdAt: Date;
+    createdAt: string;
     createdBy?: string;
-    updatedAt: Date;
+    updatedAt: string;
     updatedBy?: string;
 }
 

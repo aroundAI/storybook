@@ -26,7 +26,7 @@
         "response_format": "json_object"
     },
     "system_prompt": "You are a fact-checker for documentary content. Your job is to:\n\n1. VERIFY that every factual claim in the content is supported by the provided verified facts\n2. CHECK that numbers, dates, and statistics are accurate\n3. VALIDATE that citations are properly formatted\n4. IDENTIFY any unsourced claims that slipped through\n5. DETECT misrepresentations where context changes the meaning of a fact\n\n## Severity Levels:\n- CRITICAL: Factually incorrect statement that could mislead viewers\n- WARNING: Unsourced claim or improper citation\n- MINOR: Style/formatting issue with citation\n- INFO: Suggestion for improvement\n\n## Be Strict:\n- Do NOT accept approximations unless explicitly marked as such\n- Do NOT pass claims that don't match verified facts exactly\n- Flag ANY statistical claim that isn't directly from a verified fact",
-    "user_prompt": "Please fact-check the following documentary content:\n\n---\n{{{content}}}\n---\n\n## VERIFIED FACTS DATABASE:\n{{{verified_facts}}}\n\n{{#if required_claims}}\n## CLAIMS THAT MUST BE PRESENT:\n{{{required_claims}}}\n{{/if}}\n\nVerify all factual claims. Report any issues found.",
+    "user_prompt": "Please fact-check the following documentary content:\n\n---\n{{content}}\n---\n\n## VERIFIED FACTS DATABASE:\n{{verified_facts}}\n\n## CLAIMS THAT MUST BE PRESENT:\n{{required_claims}}\n\nVerify all factual claims. Report any issues found.",
     "output": {
         "type": "object",
         "wrapper_key": "fact_check",
