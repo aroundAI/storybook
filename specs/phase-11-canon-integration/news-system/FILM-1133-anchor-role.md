@@ -1,7 +1,7 @@
 ---
 id: FILM-1133
 title: News Anchor LLM Role Prompt
-status: in-review
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1132, FILM-1006]

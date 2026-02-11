@@ -51,6 +51,12 @@ const MAX_ARTICLES_FOR_SCRIPT = 10;
 /** Max content length per article in the prompt (chars) */
 const MAX_ARTICLE_CONTENT_LENGTH = 500;
 
+/** Fallback duration (seconds) when no articles are found */
+const EMPTY_FALLBACK_DURATION_SECONDS = 5;
+
+/** Fallback duration (seconds) when LLM generation fails */
+const ERROR_FALLBACK_DURATION_SECONDS = 10;
+
 // ─── Service Functions ───────────────────────────────────────────────────────
 
 /**
@@ -85,7 +91,7 @@ export async function generateNewsSegment(
                 {
                     type: 'ANCHOR',
                     content: `No recent coverage found for: ${segmentTheme}`,
-                    durationSeconds: 5,
+                    durationSeconds: EMPTY_FALLBACK_DURATION_SECONDS,
                 },
             ],
             sourcesUsed: [],
@@ -126,7 +132,7 @@ export async function generateNewsSegment(
                 {
                     type: 'ANCHOR',
                     content: `Coverage summary for: ${segmentTheme}`,
-                    durationSeconds: 10,
+                    durationSeconds: ERROR_FALLBACK_DURATION_SECONDS,
                 },
             ],
             sourcesUsed: [],
@@ -160,6 +166,11 @@ export function checkSourceBalance(
     }
 
     // Warn if no center sources are present
+    // NOTE: center_left and center_right intentionally count toward BOTH the
+    // center bucket AND the left/right bucket. A "center_left" source provides
+    // some center perspective AND some left perspective. This means a set of
+    // only center_left articles won't trigger "no center" or "no left" warnings,
+    // but will trigger "no right-leaning" if articles.length >= 4.
     const centerCount =
         (biasDistribution['center'] ?? 0) +
         (biasDistribution['center_left'] ?? 0) +
