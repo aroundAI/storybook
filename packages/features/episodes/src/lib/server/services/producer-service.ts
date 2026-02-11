@@ -7,6 +7,7 @@
  */
 
 import type { AnchorScript } from './anchor-service';
+import { NewsStoryService } from './news-story-service';
 import type { StoryCluster } from './news-story-service';
 import { escapeXml } from '../../utils/escape-xml';
 
@@ -53,6 +54,11 @@ export interface PlanRundownOptions {
     accountId: string;
 }
 
+/**
+ * Options for full episode orchestration.
+ * Extends PlanRundownOptions — extra fields (e.g. voiceTone, style) can be
+ * added here in the future without changing the planning interface.
+ */
 export interface OrchestrateEpisodeOptions extends PlanRundownOptions { }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -62,6 +68,16 @@ const MAX_STORIES_FOR_RUNDOWN = 15;
 
 /** Fallback segment duration (seconds) when LLM generation fails */
 const FALLBACK_SEGMENT_DURATION_SECONDS = 60;
+
+// ─── Singleton ───────────────────────────────────────────────────────────────
+
+let _newsStoryService: NewsStoryService | null = null;
+
+function getNewsStoryService(): NewsStoryService {
+    _newsStoryService ??= new NewsStoryService();
+
+    return _newsStoryService;
+}
 
 // ─── Service Functions ───────────────────────────────────────────────────────
 
@@ -75,11 +91,8 @@ export async function planEpisodeRundown(
 ): Promise<EpisodeRundown> {
     const { episodeTitle, totalDuration, topics, accountId } = options;
 
-    // 1. Discover stories using NewsStoryService
-    const { NewsStoryService } = await import('./news-story-service');
-    const service = new NewsStoryService();
-
-    const stories = await service.discoverTopStories({
+    // 1. Discover stories using NewsStoryService (singleton)
+    const stories = await getNewsStoryService().discoverTopStories({
         date: new Date(),
         topics,
         maxStories: MAX_STORIES_FOR_RUNDOWN,
@@ -201,8 +214,9 @@ function formatStoryForPrompt(story: StoryCluster, index: number): string {
 /**
  * Infer a broad category from a headline.
  * Used to provide category hints to the LLM.
+ * @internal Exported for unit testing.
  */
-function inferCategory(headline: string): string {
+export function inferCategory(headline: string): string {
     const lower = headline.toLowerCase();
 
     if (lower.includes('breaking') || lower.includes('urgent')) {

@@ -121,7 +121,7 @@ export const checkSourceBalanceAction = enhanceAction(
 const PlanRundownSchema = z.object({
     episodeTitle: z.string().min(1).max(500),
     totalDuration: z.number().int().min(1).max(60),
-    topics: z.array(z.string().max(500)).optional(),
+    topics: z.array(z.string().min(1).max(500)).optional(),
 });
 
 export const planRundownAction = enhanceAction(
@@ -143,12 +143,6 @@ export const planRundownAction = enhanceAction(
 
 // ─── Orchestrate News Episode (FILM-1134) ────────────────────────────────────
 
-const OrchestrateEpisodeSchema = z.object({
-    episodeTitle: z.string().min(1).max(500),
-    totalDuration: z.number().int().min(1).max(60),
-    topics: z.array(z.string().max(500)).optional(),
-});
-
 export const orchestrateNewsEpisodeAction = enhanceAction(
     async (params, user) => {
         const { orchestrateNewsEpisode } = await import(
@@ -161,7 +155,7 @@ export const orchestrateNewsEpisodeAction = enhanceAction(
         });
     },
     {
-        schema: OrchestrateEpisodeSchema,
+        schema: PlanRundownSchema,
         auth: true,
     },
 );
