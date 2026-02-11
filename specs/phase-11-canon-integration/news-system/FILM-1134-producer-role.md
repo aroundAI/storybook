@@ -1,7 +1,7 @@
 ---
 id: FILM-1134
 title: Producer LLM Role Prompt
-status: draft
+status: done
 priority: medium
 effort: M
 dependencies: [FILM-1133, FILM-1006]
