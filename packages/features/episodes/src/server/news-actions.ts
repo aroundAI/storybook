@@ -115,3 +115,47 @@ export const checkSourceBalanceAction = enhanceAction(
         auth: true,
     },
 );
+
+// ─── Plan Episode Rundown (FILM-1134) ────────────────────────────────────────
+
+const PlanRundownSchema = z.object({
+    episodeTitle: z.string().min(1).max(500),
+    totalDuration: z.number().int().min(1).max(60),
+    topics: z.array(z.string().min(1).max(500)).optional(),
+});
+
+export const planRundownAction = enhanceAction(
+    async (params, user) => {
+        const { planEpisodeRundown } = await import(
+            '../lib/server/services/producer-service'
+        );
+
+        return planEpisodeRundown({
+            ...params,
+            accountId: user.id,
+        });
+    },
+    {
+        schema: PlanRundownSchema,
+        auth: true,
+    },
+);
+
+// ─── Orchestrate News Episode (FILM-1134) ────────────────────────────────────
+
+export const orchestrateNewsEpisodeAction = enhanceAction(
+    async (params, user) => {
+        const { orchestrateNewsEpisode } = await import(
+            '../lib/server/services/producer-service'
+        );
+
+        return orchestrateNewsEpisode({
+            ...params,
+            accountId: user.id,
+        });
+    },
+    {
+        schema: PlanRundownSchema,
+        auth: true,
+    },
+);

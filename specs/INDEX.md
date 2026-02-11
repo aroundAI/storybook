@@ -490,7 +490,7 @@ graph TD
 | FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.md) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
 | FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.md) | ✅ DONE | L | #182 | ~~FILM-1135~~ |
 | FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | ✅ DONE | M | — | FILM-1132 |
-| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | Draft | M | — | FILM-1133 |
+| FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | ✅ DONE | M | — | FILM-1133 |
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | ✅ DONE | L | FILM-1135 | - |
 | FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.md) | Draft | L | — | FILM-1120 |
 | FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.md) | Draft | M | — | FILM-1140 |
@@ -584,11 +584,11 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
 | 9. Integration | 6 | 0 | 0 | 0 | 0 | 6 |
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 5 | 0 | 0 | 0 | 16 |
+| 11. Canon Integ | 21 | 4 | 0 | 0 | 0 | 17 |
 | 12. Scale | 2 | 2 | 0 | 0 | 0 | 0 |
 | 13. Hook Opt | 2 | 2 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **162** | **9** | **0** | **0** | **0** | **153** |
+| **TOTAL** | **162** | **8** | **0** | **0** | **0** | **154** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -596,7 +596,7 @@ SPIKE-01 through SPIKE-05
 |-------|-------|-----------|---|
 | MVP Specs | 93 | 93 | 100% |
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
-| Canon (Ph 10-11) | 28 | 23 | 82% |
+| Canon (Ph 10-11) | 28 | 24 | 86% |
 | Scale & Hooks (Ph 12-13) | 4 | 0 | 0% |
 
 ---

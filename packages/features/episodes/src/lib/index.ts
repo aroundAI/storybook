@@ -21,3 +21,11 @@ export type {
     AnchorScriptEntry,
     SourceBalanceResult,
 } from './server/services/anchor-service';
+
+// Producer Service Types (Phase 11: FILM-1134)
+export type {
+    EpisodeRundown,
+    RundownSegment,
+    OrchestratedEpisode,
+    OrchestratedSegment,
+} from './server/services/producer-service';
