@@ -1,160 +1,83 @@
-# Superpowers Review — FILM-1135 External Context Provider
+# Superpowers Review v2: FILM-1130/1131/1132 News System (Post-Fix)
 
-**Branch**: `feature/FILM-1135-external-context-provider`
-**Commits**: 13 | **Files**: 18 | **Lines**: +1688 / -98
-**Date**: 2026-02-10
+**Branch**: `feature/FILM-1130-1132-news-system`
+**PR**: [#182](https://github.com/aroundAI/storybook/pull/182)
+**Scope**: 10 files, ~700 lines (after fixes)
 
 ---
 
 ## Blockers
 
-**None.**
+None.
 
 ---
 
 ## Majors
 
-### M1 — Redundant migration `20260211200002` after initial migration fix
+None. All 3 prior majors (M1, M2, M3) resolved:
 
-**File**: `20260211200002_restrict_external_sources_rls.sql`
-**Severity**: Major (deploy hygiene)
-
-The initial migration `20260211200000` was fixed in-place to include `TO authenticated`, but the follow-up migration `20260211200002` still exists and drops+recreates the same policy. This results in:
-1. The first migration creates the correct policy (`TO authenticated`)
-2. The third migration drops it and recreates an identical policy with a different name
-
-**Impact**: No functional harm (both are `TO authenticated`), but the third migration is dead weight and the final policy name ("Authenticated users can view active sources") differs from the one in the initial migration ("Anyone can view active sources"). This inconsistency could confuse future schema audits.
-
-**Recommendation**: Delete `20260211200002_restrict_external_sources_rls.sql` entirely, since the fix is already in `20260211200000`. Alternatively, if preserving migration history is preferred, add a comment explaining it's a no-op.
-
----
-
-### M2 — Singleton state leak across Lambda invocations
-
-**File**: `context-aggregator.ts:331`
-
-```typescript
-let aggregatorInstance: ExternalContextAggregator | null = null;
-```
-
-Module-level singletons persist across warm Lambda invocations. The `isStale()` check (5 min TTL) mitigates this, but the `providers` Map also holds **mutable rate-limit state** (via `BaseExternalProvider.rateLimitRemaining`). If a provider gets rate-limited in invocation A, subsequent requests routed to the same warm instance inherit that state, potentially skipping an available provider.
-
-**Impact**: Low in practice (TTL resets the whole instance), but the rate-limit state was designed for per-request lifecycle, not cross-request persistence.
-
-**Recommendation**: Either reset rate-limit counters in `initialize()`, or document that Lambda warm-start sharing is intentional for the 5-min window.
+| Prior ID | Issue | Status |
+|----------|-------|--------|
+| M1 | LLM cost explosion (100 articles) | ✅ Fixed — capped at 30 (`MAX_ARTICLES_TO_EXTRACT`) |
+| M2 | Wildcard `'*'` query | ✅ Fixed — uses `'latest news today'` fallback |
+| M3 | Module-level instantiation | ✅ Fixed — lazy `getNewsStoryService()` singleton |
 
 ---
 
 ## Minors
 
-### m1 — `category` column not validated at DB level in `external_content`
+### m1: Duplicate JSDoc block before `clusterByStory`
+**File**: `news-story-service.ts:138-145`
+**Severity**: Minor (Readability)
 
-**File**: `20260211200000_create_external_context_tables.sql:77`
-
-`external_sources.category` has a `CHECK` constraint, but `external_content.category` does not. Since category is denormalized for performance, a CHECK ensures data integrity even if the app layer has a bug.
-
-**Recommendation**: Add `CHECK (category IN ('news','research','encyclopedia','historical','official','multimedia'))` to `external_content.category`.
-
----
-
-### m2 — `entities` JSON round-trip via `JSON.parse(JSON.stringify(...))`
-
-**File**: `context-aggregator.ts:292`
+There are now two consecutive comment blocks — the original method JSDoc and the new `MAX_ARTICLES_TO_EXTRACT` JSDoc — both sitting before the private static field. The static field JSDoc is wedged between the method JSDoc and the method signature, making it look like they belong together.
 
 ```typescript
-entities: JSON.parse(JSON.stringify(c.entities)) as Json,
+    /**                          // ← method JSDoc
+     * Cluster articles by entity overlap.
+     * ...
+     */
+    /** Max articles to run ... */  // ← field JSDoc (reads awkwardly here)
+    private static readonly MAX_ARTICLES_TO_EXTRACT = 30;
+
+    private async clusterByStory( ...
 ```
 
-This works but is wasteful. The only non-serializable value in `ExtractedEntities` is `extractedAt: Date`, which `JSON.stringify` converts to an ISO string automatically. A manual conversion of `extractedAt` would avoid the full deep-clone.
+**Recommendation**: Move `MAX_ARTICLES_TO_EXTRACT` above the method JSDoc, or collapse into a single comment block.
 
-**Recommendation**: Consider `{ ...c.entities, extractedAt: c.entities.extractedAt.toISOString() }` instead.
+### m2: Bias balance still slightly uneven
+**File**: `20260211200003_seed_news_sources.sql`
+**Severity**: Minor (Acceptable for v1)
 
----
+Updated distribution with 12 sources:
+- **Left bucket** (left + center_left): 5 sources (Guardian, BBC, NYT, CNN, NPR)
+- **Center bucket** (center + unknown): 4 sources (Reuters, AP, AFP, Al Jazeera)
+- **Right bucket** (right + center_right): 3 sources (WSJ, Fox News, Daily Telegraph)
 
-### m3 — Missing `AbortSignal.timeout` fallback for older runtimes
-
-**Files**: All 3 providers
-
-`AbortSignal.timeout(10_000)` is used in all three providers. This requires Node 17.3+ / modern Edge runtimes. Since the project targets Next.js 15 on AWS Lambda, this should be fine, but if any provider runs in an older Node context, it will throw.
-
-**Recommendation**: No change needed for current target, but add a brief comment noting the Node 17.3+ requirement.
-
----
-
-### m4 — `id: ''` placeholder in freshly-fetched content
-
-**Files**: All 3 providers (e.g., `newsapi-provider.ts:90`)
-
-```typescript
-id: '', // Set by cache manager on insert
-```
-
-The `ExternalContent.id` is typed as `string` (not optional), so downstream code that reads `.id` before caching will get an empty string. This is documented with a comment but could cause subtle bugs if content is used before being cached.
-
-**Recommendation**: Consider using `crypto.randomUUID()` as a client-side temporary ID, or make `id` optional (`id?: string`) in the type.
-
----
-
-### m5 — Hardcoded `credibilityTier` per provider
-
-**Files**: All 3 providers
-
-Each provider hardcodes its credibility tier (`'tier_1'`, `'tier_2'`). The `external_sources` table has a `credibility_tier` column, but it's not passed to providers during construction.
-
-**Recommendation**: Pass `credibilityTier` from the source row into the provider constructor for configurability. Current hardcoding is a reasonable V1 approach, but note it in the README.
+5:4:3 is significantly better than the prior 5:4:1. Acceptable for v1.
 
 ---
 
 ## Nits
 
-### n1 — Import placement
+### n1: `countFields` generic typing accepts `Record<string, unknown>` but receives `{ name: string; role?: string }`
+**File**: `entity-extractor.ts:116`
+**Severity**: Nit
 
-**File**: `external-context.ts:169`
+The `countFields` function parameter is typed as `Record<string, unknown>`, which loses the generic `T` type safety from `dedupeByName<T>`. This works correctly at runtime but the type widening is worth noting. Not a bug since `T extends { name: string }` is always assignable to `Record<string, unknown>`.
 
-The `import type { Database }` at line 169 is at the bottom of the file, after all type definitions. Conventional style places imports at the top.
+### n2: Prompt JSON `slug` still doesn't include category prefix
+**Files**: `entity-extraction.json:2`, `topic-summary.json:2`
+**Severity**: Nit (Carried from v1)
 
----
-
-### n2 — `response.statusText` may be empty
-
-**Files**: All 3 providers
-
-HTTP/2 does not guarantee `statusText`. The error message `${response.status} ${response.statusText}` may end with a trailing space.
-
-**Recommendation**: Use `${response.status}${response.statusText ? ' ' + response.statusText : ''}`.
-
----
-
-### n3 — Provider barrel export is minimal
-
-**File**: `providers/index.ts`
-
-Only re-exports the three concrete providers and the base class. If consumers need to import `createEmptyEntities` or `SOURCE_CATEGORIES` they must go through the types path.
-
----
-
-### n4 — `peerReviewed: true` hardcoded for Semantic Scholar
-
-**File**: `semantic-scholar-provider.ts:101`
-
-Not all Semantic Scholar results are peer-reviewed (preprints, ArXiv papers). This is a reasonable V1 default but may be refined later.
+Cosmetic — the `slug` field in JSON is unused by `executeLLM` (which uses `templateSlug`). No fix needed.
 
 ---
 
 ## Summary
 
-| Severity | Count |
-|----------|-------|
-| Blocker  | 0     |
-| Major    | 2     |
-| Minor    | 5     |
-| Nit      | 4     |
+**Overall**: Clean implementation with all prior review findings addressed. The code is well-structured, properly error-handled, and integrates correctly with the existing aggregator and LLM infrastructure.
 
-**Overall Assessment**: The feature is well-structured with clean separation (types → base → providers → aggregator → actions). Security posture is solid: all actions require `auth: true`, RLS is locked to `authenticated` + `service_role`, and SHA-256 is used for external IDs. The cache-first search strategy with TTL-based expiry is a pragmatic design.
+**Remaining items are cosmetic** (JSDoc ordering, bias balance refinement) and do not warrant blocking the PR.
 
-### Next Actions
-
-1. **M1**: Remove or annotate the redundant `20260211200002` migration
-2. **M2**: Reset rate-limit counters in `initialize()` or document Lambda warm-start behavior
-3. **m1**: Add CHECK constraint on `external_content.category` (can be a follow-up migration)
-4. Remaining minors/nits are optional improvements for a future iteration
+**Verdict**: ✅ **Ship-ready. No blocking issues.**
