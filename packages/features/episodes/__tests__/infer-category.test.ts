@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { inferCategory } from '../src/lib/server/services/producer-service';
+import {
+    inferCategory,
+    sanitizeSearchQuery,
+} from '../src/lib/server/services/producer-service';
 
 describe('inferCategory', () => {
     it('should return "breaking" for breaking/urgent headlines', () => {
@@ -68,6 +71,57 @@ describe('inferCategory', () => {
         // "breaking" + "election" → should return "breaking" (checked first)
         expect(inferCategory('Breaking: Election fraud alleged')).toBe(
             'breaking',
+        );
+    });
+});
+
+describe('sanitizeSearchQuery', () => {
+    it('should pass through clean queries unchanged', () => {
+        expect(sanitizeSearchQuery('climate change summit')).toBe(
+            'climate change summit',
+        );
+        expect(sanitizeSearchQuery("US president's address")).toBe(
+            "US president's address",
+        );
+    });
+
+    it('should strip URL-like payloads', () => {
+        expect(
+            sanitizeSearchQuery('http://evil.com/steal?data=secret'),
+        ).toBe('httpevil.comstealdatasecret');
+    });
+
+    it('should strip SQL injection fragments', () => {
+        expect(
+            sanitizeSearchQuery("news'; DROP TABLE articles;--"),
+        ).toBe("news' DROP TABLE articles--");
+    });
+
+    it('should strip special characters used for injection', () => {
+        expect(sanitizeSearchQuery('query <script>alert(1)</script>')).toBe(
+            'query scriptalert1script',
+        );
+        expect(sanitizeSearchQuery('${process.env.SECRET}')).toBe(
+            'process.env.SECRET',
+        );
+    });
+
+    it('should return fallback for empty/whitespace-only input', () => {
+        expect(sanitizeSearchQuery('')).toBe('latest news today');
+        expect(sanitizeSearchQuery('   ')).toBe('latest news today');
+        expect(sanitizeSearchQuery('!@#$%^&*()')).toBe('latest news today');
+    });
+
+    it('should truncate to MAX_SEARCH_QUERY_LENGTH (200)', () => {
+        const longQuery = 'a'.repeat(300);
+        const result = sanitizeSearchQuery(longQuery);
+
+        expect(result.length).toBe(200);
+    });
+
+    it('should preserve hyphens and commas', () => {
+        expect(sanitizeSearchQuery('US-China trade, economy')).toBe(
+            'US-China trade, economy',
         );
     });
 });

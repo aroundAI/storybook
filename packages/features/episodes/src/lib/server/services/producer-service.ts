@@ -69,6 +69,15 @@ const MAX_STORIES_FOR_RUNDOWN = 15;
 /** Fallback segment duration (seconds) when LLM generation fails */
 const FALLBACK_SEGMENT_DURATION_SECONDS = 60;
 
+/** Importance score threshold for "high" priority classification */
+const HIGH_IMPORTANCE_THRESHOLD = 0.7;
+
+/** Importance score threshold for "medium" priority classification */
+const MEDIUM_IMPORTANCE_THRESHOLD = 0.4;
+
+/** Max allowed length for an LLM-generated search query */
+const MAX_SEARCH_QUERY_LENGTH = 200;
+
 // ─── Singleton ───────────────────────────────────────────────────────────────
 
 let _newsStoryService: NewsStoryService | null = null;
@@ -160,7 +169,7 @@ export async function orchestrateNewsEpisode(
                 episodeTitle,
                 segmentTheme: item.title,
                 targetDuration: item.duration,
-                searchQuery: item.searchQuery,
+                searchQuery: sanitizeSearchQuery(item.searchQuery),
                 accountId,
             });
 
@@ -198,9 +207,9 @@ export async function orchestrateNewsEpisode(
 function formatStoryForPrompt(story: StoryCluster, index: number): string {
     const category = inferCategory(story.headline);
     const importance =
-        story.importance >= 0.7
+        story.importance >= HIGH_IMPORTANCE_THRESHOLD
             ? 'high'
-            : story.importance >= 0.4
+            : story.importance >= MEDIUM_IMPORTANCE_THRESHOLD
                 ? 'medium'
                 : 'low';
     const articleCount = story.articles.length;
@@ -283,3 +292,23 @@ function buildFallbackRundown(totalDurationMinutes: number): EpisodeRundown {
         totalRuntime: totalSeconds,
     };
 }
+
+/**
+ * Sanitize an LLM-generated search query before passing to downstream services.
+ *
+ * LLM output is untrusted — it could contain injection payloads targeting the
+ * search aggregator (e.g. SSRF via crafted URLs, SQL fragments, etc.). This
+ * function strips everything except safe characters and truncates to a
+ * reasonable length.
+ */
+export function sanitizeSearchQuery(raw: string): string {
+    // Allow only alphanumeric, spaces, hyphens, and basic punctuation
+    const cleaned = raw.replace(/[^a-zA-Z0-9\s\-',\.]/g, '').trim();
+
+    if (cleaned.length === 0) {
+        return 'latest news today';
+    }
+
+    return cleaned.slice(0, MAX_SEARCH_QUERY_LENGTH);
+}
+
