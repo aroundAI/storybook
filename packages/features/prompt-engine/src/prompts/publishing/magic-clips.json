@@ -5,8 +5,8 @@
   "category": "publishing",
   "description": "Identify viral-worthy clips from an episode transcript",
   "llm": {
-    "provider": "openai",
-    "model": "gpt-4o",
+    "provider": "gemini",
+    "model": "gemini-3-pro-preview",
     "max_tokens": 4000,
     "temperature": 0.4,
     "response_format": {

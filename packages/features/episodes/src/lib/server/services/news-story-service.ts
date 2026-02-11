@@ -13,6 +13,7 @@ import type {
     ExtractedEntities,
 } from '../../../types/external-context';
 import { getBalancedSources } from '../../../types/news-sources';
+import { escapeXml } from '../../utils/escape-xml';
 import { getContextAggregator } from './context-aggregator';
 import {
     extractEntitiesFromArticle,
@@ -48,6 +49,27 @@ export interface TopicContextResult {
     summary: string;
 }
 
+/** Max articles to run entity extraction on per topic (budget-conscious) */
+const MAX_ENTITY_EXTRACTION_ARTICLES = 5;
+
+/** Default number of story clusters to return */
+const DEFAULT_MAX_STORIES = 10;
+
+/** Page size when discovering stories for a full day */
+const DISCOVER_PAGE_SIZE = 100;
+
+/** Page size when fetching context for a single topic */
+const TOPIC_CONTEXT_PAGE_SIZE = 20;
+
+/** Minimum importance score for a story cluster */
+const MIN_IMPORTANCE_FLOOR = 0.1;
+
+/** Max people entities used in cluster key */
+const CLUSTER_KEY_MAX_PEOPLE = 2;
+
+/** Max org entities used in cluster key */
+const CLUSTER_KEY_MAX_ORGS = 1;
+
 // ─── Service ─────────────────────────────────────────────────────────────────
 
 export class NewsStoryService {
@@ -59,7 +81,7 @@ export class NewsStoryService {
     async discoverTopStories(
         options: DiscoverStoriesOptions,
     ): Promise<StoryCluster[]> {
-        const { date, topics, maxStories = 10, accountId } = options;
+        const { date, topics, maxStories = DEFAULT_MAX_STORIES, accountId } = options;
 
         const aggregator = await getContextAggregator();
 
@@ -74,7 +96,7 @@ export class NewsStoryService {
             category: 'news',
             from: startOfDay,
             to: endOfDay,
-            pageSize: 100,
+            pageSize: DISCOVER_PAGE_SIZE,
         };
 
         const result = await aggregator.search(searchParams);
@@ -105,14 +127,14 @@ export class NewsStoryService {
         const result = await aggregator.search({
             query: topic,
             category: 'news',
-            pageSize: 20,
+            pageSize: TOPIC_CONTEXT_PAGE_SIZE,
         });
 
         const articles = result.content;
 
         // Extract entities from top 5 articles (budget-conscious)
         const entityResults = await Promise.all(
-            articles.slice(0, 5).map((a) =>
+            articles.slice(0, MAX_ENTITY_EXTRACTION_ARTICLES).map((a) =>
                 extractEntitiesFromArticle(
                     a.title,
                     a.content ?? '',
@@ -200,7 +222,7 @@ export class NewsStoryService {
                 perspectives: { left: [], center: [], right: [] },
                 entities: mergeEntities(items.map((i) => i.entities)),
                 importance: Math.max(
-                    0.1,
+                    MIN_IMPORTANCE_FLOOR,
                     items.length / toExtract.length,
                 ),
             }))
@@ -214,12 +236,12 @@ export class NewsStoryService {
     private getClusterKey(entities: ExtractedEntities): string {
         const people =
             entities.people
-                ?.slice(0, 2)
+                ?.slice(0, CLUSTER_KEY_MAX_PEOPLE)
                 .map((p) => p.name)
                 .join(',') ?? '';
         const orgs =
             entities.organizations
-                ?.slice(0, 1)
+                ?.slice(0, CLUSTER_KEY_MAX_ORGS)
                 .map((o) => o.name)
                 .join(',') ?? '';
 
@@ -269,9 +291,13 @@ export class NewsStoryService {
                 .map((a) => a.title)
                 .join('\n');
 
+            // Escape XML to prevent prompt injection via tag breakout
+            const escapedTopic = escapeXml(topic);
+            const escapedHeadlines = escapeXml(headlines);
+
             const result = await executeLLM<{ summary: string }>({
                 templateSlug: 'news-generation/topic-summary',
-                variables: { topic, headlines },
+                variables: { topic: escapedTopic, headlines: escapedHeadlines },
                 context: { name: 'topic-summary', accountId },
             });
 
@@ -282,7 +308,8 @@ export class NewsStoryService {
                 err,
             );
 
-            return `News coverage about: ${topic}`;
+            // Static fallback — never reflect user input to prevent XSS
+            return 'News topic summary unavailable.';
         }
     }
 }

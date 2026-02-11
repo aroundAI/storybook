@@ -15,15 +15,6 @@ export type BiasLabel =
     | 'right'
     | 'unknown';
 
-/** News source subcategory */
-export type NewsSourceType =
-    | 'wire_service' // AP, Reuters, AFP
-    | 'broadcaster' // BBC, CNN, Al Jazeera
-    | 'newspaper' // NYT, WSJ, Guardian
-    | 'magazine' // Economist, Time
-    | 'government' // Official government sources
-    | 'organization'; // WHO, UN, etc.
-
 /** Human-readable descriptions for UI display */
 export const BIAS_LABEL_DESCRIPTIONS: Record<BiasLabel, string> = {
     left: 'Leans progressive/liberal',

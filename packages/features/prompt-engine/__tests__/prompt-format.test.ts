@@ -18,7 +18,8 @@ const PROMPTS_DIR = path.resolve(
     '../src/prompts',
 );
 
-const VALID_PROVIDERS = ['gemini', 'openai', 'anthropic', 'deepseek'];
+// All prompts standardized on Gemini as of FILM-1133 audit
+const VALID_PROVIDERS = ['gemini'];
 
 // Recursively find all .json files
 function findJsonFiles(dir: string): string[] {
@@ -130,18 +131,44 @@ describe('Prompt Template Format Validation', () => {
             }
         });
 
-        it('should use a valid LLM provider', () => {
-            // Standard format: llm.provider
+        it('should have a complete LLM/model configuration block', () => {
             const llm = template.llm as Record<string, unknown> | undefined;
-            if (llm && typeof llm.provider === 'string') {
-                expect(VALID_PROVIDERS).toContain(llm.provider);
+            const model = template.model as Record<string, unknown> | undefined;
+
+            // Every prompt MUST have either an `llm` or `model` block
+            expect(
+                llm !== undefined || model !== undefined,
+            ).toBe(true);
+
+            const config = llm ?? model!;
+
+            // Validate all config fields in one pass with descriptive errors
+            const errors: string[] = [];
+
+            if (typeof config.provider !== 'string' || !VALID_PROVIDERS.includes(config.provider as string)) {
+                errors.push(`provider must be one of ${VALID_PROVIDERS.join(', ')}, got '${String(config.provider)}'`);
             }
 
-            // Canon-role format: model.provider
-            const model = template.model as Record<string, unknown> | undefined;
-            if (model && typeof model.provider === 'string') {
-                expect(VALID_PROVIDERS).toContain(model.provider);
+            if (typeof config.model !== 'string' || (config.model as string).length === 0) {
+                errors.push(`model must be a non-empty string, got '${String(config.model)}'`);
             }
+
+            const temp = config.temperature;
+            if (typeof temp !== 'number' || temp < 0 || temp > 1) {
+                errors.push(`temperature must be 0–1, got ${String(temp)}`);
+            }
+
+            // Enforce max_tokens exclusively — maxTokens is not allowed
+            if ('maxTokens' in config) {
+                errors.push(`use "max_tokens" instead of "maxTokens" (found in ${String(template.slug ?? template.id)})`);
+            }
+
+            const maxTokens = config.max_tokens;
+            if (typeof maxTokens !== 'number' || maxTokens <= 0) {
+                errors.push(`max_tokens must be > 0, got ${String(maxTokens)}`);
+            }
+
+            expect(errors).toEqual([]);
         });
 
         it('should have required fields: identifier and at least one prompt', () => {

@@ -18,8 +18,8 @@ describe('Prompt Template Validation', () => {
         description: 'A test template',
         exported_at: '2025-01-01T00:00:00.000Z',
         llm: {
-          provider: 'openai',
-          model: 'gpt-4o-mini',
+          provider: 'gemini',
+          model: 'gemini-2.0-flash',
           max_tokens: 500,
           temperature: 0.5,
         },
@@ -76,8 +76,8 @@ describe('Prompt Template Validation', () => {
         description: 'Test',
         exported_at: '2025-01-01T00:00:00.000Z',
         llm: {
-          provider: 'openai',
-          model: 'gpt-4o-mini',
+          provider: 'gemini',
+          model: 'gemini-2.0-flash',
           max_tokens: 500,
           temperature: 0.5,
         },
@@ -105,8 +105,8 @@ describe('Prompt Template Validation', () => {
         description: 'Test',
         exported_at: '2025-01-01T00:00:00.000Z',
         llm: {
-          provider: 'openai',
-          model: 'gpt-4o-mini',
+          provider: 'gemini',
+          model: 'gemini-2.0-flash',
           max_tokens: 500,
           temperature: 0.5,
         },

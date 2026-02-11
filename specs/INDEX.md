@@ -470,7 +470,7 @@ graph TD
 
 ### Phase 11: Canon Integration & Content Types (21 specs)
 
-> **Status**: 🟡 IN PROGRESS — Core integration, content types, fact management, and external context provider implemented (PRs #175–178 + FILM-1135). News system and UI integration remaining.
+> **Status**: 🟡 IN PROGRESS — Core integration, content types, fact management, external context provider, news system, and anchor role implemented (PRs #175–178, FILM-1135, #182). UI integration remaining.
 
 | Task ID | Name | Status | Effort | PR | Dependencies |
 |---------|------|--------|--------|-----|-------------|
@@ -486,10 +486,10 @@ graph TD
 | FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.md) | Draft | L | — | FILM-1120 |
 | FILM-1122 | [Researcher Role Prompt](./phase-11-canon-integration/fact-management/FILM-1122-researcher-role.md) | ✅ DONE | M | #178 | FILM-304 |
 | FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.md) | ✅ DONE | M | #178 | FILM-304 |
-| FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.md) | Draft | M | — | ~~FILM-1135~~ |
-| FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.md) | Draft | M | — | ~~FILM-1135~~ |
-| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.md) | Draft | L | — | ~~FILM-1135~~ |
-| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | Draft | M | — | FILM-1132 |
+| FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.md) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
+| FILM-1131 | [News Article Cache](./phase-11-canon-integration/news-system/FILM-1131-news-article-cache.md) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
+| FILM-1132 | [News Aggregator API](./phase-11-canon-integration/news-system/FILM-1132-news-aggregator-api.md) | ✅ DONE | L | #182 | ~~FILM-1135~~ |
+| FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | ✅ DONE | M | — | FILM-1132 |
 | FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | Draft | M | — | FILM-1133 |
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | ✅ DONE | L | FILM-1135 | - |
 | FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.md) | Draft | L | — | FILM-1120 |
@@ -584,11 +584,11 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
 | 9. Integration | 6 | 0 | 0 | 0 | 0 | 6 |
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 6 | 0 | 0 | 0 | 15 |
+| 11. Canon Integ | 21 | 5 | 0 | 0 | 0 | 16 |
 | 12. Scale | 2 | 2 | 0 | 0 | 0 | 0 |
 | 13. Hook Opt | 2 | 2 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **162** | **10** | **0** | **0** | **0** | **152** |
+| **TOTAL** | **162** | **9** | **0** | **0** | **0** | **153** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -596,7 +596,7 @@ SPIKE-01 through SPIKE-05
 |-------|-------|-----------|---|
 | MVP Specs | 93 | 93 | 100% |
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
-| Canon (Ph 10-11) | 28 | 19 | 68% |
+| Canon (Ph 10-11) | 28 | 23 | 82% |
 | Scale & Hooks (Ph 12-13) | 4 | 0 | 0% |
 
 ---
