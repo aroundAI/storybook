@@ -57,6 +57,24 @@ const EMPTY_FALLBACK_DURATION_SECONDS = 5;
 /** Fallback duration (seconds) when LLM generation fails */
 const ERROR_FALLBACK_DURATION_SECONDS = 10;
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Escape XML-sensitive characters to prevent tag breakout in LLM prompts.
+ *
+ * Since the anchor-role prompt uses XML tags (e.g. <articles>) to delimit
+ * untrusted input, any literal '<' or '>' in user-provided values could
+ * break out of the delimiter and inject rogue instructions.
+ */
+function escapeXml(str: string): string {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
 // ─── Service Functions ───────────────────────────────────────────────────────
 
 /**
@@ -90,7 +108,7 @@ export async function generateNewsSegment(
             script: [
                 {
                     type: 'ANCHOR',
-                    content: `No recent coverage found for: ${segmentTheme}`,
+                    content: 'No recent coverage found for the requested theme',
                     durationSeconds: EMPTY_FALLBACK_DURATION_SECONDS,
                 },
             ],
@@ -109,10 +127,10 @@ export async function generateNewsSegment(
         const llmResult = await executeLLM<AnchorScript>({
             templateSlug: 'news-generation/anchor-role',
             variables: {
-                episodeTitle,
-                segmentTheme,
+                episodeTitle: escapeXml(episodeTitle),
+                segmentTheme: escapeXml(segmentTheme),
                 targetDuration: String(targetDuration),
-                articles: formattedArticles,
+                articles: escapeXml(formattedArticles),
             },
             context: {
                 name: 'anchor-role',
@@ -131,7 +149,7 @@ export async function generateNewsSegment(
             script: [
                 {
                     type: 'ANCHOR',
-                    content: `Coverage summary for: ${segmentTheme}`,
+                    content: 'Coverage summary for the requested theme',
                     durationSeconds: ERROR_FALLBACK_DURATION_SECONDS,
                 },
             ],
@@ -210,9 +228,8 @@ function formatArticleForPrompt(
     const source = article.sourceId ?? 'unknown-source';
     const tier = article.credibilityTier ?? 'unknown';
     const bias = article.biasLabel ?? 'unknown';
-    const snippet = article.content
-        ? article.content.slice(0, MAX_ARTICLE_CONTENT_LENGTH)
-        : article.description;
+    const snippet = (article.content ?? article.description ?? '')
+        .slice(0, MAX_ARTICLE_CONTENT_LENGTH);
 
     return [
         `[${index}] ${article.title}`,
