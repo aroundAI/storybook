@@ -59,7 +59,7 @@ export interface PlanRundownOptions {
  * Extends PlanRundownOptions — extra fields (e.g. voiceTone, style) can be
  * added here in the future without changing the planning interface.
  */
-export interface OrchestrateEpisodeOptions extends PlanRundownOptions { }
+export type OrchestrateEpisodeOptions = PlanRundownOptions;
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -303,7 +303,7 @@ function buildFallbackRundown(totalDurationMinutes: number): EpisodeRundown {
  */
 export function sanitizeSearchQuery(raw: string): string {
     // Allow only alphanumeric, spaces, hyphens, and basic punctuation
-    const cleaned = raw.replace(/[^a-zA-Z0-9\s\-',\.]/g, '').trim();
+    const cleaned = raw.replace(/[^a-zA-Z0-9\s\-',.]/g, '').trim();
 
     if (cleaned.length === 0) {
         return 'latest news today';
