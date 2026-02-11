@@ -157,7 +157,12 @@ describe('Prompt Template Format Validation', () => {
                 errors.push(`temperature must be 0–1, got ${String(temp)}`);
             }
 
-            const maxTokens = config.max_tokens ?? config.maxTokens;
+            // Enforce max_tokens exclusively — maxTokens is not allowed
+            if ('maxTokens' in config) {
+                errors.push(`use "max_tokens" instead of "maxTokens" (found in ${String(template.slug ?? template.id)})`);
+            }
+
+            const maxTokens = config.max_tokens;
             if (typeof maxTokens !== 'number' || maxTokens <= 0) {
                 errors.push(`max_tokens must be > 0, got ${String(maxTokens)}`);
             }

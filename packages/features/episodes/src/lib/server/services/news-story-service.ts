@@ -290,9 +290,13 @@ export class NewsStoryService {
                 .map((a) => a.title)
                 .join('\n');
 
+            // Escape XML to prevent prompt injection via tag breakout
+            const escapedTopic = this.escapeXml(topic);
+            const escapedHeadlines = this.escapeXml(headlines);
+
             const result = await executeLLM<{ summary: string }>({
                 templateSlug: 'news-generation/topic-summary',
-                variables: { topic, headlines },
+                variables: { topic: escapedTopic, headlines: escapedHeadlines },
                 context: { name: 'topic-summary', accountId },
             });
 
@@ -303,7 +307,21 @@ export class NewsStoryService {
                 err,
             );
 
-            return `News coverage about: ${topic}`;
+            // Static fallback — never reflect user input to prevent XSS
+            return 'News topic summary unavailable.';
         }
+    }
+
+    /**
+     * Escape XML special characters to prevent prompt injection
+     * via XML tag breakout in LLM prompts.
+     */
+    private escapeXml(str: string): string {
+        return str
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
     }
 }
