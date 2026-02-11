@@ -218,8 +218,6 @@ export function checkSourceBalance(
     };
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
 /** Format a single article into a text block for the LLM prompt */
 function formatArticleForPrompt(
     article: ExternalContent,

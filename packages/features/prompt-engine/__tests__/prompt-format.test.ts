@@ -141,28 +141,28 @@ describe('Prompt Template Format Validation', () => {
 
             const config = llm ?? model!;
 
-            // Provider must be present and must be 'gemini'
-            expect(config.provider).toBeDefined();
-            expect(typeof config.provider).toBe('string');
-            expect(VALID_PROVIDERS).toContain(config.provider);
+            // Validate all config fields in one pass with descriptive errors
+            const errors: string[] = [];
 
-            // Model name must be present
-            const modelName = config.model;
-            expect(modelName).toBeDefined();
-            expect(typeof modelName).toBe('string');
-            expect((modelName as string).length).toBeGreaterThan(0);
+            if (typeof config.provider !== 'string' || !VALID_PROVIDERS.includes(config.provider as string)) {
+                errors.push(`provider must be one of ${VALID_PROVIDERS.join(', ')}, got '${String(config.provider)}'`);
+            }
 
-            // Temperature must be present and between 0 and 1
-            expect(config.temperature).toBeDefined();
-            expect(typeof config.temperature).toBe('number');
-            expect(config.temperature as number).toBeGreaterThanOrEqual(0);
-            expect(config.temperature as number).toBeLessThanOrEqual(1);
+            if (typeof config.model !== 'string' || (config.model as string).length === 0) {
+                errors.push(`model must be a non-empty string, got '${String(config.model)}'`);
+            }
 
-            // Max tokens must be present (standard: max_tokens, canon-role: maxTokens)
+            const temp = config.temperature;
+            if (typeof temp !== 'number' || temp < 0 || temp > 1) {
+                errors.push(`temperature must be 0–1, got ${String(temp)}`);
+            }
+
             const maxTokens = config.max_tokens ?? config.maxTokens;
-            expect(maxTokens).toBeDefined();
-            expect(typeof maxTokens).toBe('number');
-            expect(maxTokens as number).toBeGreaterThan(0);
+            if (typeof maxTokens !== 'number' || maxTokens <= 0) {
+                errors.push(`max_tokens must be > 0, got ${String(maxTokens)}`);
+            }
+
+            expect(errors).toEqual([]);
         });
 
         it('should have required fields: identifier and at least one prompt', () => {
