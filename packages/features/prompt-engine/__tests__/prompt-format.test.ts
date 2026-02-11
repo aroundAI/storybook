@@ -18,6 +18,7 @@ const PROMPTS_DIR = path.resolve(
     '../src/prompts',
 );
 
+// All prompts standardized on Gemini as of FILM-1133 audit
 const VALID_PROVIDERS = ['gemini'];
 
 // Recursively find all .json files

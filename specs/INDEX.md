@@ -584,11 +584,11 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
 | 9. Integration | 6 | 0 | 0 | 0 | 0 | 6 |
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 2 | 0 | 0 | 0 | 19 |
+| 11. Canon Integ | 21 | 5 | 0 | 0 | 0 | 16 |
 | 12. Scale | 2 | 2 | 0 | 0 | 0 | 0 |
 | 13. Hook Opt | 2 | 2 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **162** | **6** | **0** | **0** | **0** | **156** |
+| **TOTAL** | **162** | **9** | **0** | **0** | **0** | **153** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 

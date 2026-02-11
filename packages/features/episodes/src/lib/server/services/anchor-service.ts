@@ -7,6 +7,7 @@
  */
 
 import type { ExternalContent } from '../../../types/external-context';
+import { escapeXml } from '../../utils/escape-xml';
 import { getContextAggregator } from './context-aggregator';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -56,24 +57,6 @@ const EMPTY_FALLBACK_DURATION_SECONDS = 5;
 
 /** Fallback duration (seconds) when LLM generation fails */
 const ERROR_FALLBACK_DURATION_SECONDS = 10;
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-/**
- * Escape XML-sensitive characters to prevent tag breakout in LLM prompts.
- *
- * Since the anchor-role prompt uses XML tags (e.g. <articles>) to delimit
- * untrusted input, any literal '<' or '>' in user-provided values could
- * break out of the delimiter and inject rogue instructions.
- */
-function escapeXml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&apos;');
-}
 
 // ─── Service Functions ───────────────────────────────────────────────────────
 

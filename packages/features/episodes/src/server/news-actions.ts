@@ -60,10 +60,10 @@ export const getNewsTopicContextAction = enhanceAction(
 // ─── Generate News Segment (FILM-1133) ───────────────────────────────────────
 
 const GenerateNewsSegmentSchema = z.object({
-    episodeTitle: z.string().min(1),
-    segmentTheme: z.string().min(1),
+    episodeTitle: z.string().min(1).max(500),
+    segmentTheme: z.string().min(1).max(500),
     targetDuration: z.number().int().min(15).max(600),
-    searchQuery: z.string().min(1),
+    searchQuery: z.string().min(1).max(500),
 });
 
 export const generateNewsSegmentAction = enhanceAction(
@@ -89,7 +89,7 @@ export const generateNewsSegmentAction = enhanceAction(
 const SOURCE_BALANCE_PAGE_SIZE = 20;
 
 const CheckSourceBalanceSchema = z.object({
-    searchQuery: z.string().min(1),
+    searchQuery: z.string().min(1).max(500),
 });
 
 export const checkSourceBalanceAction = enhanceAction(

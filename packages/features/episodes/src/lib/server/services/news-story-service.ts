@@ -13,6 +13,7 @@ import type {
     ExtractedEntities,
 } from '../../../types/external-context';
 import { getBalancedSources } from '../../../types/news-sources';
+import { escapeXml } from '../../utils/escape-xml';
 import { getContextAggregator } from './context-aggregator';
 import {
     extractEntitiesFromArticle,
@@ -291,8 +292,8 @@ export class NewsStoryService {
                 .join('\n');
 
             // Escape XML to prevent prompt injection via tag breakout
-            const escapedTopic = this.escapeXml(topic);
-            const escapedHeadlines = this.escapeXml(headlines);
+            const escapedTopic = escapeXml(topic);
+            const escapedHeadlines = escapeXml(headlines);
 
             const result = await executeLLM<{ summary: string }>({
                 templateSlug: 'news-generation/topic-summary',
@@ -310,18 +311,5 @@ export class NewsStoryService {
             // Static fallback — never reflect user input to prevent XSS
             return 'News topic summary unavailable.';
         }
-    }
-
-    /**
-     * Escape XML special characters to prevent prompt injection
-     * via XML tag breakout in LLM prompts.
-     */
-    private escapeXml(str: string): string {
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&apos;');
     }
 }
