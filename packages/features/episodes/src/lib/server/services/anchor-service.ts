@@ -1,0 +1,211 @@
+/**
+ * Anchor Service
+ * Phase 11: FILM-1133
+ *
+ * Generates professional broadcast scripts from news articles using the
+ * anchor-role LLM prompt. Provides source balance checking utilities.
+ */
+
+import type { ExternalContent } from '../../../types/external-context';
+import { getContextAggregator } from './context-aggregator';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+/** A single entry in a broadcast script */
+export interface AnchorScriptEntry {
+    type: 'ANCHOR' | 'GRAPHIC' | 'TRANSITION';
+    content: string;
+    durationSeconds?: number;
+    sources?: string[];
+}
+
+/** Complete anchor script output from the LLM */
+export interface AnchorScript {
+    script: AnchorScriptEntry[];
+    sourcesUsed: string[];
+}
+
+/** Result of checking source balance */
+export interface SourceBalanceResult {
+    isBalanced: boolean;
+    biasDistribution: Record<string, number>;
+    warnings: string[];
+}
+
+export interface GenerateSegmentOptions {
+    episodeTitle: string;
+    segmentTheme: string;
+    /** Target segment duration in seconds */
+    targetDuration: number;
+    /** Search query for finding relevant articles */
+    searchQuery: string;
+    /** Required for executeLLM context logging */
+    accountId: string;
+}
+
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+/** Max articles to feed into the anchor script prompt */
+const MAX_ARTICLES_FOR_SCRIPT = 10;
+
+/** Max content length per article in the prompt (chars) */
+const MAX_ARTICLE_CONTENT_LENGTH = 500;
+
+// ─── Service Functions ───────────────────────────────────────────────────────
+
+/**
+ * Generate a broadcast script for a news segment.
+ *
+ * Flow: search articles → format for prompt → LLM generates script
+ */
+export async function generateNewsSegment(
+    options: GenerateSegmentOptions,
+): Promise<AnchorScript> {
+    const {
+        episodeTitle,
+        segmentTheme,
+        targetDuration,
+        searchQuery,
+        accountId,
+    } = options;
+
+    const aggregator = await getContextAggregator();
+
+    const result = await aggregator.search({
+        query: searchQuery,
+        category: 'news',
+        pageSize: MAX_ARTICLES_FOR_SCRIPT,
+    });
+
+    const articles = result.content;
+
+    if (articles.length === 0) {
+        return {
+            script: [
+                {
+                    type: 'ANCHOR',
+                    content: `No recent coverage found for: ${segmentTheme}`,
+                    durationSeconds: 5,
+                },
+            ],
+            sourcesUsed: [],
+        };
+    }
+
+    // Format articles for the prompt
+    const formattedArticles = articles
+        .map((a, i) => formatArticleForPrompt(a, i + 1))
+        .join('\n\n');
+
+    try {
+        const { executeLLM } = await import('@kit/prompt-engine/server');
+
+        const llmResult = await executeLLM<AnchorScript>({
+            templateSlug: 'news-generation/anchor-role',
+            variables: {
+                episodeTitle,
+                segmentTheme,
+                targetDuration: String(targetDuration),
+                articles: formattedArticles,
+            },
+            context: {
+                name: 'anchor-role',
+                accountId,
+            },
+        });
+
+        return {
+            script: llmResult.data.script ?? [],
+            sourcesUsed: llmResult.data.sourcesUsed ?? [],
+        };
+    } catch (err) {
+        console.error('[anchor-service] Failed to generate script:', err);
+
+        return {
+            script: [
+                {
+                    type: 'ANCHOR',
+                    content: `Coverage summary for: ${segmentTheme}`,
+                    durationSeconds: 10,
+                },
+            ],
+            sourcesUsed: [],
+        };
+    }
+}
+
+/**
+ * Check source balance across a set of articles.
+ *
+ * Returns bias distribution and warnings if coverage is one-sided.
+ */
+export function checkSourceBalance(
+    articles: ExternalContent[],
+): SourceBalanceResult {
+    const biasDistribution: Record<string, number> = {};
+
+    for (const article of articles) {
+        const bias = article.biasLabel ?? 'unknown';
+        biasDistribution[bias] = (biasDistribution[bias] ?? 0) + 1;
+    }
+
+    const warnings: string[] = [];
+    const biasLabels = Object.keys(biasDistribution);
+
+    // Warn if all sources share the same bias
+    if (biasLabels.length === 1 && articles.length > 1) {
+        warnings.push(
+            `All ${articles.length} sources have "${biasLabels[0]}" bias`,
+        );
+    }
+
+    // Warn if no center sources are present
+    const centerCount =
+        (biasDistribution['center'] ?? 0) +
+        (biasDistribution['center_left'] ?? 0) +
+        (biasDistribution['center_right'] ?? 0);
+
+    if (centerCount === 0 && articles.length > 2) {
+        warnings.push('No center-leaning sources in coverage');
+    }
+
+    // Check left-right balance
+    const leftCount =
+        (biasDistribution['left'] ?? 0) +
+        (biasDistribution['center_left'] ?? 0);
+    const rightCount =
+        (biasDistribution['right'] ?? 0) +
+        (biasDistribution['center_right'] ?? 0);
+
+    if (articles.length >= 4 && (leftCount === 0 || rightCount === 0)) {
+        const missing = leftCount === 0 ? 'left-leaning' : 'right-leaning';
+        warnings.push(`No ${missing} sources for perspective balance`);
+    }
+
+    return {
+        isBalanced: warnings.length === 0,
+        biasDistribution,
+        warnings,
+    };
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Format a single article into a text block for the LLM prompt */
+function formatArticleForPrompt(
+    article: ExternalContent,
+    index: number,
+): string {
+    const source = article.sourceId ?? 'unknown-source';
+    const tier = article.credibilityTier ?? 'unknown';
+    const bias = article.biasLabel ?? 'unknown';
+    const snippet = article.content
+        ? article.content.slice(0, MAX_ARTICLE_CONTENT_LENGTH)
+        : article.description;
+
+    return [
+        `[${index}] ${article.title}`,
+        `Source: ${source} | Credibility: ${tier} | Bias: ${bias}`,
+        snippet,
+    ].join('\n');
+}

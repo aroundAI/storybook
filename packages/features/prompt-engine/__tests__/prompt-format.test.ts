@@ -18,7 +18,7 @@ const PROMPTS_DIR = path.resolve(
     '../src/prompts',
 );
 
-const VALID_PROVIDERS = ['gemini', 'openai', 'anthropic', 'deepseek'];
+const VALID_PROVIDERS = ['gemini'];
 
 // Recursively find all .json files
 function findJsonFiles(dir: string): string[] {
@@ -130,18 +130,39 @@ describe('Prompt Template Format Validation', () => {
             }
         });
 
-        it('should use a valid LLM provider', () => {
-            // Standard format: llm.provider
+        it('should have a complete LLM/model configuration block', () => {
             const llm = template.llm as Record<string, unknown> | undefined;
-            if (llm && typeof llm.provider === 'string') {
-                expect(VALID_PROVIDERS).toContain(llm.provider);
-            }
-
-            // Canon-role format: model.provider
             const model = template.model as Record<string, unknown> | undefined;
-            if (model && typeof model.provider === 'string') {
-                expect(VALID_PROVIDERS).toContain(model.provider);
-            }
+
+            // Every prompt MUST have either an `llm` or `model` block
+            expect(
+                llm !== undefined || model !== undefined,
+            ).toBe(true);
+
+            const config = llm ?? model!;
+
+            // Provider must be present and must be 'gemini'
+            expect(config.provider).toBeDefined();
+            expect(typeof config.provider).toBe('string');
+            expect(VALID_PROVIDERS).toContain(config.provider);
+
+            // Model name must be present
+            const modelName = config.model;
+            expect(modelName).toBeDefined();
+            expect(typeof modelName).toBe('string');
+            expect((modelName as string).length).toBeGreaterThan(0);
+
+            // Temperature must be present and between 0 and 1
+            expect(config.temperature).toBeDefined();
+            expect(typeof config.temperature).toBe('number');
+            expect(config.temperature as number).toBeGreaterThanOrEqual(0);
+            expect(config.temperature as number).toBeLessThanOrEqual(1);
+
+            // Max tokens must be present (standard: max_tokens, canon-role: maxTokens)
+            const maxTokens = config.max_tokens ?? config.maxTokens;
+            expect(maxTokens).toBeDefined();
+            expect(typeof maxTokens).toBe('number');
+            expect(maxTokens as number).toBeGreaterThan(0);
         });
 
         it('should have required fields: identifier and at least one prompt', () => {

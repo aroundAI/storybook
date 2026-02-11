@@ -56,3 +56,62 @@ export const getNewsTopicContextAction = enhanceAction(
         auth: true,
     },
 );
+
+// ─── Generate News Segment (FILM-1133) ───────────────────────────────────────
+
+const GenerateNewsSegmentSchema = z.object({
+    episodeTitle: z.string().min(1),
+    segmentTheme: z.string().min(1),
+    targetDuration: z.number().int().min(15).max(600),
+    searchQuery: z.string().min(1),
+});
+
+export const generateNewsSegmentAction = enhanceAction(
+    async (params, user) => {
+        const { generateNewsSegment } = await import(
+            '../lib/server/services/anchor-service'
+        );
+
+        return generateNewsSegment({
+            ...params,
+            accountId: user.id,
+        });
+    },
+    {
+        schema: GenerateNewsSegmentSchema,
+        auth: true,
+    },
+);
+
+// ─── Check Source Balance (FILM-1133) ─────────────────────────────────────────
+
+/** Max articles to sample when checking source balance */
+const SOURCE_BALANCE_PAGE_SIZE = 20;
+
+const CheckSourceBalanceSchema = z.object({
+    searchQuery: z.string().min(1),
+});
+
+export const checkSourceBalanceAction = enhanceAction(
+    async (params, _user) => {
+        const { getContextAggregator } = await import(
+            '../lib/server/services/context-aggregator'
+        );
+        const { checkSourceBalance } = await import(
+            '../lib/server/services/anchor-service'
+        );
+
+        const aggregator = await getContextAggregator();
+        const result = await aggregator.search({
+            query: params.searchQuery,
+            category: 'news',
+            pageSize: SOURCE_BALANCE_PAGE_SIZE,
+        });
+
+        return checkSourceBalance(result.content);
+    },
+    {
+        schema: CheckSourceBalanceSchema,
+        auth: true,
+    },
+);

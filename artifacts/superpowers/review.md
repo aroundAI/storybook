@@ -1,83 +1,79 @@
-# Superpowers Review v2: FILM-1130/1131/1132 News System (Post-Fix)
+# Superpowers Review v2 — FILM-1133: News Anchor Role
 
-**Branch**: `feature/FILM-1130-1132-news-system`
-**PR**: [#182](https://github.com/aroundAI/storybook/pull/182)
-**Scope**: 10 files, ~700 lines (after fixes)
+**Branch**: `feature/FILM-1133-anchor-role`
+**Files changed**: 6 (2 new, 4 modified)
+**Date**: 2026-02-11
+**Previous review**: v1 found M1 + 2 minors + 3 nits — all fixed.
 
 ---
 
 ## Blockers
 
-None.
+_None._
 
 ---
 
 ## Majors
 
-None. All 3 prior majors (M1, M2, M3) resolved:
-
-| Prior ID | Issue | Status |
-|----------|-------|--------|
-| M1 | LLM cost explosion (100 articles) | ✅ Fixed — capped at 30 (`MAX_ARTICLES_TO_EXTRACT`) |
-| M2 | Wildcard `'*'` query | ✅ Fixed — uses `'latest news today'` fallback |
-| M3 | Module-level instantiation | ✅ Fixed — lazy `getNewsStoryService()` singleton |
+_None._ (M1 trailing newline fixed — confirmed `0a` at EOF.)
 
 ---
 
 ## Minors
 
-### m1: Duplicate JSDoc block before `clusterByStory`
-**File**: `news-story-service.ts:138-145`
-**Severity**: Minor (Readability)
-
-There are now two consecutive comment blocks — the original method JSDoc and the new `MAX_ARTICLES_TO_EXTRACT` JSDoc — both sitting before the private static field. The static field JSDoc is wedged between the method JSDoc and the method signature, making it look like they belong together.
-
-```typescript
-    /**                          // ← method JSDoc
-     * Cluster articles by entity overlap.
-     * ...
-     */
-    /** Max articles to run ... */  // ← field JSDoc (reads awkwardly here)
-    private static readonly MAX_ARTICLES_TO_EXTRACT = 30;
-
-    private async clusterByStory( ...
-```
-
-**Recommendation**: Move `MAX_ARTICLES_TO_EXTRACT` above the method JSDoc, or collapse into a single comment block.
-
-### m2: Bias balance still slightly uneven
-**File**: `20260211200003_seed_news_sources.sql`
-**Severity**: Minor (Acceptable for v1)
-
-Updated distribution with 12 sources:
-- **Left bucket** (left + center_left): 5 sources (Guardian, BBC, NYT, CNN, NPR)
-- **Center bucket** (center + unknown): 4 sources (Reuters, AP, AFP, Al Jazeera)
-- **Right bucket** (right + center_right): 3 sources (WSJ, Fox News, Daily Telegraph)
-
-5:4:3 is significantly better than the prior 5:4:1. Acceptable for v1.
+_None._ (m1 redundant slice removed, m2 BiasLabel cast removed.)
 
 ---
 
 ## Nits
 
-### n1: `countFields` generic typing accepts `Record<string, unknown>` but receives `{ name: string; role?: string }`
-**File**: `entity-extractor.ts:116`
-**Severity**: Nit
+### n1 — `checkSourceBalance` center_left/center_right grouping is asymmetric
 
-The `countFields` function parameter is typed as `Record<string, unknown>`, which loses the generic `T` type safety from `dedupeByName<T>`. This works correctly at runtime but the type widening is worth noting. Not a bug since `T extends { name: string }` is always assignable to `Record<string, unknown>`.
+**File**: `anchor-service.ts:163-168`
 
-### n2: Prompt JSON `slug` still doesn't include category prefix
-**Files**: `entity-extraction.json:2`, `topic-summary.json:2`
-**Severity**: Nit (Carried from v1)
+`center_left` and `center_right` are counted toward `centerCount` (line 165-166)
+**and** toward `leftCount`/`rightCount` (lines 174-178). This means a single
+`center_left` article satisfies both the "has center" and "has left" checks.
+This is arguably correct behavior (center_left IS both), but it means a set of
+only `center_left` articles would report `isBalanced: true` even though there are
+no true left, true center, or true right sources. Unlikely to matter in practice
+since the seed data has distinct buckets.
 
-Cosmetic — the `slug` field in JSON is unused by `executeLLM` (which uses `templateSlug`). No fix needed.
+**Impact**: Very low — edge case only.
+
+---
+
+### n2 — `GenerateSegmentOptions` doesn't expose `projectId`/`episodeId`
+
+Carried over from v1 n3. These will be needed when FILM-1134 (Producer) orchestrates
+full episodes and persists scripts. Not blocking for FILM-1133.
 
 ---
 
 ## Summary
 
-**Overall**: Clean implementation with all prior review findings addressed. The code is well-structured, properly error-handled, and integrates correctly with the existing aggregator and LLM infrastructure.
+**Verdict**: ✅ Clean — ship it.
 
-**Remaining items are cosmetic** (JSDoc ordering, bias balance refinement) and do not warrant blocking the PR.
+All 5 findings from the v1 review have been fixed:
 
-**Verdict**: ✅ **Ship-ready. No blocking issues.**
+| v1 Finding | Status |
+|-----------|--------|
+| M1 trailing newline | ✅ Fixed — confirmed `\n` at EOF |
+| m1 redundant `.slice()` | ✅ Removed |
+| m2 `BiasLabel` cast + import | ✅ Removed |
+| n1 `authors[0]` as source | ✅ Now uses `sourceId` |
+| n2 inconsistent `_user` param | ✅ Added |
+
+### Code Quality Checklist
+
+- [x] Correctness vs requirements — prompt template + service + actions match spec intent
+- [x] Edge cases & error handling — empty articles fallback, LLM failure fallback
+- [x] Security — XML delimiters, auth-gated actions, no hardcoded secrets
+- [x] Performance — no N+1, single aggregator call, bounded article count
+- [x] Readability — clean types, JSDoc, section dividers
+- [x] TypeScript — `npx tsc --noEmit` passes clean
+
+### Next Actions
+
+1. Create PR for `feature/FILM-1133-anchor-role`
+2. Continue to FILM-1134 (Producer Role) on a new branch
