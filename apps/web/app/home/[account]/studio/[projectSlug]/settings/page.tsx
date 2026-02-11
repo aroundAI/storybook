@@ -329,6 +329,26 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             />
           </If>
 
+          {/* Fact Library (FILM-1121) */}
+          <If condition={permissions.canEdit}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Fact Library</CardTitle>
+                <CardDescription>
+                  Manage verified facts and sources for your documentary content.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  href={`/home/${account}/studio/${project.slug}/settings/facts`}
+                  className="text-primary text-sm font-medium hover:underline"
+                >
+                  Open Fact Library →
+                </Link>
+              </CardContent>
+            </Card>
+          </If>
+
           {/* Episode Intro Videos */}
           <If condition={permissions.canEdit}>
             <ProjectIntroSettings projectId={project.id} />

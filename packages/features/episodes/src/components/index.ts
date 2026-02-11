@@ -30,3 +30,6 @@ export type {
 
 // Video Upload
 export { VideoUploader, type VideoUploaderProps } from './video-uploader';
+
+// Fact Management (Phase 11: FILM-1121)
+export { FactCard, FactLibrary, AddFactForm, FactVerificationDialog } from './facts';
