@@ -33,44 +33,21 @@ import {
     disputeFactAction,
     verifyFactAction,
 } from '../../server/fact-actions';
+import type { MappedFact } from '../../server/fact-actions';
 
 import { CATEGORY_OPTIONS, STATUS_OPTIONS } from './fact-constants';
 import { FactCard } from './fact-card';
 import { FactVerificationDialog } from './fact-verification-dialog';
 
-interface MappedFact {
-    id: string;
-    projectId: string;
-    claim: string;
-    simplifiedClaim: string | null;
-    category: string | null;
-    subcategory: string | null;
-    tags: string[];
-    sourceType: string;
-    sourceUrl: string | null;
-    sourceCitation: string | null;
-    sourceTitle: string | null;
-    sourceAuthors: string[];
-    sourceDoi: string | null;
-    verificationStatus: string;
-    verifiedBy: string | null;
-    verifiedAt: string | null;
-    verificationNotes: string | null;
-    confidenceScore: number | null;
-    timesUsed: number;
-    lastUsedAt: string | null;
-    episodesUsedIn: string[];
-    createdAt: string | null;
-    updatedAt: string | null;
-}
 
 interface FactLibraryProps {
     facts: MappedFact[];
     total: number;
     basePath: string;
+    projectId: string;
 }
 
-export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
+export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryProps) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [searchQuery, setSearchQuery] = useState('');
@@ -102,7 +79,7 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
         async (factId: string, notes: string) => {
             startTransition(async () => {
                 try {
-                    await verifyFactAction({ factId, verificationNotes: notes });
+                    await verifyFactAction({ factId, projectId, verificationNotes: notes });
                     toast.success('Fact verified');
                     router.refresh();
                 } catch {
@@ -117,7 +94,7 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
         async (factId: string, reason: string) => {
             startTransition(async () => {
                 try {
-                    await disputeFactAction({ factId, disputeReason: reason });
+                    await disputeFactAction({ factId, projectId, disputeReason: reason });
                     toast.success('Fact marked as disputed');
                     router.refresh();
                 } catch {
@@ -132,7 +109,7 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
         async (factId: string) => {
             startTransition(async () => {
                 try {
-                    await deleteFactAction({ factId });
+                    await deleteFactAction({ factId, projectId });
                     toast.success('Fact deleted');
                     router.refresh();
                 } catch {

@@ -94,6 +94,7 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
         sourceCitation: row.source_citation,
         sourceTitle: row.source_title,
         sourceAuthors: row.source_authors ?? [],
+        sourcePublicationDate: row.source_publication_date,
         sourceDoi: row.source_doi,
         verificationStatus: row.verification_status,
         verifiedBy: row.verified_by,
@@ -104,7 +105,9 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
         lastUsedAt: row.last_used_at,
         episodesUsedIn: row.episodes_used_in ?? [],
         createdAt: row.created_at,
+        createdBy: row.created_by,
         updatedAt: row.updated_at,
+        updatedBy: row.updated_by,
     }));
 
     const basePath = `/home/${account}/studio/${projectSlug}/settings/facts`;
@@ -129,6 +132,7 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
                 facts={facts}
                 total={count ?? 0}
                 basePath={basePath}
+                projectId={project.id}
             />
         </div>
     );

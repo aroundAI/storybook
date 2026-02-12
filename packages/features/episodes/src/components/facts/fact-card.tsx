@@ -22,20 +22,9 @@ import {
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 
-import { STATUS_LABELS, STATUS_STYLES } from './fact-constants';
+import type { MappedFact } from '../../server/fact-actions';
 
-interface MappedFact {
-    id: string;
-    projectId: string;
-    claim: string;
-    category: string | null;
-    tags: string[];
-    sourceUrl: string | null;
-    sourceCitation: string | null;
-    verificationStatus: string;
-    confidenceScore: number | null;
-    timesUsed: number;
-}
+import { STATUS_LABELS, STATUS_STYLES } from './fact-constants';
 
 interface FactCardProps {
     fact: MappedFact;

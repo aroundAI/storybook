@@ -45,16 +45,19 @@ const AddFactSchema = z.object({
 
 const VerifyFactSchema = z.object({
     factId: z.string().uuid(),
+    projectId: z.string().uuid(),
     verificationNotes: z.string().optional(),
 });
 
 const DisputeFactSchema = z.object({
     factId: z.string().uuid(),
+    projectId: z.string().uuid(),
     disputeReason: z.string().min(1, 'Dispute reason is required'),
 });
 
 const DeleteFactSchema = z.object({
     factId: z.string().uuid(),
+    projectId: z.string().uuid(),
 });
 
 const GetProjectFactsSchema = z.object({
@@ -143,6 +146,9 @@ function mapFactRow(row: VerifiedFactRow) {
     };
 }
 
+/** Mapped fact shape returned by mapFactRow, for use in client components. */
+export type MappedFact = ReturnType<typeof mapFactRow>;
+
 // =============================================================================
 // ACTIONS
 // =============================================================================
@@ -221,7 +227,8 @@ export const verifyFactAction = enhanceAction(
                 verification_notes: data.verificationNotes || null,
                 updated_by: user?.id,
             })
-            .eq('id', data.factId);
+            .eq('id', data.factId)
+            .eq('project_id', data.projectId);
 
         if (error) {
             throw new Error(`Failed to verify fact: ${error.message}`);
@@ -251,7 +258,8 @@ export const disputeFactAction = enhanceAction(
                 verification_notes: data.disputeReason,
                 updated_by: user?.id,
             })
-            .eq('id', data.factId);
+            .eq('id', data.factId)
+            .eq('project_id', data.projectId);
 
         if (error) {
             throw new Error(`Failed to dispute fact: ${error.message}`);
@@ -277,7 +285,8 @@ export const deleteFactAction = enhanceAction(
         const { error } = await client
             .from('verified_facts')
             .delete()
-            .eq('id', data.factId);
+            .eq('id', data.factId)
+            .eq('project_id', data.projectId);
 
         if (error) {
             throw new Error(`Failed to delete fact: ${error.message}`);
