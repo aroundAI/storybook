@@ -79,6 +79,7 @@ const GetProjectFactsSchema = z.object({
 
 const GetFactByIdSchema = z.object({
     factId: z.string().uuid(),
+    projectId: z.string().uuid(),
 });
 
 // =============================================================================
@@ -364,6 +365,7 @@ export const getFactByIdAction = enhanceAction(
             .from('verified_facts')
             .select('*')
             .eq('id', data.factId)
+            .eq('project_id', data.projectId)
             .single();
 
         if (error) {

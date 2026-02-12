@@ -1,8 +1,8 @@
-# Superpowers Review — FILM-1121 Fact Management UI
+# Superpowers Review v3 — FILM-1121 Fact Management UI
 
 **Branch:** `feature/FILM-1121-fact-management-ui`
-**Commit:** `811ab9e8`
-**Diff:** 12 files changed, 1914 insertions
+**Commit:** `abea48cd` (post M1/m1 fixes)
+**Scope:** 14 files changed, ~2031 insertions
 
 ---
 
@@ -12,80 +12,72 @@ None.
 
 ## Majors
 
-### M1 — Fact detail page not scoped to project
-
-**File:** `settings/facts/[factId]/page.tsx` lines 68-72
-**Severity:** Major
-**Finding:** The query fetches a fact by `factId` alone without scoping to the project:
-```ts
-.from('verified_facts')
-.select('*')
-.eq('id', factId)
-.single();
-```
-If RLS doesn't scope facts to the project, a user could view facts from other projects by guessing UUIDs. The `projectSlug` param is resolved but never used to verify ownership.
-**Recommendation:** Resolve `projectSlug → project.id` first (as done in the list page), then add `.eq('project_id', project.id)` to the detail query. Same issue in `generateMetadata`.
+None. ✅ Previous M1 (write actions unscoped) fixed — all write schemas now require `projectId` and queries include `.eq('project_id', data.projectId)`.
 
 ## Minors
 
-### m1 — Duplicate `STATUS_STYLES` / `STATUS_LABELS` constants
+### m1 — Duplicate data fetching in list page vs. `getProjectFactsAction`
 
-**File:** `fact-card.tsx` lines 23-41, `[factId]/page.tsx` lines 27-41
-**Severity:** Minor
-**Finding:** `STATUS_STYLES` and `STATUS_LABELS` are copy-pasted identically in two files. If a status value is added or renamed, both must be updated in sync.
-**Recommendation:** Extract to a shared `fact-constants.ts` file and import in both components.
+**File:** [facts/page.tsx](file:///Users/shaurya/Work/projects/storybook/apps/web/app/home/%5Baccount%5D/studio/%5BprojectSlug%5D/settings/facts/page.tsx#L55-L81)
+**Finding:** The list page builds its own Supabase query (lines 55-81) duplicating the filtering/mapping logic in `getProjectFactsAction` (lines 308-352). Schema changes require updating both.
+**Recommendation:** Extract a shared `queryProjectFacts()` service function, or call `getProjectFactsAction` from the RSC directly. Non-blocking since both are in the same PR and kept in sync.
 
-### m2 — `eslint-disable @typescript-eslint/no-explicit-any` on Supabase client
+### m2 — `getFactByIdAction` not scoped to project
 
-**File:** `fact-actions.ts` lines 303-304, 351-352
-**Severity:** Minor
-**Finding:** `getProjectFactsAction` and `getFactByIdAction` cast the Supabase client to `any` to work around missing generated types for `verified_facts`. This bypasses all type-safety for those queries.
-**Recommendation:** Run `pnpm supabase:web:typegen` to regenerate types that include the `verified_facts` table, then remove the `as any` casts. If types aren't available yet (table not in local dev), add a TODO comment with the ticket reference.
+**File:** [fact-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/server/fact-actions.ts#L357-L379)
+**Finding:** `getFactByIdAction` queries by `factId` alone without a `projectId` filter. This is a read action (not a write), so risk is lower — and the detail page already scopes its own query — but the action itself could be called from other contexts without project scoping.
+**Recommendation:** Add `projectId` to `GetFactByIdSchema` and scope the query, for consistency with other actions.
 
-### m3 — Category lists duplicated across files
+### m3 — `revalidatePath` uses dynamic route pattern
 
-**File:** `add-fact-form.tsx` lines 87-99, `fact-library.tsx` lines 30-43
-**Severity:** Minor
-**Finding:** `CATEGORY_OPTIONS` is defined twice with slightly different shapes (array of strings vs. array of `{value, label}`). These can diverge silently.
-**Recommendation:** Extract a single canonical `FACT_CATEGORIES` array in a shared file and derive both shapes from it.
+**File:** [fact-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/server/fact-actions.ts#L198) (also lines 239, 269, 295)
+**Finding:** `revalidatePath('/home/[account]/studio/[projectSlug]/settings/facts')` revalidates all instances of this route across all accounts/projects. Acceptable for low-frequency mutations but imprecise.
+**Recommendation:** Pass the actual resolved path for targeted invalidation in a future optimization pass. Non-blocking.
 
 ## Nits
 
-### n1 — `confirm()` for delete is browser-only
+### n1 — `SOURCE_TYPES` in `add-fact-form.tsx` mirrors server schema enum
 
-**File:** `fact-library.tsx` line 143
-**Severity:** Nit
-**Finding:** `if (!confirm('Are you sure...'))` uses the native browser confirm dialog, which is inconsistent with the rest of the UI's shadcn dialog pattern and won't work in non-browser environments.
-**Recommendation:** Replace with a shadcn `AlertDialog` for visual consistency. Acceptable as-is for MVP.
+**File:** [add-fact-form.tsx](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/components/facts/add-fact-form.tsx#L76-L89)
+**Finding:** The `SOURCE_TYPES` array duplicates the `sourceType` Zod enum in `AddFactSchema`. Adding a new source type requires updating both.
+**Recommendation:** Move to `fact-constants.ts` alongside other shared constants for a single source of truth.
 
-### n2 — `facts/page.tsx` uses `<a>` instead of `<Link>` for back nav
+### n2 — `FactCard` dropdown contains only "Delete"
 
-**File:** `settings/facts/page.tsx` line 119
-**Severity:** Nit
-**Finding:** The back button uses a raw `<a href=...>` tag, which triggers a full page reload. Other pages in the app use `next/link`'s `<Link>` for client-side nav.
-**Recommendation:** Replace `<a>` with `<Link>` from `next/link`.
+**File:** [fact-card.tsx](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/components/facts/fact-card.tsx#L107-L131)
+**Finding:** A `DropdownMenu` with a single item feels heavy. Acceptable if more actions (Edit, Duplicate) are planned.
+**Recommendation:** No action needed if more items are planned. Otherwise simplify to an inline button.
 
-### n3 — No unit tests
+### n3 — No unit tests for pure functions
 
-**Severity:** Nit
-**Finding:** No tests accompany this feature. `addVerifiedFactAction`, `mapFactRow`, and form validation logic are all easily testable.
-**Recommendation:** Defer to follow-up ticket. Pure functions like `mapFactRow` and the `simplifiedClaim` generation are ideal first targets.
+**Finding:** `mapFactRow`, `simplifiedClaim` generation, and `generateAPACitation` are ideal unit-test targets but no tests are included.
+**Recommendation:** Defer to follow-up ticket per prior agreement.
 
 ---
 
 ## Summary
 
-| Severity | Count |
-|----------|-------|
-| Blocker  | 0     |
-| Major    | 1     |
-| Minor    | 3     |
-| Nit      | 3     |
+| Severity | Count | Status |
+|----------|-------|--------|
+| Blocker  | 0     | ✅ |
+| Major    | 0     | ✅ (v2 M1 fixed) |
+| Minor    | 3     | Non-blocking |
+| Nit      | 3     | Optional polish |
 
-**Verdict:** ⚠️ Fix **M1** before shipping; minors recommended but non-blocking.
+### What's been fixed across v1→v3:
+- ✅ **v1 M1** — Detail page query scoped to project
+- ✅ **v2 M1** — Write actions (`verify`, `dispute`, `delete`) now scoped to `projectId`
+- ✅ **v1 m1** — Shared constants extracted to `fact-constants.ts`
+- ✅ **v2 m1** — `MappedFact` type exported and reused (net -19 lines)
+- ✅ **v1 m3** — Duplicate `CATEGORY_OPTIONS` consolidated
+- ✅ **v1 n1** — `confirm()` → `AlertDialog`
+- ✅ **v1 n2** — `<a>` → `<Link>`
+- ✅ **v1 m2** — `as any` casts addressed with typed helper + TODO
 
-**Recommended actions:**
-1. Fix **M1** (scope detail query to project) — security-relevant.
-2. Fix **m1** (extract shared constants) and **m2** (typegen) — quick wins.
-3. **m3**, **n1**, **n2** — batch in polish pass.
-4. Defer **n3** (unit tests) to follow-up.
+### Remaining (all non-blocking):
+1. **m1** — Duplicate query logic in list page (refactor opportunity)
+2. **m2** — `getFactByIdAction` not scoped to project (low risk, read-only)
+3. **m3** — `revalidatePath` uses pattern path (optimization opportunity)
+4. **n1-n3** — Optional polish items
+
+**Verdict:** ✅ **Ship-ready.** No blockers or majors. All remaining items are non-blocking improvements.

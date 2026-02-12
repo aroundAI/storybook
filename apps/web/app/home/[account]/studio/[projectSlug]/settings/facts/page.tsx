@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft, BookCheck } from 'lucide-react';
 
-import { FactLibrary } from '@kit/episodes';
+import { FactLibrary } from '@kit/episodes/components';
+import { getProjectFactsAction } from '@kit/episodes/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { Button } from '@kit/ui/button';
 import { Heading } from '@kit/ui/heading';
@@ -52,63 +53,21 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
         notFound();
     }
 
-    // Build query
-    let query = client
-        .from('verified_facts')
-        .select('*', { count: 'exact' })
-        .eq('project_id', project.id)
-        .order('created_at', { ascending: false })
-        .range(0, 49);
-
-    if (filters.q) {
-        query = query.textSearch(
-            'claim',
-            filters.q.split(/\s+/).join(' & '),
-        );
-    }
-
-    if (filters.category) {
-        query = query.eq('category', filters.category);
-    }
-
-    if (filters.status) {
-        query = query.eq(
-            'verification_status',
-            filters.status as 'unverified' | 'verified' | 'disputed' | 'pending_review' | 'retracted',
-        );
-    }
-
-    const { data: factsRaw, count } = await query;
-
-    // Map to client format
-    const facts = (factsRaw ?? []).map((row) => ({
-        id: row.id,
-        projectId: row.project_id,
-        claim: row.claim,
-        simplifiedClaim: row.simplified_claim,
-        category: row.category,
-        subcategory: row.subcategory,
-        tags: row.tags ?? [],
-        sourceType: row.source_type,
-        sourceUrl: row.source_url,
-        sourceCitation: row.source_citation,
-        sourceTitle: row.source_title,
-        sourceAuthors: row.source_authors ?? [],
-        sourcePublicationDate: row.source_publication_date,
-        sourceDoi: row.source_doi,
-        verificationStatus: row.verification_status,
-        verifiedBy: row.verified_by,
-        verifiedAt: row.verified_at,
-        verificationNotes: row.verification_notes,
-        confidenceScore: row.confidence_score,
-        timesUsed: row.times_used ?? 0,
-        lastUsedAt: row.last_used_at,
-        episodesUsedIn: row.episodes_used_in ?? [],
-        createdAt: row.created_at,
-        createdBy: row.created_by,
-        updatedAt: row.updated_at,
-        updatedBy: row.updated_by,
-    }));
+    // Use shared action to fetch facts (single source of query logic)
+    const result = await getProjectFactsAction({
+        projectId: project.id,
+        search: filters.q,
+        category: filters.category,
+        status: filters.status as
+            | 'unverified'
+            | 'verified'
+            | 'disputed'
+            | 'pending_review'
+            | 'retracted'
+            | undefined,
+        limit: 50,
+        offset: 0,
+    });
 
     const basePath = `/home/${account}/studio/${projectSlug}/settings/facts`;
 
@@ -117,20 +76,25 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" asChild>
-                        <Link href={`/home/${account}/studio/${projectSlug}/settings`}>
+                        <Link
+                            href={`/home/${account}/studio/${projectSlug}/settings`}
+                        >
                             <ArrowLeft className="h-4 w-4" />
                         </Link>
                     </Button>
                     <BookCheck className="h-6 w-6 text-primary" />
                     <Heading level={3}>
-                        <Trans i18nKey="projects:factLibrary" defaults="Fact Library" />
+                        <Trans
+                            i18nKey="projects:factLibrary"
+                            defaults="Fact Library"
+                        />
                     </Heading>
                 </div>
             </div>
 
             <FactLibrary
-                facts={facts}
-                total={count ?? 0}
+                facts={result.facts}
+                total={result.total}
                 basePath={basePath}
                 projectId={project.id}
             />

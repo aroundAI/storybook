@@ -41,7 +41,7 @@ import { Textarea } from '@kit/ui/textarea';
 
 import { addVerifiedFactAction } from '../../server/fact-actions';
 
-import { FACT_CATEGORIES } from './fact-constants';
+import { FACT_CATEGORIES, SOURCE_TYPES } from './fact-constants';
 
 const addFactSchema = z.object({
     claim: z.string().min(10, 'Claim must be at least 10 characters'),
@@ -73,21 +73,6 @@ const addFactSchema = z.object({
 
 type AddFactValues = z.infer<typeof addFactSchema>;
 
-const SOURCE_TYPES = [
-    { value: 'research_paper', label: 'Research Paper' },
-    { value: 'book', label: 'Book' },
-    { value: 'news_article', label: 'News Article' },
-    { value: 'official_document', label: 'Official Document' },
-    { value: 'documentary', label: 'Documentary' },
-    { value: 'expert_interview', label: 'Expert Interview' },
-    { value: 'dataset', label: 'Dataset' },
-    { value: 'website', label: 'Website' },
-    { value: 'encyclopedia', label: 'Encyclopedia' },
-    { value: 'court_document', label: 'Court Document' },
-    { value: 'historical_record', label: 'Historical Record' },
-    { value: 'textbook', label: 'Textbook' },
-    { value: 'other', label: 'Other' },
-] as const;
 
 interface AddFactFormProps {
     projectId: string;

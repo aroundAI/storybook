@@ -43,3 +43,19 @@ export const CATEGORY_OPTIONS = FACT_CATEGORIES.map((cat) => ({
     value: cat,
     label: cat.charAt(0).toUpperCase() + cat.slice(1),
 }));
+
+export const SOURCE_TYPES = [
+    { value: 'research_paper', label: 'Research Paper' },
+    { value: 'book', label: 'Book' },
+    { value: 'news_article', label: 'News Article' },
+    { value: 'official_document', label: 'Official Document' },
+    { value: 'documentary', label: 'Documentary' },
+    { value: 'expert_interview', label: 'Expert Interview' },
+    { value: 'dataset', label: 'Dataset' },
+    { value: 'website', label: 'Website' },
+    { value: 'encyclopedia', label: 'Encyclopedia' },
+    { value: 'court_document', label: 'Court Document' },
+    { value: 'historical_record', label: 'Historical Record' },
+    { value: 'textbook', label: 'Textbook' },
+    { value: 'other', label: 'Other' },
+] as const;

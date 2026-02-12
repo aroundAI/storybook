@@ -10,4 +10,5 @@ export {
     STATUS_OPTIONS,
     FACT_CATEGORIES,
     CATEGORY_OPTIONS,
+    SOURCE_TYPES,
 } from './fact-constants';
