@@ -155,6 +155,7 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
             try {
                 await addVerifiedFactAction({
                     projectId,
+                    basePath,
                     claim: values.claim,
                     category: values.category,
                     subcategory: values.subcategory,

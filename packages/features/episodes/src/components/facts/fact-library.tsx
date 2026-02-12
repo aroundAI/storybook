@@ -79,7 +79,7 @@ export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryPr
         async (factId: string, notes: string) => {
             startTransition(async () => {
                 try {
-                    await verifyFactAction({ factId, projectId, verificationNotes: notes });
+                    await verifyFactAction({ factId, projectId, basePath, verificationNotes: notes });
                     toast.success('Fact verified');
                     router.refresh();
                 } catch {
@@ -94,7 +94,7 @@ export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryPr
         async (factId: string, reason: string) => {
             startTransition(async () => {
                 try {
-                    await disputeFactAction({ factId, projectId, disputeReason: reason });
+                    await disputeFactAction({ factId, projectId, basePath, disputeReason: reason });
                     toast.success('Fact marked as disputed');
                     router.refresh();
                 } catch {
@@ -109,7 +109,7 @@ export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryPr
         async (factId: string) => {
             startTransition(async () => {
                 try {
-                    await deleteFactAction({ factId, projectId });
+                    await deleteFactAction({ factId, projectId, basePath });
                     toast.success('Fact deleted');
                     router.refresh();
                 } catch {

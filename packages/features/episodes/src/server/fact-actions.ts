@@ -12,6 +12,7 @@ import { z } from 'zod';
 
 const AddFactSchema = z.object({
     projectId: z.string().uuid(),
+    basePath: z.string().min(1),
     claim: z.string().min(10, 'Claim must be at least 10 characters'),
     category: z.string().max(100).optional(),
     subcategory: z.string().max(100).optional(),
@@ -46,18 +47,21 @@ const AddFactSchema = z.object({
 const VerifyFactSchema = z.object({
     factId: z.string().uuid(),
     projectId: z.string().uuid(),
+    basePath: z.string().min(1),
     verificationNotes: z.string().optional(),
 });
 
 const DisputeFactSchema = z.object({
     factId: z.string().uuid(),
     projectId: z.string().uuid(),
+    basePath: z.string().min(1),
     disputeReason: z.string().min(1, 'Dispute reason is required'),
 });
 
 const DeleteFactSchema = z.object({
     factId: z.string().uuid(),
     projectId: z.string().uuid(),
+    basePath: z.string().min(1),
 });
 
 const GetProjectFactsSchema = z.object({
@@ -202,7 +206,7 @@ export const addVerifiedFactAction = enhanceAction(
             throw new Error(`Failed to add fact: ${error.message}`);
         }
 
-        revalidatePath('/home/[account]/studio/[projectSlug]/settings/facts');
+        revalidatePath(data.basePath);
 
         return { fact: mapFactRow(fact as VerifiedFactRow) };
     },
@@ -235,7 +239,7 @@ export const verifyFactAction = enhanceAction(
             throw new Error(`Failed to verify fact: ${error.message}`);
         }
 
-        revalidatePath('/home/[account]/studio/[projectSlug]/settings/facts');
+        revalidatePath(data.basePath);
 
         return { success: true };
     },
@@ -266,7 +270,7 @@ export const disputeFactAction = enhanceAction(
             throw new Error(`Failed to dispute fact: ${error.message}`);
         }
 
-        revalidatePath('/home/[account]/studio/[projectSlug]/settings/facts');
+        revalidatePath(data.basePath);
 
         return { success: true };
     },
@@ -293,7 +297,7 @@ export const deleteFactAction = enhanceAction(
             throw new Error(`Failed to delete fact: ${error.message}`);
         }
 
-        revalidatePath('/home/[account]/studio/[projectSlug]/settings/facts');
+        revalidatePath(data.basePath);
 
         return { success: true };
     },
