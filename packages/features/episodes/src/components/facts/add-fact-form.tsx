@@ -62,6 +62,7 @@ const CrossRefWorkSchema = z.object({
 });
 
 const CrossRefResponseSchema = z.object({
+    status: z.string().optional(),
     message: CrossRefWorkSchema,
 });
 

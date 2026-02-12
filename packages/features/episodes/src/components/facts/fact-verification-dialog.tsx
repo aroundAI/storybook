@@ -22,12 +22,9 @@ import {
 import { Label } from '@kit/ui/label';
 import { Textarea } from '@kit/ui/textarea';
 
-interface FactForVerification {
-    id: string;
-    claim: string;
-    sourceCitation: string | null;
-    sourceUrl: string | null;
-}
+import type { MappedFact } from '../../server/fact-actions';
+
+type FactForVerification = Pick<MappedFact, 'id' | 'claim' | 'sourceCitation' | 'sourceUrl'>;
 
 interface FactVerificationDialogProps {
     fact: FactForVerification;

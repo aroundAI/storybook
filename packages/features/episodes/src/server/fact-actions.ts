@@ -13,6 +13,8 @@ import type { VerifiedFactRow } from './fact-row-mapper';
 
 export type { MappedFact } from './fact-row-mapper';
 
+
+
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -21,12 +23,9 @@ export type { MappedFact } from './fact-row-mapper';
  * Require that the user is an owner or admin on the project's account.
  * Throws if the user lacks permission.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function requireProjectRole(
-    client: any,
-    projectId: string,
-    userId: string,
-) {
+async function requireProjectRole(projectId: string, userId: string) {
+    const client = getSupabaseServerClient();
+
     // Look up the account that owns this project
     const { data: project } = await client
         .from('projects')
@@ -196,7 +195,7 @@ export const verifyFactAction = enhanceAction(
         const client = getSupabaseServerClient();
 
         // RBAC: require owner or admin role
-        await requireProjectRole(client, data.projectId, user!.id);
+        await requireProjectRole(data.projectId, user!.id);
 
         const { error } = await client
             .from('verified_facts')
@@ -233,7 +232,7 @@ export const disputeFactAction = enhanceAction(
         const client = getSupabaseServerClient();
 
         // RBAC: require owner or admin role
-        await requireProjectRole(client, data.projectId, user!.id);
+        await requireProjectRole(data.projectId, user!.id);
 
         const { error } = await client
             .from('verified_facts')
@@ -260,11 +259,15 @@ export const disputeFactAction = enhanceAction(
 );
 
 /**
- * Delete a verified fact (owner/admin via RLS).
+ * Delete a verified fact.
+ * Requires owner or admin role on the project's account.
  */
 export const deleteFactAction = enhanceAction(
-    async (data) => {
+    async (data, user) => {
         const client = getSupabaseServerClient();
+
+        // RBAC: require owner or admin role
+        await requireProjectRole(data.projectId, user!.id);
 
         const { error } = await client
             .from('verified_facts')

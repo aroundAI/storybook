@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -30,21 +32,26 @@ interface FactDetailPageProps {
     params: Promise<{ account: string; projectSlug: string; factId: string }>;
 }
 
-export const generateMetadata = async ({ params }: FactDetailPageProps) => {
-    const { factId, projectSlug } = await params;
+const getProjectBySlug = cache(async (slug: string) => {
     const client = getSupabaseServerClient();
-
-    // Resolve project to ensure scoping
-    const { data: project } = await client
+    const { data } = await client
         .from('projects')
         .select('id')
-        .eq('slug', projectSlug)
+        .eq('slug', slug)
         .single();
+    return data;
+});
+
+export const generateMetadata = async ({ params }: FactDetailPageProps) => {
+    const { factId, projectSlug } = await params;
+
+    const project = await getProjectBySlug(projectSlug);
 
     if (!project) {
         return { title: 'Fact Details' };
     }
 
+    const client = getSupabaseServerClient();
     const { data: fact } = await client
         .from('verified_facts')
         .select('claim')
@@ -62,19 +69,13 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
 
     await loadTeamWorkspace(account);
 
-    const client = getSupabaseServerClient();
+    const project = await getProjectBySlug(projectSlug);
 
-    // Resolve project by slug to ensure fact belongs to this project
-    const { data: project, error: projectError } = await client
-        .from('projects')
-        .select('id')
-        .eq('slug', projectSlug)
-        .single();
-
-    if (projectError || !project) {
+    if (!project) {
         notFound();
     }
 
+    const client = getSupabaseServerClient();
     const { data: fact, error } = await client
         .from('verified_facts')
         .select('*')

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 import {
     Check,
@@ -39,7 +38,7 @@ interface FactCardProps {
 }
 
 export function FactCard({ fact, basePath, onVerify, onDelete }: FactCardProps) {
-    const router = useRouter();
+
 
     const handleCopyClaim = async () => {
         try {
@@ -138,11 +137,11 @@ export function FactCard({ fact, basePath, onVerify, onDelete }: FactCardProps) 
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    onClick={() => router.push(`${basePath}/${fact.id}`)}
-                                >
-                                    <Pencil className="h-4 w-4 mr-2" />
-                                    Edit
+                                <DropdownMenuItem asChild>
+                                    <Link href={`${basePath}/${fact.id}`}>
+                                        <Pencil className="h-4 w-4 mr-2" />
+                                        Edit
+                                    </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem onClick={handleCopyClaim}>
                                     <ClipboardCopy className="h-4 w-4 mr-2" />
