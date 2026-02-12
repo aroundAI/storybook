@@ -235,11 +235,11 @@ interface FactExtractionJob {
 
 ## Acceptance Criteria
 
-- [ ] File upload works for PDF, DOCX, TXT, MD
+- [x] File upload works for PDF, DOCX, TXT, MD
 - [x] URL fetch extracts text content
-- [ ] API sources can be configured with categories
+- [x] API sources can be configured with categories
 - [x] LLM extracts facts with entities
-- [ ] Progress shown during extraction
+- [x] Progress shown during extraction
 - [x] Extracted facts appear in Facts list
 - [x] Source credibility tier is stored
 - [x] Error handling for failed uploads/extractions

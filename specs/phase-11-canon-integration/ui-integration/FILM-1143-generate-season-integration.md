@@ -259,8 +259,8 @@ const handleAnalyze = (data) => {
 - [x] Content type banner shows in Generate Season
 - [x] Banner shows linked sources summary
 - [x] Warning shown when factual content has no sources
-- [ ] "Add Sources" link navigates to Research tab
-- [ ] External facts passed to season analysis
-- [ ] Memory context includes external facts
-- [ ] News projects show API connection status
-- [ ] Refresh button updates live API sources
+- [x] "Add Sources" link navigates to Research tab
+- [x] External facts passed to season analysis
+- [x] Memory context includes external facts
+- [x] News projects show API connection status
+- [x] Refresh button updates live API sources

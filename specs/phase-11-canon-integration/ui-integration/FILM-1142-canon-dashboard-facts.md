@@ -229,6 +229,6 @@ memoryContext.externalFacts = factsContext;
 - [x] Shows linked facts with source attribution
 - [x] Link dialog allows searching and selecting facts
 - [x] Unlink button removes fact from episode
-- [ ] Used facts show scene reference when available
+- [x] Used facts show scene reference when available
 - [x] Empty state guides to Research library
-- [ ] Facts count shown in tab badge
+- [x] Facts count shown in tab badge

@@ -223,6 +223,6 @@ export async function deleteFactAction(factId: string);
 - [x] Sources list shows all project sources with CRUD
 - [x] Facts list shows extracted facts with verification toggle
 - [x] Empty state guides user based on content type
-- [ ] Source counts show in sidebar nav item
+- [x] Source counts show in sidebar nav item
 - [x] Proper loading and error states
-- [ ] Mobile responsive layout
+- [x] Mobile responsive layout
