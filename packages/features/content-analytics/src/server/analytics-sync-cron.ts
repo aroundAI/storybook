@@ -346,26 +346,33 @@ async function syncSinglePublish(
       analytics,
     );
 
-    // 5. Insert into ClickHouse
+    // 5. Insert into ClickHouse (skip if projectId unresolvable — UUID column)
     const projectId = await resolveProjectId(client, publish.episode_id);
 
-    const chMetric: VideoMetric = {
-      project_id: projectId ?? 'unknown',
-      video_id: publish.id,
-      platform,
-      metric_date: snapshotDate,
-      views: normalizedData.views,
-      likes: normalizedData.likes,
-      comments: normalizedData.comments,
-      shares: normalizedData.shares,
-      saves: normalizedData.saves,
-      watch_time_seconds: normalizedData.watch_time_seconds,
-      revenue_cents: normalizedData.revenue_cents,
-      subscribers_gained: normalizedData.subscribers_gained,
-      extra_metrics: JSON.stringify(normalizedData.raw_data ?? {}),
-    };
+    if (!projectId) {
+      logger.warn(
+        { publishId: publish.id, episodeId: publish.episode_id },
+        'Skipping ClickHouse ingestion: could not resolve project_id',
+      );
+    } else {
+      const chMetric: VideoMetric = {
+        project_id: projectId,
+        video_id: publish.id,
+        platform,
+        metric_date: snapshotDate,
+        views: normalizedData.views,
+        likes: normalizedData.likes,
+        comments: normalizedData.comments,
+        shares: normalizedData.shares,
+        saves: normalizedData.saves,
+        watch_time_seconds: normalizedData.watch_time_seconds,
+        revenue_cents: normalizedData.revenue_cents,
+        subscribers_gained: normalizedData.subscribers_gained,
+        extra_metrics: JSON.stringify(normalizedData.raw_data ?? {}),
+      };
 
-    await insertVideoMetrics([chMetric]);
+      await insertVideoMetrics([chMetric]);
+    }
 
     // 5b. If there's revenue, also upsert to revenue_records table
     if (normalizedData.revenue_cents > 0) {

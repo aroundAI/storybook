@@ -307,6 +307,61 @@ export async function getSeasonAnalytics(
     };
   }
 
+  const episodeIds = episodes.map((e) => e.id);
+
+  // Batch: get all publishes for all episodes in one query
+  const { data: allPublishes } = await client
+    .from('publishes')
+    .select('id, platform, episode_id')
+    .in('episode_id', episodeIds);
+
+  if (!allPublishes || allPublishes.length === 0) {
+    return {
+      seasonId,
+      seasonNumber: season.number,
+      title: season.name || `Season ${season.number}`,
+      totalViews: 0,
+      totalLikes: 0,
+      totalComments: 0,
+      totalShares: 0,
+      totalSaves: 0,
+      totalRevenueCents: 0,
+      avgEngagementRate: 0,
+      episodeCount: episodes.length,
+      topEpisode: null,
+      lowestEpisode: null,
+      episodes: episodes.map((ep) => ({
+        episodeId: ep.id,
+        title: ep.title,
+        episodeNumber: ep.number,
+        views: 0,
+        engagement: 0,
+        revenue: 0,
+      })),
+    };
+  }
+
+  // Group publishes by episode
+  const publishesByEpisode = new Map<string, typeof allPublishes>();
+  for (const pub of allPublishes) {
+    const existing = publishesByEpisode.get(pub.episode_id) ?? [];
+    existing.push(pub);
+    publishesByEpisode.set(pub.episode_id, existing);
+  }
+
+  // Batch: single ClickHouse query for all publish IDs
+  const allPublishIds = allPublishes.map((p) => p.id);
+  const dateFilters =
+    options?.startDate && options?.endDate
+      ? {
+        startDate: options.startDate.toISOString().split('T')[0],
+        endDate: options.endDate.toISOString().split('T')[0],
+      }
+      : {};
+
+  const perVideoTotals = await queryTotalsByVideoIds(allPublishIds, dateFilters);
+
+  // Aggregate per episode
   const episodeAnalytics: SeasonAnalytics['episodes'] = [];
   let totalViews = 0;
   let totalLikes = 0;
@@ -317,29 +372,44 @@ export async function getSeasonAnalytics(
   let totalEngagement = 0;
 
   for (const ep of episodes) {
-    const dateRange =
-      options?.startDate && options?.endDate
-        ? { start: options.startDate, end: options.endDate }
-        : undefined;
-    const analytics = await getEpisodeAnalytics(ep.id, dateRange);
-    if (analytics) {
-      episodeAnalytics.push({
-        episodeId: ep.id,
-        title: ep.title,
-        episodeNumber: ep.number,
-        views: analytics.totalViews,
-        engagement: analytics.engagementRate,
-        revenue: analytics.totalRevenueCents,
-      });
+    const epPublishes = publishesByEpisode.get(ep.id) ?? [];
+    let epViews = 0;
+    let epLikes = 0;
+    let epComments = 0;
+    let epShares = 0;
+    let epSaves = 0;
+    let epRevenue = 0;
 
-      totalViews += analytics.totalViews;
-      totalLikes += analytics.totalLikes;
-      totalComments += analytics.totalComments;
-      totalShares += analytics.totalShares;
-      totalSaves += analytics.totalSaves;
-      totalRevenue += analytics.totalRevenueCents;
-      totalEngagement += analytics.engagementRate;
+    for (const pub of epPublishes) {
+      const stats = perVideoTotals.get(pub.id);
+      if (!stats) continue;
+      epViews += stats.views;
+      epLikes += stats.likes;
+      epComments += stats.comments;
+      epShares += stats.shares;
+      epSaves += stats.saves;
+      epRevenue += stats.revenue_cents;
     }
+
+    const epEngagement =
+      epViews > 0 ? ((epLikes + epComments + epShares) / epViews) * 100 : 0;
+
+    episodeAnalytics.push({
+      episodeId: ep.id,
+      title: ep.title,
+      episodeNumber: ep.number,
+      views: epViews,
+      engagement: epEngagement,
+      revenue: epRevenue,
+    });
+
+    totalViews += epViews;
+    totalLikes += epLikes;
+    totalComments += epComments;
+    totalShares += epShares;
+    totalSaves += epSaves;
+    totalRevenue += epRevenue;
+    totalEngagement += epEngagement;
   }
 
   const sortedByViews = [...episodeAnalytics].sort((a, b) => b.views - a.views);

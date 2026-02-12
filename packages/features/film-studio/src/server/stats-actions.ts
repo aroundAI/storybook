@@ -4,6 +4,7 @@ import 'server-only';
 
 import { formatDateStr, queryTotals } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { GetQuickStatsSchema } from '../lib/schemas/dashboard.schema';
@@ -135,11 +136,13 @@ export const getQuickStatsAction = enhanceAction(
         publishedCount: (publishedContent ?? []).length,
       };
     } catch (error) {
-      console.error('Error fetching quick stats:', error);
+      const logger = await getLogger();
+      logger.error({ error }, 'Error fetching quick stats');
       throw error;
     }
   },
   {
+    auth: true,
     schema: GetQuickStatsSchema,
   },
 );
