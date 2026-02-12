@@ -10,7 +10,6 @@ import {
   queryDailyTimeSeries,
   queryDailyTimeSeriesByPlatform,
   queryPlatformBreakdown,
-  queryTotals,
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
