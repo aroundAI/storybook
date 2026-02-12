@@ -1,13 +1,17 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 import {
     Check,
+    ClipboardCopy,
     ExternalLink,
     MoreHorizontal,
+    Pencil,
     Trash2,
 } from 'lucide-react';
+import { toast } from '@kit/ui/sonner';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -19,6 +23,7 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 
@@ -34,6 +39,13 @@ interface FactCardProps {
 }
 
 export function FactCard({ fact, basePath, onVerify, onDelete }: FactCardProps) {
+    const router = useRouter();
+
+    const handleCopyClaim = () => {
+        void navigator.clipboard.writeText(fact.claim);
+        toast.success('Claim copied to clipboard');
+    };
+
     return (
         <Card className="transition-shadow hover:shadow-md">
             <CardContent className="p-4">
@@ -122,14 +134,27 @@ export function FactCard({ fact, basePath, onVerify, onDelete }: FactCardProps) 
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                    onClick={() => router.push(`${basePath}/${fact.id}`)}
+                                >
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={handleCopyClaim}>
+                                    <ClipboardCopy className="h-4 w-4 mr-2" />
+                                    Copy Claim
+                                </DropdownMenuItem>
                                 {onDelete && (
-                                    <DropdownMenuItem
-                                        onClick={onDelete}
-                                        className="text-destructive"
-                                    >
-                                        <Trash2 className="h-4 w-4 mr-2" />
-                                        Delete
-                                    </DropdownMenuItem>
+                                    <>
+                                        <DropdownMenuSeparator />
+                                        <DropdownMenuItem
+                                            onClick={onDelete}
+                                            className="text-destructive"
+                                        >
+                                            <Trash2 className="h-4 w-4 mr-2" />
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </>
                                 )}
                             </DropdownMenuContent>
                         </DropdownMenu>
