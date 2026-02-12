@@ -18,7 +18,8 @@ export type { MappedFact } from './fact-row-mapper';
 // =============================================================================
 
 type SourceTypeValue = (typeof SOURCE_TYPES)[number]['value'];
-const sourceTypeValues = SOURCE_TYPES.map((s) => s.value) as readonly [SourceTypeValue, ...SourceTypeValue[]];
+const [firstSourceType, ...restSourceTypes] = SOURCE_TYPES.map((s) => s.value);
+const sourceTypeValues = [firstSourceType!, ...restSourceTypes] as const satisfies readonly [SourceTypeValue, ...SourceTypeValue[]];
 
 const AddFactSchema = z.object({
     projectId: z.string().uuid(),

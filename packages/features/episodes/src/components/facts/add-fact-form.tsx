@@ -43,26 +43,16 @@ import { addVerifiedFactAction } from '../../server/fact-actions';
 
 import { FACT_CATEGORIES, SOURCE_TYPES } from './fact-constants';
 
+type SourceTypeValue = (typeof SOURCE_TYPES)[number]['value'];
+const [firstSourceType, ...restSourceTypes] = SOURCE_TYPES.map((s) => s.value);
+const sourceTypeValues = [firstSourceType!, ...restSourceTypes] as const satisfies readonly [SourceTypeValue, ...SourceTypeValue[]];
+
 const addFactSchema = z.object({
     claim: z.string().min(10, 'Claim must be at least 10 characters'),
     category: z.string().optional(),
     subcategory: z.string().optional(),
     tags: z.string().default(''),
-    sourceType: z.enum([
-        'research_paper',
-        'book',
-        'news_article',
-        'official_document',
-        'documentary',
-        'expert_interview',
-        'dataset',
-        'website',
-        'encyclopedia',
-        'court_document',
-        'historical_record',
-        'textbook',
-        'other',
-    ]),
+    sourceType: z.enum(sourceTypeValues),
     sourceUrl: z.string().optional(),
     sourceCitation: z.string().min(10, 'Citation must be at least 10 characters'),
     sourceTitle: z.string().optional(),
