@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
 import { ArrowLeft, BookCheck } from 'lucide-react';
@@ -113,9 +114,9 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Button variant="ghost" size="icon" asChild>
-                        <a href={`/home/${account}/studio/${projectSlug}/settings`}>
+                        <Link href={`/home/${account}/studio/${projectSlug}/settings`}>
                             <ArrowLeft className="h-4 w-4" />
-                        </a>
+                        </Link>
                     </Button>
                     <BookCheck className="h-6 w-6 text-primary" />
                     <Heading level={3}>

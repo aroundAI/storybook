@@ -22,21 +22,7 @@ import {
     DropdownMenuTrigger,
 } from '@kit/ui/dropdown-menu';
 
-const STATUS_STYLES: Record<string, string> = {
-    unverified: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    verified: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    disputed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    pending_review: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    retracted: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-    unverified: 'Unverified',
-    verified: 'Verified',
-    disputed: 'Disputed',
-    pending_review: 'Pending Review',
-    retracted: 'Retracted',
-};
+import { STATUS_LABELS, STATUS_STYLES } from './fact-constants';
 
 interface MappedFact {
     id: string;

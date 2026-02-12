@@ -8,6 +8,16 @@ import { useRouter } from 'next/navigation';
 import { Plus, Search } from 'lucide-react';
 import { toast } from '@kit/ui/sonner';
 
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@kit/ui/alert-dialog';
 import { Button } from '@kit/ui/button';
 import { Input } from '@kit/ui/input';
 import {
@@ -24,31 +34,9 @@ import {
     verifyFactAction,
 } from '../../server/fact-actions';
 
+import { CATEGORY_OPTIONS, STATUS_OPTIONS } from './fact-constants';
 import { FactCard } from './fact-card';
 import { FactVerificationDialog } from './fact-verification-dialog';
-
-const CATEGORY_OPTIONS = [
-    { value: 'physics', label: 'Physics' },
-    { value: 'biology', label: 'Biology' },
-    { value: 'history', label: 'History' },
-    { value: 'geography', label: 'Geography' },
-    { value: 'chemistry', label: 'Chemistry' },
-    { value: 'technology', label: 'Technology' },
-    { value: 'politics', label: 'Politics' },
-    { value: 'economics', label: 'Economics' },
-    { value: 'culture', label: 'Culture' },
-    { value: 'science', label: 'Science' },
-    { value: 'medicine', label: 'Medicine' },
-    { value: 'law', label: 'Law' },
-];
-
-const STATUS_OPTIONS = [
-    { value: 'unverified', label: 'Unverified' },
-    { value: 'verified', label: 'Verified' },
-    { value: 'disputed', label: 'Disputed' },
-    { value: 'pending_review', label: 'Pending Review' },
-    { value: 'retracted', label: 'Retracted' },
-];
 
 interface MappedFact {
     id: string;
@@ -91,6 +79,9 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
 
     // Verification dialog state
     const [verifyingFact, setVerifyingFact] = useState<MappedFact | null>(null);
+
+    // Delete confirmation dialog state
+    const [deletingFactId, setDeletingFactId] = useState<string | null>(null);
 
     const handleSearch = useCallback(
         (e: React.FormEvent<HTMLFormElement>) => {
@@ -137,10 +128,8 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
         [router],
     );
 
-    const handleDelete = useCallback(
+    const confirmDelete = useCallback(
         async (factId: string) => {
-            if (!confirm('Are you sure you want to delete this fact?')) return;
-
             startTransition(async () => {
                 try {
                     await deleteFactAction({ factId });
@@ -148,6 +137,8 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
                     router.refresh();
                 } catch {
                     toast.error('Failed to delete fact');
+                } finally {
+                    setDeletingFactId(null);
                 }
             });
         },
@@ -241,7 +232,7 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
                                     ? () => setVerifyingFact(fact)
                                     : undefined
                             }
-                            onDelete={() => handleDelete(fact.id)}
+                            onDelete={() => setDeletingFactId(fact.id)}
                         />
                     ))}
                 </div>
@@ -259,6 +250,37 @@ export function FactLibrary({ facts, total, basePath }: FactLibraryProps) {
                     onDispute={handleDispute}
                 />
             )}
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog
+                open={!!deletingFactId}
+                onOpenChange={(open) => {
+                    if (!open) setDeletingFactId(null);
+                }}
+            >
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Fact</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete this fact? This action
+                            cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => {
+                                if (deletingFactId) {
+                                    confirmDelete(deletingFactId);
+                                }
+                            }}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }

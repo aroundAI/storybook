@@ -41,6 +41,8 @@ import { Textarea } from '@kit/ui/textarea';
 
 import { addVerifiedFactAction } from '../../server/fact-actions';
 
+import { FACT_CATEGORIES } from './fact-constants';
+
 const addFactSchema = z.object({
     claim: z.string().min(10, 'Claim must be at least 10 characters'),
     category: z.string().optional(),
@@ -86,21 +88,6 @@ const SOURCE_TYPES = [
     { value: 'textbook', label: 'Textbook' },
     { value: 'other', label: 'Other' },
 ] as const;
-
-const CATEGORY_OPTIONS = [
-    'physics',
-    'biology',
-    'history',
-    'geography',
-    'chemistry',
-    'technology',
-    'politics',
-    'economics',
-    'culture',
-    'science',
-    'medicine',
-    'law',
-];
 
 interface AddFactFormProps {
     projectId: string;
@@ -298,7 +285,7 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    {CATEGORY_OPTIONS.map((cat) => (
+                                                    {FACT_CATEGORIES.map((cat) => (
                                                         <SelectItem
                                                             key={cat}
                                                             value={cat}

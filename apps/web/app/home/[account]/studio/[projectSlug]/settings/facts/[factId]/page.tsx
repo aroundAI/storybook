@@ -22,35 +22,34 @@ import {
 } from '@kit/ui/card';
 import { Heading } from '@kit/ui/heading';
 
+import { STATUS_LABELS, STATUS_STYLES } from '@kit/episodes/components';
+
 import { loadTeamWorkspace } from '../../../../../_lib/server/team-account-workspace.loader';
-
-const STATUS_STYLES: Record<string, string> = {
-    unverified: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-    verified: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-    disputed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-    pending_review: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-    retracted: 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-    unverified: 'Unverified',
-    verified: 'Verified',
-    disputed: 'Disputed',
-    pending_review: 'Pending Review',
-    retracted: 'Retracted',
-};
 
 interface FactDetailPageProps {
     params: Promise<{ account: string; projectSlug: string; factId: string }>;
 }
 
 export const generateMetadata = async ({ params }: FactDetailPageProps) => {
-    const { factId } = await params;
+    const { factId, projectSlug } = await params;
     const client = getSupabaseServerClient();
+
+    // Resolve project to ensure scoping
+    const { data: project } = await client
+        .from('projects')
+        .select('id')
+        .eq('slug', projectSlug)
+        .single();
+
+    if (!project) {
+        return { title: 'Fact Details' };
+    }
+
     const { data: fact } = await client
         .from('verified_facts')
         .select('claim')
         .eq('id', factId)
+        .eq('project_id', project.id)
         .single();
 
     return {
@@ -65,10 +64,22 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
 
     const client = getSupabaseServerClient();
 
+    // Resolve project by slug to ensure fact belongs to this project
+    const { data: project, error: projectError } = await client
+        .from('projects')
+        .select('id')
+        .eq('slug', projectSlug)
+        .single();
+
+    if (projectError || !project) {
+        notFound();
+    }
+
     const { data: fact, error } = await client
         .from('verified_facts')
         .select('*')
         .eq('id', factId)
+        .eq('project_id', project.id)
         .single();
 
     if (error || !fact) {
