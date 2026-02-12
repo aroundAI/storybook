@@ -244,9 +244,7 @@ export const getProjectFactsAction = enhanceAction(
     async (data) => {
         const client = getSupabaseServerClient();
 
-        // TODO(FILM-1121): Remove cast after running `pnpm supabase:web:typegen` with verified_facts table
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- verified_facts not yet in generated types
-        let query = (client as any)
+        let query = client
             .from('verified_facts')
             .select('*', { count: 'exact' })
             .eq('project_id', data.projectId)
@@ -293,9 +291,7 @@ export const getFactByIdAction = enhanceAction(
     async (data) => {
         const client = getSupabaseServerClient();
 
-        // TODO(FILM-1121): Remove cast after running `pnpm supabase:web:typegen` with verified_facts table
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- verified_facts not yet in generated types
-        const { data: fact, error } = await (client as any)
+        const { data: fact, error } = await client
             .from('verified_facts')
             .select('*')
             .eq('id', data.factId)
