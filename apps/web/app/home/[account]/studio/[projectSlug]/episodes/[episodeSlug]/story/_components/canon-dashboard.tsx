@@ -72,6 +72,7 @@ export function CanonDashboard({
     const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
 
     const [characterStates, setCharacterStates] = useState<CharacterStateRow[]>([]);
+    const [factsCount, setFactsCount] = useState<number | null>(null);
 
     const loadData = useCallback(() => {
         if (!canonEnabled) return;
@@ -168,7 +169,7 @@ export function CanonDashboard({
                             Characters
                         </TabsTrigger>
                         <TabsTrigger value="facts" className="text-xs">
-                            Facts
+                            Facts{factsCount !== null && factsCount > 0 ? ` (${factsCount})` : ''}
                         </TabsTrigger>
                     </TabsList>
 
@@ -317,11 +318,11 @@ export function CanonDashboard({
                         </ScrollArea>
                     </TabsContent>
 
-                    {/* Facts Tab */}
                     <TabsContent value="facts" className="mt-3">
                         <EpisodeFactsPanel
                             episodeId={episodeId}
                             projectId={projectId}
+                            onCountChange={setFactsCount}
                         />
                     </TabsContent>
                 </Tabs>

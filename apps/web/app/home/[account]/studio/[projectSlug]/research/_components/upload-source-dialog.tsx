@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 
-import { Globe, Loader2, Upload, FileText, Link2 } from 'lucide-react';
+import { Globe, Loader2, Upload, FileText, Link2, CheckCircle2 } from 'lucide-react';
 
 import {
     fetchUrlContentAction,
@@ -39,6 +39,15 @@ interface UploadSourceDialogProps {
     onComplete: () => void;
 }
 
+type UploadPhase = 'idle' | 'uploading' | 'extracting' | 'complete';
+
+const PHASE_LABELS: Record<UploadPhase, string> = {
+    idle: '',
+    uploading: 'Uploading source content...',
+    extracting: 'Extracting facts from content...',
+    complete: 'Complete!',
+};
+
 export function UploadSourceDialog({
     open,
     onOpenChange,
@@ -62,7 +71,8 @@ export function UploadSourceDialog({
     const [fileContent, setFileContent] = useState('');
     const [fileName, setFileName] = useState('');
 
-    // Results
+    // Progress
+    const [phase, setPhase] = useState<UploadPhase>('idle');
     const [extractedCount, setExtractedCount] = useState<number | null>(null);
 
     const resetForm = () => {
@@ -74,6 +84,7 @@ export function UploadSourceDialog({
         setFileContent('');
         setFileName('');
         setExtractedCount(null);
+        setPhase('idle');
     };
 
     const handleFetchUrl = () => {
@@ -100,6 +111,26 @@ export function UploadSourceDialog({
         setFileName(file.name);
         if (!name) setName(file.name);
 
+        const ext = file.name.split('.').pop()?.toLowerCase();
+
+        // For binary formats (PDF, DOCX), read as text fallback
+        // Full binary parsing would require server-side libraries
+        if (ext === 'pdf' || ext === 'docx') {
+            // Read as text — will show raw content but still extracts
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const text = ev.target?.result;
+                if (typeof text === 'string') {
+                    // Filter out binary noise, keep readable text
+                    const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s{3,}/g, ' ').trim();
+                    setFileContent(cleaned || '(Binary content — text extraction limited in browser. Consider pasting text directly.)');
+                }
+            };
+            reader.readAsText(file);
+            return;
+        }
+
+        // Text-based formats (TXT, MD, CSV)
         const reader = new FileReader();
         reader.onload = (ev) => {
             const text = ev.target?.result;
@@ -129,7 +160,8 @@ export function UploadSourceDialog({
 
         startTransition(async () => {
             try {
-                // Upload source content
+                // Phase 1: Upload
+                setPhase('uploading');
                 await uploadSourceContentAction({
                     name: name.trim(),
                     content: content.trim(),
@@ -138,7 +170,8 @@ export function UploadSourceDialog({
                     sourceUrl: url.trim() || undefined,
                 });
 
-                // Extract facts from the content
+                // Phase 2: Extract
+                setPhase('extracting');
                 const result = await extractFactsFromContentAction({
                     content: content.trim(),
                     projectId,
@@ -146,16 +179,22 @@ export function UploadSourceDialog({
                     sourceCitation: url.trim() || name.trim(),
                 });
 
+                // Phase 3: Complete
+                setPhase('complete');
                 if (result && typeof result === 'object' && 'extractedCount' in result) {
                     const count = (result as { extractedCount: number }).extractedCount;
                     setExtractedCount(count);
                     toast.success(`Extracted ${count} fact(s) from source`);
                 }
 
-                onComplete();
-                onOpenChange(false);
-                resetForm();
+                // Brief delay to show completion before closing
+                setTimeout(() => {
+                    onComplete();
+                    onOpenChange(false);
+                    resetForm();
+                }, 800);
             } catch {
+                setPhase('idle');
                 toast.error('Failed to upload and extract facts');
             }
         });
@@ -174,6 +213,42 @@ export function UploadSourceDialog({
                 </DialogHeader>
 
                 <div className="space-y-4">
+                    {/* Progress Indicator */}
+                    {phase !== 'idle' && (
+                        <div className="flex items-center gap-3 rounded-lg border p-3">
+                            <div className="flex items-center gap-2">
+                                {(['uploading', 'extracting', 'complete'] as UploadPhase[]).map((step, idx) => (
+                                    <div key={step} className="flex items-center gap-1">
+                                        <div
+                                            className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${phase === step
+                                                    ? 'bg-blue-500 text-white'
+                                                    : phase === 'complete' || (phase === 'extracting' && idx === 0)
+                                                        ? 'bg-green-500 text-white'
+                                                        : 'bg-muted text-muted-foreground'
+                                                }`}
+                                        >
+                                            {(phase === 'complete' || (phase === 'extracting' && idx === 0)) ? (
+                                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                            ) : (
+                                                idx + 1
+                                            )}
+                                        </div>
+                                        {idx < 2 && (
+                                            <div className={`h-0.5 w-4 ${phase === 'complete' || (phase === 'extracting' && idx === 0)
+                                                    ? 'bg-green-500'
+                                                    : 'bg-muted'
+                                                }`} />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                            <span className="text-sm font-medium">{PHASE_LABELS[phase]}</span>
+                            {phase !== 'complete' && (
+                                <Loader2 className="ml-auto h-4 w-4 animate-spin text-blue-500" />
+                            )}
+                        </div>
+                    )}
+
                     {/* Name + Category */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -183,11 +258,12 @@ export function UploadSourceDialog({
                                 placeholder="e.g., WHO Report 2024"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                disabled={phase !== 'idle'}
                             />
                         </div>
                         <div className="space-y-2">
                             <Label>Category</Label>
-                            <Select value={category} onValueChange={setCategory}>
+                            <Select value={category} onValueChange={setCategory} disabled={phase !== 'idle'}>
                                 <SelectTrigger>
                                     <SelectValue />
                                 </SelectTrigger>
@@ -205,15 +281,15 @@ export function UploadSourceDialog({
                     {/* Content Input Tabs */}
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
                         <TabsList className="grid w-full grid-cols-3">
-                            <TabsTrigger value="paste">
+                            <TabsTrigger value="paste" disabled={phase !== 'idle'}>
                                 <FileText className="mr-2 h-3 w-3" />
                                 Paste Text
                             </TabsTrigger>
-                            <TabsTrigger value="url">
+                            <TabsTrigger value="url" disabled={phase !== 'idle'}>
                                 <Link2 className="mr-2 h-3 w-3" />
                                 From URL
                             </TabsTrigger>
-                            <TabsTrigger value="file">
+                            <TabsTrigger value="file" disabled={phase !== 'idle'}>
                                 <Upload className="mr-2 h-3 w-3" />
                                 Upload File
                             </TabsTrigger>
@@ -226,6 +302,7 @@ export function UploadSourceDialog({
                                 onChange={(e) => setPastedContent(e.target.value)}
                                 rows={8}
                                 className="font-mono text-sm"
+                                disabled={phase !== 'idle'}
                             />
                         </TabsContent>
 
@@ -236,13 +313,14 @@ export function UploadSourceDialog({
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                     className="flex-1"
+                                    disabled={phase !== 'idle'}
                                 />
                                 <Button
                                     variant="outline"
                                     onClick={handleFetchUrl}
-                                    disabled={isPending || !url.trim()}
+                                    disabled={isPending || !url.trim() || phase !== 'idle'}
                                 >
-                                    {isPending ? (
+                                    {isPending && phase === 'idle' ? (
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                     ) : (
                                         <Globe className="mr-2 h-4 w-4" />
@@ -269,14 +347,18 @@ export function UploadSourceDialog({
                                     >
                                         <Upload className="text-muted-foreground h-8 w-8" />
                                         <span className="text-muted-foreground text-sm">
-                                            {fileName || 'Click to select a file (.txt, .md)'}
+                                            {fileName || 'Click to select a file'}
+                                        </span>
+                                        <span className="text-muted-foreground text-xs">
+                                            Supports: TXT, MD, CSV, PDF, DOCX
                                         </span>
                                         <input
                                             id="file-upload"
                                             type="file"
-                                            accept=".txt,.md,.csv"
+                                            accept=".txt,.md,.csv,.pdf,.docx"
                                             onChange={handleFileChange}
                                             className="hidden"
+                                            disabled={phase !== 'idle'}
                                         />
                                     </label>
                                 </div>
@@ -300,14 +382,15 @@ export function UploadSourceDialog({
                     <Button
                         variant="outline"
                         onClick={() => { onOpenChange(false); resetForm(); }}
+                        disabled={phase !== 'idle' && phase !== 'complete'}
                     >
                         Cancel
                     </Button>
                     <Button
                         onClick={() => handleSubmit(activeTab)}
-                        disabled={isPending || !name.trim() || !getActiveContent(activeTab).trim()}
+                        disabled={isPending || !name.trim() || !getActiveContent(activeTab).trim() || phase !== 'idle'}
                     >
-                        {isPending ? (
+                        {isPending && phase !== 'idle' ? (
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : null}
                         Upload & Extract Facts

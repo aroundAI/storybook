@@ -47,27 +47,41 @@ export default async function StudioProjectLayout({
   }
 
   // Parallel fetch: projects list and all counts
-  const [allProjects, episodesResult, charactersResult, locationsResult] =
-    await Promise.all([
-      getAccountProjects(accountId),
-      client
-        .from('episodes')
-        .select('*', { count: 'exact', head: true })
-        .eq('project_id', project.id)
-        .is('deleted_at', null),
-      client
-        .from('assets')
-        .select('*', { count: 'exact', head: true })
-        .eq('project_id', project.id)
-        .eq('type', 'character')
-        .is('deleted_at', null),
-      client
-        .from('assets')
-        .select('*', { count: 'exact', head: true })
-        .eq('project_id', project.id)
-        .eq('type', 'location')
-        .is('deleted_at', null),
-    ]);
+  const [
+    allProjects,
+    episodesResult,
+    charactersResult,
+    locationsResult,
+    factsResult,
+    contentResult,
+  ] = await Promise.all([
+    getAccountProjects(accountId),
+    client
+      .from('episodes')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', project.id)
+      .is('deleted_at', null),
+    client
+      .from('assets')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', project.id)
+      .eq('type', 'character')
+      .is('deleted_at', null),
+    client
+      .from('assets')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', project.id)
+      .eq('type', 'location')
+      .is('deleted_at', null),
+    client
+      .from('verified_facts')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', project.id),
+    client
+      .from('external_content')
+      .select('*', { count: 'exact', head: true })
+      .eq('project_id', project.id),
+  ]);
 
   const sidebarProps = {
     project,
@@ -83,6 +97,8 @@ export default async function StudioProjectLayout({
       episodes: episodesResult.count ?? undefined,
       characters: charactersResult.count ?? undefined,
       locations: locationsResult.count ?? undefined,
+      researchSources: contentResult.count ?? undefined,
+      researchFacts: factsResult.count ?? undefined,
     },
   };
 

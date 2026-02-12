@@ -60,6 +60,7 @@ export function AddSourceDialog({
     const [category, setCategory] = useState<string>('');
     const [providerType, setProviderType] = useState<string>('manual');
     const [credibilityTier, setCredibilityTier] = useState<string>('tier_3');
+    const [apiEndpoint, setApiEndpoint] = useState('');
 
     const generateSlug = (text: string) =>
         text
@@ -99,6 +100,7 @@ export function AddSourceDialog({
                 setCategory('');
                 setProviderType('manual');
                 setCredibilityTier('tier_3');
+                setApiEndpoint('');
             } catch {
                 toast.error('Failed to add source');
             }
@@ -182,6 +184,23 @@ export function AddSourceDialog({
                             </Select>
                         </div>
                     </div>
+
+                    {/* API Endpoint — shown for API provider types */}
+                    {(providerType === 'custom_api' || providerType === 'newsapi' || providerType === 'semantic_scholar') && (
+                        <div className="space-y-2">
+                            <Label htmlFor="api-endpoint">API Endpoint URL</Label>
+                            <Input
+                                id="api-endpoint"
+                                type="url"
+                                placeholder="https://api.example.com/v1/search"
+                                value={apiEndpoint}
+                                onChange={(e) => setApiEndpoint(e.target.value)}
+                            />
+                            <p className="text-muted-foreground text-xs">
+                                The API endpoint used to fetch content from this source
+                            </p>
+                        </div>
+                    )}
 
                     <div className="space-y-2">
                         <Label>Credibility Tier</Label>

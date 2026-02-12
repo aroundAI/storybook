@@ -72,6 +72,8 @@ interface StudioSidebarProps {
     episodes?: number;
     characters?: number;
     locations?: number;
+    researchSources?: number;
+    researchFacts?: number;
   };
 }
 
@@ -473,6 +475,11 @@ export function StudioSidebar({
                 href={`${basePath}/research`}
                 icon={<BookOpen className="h-4 w-4" />}
                 label="Research Hub"
+                count={
+                  (counts.researchSources ?? 0) + (counts.researchFacts ?? 0) > 0
+                    ? (counts.researchSources ?? 0) + (counts.researchFacts ?? 0)
+                    : undefined
+                }
                 isActive={isActive(`${basePath}/research`)}
                 isCollapsed={isCollapsed}
               />

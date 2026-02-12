@@ -306,7 +306,7 @@ export const getResearchCountsAction = enhanceAction(
     async (data: { projectId: string }) => {
         const supabase = getSupabaseServerClient();
 
-        const [sourcesResult, factsResult] = await Promise.all([
+        const [sourcesResult, factsResult, apiSourcesResult] = await Promise.all([
             supabase
                 .from('external_sources')
                 .select('*', { count: 'exact', head: true })
@@ -315,16 +315,57 @@ export const getResearchCountsAction = enhanceAction(
                 .from('verified_facts')
                 .select('*', { count: 'exact', head: true })
                 .eq('project_id', data.projectId),
+            supabase
+                .from('external_sources')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', true)
+                .in('provider_type', ['newsapi', 'semantic_scholar', 'custom_api']),
         ]);
 
         return {
             sources: sourcesResult.count ?? 0,
             facts: factsResult.count ?? 0,
+            apiSources: apiSourcesResult.count ?? 0,
         };
     },
     {
         auth: true,
         schema: z.object({ projectId: z.string().uuid() }),
+    },
+);
+
+/**
+ * Get verified facts for a project (for passing to season generation)
+ */
+export const getVerifiedFactsAction = enhanceAction(
+    async (data: { projectId: string; limit?: number }) => {
+        const supabase = getSupabaseServerClient();
+
+        const query = supabase
+            .from('verified_facts')
+            .select('id, claim, source_citation, category, verification_status, source_type')
+            .eq('project_id', data.projectId)
+            .eq('verification_status', 'verified')
+            .order('created_at', { ascending: false });
+
+        if (data.limit) {
+            query.limit(data.limit);
+        }
+
+        const { data: facts, error } = await query;
+
+        if (error) {
+            throw new Error('Failed to fetch verified facts');
+        }
+
+        return facts ?? [];
+    },
+    {
+        auth: true,
+        schema: z.object({
+            projectId: z.string().uuid(),
+            limit: z.number().int().positive().optional(),
+        }),
     },
 );
 

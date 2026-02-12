@@ -124,16 +124,16 @@ export function ResearchHubPage({
     };
 
     return (
-        <div className="container mx-auto max-w-5xl space-y-6 p-6">
+        <div className="container mx-auto max-w-5xl space-y-6 px-4 py-4 sm:p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold tracking-tight">Research Hub</h1>
                     <p className="text-muted-foreground mt-1 text-sm">
                         Manage external sources and verified facts for your content
                     </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Button variant="outline" onClick={() => setShowUpload(true)}>
                         <Upload className="mr-2 h-4 w-4" />
                         Upload Source
@@ -146,7 +146,7 @@ export function ResearchHubPage({
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Card>
                     <CardContent className="flex items-center gap-3 p-4">
                         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/30">
@@ -206,7 +206,7 @@ export function ResearchHubPage({
                         <div className="space-y-3">
                             {sources.map((source) => (
                                 <Card key={source.id}>
-                                    <CardContent className="flex items-center gap-4 p-4">
+                                    <CardContent className="flex items-center gap-3 p-3 sm:gap-4 sm:p-4">
                                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted">
                                             {CATEGORY_ICONS[source.category] ?? (
                                                 <Globe className="h-4 w-4" />

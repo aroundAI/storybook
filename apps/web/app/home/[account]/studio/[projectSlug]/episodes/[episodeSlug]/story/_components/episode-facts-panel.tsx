@@ -25,6 +25,7 @@ import { LinkFactsDialog } from './link-facts-dialog';
 interface EpisodeFactsPanelProps {
     episodeId: string;
     projectId: string;
+    onCountChange?: (count: number) => void;
 }
 
 interface EpisodeFact {
@@ -52,6 +53,7 @@ const STATUS_COLORS: Record<string, string> = {
 export function EpisodeFactsPanel({
     episodeId,
     projectId,
+    onCountChange,
 }: EpisodeFactsPanelProps) {
     const [isPending, startTransition] = useTransition();
     const [facts, setFacts] = useState<EpisodeFact[]>([]);
@@ -63,6 +65,7 @@ export function EpisodeFactsPanel({
                 const result = await getEpisodeFactsAction({ episodeId });
                 if (Array.isArray(result)) {
                     setFacts(result as EpisodeFact[]);
+                    onCountChange?.(result.length);
                 }
             } catch {
                 // Silent — empty state handles it
@@ -136,7 +139,12 @@ export function EpisodeFactsPanel({
                                     <p className="text-sm leading-snug">
                                         {data.simplified_claim ?? data.claim}
                                     </p>
-                                    <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                                        {fact.scene_reference && (
+                                            <Badge variant="outline" className="text-[10px] bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                                                Scene: {fact.scene_reference}
+                                            </Badge>
+                                        )}
                                         {data.source_citation && (
                                             <span className="text-muted-foreground truncate text-xs">
                                                 {data.source_citation}

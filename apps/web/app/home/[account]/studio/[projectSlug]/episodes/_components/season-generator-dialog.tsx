@@ -23,9 +23,12 @@ import {
   Users,
   AlertTriangle,
   BookOpen,
+  RefreshCw,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 import { useAssets } from '@kit/assets/hooks';
 import { AnalyzeSeasonSchema } from '@kit/episodes/schemas';
@@ -33,7 +36,7 @@ import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
-import { getResearchCountsAction } from '@kit/episodes/server';
+import { getResearchCountsAction, getVerifiedFactsAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -259,7 +262,14 @@ export function SeasonGeneratorDialog({
 
   // FILM-1143: Fetch project metadata for content-type awareness
   const [contentType, setContentType] = useState<string | null>(null);
-  const [researchCounts, setResearchCounts] = useState({ sources: 0, facts: 0 });
+  const [researchCounts, setResearchCounts] = useState({ sources: 0, facts: 0, apiSources: 0 });
+
+  // Track verified facts for passing to analysis
+  const [verifiedFacts, setVerifiedFacts] = useState<Array<{ claim: string; source_citation: string | null; category: string | null }>>([]);
+  const [isRefreshingResearch, setIsRefreshingResearch] = useState(false);
+
+  // Get route params for building the Research Hub link
+  const params = useParams<{ account: string; projectSlug: string }>();
 
   useEffect(() => {
     if (!open) return;
@@ -267,9 +277,19 @@ export function SeasonGeneratorDialog({
     // Fetch project metadata for content type
     const fetchProjectMeta = async () => {
       try {
-        const counts = await getResearchCountsAction({ projectId });
+        const [counts, facts] = await Promise.all([
+          getResearchCountsAction({ projectId }),
+          getVerifiedFactsAction({ projectId, limit: 50 }),
+        ]);
         if (counts && typeof counts === 'object' && 'sources' in counts) {
-          setResearchCounts(counts as { sources: number; facts: number });
+          setResearchCounts(counts as { sources: number; facts: number; apiSources: number });
+        }
+        if (Array.isArray(facts)) {
+          setVerifiedFacts(facts.map((f: Record<string, unknown>) => ({
+            claim: String(f.claim ?? ''),
+            source_citation: f.source_citation ? String(f.source_citation) : null,
+            category: f.category ? String(f.category) : null,
+          })));
         }
       } catch {
         // Non-critical
@@ -403,7 +423,12 @@ export function SeasonGeneratorDialog({
   const handleAnalyze = (data: { projectId: string; roadmap: string }) => {
     // Use the LLM job hook to trigger and await WebSocket result
     triggerLlm(async () => {
-      const result = await analyzeSeasonRoadmapAction(data);
+      // Include external facts for context
+      const enrichedData = {
+        ...data,
+        externalFacts: verifiedFacts.length > 0 ? verifiedFacts : undefined,
+      };
+      const result = await analyzeSeasonRoadmapAction(enrichedData);
       // Job is always queued to Lambda - WebSocket will deliver result
       if (result?.success && result?.queued) {
         toast.info(
@@ -659,17 +684,64 @@ export function SeasonGeneratorDialog({
                       Research Sources
                     </h3>
                   </div>
-                  {hasResearchSources && (
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">
-                        {researchCounts.sources} source{researchCounts.sources !== 1 ? 's' : ''}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs">
-                        {researchCounts.facts} fact{researchCounts.facts !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {hasResearchSources && (
+                      <>
+                        <Badge variant="outline" className="text-xs">
+                          {researchCounts.sources} source{researchCounts.sources !== 1 ? 's' : ''}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {researchCounts.facts} fact{researchCounts.facts !== 1 ? 's' : ''}
+                        </Badge>
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={isRefreshingResearch}
+                      onClick={async () => {
+                        setIsRefreshingResearch(true);
+                        try {
+                          const [counts, facts] = await Promise.all([
+                            getResearchCountsAction({ projectId }),
+                            getVerifiedFactsAction({ projectId, limit: 50 }),
+                          ]);
+                          if (counts && typeof counts === 'object' && 'sources' in counts) {
+                            setResearchCounts(counts as { sources: number; facts: number; apiSources: number });
+                          }
+                          if (Array.isArray(facts)) {
+                            setVerifiedFacts(facts.map((f: Record<string, unknown>) => ({
+                              claim: String(f.claim ?? ''),
+                              source_citation: f.source_citation ? String(f.source_citation) : null,
+                              category: f.category ? String(f.category) : null,
+                            })));
+                          }
+                          toast.success('Research data refreshed');
+                        } catch {
+                          toast.error('Failed to refresh research data');
+                        } finally {
+                          setIsRefreshingResearch(false);
+                        }
+                      }}
+                    >
+                      <RefreshCw className={cn('h-3.5 w-3.5', isRefreshingResearch && 'animate-spin')} />
+                    </Button>
+                  </div>
                 </div>
+
+                {/* News API connection status */}
+                {contentType === 'news' && (
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <div className={cn(
+                      'h-2 w-2 rounded-full',
+                      researchCounts.apiSources > 0 ? 'bg-green-500' : 'bg-zinc-300 dark:bg-zinc-600'
+                    )} />
+                    <span className="text-muted-foreground">
+                      API Sources: {researchCounts.apiSources > 0 ? `${researchCounts.apiSources} connected` : 'Not configured'}
+                    </span>
+                  </div>
+                )}
 
                 {!hasResearchSources ? (
                   <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800/50 dark:bg-amber-900/10">
@@ -682,6 +754,15 @@ export function SeasonGeneratorDialog({
                         Add external sources and verified facts in the Research Hub to
                         improve factual accuracy of generated content.
                       </p>
+                      {params?.account && params?.projectSlug && (
+                        <Link
+                          href={`/home/${params.account}/studio/${params.projectSlug}/research`}
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          Add Sources
+                        </Link>
+                      )}
                     </div>
                   </div>
                 ) : (
