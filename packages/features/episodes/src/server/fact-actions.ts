@@ -6,6 +6,8 @@ import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { z } from 'zod';
 
+import { SOURCE_TYPES } from '../components/facts/fact-constants';
+
 import { mapFactRow } from './fact-row-mapper';
 import type { VerifiedFactRow } from './fact-row-mapper';
 
@@ -15,6 +17,9 @@ export type { MappedFact } from './fact-row-mapper';
 // SCHEMAS
 // =============================================================================
 
+type SourceTypeValue = (typeof SOURCE_TYPES)[number]['value'];
+const sourceTypeValues = SOURCE_TYPES.map((s) => s.value) as readonly [SourceTypeValue, ...SourceTypeValue[]];
+
 const AddFactSchema = z.object({
     projectId: z.string().uuid(),
     basePath: z.string().min(1),
@@ -22,21 +27,7 @@ const AddFactSchema = z.object({
     category: z.string().max(100).optional(),
     subcategory: z.string().max(100).optional(),
     tags: z.array(z.string()).default([]),
-    sourceType: z.enum([
-        'research_paper',
-        'book',
-        'news_article',
-        'official_document',
-        'documentary',
-        'expert_interview',
-        'dataset',
-        'website',
-        'encyclopedia',
-        'court_document',
-        'historical_record',
-        'textbook',
-        'other',
-    ]),
+    sourceType: z.enum(sourceTypeValues),
     sourceUrl: z
         .string()
         .url()
@@ -126,7 +117,7 @@ export const addVerifiedFactAction = enhanceAction(
                 category: data.category || null,
                 subcategory: data.subcategory || null,
                 tags: data.tags,
-                source_type: data.sourceType,
+                source_type: data.sourceType as SourceTypeValue,
                 source_url: data.sourceUrl || null,
                 source_citation: data.sourceCitation,
                 source_title: data.sourceTitle || null,
@@ -145,6 +136,8 @@ export const addVerifiedFactAction = enhanceAction(
 
         revalidatePath(data.basePath);
 
+        // Note: cast is safe as long as verified_facts schema matches VerifiedFactRow.
+        // Remove cast after running `pnpm supabase:web:typegen` with verified_facts table.
         return { fact: mapFactRow(fact as VerifiedFactRow) };
     },
     {

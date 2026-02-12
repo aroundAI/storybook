@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react';
 
+import { toast } from '@kit/ui/sonner';
+
 import {
     AlertTriangle,
     Check,
@@ -47,9 +49,13 @@ export function FactVerificationDialog({
 
     function handleVerify() {
         startTransition(async () => {
-            await onVerify(fact.id, notes);
-            setNotes('');
-            onOpenChange(false);
+            try {
+                await onVerify(fact.id, notes);
+                setNotes('');
+                onOpenChange(false);
+            } catch {
+                toast.error('Failed to verify fact');
+            }
         });
     }
 
@@ -57,9 +63,13 @@ export function FactVerificationDialog({
         if (!notes.trim()) return;
 
         startTransition(async () => {
-            await onDispute(fact.id, notes);
-            setNotes('');
-            onOpenChange(false);
+            try {
+                await onDispute(fact.id, notes);
+                setNotes('');
+                onOpenChange(false);
+            } catch {
+                toast.error('Failed to dispute fact');
+            }
         });
     }
 
@@ -114,7 +124,7 @@ export function FactVerificationDialog({
                     <Button
                         onClick={handleVerify}
                         disabled={isPending}
-                        className="bg-green-600 hover:bg-green-700 text-white"
+                        variant="default"
                     >
                         <Check className="h-4 w-4 mr-1.5" />
                         Confirm Verified

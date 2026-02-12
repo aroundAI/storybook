@@ -53,6 +53,7 @@ export function mapFactRow(row: VerifiedFactRow) {
         sourceAuthors: row.source_authors ?? [],
         sourcePublicationDate: row.source_publication_date,
         sourceDoi: row.source_doi,
+        sourceMetadata: row.source_metadata,
         verificationStatus: row.verification_status,
         verifiedBy: row.verified_by,
         verifiedAt: row.verified_at,

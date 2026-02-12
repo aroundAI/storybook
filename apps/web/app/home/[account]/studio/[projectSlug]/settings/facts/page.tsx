@@ -53,18 +53,16 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
         notFound();
     }
 
+    // Validate status against allowed values; pass undefined for invalid/missing
+    const validStatuses = ['unverified', 'verified', 'disputed', 'pending_review', 'retracted'] as const;
+    const status = validStatuses.find((s) => s === filters.status);
+
     // Use shared action to fetch facts (single source of query logic)
     const result = await getProjectFactsAction({
         projectId: project.id,
         search: filters.q,
         category: filters.category,
-        status: filters.status as
-            | 'unverified'
-            | 'verified'
-            | 'disputed'
-            | 'pending_review'
-            | 'retracted'
-            | undefined,
+        status,
         limit: 50,
         offset: 0,
     });

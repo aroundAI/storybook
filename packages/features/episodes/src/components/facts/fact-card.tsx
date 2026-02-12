@@ -41,9 +41,13 @@ interface FactCardProps {
 export function FactCard({ fact, basePath, onVerify, onDelete }: FactCardProps) {
     const router = useRouter();
 
-    const handleCopyClaim = () => {
-        void navigator.clipboard.writeText(fact.claim);
-        toast.success('Claim copied to clipboard');
+    const handleCopyClaim = async () => {
+        try {
+            await navigator.clipboard.writeText(fact.claim);
+            toast.success('Claim copied to clipboard');
+        } catch {
+            toast.error('Failed to copy claim');
+        }
     };
 
     return (

@@ -87,7 +87,7 @@ export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryPr
                 }
             });
         },
-        [router],
+        [projectId, basePath, router],
     );
 
     const handleDispute = useCallback(
@@ -102,7 +102,7 @@ export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryPr
                 }
             });
         },
-        [router],
+        [projectId, basePath, router],
     );
 
     const confirmDelete = useCallback(
@@ -119,7 +119,7 @@ export function FactLibrary({ facts, total, basePath, projectId }: FactLibraryPr
                 }
             });
         },
-        [router],
+        [projectId, basePath, router],
     );
 
     return (
