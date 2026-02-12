@@ -71,7 +71,7 @@ export function EpisodeFactsPanel({
                 // Silent — empty state handles it
             }
         });
-    }, [episodeId]);
+    }, [episodeId, onCountChange]);
 
     useEffect(() => {
         loadFacts();

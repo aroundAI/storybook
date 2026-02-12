@@ -83,7 +83,7 @@ export function AddSourceDialog({
                     name: name.trim(),
                     slug: generateSlug(name),
                     description: description.trim() || undefined,
-                    websiteUrl: websiteUrl.trim() || undefined,
+                    websiteUrl: apiEndpoint.trim() || websiteUrl.trim() || undefined,
                     category: category as typeof SOURCE_CATEGORIES[number],
                     providerType: providerType || 'manual',
                     credibilityTier: credibilityTier as 'tier_1' | 'tier_2' | 'tier_3',

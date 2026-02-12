@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { Check, Loader2, Search } from 'lucide-react';
 
@@ -70,11 +70,21 @@ export function LinkFactsDialog({
         });
     }, [projectId, search]);
 
+    // n2: debounce search to avoid a DB query per keystroke
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     useEffect(() => {
         if (open) {
-            loadFacts();
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+            debounceRef.current = setTimeout(() => {
+                loadFacts();
+            }, search ? 300 : 0);
             setSelectedIds(new Set());
         }
+
+        return () => {
+            if (debounceRef.current) clearTimeout(debounceRef.current);
+        };
     }, [open, loadFacts]);
 
     const toggleFact = (factId: string) => {
@@ -94,13 +104,23 @@ export function LinkFactsDialog({
 
         startTransition(async () => {
             try {
-                await Promise.all(
+                const results = await Promise.allSettled(
                     Array.from(selectedIds).map((factId) =>
                         linkFactToEpisodeAction({ episodeId, factId }),
                     ),
                 );
 
-                toast.success(`Linked ${selectedIds.size} fact(s) to episode`);
+                const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+                const failed = results.filter((r) => r.status === 'rejected').length;
+
+                if (failed === 0) {
+                    toast.success(`Linked ${succeeded} fact(s) to episode`);
+                } else if (succeeded > 0) {
+                    toast.warning(`Linked ${succeeded} fact(s), ${failed} failed`);
+                } else {
+                    toast.error('Failed to link facts');
+                }
+
                 onFactsLinked();
                 onOpenChange(false);
             } catch {

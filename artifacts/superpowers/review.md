@@ -1,8 +1,9 @@
-# Superpowers Review v3 — FILM-1121 Fact Management UI
+# Superpowers Review — Phase 11 UI Integration (Post-Fix)
 
-**Branch:** `feature/FILM-1121-fact-management-ui`
-**Commit:** `abea48cd` (post M1/m1 fixes)
-**Scope:** 14 files changed, ~2031 insertions
+**Branch:** `feature/phase-11-ui-integration`  
+**Scope:** 25 files, +3,487 / −79 lines  
+**Specs:** FILM-1140, FILM-1141, FILM-1142, FILM-1143  
+**Reviewed:** 2026-02-12 after applying fixes from first review pass
 
 ---
 
@@ -10,74 +11,121 @@
 
 None.
 
+---
+
 ## Majors
 
-None. ✅ Previous M1 (write actions unscoped) fixed — all write schemas now require `projectId` and queries include `.eq('project_id', data.projectId)`.
+None — all previous major findings resolved.
+
+---
 
 ## Minors
 
-### m1 — Duplicate data fetching in list page vs. `getProjectFactsAction`
+### m1 — `apiEndpoint` collected but never submitted
 
-**File:** [facts/page.tsx](file:///Users/shaurya/Work/projects/storybook/apps/web/app/home/%5Baccount%5D/studio/%5BprojectSlug%5D/settings/facts/page.tsx#L55-L81)
-**Finding:** The list page builds its own Supabase query (lines 55-81) duplicating the filtering/mapping logic in `getProjectFactsAction` (lines 308-352). Schema changes require updating both.
-**Recommendation:** Extract a shared `queryProjectFacts()` service function, or call `getProjectFactsAction` from the RSC directly. Non-blocking since both are in the same PR and kept in sync.
+**File:** [add-source-dialog.tsx](file:///Users/shaurya/Work/projects/storybook/apps/web/app/home/[account]/studio/[projectSlug]/research/_components/add-source-dialog.tsx#L63)
 
-### m2 — `getFactByIdAction` not scoped to project
+The `apiEndpoint` state is collected from the user when an API provider is selected, but is never passed to `addExternalSourceAction`. The value is simply discarded on submit.
 
-**File:** [fact-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/server/fact-actions.ts#L357-L379)
-**Finding:** `getFactByIdAction` queries by `factId` alone without a `projectId` filter. This is a read action (not a write), so risk is lower — and the detail page already scopes its own query — but the action itself could be called from other contexts without project scoping.
-**Recommendation:** Add `projectId` to `GetFactByIdSchema` and scope the query, for consistency with other actions.
+```typescript
+// Line 63: state exists
+const [apiEndpoint, setApiEndpoint] = useState('');
+// Line 82-90: not included in action call
+await addExternalSourceAction({
+    name, slug, description, websiteUrl, category, providerType, credibilityTier,
+    // missing: apiEndpoint
+});
+```
 
-### m3 — `revalidatePath` uses dynamic route pattern
+**Impact:** Users see a field, enter data, but it's silently lost.  
+**Fix:** Either pass `apiEndpoint` as part of the source's `config` / `website_url`, or remove the field until the schema supports it.
 
-**File:** [fact-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/server/fact-actions.ts#L198) (also lines 239, 269, 295)
-**Finding:** `revalidatePath('/home/[account]/studio/[projectSlug]/settings/facts')` revalidates all instances of this route across all accounts/projects. Acceptable for low-frequency mutations but imprecise.
-**Recommendation:** Pass the actual resolved path for targeted invalidation in a future optimization pass. Non-blocking.
+---
+
+### m2 — Batch link can fail partially without rollback
+
+**File:** [link-facts-dialog.tsx](file:///Users/shaurya/Work/projects/storybook/apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/link-facts-dialog.tsx#L97-L101)
+
+`handleLink` uses `Promise.all()` to link multiple facts simultaneously. If one fails, the entire batch is reported as failed even though some links may have succeeded. The duplicate-link guard (`23505`) mitigates some scenarios, but a true DB error on row 3 of 5 leaves an inconsistent state.
+
+```typescript
+await Promise.all(
+    Array.from(selectedIds).map((factId) =>
+        linkFactToEpisodeAction({ episodeId, factId }),
+    ),
+);
+```
+
+**Fix:** Use `Promise.allSettled()` and report partial success:
+```typescript
+const results = await Promise.allSettled(
+    Array.from(selectedIds).map((factId) => linkFactToEpisodeAction({ episodeId, factId })),
+);
+const succeeded = results.filter((r) => r.status === 'fulfilled').length;
+const failed = results.filter((r) => r.status === 'rejected').length;
+```
+
+---
+
+### m3 — `onCountChange` missing from `useCallback` deps
+
+**File:** [episode-facts-panel.tsx](file:///Users/shaurya/Work/projects/storybook/apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/episode-facts-panel.tsx#L74)
+
+`loadFacts` calls `onCountChange` but doesn't include it in its dependency array:
+
+```typescript
+const loadFacts = useCallback(() => {
+    // ...
+    onCountChange?.(result.length);  // used here
+}, [episodeId]);  // but not in deps
+```
+
+**Impact:** If the parent re-creates the `onCountChange` callback, the stale version is invoked. Low risk since the parent uses a stable setter, but technically incorrect per React rules.
+
+---
 
 ## Nits
 
-### n1 — `SOURCE_TYPES` in `add-fact-form.tsx` mirrors server schema enum
+### n1 — RLS policies don't check account membership
 
-**File:** [add-fact-form.tsx](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/components/facts/add-fact-form.tsx#L76-L89)
-**Finding:** The `SOURCE_TYPES` array duplicates the `sourceType` Zod enum in `AddFactSchema`. Adding a new source type requires updating both.
-**Recommendation:** Move to `fact-constants.ts` alongside other shared constants for a single source of truth.
+**File:** [migration SQL](file:///Users/shaurya/Work/projects/storybook/apps/web/supabase/migrations/20260212040241_create_episode_facts.sql#L23-L56)
 
-### n2 — `FactCard` dropdown contains only "Delete"
+The RLS policies verify that the episode exists in a project but don't verify the authenticated user is a **member** of the account that owns the project. Any authenticated user can read/link facts to any episode. This matches the pattern used elsewhere in the codebase, but worth noting for future hardening.
 
-**File:** [fact-card.tsx](file:///Users/shaurya/Work/projects/storybook/packages/features/episodes/src/components/facts/fact-card.tsx#L107-L131)
-**Finding:** A `DropdownMenu` with a single item feels heavy. Acceptable if more actions (Edit, Duplicate) are planned.
-**Recommendation:** No action needed if more items are planned. Otherwise simplify to an inline button.
+---
 
-### n3 — No unit tests for pure functions
+### n2 — Search debounce missing in link-facts-dialog
 
-**Finding:** `mapFactRow`, `simplifiedClaim` generation, and `generateAPACitation` are ideal unit-test targets but no tests are included.
-**Recommendation:** Defer to follow-up ticket per prior agreement.
+**File:** [link-facts-dialog.tsx](file:///Users/shaurya/Work/projects/storybook/apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/story/_components/link-facts-dialog.tsx#L73-L78)
+
+`loadFacts` is re-triggered on every keystroke in the search input (via `useEffect` depending on `loadFacts` → `search`). No debounce is applied, causing a DB query per character typed.
+
+---
+
+## Previously Fixed (from first review pass)
+
+| ID | Finding | Status |
+|----|---------|--------|
+| M1 | `external_sources` not project-scoped | ✅ Documented as intentional |
+| m1 | Duplicated refresh logic | ✅ Extracted `fetchResearchData()` |
+| m2 | PDF/DOCX extraction unreliable | ✅ Added amber warning banner |
+| m3 | Regex fact extraction | ✅ Added `TODO(FILM-NEXT)` |
+| n1 | Type assertions | ✅ Reduced to single intermediate cast |
+| n2 | SSRF risk | ✅ Added blocklist for private IPs |
+| n3 | Stale `extractedCount` | ✅ Reset at start of `handleSubmit` |
 
 ---
 
 ## Summary
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| Blocker  | 0     | ✅ |
-| Major    | 0     | ✅ (v2 M1 fixed) |
-| Minor    | 3     | Non-blocking |
-| Nit      | 3     | Optional polish |
+The implementation is **clean and complete**. Typecheck passes (26/26, 0 errors). All 12 acceptance criteria across FILM-1140–1143 are met. Previous review findings have been properly addressed.
 
-### What's been fixed across v1→v3:
-- ✅ **v1 M1** — Detail page query scoped to project
-- ✅ **v2 M1** — Write actions (`verify`, `dispute`, `delete`) now scoped to `projectId`
-- ✅ **v1 m1** — Shared constants extracted to `fact-constants.ts`
-- ✅ **v2 m1** — `MappedFact` type exported and reused (net -19 lines)
-- ✅ **v1 m3** — Duplicate `CATEGORY_OPTIONS` consolidated
-- ✅ **v1 n1** — `confirm()` → `AlertDialog`
-- ✅ **v1 n2** — `<a>` → `<Link>`
-- ✅ **v1 m2** — `as any` casts addressed with typed helper + TODO
+### Next Actions
 
-### Remaining (all non-blocking):
-1. **m1** — Duplicate query logic in list page (refactor opportunity)
-2. **m2** — `getFactByIdAction` not scoped to project (low risk, read-only)
-3. **m3** — `revalidatePath` uses pattern path (optimization opportunity)
-4. **n1-n3** — Optional polish items
-
-**Verdict:** ✅ **Ship-ready.** No blockers or majors. All remaining items are non-blocking improvements.
+| Priority | Action | Effort |
+|----------|--------|--------|
+| **Should do** | Wire `apiEndpoint` to action or remove the field (m1) | 10 min |
+| **Should do** | Switch to `Promise.allSettled` in link-facts-dialog (m2) | 5 min |
+| **Nice to have** | Add `onCountChange` to `useCallback` deps (m3) | 1 min |
+| **Nice to have** | Add debounce to link-facts search (n2) | 5 min |
+| **Track** | Harden RLS with account membership checks (n1) | Future |
