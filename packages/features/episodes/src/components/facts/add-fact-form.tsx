@@ -150,7 +150,8 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
             );
 
             toast.success('Citation auto-filled from DOI');
-        } catch {
+        } catch (error) {
+            console.error('Failed to lookup DOI:', error);
             toast.error('Failed to lookup DOI');
         } finally {
             setIsLoadingDoi(false);
@@ -386,6 +387,45 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
                                                 {...field}
                                             />
                                         </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Source Title */}
+                            <FormField
+                                control={form.control}
+                                name="sourceTitle"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Source Title</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g. The Science of Everything"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            {/* Source Authors */}
+                            <FormField
+                                control={form.control}
+                                name="sourceAuthors"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Source Authors</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                placeholder="e.g. Smith, J., Doe, A."
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Comma-separated list of authors.
+                                        </FormDescription>
                                         <FormMessage />
                                     </FormItem>
                                 )}
