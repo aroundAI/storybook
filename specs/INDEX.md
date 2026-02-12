@@ -483,7 +483,7 @@ graph TD
 | FILM-1112 | [Act Context Bridge](./phase-11-canon-integration/content-types/FILM-1112-act-context-bridge.md) | ✅ DONE | L | #177 | FILM-1110 |
 | FILM-1113 | [Sequel System](./phase-11-canon-integration/content-types/FILM-1113-sequel-system.md) | ✅ DONE | M | #177 | FILM-1110 |
 | FILM-1120 | [Verified Facts Table](./phase-11-canon-integration/fact-management/FILM-1120-verified-facts-table.md) | ✅ DONE | M | #178 | - |
-| FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.md) | Draft | L | — | FILM-1120 |
+| FILM-1121 | [Fact Management UI](./phase-11-canon-integration/fact-management/FILM-1121-fact-management-ui.md) | ✅ DONE | L | #185 | FILM-1120 |
 | FILM-1122 | [Researcher Role Prompt](./phase-11-canon-integration/fact-management/FILM-1122-researcher-role.md) | ✅ DONE | M | #178 | FILM-304 |
 | FILM-1123 | [Fact-Checker Role Prompt](./phase-11-canon-integration/fact-management/FILM-1123-fact-checker-role.md) | ✅ DONE | M | #178 | FILM-304 |
 | FILM-1130 | [News Source Registry](./phase-11-canon-integration/news-system/FILM-1130-news-source-registry.md) | ✅ DONE | M | #182 | ~~FILM-1135~~ |
@@ -492,10 +492,10 @@ graph TD
 | FILM-1133 | [News Anchor Role](./phase-11-canon-integration/news-system/FILM-1133-anchor-role.md) | ✅ DONE | M | — | FILM-1132 |
 | FILM-1134 | [Producer Role](./phase-11-canon-integration/news-system/FILM-1134-producer-role.md) | ✅ DONE | M | — | FILM-1133 |
 | FILM-1135 | [External Context Provider](./phase-11-canon-integration/providers/FILM-1135-external-context-provider.md) | ✅ DONE | L | FILM-1135 | - |
-| FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.md) | Draft | L | — | FILM-1120 |
-| FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.md) | Draft | M | — | FILM-1140 |
-| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.md) | Draft | M | — | FILM-1140 |
-| FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.md) | Draft | M | — | FILM-1120, FILM-1122 |
+| FILM-1140 | [Research Hub UI](./phase-11-canon-integration/ui-integration/FILM-1140-research-hub-ui.md) | ✅ Done | L | — | FILM-1120 |
+| FILM-1141 | [Fact Source Upload](./phase-11-canon-integration/ui-integration/FILM-1141-fact-source-upload.md) | ✅ Done | M | — | FILM-1140 |
+| FILM-1142 | [Canon Dashboard Facts Tab](./phase-11-canon-integration/ui-integration/FILM-1142-canon-dashboard-facts.md) | ✅ Done | M | — | FILM-1140 |
+| FILM-1143 | [Generate Season Integration](./phase-11-canon-integration/ui-integration/FILM-1143-generate-season-integration.md) | ✅ Done | M | — | FILM-1120, FILM-1122 |
 
 ### Phase 12: Scale & Network Strategy (2 specs)
 

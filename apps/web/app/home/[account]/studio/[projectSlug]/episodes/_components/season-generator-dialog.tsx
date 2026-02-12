@@ -21,9 +21,14 @@ import {
   Sparkles,
   Timer,
   Users,
+  AlertTriangle,
+  BookOpen,
+  RefreshCw,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import ReactMarkdown from 'react-markdown';
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
 
 import { useAssets } from '@kit/assets/hooks';
 import { AnalyzeSeasonSchema } from '@kit/episodes/schemas';
@@ -31,6 +36,7 @@ import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
+import { getResearchCountsAction, getVerifiedFactsAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -106,7 +112,7 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                 isCurrent &&
-                  'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
+                'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
                 !isCurrent && 'text-zinc-500 dark:text-zinc-400',
               )}
             >
@@ -115,10 +121,10 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
                   'flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                    'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+                  'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
                   !isCompleted &&
-                    !isCurrent &&
-                    'border border-zinc-300 dark:border-zinc-600',
+                  !isCurrent &&
+                  'border border-zinc-300 dark:border-zinc-600',
                 )}
               >
                 {isCompleted ? <Check className="h-2.5 w-2.5" /> : step.number}
@@ -160,10 +166,10 @@ function ProgressStepper({ currentStep }: { currentStep: Step }) {
                   'z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-transform',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                    'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
+                  'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
                   !isCompleted &&
-                    !isCurrent &&
-                    'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
+                  !isCurrent &&
+                  'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
                 )}
               >
                 {isCompleted ? <Check className="h-3.5 w-3.5" /> : idx + 1}
@@ -253,6 +259,46 @@ export function SeasonGeneratorDialog({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
+
+  // FILM-1143: Fetch project metadata for content-type awareness
+  const [contentType, _setContentType] = useState<string | null>(null);
+  const [researchCounts, setResearchCounts] = useState({ sources: 0, facts: 0, apiSources: 0 });
+
+  // Track verified facts for passing to analysis
+  const [verifiedFacts, setVerifiedFacts] = useState<Array<{ claim: string; source_citation: string | null; category: string | null }>>([]);
+  const [isRefreshingResearch, setIsRefreshingResearch] = useState(false);
+
+  // Get route params for building the Research Hub link
+  const params = useParams<{ account: string; projectSlug: string }>();
+
+  // Shared fetch logic for research counts + verified facts (m1 fix: eliminate duplication)
+  const fetchResearchData = useCallback(async () => {
+    const [counts, facts] = await Promise.all([
+      getResearchCountsAction({ projectId }),
+      getVerifiedFactsAction({ projectId, limit: 50 }),
+    ]);
+    if (counts && typeof counts === 'object' && 'sources' in counts) {
+      const c = counts as { sources: number; facts: number; apiSources: number };
+      setResearchCounts(c);
+    }
+    if (Array.isArray(facts)) {
+      setVerifiedFacts(facts.map((f: { claim?: string; source_citation?: string | null; category?: string | null }) => ({
+        claim: f.claim ?? '',
+        source_citation: f.source_citation ?? null,
+        category: f.category ?? null,
+      })));
+    }
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!open) return;
+    fetchResearchData().catch(() => { /* Non-critical */ });
+  }, [open, projectId, fetchResearchData]);
+
+  const _isFactualContent = contentType === 'documentary' ||
+    contentType === 'educational' ||
+    contentType === 'news';
+  const hasResearchSources = researchCounts.sources > 0 || researchCounts.facts > 0;
 
   // Process analysis result (reusable for both sync and async)
   const processAnalysisResult = useCallback(
@@ -373,7 +419,12 @@ export function SeasonGeneratorDialog({
   const handleAnalyze = (data: { projectId: string; roadmap: string }) => {
     // Use the LLM job hook to trigger and await WebSocket result
     triggerLlm(async () => {
-      const result = await analyzeSeasonRoadmapAction(data);
+      // Include external facts for context
+      const enrichedData = {
+        ...data,
+        externalFacts: verifiedFacts.length > 0 ? verifiedFacts : undefined,
+      };
+      const result = await analyzeSeasonRoadmapAction(enrichedData);
       // Job is always queued to Lambda - WebSocket will deliver result
       if (result?.success && result?.queued) {
         toast.info(
@@ -618,6 +669,90 @@ export function SeasonGeneratorDialog({
                     </div>
                   </form>
                 </Form>
+              </section>
+
+              {/* FILM-1143: Research Sources Summary */}
+              <section className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-blue-500" />
+                    <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">
+                      Research Sources
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {hasResearchSources && (
+                      <>
+                        <Badge variant="outline" className="text-xs">
+                          {researchCounts.sources} source{researchCounts.sources !== 1 ? 's' : ''}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {researchCounts.facts} fact{researchCounts.facts !== 1 ? 's' : ''}
+                        </Badge>
+                      </>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={isRefreshingResearch}
+                      onClick={async () => {
+                        setIsRefreshingResearch(true);
+                        try {
+                          await fetchResearchData();
+                          toast.success('Research data refreshed');
+                        } catch {
+                          toast.error('Failed to refresh research data');
+                        } finally {
+                          setIsRefreshingResearch(false);
+                        }
+                      }}
+                    >
+                      <RefreshCw className={cn('h-3.5 w-3.5', isRefreshingResearch && 'animate-spin')} />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* News API connection status */}
+                {contentType === 'news' && (
+                  <div className="mt-2 flex items-center gap-2 text-xs">
+                    <div className={cn(
+                      'h-2 w-2 rounded-full',
+                      researchCounts.apiSources > 0 ? 'bg-green-500' : 'bg-zinc-300 dark:bg-zinc-600'
+                    )} />
+                    <span className="text-muted-foreground">
+                      API Sources: {researchCounts.apiSources > 0 ? `${researchCounts.apiSources} connected` : 'Not configured'}
+                    </span>
+                  </div>
+                )}
+
+                {!hasResearchSources ? (
+                  <div className="mt-3 flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800/50 dark:bg-amber-900/10">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-500" />
+                    <div>
+                      <p className="text-xs font-medium text-amber-800 dark:text-amber-300">
+                        No research sources linked
+                      </p>
+                      <p className="mt-0.5 text-xs text-amber-700/80 dark:text-amber-400/80">
+                        Add external sources and verified facts in the Research Hub to
+                        improve factual accuracy of generated content.
+                      </p>
+                      {params?.account && params?.projectSlug && (
+                        <Link
+                          href={`/home/${params.account}/studio/${params.projectSlug}/research`}
+                          className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700 underline hover:text-amber-900 dark:text-amber-400 dark:hover:text-amber-300"
+                        >
+                          <BookOpen className="h-3 w-3" />
+                          Add Sources
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground mt-2 text-xs">
+                    Verified facts from your research will be considered during generation.
+                  </p>
+                )}
               </section>
 
               {/* Analyze Button */}

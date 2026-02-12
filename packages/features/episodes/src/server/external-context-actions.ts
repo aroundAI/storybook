@@ -8,6 +8,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { enhanceAction } from '@kit/next/actions';
 import { z } from 'zod';
 
@@ -181,3 +182,229 @@ export const getExternalContentByIdAction = enhanceAction(
         schema: GetContentByIdSchema,
     },
 );
+
+// =============================================================================
+// SOURCE CRUD ACTIONS (FILM-1140)
+// =============================================================================
+
+const AddSourceSchema = z.object({
+    name: z.string().min(1).max(200),
+    slug: z.string().min(1).max(100),
+    description: z.string().optional(),
+    websiteUrl: z.string().url().optional(),
+    apiEndpoint: z.string().url().optional(),
+    category: z.enum(SOURCE_CATEGORIES),
+    providerType: z.string().min(1).max(50),
+    credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
+});
+
+/**
+ * Verify the authenticated user is an owner of at least one account.
+ * Only account owners can modify the global source registry.
+ * This follows the same pattern as account_oauth_apps RLS policies.
+ */
+async function requireAccountOwner() {
+    const supabase = getSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error('Authentication required');
+    }
+
+    const { count } = await supabase
+        .from('accounts_memberships')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('account_role', 'owner');
+
+    if (!count || count === 0) {
+        throw new Error('Only account owners can manage global sources');
+    }
+
+    return user;
+}
+
+/**
+ * Add a new external source to the registry.
+ * Uses admin client since RLS only allows service_role writes.
+ * Requires account membership for authorization.
+ */
+export const addExternalSourceAction = enhanceAction(
+    async (data: z.infer<typeof AddSourceSchema>) => {
+        await requireAccountOwner();
+        const supabase = getSupabaseServerAdminClient();
+
+        const { data: source, error } = await supabase
+            .from('external_sources')
+            .insert({
+                name: data.name,
+                slug: data.slug,
+                description: data.description ?? null,
+                website_url: data.websiteUrl ?? null,
+                api_endpoint: data.apiEndpoint ?? null,
+                category: data.category,
+                provider_type: data.providerType,
+                credibility_tier: data.credibilityTier ?? 'tier_3',
+            })
+            .select()
+            .single();
+
+        if (error) {
+            throw new Error(`Failed to add source: ${error.message}`);
+        }
+
+        return { source };
+    },
+    {
+        auth: true,
+        schema: AddSourceSchema,
+    },
+);
+
+const UpdateSourceSchema = z.object({
+    sourceId: z.string().uuid(),
+    name: z.string().min(1).max(200).optional(),
+    description: z.string().optional(),
+    websiteUrl: z.string().url().optional(),
+    credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
+    isActive: z.boolean().optional(),
+});
+
+/**
+ * Update an existing external source.
+ * Requires account membership for authorization.
+ */
+export const updateExternalSourceAction = enhanceAction(
+    async (data: z.infer<typeof UpdateSourceSchema>) => {
+        await requireAccountOwner();
+        const supabase = getSupabaseServerAdminClient();
+
+        const updates: Record<string, unknown> = {};
+        if (data.name !== undefined) updates.name = data.name;
+        if (data.description !== undefined) updates.description = data.description;
+        if (data.websiteUrl !== undefined) updates.website_url = data.websiteUrl;
+        if (data.credibilityTier !== undefined) updates.credibility_tier = data.credibilityTier;
+        if (data.isActive !== undefined) updates.is_active = data.isActive;
+
+        const { error } = await supabase
+            .from('external_sources')
+            .update(updates)
+            .eq('id', data.sourceId);
+
+        if (error) {
+            throw new Error(`Failed to update source: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        auth: true,
+        schema: UpdateSourceSchema,
+    },
+);
+
+const DeleteSourceSchema = z.object({
+    sourceId: z.string().uuid(),
+});
+
+/**
+ * Soft-delete a source by setting is_active = false.
+ * Requires account membership for authorization.
+ */
+export const deleteExternalSourceAction = enhanceAction(
+    async (data: z.infer<typeof DeleteSourceSchema>) => {
+        await requireAccountOwner();
+        const supabase = getSupabaseServerAdminClient();
+
+        const { error } = await supabase
+            .from('external_sources')
+            .update({ is_active: false })
+            .eq('id', data.sourceId);
+
+        if (error) {
+            throw new Error(`Failed to delete source: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        auth: true,
+        schema: DeleteSourceSchema,
+    },
+);
+
+/**
+ * Get counts of sources and facts for sidebar badge.
+ *
+ * NOTE: `external_sources` is intentionally global (not project-scoped).
+ * Sources represent shared reference data (e.g., Reuters, Wikipedia) so
+ * `sources` and `apiSources` counts reflect all active sources across the
+ * platform. Only `facts` is filtered by project.
+ */
+export const getResearchCountsAction = enhanceAction(
+    async (data: { projectId: string }) => {
+        const supabase = getSupabaseServerClient();
+
+        const [sourcesResult, factsResult, apiSourcesResult] = await Promise.all([
+            supabase
+                .from('external_sources')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', true),
+            supabase
+                .from('verified_facts')
+                .select('*', { count: 'exact', head: true })
+                .eq('project_id', data.projectId),
+            supabase
+                .from('external_sources')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', true)
+                .in('provider_type', ['newsapi', 'semantic_scholar', 'custom_api']),
+        ]);
+
+        return {
+            sources: sourcesResult.count ?? 0,
+            facts: factsResult.count ?? 0,
+            apiSources: apiSourcesResult.count ?? 0,
+        };
+    },
+    {
+        auth: true,
+        schema: z.object({ projectId: z.string().uuid() }),
+    },
+);
+
+/**
+ * Get verified facts for a project (for passing to season generation)
+ */
+export const getVerifiedFactsAction = enhanceAction(
+    async (data: { projectId: string; limit?: number }) => {
+        const supabase = getSupabaseServerClient();
+
+        const query = supabase
+            .from('verified_facts')
+            .select('id, claim, source_citation, category, verification_status, source_type')
+            .eq('project_id', data.projectId)
+            .eq('verification_status', 'verified')
+            .order('created_at', { ascending: false });
+
+        if (data.limit) {
+            query.limit(data.limit);
+        }
+
+        const { data: facts, error } = await query;
+
+        if (error) {
+            throw new Error('Failed to fetch verified facts');
+        }
+
+        return facts ?? [];
+    },
+    {
+        auth: true,
+        schema: z.object({
+            projectId: z.string().uuid(),
+            limit: z.number().int().positive().optional(),
+        }),
+    },
+);
+

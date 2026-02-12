@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | 🔵 SPEC |
+| **Status** | ✅ DONE |
 | **Priority** | P2 |
 | **Estimate** | 6h |
 | **Dependencies** | FILM-1135, FILM-1140 |
@@ -225,10 +225,10 @@ memoryContext.externalFacts = factsContext;
 
 ## Acceptance Criteria
 
-- [ ] Facts tab appears in Canon Dashboard
-- [ ] Shows linked facts with source attribution
-- [ ] Link dialog allows searching and selecting facts
-- [ ] Unlink button removes fact from episode
-- [ ] Used facts show scene reference when available
-- [ ] Empty state guides to Research library
-- [ ] Facts count shown in tab badge
+- [x] Facts tab appears in Canon Dashboard
+- [x] Shows linked facts with source attribution
+- [x] Link dialog allows searching and selecting facts
+- [x] Unlink button removes fact from episode
+- [x] Used facts show scene reference when available
+- [x] Empty state guides to Research library
+- [x] Facts count shown in tab badge

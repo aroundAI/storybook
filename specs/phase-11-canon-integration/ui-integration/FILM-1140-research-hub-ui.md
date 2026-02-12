@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | 🔵 SPEC |
+| **Status** | ✅ DONE |
 | **Priority** | P1 |
 | **Estimate** | 8h |
 | **Dependencies** | FILM-1135 (ExternalContextProvider) |
@@ -219,10 +219,10 @@ export async function deleteFactAction(factId: string);
 
 ## Acceptance Criteria
 
-- [ ] `/research` route accessible from sidebar
-- [ ] Sources list shows all project sources with CRUD
-- [ ] Facts list shows extracted facts with verification toggle
-- [ ] Empty state guides user based on content type
-- [ ] Source counts show in sidebar nav item
-- [ ] Proper loading and error states
-- [ ] Mobile responsive layout
+- [x] `/research` route accessible from sidebar
+- [x] Sources list shows all project sources with CRUD
+- [x] Facts list shows extracted facts with verification toggle
+- [x] Empty state guides user based on content type
+- [x] Source counts show in sidebar nav item
+- [x] Proper loading and error states
+- [x] Mobile responsive layout

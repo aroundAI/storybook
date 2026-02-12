@@ -3,6 +3,15 @@ import { z } from 'zod';
 export const AnalyzeSeasonSchema = z.object({
   projectId: z.string().uuid(),
   roadmap: z.string().min(50, 'Roadmap must be at least 50 characters long'),
+  externalFacts: z
+    .array(
+      z.object({
+        claim: z.string(),
+        source_citation: z.string().nullable(),
+        category: z.string().nullable(),
+      }),
+    )
+    .optional(),
 });
 
 /**

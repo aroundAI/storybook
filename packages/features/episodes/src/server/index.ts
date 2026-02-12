@@ -43,7 +43,8 @@ export * from './canon-actions';
 
 // External Context Provider (Phase 11: FILM-1135)
 export * from './external-context-actions';
-
+export * from './source-upload-actions';
+export * from './episode-fact-actions';
 // News System (Phase 11: FILM-1130/1131/1132)
 export * from './news-actions';
 

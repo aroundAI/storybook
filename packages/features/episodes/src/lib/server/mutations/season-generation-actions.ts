@@ -70,6 +70,7 @@ export const analyzeSeasonRoadmapAction = enhanceAction(
       payload: {
         projectId: data.projectId,
         roadmap: data.roadmap,
+        externalFacts: data.externalFacts,
       },
     });
 
