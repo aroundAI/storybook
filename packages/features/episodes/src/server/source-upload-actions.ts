@@ -38,11 +38,11 @@ const ExtractFactsSchema = z.object({
 /**
  * Upload source content and create an external_content entry.
  * Creates a source if needed, then caches the content.
- * Requires account membership for authorization.
+ * Requires account owner role for authorization.
  */
 export const uploadSourceContentAction = enhanceAction(
     async (data: z.infer<typeof UploadSourceSchema>) => {
-        // Authorization: verify user has at least one account membership
+        // Authorization: verify user is an owner of at least one account
         const userClient = getSupabaseServerClient();
         const { data: { user } } = await userClient.auth.getUser();
 
@@ -53,10 +53,11 @@ export const uploadSourceContentAction = enhanceAction(
         const { count } = await userClient
             .from('accounts_memberships')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
+            .eq('user_id', user.id)
+            .eq('account_role', 'owner');
 
         if (!count || count === 0) {
-            throw new Error('You must be a member of an account to upload sources');
+            throw new Error('Only account owners can upload sources');
         }
 
         const admin = getSupabaseServerAdminClient();
@@ -68,38 +69,28 @@ export const uploadSourceContentAction = enhanceAction(
             .replace(/^-|-$/g, '')
             .slice(0, 100);
 
-        // Check if source already exists
-        const { data: existingSource } = await admin
+        // Upsert source to prevent race condition on concurrent uploads
+        const { data: source, error: sourceError } = await admin
             .from('external_sources')
-            .select('id')
-            .eq('slug', slug)
-            .single();
-
-        let sourceId: string;
-
-        if (existingSource) {
-            sourceId = existingSource.id;
-        } else {
-            // Create new source
-            const { data: newSource, error: sourceError } = await admin
-                .from('external_sources')
-                .insert({
+            .upsert(
+                {
                     name: data.name,
                     slug,
                     category: data.category,
                     provider_type: 'manual',
                     credibility_tier: 'tier_3',
                     website_url: data.sourceUrl ?? null,
-                })
-                .select('id')
-                .single();
+                },
+                { onConflict: 'slug' },
+            )
+            .select('id')
+            .single();
 
-            if (sourceError || !newSource) {
-                throw new Error(`Failed to create source: ${sourceError?.message}`);
-            }
-
-            sourceId = newSource.id;
+        if (sourceError || !source) {
+            throw new Error(`Failed to create source: ${sourceError?.message}`);
         }
+
+        const sourceId = source.id;
 
         // Create external content entry
         const externalId = `manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -134,14 +125,40 @@ export const uploadSourceContentAction = enhanceAction(
  */
 export const fetchUrlContentAction = enhanceAction(
     async (data: z.infer<typeof FetchUrlSchema>) => {
-        // SSRF mitigation: block private/internal URLs
-        const blockedPatterns = [
-            /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/i,
-            /^https?:\/\/169\.254\./,  // AWS metadata
-            /^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/,  // RFC 1918
-        ];
-        if (blockedPatterns.some((p) => p.test(data.url))) {
+        // SSRF mitigation: resolve hostname and validate IP against private ranges
+        const { hostname } = new URL(data.url);
+
+        // Block obvious private hostnames before DNS
+        const blockedHostnames = ['localhost', '0.0.0.0', '[::1]'];
+        if (blockedHostnames.includes(hostname.toLowerCase())) {
             throw new Error('URL points to a private or internal address');
+        }
+
+        // Resolve DNS and validate the actual IP address
+        const { resolve4 } = await import('node:dns/promises');
+        let resolvedIps: string[];
+        try {
+            resolvedIps = await resolve4(hostname);
+        } catch {
+            throw new Error(`Unable to resolve hostname: ${hostname}`);
+        }
+
+        const isPrivateIp = (ip: string): boolean => {
+            const parts = ip.split('.').map(Number);
+            if (parts.length !== 4) return true; // non-IPv4 → block
+            const [a, b] = parts;
+            return (
+                a === 10 ||                              // 10.0.0.0/8
+                a === 127 ||                              // 127.0.0.0/8 (loopback)
+                (a === 172 && b! >= 16 && b! <= 31) ||   // 172.16.0.0/12
+                (a === 192 && b === 168) ||               // 192.168.0.0/16
+                (a === 169 && b === 254) ||               // 169.254.0.0/16 (link-local / AWS metadata)
+                a === 0                                   // 0.0.0.0/8
+            );
+        };
+
+        if (resolvedIps.some(isPrivateIp)) {
+            throw new Error('URL resolves to a private or internal address');
         }
 
         const response = await fetch(data.url, {

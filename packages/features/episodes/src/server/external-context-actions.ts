@@ -199,10 +199,11 @@ const AddSourceSchema = z.object({
 });
 
 /**
- * Verify the authenticated user has at least one account membership.
- * This prevents arbitrary authenticated users from modifying global sources.
+ * Verify the authenticated user is an owner of at least one account.
+ * Only account owners can modify the global source registry.
+ * This follows the same pattern as account_oauth_apps RLS policies.
  */
-async function requireAccountMembership() {
+async function requireAccountOwner() {
     const supabase = getSupabaseServerClient();
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -213,10 +214,11 @@ async function requireAccountMembership() {
     const { count } = await supabase
         .from('accounts_memberships')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id);
+        .eq('user_id', user.id)
+        .eq('account_role', 'owner');
 
     if (!count || count === 0) {
-        throw new Error('You must be a member of an account to manage sources');
+        throw new Error('Only account owners can manage global sources');
     }
 
     return user;
@@ -229,7 +231,7 @@ async function requireAccountMembership() {
  */
 export const addExternalSourceAction = enhanceAction(
     async (data: z.infer<typeof AddSourceSchema>) => {
-        await requireAccountMembership();
+        await requireAccountOwner();
         const supabase = getSupabaseServerAdminClient();
 
         const { data: source, error } = await supabase
@@ -274,7 +276,7 @@ const UpdateSourceSchema = z.object({
  */
 export const updateExternalSourceAction = enhanceAction(
     async (data: z.infer<typeof UpdateSourceSchema>) => {
-        await requireAccountMembership();
+        await requireAccountOwner();
         const supabase = getSupabaseServerAdminClient();
 
         const updates: Record<string, unknown> = {};
@@ -311,7 +313,7 @@ const DeleteSourceSchema = z.object({
  */
 export const deleteExternalSourceAction = enhanceAction(
     async (data: z.infer<typeof DeleteSourceSchema>) => {
-        await requireAccountMembership();
+        await requireAccountOwner();
         const supabase = getSupabaseServerAdminClient();
 
         const { error } = await supabase

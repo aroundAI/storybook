@@ -282,10 +282,10 @@ export function SeasonGeneratorDialog({
       setResearchCounts(c);
     }
     if (Array.isArray(facts)) {
-      setVerifiedFacts(facts.map((f: Record<string, unknown>) => ({
-        claim: String(f.claim ?? ''),
-        source_citation: f.source_citation ? String(f.source_citation) : null,
-        category: f.category ? String(f.category) : null,
+      setVerifiedFacts(facts.map((f: { claim?: string; source_citation?: string | null; category?: string | null }) => ({
+        claim: f.claim ?? '',
+        source_citation: f.source_citation ?? null,
+        category: f.category ?? null,
       })));
     }
   }, [projectId]);
