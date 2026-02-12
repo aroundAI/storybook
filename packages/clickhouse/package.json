@@ -1,0 +1,36 @@
+{
+    "name": "@kit/clickhouse",
+    "private": true,
+    "version": "0.1.0",
+    "description": "ClickHouse client and query helpers for analytics",
+    "scripts": {
+        "clean": "git clean -xdf .turbo node_modules",
+        "format": "prettier --check \"**/*.{ts,tsx}\"",
+        "lint": "eslint .",
+        "typecheck": "tsc --noEmit",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "prettier": "@kit/prettier-config",
+    "exports": {
+        ".": "./src/index.ts",
+        "./server": "./src/server/index.ts"
+    },
+    "devDependencies": {
+        "@kit/eslint-config": "workspace:*",
+        "@kit/prettier-config": "workspace:*",
+        "@kit/tsconfig": "workspace:*",
+        "@types/node": "^24.5.0",
+        "vitest": "^3.2.4"
+    },
+    "dependencies": {
+        "@clickhouse/client": "^1.8.1"
+    },
+    "typesVersions": {
+        "*": {
+            "*": [
+                "src/*"
+            ]
+        }
+    }
+}
