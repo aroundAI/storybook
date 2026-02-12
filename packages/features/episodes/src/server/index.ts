@@ -47,6 +47,9 @@ export * from './external-context-actions';
 // News System (Phase 11: FILM-1130/1131/1132)
 export * from './news-actions';
 
+// Fact Management (Phase 11: FILM-1121)
+export * from './fact-actions';
+
 // NOTE: Server-only canon functions (buildMemoryContext, runRolePipeline) must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
 // import { runRolePipeline } from '@kit/episodes/lib/canon/llm-role-orchestrator';
