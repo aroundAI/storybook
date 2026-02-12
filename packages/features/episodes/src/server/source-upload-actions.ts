@@ -38,9 +38,27 @@ const ExtractFactsSchema = z.object({
 /**
  * Upload source content and create an external_content entry.
  * Creates a source if needed, then caches the content.
+ * Requires account membership for authorization.
  */
 export const uploadSourceContentAction = enhanceAction(
     async (data: z.infer<typeof UploadSourceSchema>) => {
+        // Authorization: verify user has at least one account membership
+        const userClient = getSupabaseServerClient();
+        const { data: { user } } = await userClient.auth.getUser();
+
+        if (!user) {
+            throw new Error('Authentication required');
+        }
+
+        const { count } = await userClient
+            .from('accounts_memberships')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id);
+
+        if (!count || count === 0) {
+            throw new Error('You must be a member of an account to upload sources');
+        }
+
         const admin = getSupabaseServerAdminClient();
 
         // Generate slug from name
@@ -129,7 +147,13 @@ export const fetchUrlContentAction = enhanceAction(
         const response = await fetch(data.url, {
             headers: { 'User-Agent': 'StoryBook-Research/1.0' },
             signal: AbortSignal.timeout(15000),
+            redirect: 'manual',
         });
+
+        // Block redirects — attacker could redirect to internal services
+        if (response.status >= 300 && response.status < 400) {
+            throw new Error('URL returned a redirect, which is not allowed for security reasons');
+        }
 
         if (!response.ok) {
             throw new Error(`Failed to fetch URL: ${response.status} ${response.statusText}`);

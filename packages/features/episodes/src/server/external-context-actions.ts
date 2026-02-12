@@ -192,17 +192,44 @@ const AddSourceSchema = z.object({
     slug: z.string().min(1).max(100),
     description: z.string().optional(),
     websiteUrl: z.string().url().optional(),
+    apiEndpoint: z.string().url().optional(),
     category: z.enum(SOURCE_CATEGORIES),
     providerType: z.string().min(1).max(50),
     credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
 });
 
 /**
+ * Verify the authenticated user has at least one account membership.
+ * This prevents arbitrary authenticated users from modifying global sources.
+ */
+async function requireAccountMembership() {
+    const supabase = getSupabaseServerClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+        throw new Error('Authentication required');
+    }
+
+    const { count } = await supabase
+        .from('accounts_memberships')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+    if (!count || count === 0) {
+        throw new Error('You must be a member of an account to manage sources');
+    }
+
+    return user;
+}
+
+/**
  * Add a new external source to the registry.
  * Uses admin client since RLS only allows service_role writes.
+ * Requires account membership for authorization.
  */
 export const addExternalSourceAction = enhanceAction(
     async (data: z.infer<typeof AddSourceSchema>) => {
+        await requireAccountMembership();
         const supabase = getSupabaseServerAdminClient();
 
         const { data: source, error } = await supabase
@@ -212,6 +239,7 @@ export const addExternalSourceAction = enhanceAction(
                 slug: data.slug,
                 description: data.description ?? null,
                 website_url: data.websiteUrl ?? null,
+                api_endpoint: data.apiEndpoint ?? null,
                 category: data.category,
                 provider_type: data.providerType,
                 credibility_tier: data.credibilityTier ?? 'tier_3',
@@ -242,9 +270,11 @@ const UpdateSourceSchema = z.object({
 
 /**
  * Update an existing external source.
+ * Requires account membership for authorization.
  */
 export const updateExternalSourceAction = enhanceAction(
     async (data: z.infer<typeof UpdateSourceSchema>) => {
+        await requireAccountMembership();
         const supabase = getSupabaseServerAdminClient();
 
         const updates: Record<string, unknown> = {};
@@ -277,9 +307,11 @@ const DeleteSourceSchema = z.object({
 
 /**
  * Soft-delete a source by setting is_active = false.
+ * Requires account membership for authorization.
  */
 export const deleteExternalSourceAction = enhanceAction(
     async (data: z.infer<typeof DeleteSourceSchema>) => {
+        await requireAccountMembership();
         const supabase = getSupabaseServerAdminClient();
 
         const { error } = await supabase
