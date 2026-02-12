@@ -16,9 +16,11 @@ export {
     insertVideoMetrics,
     queryDailyStats,
     queryDailyTimeSeries,
+    queryDailyTimeSeriesByPlatform,
     queryPerVideoTotals,
     queryPlatformBreakdown,
     queryTotals,
+    queryTotalsByVideoIds,
     queryViewsForVideos,
 } from '../queries';
 

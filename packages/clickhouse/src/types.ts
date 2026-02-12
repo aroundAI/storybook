@@ -94,7 +94,7 @@ export interface PlatformBreakdown {
  * Query filter options shared across query functions
  */
 export interface QueryFilters {
-    projectId: string;
+    projectId?: string;
     videoIds?: string[];
     platforms?: AnalyticsPlatform[];
     startDate?: string;

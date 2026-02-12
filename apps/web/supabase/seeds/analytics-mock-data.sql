@@ -201,185 +201,11 @@ INSERT INTO public.publishes (id, episode_id, platform, content_type, title, des
 ON CONFLICT (id) DO NOTHING;
 
 -- ==================================
--- Section 5: Content Analytics
+-- Section 5: Content Analytics — REMOVED
 -- ==================================
--- Generate analytics data for each publish with realistic growth patterns
-
--- Helper: Create analytics for a publish with platform-specific patterns
--- This uses a PL/pgSQL block to generate data programmatically
-
-DO $$
-DECLARE
-  pub RECORD;
-  day_offset INTEGER;
-  base_views BIGINT;
-  base_likes BIGINT;
-  base_comments BIGINT;
-  base_shares BIGINT;
-  base_watch_time BIGINT;
-  base_revenue INTEGER;
-  multiplier FLOAT;
-  days_since_publish INTEGER;
-  days_since_snapshot INTEGER;
-  snapshot_day DATE;
-BEGIN
-  -- Loop through all publishes
-  FOR pub IN
-    SELECT id, platform, published_at
-    FROM public.publishes
-    WHERE status = 'published'
-    AND episode_id IN (SELECT id FROM public.episodes WHERE project_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890')
-  LOOP
-    -- Calculate days since publish (date subtraction returns integer in PostgreSQL)
-    days_since_publish := (CURRENT_DATE - pub.published_at::DATE);
-
-    -- Only create analytics for past 30 days (or since publish, whichever is shorter)
-    FOR day_offset IN 0..LEAST(29, GREATEST(0, days_since_publish)) LOOP
-      snapshot_day := CURRENT_DATE - day_offset;
-
-      -- Skip if snapshot is before publish date
-      IF snapshot_day < pub.published_at::DATE THEN
-        CONTINUE;
-      END IF;
-
-      -- Calculate days since snapshot from publish date
-      days_since_snapshot := (snapshot_day - pub.published_at::DATE);
-
-      -- Calculate multiplier based on how recent the snapshot is compared to publish
-      -- Newer content (smaller days_since_snapshot) should have higher multiplier
-      multiplier := GREATEST(0.1, 1.0 - (days_since_snapshot::FLOAT / 90.0));
-
-      -- Platform-specific base metrics
-      IF pub.platform = 'youtube' THEN
-        -- YouTube: Higher views, longer watch time, revenue
-        base_views := (50000 + FLOOR(RANDOM() * 750000))::BIGINT;
-        base_likes := (2000 + FLOOR(RANDOM() * 38000))::BIGINT;
-        base_comments := (200 + FLOOR(RANDOM() * 4800))::BIGINT;
-        base_shares := (500 + FLOOR(RANDOM() * 9500))::BIGINT;
-        base_watch_time := (300 + FLOOR(RANDOM() * 1500))::BIGINT; -- seconds (5-30 min)
-        base_revenue := (10000 + FLOOR(RANDOM() * 190000))::INTEGER; -- cents ($100-$2000)
-      ELSIF pub.platform = 'tiktok' THEN
-        -- TikTok: Very high views and shares, short watch time, no revenue
-        base_views := (200000 + FLOOR(RANDOM() * 2800000))::BIGINT;
-        base_likes := (20000 + FLOOR(RANDOM() * 180000))::BIGINT;
-        base_comments := (2000 + FLOOR(RANDOM() * 18000))::BIGINT;
-        base_shares := (5000 + FLOOR(RANDOM() * 95000))::BIGINT;
-        base_watch_time := (30 + FLOOR(RANDOM() * 30))::BIGINT; -- seconds (30-60 sec)
-        base_revenue := 0; -- TikTok doesn't have direct revenue
-      ELSE -- instagram
-        -- Instagram: Moderate metrics
-        base_views := (20000 + FLOOR(RANDOM() * 280000))::BIGINT;
-        base_likes := (5000 + FLOOR(RANDOM() * 45000))::BIGINT;
-        base_comments := (500 + FLOOR(RANDOM() * 4500))::BIGINT;
-        base_shares := (1000 + FLOOR(RANDOM() * 19000))::BIGINT;
-        base_watch_time := (30 + FLOOR(RANDOM() * 30))::BIGINT; -- seconds (30-60 sec)
-        base_revenue := 0;
-      END IF;
-
-      -- Apply multiplier and growth (cumulative metrics grow over time)
-      INSERT INTO public.content_analytics (
-        publish_id,
-        snapshot_date,
-        views,
-        likes,
-        comments,
-        shares,
-        watch_time_seconds,
-        subscribers_gained,
-        revenue_cents,
-        retention_data,
-        raw_data
-      ) VALUES (
-        pub.id,
-        snapshot_day,
-        (base_views * multiplier * (1 + (30 - day_offset) * 0.02))::BIGINT,
-        (base_likes * multiplier * (1 + (30 - day_offset) * 0.015))::BIGINT,
-        (base_comments * multiplier * (1 + (30 - day_offset) * 0.015))::BIGINT,
-        (base_shares * multiplier * (1 + (30 - day_offset) * 0.02))::BIGINT,
-        (base_watch_time * multiplier)::BIGINT,
-        FLOOR(RANDOM() * 500 + 50)::INTEGER,
-        (base_revenue * multiplier)::INTEGER,
-        CASE WHEN pub.platform = 'youtube' THEN
-          jsonb_build_object(
-            'average_view_duration', base_watch_time * 0.6,
-            'average_view_percentage', 45 + FLOOR(RANDOM() * 35),
-            'retention_curve', ARRAY[100, 90, 80, 70, 60, 55, 50, 48, 45, 42]
-          )
-        ELSE NULL END,
-        -- Include demographics, geography, and extended audience data in raw_data
-        jsonb_build_object(
-          'platform', pub.platform,
-          'fetched_at', snapshot_day::TEXT,
-          'views', base_views * multiplier,
-          'demographics', jsonb_build_object(
-            'ageGroups', jsonb_build_object(
-              '13-17', 8.5,
-              '18-24', 32.5,
-              '25-34', 28.0,
-              '35-44', 16.5,
-              '45-54', 9.0,
-              '55-64', 4.0,
-              '65+', 1.5
-            ),
-            'genders', jsonb_build_object(
-              'male', 58.0,
-              'female', 38.5,
-              'other', 3.5
-            )
-          ),
-          'geography', jsonb_build_object(
-            'United States', 42.0,
-            'United Kingdom', 12.5,
-            'Canada', 8.0,
-            'Australia', 6.5,
-            'Germany', 5.5,
-            'France', 4.5,
-            'Brazil', 4.0,
-            'India', 3.5,
-            'Japan', 3.0,
-            'Mexico', 2.5,
-            'Other', 8.0
-          ),
-          -- Extended audience data for redesigned dashboard
-          'deviceType', jsonb_build_object(
-            'mobile', 78,
-            'desktop', 18,
-            'tablet', 4
-          ),
-          -- Peak activity: 4 time slots (Morning, Afternoon, Evening, Night) x 7 days
-          'peakActivity', jsonb_build_array(
-            jsonb_build_array(0.2, 0.3, 0.4, 0.6, 0.8, 0.9, 0.7),  -- Morning
-            jsonb_build_array(0.3, 0.4, 0.6, 0.8, 1.0, 1.0, 0.8),  -- Afternoon
-            jsonb_build_array(0.2, 0.3, 0.4, 0.5, 0.7, 0.9, 0.6),  -- Evening
-            jsonb_build_array(0.1, 0.2, 0.3, 0.4, 0.6, 0.7, 0.5)   -- Night
-          ),
-          'interests', jsonb_build_array(
-            'Sci-Fi Movies',
-            'Gaming',
-            'Animation',
-            'Technology',
-            'Digital Art',
-            'Storytelling',
-            'Visual Effects',
-            'Fantasy',
-            'Anime',
-            'Comic Books'
-          ),
-          'contentAffinity', jsonb_build_object(
-            'label', 'Cinematic Visuals',
-            'percentage', 24
-          )
-        )
-      )
-      ON CONFLICT (publish_id, snapshot_date) DO UPDATE SET
-        views = EXCLUDED.views,
-        likes = EXCLUDED.likes,
-        comments = EXCLUDED.comments,
-        shares = EXCLUDED.shares,
-        raw_data = EXCLUDED.raw_data;
-    END LOOP;
-  END LOOP;
-END $$;
+-- Analytics metrics are now stored in ClickHouse (video_daily_stats table).
+-- The content_analytics Postgres table has been dropped.
+-- See migration 20260212080000_drop_content_analytics.sql
 
 -- ==================================
 -- Output
@@ -390,7 +216,6 @@ DO $$
 DECLARE
   episode_count INTEGER;
   publish_count INTEGER;
-  analytics_count INTEGER;
 BEGIN
   SELECT COUNT(*) INTO episode_count
   FROM public.episodes
@@ -401,12 +226,6 @@ BEGIN
   JOIN public.episodes e ON p.episode_id = e.id
   WHERE e.project_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
 
-  SELECT COUNT(*) INTO analytics_count
-  FROM public.content_analytics ca
-  JOIN public.publishes p ON ca.publish_id = p.id
-  JOIN public.episodes e ON p.episode_id = e.id
-  WHERE e.project_id = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890';
-
   RAISE NOTICE '';
   RAISE NOTICE '===========================================';
   RAISE NOTICE 'Analytics Mock Data Seed Complete!';
@@ -414,7 +233,7 @@ BEGIN
   RAISE NOTICE 'Project: The Chronicles';
   RAISE NOTICE 'Episodes: %', episode_count;
   RAISE NOTICE 'Publishes: %', publish_count;
-  RAISE NOTICE 'Analytics Records: %', analytics_count;
+  RAISE NOTICE 'Analytics: Stored in ClickHouse (not seeded here)';
   RAISE NOTICE '';
   RAISE NOTICE 'View at: http://localhost:3000/home/storybook/studio/a1b2c3d4-e5f6-7890-abcd-ef1234567890/analytics';
   RAISE NOTICE '===========================================';

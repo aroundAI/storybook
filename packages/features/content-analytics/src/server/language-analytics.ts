@@ -2,7 +2,10 @@
 
 import 'server-only';
 
+import { queryDailyStats, queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 /**
  * Language performance summary
@@ -60,65 +63,60 @@ export interface ContentTypeComparison {
   };
 }
 
-/**
- * Get language performance breakdown for a project
- */
-export async function getLanguagePerformance(
+// =============================================================================
+// Helper: resolve publish IDs + language map for a project
+// =============================================================================
+
+async function resolveProjectPublishes(
   projectId: string,
-  options?: { startDate?: Date; endDate?: Date },
-): Promise<LanguagePerformance[]> {
+  extraSelect?: string,
+) {
   const client = getSupabaseServerClient();
 
-  // Default to last 30 days
-  const endDate = options?.endDate || new Date();
-  const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
-
-  // Previous period for comparison
-  const periodDays =
-    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
-  const previousEndDate = new Date(startDate.getTime() - 1);
-  const previousStartDate = new Date(
-    previousEndDate.getTime() - periodDays * 24 * 60 * 60 * 1000,
-  );
-
-  // Get all seasons for this project
   const { data: seasons } = await client
     .from('seasons')
     .select('id')
     .eq('project_id', projectId)
     .is('deleted_at', null);
 
-  if (!seasons || seasons.length === 0) return [];
+  if (!seasons || seasons.length === 0) return null;
 
   const seasonIds = seasons.map((s) => s.id);
 
-  // Get all episodes
   const { data: episodes } = await client
     .from('episodes')
-    .select('id')
+    .select('id, title')
     .in('season_id', seasonIds)
     .is('deleted_at', null);
 
-  if (!episodes || episodes.length === 0) return [];
+  if (!episodes || episodes.length === 0) return null;
 
   const episodeIds = episodes.map((e) => e.id);
 
-  // Get all publishes - language column may not exist yet in types
-  // but will be available after migration runs
-  const { data: publishes } = await client
+  const selectCols = extraSelect
+    ? `id, platform_connection_id, ${extraSelect}`
+    : 'id, platform_connection_id';
+  const { data: rawPublishes } = await client
     .from('publishes')
-    .select('id, platform_connection_id')
+    .select(selectCols)
     .in('episode_id', episodeIds);
 
-  if (!publishes || publishes.length === 0) return [];
+  if (!rawPublishes || rawPublishes.length === 0) return null;
 
-  const publishIds = publishes.map((p) => p.id);
+  // Cast to proper shape — Supabase returns GenericStringError for dynamic selects
+  const publishes = rawPublishes as unknown as Array<{
+    id: string;
+    platform_connection_id: string | null;
+    [key: string]: unknown;
+  }>;
 
-  // Get platform connections with language
+  // Build language map from platform connections
   const connectionIds = [
-    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
+    ...new Set(
+      publishes
+        .map((p) => p.platform_connection_id)
+        .filter(Boolean),
+    ),
   ];
   const languageByConnection = new Map<string, string>();
 
@@ -134,33 +132,67 @@ export async function getLanguagePerformance(
     }
   }
 
-  // Create publish -> language map (infer from platform_connection)
   const publishLanguageMap = new Map<string, string>();
   for (const p of publishes) {
     const connId = p.platform_connection_id;
-    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
+    const language = connId
+      ? languageByConnection.get(connId) || 'en'
+      : 'en';
     publishLanguageMap.set(p.id, language);
   }
 
-  // Get current period analytics
-  const { data: currentAnalytics } = await client
-    .from('content_analytics')
-    .select(
-      'publish_id, views, likes, comments, shares, revenue_cents, subscribers_gained',
-    )
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+  return {
+    publishes,
+    episodes,
+    publishLanguageMap,
+    publishIds: publishes.map((p) => p.id),
+  };
+}
 
-  // Get previous period analytics
-  const { data: previousAnalytics } = await client
-    .from('content_analytics')
-    .select('publish_id, views')
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', previousStartDate.toISOString().split('T')[0])
-    .lte('snapshot_date', previousEndDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+// =============================================================================
+// Phase 1: Language Performance
+// =============================================================================
+
+/**
+ * Get language performance breakdown for a project
+ */
+export async function getLanguagePerformance(
+  projectId: string,
+  options?: { startDate?: Date; endDate?: Date },
+): Promise<LanguagePerformance[]> {
+  const endDate = options?.endDate || new Date();
+  const startDate =
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
+
+  // Previous period for comparison
+  const periodDays =
+    (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24);
+  const previousEndDate = new Date(startDate.getTime() - 1);
+  const previousStartDate = new Date(
+    previousEndDate.getTime() - periodDays * 24 * 60 * 60 * 1000,
+  );
+
+  const resolved = await resolveProjectPublishes(projectId);
+  if (!resolved) return [];
+
+  const { publishIds, publishLanguageMap } = resolved;
+
+  const startDateStr = startDate.toISOString().split('T')[0]!;
+  const endDateStr = endDate.toISOString().split('T')[0]!;
+  const prevStartStr = previousStartDate.toISOString().split('T')[0]!;
+  const prevEndStr = previousEndDate.toISOString().split('T')[0]!;
+
+  // Query ClickHouse for current and previous periods
+  const [currentTotals, previousTotals] = await Promise.all([
+    queryTotalsByVideoIds(publishIds, {
+      startDate: startDateStr,
+      endDate: endDateStr,
+    }),
+    queryTotalsByVideoIds(publishIds, {
+      startDate: prevStartStr,
+      endDate: prevEndStr,
+    }),
+  ]);
 
   // Aggregate by language (current period)
   const languageStats = new Map<
@@ -171,35 +203,11 @@ export async function getLanguagePerformance(
       comments: number;
       shares: number;
       revenueCents: number;
-      publishIds: Set<string>;
+      publishCount: number;
     }
   >();
 
-  // Get latest per publish for current period
-  const latestByPublish = new Map<
-    string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      revenueCents: number;
-    }
-  >();
-  for (const a of currentAnalytics || []) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, {
-        views: a.views || 0,
-        likes: a.likes || 0,
-        comments: a.comments || 0,
-        shares: a.shares || 0,
-        revenueCents: a.revenue_cents || 0,
-      });
-    }
-  }
-
-  // Aggregate by language
-  for (const [publishId, stats] of latestByPublish) {
+  for (const [publishId, stats] of currentTotals) {
     const language = publishLanguageMap.get(publishId) || 'en';
     const current = languageStats.get(language) || {
       views: 0,
@@ -207,32 +215,26 @@ export async function getLanguagePerformance(
       comments: 0,
       shares: 0,
       revenueCents: 0,
-      publishIds: new Set<string>(),
+      publishCount: 0,
     };
 
     current.views += stats.views;
     current.likes += stats.likes;
     current.comments += stats.comments;
     current.shares += stats.shares;
-    current.revenueCents += stats.revenueCents;
-    current.publishIds.add(publishId);
+    current.revenueCents += stats.revenue_cents;
+    current.publishCount++;
 
     languageStats.set(language, current);
   }
 
   // Previous period views by language
   const previousViewsByLanguage = new Map<string, number>();
-  const previousLatestByPublish = new Map<string, number>();
-  for (const a of previousAnalytics || []) {
-    if (!previousLatestByPublish.has(a.publish_id)) {
-      previousLatestByPublish.set(a.publish_id, a.views || 0);
-    }
-  }
-  for (const [publishId, views] of previousLatestByPublish) {
+  for (const [publishId, stats] of previousTotals) {
     const language = publishLanguageMap.get(publishId) || 'en';
     previousViewsByLanguage.set(
       language,
-      (previousViewsByLanguage.get(language) || 0) + views,
+      (previousViewsByLanguage.get(language) || 0) + stats.views,
     );
   }
 
@@ -261,13 +263,16 @@ export async function getLanguagePerformance(
       shares: stats.shares,
       engagement,
       revenueCents: stats.revenueCents,
-      contentCount: stats.publishIds.size,
+      contentCount: stats.publishCount,
     });
   }
 
-  // Sort by views descending
   return results.sort((a, b) => b.views - a.views);
 }
+
+// =============================================================================
+// Phase 2: Platform × Language Matrix
+// =============================================================================
 
 /**
  * Get platform × language performance matrix
@@ -276,84 +281,28 @@ export async function getPlatformLanguageMatrix(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<PlatformLanguageEntry[]> {
-  const client = getSupabaseServerClient();
-
   const endDate = options?.endDate || new Date();
   const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  // Get project structure
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+  const resolved = await resolveProjectPublishes(projectId, 'platform');
+  if (!resolved) return [];
 
-  if (!seasons || seasons.length === 0) return [];
+  const { publishes, publishIds, publishLanguageMap } = resolved;
 
-  const seasonIds = seasons.map((s) => s.id);
+  const startDateStr = startDate.toISOString().split('T')[0]!;
+  const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
-
-  if (!episodes || episodes.length === 0) return [];
-
-  const episodeIds = episodes.map((e) => e.id);
-
-  // Get publishes with platform - language inferred from platform_connection
-  const { data: publishes } = await client
-    .from('publishes')
-    .select('id, platform, platform_connection_id')
-    .in('episode_id', episodeIds);
-
-  if (!publishes || publishes.length === 0) return [];
-
-  const publishIds = publishes.map((p) => p.id);
-
-  // Get platform connections with language
-  const connectionIds = [
-    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
-  ];
-  const languageByConnection = new Map<string, string>();
-
-  if (connectionIds.length > 0) {
-    const { data: connections } = await client
-      .from('platform_connections')
-      .select('id, language')
-      .in('id', connectionIds as string[]);
-
-    for (const conn of connections || []) {
-      const c = conn as unknown as { id: string; language?: string };
-      languageByConnection.set(c.id, c.language || 'en');
-    }
-  }
-
-  // Create maps
-  const publishInfoMap = new Map<
-    string,
-    { platform: string; language: string }
-  >();
+  // Build publish -> platform map
+  const publishPlatformMap = new Map<string, string>();
   for (const p of publishes) {
-    const connId = p.platform_connection_id;
-    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
-    publishInfoMap.set(p.id, {
-      platform: p.platform,
-      language,
-    });
+    publishPlatformMap.set(p.id as string, (p.platform as string) || 'unknown');
   }
 
-  // Get analytics
-  const { data: analytics } = await client
-    .from('content_analytics')
-    .select('publish_id, views, likes, comments, shares, revenue_cents')
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
 
   // Aggregate by platform-language
   const matrix = new Map<
@@ -366,56 +315,32 @@ export async function getPlatformLanguageMatrix(
       comments: number;
       shares: number;
       revenueCents: number;
-      publishIds: Set<string>;
+      publishCount: number;
     }
   >();
 
-  // Get latest per publish
-  const latestByPublish = new Map<
-    string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      revenueCents: number;
-    }
-  >();
-  for (const a of analytics || []) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, {
-        views: a.views || 0,
-        likes: a.likes || 0,
-        comments: a.comments || 0,
-        shares: a.shares || 0,
-        revenueCents: a.revenue_cents || 0,
-      });
-    }
-  }
+  for (const [publishId, stats] of perVideoTotals) {
+    const platform = publishPlatformMap.get(publishId) || 'unknown';
+    const language = publishLanguageMap.get(publishId) || 'en';
+    const key = `${platform}:${language}`;
 
-  // Aggregate
-  for (const [publishId, stats] of latestByPublish) {
-    const info = publishInfoMap.get(publishId);
-    if (!info) continue;
-
-    const key = `${info.platform}:${info.language}`;
     const current = matrix.get(key) || {
-      platform: info.platform,
-      language: info.language,
+      platform,
+      language,
       views: 0,
       likes: 0,
       comments: 0,
       shares: 0,
       revenueCents: 0,
-      publishIds: new Set<string>(),
+      publishCount: 0,
     };
 
     current.views += stats.views;
     current.likes += stats.likes;
     current.comments += stats.comments;
     current.shares += stats.shares;
-    current.revenueCents += stats.revenueCents;
-    current.publishIds.add(publishId);
+    current.revenueCents += stats.revenue_cents;
+    current.publishCount++;
 
     matrix.set(key, current);
   }
@@ -437,13 +362,16 @@ export async function getPlatformLanguageMatrix(
       shares: entry.shares,
       engagementRate,
       revenueCents: entry.revenueCents,
-      contentCount: entry.publishIds.size,
+      contentCount: entry.publishCount,
     });
   }
 
-  // Sort by views
   return results.sort((a, b) => b.views - a.views);
 }
+
+// =============================================================================
+// Content Type Comparison (shorts vs long-form)
+// =============================================================================
 
 /**
  * Get content type comparison (shorts vs long-form)
@@ -452,66 +380,31 @@ export async function getContentTypeComparison(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<ContentTypeComparison> {
-  const client = getSupabaseServerClient();
-
   const endDate = options?.endDate || new Date();
   const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  // Get project structure
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+  const resolved = await resolveProjectPublishes(projectId, 'content_type');
+  if (!resolved) return getEmptyComparison();
 
-  if (!seasons || seasons.length === 0) {
-    return getEmptyComparison();
-  }
+  const { publishes, publishIds } = resolved;
 
-  const seasonIds = seasons.map((s) => s.id);
+  const startDateStr = startDate.toISOString().split('T')[0]!;
+  const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
-
-  if (!episodes || episodes.length === 0) {
-    return getEmptyComparison();
-  }
-
-  const episodeIds = episodes.map((e) => e.id);
-
-  // Get publishes with content_type
-  const { data: publishes } = await client
-    .from('publishes')
-    .select('id, content_type')
-    .in('episode_id', episodeIds);
-
-  if (!publishes || publishes.length === 0) {
-    return getEmptyComparison();
-  }
-
-  const publishIds = publishes.map((p) => p.id);
-
-  // Create content type map
+  // Build content type map
   const publishContentTypeMap = new Map<string, string>();
   for (const p of publishes) {
-    publishContentTypeMap.set(p.id, p.content_type || 'full');
+    publishContentTypeMap.set(
+      p.id as string,
+      (p.content_type as string) || 'full',
+    );
   }
 
-  // Get analytics
-  const { data: analytics } = await client
-    .from('content_analytics')
-    .select(
-      'publish_id, views, likes, comments, shares, revenue_cents, subscribers_gained',
-    )
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
 
   // Aggregate by content type
   const longForm = {
@@ -521,7 +414,7 @@ export async function getContentTypeComparison(
     shares: 0,
     revenueCents: 0,
     subscribersGained: 0,
-    publishIds: new Set<string>(),
+    contentCount: 0,
   };
   const shorts = {
     views: 0,
@@ -530,36 +423,10 @@ export async function getContentTypeComparison(
     shares: 0,
     revenueCents: 0,
     subscribersGained: 0,
-    publishIds: new Set<string>(),
+    contentCount: 0,
   };
 
-  // Get latest per publish
-  const latestByPublish = new Map<
-    string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      revenueCents: number;
-      subscribersGained: number;
-    }
-  >();
-  for (const a of analytics || []) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, {
-        views: a.views || 0,
-        likes: a.likes || 0,
-        comments: a.comments || 0,
-        shares: a.shares || 0,
-        revenueCents: a.revenue_cents || 0,
-        subscribersGained: a.subscribers_gained || 0,
-      });
-    }
-  }
-
-  // Aggregate
-  for (const [publishId, stats] of latestByPublish) {
+  for (const [publishId, stats] of perVideoTotals) {
     const contentType = publishContentTypeMap.get(publishId) || 'full';
     const isShort = contentType === 'short' || contentType === 'teaser';
     const target = isShort ? shorts : longForm;
@@ -568,40 +435,28 @@ export async function getContentTypeComparison(
     target.likes += stats.likes;
     target.comments += stats.comments;
     target.shares += stats.shares;
-    target.revenueCents += stats.revenueCents;
-    target.subscribersGained += stats.subscribersGained;
-    target.publishIds.add(publishId);
+    target.revenueCents += stats.revenue_cents;
+    target.subscribersGained += stats.subscribers_gained;
+    target.contentCount++;
   }
 
   return {
     longForm: {
-      views: longForm.views,
-      likes: longForm.likes,
-      comments: longForm.comments,
-      shares: longForm.shares,
+      ...longForm,
       engagement:
         longForm.views > 0
           ? ((longForm.likes + longForm.comments + longForm.shares) /
-              longForm.views) *
-            100
+            longForm.views) *
+          100
           : 0,
-      revenueCents: longForm.revenueCents,
-      subscribersGained: longForm.subscribersGained,
-      contentCount: longForm.publishIds.size,
     },
     shorts: {
-      views: shorts.views,
-      likes: shorts.likes,
-      comments: shorts.comments,
-      shares: shorts.shares,
+      ...shorts,
       engagement:
         shorts.views > 0
           ? ((shorts.likes + shorts.comments + shorts.shares) / shorts.views) *
-            100
+          100
           : 0,
-      revenueCents: shorts.revenueCents,
-      subscribersGained: shorts.subscribersGained,
-      contentCount: shorts.publishIds.size,
     },
   };
 }
@@ -664,8 +519,7 @@ export async function getShortsSourcePerformance(
 
   const endDate = options?.endDate || new Date();
   const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
   const limit = options?.limit || 10;
 
   // Get project structure
@@ -724,34 +578,19 @@ export async function getShortsSourcePerformance(
     }
   }
 
-  // Get analytics for these publishes
-  const { data: analytics } = await client
-    .from('content_analytics')
-    .select('publish_id, views, likes, comments')
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+  const startDateStr = startDate.toISOString().split('T')[0]!;
+  const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  // Get latest analytics per publish
-  const latestByPublish = new Map<
-    string,
-    { views: number; likes: number; comments: number }
-  >();
-  for (const a of analytics || []) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, {
-        views: a.views || 0,
-        likes: a.likes || 0,
-        comments: a.comments || 0,
-      });
-    }
-  }
+  // Get metrics from ClickHouse
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
 
   // Build results
   const results: ShortsSourcePerformance[] = [];
   for (const pub of publishes) {
-    const stats = latestByPublish.get(pub.id);
+    const stats = perVideoTotals.get(pub.id);
     if (!stats) continue;
 
     const connId = pub.platform_connection_id;
@@ -778,7 +617,6 @@ export async function getShortsSourcePerformance(
     });
   }
 
-  // Sort by views and limit
   return results.sort((a, b) => b.views - a.views).slice(0, limit);
 }
 
@@ -799,140 +637,60 @@ export interface GeographyByLanguage {
 }
 
 /**
- * Get geographic distribution of views by language
- * Extracts country data from content_analytics.raw_data JSONB field
+ * Get geographic distribution of views by language.
+ * NOTE: Geography data in ClickHouse extra_metrics is not yet populated
+ * by the ingestion layer. This function returns view-based totals
+ * until extra_metrics includes geography from platform APIs.
  */
 export async function getGeographyByLanguage(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<GeographyByLanguage[]> {
-  const client = getSupabaseServerClient();
-
   const endDate = options?.endDate || new Date();
   const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  // Get project structure
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+  const resolved = await resolveProjectPublishes(projectId);
+  if (!resolved) return [];
 
-  if (!seasons || seasons.length === 0) return [];
+  const { publishIds, publishLanguageMap } = resolved;
 
-  const seasonIds = seasons.map((s) => s.id);
+  const startDateStr = startDate.toISOString().split('T')[0]!;
+  const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
+  // Get totals from ClickHouse
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
 
-  if (!episodes || episodes.length === 0) return [];
+  // Aggregate views by language (geography data not yet in ClickHouse)
+  const viewsByLanguage = new Map<string, number>();
 
-  const episodeIds = episodes.map((e) => e.id);
-
-  // Get publishes with language info
-  const { data: publishes } = await client
-    .from('publishes')
-    .select('id, platform_connection_id')
-    .in('episode_id', episodeIds);
-
-  if (!publishes || publishes.length === 0) return [];
-
-  const publishIds = publishes.map((p) => p.id);
-
-  // Get language from platform connections
-  const connectionIds = [
-    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
-  ];
-  const languageByConnection = new Map<string, string>();
-
-  if (connectionIds.length > 0) {
-    const { data: connections } = await client
-      .from('platform_connections')
-      .select('id, language')
-      .in('id', connectionIds as string[]);
-
-    for (const conn of connections || []) {
-      const c = conn as unknown as { id: string; language?: string };
-      languageByConnection.set(c.id, c.language || 'en');
-    }
-  }
-
-  // Create publish -> language map
-  const publishLanguageMap = new Map<string, string>();
-  for (const pub of publishes) {
-    const connId = pub.platform_connection_id;
-    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
-    publishLanguageMap.set(pub.id, language);
-  }
-
-  // Get analytics with raw_data that contains geography
-  const { data: analytics } = await client
-    .from('content_analytics')
-    .select('publish_id, views, raw_data')
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
-
-  // Aggregate geography by language
-  const geographyByLang = new Map<string, Map<string, number>>();
-  const totalViewsByLang = new Map<string, number>();
-
-  // Process latest analytics per publish
-  const processedPublishes = new Set<string>();
-  for (const a of analytics || []) {
-    if (processedPublishes.has(a.publish_id)) continue;
-    processedPublishes.add(a.publish_id);
-
-    const language = publishLanguageMap.get(a.publish_id) || 'en';
-
-    // Extract geography from raw_data if available
-    const rawData = a.raw_data as { geography?: Record<string, number> } | null;
-    const geography = rawData?.geography || {};
-
-    if (!geographyByLang.has(language)) {
-      geographyByLang.set(language, new Map());
-    }
-
-    const langGeo = geographyByLang.get(language)!;
-
-    // If no geography data, use views as "Unknown"
-    if (Object.keys(geography).length === 0) {
-      langGeo.set('Unknown', (langGeo.get('Unknown') || 0) + (a.views || 0));
-    } else {
-      for (const [country, views] of Object.entries(geography)) {
-        langGeo.set(country, (langGeo.get(country) || 0) + views);
-      }
-    }
-
-    totalViewsByLang.set(
+  for (const [publishId, stats] of perVideoTotals) {
+    const language = publishLanguageMap.get(publishId) || 'en';
+    viewsByLanguage.set(
       language,
-      (totalViewsByLang.get(language) || 0) + (a.views || 0),
+      (viewsByLanguage.get(language) || 0) + stats.views,
     );
   }
 
-  // Build results
+  // Build results - for now, all views go under "Unknown" country
+  // until extra_metrics ingestion includes geography
   const results: GeographyByLanguage[] = [];
-  for (const [language, countryMap] of geographyByLang) {
-    const totalViews = totalViewsByLang.get(language) || 0;
-    const countries = Array.from(countryMap.entries())
-      .map(([country, views]) => ({
-        country,
-        views,
-        percentage: totalViews > 0 ? (views / totalViews) * 100 : 0,
-      }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 10);
-
-    results.push({ language, countries });
+  for (const [language, views] of viewsByLanguage) {
+    results.push({
+      language,
+      countries: [
+        {
+          country: 'Unknown',
+          views,
+          percentage: 100,
+        },
+      ],
+    });
   }
 
-  // Sort by total views
   return results.sort((a, b) => {
     const aTotal = a.countries.reduce((sum, c) => sum + c.views, 0);
     const bTotal = b.countries.reduce((sum, c) => sum + c.views, 0);
@@ -953,98 +711,45 @@ export interface LanguageTrendEntry {
 }
 
 /**
- * Get daily views by language for trend visualization
+ * Get daily views by language for trend visualization.
+ * Uses ClickHouse queryDailyStats for per-video daily data.
  */
 export async function getLanguageTrend(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<LanguageTrendEntry[]> {
-  const client = getSupabaseServerClient();
-
   const endDate = options?.endDate || new Date();
   const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
-  // Get project structure
-  const { data: seasons } = await client
-    .from('seasons')
-    .select('id')
-    .eq('project_id', projectId)
-    .is('deleted_at', null);
+  const resolved = await resolveProjectPublishes(projectId);
+  if (!resolved) return [];
 
-  if (!seasons || seasons.length === 0) return [];
+  const { publishIds, publishLanguageMap } = resolved;
 
-  const seasonIds = seasons.map((s) => s.id);
+  const startDateStr = startDate.toISOString().split('T')[0]!;
+  const endDateStr = endDate.toISOString().split('T')[0]!;
 
-  const { data: episodes } = await client
-    .from('episodes')
-    .select('id')
-    .in('season_id', seasonIds)
-    .is('deleted_at', null);
-
-  if (!episodes || episodes.length === 0) return [];
-
-  const episodeIds = episodes.map((e) => e.id);
-
-  // Get publishes with language info
-  const { data: publishes } = await client
-    .from('publishes')
-    .select('id, platform_connection_id')
-    .in('episode_id', episodeIds);
-
-  if (!publishes || publishes.length === 0) return [];
-
-  const publishIds = publishes.map((p) => p.id);
-
-  // Get language from platform connections
-  const connectionIds = [
-    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
-  ];
-  const languageByConnection = new Map<string, string>();
-
-  if (connectionIds.length > 0) {
-    const { data: connections } = await client
-      .from('platform_connections')
-      .select('id, language')
-      .in('id', connectionIds as string[]);
-
-    for (const conn of connections || []) {
-      const c = conn as unknown as { id: string; language?: string };
-      languageByConnection.set(c.id, c.language || 'en');
-    }
-  }
-
-  // Create publish -> language map
-  const publishLanguageMap = new Map<string, string>();
-  for (const pub of publishes) {
-    const connId = pub.platform_connection_id;
-    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
-    publishLanguageMap.set(pub.id, language);
-  }
-
-  // Get analytics grouped by date
-  const { data: analytics } = await client
-    .from('content_analytics')
-    .select('publish_id, snapshot_date, views')
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: true });
+  // Get daily stats from ClickHouse
+  const dailyStats = await queryDailyStats({
+    videoIds: publishIds,
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
 
   // Aggregate by date and language
   const trendByDate = new Map<string, Map<string, number>>();
 
-  for (const a of analytics || []) {
-    const date = a.snapshot_date;
-    const language = publishLanguageMap.get(a.publish_id) || 'en';
+  for (const stat of dailyStats) {
+    const date = stat.metric_date;
+    const language = publishLanguageMap.get(stat.video_id) || 'en';
 
     if (!trendByDate.has(date)) {
       trendByDate.set(date, new Map());
     }
 
     const dateData = trendByDate.get(date)!;
-    dateData.set(language, (dateData.get(language) || 0) + (a.views || 0));
+    dateData.set(language, (dateData.get(language) || 0) + stat.views);
   }
 
   // Convert to array

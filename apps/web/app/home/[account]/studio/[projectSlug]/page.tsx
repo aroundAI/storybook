@@ -152,60 +152,40 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
       CACHE_TTL.counts,
     ),
     // Lightweight analytics snapshot (10 min cache)
-    // Uses aggregation instead of N+1 queries
+    // Uses ClickHouse for analytics instead of Supabase content_analytics
     cached(
       `project:${project.id}:analytics-snapshot`,
       async () => {
-        // Get latest analytics for all publishes in this project with a single query
-        const { data } = await client
-          .from('content_analytics')
+        // Get all publish IDs for this project
+        const { data: projectPublishes } = await client
+          .from('publishes')
           .select(
             `
-            views,
-            likes,
-            comments,
-            publishes!inner(
-              episodes!inner(
-                project_id
-              )
-            )
+            id,
+            episodes!inner(project_id)
           `,
           )
-          .eq('publishes.episodes.project_id', project.id)
-          .order('snapshot_date', { ascending: false })
-          .limit(100); // Get latest snapshots
+          .eq('episodes.project_id', project.id);
 
-        if (!data || data.length === 0) {
+        const videoIds = (projectPublishes ?? []).map((p) => p.id);
+
+        if (videoIds.length === 0) {
           return { totalViews: 0, totalLikes: 0, totalComments: 0 };
         }
 
-        // Aggregate totals (take max per publish since they're cumulative)
-        const publishTotals = new Map<
-          string,
-          { views: number; likes: number; comments: number }
-        >();
-        for (const row of data) {
-          // Use first occurrence (latest) for each publish
-          const key = JSON.stringify(row.publishes);
-          if (!publishTotals.has(key)) {
-            publishTotals.set(key, {
-              views: row.views || 0,
-              likes: row.likes || 0,
-              comments: row.comments || 0,
-            });
-          }
-        }
+        try {
+          const { queryTotals } = await import('@kit/clickhouse/server');
+          const totals = await queryTotals({ videoIds });
 
-        let totalViews = 0;
-        let totalLikes = 0;
-        let totalComments = 0;
-        for (const totals of publishTotals.values()) {
-          totalViews += totals.views;
-          totalLikes += totals.likes;
-          totalComments += totals.comments;
+          return {
+            totalViews: totals.views,
+            totalLikes: totals.likes,
+            totalComments: totals.comments,
+          };
+        } catch {
+          // ClickHouse unavailable — return zeros
+          return { totalViews: 0, totalLikes: 0, totalComments: 0 };
         }
-
-        return { totalViews, totalLikes, totalComments };
       },
       CACHE_TTL.analytics,
     ),
@@ -256,18 +236,18 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   // Build lightweight analytics object for UI
   const analytics = analyticsSnapshot
     ? {
-        totalViews: analyticsSnapshot.totalViews,
-        totalLikes: analyticsSnapshot.totalLikes,
-        totalComments: analyticsSnapshot.totalComments,
-        avgEngagementRate:
-          analyticsSnapshot.totalViews > 0
-            ? ((analyticsSnapshot.totalLikes +
-                analyticsSnapshot.totalComments) /
-                analyticsSnapshot.totalViews) *
-              100
-            : 0,
-        contentCount: publishedCount ?? 0,
-      }
+      totalViews: analyticsSnapshot.totalViews,
+      totalLikes: analyticsSnapshot.totalLikes,
+      totalComments: analyticsSnapshot.totalComments,
+      avgEngagementRate:
+        analyticsSnapshot.totalViews > 0
+          ? ((analyticsSnapshot.totalLikes +
+            analyticsSnapshot.totalComments) /
+            analyticsSnapshot.totalViews) *
+          100
+          : 0,
+      contentCount: publishedCount ?? 0,
+    }
     : null;
 
   // Map recent episodes to include stage info (derived from status field)

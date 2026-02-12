@@ -23,6 +23,7 @@
     "./interaction-patterns": "./src/lib/interaction-patterns.ts"
   },
   "dependencies": {
+    "@kit/clickhouse": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",
     "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",

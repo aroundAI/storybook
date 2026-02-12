@@ -42,15 +42,32 @@ export async function insertVideoMetrics(
 // ==========================================
 
 /**
+ * Validate that at least one scoping filter is provided to prevent
+ * accidental full-table scans.
+ */
+function assertScopedFilters(filters: QueryFilters): void {
+    if (!filters.projectId && (!filters.videoIds || filters.videoIds.length === 0)) {
+        throw new Error(
+            'ClickHouse query requires at least projectId or videoIds to prevent full table scans',
+        );
+    }
+}
+
+/**
  * Build a WHERE clause from query filters.
- * Returns the clause string and parameter values.
+ * Returns the clause string (including the WHERE keyword) and parameter values.
  */
 function buildWhereClause(filters: QueryFilters): {
     clause: string;
     params: Record<string, unknown>;
 } {
-    const conditions: string[] = ['project_id = {projectId: UUID}'];
-    const params: Record<string, unknown> = { projectId: filters.projectId };
+    const conditions: string[] = [];
+    const params: Record<string, unknown> = {};
+
+    if (filters.projectId) {
+        conditions.push('project_id = {projectId: UUID}');
+        params.projectId = filters.projectId;
+    }
 
     if (filters.videoIds && filters.videoIds.length > 0) {
         conditions.push('video_id IN {videoIds: Array(String)}');
@@ -75,7 +92,10 @@ function buildWhereClause(filters: QueryFilters): {
     }
 
     return {
-        clause: conditions.join(' AND '),
+        clause:
+            conditions.length > 0
+                ? `WHERE ${conditions.join(' AND ')}`
+                : '',
         params,
     };
 }
@@ -85,9 +105,10 @@ function buildWhereClause(filters: QueryFilters): {
  * Returns summed views, likes, comments, shares, etc.
  */
 export async function queryTotals(
-    filters: QueryFilters,
+    filters: QueryFilters & { projectId: string } | QueryFilters & { videoIds: string[] },
 ): Promise<AggregatedTotals> {
     const client = getClickHouseClient();
+    assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
 
     const query = `
@@ -101,7 +122,7 @@ export async function queryTotals(
       sum(revenue_cents) as revenue_cents,
       sum(subscribers_gained) as subscribers_gained
     FROM video_daily_stats
-    WHERE ${clause}
+    ${clause}
   `;
 
     const result = await client.query({
@@ -161,7 +182,7 @@ export async function queryDailyTimeSeries(
       sum(watch_time_seconds) as watch_time_seconds,
       sum(revenue_cents) as revenue_cents
     FROM video_daily_stats
-    WHERE ${clause}
+    ${clause}
     GROUP BY metric_date
     ORDER BY metric_date ASC
   `;
@@ -206,7 +227,7 @@ export async function queryPlatformBreakdown(
       sum(saves) as saves,
       sum(revenue_cents) as revenue_cents
     FROM video_daily_stats
-    WHERE ${clause}
+    ${clause}
     GROUP BY platform
     ORDER BY views DESC
   `;
@@ -252,7 +273,7 @@ export async function queryPerVideoTotals(
       sum(revenue_cents) as revenue_cents,
       sum(subscribers_gained) as subscribers_gained
     FROM video_daily_stats
-    WHERE ${clause}
+    ${clause}
     GROUP BY video_id
   `;
 
@@ -306,7 +327,7 @@ export async function queryDailyStats(
       sum(revenue_cents) as revenue_cents,
       sum(subscribers_gained) as subscribers_gained
     FROM video_daily_stats
-    WHERE ${clause}
+    ${clause}
     GROUP BY project_id, video_id, platform, metric_date
     ORDER BY metric_date DESC
   `;
@@ -363,4 +384,127 @@ export async function queryViewsForVideos(
     const rows = await result.json<{ total_views: number }>();
 
     return rows.length > 0 ? Number(rows[0]!.total_views) : 0;
+}
+
+/**
+ * Query daily time series with per-platform breakdown.
+ * Returns both aggregate daily totals and per-platform splits.
+ */
+export async function queryDailyTimeSeriesByPlatform(
+    filters: QueryFilters,
+): Promise<
+    {
+        date: string;
+        views: number;
+        likes: number;
+        comments: number;
+        shares: number;
+        byPlatform: Record<
+            string,
+            { views: number; likes: number; comments: number; shares: number }
+        >;
+    }[]
+> {
+    const client = getClickHouseClient();
+    const { clause, params } = buildWhereClause(filters);
+
+    const query = `
+    SELECT
+      toString(metric_date) as date,
+      platform,
+      sum(views) as views,
+      sum(likes) as likes,
+      sum(comments) as comments,
+      sum(shares) as shares
+    FROM video_daily_stats
+    ${clause}
+    GROUP BY metric_date, platform
+    ORDER BY metric_date ASC, platform ASC
+  `;
+
+    const result = await client.query({
+        query,
+        query_params: params,
+        format: 'JSONEachRow',
+    });
+
+    const rows = await result.json<{
+        date: string;
+        platform: string;
+        views: number;
+        likes: number;
+        comments: number;
+        shares: number;
+    }>();
+
+    // Group by date, aggregate totals and platform splits
+    const dateMap = new Map<
+        string,
+        {
+            views: number;
+            likes: number;
+            comments: number;
+            shares: number;
+            byPlatform: Record<
+                string,
+                {
+                    views: number;
+                    likes: number;
+                    comments: number;
+                    shares: number;
+                }
+            >;
+        }
+    >();
+
+    for (const row of rows) {
+        const existing = dateMap.get(row.date) || {
+            views: 0,
+            likes: 0,
+            comments: 0,
+            shares: 0,
+            byPlatform: {},
+        };
+
+        const v = Number(row.views);
+        const l = Number(row.likes);
+        const c = Number(row.comments);
+        const s = Number(row.shares);
+
+        existing.views += v;
+        existing.likes += l;
+        existing.comments += c;
+        existing.shares += s;
+        existing.byPlatform[row.platform] = {
+            views: v,
+            likes: l,
+            comments: c,
+            shares: s,
+        };
+
+        dateMap.set(row.date, existing);
+    }
+
+    return Array.from(dateMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, data]) => ({ date, ...data }));
+}
+
+/**
+ * Query per-video totals by video IDs only (no project ID required).
+ * Useful for episode-level queries where project ID isn't available.
+ */
+export async function queryTotalsByVideoIds(
+    videoIds: string[],
+    options?: { startDate?: string; endDate?: string },
+): Promise<Map<string, AggregatedTotals>> {
+    if (videoIds.length === 0) return new Map();
+
+    const filters: QueryFilters & { videoIds: string[] } = {
+        videoIds,
+        startDate: options?.startDate,
+        endDate: options?.endDate,
+    };
+
+    return queryPerVideoTotals(filters);
 }

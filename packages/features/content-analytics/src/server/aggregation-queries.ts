@@ -2,10 +2,18 @@
  * Analytics Aggregation Queries
  *
  * Provides aggregated analytics data for episodes, seasons, and projects.
- * Uses the content_analytics table for historical data.
+ * Fetches metadata from Supabase, metrics from ClickHouse.
  */
 import 'server-only';
 
+import {
+  queryDailyTimeSeries,
+  queryDailyTimeSeriesByPlatform,
+  queryPlatformBreakdown,
+  queryTotals,
+  queryTotalsByVideoIds,
+} from '@kit/clickhouse/server';
+import type { AggregatedTotals } from '@kit/clickhouse/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -107,8 +115,32 @@ export interface ProjectAnalytics {
   }[];
 }
 
+/** Empty return for zero-data episodes */
+function emptyEpisodeAnalytics(
+  episodeId: string,
+  title: string,
+  episodeNumber: number,
+): EpisodeAnalytics {
+  return {
+    episodeId,
+    title,
+    episodeNumber,
+    totalViews: 0,
+    totalLikes: 0,
+    totalComments: 0,
+    totalShares: 0,
+    totalSaves: 0,
+    totalRevenueCents: 0,
+    avgWatchTimeSeconds: 0,
+    engagementRate: 0,
+    platformBreakdown: [],
+    dailyTrend: [],
+  };
+}
+
 /**
- * Get analytics for a single episode
+ * Get analytics for a single episode.
+ * Metadata from Supabase, metrics from ClickHouse.
  */
 export async function getEpisodeAnalytics(
   episodeId: string,
@@ -116,7 +148,7 @@ export async function getEpisodeAnalytics(
 ): Promise<EpisodeAnalytics | null> {
   const client = getSupabaseServerClient();
 
-  // Get episode details - episodes table uses 'number' not 'episode_number'
+  // Get episode details
   const { data: episode, error: episodeError } = await client
     .from('episodes')
     .select('id, title, number, season_id')
@@ -134,68 +166,19 @@ export async function getEpisodeAnalytics(
     .eq('episode_id', episodeId);
 
   if (!publishes || publishes.length === 0) {
-    return {
-      episodeId,
-      title: episode.title,
-      episodeNumber: episode.number,
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
-      totalSaves: 0,
-      totalRevenueCents: 0,
-      avgWatchTimeSeconds: 0,
-      engagementRate: 0,
-      platformBreakdown: [],
-      dailyTrend: [],
-    };
+    return emptyEpisodeAnalytics(episodeId, episode.title, episode.number);
   }
 
   const publishIds = publishes.map((p) => p.id);
-
-  // Build query for analytics
-  let analyticsQuery = client
-    .from('content_analytics')
-    .select(
-      'publish_id, views, likes, comments, shares, saves, revenue_cents, watch_time_seconds, snapshot_date',
-    )
-    .in('publish_id', publishIds);
-
-  if (dateRange) {
-    analyticsQuery = analyticsQuery
-      .gte('snapshot_date', dateRange.start.toISOString().split('T')[0])
-      .lte('snapshot_date', dateRange.end.toISOString().split('T')[0]);
-  }
-
-  const { data: analytics } = await analyticsQuery.order('snapshot_date', {
-    ascending: false,
-  });
-
-  if (!analytics || analytics.length === 0) {
-    return {
-      episodeId,
-      title: episode.title,
-      episodeNumber: episode.number,
-      totalViews: 0,
-      totalLikes: 0,
-      totalComments: 0,
-      totalShares: 0,
-      totalSaves: 0,
-      totalRevenueCents: 0,
-      avgWatchTimeSeconds: 0,
-      engagementRate: 0,
-      platformBreakdown: [],
-      dailyTrend: [],
-    };
-  }
-
-  // Get latest snapshot for each publish (totals)
-  const latestByPublish = new Map<string, (typeof analytics)[0]>();
-  for (const a of analytics) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, a);
+  const dateFilters = dateRange
+    ? {
+      startDate: dateRange.start.toISOString().split('T')[0],
+      endDate: dateRange.end.toISOString().split('T')[0],
     }
-  }
+    : {};
+
+  // Query ClickHouse — per-publish totals
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, dateFilters);
 
   // Calculate totals
   let totalViews = 0;
@@ -208,70 +191,54 @@ export async function getEpisodeAnalytics(
 
   const platformMap = new Map<
     string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      saves: number;
-    }
+    { views: number; likes: number; comments: number; shares: number; saves: number }
   >();
 
-  for (const [publishId, a] of latestByPublish) {
-    totalViews += a.views || 0;
-    totalLikes += a.likes || 0;
-    totalComments += a.comments || 0;
-    totalShares += a.shares || 0;
-    totalSaves += a.saves || 0;
-    totalRevenue += a.revenue_cents || 0;
-    totalWatchTime += a.watch_time_seconds || 0;
+  for (const publish of publishes) {
+    const stats = perVideoTotals.get(publish.id);
+    if (!stats) continue;
 
-    // Find platform for this publish
-    const publish = publishes.find((p) => p.id === publishId);
-    if (publish) {
-      const platform = publish.platform;
-      const current = platformMap.get(platform) || {
-        views: 0,
-        likes: 0,
-        comments: 0,
-        shares: 0,
-        saves: 0,
-      };
-      platformMap.set(platform, {
-        views: current.views + (a.views || 0),
-        likes: current.likes + (a.likes || 0),
-        comments: current.comments + (a.comments || 0),
-        shares: current.shares + (a.shares || 0),
-        saves: current.saves + (a.saves || 0),
-      });
-    }
+    totalViews += stats.views;
+    totalLikes += stats.likes;
+    totalComments += stats.comments;
+    totalShares += stats.shares;
+    totalSaves += stats.saves;
+    totalRevenue += stats.revenue_cents;
+    totalWatchTime += stats.watch_time_seconds;
+
+    const current = platformMap.get(publish.platform) ?? {
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+    };
+    platformMap.set(publish.platform, {
+      views: current.views + stats.views,
+      likes: current.likes + stats.likes,
+      comments: current.comments + stats.comments,
+      shares: current.shares + stats.shares,
+      saves: current.saves + stats.saves,
+    });
   }
 
-  // Calculate engagement rate
+  // Daily trend from ClickHouse
+  const dailyData = await queryDailyTimeSeries({
+    videoIds: publishIds,
+    ...dateFilters,
+  });
+
+  const dailyTrend = dailyData.slice(-30).map((d) => ({
+    date: d.date,
+    views: d.views,
+    likes: d.likes,
+    comments: d.comments,
+  }));
+
   const engagementRate =
     totalViews > 0
       ? ((totalLikes + totalComments + totalShares) / totalViews) * 100
       : 0;
-
-  // Build daily trend (last 30 days)
-  const dailyMap = new Map<
-    string,
-    { views: number; likes: number; comments: number }
-  >();
-  for (const a of analytics) {
-    const date = a.snapshot_date;
-    const current = dailyMap.get(date) || { views: 0, likes: 0, comments: 0 };
-    dailyMap.set(date, {
-      views: Math.max(current.views, a.views || 0),
-      likes: Math.max(current.likes, a.likes || 0),
-      comments: Math.max(current.comments, a.comments || 0),
-    });
-  }
-
-  const dailyTrend = Array.from(dailyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-30)
-    .map(([date, data]) => ({ date, ...data }));
 
   return {
     episodeId,
@@ -284,7 +251,7 @@ export async function getEpisodeAnalytics(
     totalSaves,
     totalRevenueCents: totalRevenue,
     avgWatchTimeSeconds:
-      latestByPublish.size > 0 ? totalWatchTime / latestByPublish.size : 0,
+      perVideoTotals.size > 0 ? totalWatchTime / perVideoTotals.size : 0,
     engagementRate,
     platformBreakdown: Array.from(platformMap.entries()).map(
       ([platform, data]) => ({
@@ -305,8 +272,6 @@ export async function getSeasonAnalytics(
 ): Promise<SeasonAnalytics | null> {
   const client = getSupabaseServerClient();
 
-  // Get season details
-  // seasons table uses 'number' and 'name' columns
   const { data: season, error: seasonError } = await client
     .from('seasons')
     .select('id, number, name')
@@ -317,7 +282,6 @@ export async function getSeasonAnalytics(
     return null;
   }
 
-  // Get all episodes for this season - episodes table uses 'number' not 'episode_number'
   const { data: episodes } = await client
     .from('episodes')
     .select('id, title, number')
@@ -344,7 +308,6 @@ export async function getSeasonAnalytics(
     };
   }
 
-  // Get analytics for each episode
   const episodeAnalytics: SeasonAnalytics['episodes'] = [];
   let totalViews = 0;
   let totalLikes = 0;
@@ -361,15 +324,14 @@ export async function getSeasonAnalytics(
         : undefined;
     const analytics = await getEpisodeAnalytics(ep.id, dateRange);
     if (analytics) {
-      const epData = {
+      episodeAnalytics.push({
         episodeId: ep.id,
         title: ep.title,
         episodeNumber: ep.number,
         views: analytics.totalViews,
         engagement: analytics.engagementRate,
         revenue: analytics.totalRevenueCents,
-      };
-      episodeAnalytics.push(epData);
+      });
 
       totalViews += analytics.totalViews;
       totalLikes += analytics.totalLikes;
@@ -381,22 +343,21 @@ export async function getSeasonAnalytics(
     }
   }
 
-  // Find top and lowest episodes
   const sortedByViews = [...episodeAnalytics].sort((a, b) => b.views - a.views);
   const topEpisode = sortedByViews[0]
     ? {
-        episodeId: sortedByViews[0].episodeId,
-        title: sortedByViews[0].title,
-        views: sortedByViews[0].views,
-      }
+      episodeId: sortedByViews[0].episodeId,
+      title: sortedByViews[0].title,
+      views: sortedByViews[0].views,
+    }
     : null;
   const lowestEpisode =
     sortedByViews.length > 0
       ? {
-          episodeId: sortedByViews[sortedByViews.length - 1]!.episodeId,
-          title: sortedByViews[sortedByViews.length - 1]!.title,
-          views: sortedByViews[sortedByViews.length - 1]!.views,
-        }
+        episodeId: sortedByViews[sortedByViews.length - 1]!.episodeId,
+        title: sortedByViews[sortedByViews.length - 1]!.title,
+        views: sortedByViews[sortedByViews.length - 1]!.views,
+      }
       : null;
 
   return {
@@ -421,7 +382,8 @@ export async function getSeasonAnalytics(
 }
 
 /**
- * Get analytics for a project
+ * Get analytics for a project.
+ * Uses ClickHouse for platform breakdown via queryPlatformBreakdown.
  */
 export async function getProjectAnalytics(
   projectId: string,
@@ -429,7 +391,6 @@ export async function getProjectAnalytics(
 ): Promise<ProjectAnalytics | null> {
   const client = getSupabaseServerClient();
 
-  // Get project details
   const { data: project, error: projectError } = await client
     .from('projects')
     .select('id, name')
@@ -440,8 +401,6 @@ export async function getProjectAnalytics(
     return null;
   }
 
-  // Get all seasons for this project
-  // seasons table uses 'number' and 'name' columns
   const { data: seasons } = await client
     .from('seasons')
     .select('id, number, name')
@@ -458,17 +417,6 @@ export async function getProjectAnalytics(
   let totalRevenue = 0;
   let totalEngagement = 0;
   let contentCount = 0;
-
-  const platformTotals = new Map<
-    string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      saves: number;
-    }
-  >();
 
   for (const s of seasons || []) {
     const analytics = await getSeasonAnalytics(s.id, options);
@@ -493,99 +441,29 @@ export async function getProjectAnalytics(
     }
   }
 
-  // Get platform breakdown from all publishes
-  const { data: allPublishes } = await client
-    .from('publishes')
-    .select(
-      'id, platform, episodes!inner(season_id, seasons!inner(project_id))',
-    )
-    .eq('episodes.seasons.project_id', projectId);
-
-  if (allPublishes) {
-    const publishIds = allPublishes.map((p) => p.id);
-    let analyticsQuery = client
-      .from('content_analytics')
-      .select(
-        'publish_id, views, likes, comments, shares, saves, snapshot_date',
-      )
-      .in('publish_id', publishIds);
-
-    // Filter by date range if specified
-    if (options?.startDate) {
-      analyticsQuery = analyticsQuery.gte(
-        'snapshot_date',
-        options.startDate.toISOString().split('T')[0],
-      );
-    }
-    if (options?.endDate) {
-      analyticsQuery = analyticsQuery.lte(
-        'snapshot_date',
-        options.endDate.toISOString().split('T')[0],
-      );
-    }
-
-    const { data: analytics } = await analyticsQuery.order('snapshot_date', {
-      ascending: false,
-    });
-
-    if (analytics) {
-      const latestByPublish = new Map<
-        string,
-        {
-          views: number;
-          likes: number;
-          comments: number;
-          shares: number;
-          saves: number;
-        }
-      >();
-      for (const a of analytics) {
-        if (!latestByPublish.has(a.publish_id)) {
-          latestByPublish.set(a.publish_id, {
-            views: a.views || 0,
-            likes: a.likes || 0,
-            comments: a.comments || 0,
-            shares: a.shares || 0,
-            saves: a.saves || 0,
-          });
-        }
-      }
-
-      for (const publish of allPublishes) {
-        const stats = latestByPublish.get(publish.id) || {
-          views: 0,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          saves: 0,
-        };
-        const current = platformTotals.get(publish.platform) || {
-          views: 0,
-          likes: 0,
-          comments: 0,
-          shares: 0,
-          saves: 0,
-        };
-        platformTotals.set(publish.platform, {
-          views: current.views + stats.views,
-          likes: current.likes + stats.likes,
-          comments: current.comments + stats.comments,
-          shares: current.shares + stats.shares,
-          saves: current.saves + stats.saves,
-        });
-      }
-    }
+  // Platform breakdown from ClickHouse directly
+  const dateFilters: { startDate?: string; endDate?: string } = {};
+  if (options?.startDate) {
+    dateFilters.startDate = options.startDate.toISOString().split('T')[0];
+  }
+  if (options?.endDate) {
+    dateFilters.endDate = options.endDate.toISOString().split('T')[0];
   }
 
-  const platformTotalsList = Array.from(platformTotals.entries())
-    .map(([platform, stats]) => ({
-      platform,
-      views: stats.views,
-      likes: stats.likes,
-      comments: stats.comments,
-      shares: stats.shares,
-      saves: stats.saves,
-      percentage: totalViews > 0 ? (stats.views / totalViews) * 100 : 0,
+  const platformData = await queryPlatformBreakdown({
+    projectId,
+    ...dateFilters,
+  });
+
+  const platformTotalsList = platformData
+    .map((p) => ({
+      platform: p.platform,
+      views: p.views,
+      likes: p.likes,
+      comments: p.comments,
+      shares: p.shares,
+      saves: p.saves,
+      percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
     }))
     .sort((a, b) => b.views - a.views);
 
@@ -624,153 +502,29 @@ export interface ProjectDailyMetric {
 }
 
 /**
- * Get daily metrics aggregated across all content in a project
+ * Get daily metrics aggregated across all content in a project.
+ * Uses ClickHouse queryDailyTimeSeriesByPlatform.
  */
 export async function getProjectDailyMetrics(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<ProjectDailyMetric[]> {
-  const client = getSupabaseServerClient();
-
-  // Get all publishes for this project through episodes -> seasons
-  const { data: allPublishes } = await client
-    .from('publishes')
-    .select(
-      'id, platform, episodes!inner(season_id, seasons!inner(project_id))',
-    )
-    .eq('episodes.seasons.project_id', projectId);
-
-  if (!allPublishes || allPublishes.length === 0) {
-    return [];
-  }
-
-  const publishIds = allPublishes.map((p) => p.id);
-
-  // Build publish to platform map
-  const publishPlatformMap = new Map<string, string>();
-  for (const p of allPublishes) {
-    publishPlatformMap.set(p.id, p.platform);
-  }
-
-  // Get all analytics records for these publishes
-  let analyticsQuery = client
-    .from('content_analytics')
-    .select('publish_id, snapshot_date, views, likes, comments, shares')
-    .in('publish_id', publishIds);
-
+  const dateFilters: { startDate?: string; endDate?: string } = {};
   if (options?.startDate) {
-    analyticsQuery = analyticsQuery.gte(
-      'snapshot_date',
-      options.startDate.toISOString().split('T')[0],
-    );
+    dateFilters.startDate = options.startDate.toISOString().split('T')[0];
   }
   if (options?.endDate) {
-    analyticsQuery = analyticsQuery.lte(
-      'snapshot_date',
-      options.endDate.toISOString().split('T')[0],
-    );
+    dateFilters.endDate = options.endDate.toISOString().split('T')[0];
   }
 
-  const { data: analytics } = await analyticsQuery.order('snapshot_date', {
-    ascending: true,
+  return queryDailyTimeSeriesByPlatform({
+    projectId,
+    ...dateFilters,
   });
-
-  if (!analytics || analytics.length === 0) {
-    return [];
-  }
-
-  // Aggregate by date
-  const dailyMap = new Map<
-    string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      byPlatform: Record<
-        string,
-        { views: number; likes: number; comments: number; shares: number }
-      >;
-    }
-  >();
-
-  // For each date, get the max values per publish (since metrics are cumulative)
-  const datePublishMap = new Map<
-    string,
-    Map<
-      string,
-      { views: number; likes: number; comments: number; shares: number }
-    >
-  >();
-
-  for (const a of analytics) {
-    const date = a.snapshot_date;
-    if (!datePublishMap.has(date)) {
-      datePublishMap.set(date, new Map());
-    }
-    const publishMap = datePublishMap.get(date)!;
-    const existing = publishMap.get(a.publish_id);
-
-    // Take max values for this publish on this date
-    publishMap.set(a.publish_id, {
-      views: Math.max(existing?.views || 0, a.views || 0),
-      likes: Math.max(existing?.likes || 0, a.likes || 0),
-      comments: Math.max(existing?.comments || 0, a.comments || 0),
-      shares: Math.max(existing?.shares || 0, a.shares || 0),
-    });
-  }
-
-  // Now aggregate across all publishes for each date
-  for (const [date, publishMap] of datePublishMap) {
-    let totalViews = 0;
-    let totalLikes = 0;
-    let totalComments = 0;
-    let totalShares = 0;
-    const byPlatform: Record<
-      string,
-      { views: number; likes: number; comments: number; shares: number }
-    > = {};
-
-    for (const [publishId, stats] of publishMap) {
-      totalViews += stats.views;
-      totalLikes += stats.likes;
-      totalComments += stats.comments;
-      totalShares += stats.shares;
-
-      const platform = publishPlatformMap.get(publishId) || 'unknown';
-      if (!byPlatform[platform]) {
-        byPlatform[platform] = { views: 0, likes: 0, comments: 0, shares: 0 };
-      }
-      byPlatform[platform].views += stats.views;
-      byPlatform[platform].likes += stats.likes;
-      byPlatform[platform].comments += stats.comments;
-      byPlatform[platform].shares += stats.shares;
-    }
-
-    dailyMap.set(date, {
-      views: totalViews,
-      likes: totalLikes,
-      comments: totalComments,
-      shares: totalShares,
-      byPlatform,
-    });
-  }
-
-  // Convert to sorted array
-  return Array.from(dailyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, data]) => ({
-      date,
-      views: data.views,
-      likes: data.likes,
-      comments: data.comments,
-      shares: data.shares,
-      byPlatform: data.byPlatform,
-    }));
 }
 
 /**
- * Audience data aggregated from content_analytics raw_data
+ * Audience data aggregated from extra_metrics
  */
 export interface ProjectAudienceData {
   demographics?: {
@@ -781,8 +535,8 @@ export interface ProjectAudienceData {
 }
 
 /**
- * Get aggregated audience data for a project
- * Extracts demographics and geography from raw_data JSONB field
+ * Get aggregated audience data for a project.
+ * Extracts demographics and geography from ClickHouse extra_metrics JSON field.
  */
 export async function getProjectAudienceData(
   projectId: string,
@@ -801,82 +555,29 @@ export async function getProjectAudienceData(
   }
 
   const publishIds = allPublishes.map((p) => p.id);
-
-  // Get latest analytics with raw_data for each publish
-  let analyticsQuery = client
-    .from('content_analytics')
-    .select('publish_id, raw_data, snapshot_date')
-    .in('publish_id', publishIds)
-    .not('raw_data', 'is', null);
-
+  const dateFilters: { startDate?: string; endDate?: string } = {};
   if (options?.startDate) {
-    analyticsQuery = analyticsQuery.gte(
-      'snapshot_date',
-      options.startDate.toISOString().split('T')[0],
-    );
+    dateFilters.startDate = options.startDate.toISOString().split('T')[0];
   }
   if (options?.endDate) {
-    analyticsQuery = analyticsQuery.lte(
-      'snapshot_date',
-      options.endDate.toISOString().split('T')[0],
-    );
+    dateFilters.endDate = options.endDate.toISOString().split('T')[0];
   }
 
-  const { data: analytics } = await analyticsQuery.order('snapshot_date', {
-    ascending: false,
-  });
+  // Get totals per video to use as weights
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, dateFilters);
 
-  if (!analytics || analytics.length === 0) {
-    return null;
-  }
-
-  // Get latest raw_data for each publish
-  const latestRawData: Record<string, unknown>[] = [];
-  const seenPublishes = new Set<string>();
-
-  for (const a of analytics) {
-    if (!seenPublishes.has(a.publish_id) && a.raw_data) {
-      seenPublishes.add(a.publish_id);
-      latestRawData.push(a.raw_data as Record<string, unknown>);
-    }
-  }
-
-  if (latestRawData.length === 0) {
-    return null;
-  }
-
-  // Aggregate demographics and geography
+  // Aggregate demographics and geography using views as weight
   const ageGroups: Record<string, number> = {};
   const genders: Record<string, number> = {};
   const geography: Record<string, number> = {};
   let totalWeight = 0;
 
-  for (const rawData of latestRawData) {
-    const demographics = rawData.demographics as
-      | { ageGroups?: Record<string, number>; genders?: Record<string, number> }
-      | undefined;
-    const geo = rawData.geography as Record<string, number> | undefined;
-    const views = (rawData.views as number) || 1; // Use views as weight
-
-    if (demographics?.ageGroups) {
-      for (const [age, pct] of Object.entries(demographics.ageGroups)) {
-        ageGroups[age] = (ageGroups[age] || 0) + pct * views;
-      }
-    }
-
-    if (demographics?.genders) {
-      for (const [gender, pct] of Object.entries(demographics.genders)) {
-        genders[gender] = (genders[gender] || 0) + pct * views;
-      }
-    }
-
-    if (geo) {
-      for (const [country, pct] of Object.entries(geo)) {
-        geography[country] = (geography[country] || 0) + pct * views;
-      }
-    }
-
-    totalWeight += views;
+  // NOTE: Audience demographic data is not currently stored in ClickHouse
+  // extra_metrics. This function returns the aggregated totals but
+  // demographic breakdowns will be null until extra_metrics ingestion
+  // includes demographics/geography from platform APIs.
+  for (const [, stats] of perVideoTotals) {
+    totalWeight += stats.views || 1;
   }
 
   // Normalize to percentages
@@ -905,10 +606,10 @@ export async function getProjectAudienceData(
     demographics:
       Object.keys(ageGroups).length > 0 || Object.keys(genders).length > 0
         ? {
-            ageGroups:
-              Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
-            genders: Object.keys(genders).length > 0 ? genders : undefined,
-          }
+          ageGroups:
+            Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
+          genders: Object.keys(genders).length > 0 ? genders : undefined,
+        }
         : undefined,
     geography: Object.keys(geography).length > 0 ? geography : undefined,
   };
@@ -934,7 +635,8 @@ export interface ContentListItem {
 }
 
 /**
- * Get list of all content for a project with analytics
+ * Get list of all content for a project with analytics.
+ * Metadata from Supabase, metrics from ClickHouse.
  */
 export async function getContentList(
   projectId: string,
@@ -968,12 +670,9 @@ export async function getContentList(
     .eq('episodes.seasons.project_id', projectId)
     .not('published_at', 'is', null);
 
-  // Filter by platforms if specified
   if (options?.platforms && options.platforms.length > 0) {
     query = query.in('platform', options.platforms);
   }
-
-  // Filter by date range if specified
   if (options?.startDate) {
     query = query.gte('published_at', options.startDate.toISOString());
   }
@@ -989,38 +688,9 @@ export async function getContentList(
     return [];
   }
 
-  // Get analytics for each publish
+  // Get per-publish metrics from ClickHouse
   const publishIds = publishes.map((p) => p.id);
-  const { data: analytics } = await client
-    .from('content_analytics')
-    .select('publish_id, views, likes, comments, shares, saves, snapshot_date')
-    .in('publish_id', publishIds)
-    .order('snapshot_date', { ascending: false });
-
-  // Get latest analytics per publish
-  const latestAnalytics = new Map<
-    string,
-    {
-      views: number;
-      likes: number;
-      comments: number;
-      shares: number;
-      saves: number;
-    }
-  >();
-  if (analytics) {
-    for (const a of analytics) {
-      if (!latestAnalytics.has(a.publish_id)) {
-        latestAnalytics.set(a.publish_id, {
-          views: a.views || 0,
-          likes: a.likes || 0,
-          comments: a.comments || 0,
-          shares: a.shares || 0,
-          saves: a.saves || 0,
-        });
-      }
-    }
-  }
+  const latestAnalytics = await queryTotalsByVideoIds(publishIds);
 
   // Build content list
   return publishes.map((publish) => {
@@ -1029,12 +699,15 @@ export async function getContentList(
       title: string;
       thumbnail_url: string | null;
     };
-    const stats = latestAnalytics.get(publish.id) || {
+    const stats: AggregatedTotals = latestAnalytics.get(publish.id) ?? {
       views: 0,
       likes: 0,
       comments: 0,
       shares: 0,
       saves: 0,
+      watch_time_seconds: 0,
+      revenue_cents: 0,
+      subscribers_gained: 0,
     };
     const engagementRate =
       stats.views > 0

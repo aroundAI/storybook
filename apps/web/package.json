@@ -53,6 +53,7 @@
     "@kit/billing-gateway": "workspace:*",
     "@kit/branding": "workspace:*",
     "@kit/cache": "workspace:*",
+    "@kit/clickhouse": "workspace:*",
     "@kit/cms": "workspace:*",
     "@kit/content-analytics": "workspace:*",
     "@kit/database-webhooks": "workspace:*",

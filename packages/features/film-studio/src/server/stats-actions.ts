@@ -2,6 +2,7 @@
 
 import 'server-only';
 
+import { queryTotals } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -17,17 +18,9 @@ export interface QuickStats {
   publishedCount: number;
 }
 
-interface AnalyticsRow {
-  views: number;
-  likes: number;
-  comments: number;
-  shares: number;
-  subscribers_gained: number;
-  publishes: unknown;
-}
-
 /**
- * Get quick stats (7-day summary) for an account
+ * Get quick stats (7-day summary) for an account.
+ * Analytics come from ClickHouse; publish metadata from Supabase.
  */
 export const getQuickStatsAction = enhanceAction(
   async (data) => {
@@ -40,61 +33,57 @@ export const getQuickStatsAction = enhanceAction(
         now.getTime() - 14 * 24 * 60 * 60 * 1000,
       );
 
-      // Get current period analytics (last 7 days) - filtered by account at SQL level
-      const { data: currentAnalytics, error: currentError } = await client
-        .from('content_analytics')
+      // 1. Get all publish IDs for this account (via Supabase join)
+      const { data: accountPublishes, error: pubError } = await client
+        .from('publishes')
         .select(
           `
-          views,
-          likes,
-          comments,
-          shares,
-          subscribers_gained,
-          publishes!inner(
-            episodes!inner(
-              projects!inner(account_id)
-            )
+          id,
+          episodes!inner(
+            projects!inner(account_id)
           )
         `,
         )
-        .eq('publishes.episodes.projects.account_id', data.accountId)
-        .gte('snapshot_date', sevenDaysAgo.toISOString().split('T')[0])
-        .lte('snapshot_date', now.toISOString().split('T')[0]);
+        .eq('episodes.projects.account_id', data.accountId);
 
-      if (currentError) {
+      if (pubError) {
         throw new Error(
-          `Failed to fetch current analytics: ${currentError.message}`,
+          `Failed to fetch publishes: ${pubError.message}`,
         );
       }
 
-      // Get previous period analytics (7-14 days ago) - filtered by account at SQL level
-      const { data: previousAnalytics, error: previousError } = await client
-        .from('content_analytics')
-        .select(
-          `
-          views,
-          likes,
-          comments,
-          shares,
-          subscribers_gained,
-          publishes!inner(
-            episodes!inner(
-              projects!inner(account_id)
-            )
-          )
-        `,
-        )
-        .eq('publishes.episodes.projects.account_id', data.accountId)
-        .gte('snapshot_date', fourteenDaysAgo.toISOString().split('T')[0])
-        .lt('snapshot_date', sevenDaysAgo.toISOString().split('T')[0]);
+      const videoIds = (accountPublishes ?? []).map((p) => p.id);
 
-      if (previousError) {
-        throw new Error(
-          `Failed to fetch previous analytics: ${previousError.message}`,
-        );
+      if (videoIds.length === 0) {
+        return {
+          views: 0,
+          viewsChange: 0,
+          followers: 0,
+          followersChange: 0,
+          engagementRate: 0,
+          engagementChange: 0,
+          publishedCount: 0,
+        };
       }
 
-      // Get published content count for last 7 days - filtered by account at SQL level
+      // 2. Query ClickHouse for current (7 days) and previous (7-14 days) periods
+
+      const formatDate = (d: Date) => d.toISOString().split('T')[0]!;
+
+      const [currentTotals, previousTotals] = await Promise.all([
+        queryTotals({
+          videoIds,
+          startDate: formatDate(sevenDaysAgo),
+          endDate: formatDate(now),
+        }),
+        queryTotals({
+          videoIds,
+          startDate: formatDate(fourteenDaysAgo),
+          endDate: formatDate(sevenDaysAgo),
+        }),
+      ]);
+
+      // 3. Get published content count for last 7 days
       const { data: publishedContent, error: publishedError } = await client
         .from('publishes')
         .select(
@@ -115,32 +104,23 @@ export const getQuickStatsAction = enhanceAction(
         );
       }
 
-      // Aggregate stats directly - SQL already filtered by account
-      const currentStats = aggregateStats(
-        currentAnalytics as AnalyticsRow[] | null,
-      );
-      const previousStats = aggregateStats(
-        previousAnalytics as AnalyticsRow[] | null,
-      );
-
-      // Calculate changes
+      // 4. Calculate changes
       const viewsChange = calculateChange(
-        currentStats.views,
-        previousStats.views,
+        currentTotals.views,
+        previousTotals.views,
       );
       const followersChange = calculateChange(
-        currentStats.subscribers,
-        previousStats.subscribers,
+        currentTotals.subscribers_gained,
+        previousTotals.subscribers_gained,
       );
 
-      // Calculate engagement rates
       const currentEngagement = calculateEngagementRate(
-        currentStats.likes + currentStats.comments + currentStats.shares,
-        currentStats.views,
+        currentTotals.likes + currentTotals.comments + currentTotals.shares,
+        currentTotals.views,
       );
       const previousEngagement = calculateEngagementRate(
-        previousStats.likes + previousStats.comments + previousStats.shares,
-        previousStats.views,
+        previousTotals.likes + previousTotals.comments + previousTotals.shares,
+        previousTotals.views,
       );
       const engagementChange = calculateChange(
         currentEngagement,
@@ -148,9 +128,9 @@ export const getQuickStatsAction = enhanceAction(
       );
 
       return {
-        views: currentStats.views,
+        views: currentTotals.views,
         viewsChange,
-        followers: currentStats.subscribers,
+        followers: currentTotals.subscribers_gained,
         followersChange,
         engagementRate: currentEngagement,
         engagementChange,
@@ -165,24 +145,6 @@ export const getQuickStatsAction = enhanceAction(
     schema: GetQuickStatsSchema,
   },
 );
-
-// Note: filterByAccount and filterPublishesByAccount functions were removed
-// SQL filters now handle account-level filtering at database level
-
-function aggregateStats(data: AnalyticsRow[] | null) {
-  if (!data)
-    return { views: 0, likes: 0, comments: 0, shares: 0, subscribers: 0 };
-  return data.reduce(
-    (acc, row) => ({
-      views: acc.views + (row.views || 0),
-      likes: acc.likes + (row.likes || 0),
-      comments: acc.comments + (row.comments || 0),
-      shares: acc.shares + (row.shares || 0),
-      subscribers: acc.subscribers + (row.subscribers_gained || 0),
-    }),
-    { views: 0, likes: 0, comments: 0, shares: 0, subscribers: 0 },
-  );
-}
 
 function calculateChange(current: number, previous: number): number {
   if (previous === 0) {

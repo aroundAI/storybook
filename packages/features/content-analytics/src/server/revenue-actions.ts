@@ -2,6 +2,7 @@
 
 import 'server-only';
 
+import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -90,20 +91,17 @@ export const getRevenueSummaryAction = enhanceAction(
       publishIds.push(r.publish_id);
     }
 
-    // Get view data for RPM calculation
+    // Get view data for RPM calculation from ClickHouse
     let totalViews = 0;
 
     if (publishIds.length > 0) {
-      const { data: analyticsData } = await client
-        .from('content_analytics')
-        .select('views')
-        .in('publish_id', publishIds)
-        .gte('snapshot_date', startDate)
-        .lte('snapshot_date', endDate);
+      const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+        startDate,
+        endDate,
+      });
 
-      // Single-pass sum for views
-      for (const a of analyticsData ?? []) {
-        totalViews += a.views || 0;
+      for (const [, stats] of perVideoTotals) {
+        totalViews += stats.views;
       }
     }
 
@@ -337,8 +335,8 @@ export const getRevenueProjectionAction = enhanceAction(
     const trendImpact =
       firstHalfRevenue > 0
         ? Math.round(
-            ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
-          )
+          ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
+        )
         : 0;
 
     return {
@@ -502,22 +500,19 @@ export const getTopContentByRevenueAction = enhanceAction(
       }
     });
 
-    // Get views for RPM calculation
+    // Get views for RPM calculation from ClickHouse
     const publishIds = Array.from(publishMap.keys());
     const viewsMap = new Map<string, number>();
 
     if (publishIds.length > 0) {
-      const { data: analyticsData } = await client
-        .from('content_analytics')
-        .select('publish_id, views')
-        .in('publish_id', publishIds)
-        .gte('snapshot_date', startDate)
-        .lte('snapshot_date', endDate);
-
-      analyticsData?.forEach((a) => {
-        const existing = viewsMap.get(a.publish_id) ?? 0;
-        viewsMap.set(a.publish_id, existing + (a.views || 0));
+      const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+        startDate,
+        endDate,
       });
+
+      for (const [videoId, stats] of perVideoTotals) {
+        viewsMap.set(videoId, stats.views);
+      }
     }
 
     // Sort by revenue and return top items

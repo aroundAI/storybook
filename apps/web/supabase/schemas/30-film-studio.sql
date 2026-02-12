@@ -14,7 +14,7 @@
 --   FILM-101i: generation_jobs
 --   FILM-101j: platform_connections
 --   FILM-101k: publishes
---   FILM-101l: content_analytics
+--   FILM-101l: content_analytics (REMOVED — migrated to ClickHouse)
 --   FILM-101m: shared_resources
 --   FILM-101n: external_api_keys
 
@@ -533,55 +533,10 @@ create index if not exists idx_publishes_platform_content_id on public.publishes
   where platform_content_id is not null;
 
 -- ==================================
--- Section: Content Analytics Table (FILM-101l)
+-- Section: Content Analytics (FILM-101l) — REMOVED
 -- ==================================
--- Daily snapshots of content performance across platforms
-
-create table if not exists public.content_analytics (
-  id uuid primary key default extensions.uuid_generate_v4(),
-  publish_id uuid not null references public.publishes(id) on delete cascade,
-  snapshot_date date not null,
-  views bigint default 0 not null,
-  likes bigint default 0 not null,
-  comments bigint default 0 not null,
-  shares bigint default 0 not null,
-  saves bigint default 0 not null,
-  watch_time_seconds bigint default 0 not null,
-  subscribers_gained integer default 0 not null,
-  revenue_cents integer default 0 not null,
-  ad_revenue_cents integer default 0 not null,
-  red_revenue_cents integer default 0 not null,
-  subscribed_views bigint default 0 not null,
-  unsubscribed_views bigint default 0 not null,
-  device_breakdown jsonb,
-  os_breakdown jsonb,
-  city_breakdown jsonb,
-  retention_data jsonb,
-  raw_data jsonb,
-  created_at timestamp with time zone default now() not null,
-  unique(publish_id, snapshot_date)
-);
-
-comment on table public.content_analytics is 'Daily snapshots of content performance metrics';
-comment on column public.content_analytics.snapshot_date is 'Date of this snapshot';
-comment on column public.content_analytics.watch_time_seconds is 'Total watch time in seconds';
-comment on column public.content_analytics.revenue_cents is 'Revenue generated in cents';
-comment on column public.content_analytics.saves is 'Bookmarks/saves count (primarily TikTok and Instagram)';
-comment on column public.content_analytics.ad_revenue_cents is 'Ad revenue portion in cents (YouTube)';
-comment on column public.content_analytics.red_revenue_cents is 'YouTube Premium revenue portion in cents';
-comment on column public.content_analytics.subscribed_views is 'Views from subscribed users (YouTube)';
-comment on column public.content_analytics.unsubscribed_views is 'Views from non-subscribed users (YouTube)';
-comment on column public.content_analytics.device_breakdown is 'Device type breakdown: MOBILE, DESKTOP, TABLET, TV, GAME_CONSOLE';
-comment on column public.content_analytics.os_breakdown is 'Operating system breakdown: ANDROID, IOS, WINDOWS, etc.';
-comment on column public.content_analytics.city_breakdown is 'City-level geography breakdown';
-comment on column public.content_analytics.retention_data is 'Audience retention curve data';
-comment on column public.content_analytics.raw_data is 'Platform-specific raw metrics';
-
--- Indexes for content_analytics
-create index if not exists idx_content_analytics_publish_id on public.content_analytics(publish_id);
-create index if not exists idx_content_analytics_snapshot_date on public.content_analytics(snapshot_date desc);
-create index if not exists idx_content_analytics_publish_date on public.content_analytics(publish_id, snapshot_date desc);
-create index if not exists idx_content_analytics_views on public.content_analytics(views desc);
+-- Migrated to ClickHouse (video_daily_stats table).
+-- See migration 20260212080000_drop_content_analytics.sql
 
 -- ==================================
 -- Section: RLS Policies
@@ -601,7 +556,7 @@ alter table public.audio_tracks enable row level security;
 alter table public.character_details enable row level security;
 alter table public.voice_profiles enable row level security;
 alter table public.publishes enable row level security;
-alter table public.content_analytics enable row level security;
+-- content_analytics RLS removed (table dropped, migrated to ClickHouse)
 
 -- Revoke default permissions
 revoke all on public.seasons from authenticated, service_role;
@@ -617,7 +572,7 @@ revoke all on public.audio_tracks from authenticated, service_role;
 revoke all on public.character_details from authenticated, service_role;
 revoke all on public.voice_profiles from authenticated, service_role;
 revoke all on public.publishes from authenticated, service_role;
-revoke all on public.content_analytics from authenticated, service_role;
+
 
 -- Grant specific permissions
 grant select, insert, update, delete on table public.seasons to authenticated;
@@ -633,7 +588,7 @@ grant select, insert, update, delete on table public.audio_tracks to authenticat
 grant select, insert, update, delete on table public.character_details to authenticated;
 grant select, insert, update, delete on table public.voice_profiles to authenticated;
 grant select, insert, update, delete on table public.publishes to authenticated;
-grant select, insert, update, delete on table public.content_analytics to authenticated;
+
 
 -- ==================================
 -- Seasons RLS Policies
@@ -1240,56 +1195,7 @@ create policy "publishes_delete" on public.publishes for delete
     )
   );
 
--- ==================================
--- Content Analytics RLS Policies
--- ==================================
--- Access control through publish -> episode -> project membership
-
-create policy "content_analytics_read" on public.content_analytics for select
-  to authenticated using (
-    exists (
-      select 1 from public.publishes pub
-      join public.episodes e on e.id = pub.episode_id
-      join public.projects p on p.id = e.project_id
-      where pub.id = content_analytics.publish_id
-      and (
-        exists(
-          select 1 from public.accounts a
-          where a.id = p.account_id
-          and a.primary_owner_user_id = auth.uid()
-          and a.is_personal_account = true
-        )
-        or
-        public.has_role_on_account(p.account_id)
-      )
-    )
-  );
-
-create policy "content_analytics_create" on public.content_analytics for insert
-  to authenticated with check (
-    exists (
-      select 1 from public.publishes pub
-      join public.episodes e on e.id = pub.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where pub.id = content_analytics.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
-create policy "content_analytics_update" on public.content_analytics for update
-  to authenticated using (
-    exists (
-      select 1 from public.publishes pub
-      join public.episodes e on e.id = pub.episode_id
-      join public.project_members pm on pm.project_id = e.project_id
-      where pub.id = content_analytics.publish_id
-      and pm.user_id = auth.uid()
-      and pm.role in ('owner', 'admin', 'member')
-    )
-  );
-
--- No delete policy for content_analytics - historical data should not be deleted
+-- Content Analytics RLS Policies — REMOVED (table dropped, migrated to ClickHouse)
 
 -- ==================================
 -- Section: Account RLS Helper Functions (FILM-102c)

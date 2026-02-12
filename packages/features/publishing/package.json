@@ -39,6 +39,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.968.0",
+    "@kit/clickhouse": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",

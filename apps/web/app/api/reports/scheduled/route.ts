@@ -165,73 +165,81 @@ async function processScheduledReport(
     report.frequency === 'weekly'
       ? { start: subWeeks(new Date(), 1), end: new Date() }
       : {
-          start: startOfMonth(subMonths(new Date(), 1)),
-          end: endOfMonth(subMonths(new Date(), 1)),
-        };
+        start: startOfMonth(subMonths(new Date(), 1)),
+        end: endOfMonth(subMonths(new Date(), 1)),
+      };
 
-  const { data: analyticsData, error: dataError } = await adminClient
-    .from('content_analytics')
+  // 1. Fetch publish metadata from Supabase
+  const { data: publishes, error: pubError } = await adminClient
+    .from('publishes')
     .select(
       `
       id,
-      snapshot_date,
-      views,
-      likes,
-      comments,
-      shares,
-      watch_time_seconds,
-      subscribers_gained,
-      revenue_cents,
-      retention_data,
-      publishes!inner (
-        id,
-        platform,
+      platform,
+      title,
+      episodes!inner (
         title,
-        episodes!inner (
-          title,
-          projects!inner (
-            id,
-            name,
-            account_id
-          )
+        projects!inner (
+          id,
+          name,
+          account_id
         )
       )
     `,
     )
-    .gte('snapshot_date', dateRange.start.toISOString().split('T')[0])
-    .lte('snapshot_date', dateRange.end.toISOString().split('T')[0])
-    .in('publishes.platform', report.platforms as string[])
-    .eq('publishes.episodes.projects.account_id', report.account_id as string)
-    .order('views', { ascending: false });
+    .in('platform', report.platforms as string[])
+    .eq('episodes.projects.account_id', report.account_id as string);
 
-  if (dataError) {
-    throw new Error(`Failed to fetch analytics: ${dataError.message}`);
+  if (pubError) {
+    throw new Error(`Failed to fetch publishes: ${pubError.message}`);
   }
 
-  if (!analyticsData || analyticsData.length === 0) {
+  if (!publishes || publishes.length === 0) {
     logger.info(ctx, 'No data found for scheduled report, skipping email');
     return;
   }
 
-  const transformedData: AnalyticsDataRow[] = analyticsData.map((row) => ({
-    snapshotDate: row.snapshot_date,
-    platform: (row.publishes as unknown as { platform: string }).platform,
-    contentTitle:
-      (row.publishes as unknown as { title: string | null }).title ||
-      (row.publishes as unknown as { episodes: { title: string } }).episodes
-        .title,
-    projectName: (
-      row.publishes as unknown as { episodes: { projects: { name: string } } }
-    ).episodes.projects.name,
-    views: row.views,
-    likes: row.likes,
-    comments: row.comments,
-    shares: row.shares,
-    watchTimeSeconds: row.watch_time_seconds,
-    subscribersGained: row.subscribers_gained,
-    revenueCents: row.revenue_cents,
-    retentionData: row.retention_data as Record<string, number> | null,
-  }));
+  // 2. Query analytics from ClickHouse
+  const { queryTotalsByVideoIds } = await import('@kit/clickhouse/server');
+  const videoIds = publishes.map((p) => p.id);
+  const formatDate = (d: Date) => d.toISOString().split('T')[0]!;
+  const analyticsMap = await queryTotalsByVideoIds(videoIds, {
+    startDate: formatDate(dateRange.start),
+    endDate: formatDate(dateRange.end),
+  });
+
+  // 3. Merge publish metadata with ClickHouse analytics
+  const transformedData: AnalyticsDataRow[] = publishes
+    .map((pub): AnalyticsDataRow | null => {
+      const totals = analyticsMap.get(pub.id);
+      if (!totals) return null;
+
+      const episodes = pub.episodes as unknown as {
+        title: string;
+        projects: { name: string };
+      };
+
+      return {
+        snapshotDate: formatDate(dateRange.end), // Report-level date
+        platform: pub.platform,
+        contentTitle: pub.title || episodes.title,
+        projectName: episodes.projects.name,
+        views: totals.views,
+        likes: totals.likes,
+        comments: totals.comments,
+        shares: totals.shares,
+        watchTimeSeconds: totals.watch_time_seconds,
+        subscribersGained: totals.subscribers_gained,
+        revenueCents: totals.revenue_cents,
+        retentionData: null satisfies Record<string, number> | null,
+      };
+    })
+    .filter((row): row is AnalyticsDataRow => row !== null);
+
+  if (transformedData.length === 0) {
+    logger.info(ctx, 'No analytics data found for scheduled report, skipping email');
+    return;
+  }
 
   let buffer: Buffer;
   let filename: string;
