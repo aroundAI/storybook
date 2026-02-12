@@ -1,8 +1,9 @@
-# Superpowers Review — FILM-1201 ClickHouse Migration
+# Superpowers Review (v2) — FILM-1201 ClickHouse Migration
 
 **Branch:** `feature/FILM-1201-clickhouse-migration`
-**Scope:** 32 files changed, +2483 / -3293 lines
+**Scope:** 36 files changed, +2485 / -3299 lines
 **Date:** 2026-02-12
+**Pass:** Post-fix re-review (previous findings M1-M2, m1-m3, n1 all resolved ✅)
 
 ---
 
@@ -14,101 +15,90 @@ None.
 
 ## Majors
 
-### M1 — `queryDailyStats` and `queryDailyTimeSeriesByPlatform` bypass `assertScopedFilters`
-
-**Files:** [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts)
-
-`assertScopedFilters()` is called in `queryTotals`, `queryDailyTimeSeries`, and `queryPlatformBreakdown`, but **not** in `queryDailyStats` (line ~311) and `queryDailyTimeSeriesByPlatform` (line ~395). These functions accept `QueryFilters` and would happily scan the entire table if called without filters.
-
-**Fix:** Add `assertScopedFilters(filters)` at the top of both functions, matching the pattern in the other query functions.
-
----
-
-### M2 — `queryViewsForVideos` uses hardcoded WHERE, not `buildWhereClause`
-
-**File:** [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts#L366-L395)
-
-`queryViewsForVideos` hand-writes its WHERE clause instead of calling `buildWhereClause`. While it does have a guard (`if (videoIds.length === 0) return 0`), it skips the centralized filter logic and the `assertScopedFilters` guard. If a future caller passes `projectId` but an empty `videoIds`, the function returns `0` silently — which is arguably fine for this specific function, but the inconsistency is a maintenance risk.
-
-**Fix:** Either add a comment explaining the intentional deviation, or refactor to use `buildWhereClause` + `assertScopedFilters` for consistency.
+None — all previous majors resolved.
 
 ---
 
 ## Minors
 
-### m1 — `publish-actions.ts` still uses dynamic import while other files use static imports
+### m1 — `formatDateStr` lives in `types.ts` alongside pure type declarations
 
-**File:** [publish-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/publishing/src/server/publish-actions.ts#L863-L865)
+**File:** [types.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/types.ts#L105-L109)
 
-The review round already fixed m1 (dynamic → static) in `stats-actions.ts`, `route.ts`, and `aggregation-queries.ts`. But `publish-actions.ts` still uses `await import('@kit/clickhouse/server')` inside `getEpisodePublishesAction`. This creates an inconsistency since every other consumer now uses a top-level static import.
+`types.ts` is a pure type-declarations file (interfaces and type aliases) except for the new `formatDateStr` runtime function at the bottom. This breaks the convention that `types.ts` = types only. A `client.ts`-importing module that only needs types would pull in runtime code.
 
-**Fix:** Move to a static import at the top of the file. The `try/catch` for ClickHouse unavailability can remain around the query call itself, not the import.
+**Suggestion:** Move `formatDateStr` to a `utils.ts` file in the clickhouse package and re-export from `index.ts` / `server/index.ts`. Low urgency since tree-shaking handles this, but cleaner separation.
 
 ---
 
-### m2 — Empty `catch` blocks silently swallow errors
+### m2 — `package.json` and `tsconfig.json` missing trailing newlines
 
 **Files:**
-- [publish-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/publishing/src/server/publish-actions.ts#L867-L869) — `catch { // ClickHouse unavailable }`
-- [account-dashboard-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/content-analytics/src/server/account-dashboard-actions.ts#L156-L162) — `catch { // ClickHouse unavailable }`
+- [package.json](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/package.json)
+- [tsconfig.json](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/tsconfig.json)
 
-Both are intentional graceful degradation, which is good design. But they should **at least log** the error so operators can detect ClickHouse outages. A silent swallow risks hiding misconfiguration or query bugs.
+Both files end without a trailing newline (`\ No newline at end of file` in the diff). This can cause noisy diffs when future edits are made and is a POSIX convention violation.
 
-**Fix:** Add `getLogger('analytics').warn({ err }, 'ClickHouse unavailable, returning empty data')` in each catch block.
-
----
-
-### m3 — `analyticsMap` type in `publish-actions.ts` is structurally weaker than `AggregatedTotals`
-
-**File:** [publish-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/publishing/src/server/publish-actions.ts#L856-L859)
-
-The variable is typed as `Map<string, { views; likes; comments; shares; watch_time_seconds }>`, but `queryTotalsByVideoIds` returns `Map<string, AggregatedTotals>` which includes additional fields (`saves`, `revenue_cents`, `subscribers_gained`). The inline type is a subset but forces future maintainers to update it separately.
-
-**Fix:** Import `AggregatedTotals` from `@kit/clickhouse` and type as `Map<string, AggregatedTotals>`.
+**Fix:** Add trailing newline to both files.
 
 ---
 
 ## Nits
 
-### n1 — `formatDate` helper duplicated across multiple files
+### n1 — `queryDailyTimeSeriesByPlatform` result type is verbose inline
 
-The pattern `(d: Date) => d.toISOString().split('T')[0]!` appears in:
-- `stats-actions.ts` (line ~70)
-- `account-dashboard-actions.ts` (lines 109-112)
-- `language-analytics.ts` (multiple places)
+**File:** [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts#L397-L410)
 
-**Suggestion:** Extract to `@kit/shared/utils` or `@kit/clickhouse` as a shared `formatDateForClickHouse(d: Date): string` utility.
+The return type is a deeply nested inline type spanning 14 lines. Consider extracting it as a named interface (e.g., `DailyPlatformBreakdown`) in `types.ts` for readability.
 
 ---
 
-### n2 — Comment says "extra_metrics" but audience data returns empty
+### n2 — Test file does not cover `assertScopedFilters` rejection path
 
-**File:** [aggregation-queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/content-analytics/src/server/aggregation-queries.ts)
+**File:** [clickhouse.test.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/__tests__/clickhouse.test.ts)
 
-In `getProjectAudienceData`, the function now returns essentially no demographic data since `extra_metrics` ingestion doesn't include demographics yet. The function still computes `ageGroups`, `genders`, and `geography` dictionaries that will always be empty. Consider returning `null` early with a TODO, or at minimum log/document that this is a known data gap.
+Tests cover happy paths well (340 lines, 9 describe blocks), but there's no test ensuring `assertScopedFilters` throws when neither `projectId` nor `videoIds` is provided. Adding one assertion would validate the full-table-scan guard.
 
 ---
 
-### n3 — Migration file uses `IF EXISTS` / `IF NOT EXISTS` — safe but hides errors
+### n3 — `content_analytics` removal migration could include a data backup note
 
 **File:** [20260212080000_drop_content_analytics.sql](file:///Users/shaurya/Work/projects/storybook/apps/web/supabase/migrations/20260212080000_drop_content_analytics.sql)
 
-Using `DROP ... IF EXISTS` is safe for idempotency, which is good. No action needed, but be aware this will silently succeed even if the table was already dropped by another migration.
+The migration drops the table with `IF EXISTS` (safe). Consider adding a comment noting that data has been migrated to ClickHouse and a backup was taken before running, purely for audit trail.
 
 ---
 
 ## Summary
 
-The migration is well-structured — clean separation between ClickHouse client/queries/types, comprehensive test coverage (340 lines), and correct removal of the legacy `content_analytics` table with proper migration ordering. The `assertScopedFilters` guard pattern is a strong safety net.
+**All 7 findings from the previous review (v1) are resolved:**
 
-### Next Actions
+| v1 Finding | Status |
+|------------|--------|
+| M1 — `assertScopedFilters` missing in 2 functions | ✅ Fixed |
+| M2 — `queryViewsForVideos` hardcoded WHERE | ✅ Fixed |
+| m1 — Dynamic import in `publish-actions.ts` | ✅ Fixed (static import) |
+| m2 — Silent catch blocks | ✅ Fixed (logger.warn added) |
+| m3 — Inline type weaker than `AggregatedTotals` | ✅ Fixed |
+| n1 — Duplicated `formatDate` | ✅ Fixed (`formatDateStr` extracted) |
+| n2 — Audience data gap | ✅ Already documented |
+
+**New findings (v2):** 0 blockers, 0 majors, 2 minors, 3 nits — all optional polish.
+
+The branch is **ready to merge** with no blocking issues. The ClickHouse migration is well-structured with:
+- ✅ Full-table-scan guard (`assertScopedFilters`)
+- ✅ Centralized query building (`buildWhereClause`)
+- ✅ Graceful degradation with logging
+- ✅ Comprehensive test coverage (340 lines)
+- ✅ Clean Supabase migration for `content_analytics` removal
+- ✅ Type-safe consumers using `AggregatedTotals`
+
+### Optional Next Actions
 
 | Priority | Item | Effort |
 |----------|------|--------|
-| 🔴 High | **M1** — Add `assertScopedFilters` to `queryDailyStats` and `queryDailyTimeSeriesByPlatform` | 2 min |
-| 🟡 Medium | **M2** — Add comment or refactor `queryViewsForVideos` for consistency | 5 min |
-| 🟡 Medium | **m1** — Standardize `publish-actions.ts` to static import | 2 min |
-| 🟡 Medium | **m2** — Add logging to empty catch blocks | 5 min |
-| 🟢 Low | **m3** — Use `AggregatedTotals` type in `publish-actions.ts` | 2 min |
-| 🔵 Nit | **n1** — Extract shared `formatDate` helper | 10 min |
-| 🔵 Nit | **n2** — Document empty audience data gap | 2 min |
+| 🟡 Low | **m1** — Move `formatDateStr` from `types.ts` to `utils.ts` | 3 min |
+| 🟡 Low | **m2** — Add trailing newlines to `package.json` / `tsconfig.json` | 1 min |
+| 🔵 Nit | **n1** — Extract inline return type to named interface | 5 min |
+| 🔵 Nit | **n2** — Add `assertScopedFilters` rejection test | 5 min |
+| 🔵 Nit | **n3** — Add backup note to migration | 1 min |

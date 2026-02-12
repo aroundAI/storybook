@@ -9,8 +9,10 @@ import { getClickHouseClient } from './client';
 import type {
     AggregatedTotals,
     DailyDataPoint,
+    DailyPlatformBreakdown,
     DailyStats,
     PlatformBreakdown,
+    PlatformEngagement,
     QueryFilters,
     VideoMetric,
 } from './types';
@@ -395,19 +397,7 @@ export async function queryViewsForVideos(
  */
 export async function queryDailyTimeSeriesByPlatform(
     filters: QueryFilters,
-): Promise<
-    {
-        date: string;
-        views: number;
-        likes: number;
-        comments: number;
-        shares: number;
-        byPlatform: Record<
-            string,
-            { views: number; likes: number; comments: number; shares: number }
-        >;
-    }[]
-> {
+): Promise<DailyPlatformBreakdown[]> {
     const client = getClickHouseClient();
     assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
@@ -442,24 +432,7 @@ export async function queryDailyTimeSeriesByPlatform(
     }>();
 
     // Group by date, aggregate totals and platform splits
-    const dateMap = new Map<
-        string,
-        {
-            views: number;
-            likes: number;
-            comments: number;
-            shares: number;
-            byPlatform: Record<
-                string,
-                {
-                    views: number;
-                    likes: number;
-                    comments: number;
-                    shares: number;
-                }
-            >;
-        }
-    >();
+    const dateMap = new Map<string, Omit<DailyPlatformBreakdown, 'date'>>();
 
     for (const row of rows) {
         const existing = dateMap.get(row.date) || {

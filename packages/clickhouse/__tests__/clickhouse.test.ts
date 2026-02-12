@@ -336,5 +336,55 @@ describe('@kit/clickhouse', () => {
                 expect(mockClickHouseClient.query).not.toHaveBeenCalled();
             });
         });
+
+        describe('assertScopedFilters (full-table-scan guard)', () => {
+            it('should throw when neither projectId nor videoIds is provided', async () => {
+                const { queryTotals } = await import('../src/queries');
+
+                await expect(
+                    queryTotals({ startDate: '2026-01-01' } as never),
+                ).rejects.toThrow(
+                    'ClickHouse query requires at least projectId or videoIds to prevent full table scans',
+                );
+            });
+
+            it('should throw when videoIds is an empty array', async () => {
+                const { queryTotals } = await import('../src/queries');
+
+                await expect(
+                    queryTotals({ videoIds: [] } as never),
+                ).rejects.toThrow(
+                    'ClickHouse query requires at least projectId or videoIds to prevent full table scans',
+                );
+            });
+
+            it('should not throw when projectId is provided', async () => {
+                mockQueryResult.json.mockResolvedValue([{
+                    views: '0', likes: '0', comments: '0', shares: '0',
+                    saves: '0', watch_time_seconds: '0', revenue_cents: '0',
+                    subscribers_gained: '0',
+                }]);
+
+                const { queryTotals } = await import('../src/queries');
+
+                await expect(
+                    queryTotals({ projectId: '550e8400-e29b-41d4-a716-446655440000' }),
+                ).resolves.toBeDefined();
+            });
+
+            it('should not throw when videoIds is non-empty', async () => {
+                mockQueryResult.json.mockResolvedValue([{
+                    views: '0', likes: '0', comments: '0', shares: '0',
+                    saves: '0', watch_time_seconds: '0', revenue_cents: '0',
+                    subscribers_gained: '0',
+                }]);
+
+                const { queryTotals } = await import('../src/queries');
+
+                await expect(
+                    queryTotals({ videoIds: ['vid-1'] }),
+                ).resolves.toBeDefined();
+            });
+        });
     });
 });

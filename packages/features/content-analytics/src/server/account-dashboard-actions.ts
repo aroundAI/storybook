@@ -149,9 +149,11 @@ export async function getAccountDashboardData(
         }),
       ]);
   } catch (err) {
-    getLogger('content-analytics').warn(
-      { err },
-      'ClickHouse unavailable, returning empty dashboard data',
+    getLogger().then((logger) =>
+      logger.warn(
+        { err },
+        'ClickHouse unavailable, returning empty dashboard data',
+      ),
     );
     return {
       ...getEmptyDashboardData(),

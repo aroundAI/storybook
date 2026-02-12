@@ -3,6 +3,8 @@
 -- Revenue data remains in revenue_records table (Postgres).
 -- This migration removes the Postgres content_analytics table that is no longer
 -- used by any query or ingestion path.
+-- NOTE: Historical data was migrated to ClickHouse before this migration.
+--       Ensure a database backup exists before running in production.
 
 -- Drop RLS policies first
 drop policy if exists "content_analytics_read" on public.content_analytics;

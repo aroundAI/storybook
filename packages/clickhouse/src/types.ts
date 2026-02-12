@@ -102,8 +102,23 @@ export interface QueryFilters {
 }
 
 /**
- * Formats a Date to YYYY-MM-DD string for ClickHouse date filters.
+ * Platform engagement metrics (views, likes, comments, shares)
  */
-export function formatDateStr(date: Date): string {
-    return date.toISOString().split('T')[0]!;
+export interface PlatformEngagement {
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+}
+
+/**
+ * Daily time series entry with per-platform breakdown
+ */
+export interface DailyPlatformBreakdown {
+    date: string;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+    byPlatform: Record<string, PlatformEngagement>;
 }

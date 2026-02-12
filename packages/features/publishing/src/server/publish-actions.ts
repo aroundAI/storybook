@@ -861,9 +861,11 @@ export const getEpisodePublishesAction = enhanceAction(
       try {
         analyticsMap = await queryTotalsByVideoIds(publishIds);
       } catch (err) {
-        getLogger('publishing').warn(
-          { err },
-          'ClickHouse unavailable, returning publishes without analytics',
+        getLogger().then((logger) =>
+          logger.warn(
+            { err },
+            'ClickHouse unavailable, returning publishes without analytics',
+          ),
         );
       }
     }

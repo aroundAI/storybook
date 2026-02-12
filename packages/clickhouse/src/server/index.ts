@@ -28,10 +28,12 @@ export type {
     AggregatedTotals,
     AnalyticsPlatform,
     DailyDataPoint,
+    DailyPlatformBreakdown,
     DailyStats,
     PlatformBreakdown,
+    PlatformEngagement,
     QueryFilters,
     VideoMetric,
 } from '../types';
 
-export { formatDateStr } from '../types';
+export { formatDateStr } from '../utils';
