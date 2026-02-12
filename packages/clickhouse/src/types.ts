@@ -102,6 +102,19 @@ export interface QueryFilters {
 }
 
 /**
+ * Raw row shape returned by ClickHouse for daily-by-platform queries.
+ * Used internally by queryDailyTimeSeriesByPlatform.
+ */
+export interface DailyPlatformMetricsRow {
+    date: string;
+    platform: string;
+    views: number;
+    likes: number;
+    comments: number;
+    shares: number;
+}
+
+/**
  * Platform engagement metrics (views, likes, comments, shares)
  */
 export interface PlatformEngagement {

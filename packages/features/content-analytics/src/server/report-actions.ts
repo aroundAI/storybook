@@ -184,6 +184,8 @@ async function fetchAnalyticsData(
         watchTimeSeconds: stats.watch_time_seconds,
         subscribersGained: stats.subscribers_gained,
         revenueCents: stats.revenue_cents,
+        // retentionData was stored in content_analytics (now dropped).
+        // ClickHouse does not track retention curves — intentionally null.
         retentionData: null,
       };
     });

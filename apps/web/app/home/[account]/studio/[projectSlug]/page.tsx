@@ -182,8 +182,12 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
             totalLikes: totals.likes,
             totalComments: totals.comments,
           };
-        } catch {
-          // ClickHouse unavailable — return zeros
+        } catch (err) {
+          // ClickHouse unavailable — log and return zeros
+          const { getLogger } = await import('@kit/shared/logger');
+          getLogger().then((logger) =>
+            logger.warn({ err }, 'ClickHouse unavailable for project snapshot'),
+          );
           return { totalViews: 0, totalLikes: 0, totalComments: 0 };
         }
       },

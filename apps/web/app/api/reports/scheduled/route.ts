@@ -201,11 +201,11 @@ async function processScheduledReport(
 
   // 2. Query analytics from ClickHouse
   const { queryTotalsByVideoIds } = await import('@kit/clickhouse/server');
+  const { formatDateStr } = await import('@kit/clickhouse');
   const videoIds = publishes.map((p) => p.id);
-  const formatDate = (d: Date) => d.toISOString().split('T')[0]!;
   const analyticsMap = await queryTotalsByVideoIds(videoIds, {
-    startDate: formatDate(dateRange.start),
-    endDate: formatDate(dateRange.end),
+    startDate: formatDateStr(dateRange.start),
+    endDate: formatDateStr(dateRange.end),
   });
 
   // 3. Merge publish metadata with ClickHouse analytics
@@ -220,7 +220,7 @@ async function processScheduledReport(
       };
 
       return {
-        snapshotDate: formatDate(dateRange.end), // Report-level date
+        snapshotDate: formatDateStr(dateRange.end), // Report-level date
         platform: pub.platform,
         contentTitle: pub.title || episodes.title,
         projectName: episodes.projects.name,
@@ -231,6 +231,8 @@ async function processScheduledReport(
         watchTimeSeconds: totals.watch_time_seconds,
         subscribersGained: totals.subscribers_gained,
         revenueCents: totals.revenue_cents,
+        // retentionData was stored in content_analytics (now dropped).
+        // ClickHouse does not track retention curves — intentionally null.
         retentionData: null satisfies Record<string, number> | null,
       };
     })

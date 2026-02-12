@@ -508,6 +508,18 @@ export async function getProjectDailyMetrics(
   projectId: string,
   options?: { startDate?: Date; endDate?: Date },
 ): Promise<ProjectDailyMetric[]> {
+  // Verify project access through Supabase RLS before querying ClickHouse
+  const client = getSupabaseServerClient();
+  const { data: project, error: projectError } = await client
+    .from('projects')
+    .select('id')
+    .eq('id', projectId)
+    .single();
+
+  if (projectError || !project) {
+    return [];
+  }
+
   const dateFilters: { startDate?: string; endDate?: string } = {};
   if (options?.startDate) {
     dateFilters.startDate = options.startDate.toISOString().split('T')[0];

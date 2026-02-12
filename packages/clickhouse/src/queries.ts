@@ -10,6 +10,7 @@ import type {
     AggregatedTotals,
     DailyDataPoint,
     DailyPlatformBreakdown,
+    DailyPlatformMetricsRow,
     DailyStats,
     PlatformBreakdown,
     QueryFilters,
@@ -169,6 +170,7 @@ export async function queryTotals(
 export async function queryDailyTimeSeries(
     filters: QueryFilters,
 ): Promise<DailyDataPoint[]> {
+    assertScopedFilters(filters);
     const client = getClickHouseClient();
     const { clause, params } = buildWhereClause(filters);
 
@@ -215,6 +217,7 @@ export async function queryDailyTimeSeries(
 export async function queryPlatformBreakdown(
     filters: QueryFilters,
 ): Promise<PlatformBreakdown[]> {
+    assertScopedFilters(filters);
     const client = getClickHouseClient();
     const { clause, params } = buildWhereClause(filters);
 
@@ -259,6 +262,7 @@ export async function queryPlatformBreakdown(
 export async function queryPerVideoTotals(
     filters: QueryFilters & { videoIds: string[] },
 ): Promise<Map<string, AggregatedTotals>> {
+    assertScopedFilters(filters);
     const client = getClickHouseClient();
     const { clause, params } = buildWhereClause(filters);
 
@@ -421,14 +425,7 @@ export async function queryDailyTimeSeriesByPlatform(
         format: 'JSONEachRow',
     });
 
-    const rows = await result.json<{
-        date: string;
-        platform: string;
-        views: number;
-        likes: number;
-        comments: number;
-        shares: number;
-    }>();
+    const rows = await result.json<DailyPlatformMetricsRow>();
 
     // Group by date, aggregate totals and platform splits
     const dateMap = new Map<string, Omit<DailyPlatformBreakdown, 'date'>>();
