@@ -158,6 +158,9 @@ export function UploadSourceDialog({
             return;
         }
 
+        // n3 fix: reset stale count before starting new submission
+        setExtractedCount(null);
+
         startTransition(async () => {
             try {
                 // Phase 1: Upload
@@ -221,10 +224,10 @@ export function UploadSourceDialog({
                                     <div key={step} className="flex items-center gap-1">
                                         <div
                                             className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium transition-colors ${phase === step
-                                                    ? 'bg-blue-500 text-white'
-                                                    : phase === 'complete' || (phase === 'extracting' && idx === 0)
-                                                        ? 'bg-green-500 text-white'
-                                                        : 'bg-muted text-muted-foreground'
+                                                ? 'bg-blue-500 text-white'
+                                                : phase === 'complete' || (phase === 'extracting' && idx === 0)
+                                                    ? 'bg-green-500 text-white'
+                                                    : 'bg-muted text-muted-foreground'
                                                 }`}
                                         >
                                             {(phase === 'complete' || (phase === 'extracting' && idx === 0)) ? (
@@ -235,8 +238,8 @@ export function UploadSourceDialog({
                                         </div>
                                         {idx < 2 && (
                                             <div className={`h-0.5 w-4 ${phase === 'complete' || (phase === 'extracting' && idx === 0)
-                                                    ? 'bg-green-500'
-                                                    : 'bg-muted'
+                                                ? 'bg-green-500'
+                                                : 'bg-muted'
                                                 }`} />
                                         )}
                                     </div>
@@ -366,6 +369,11 @@ export function UploadSourceDialog({
                                     <p className="text-muted-foreground text-xs">
                                         Loaded {fileContent.length.toLocaleString()} characters
                                     </p>
+                                )}
+                                {fileName && /\.(pdf|docx)$/i.test(fileName) && (
+                                    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/10 dark:text-amber-300">
+                                        ⚠️ PDF/DOCX text extraction is limited in the browser. For best results, copy-paste the text directly using the &quot;Paste Text&quot; tab.
+                                    </div>
                                 )}
                             </div>
                         </TabsContent>

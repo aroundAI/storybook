@@ -116,6 +116,16 @@ export const uploadSourceContentAction = enhanceAction(
  */
 export const fetchUrlContentAction = enhanceAction(
     async (data: z.infer<typeof FetchUrlSchema>) => {
+        // SSRF mitigation: block private/internal URLs
+        const blockedPatterns = [
+            /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])/i,
+            /^https?:\/\/169\.254\./,  // AWS metadata
+            /^https?:\/\/(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/,  // RFC 1918
+        ];
+        if (blockedPatterns.some((p) => p.test(data.url))) {
+            throw new Error('URL points to a private or internal address');
+        }
+
         const response = await fetch(data.url, {
             headers: { 'User-Agent': 'StoryBook-Research/1.0' },
             signal: AbortSignal.timeout(15000),
@@ -162,7 +172,10 @@ export const fetchUrlContentAction = enhanceAction(
 /**
  * Extract facts from content using LLM.
  * Creates verified_facts entries for each extracted fact.
- * Placeholder implementation — uses structured extraction prompt.
+ *
+ * TODO(FILM-NEXT): Replace regex heuristics with LLM-based extraction using
+ * the prompt-engine. The current regex approach produces low-quality facts
+ * (any sentence with a number or proper noun). Track in Phase 12 backlog.
  */
 export const extractFactsFromContentAction = enhanceAction(
     async (data: z.infer<typeof ExtractFactsSchema>) => {

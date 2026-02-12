@@ -271,33 +271,29 @@ export function SeasonGeneratorDialog({
   // Get route params for building the Research Hub link
   const params = useParams<{ account: string; projectSlug: string }>();
 
+  // Shared fetch logic for research counts + verified facts (m1 fix: eliminate duplication)
+  const fetchResearchData = useCallback(async () => {
+    const [counts, facts] = await Promise.all([
+      getResearchCountsAction({ projectId }),
+      getVerifiedFactsAction({ projectId, limit: 50 }),
+    ]);
+    if (counts && typeof counts === 'object' && 'sources' in counts) {
+      const c = counts as { sources: number; facts: number; apiSources: number };
+      setResearchCounts(c);
+    }
+    if (Array.isArray(facts)) {
+      setVerifiedFacts(facts.map((f: Record<string, unknown>) => ({
+        claim: String(f.claim ?? ''),
+        source_citation: f.source_citation ? String(f.source_citation) : null,
+        category: f.category ? String(f.category) : null,
+      })));
+    }
+  }, [projectId]);
+
   useEffect(() => {
     if (!open) return;
-
-    // Fetch project metadata for content type
-    const fetchProjectMeta = async () => {
-      try {
-        const [counts, facts] = await Promise.all([
-          getResearchCountsAction({ projectId }),
-          getVerifiedFactsAction({ projectId, limit: 50 }),
-        ]);
-        if (counts && typeof counts === 'object' && 'sources' in counts) {
-          setResearchCounts(counts as { sources: number; facts: number; apiSources: number });
-        }
-        if (Array.isArray(facts)) {
-          setVerifiedFacts(facts.map((f: Record<string, unknown>) => ({
-            claim: String(f.claim ?? ''),
-            source_citation: f.source_citation ? String(f.source_citation) : null,
-            category: f.category ? String(f.category) : null,
-          })));
-        }
-      } catch {
-        // Non-critical
-      }
-    };
-
-    fetchProjectMeta();
-  }, [open, projectId]);
+    fetchResearchData().catch(() => { /* Non-critical */ });
+  }, [open, projectId, fetchResearchData]);
 
   const isFactualContent = contentType === 'documentary' ||
     contentType === 'educational' ||
@@ -703,20 +699,7 @@ export function SeasonGeneratorDialog({
                       onClick={async () => {
                         setIsRefreshingResearch(true);
                         try {
-                          const [counts, facts] = await Promise.all([
-                            getResearchCountsAction({ projectId }),
-                            getVerifiedFactsAction({ projectId, limit: 50 }),
-                          ]);
-                          if (counts && typeof counts === 'object' && 'sources' in counts) {
-                            setResearchCounts(counts as { sources: number; facts: number; apiSources: number });
-                          }
-                          if (Array.isArray(facts)) {
-                            setVerifiedFacts(facts.map((f: Record<string, unknown>) => ({
-                              claim: String(f.claim ?? ''),
-                              source_citation: f.source_citation ? String(f.source_citation) : null,
-                              category: f.category ? String(f.category) : null,
-                            })));
-                          }
+                          await fetchResearchData();
                           toast.success('Research data refreshed');
                         } catch {
                           toast.error('Failed to refresh research data');

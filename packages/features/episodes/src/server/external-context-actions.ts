@@ -301,6 +301,11 @@ export const deleteExternalSourceAction = enhanceAction(
 
 /**
  * Get counts of sources and facts for sidebar badge.
+ *
+ * NOTE: `external_sources` is intentionally global (not project-scoped).
+ * Sources represent shared reference data (e.g., Reuters, Wikipedia) so
+ * `sources` and `apiSources` counts reflect all active sources across the
+ * platform. Only `facts` is filtered by project.
  */
 export const getResearchCountsAction = enhanceAction(
     async (data: { projectId: string }) => {
