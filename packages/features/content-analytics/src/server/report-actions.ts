@@ -13,6 +13,7 @@ import {
   subMonths,
 } from 'date-fns';
 
+import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -103,7 +104,8 @@ function calculateNextRunTime(frequency: 'weekly' | 'monthly'): Date {
 }
 
 /**
- * Fetch analytics data for report
+ * Fetch analytics data for report.
+ * Metadata from Supabase, metrics from ClickHouse.
  */
 async function fetchAnalyticsData(
   accountId: string,
@@ -113,26 +115,17 @@ async function fetchAnalyticsData(
 ): Promise<AnalyticsDataRow[]> {
   const client = getSupabaseServerClient();
 
+  // Get publishes with metadata from Supabase
   let query = client
-    .from('content_analytics')
+    .from('publishes')
     .select(
       `
       id,
-      snapshot_date,
-      views,
-      likes,
-      comments,
-      shares,
-      watch_time_seconds,
-      subscribers_gained,
-      revenue_cents,
-      retention_data,
-      publishes!inner (
-        id,
-        platform,
+      platform,
+      title,
+      episodes!inner (
         title,
-        episodes!inner (
-          title,
+        seasons!inner (
           projects!inner (
             id,
             name,
@@ -142,46 +135,60 @@ async function fetchAnalyticsData(
       )
     `,
     )
-    .gte('snapshot_date', dateRange.start.toISOString().split('T')[0])
-    .lte('snapshot_date', dateRange.end.toISOString().split('T')[0])
-    .in('publishes.platform', platforms)
-    .eq('publishes.episodes.projects.account_id', accountId)
-    .order('views', { ascending: false });
+    .in('platform', platforms)
+    .eq('episodes.seasons.projects.account_id', accountId);
 
   if (projectIds && projectIds.length > 0) {
-    query = query.in('publishes.episodes.projects.id', projectIds);
+    query = query.in('episodes.seasons.projects.id', projectIds);
   }
 
   const { data, error } = await query;
 
   if (error) {
-    throw new Error(`Failed to fetch analytics: ${error.message}`);
+    throw new Error(`Failed to fetch publish metadata: ${error.message}`);
   }
 
-  return (data || []).map((row) => ({
-    snapshotDate: row.snapshot_date,
-    platform: (row.publishes as { platform: string }).platform,
-    contentTitle:
-      (row.publishes as { title: string | null }).title ||
-      (
-        row.publishes as {
-          episodes: { title: string };
-        }
-      ).episodes.title,
-    projectName: (
-      row.publishes as {
-        episodes: { projects: { name: string } };
-      }
-    ).episodes.projects.name,
-    views: row.views,
-    likes: row.likes,
-    comments: row.comments,
-    shares: row.shares,
-    watchTimeSeconds: row.watch_time_seconds,
-    subscribersGained: row.subscribers_gained,
-    revenueCents: row.revenue_cents,
-    retentionData: row.retention_data as Record<string, number> | null,
-  }));
+  if (!data || data.length === 0) {
+    return [];
+  }
+
+  const publishIds = data.map((row) => row.id);
+  const startDateStr = dateRange.start.toISOString().split('T')[0]!;
+  const endDateStr = dateRange.end.toISOString().split('T')[0]!;
+
+  // Get metrics from ClickHouse
+  const perVideoTotals = await queryTotalsByVideoIds(publishIds, {
+    startDate: startDateStr,
+    endDate: endDateStr,
+  });
+
+  // Merge metadata with metrics
+  return data
+    .filter((row) => perVideoTotals.has(row.id))
+    .map((row) => {
+      const stats = perVideoTotals.get(row.id)!;
+      const episodes = row.episodes as unknown as {
+        title: string;
+        seasons: { projects: { name: string } };
+      };
+
+      return {
+        snapshotDate: endDateStr,
+        platform: row.platform,
+        contentTitle: row.title || episodes.title,
+        projectName: episodes.seasons.projects.name,
+        views: stats.views,
+        likes: stats.likes,
+        comments: stats.comments,
+        shares: stats.shares,
+        watchTimeSeconds: stats.watch_time_seconds,
+        subscribersGained: stats.subscribers_gained,
+        revenueCents: stats.revenue_cents,
+        // retentionData was stored in content_analytics (now dropped).
+        // ClickHouse does not track retention curves — intentionally null.
+        retentionData: null,
+      };
+    });
 }
 
 /**

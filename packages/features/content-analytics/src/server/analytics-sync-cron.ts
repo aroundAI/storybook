@@ -2,6 +2,8 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { insertVideoMetrics } from '@kit/clickhouse/server';
+import type { VideoMetric } from '@kit/clickhouse/server';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 
@@ -334,7 +336,7 @@ async function syncSinglePublish(
       client,
     );
 
-    // 4. Normalize and insert into content_analytics
+    // 4. Normalize analytics data
     const snapshotDate = new Date().toISOString().split('T')[0]!;
 
     const normalizedData: NormalizedAnalytics = normalizeAnalytics(
@@ -344,8 +346,33 @@ async function syncSinglePublish(
       analytics,
     );
 
-    // 5. Upsert analytics (update if same day, insert if new)
-    await upsertContentAnalytics(client, normalizedData);
+    // 5. Insert into ClickHouse (skip if projectId unresolvable — UUID column)
+    const projectId = await resolveProjectId(client, publish.episode_id);
+
+    if (!projectId) {
+      logger.warn(
+        { publishId: publish.id, episodeId: publish.episode_id },
+        'Skipping ClickHouse ingestion: could not resolve project_id',
+      );
+    } else {
+      const chMetric: VideoMetric = {
+        project_id: projectId,
+        video_id: publish.id,
+        platform,
+        metric_date: snapshotDate,
+        views: normalizedData.views,
+        likes: normalizedData.likes,
+        comments: normalizedData.comments,
+        shares: normalizedData.shares,
+        saves: normalizedData.saves,
+        watch_time_seconds: normalizedData.watch_time_seconds,
+        revenue_cents: normalizedData.revenue_cents,
+        subscribers_gained: normalizedData.subscribers_gained,
+        extra_metrics: JSON.stringify(normalizedData.raw_data ?? {}),
+      };
+
+      await insertVideoMetrics([chMetric]);
+    }
 
     // 5b. If there's revenue, also upsert to revenue_records table
     if (normalizedData.revenue_cents > 0) {
@@ -561,20 +588,32 @@ function normalizeAnalytics(
 }
 
 /**
- * Upserts content analytics (insert or update if same day)
+ * Resolves project_id from episode_id via the episodes table.
+ * Caches results in a module-level Map to avoid repeated lookups
+ * within the same sync run.
  */
-async function upsertContentAnalytics(
-  client: Client,
-  data: NormalizedAnalytics,
-): Promise<void> {
-  const { error } = await client.from('content_analytics').upsert(data, {
-    onConflict: 'publish_id,snapshot_date',
-    ignoreDuplicates: false,
-  });
+const projectIdCache = new Map<string, string>();
 
-  if (error) {
-    throw new Error(`Failed to upsert analytics: ${error.message}`);
+async function resolveProjectId(
+  client: Client,
+  episodeId: string,
+): Promise<string | null> {
+  if (projectIdCache.has(episodeId)) {
+    return projectIdCache.get(episodeId)!;
   }
+
+  const { data, error } = await client
+    .from('episodes')
+    .select('project_id')
+    .eq('id', episodeId)
+    .single();
+
+  if (error || !data?.project_id) {
+    return null;
+  }
+
+  projectIdCache.set(episodeId, data.project_id);
+  return data.project_id;
 }
 
 /**

@@ -175,8 +175,8 @@ packages/features/content/src/prompts/
   "exported_at": "2025-01-01T00:00:00.000Z",
 
   "llm": {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
+    "provider": "gemini",
+    "model": "gemini-2.0-flash-exp",
     "max_tokens": 500,
     "temperature": 0.3,
     "response_format": {

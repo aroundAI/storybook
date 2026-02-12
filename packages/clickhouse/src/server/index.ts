@@ -1,0 +1,39 @@
+/**
+ * @kit/clickhouse/server - Server-side API
+ *
+ * Exports the ClickHouse client and query functions.
+ * Only import this from server-side code (API routes, server actions, cron jobs).
+ */
+
+export {
+    closeClickHouseClient,
+    getClickHouseClient,
+    isClickHouseEnabled,
+    pingClickHouse,
+} from '../client';
+
+export {
+    insertVideoMetrics,
+    queryDailyStats,
+    queryDailyTimeSeries,
+    queryDailyTimeSeriesByPlatform,
+    queryPerVideoTotals,
+    queryPlatformBreakdown,
+    queryTotals,
+    queryTotalsByVideoIds,
+    queryViewsForVideos,
+} from '../queries';
+
+export type {
+    AggregatedTotals,
+    AnalyticsPlatform,
+    DailyDataPoint,
+    DailyPlatformBreakdown,
+    DailyStats,
+    PlatformBreakdown,
+    PlatformEngagement,
+    QueryFilters,
+    VideoMetric,
+} from '../types';
+
+export { formatDateStr } from '../utils';

@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { z } from 'zod';
 
+import type { AggregatedTotals } from '@kit/clickhouse';
+import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -841,13 +843,6 @@ export const getEpisodePublishesAction = enhanceAction(
         metadata,
         platform_connections (
           platform_account_name
-        ),
-        content_analytics (
-          views,
-          likes,
-          comments,
-          shares,
-          watch_time_seconds
         )
       `,
       )
@@ -858,17 +853,25 @@ export const getEpisodePublishesAction = enhanceAction(
       throw new Error(`Failed to fetch episode publishes: ${error.message}`);
     }
 
+    // Fetch analytics from ClickHouse for all publish IDs
+    const publishIds = (publishes ?? []).map((p) => p.id);
+    let analyticsMap = new Map<string, AggregatedTotals>();
+
+    if (publishIds.length > 0) {
+      try {
+        analyticsMap = await queryTotalsByVideoIds(publishIds);
+      } catch (err) {
+        getLogger().then((logger) =>
+          logger.warn(
+            { err },
+            'ClickHouse unavailable, returning publishes without analytics',
+          ),
+        );
+      }
+    }
+
     return (publishes ?? []).map((p) => {
-      // Get latest analytics snapshot
-      const analytics = (
-        p.content_analytics as Array<{
-          views: number;
-          likes: number;
-          comments: number;
-          shares: number;
-          watch_time_seconds: number;
-        }> | null
-      )?.[0];
+      const chTotals = analyticsMap.get(p.id);
 
       return {
         id: p.id,
@@ -890,14 +893,14 @@ export const getEpisodePublishesAction = enhanceAction(
         scheduledAt: p.scheduled_at,
         publishedAt: p.published_at,
         createdAt: p.created_at,
-        analytics: analytics
+        analytics: chTotals
           ? {
-              views: analytics.views,
-              likes: analytics.likes,
-              comments: analytics.comments,
-              shares: analytics.shares,
-              watchTimeSeconds: analytics.watch_time_seconds,
-            }
+            views: chTotals.views,
+            likes: chTotals.likes,
+            comments: chTotals.comments,
+            shares: chTotals.shares,
+            watchTimeSeconds: chTotals.watch_time_seconds,
+          }
           : null,
         error: (p.metadata as { error?: string } | null)?.error,
       };
@@ -971,12 +974,7 @@ export const deleteEpisodePublishesAction = enhanceAction(
       ),
     );
 
-    // Delete analytics immediately (optional, but cleaner)
-    const publishIds = publishes.map((p) => p.id);
-    await client
-      .from('content_analytics')
-      .delete()
-      .in('publish_id', publishIds);
+    // Analytics are stored in ClickHouse — no Supabase cleanup needed
 
     logger.info(
       { ...ctx, count: publishes.length },

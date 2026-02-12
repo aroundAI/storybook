@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.3",
+    "@kit/clickhouse": "workspace:*",
     "@kit/llm": "workspace:*",
     "@kit/next": "workspace:*",
     "@kit/prompt-engine": "workspace:*",

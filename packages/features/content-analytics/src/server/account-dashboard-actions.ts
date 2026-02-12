@@ -2,6 +2,15 @@
 
 import 'server-only';
 
+import {
+  formatDateStr,
+  queryDailyTimeSeries,
+  queryPlatformBreakdown,
+  queryTotals,
+  queryTotalsByVideoIds,
+} from '@kit/clickhouse/server';
+import type { AggregatedTotals } from '@kit/clickhouse/server';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { AnalyticsTotals, DailyMetric } from '../types';
@@ -36,8 +45,11 @@ export interface AccountDashboardData {
   projectCount: number;
 }
 
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+
 /**
- * Get dashboard data aggregated across all projects for an account
+ * Get dashboard data aggregated across all projects for an account.
+ * Metadata from Supabase, metrics from ClickHouse.
  */
 export async function getAccountDashboardData(
   accountId: string,
@@ -49,7 +61,7 @@ export async function getAccountDashboardData(
   const endDate = options?.endDate || new Date();
   const startDate =
     options?.startDate ||
-    new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000);
+    new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
   // Previous period for comparison
   const periodDays =
@@ -72,7 +84,7 @@ export async function getAccountDashboardData(
 
   const projectIds = projects.map((p) => p.id);
 
-  // Get all publishes for these projects
+  // Get all publishes for these projects (metadata from Supabase)
   const { data: allPublishes } = await client
     .from('publishes')
     .select(
@@ -96,55 +108,117 @@ export async function getAccountDashboardData(
 
   const publishIds = allPublishes.map((p) => p.id);
 
-  // Get current period analytics
-  const { data: currentAnalytics } = await client
-    .from('content_analytics')
-    .select(
-      'publish_id, views, likes, comments, shares, saves, revenue_cents, watch_time_seconds, snapshot_date',
-    )
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', startDate.toISOString().split('T')[0])
-    .lte('snapshot_date', endDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+  const startDateStr = formatDateStr(startDate);
+  const endDateStr = formatDateStr(endDate);
+  const prevStartStr = formatDateStr(previousStartDate);
+  const prevEndStr = formatDateStr(previousEndDate);
 
-  // Get previous period analytics
-  const { data: previousAnalytics } = await client
-    .from('content_analytics')
-    .select(
-      'publish_id, views, likes, comments, shares, saves, revenue_cents, watch_time_seconds',
-    )
-    .in('publish_id', publishIds)
-    .gte('snapshot_date', previousStartDate.toISOString().split('T')[0])
-    .lte('snapshot_date', previousEndDate.toISOString().split('T')[0])
-    .order('snapshot_date', { ascending: false });
+  // Query ClickHouse for current and previous period
+  let currentTotals: AggregatedTotals;
+  let previousTotals: AggregatedTotals;
+  let platformData: Awaited<ReturnType<typeof queryPlatformBreakdown>>;
+  let dailyData: Awaited<ReturnType<typeof queryDailyTimeSeries>>;
+  let perVideoTotals: Map<string, AggregatedTotals>;
 
-  // Calculate totals from current period (latest snapshot per publish)
-  const currentTotals = calculateTotals(currentAnalytics || []);
-  const previousTotals = calculateTotals(previousAnalytics || []);
+  try {
+    [currentTotals, previousTotals, platformData, dailyData, perVideoTotals] =
+      await Promise.all([
+        queryTotals({
+          videoIds: publishIds,
+          startDate: startDateStr,
+          endDate: endDateStr,
+        }),
+        queryTotals({
+          videoIds: publishIds,
+          startDate: prevStartStr,
+          endDate: prevEndStr,
+        }),
+        queryPlatformBreakdown({
+          videoIds: publishIds,
+          startDate: startDateStr,
+          endDate: endDateStr,
+        }),
+        queryDailyTimeSeries({
+          videoIds: publishIds,
+          startDate: startDateStr,
+          endDate: endDateStr,
+        }),
+        queryTotalsByVideoIds(publishIds, {
+          startDate: startDateStr,
+          endDate: endDateStr,
+        }),
+      ]);
+  } catch (err) {
+    getLogger().then((logger) =>
+      logger.warn(
+        { err },
+        'ClickHouse unavailable, returning empty dashboard data',
+      ),
+    );
+    return {
+      ...getEmptyDashboardData(),
+      projectCount: projects.length,
+      productionStatus: await getProductionStatus(projectIds),
+    };
+  }
+
+  // Map ClickHouse totals to AnalyticsTotals type
+  const currentAnalyticsTotals = mapToAnalyticsTotals(
+    currentTotals,
+    publishIds.length,
+  );
+  const previousAnalyticsTotals = mapToAnalyticsTotals(previousTotals, 0);
 
   // Platform breakdown
-  const platformBreakdown = calculatePlatformBreakdown(
-    currentAnalytics || [],
-    allPublishes,
-  );
+  const totalViews = currentTotals.views;
+  const platformBreakdown = platformData
+    .map((p) => ({
+      platform: p.platform,
+      views: p.views,
+      percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
+    }))
+    .sort((a, b) => b.views - a.views);
 
   // Daily metrics
-  const dailyMetrics = calculateDailyMetrics(currentAnalytics || []);
+  const dailyMetrics: DailyMetric[] = dailyData.map((d) => ({
+    date: d.date,
+    views: d.views,
+    likes: d.likes,
+    comments: d.comments,
+    shares: d.shares,
+  }));
 
-  // Top content
-  const topContent = calculateTopContent(currentAnalytics || [], allPublishes);
+  // Top content (top 5 by views)
+  const topContent = buildTopContent(allPublishes, perVideoTotals);
 
-  // Production status
+  // Production status (stays Supabase)
   const productionStatus = await getProductionStatus(projectIds);
 
   return {
-    totals: currentTotals,
-    previousPeriodTotals: previousTotals,
+    totals: currentAnalyticsTotals,
+    previousPeriodTotals: previousAnalyticsTotals,
     dailyMetrics,
     platformBreakdown,
     topContent,
     productionStatus,
     projectCount: projects.length,
+  };
+}
+
+function mapToAnalyticsTotals(
+  ch: AggregatedTotals,
+  contentCount: number,
+): AnalyticsTotals {
+  return {
+    views: ch.views,
+    likes: ch.likes,
+    comments: ch.comments,
+    shares: ch.shares,
+    saves: ch.saves,
+    watchTimeSeconds: ch.watch_time_seconds,
+    subscribersGained: ch.subscribers_gained,
+    revenueCents: ch.revenue_cents,
+    contentCount,
   };
 }
 
@@ -185,58 +259,6 @@ function getEmptyDashboardData(): AccountDashboardData {
   };
 }
 
-interface AnalyticsRow {
-  publish_id: string;
-  views: number | null;
-  likes: number | null;
-  comments: number | null;
-  shares: number | null;
-  saves: number | null;
-  revenue_cents: number | null;
-  watch_time_seconds: number | null;
-  snapshot_date?: string;
-}
-
-function calculateTotals(analytics: AnalyticsRow[]): AnalyticsTotals {
-  // Get latest snapshot per publish
-  const latestByPublish = new Map<string, AnalyticsRow>();
-  for (const a of analytics) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, a);
-    }
-  }
-
-  let views = 0;
-  let likes = 0;
-  let comments = 0;
-  let shares = 0;
-  let saves = 0;
-  let revenueCents = 0;
-  let watchTimeSeconds = 0;
-
-  for (const a of latestByPublish.values()) {
-    views += a.views || 0;
-    likes += a.likes || 0;
-    comments += a.comments || 0;
-    shares += a.shares || 0;
-    saves += a.saves || 0;
-    revenueCents += a.revenue_cents || 0;
-    watchTimeSeconds += a.watch_time_seconds || 0;
-  }
-
-  return {
-    views,
-    likes,
-    comments,
-    shares,
-    saves,
-    watchTimeSeconds,
-    subscribersGained: 0, // Not tracked per content
-    revenueCents,
-    contentCount: latestByPublish.size,
-  };
-}
-
 interface PublishRow {
   id: string;
   platform: string;
@@ -249,114 +271,33 @@ interface PublishRow {
   };
 }
 
-function calculatePlatformBreakdown(
-  analytics: AnalyticsRow[],
+function buildTopContent(
   publishes: PublishRow[],
-): { platform: string; views: number; percentage: number }[] {
-  const publishPlatformMap = new Map<string, string>();
-  for (const p of publishes) {
-    publishPlatformMap.set(p.id, p.platform);
-  }
-
-  // Get latest views per publish
-  const latestByPublish = new Map<string, number>();
-  for (const a of analytics) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, a.views || 0);
-    }
-  }
-
-  // Aggregate by platform
-  const platformViews = new Map<string, number>();
-  let totalViews = 0;
-
-  for (const [publishId, views] of latestByPublish) {
-    const platform = publishPlatformMap.get(publishId) || 'unknown';
-    platformViews.set(platform, (platformViews.get(platform) || 0) + views);
-    totalViews += views;
-  }
-
-  return Array.from(platformViews.entries())
-    .map(([platform, views]) => ({
-      platform,
-      views,
-      percentage: totalViews > 0 ? (views / totalViews) * 100 : 0,
-    }))
-    .sort((a, b) => b.views - a.views);
-}
-
-function calculateDailyMetrics(analytics: AnalyticsRow[]): DailyMetric[] {
-  // Aggregate by date
-  const dailyMap = new Map<
-    string,
-    { views: number; likes: number; comments: number; shares: number }
-  >();
-
-  for (const a of analytics) {
-    if (!a.snapshot_date) continue;
-    const date = a.snapshot_date;
-    const current = dailyMap.get(date) || {
-      views: 0,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-    };
-    dailyMap.set(date, {
-      views: current.views + (a.views || 0),
-      likes: current.likes + (a.likes || 0),
-      comments: current.comments + (a.comments || 0),
-      shares: current.shares + (a.shares || 0),
-    });
-  }
-
-  return Array.from(dailyMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, data]) => ({ date, ...data }));
-}
-
-function calculateTopContent(
-  analytics: AnalyticsRow[],
-  publishes: PublishRow[],
+  perVideoTotals: Map<string, AggregatedTotals>,
 ): AccountDashboardData['topContent'] {
-  const publishMap = new Map<string, PublishRow>();
-  for (const p of publishes) {
-    publishMap.set(p.id, p);
-  }
-
-  // Get latest stats per publish
-  const latestByPublish = new Map<string, AnalyticsRow>();
-  for (const a of analytics) {
-    if (!latestByPublish.has(a.publish_id)) {
-      latestByPublish.set(a.publish_id, a);
-    }
-  }
-
-  // Build top content list
   const contentList: AccountDashboardData['topContent'] = [];
-  for (const [publishId, stats] of latestByPublish) {
-    const publish = publishMap.get(publishId);
-    if (!publish) continue;
+
+  for (const publish of publishes) {
+    const stats = perVideoTotals.get(publish.id);
+    if (!stats) continue;
 
     const episode = publish.episodes as PublishRow['episodes'];
-    const views = stats.views || 0;
-    const likes = stats.likes || 0;
-    const comments = stats.comments || 0;
-    const shares = stats.shares || 0;
     const engagementRate =
-      views > 0 ? ((likes + comments + shares) / views) * 100 : 0;
+      stats.views > 0
+        ? ((stats.likes + stats.comments + stats.shares) / stats.views) * 100
+        : 0;
 
     contentList.push({
-      id: publishId,
+      id: publish.id,
       title: publish.title || episode?.title || 'Untitled',
       thumbnailUrl: episode?.thumbnail_url || undefined,
-      views,
-      likes,
+      views: stats.views,
+      likes: stats.likes,
       engagementRate,
       platform: publish.platform,
     });
   }
 
-  // Sort by views and return top 5
   return contentList.sort((a, b) => b.views - a.views).slice(0, 5);
 }
 
@@ -365,7 +306,6 @@ async function getProductionStatus(
 ): Promise<AccountDashboardData['productionStatus']> {
   const client = getSupabaseServerClient();
 
-  // Get all seasons for these projects
   const { data: seasons } = await client
     .from('seasons')
     .select('id')
@@ -378,7 +318,6 @@ async function getProductionStatus(
 
   const seasonIds = seasons.map((s) => s.id);
 
-  // Get episode counts by status
   const { data: episodes } = await client
     .from('episodes')
     .select('id, status')
@@ -400,7 +339,6 @@ async function getProductionStatus(
     }
   }
 
-  // Get scheduled publish count
   const episodeIds = (episodes || []).map((e) => e.id);
   let scheduledCount = 0;
 
