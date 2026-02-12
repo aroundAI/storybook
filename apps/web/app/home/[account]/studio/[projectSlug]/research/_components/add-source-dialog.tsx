@@ -3,9 +3,6 @@
 import { useState, useTransition } from 'react';
 
 import {
-    BookOpen,
-    Database,
-    Globe,
     Loader2,
     Shield,
 } from 'lucide-react';

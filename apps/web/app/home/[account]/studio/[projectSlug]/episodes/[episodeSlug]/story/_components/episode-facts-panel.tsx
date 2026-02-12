@@ -5,9 +5,6 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import {
     BookOpen,
     LinkIcon,
-    Loader2,
-    Search,
-    Trash2,
     Unlink,
 } from 'lucide-react';
 
@@ -95,7 +92,7 @@ export function EpisodeFactsPanel({
                 <BookOpen className="text-muted-foreground mb-3 h-8 w-8" />
                 <h3 className="text-sm font-medium">No facts linked</h3>
                 <p className="text-muted-foreground mt-1 max-w-xs text-xs">
-                    Link verified facts from your project's research to ensure accuracy in
+                    Link verified facts from your project&apos;s research to ensure accuracy in
                     this episode.
                 </p>
                 <Button className="mt-4" size="sm" onClick={() => setShowLinkDialog(true)}>

@@ -261,7 +261,7 @@ export function SeasonGeneratorDialog({
   }, [open]);
 
   // FILM-1143: Fetch project metadata for content-type awareness
-  const [contentType, setContentType] = useState<string | null>(null);
+  const [contentType, _setContentType] = useState<string | null>(null);
   const [researchCounts, setResearchCounts] = useState({ sources: 0, facts: 0, apiSources: 0 });
 
   // Track verified facts for passing to analysis
@@ -295,7 +295,7 @@ export function SeasonGeneratorDialog({
     fetchResearchData().catch(() => { /* Non-critical */ });
   }, [open, projectId, fetchResearchData]);
 
-  const isFactualContent = contentType === 'documentary' ||
+  const _isFactualContent = contentType === 'documentary' ||
     contentType === 'educational' ||
     contentType === 'news';
   const hasResearchSources = researchCounts.sources > 0 || researchCounts.facts > 0;

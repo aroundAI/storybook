@@ -85,7 +85,7 @@ export function LinkFactsDialog({
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, [open, loadFacts]);
+    }, [open, search, loadFacts]);
 
     const toggleFact = (factId: string) => {
         setSelectedIds((prev) => {
@@ -137,7 +137,7 @@ export function LinkFactsDialog({
                 <DialogHeader>
                     <DialogTitle>Link Facts to Episode</DialogTitle>
                     <DialogDescription>
-                        Select verified facts from your project's library to link to this episode
+                        Select verified facts from your project&apos;s library to link to this episode
                     </DialogDescription>
                 </DialogHeader>
 
