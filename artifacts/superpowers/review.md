@@ -1,135 +1,114 @@
-# Superpowers Review — Phase 4 ClickHouse Migration Cleanup
+# Superpowers Review — FILM-1201 ClickHouse Migration
 
-**Scope**: 19 files changed, −1790 / +926 lines
-**Branch**: `feature/FILM-1201-clickhouse-migration`
+**Branch:** `feature/FILM-1201-clickhouse-migration`
+**Scope:** 32 files changed, +2483 / -3293 lines
+**Date:** 2026-02-12
 
 ---
 
 ## Blockers
 
-*None found.*
+None.
 
 ---
 
 ## Majors
 
-### M1. `buildWhereClause` returns `WHERE 1 = 1` when no filters given — full table scan risk
+### M1 — `queryDailyStats` and `queryDailyTimeSeriesByPlatform` bypass `assertScopedFilters`
 
-**File**: [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts#L82-L84)
-**Severity**: Major
+**Files:** [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts)
 
-If `queryTotals({})` is called with zero filters, the generated SQL becomes `SELECT … FROM video_daily_stats WHERE 1 = 1`, scanning the **entire** table. In production with millions of rows this could be expensive and slow.
+`assertScopedFilters()` is called in `queryTotals`, `queryDailyTimeSeries`, and `queryPlatformBreakdown`, but **not** in `queryDailyStats` (line ~311) and `queryDailyTimeSeriesByPlatform` (line ~395). These functions accept `QueryFilters` and would happily scan the entire table if called without filters.
 
-**Recommendation**: Add a guard at the top of `queryTotals` / `queryDailyTimeSeries` / etc. that throws or returns empty if no meaningful filters are provided (at minimum one of `projectId` or `videoIds` should be required).
+**Fix:** Add `assertScopedFilters(filters)` at the top of both functions, matching the pattern in the other query functions.
 
-```diff
-+ if (!filters.projectId && (!filters.videoIds || filters.videoIds.length === 0)) {
-+   throw new Error('At least projectId or videoIds must be provided');
-+ }
-```
+---
 
-### M2. `queryTotalsByVideoIds` uses unsafe type cast
+### M2 — `queryViewsForVideos` uses hardcoded WHERE, not `buildWhereClause`
 
-**File**: [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts#L487-L491)
-**Severity**: Major
+**File:** [queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/clickhouse/src/queries.ts#L366-L395)
 
-```typescript
-return queryPerVideoTotals({
-    videoIds,
-    startDate: options?.startDate,
-    endDate: options?.endDate,
-} as QueryFilters & { videoIds: string[] });
-```
+`queryViewsForVideos` hand-writes its WHERE clause instead of calling `buildWhereClause`. While it does have a guard (`if (videoIds.length === 0) return 0`), it skips the centralized filter logic and the `assertScopedFilters` guard. If a future caller passes `projectId` but an empty `videoIds`, the function returns `0` silently — which is arguably fine for this specific function, but the inconsistency is a maintenance risk.
 
-The `as` cast bypasses TypeScript's structural checks. Since `QueryFilters.projectId` is now optional, this cast is unnecessary — the object already satisfies `QueryFilters`. However `queryPerVideoTotals` requires `QueryFilters & { videoIds: string[] }` which means it expects `videoIds` to be non-optional. The cast hides that the `projectId` field is missing from the object.
-
-**Recommendation**: Remove the cast; the type should already work since `projectId` is optional. If it doesn't, fix the type signature of `queryPerVideoTotals` instead.
-
-### M3. No `try/catch` around ClickHouse calls in `account-dashboard-actions.ts`
-
-**File**: [account-dashboard-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/content-analytics/src/server/account-dashboard-actions.ts#L106-L140)
-**Severity**: Major
-
-The `getAccountDashboardData` function makes 5 parallel ClickHouse calls via `Promise.all`. If ClickHouse is down, this throws an unhandled error that propagates to the user. Other files (e.g., `page.tsx`, `publish-actions.ts`) correctly wrap ClickHouse calls in `try/catch` with zero-value fallbacks.
-
-**Recommendation**: Wrap the `Promise.all` block in a `try/catch` and return `getEmptyDashboardData()` on failure, matching the graceful degradation pattern used elsewhere.
+**Fix:** Either add a comment explaining the intentional deviation, or refactor to use `buildWhereClause` + `assertScopedFilters` for consistency.
 
 ---
 
 ## Minors
 
-### m1. Inconsistent ClickHouse import style — dynamic vs static
+### m1 — `publish-actions.ts` still uses dynamic import while other files use static imports
 
-Some files use `await import('@kit/clickhouse/server')` (dynamic), others use static top-level imports. This creates an inconsistent pattern:
+**File:** [publish-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/publishing/src/server/publish-actions.ts#L863-L865)
 
-| File | Import Style |
-|------|-------------|
-| `stats-actions.ts` | Dynamic `await import(…)` |
-| `publish-actions.ts` | Dynamic `await import(…)` |
-| `page.tsx` | Dynamic `await import(…)` |
-| `route.ts` | Dynamic `await import(…)` |
-| `account-dashboard-actions.ts` | Static `import { … } from …` |
-| `aggregation-queries.ts` | Static `import { … } from …` |
-| `language-analytics.ts` | Static `import { … } from …` |
+The review round already fixed m1 (dynamic → static) in `stats-actions.ts`, `route.ts`, and `aggregation-queries.ts`. But `publish-actions.ts` still uses `await import('@kit/clickhouse/server')` inside `getEpisodePublishesAction`. This creates an inconsistency since every other consumer now uses a top-level static import.
 
-**Recommendation**: Prefer static imports for all server-only files (they already have `@kit/clickhouse` as a dependency). Dynamic imports add unnecessary async overhead and complexity. Reserve dynamic imports for truly optional/conditional loading only.
+**Fix:** Move to a static import at the top of the file. The `try/catch` for ClickHouse unavailability can remain around the query call itself, not the import.
 
-### m2. `retentionData: null as Record<string, number> | null` — assertion smell
+---
 
-**File**: [route.ts](file:///Users/shaurya/Work/projects/storybook/apps/web/app/api/reports/scheduled/route.ts#L234)
+### m2 — Empty `catch` blocks silently swallow errors
 
-Using `null as Record<string, number> | null` is a type assertion that masks the real issue — the object literal type doesn't match `AnalyticsDataRow`. A cleaner fix would be to declare an explicit temporary variable or add return type annotation.
+**Files:**
+- [publish-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/publishing/src/server/publish-actions.ts#L867-L869) — `catch { // ClickHouse unavailable }`
+- [account-dashboard-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/content-analytics/src/server/account-dashboard-actions.ts#L156-L162) — `catch { // ClickHouse unavailable }`
 
-### m3. `content_analytics` still referenced once in `@kit/content-analytics` package.json description
+Both are intentional graceful degradation, which is good design. But they should **at least log** the error so operators can detect ClickHouse outages. A silent swallow risks hiding misconfiguration or query bugs.
 
-**File**: Check `packages/features/content-analytics/package.json` — the description or README may still mention the old table.
+**Fix:** Add `getLogger('analytics').warn({ err }, 'ClickHouse unavailable, returning empty data')` in each catch block.
+
+---
+
+### m3 — `analyticsMap` type in `publish-actions.ts` is structurally weaker than `AggregatedTotals`
+
+**File:** [publish-actions.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/publishing/src/server/publish-actions.ts#L856-L859)
+
+The variable is typed as `Map<string, { views; likes; comments; shares; watch_time_seconds }>`, but `queryTotalsByVideoIds` returns `Map<string, AggregatedTotals>` which includes additional fields (`saves`, `revenue_cents`, `subscribers_gained`). The inline type is a subset but forces future maintainers to update it separately.
+
+**Fix:** Import `AggregatedTotals` from `@kit/clickhouse` and type as `Map<string, AggregatedTotals>`.
 
 ---
 
 ## Nits
 
-### n1. `formatDate` helper is re-declared in 2 places
+### n1 — `formatDate` helper duplicated across multiple files
 
-Both `stats-actions.ts` (line 71) and `route.ts` define a local `formatDate` closure. Consider extracting to a shared utility.
+The pattern `(d: Date) => d.toISOString().split('T')[0]!` appears in:
+- `stats-actions.ts` (line ~70)
+- `account-dashboard-actions.ts` (lines 109-112)
+- `language-analytics.ts` (multiple places)
 
-### n2. Migration timestamp `20260212080000` is in the future year 2026
+**Suggestion:** Extract to `@kit/shared/utils` or `@kit/clickhouse` as a shared `formatDateForClickHouse(d: Date): string` utility.
 
-The migration has a year-2026 timestamp prefix. While harmless for ordering, it may confuse developers who expect real timestamps.
+---
 
-### n3. `1 = 1` WHERE clause generates slightly inefficient SQL
+### n2 — Comment says "extra_metrics" but audience data returns empty
 
-While ClickHouse optimizes `WHERE 1 = 1` away, it's unconventional. A cleaner approach is to only prepend `WHERE` when conditions exist:
+**File:** [aggregation-queries.ts](file:///Users/shaurya/Work/projects/storybook/packages/features/content-analytics/src/server/aggregation-queries.ts)
 
-```diff
-- clause: conditions.length > 0 ? conditions.join(' AND ') : '1 = 1',
-+ clause: conditions.length > 0
-+     ? 'WHERE ' + conditions.join(' AND ')
-+     : '',
-```
+In `getProjectAudienceData`, the function now returns essentially no demographic data since `extra_metrics` ingestion doesn't include demographics yet. The function still computes `ageGroups`, `genders`, and `geography` dictionaries that will always be empty. Consider returning `null` early with a TODO, or at minimum log/document that this is a known data gap.
 
-(with the `WHERE ` prefix moved into this function from the callers)
+---
+
+### n3 — Migration file uses `IF EXISTS` / `IF NOT EXISTS` — safe but hides errors
+
+**File:** [20260212080000_drop_content_analytics.sql](file:///Users/shaurya/Work/projects/storybook/apps/web/supabase/migrations/20260212080000_drop_content_analytics.sql)
+
+Using `DROP ... IF EXISTS` is safe for idempotency, which is good. No action needed, but be aware this will silently succeed even if the table was already dropped by another migration.
 
 ---
 
 ## Summary
 
-The migration is **structurally sound** — all `from('content_analytics')` Supabase queries are gone, replaced with ClickHouse equivalents using the correct query functions. The migration SQL is clean with proper ordering (policies → indexes → table). The database types have been regenerated successfully.
-
-**Key strengths:**
-- Clean separation: metadata from Supabase, metrics from ClickHouse
-- Proper `Promise.all` parallelism for multi-query patterns
-- Graceful degradation with `try/catch` in most consumer files
-- Empty-data early returns prevent unnecessary ClickHouse calls
-
-**Key risks:**
-- Full table scan possible if `buildWhereClause` receives empty filters (M1)
-- Missing `try/catch` in dashboard actions could crash if ClickHouse is down (M3)
-- Unnecessary type cast in `queryTotalsByVideoIds` (M2)
+The migration is well-structured — clean separation between ClickHouse client/queries/types, comprehensive test coverage (340 lines), and correct removal of the legacy `content_analytics` table with proper migration ordering. The `assertScopedFilters` guard pattern is a strong safety net.
 
 ### Next Actions
 
-1. **Fix M1** — Add guard clause to prevent unfiltered ClickHouse queries
-2. **Fix M3** — Add `try/catch` with `getEmptyDashboardData()` fallback
-3. **Fix M2** — Remove the `as` cast
-4. **Consider m1** — Standardize on static imports for server files
-5. Commit and push
+| Priority | Item | Effort |
+|----------|------|--------|
+| 🔴 High | **M1** — Add `assertScopedFilters` to `queryDailyStats` and `queryDailyTimeSeriesByPlatform` | 2 min |
+| 🟡 Medium | **M2** — Add comment or refactor `queryViewsForVideos` for consistency | 5 min |
+| 🟡 Medium | **m1** — Standardize `publish-actions.ts` to static import | 2 min |
+| 🟡 Medium | **m2** — Add logging to empty catch blocks | 5 min |
+| 🟢 Low | **m3** — Use `AggregatedTotals` type in `publish-actions.ts` | 2 min |
+| 🔵 Nit | **n1** — Extract shared `formatDate` helper | 10 min |
+| 🔵 Nit | **n2** — Document empty audience data gap | 2 min |

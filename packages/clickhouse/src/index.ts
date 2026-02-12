@@ -14,3 +14,5 @@ export type {
     QueryFilters,
     VideoMetric,
 } from './types';
+
+export { formatDateStr } from './types';

@@ -2,7 +2,7 @@
 
 import 'server-only';
 
-import { queryTotals } from '@kit/clickhouse/server';
+import { formatDateStr, queryTotals } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -68,18 +68,16 @@ export const getQuickStatsAction = enhanceAction(
 
       // 2. Query ClickHouse for current (7 days) and previous (7-14 days) periods
 
-      const formatDate = (d: Date) => d.toISOString().split('T')[0]!;
-
       const [currentTotals, previousTotals] = await Promise.all([
         queryTotals({
           videoIds,
-          startDate: formatDate(sevenDaysAgo),
-          endDate: formatDate(now),
+          startDate: formatDateStr(sevenDaysAgo),
+          endDate: formatDateStr(now),
         }),
         queryTotals({
           videoIds,
-          startDate: formatDate(fourteenDaysAgo),
-          endDate: formatDate(sevenDaysAgo),
+          startDate: formatDateStr(fourteenDaysAgo),
+          endDate: formatDateStr(sevenDaysAgo),
         }),
       ]);
 

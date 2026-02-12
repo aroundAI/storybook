@@ -129,8 +129,8 @@ Upload → Parse → Chunk → Extract Facts → Store
   "name": "fact-extraction",
   "template": "prompts/research/fact-extraction.json",
   "model": {
-    "provider": "openai",
-    "model": "gpt-4o-mini"
+    "provider": "gemini",
+    "model": "gemini-2.0-flash-exp"
   },
   "schema": {
     "facts": [{

@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { z } from 'zod';
 
+import type { AggregatedTotals } from '@kit/clickhouse';
+import { queryTotalsByVideoIds } from '@kit/clickhouse/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -853,19 +855,16 @@ export const getEpisodePublishesAction = enhanceAction(
 
     // Fetch analytics from ClickHouse for all publish IDs
     const publishIds = (publishes ?? []).map((p) => p.id);
-    let analyticsMap = new Map<
-      string,
-      { views: number; likes: number; comments: number; shares: number; watch_time_seconds: number }
-    >();
+    let analyticsMap = new Map<string, AggregatedTotals>();
 
     if (publishIds.length > 0) {
       try {
-        const { queryTotalsByVideoIds } = await import(
-          '@kit/clickhouse/server'
-        );
         analyticsMap = await queryTotalsByVideoIds(publishIds);
-      } catch {
-        // ClickHouse unavailable — return publishes without analytics
+      } catch (err) {
+        getLogger('publishing').warn(
+          { err },
+          'ClickHouse unavailable, returning publishes without analytics',
+        );
       }
     }
 

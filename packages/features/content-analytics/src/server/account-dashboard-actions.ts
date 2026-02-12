@@ -3,12 +3,14 @@
 import 'server-only';
 
 import {
+  formatDateStr,
   queryDailyTimeSeries,
   queryPlatformBreakdown,
   queryTotals,
   queryTotalsByVideoIds,
 } from '@kit/clickhouse/server';
 import type { AggregatedTotals } from '@kit/clickhouse/server';
+import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { AnalyticsTotals, DailyMetric } from '../types';
@@ -106,10 +108,10 @@ export async function getAccountDashboardData(
 
   const publishIds = allPublishes.map((p) => p.id);
 
-  const startDateStr = startDate.toISOString().split('T')[0]!;
-  const endDateStr = endDate.toISOString().split('T')[0]!;
-  const prevStartStr = previousStartDate.toISOString().split('T')[0]!;
-  const prevEndStr = previousEndDate.toISOString().split('T')[0]!;
+  const startDateStr = formatDateStr(startDate);
+  const endDateStr = formatDateStr(endDate);
+  const prevStartStr = formatDateStr(previousStartDate);
+  const prevEndStr = formatDateStr(previousEndDate);
 
   // Query ClickHouse for current and previous period
   let currentTotals: AggregatedTotals;
@@ -146,8 +148,11 @@ export async function getAccountDashboardData(
           endDate: endDateStr,
         }),
       ]);
-  } catch {
-    // ClickHouse unavailable — return empty dashboard gracefully
+  } catch (err) {
+    getLogger('content-analytics').warn(
+      { err },
+      'ClickHouse unavailable, returning empty dashboard data',
+    );
     return {
       ...getEmptyDashboardData(),
       projectCount: projects.length,

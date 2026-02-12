@@ -310,6 +310,7 @@ export async function queryDailyStats(
     filters: QueryFilters,
 ): Promise<DailyStats[]> {
     const client = getClickHouseClient();
+    assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
 
     const query = `
@@ -367,17 +368,19 @@ export async function queryViewsForVideos(
     if (videoIds.length === 0) return 0;
 
     const client = getClickHouseClient();
+    const filters: QueryFilters = { projectId, videoIds };
+    assertScopedFilters(filters);
+    const { clause, params } = buildWhereClause(filters);
 
     const query = `
     SELECT sum(views) as total_views
     FROM video_daily_stats
-    WHERE project_id = {projectId: UUID}
-      AND video_id IN {videoIds: Array(String)}
+    ${clause}
   `;
 
     const result = await client.query({
         query,
-        query_params: { projectId, videoIds },
+        query_params: params,
         format: 'JSONEachRow',
     });
 
@@ -406,6 +409,7 @@ export async function queryDailyTimeSeriesByPlatform(
     }[]
 > {
     const client = getClickHouseClient();
+    assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
 
     const query = `
