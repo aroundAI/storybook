@@ -14,6 +14,46 @@ import type { VerifiedFactRow } from './fact-row-mapper';
 export type { MappedFact } from './fact-row-mapper';
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Require that the user is an owner or admin on the project's account.
+ * Throws if the user lacks permission.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function requireProjectRole(
+    client: any,
+    projectId: string,
+    userId: string,
+) {
+    // Look up the account that owns this project
+    const { data: project } = await client
+        .from('projects')
+        .select('account_id')
+        .eq('id', projectId)
+        .single();
+
+    if (!project?.account_id) {
+        throw new Error('Project not found');
+    }
+
+    // Check user's role on the account
+    const { data: membership } = await client
+        .from('accounts_memberships')
+        .select('account_role')
+        .eq('account_id', project.account_id)
+        .eq('user_id', userId)
+        .single();
+
+    if (!membership || !['owner', 'admin'].includes(membership.account_role)) {
+        throw new Error(
+            'Unauthorized: Only owners and admins can verify or dispute facts.',
+        );
+    }
+}
+
+// =============================================================================
 // SCHEMAS
 // =============================================================================
 
@@ -149,10 +189,14 @@ export const addVerifiedFactAction = enhanceAction(
 
 /**
  * Mark a fact as verified.
+ * Requires owner or admin role on the project's account.
  */
 export const verifyFactAction = enhanceAction(
     async (data, user) => {
         const client = getSupabaseServerClient();
+
+        // RBAC: require owner or admin role
+        await requireProjectRole(client, data.projectId, user!.id);
 
         const { error } = await client
             .from('verified_facts')
@@ -182,10 +226,14 @@ export const verifyFactAction = enhanceAction(
 
 /**
  * Mark a fact as disputed.
+ * Requires owner or admin role on the project's account.
  */
 export const disputeFactAction = enhanceAction(
     async (data, user) => {
         const client = getSupabaseServerClient();
+
+        // RBAC: require owner or admin role
+        await requireProjectRole(client, data.projectId, user!.id);
 
         const { error } = await client
             .from('verified_facts')

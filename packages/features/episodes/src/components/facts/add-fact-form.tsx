@@ -47,6 +47,24 @@ type SourceTypeValue = (typeof SOURCE_TYPES)[number]['value'];
 const [firstSourceType, ...restSourceTypes] = SOURCE_TYPES.map((s) => s.value);
 const sourceTypeValues = [firstSourceType!, ...restSourceTypes] as const satisfies readonly [SourceTypeValue, ...SourceTypeValue[]];
 
+const CROSSREF_API_URL = 'https://api.crossref.org/works/';
+
+const CrossRefAuthorSchema = z.object({
+    family: z.string().optional(),
+    given: z.string().optional(),
+});
+
+const CrossRefWorkSchema = z.object({
+    title: z.array(z.string()).optional(),
+    author: z.array(CrossRefAuthorSchema).optional(),
+    published: z.object({ 'date-parts': z.array(z.array(z.number())).optional() }).optional(),
+    'container-title': z.array(z.string()).optional(),
+});
+
+const CrossRefResponseSchema = z.object({
+    message: CrossRefWorkSchema,
+});
+
 const addFactSchema = z.object({
     claim: z.string().min(10, 'Claim must be at least 10 characters'),
     category: z.string().optional(),
@@ -93,7 +111,7 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
 
         try {
             const response = await fetch(
-                `https://api.crossref.org/works/${encodeURIComponent(doiInput.trim())}`,
+                `${CROSSREF_API_URL}${encodeURIComponent(doiInput.trim())}`,
             );
 
             if (!response.ok) {
@@ -101,13 +119,19 @@ export function AddFactForm({ projectId, basePath }: AddFactFormProps) {
                 return;
             }
 
-            const data = await response.json();
-            const work = data.message;
+            const rawData = await response.json();
+            const parsed = CrossRefResponseSchema.safeParse(rawData);
+
+            if (!parsed.success) {
+                toast.error('Unexpected response format from CrossRef');
+                return;
+            }
+
+            const work = parsed.data.message;
 
             const authors: string[] =
                 work.author?.map(
-                    (a: { family?: string; given?: string }) =>
-                        `${a.family ?? ''}, ${a.given?.[0] ?? ''}.`,
+                    (a) => `${a.family ?? ''}, ${a.given?.[0] ?? ''}.`,
                 ) ?? [];
 
             const year =

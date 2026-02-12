@@ -22,7 +22,7 @@ import {
 } from '@kit/ui/card';
 import { Heading } from '@kit/ui/heading';
 
-import { STATUS_LABELS, STATUS_STYLES } from '@kit/episodes/components';
+import { SOURCE_TYPES, STATUS_LABELS, STATUS_STYLES } from '@kit/episodes/components';
 
 import { loadTeamWorkspace } from '../../../../../_lib/server/team-account-workspace.loader';
 
@@ -176,7 +176,8 @@ async function FactDetailPage({ params }: FactDetailPageProps) {
                     <div>
                         <span className="text-muted-foreground">Source Type:</span>{' '}
                         <span className="capitalize">
-                            {fact.source_type.replace(/_/g, ' ')}
+                            {SOURCE_TYPES.find((st) => st.value === fact.source_type)?.label ??
+                                fact.source_type.replace(/_/g, ' ')}
                         </span>
                     </div>
 
