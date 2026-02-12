@@ -8,6 +8,7 @@
 'use server';
 
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { getSupabaseServerAdminClient } from '@kit/supabase/server-admin-client';
 import { enhanceAction } from '@kit/next/actions';
 import { z } from 'zod';
 
@@ -181,3 +182,149 @@ export const getExternalContentByIdAction = enhanceAction(
         schema: GetContentByIdSchema,
     },
 );
+
+// =============================================================================
+// SOURCE CRUD ACTIONS (FILM-1140)
+// =============================================================================
+
+const AddSourceSchema = z.object({
+    name: z.string().min(1).max(200),
+    slug: z.string().min(1).max(100),
+    description: z.string().optional(),
+    websiteUrl: z.string().url().optional(),
+    category: z.enum(SOURCE_CATEGORIES),
+    providerType: z.string().min(1).max(50),
+    credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
+});
+
+/**
+ * Add a new external source to the registry.
+ * Uses admin client since RLS only allows service_role writes.
+ */
+export const addExternalSourceAction = enhanceAction(
+    async (data: z.infer<typeof AddSourceSchema>) => {
+        const supabase = getSupabaseServerAdminClient();
+
+        const { data: source, error } = await supabase
+            .from('external_sources')
+            .insert({
+                name: data.name,
+                slug: data.slug,
+                description: data.description ?? null,
+                website_url: data.websiteUrl ?? null,
+                category: data.category,
+                provider_type: data.providerType,
+                credibility_tier: data.credibilityTier ?? 'tier_3',
+            })
+            .select()
+            .single();
+
+        if (error) {
+            throw new Error(`Failed to add source: ${error.message}`);
+        }
+
+        return { source };
+    },
+    {
+        auth: true,
+        schema: AddSourceSchema,
+    },
+);
+
+const UpdateSourceSchema = z.object({
+    sourceId: z.string().uuid(),
+    name: z.string().min(1).max(200).optional(),
+    description: z.string().optional(),
+    websiteUrl: z.string().url().optional(),
+    credibilityTier: z.enum(['tier_1', 'tier_2', 'tier_3']).optional(),
+    isActive: z.boolean().optional(),
+});
+
+/**
+ * Update an existing external source.
+ */
+export const updateExternalSourceAction = enhanceAction(
+    async (data: z.infer<typeof UpdateSourceSchema>) => {
+        const supabase = getSupabaseServerAdminClient();
+
+        const updates: Record<string, unknown> = {};
+        if (data.name !== undefined) updates.name = data.name;
+        if (data.description !== undefined) updates.description = data.description;
+        if (data.websiteUrl !== undefined) updates.website_url = data.websiteUrl;
+        if (data.credibilityTier !== undefined) updates.credibility_tier = data.credibilityTier;
+        if (data.isActive !== undefined) updates.is_active = data.isActive;
+
+        const { error } = await supabase
+            .from('external_sources')
+            .update(updates)
+            .eq('id', data.sourceId);
+
+        if (error) {
+            throw new Error(`Failed to update source: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        auth: true,
+        schema: UpdateSourceSchema,
+    },
+);
+
+const DeleteSourceSchema = z.object({
+    sourceId: z.string().uuid(),
+});
+
+/**
+ * Soft-delete a source by setting is_active = false.
+ */
+export const deleteExternalSourceAction = enhanceAction(
+    async (data: z.infer<typeof DeleteSourceSchema>) => {
+        const supabase = getSupabaseServerAdminClient();
+
+        const { error } = await supabase
+            .from('external_sources')
+            .update({ is_active: false })
+            .eq('id', data.sourceId);
+
+        if (error) {
+            throw new Error(`Failed to delete source: ${error.message}`);
+        }
+
+        return { success: true };
+    },
+    {
+        auth: true,
+        schema: DeleteSourceSchema,
+    },
+);
+
+/**
+ * Get counts of sources and facts for sidebar badge.
+ */
+export const getResearchCountsAction = enhanceAction(
+    async (data: { projectId: string }) => {
+        const supabase = getSupabaseServerClient();
+
+        const [sourcesResult, factsResult] = await Promise.all([
+            supabase
+                .from('external_sources')
+                .select('*', { count: 'exact', head: true })
+                .eq('is_active', true),
+            supabase
+                .from('verified_facts')
+                .select('*', { count: 'exact', head: true })
+                .eq('project_id', data.projectId),
+        ]);
+
+        return {
+            sources: sourcesResult.count ?? 0,
+            facts: factsResult.count ?? 0,
+        };
+    },
+    {
+        auth: true,
+        schema: z.object({ projectId: z.string().uuid() }),
+    },
+);
+

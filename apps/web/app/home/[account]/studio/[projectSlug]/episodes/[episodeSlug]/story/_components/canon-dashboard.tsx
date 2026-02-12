@@ -40,6 +40,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { AddEventDialog } from './add-event-dialog';
 import { AddThreadDialog } from './add-thread-dialog';
+import { EpisodeFactsPanel } from './episode-facts-panel';
 
 interface CanonDashboardProps {
     projectId: string;
@@ -156,7 +157,7 @@ export function CanonDashboard({
             </CardHeader>
             <CardContent>
                 <Tabs defaultValue="events" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className="grid w-full grid-cols-4">
                         <TabsTrigger value="events" className="text-xs">
                             Events ({events.length})
                         </TabsTrigger>
@@ -165,6 +166,9 @@ export function CanonDashboard({
                         </TabsTrigger>
                         <TabsTrigger value="characters" className="text-xs">
                             Characters
+                        </TabsTrigger>
+                        <TabsTrigger value="facts" className="text-xs">
+                            Facts
                         </TabsTrigger>
                     </TabsList>
 
@@ -311,6 +315,14 @@ export function CanonDashboard({
                                 </div>
                             )}
                         </ScrollArea>
+                    </TabsContent>
+
+                    {/* Facts Tab */}
+                    <TabsContent value="facts" className="mt-3">
+                        <EpisodeFactsPanel
+                            episodeId={episodeId}
+                            projectId={projectId}
+                        />
                     </TabsContent>
                 </Tabs>
             </CardContent>

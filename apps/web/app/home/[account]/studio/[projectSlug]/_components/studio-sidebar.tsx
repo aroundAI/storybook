@@ -15,6 +15,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   BarChart3,
+  BookOpen,
   Check,
   ChevronDown,
   ChevronLeft,
@@ -459,6 +460,20 @@ export function StudioSidebar({
                 icon={<Music className="h-4 w-4" />}
                 label="Audio Library"
                 isActive={pathname.includes('/audio-library')}
+                isCollapsed={isCollapsed}
+              />
+            </nav>
+          </div>
+
+          {/* Research Section */}
+          <div>
+            <SectionHeader isCollapsed={isCollapsed}>Research</SectionHeader>
+            <nav className="space-y-0.5">
+              <NavItem
+                href={`${basePath}/research`}
+                icon={<BookOpen className="h-4 w-4" />}
+                label="Research Hub"
+                isActive={isActive(`${basePath}/research`)}
                 isCollapsed={isCollapsed}
               />
             </nav>

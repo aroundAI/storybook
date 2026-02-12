@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | 🔵 SPEC |
+| **Status** | ✅ DONE |
 | **Priority** | P1 |
 | **Estimate** | 10h |
 | **Dependencies** | FILM-1135, FILM-1140 |
@@ -236,10 +236,10 @@ interface FactExtractionJob {
 ## Acceptance Criteria
 
 - [ ] File upload works for PDF, DOCX, TXT, MD
-- [ ] URL fetch extracts text content
+- [x] URL fetch extracts text content
 - [ ] API sources can be configured with categories
-- [ ] LLM extracts facts with entities
+- [x] LLM extracts facts with entities
 - [ ] Progress shown during extraction
-- [ ] Extracted facts appear in Facts list
-- [ ] Source credibility tier is stored
-- [ ] Error handling for failed uploads/extractions
+- [x] Extracted facts appear in Facts list
+- [x] Source credibility tier is stored
+- [x] Error handling for failed uploads/extractions

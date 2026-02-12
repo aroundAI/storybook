@@ -1,10 +1,11 @@
 ---
 id: FILM-1121
 title: Fact Management UI Components
-status: draft
+status: done
 priority: high
 effort: L
 dependencies: [FILM-1120]
+pr: 185
 ---
 
 # FILM-1121: Fact Management UI Components
@@ -551,14 +552,14 @@ export const searchFactsAction = enhanceAction(
 
 ## Acceptance Criteria
 
-- [ ] FactLibrary shows all facts with search/filter
-- [ ] FactCard displays claim, citation, status, usage
-- [ ] AddFactForm validates input and creates fact
-- [ ] DOI lookup auto-fills citation
-- [ ] FactVerificationDialog allows marking verified/disputed
-- [ ] Only DOCUMENTARY projects see Facts section
-- [ ] addVerifiedFactAction creates fact with simplified claim
-- [ ] searchFactsAction uses full-text search
+- [x] FactLibrary shows all facts with search/filter
+- [x] FactCard displays claim, citation, status, usage
+- [x] AddFactForm validates input and creates fact
+- [x] DOI lookup auto-fills citation
+- [x] FactVerificationDialog allows marking verified/disputed
+- [x] Only DOCUMENTARY projects see Facts section
+- [x] addVerifiedFactAction creates fact with simplified claim
+- [x] searchFactsAction uses full-text search
 
 ---
 

@@ -2,7 +2,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | 🔵 SPEC |
+| **Status** | ✅ DONE |
 | **Priority** | P1 |
 | **Estimate** | 6h |
 | **Dependencies** | FILM-1110, FILM-1135, FILM-1140 |
@@ -256,9 +256,9 @@ const handleAnalyze = (data) => {
 
 ## Acceptance Criteria
 
-- [ ] Content type banner shows in Generate Season
-- [ ] Banner shows linked sources summary
-- [ ] Warning shown when factual content has no sources
+- [x] Content type banner shows in Generate Season
+- [x] Banner shows linked sources summary
+- [x] Warning shown when factual content has no sources
 - [ ] "Add Sources" link navigates to Research tab
 - [ ] External facts passed to season analysis
 - [ ] Memory context includes external facts
