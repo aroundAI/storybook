@@ -470,7 +470,7 @@ graph TD
 
 ### Phase 11: Canon Integration & Content Types (21 specs)
 
-> **Status**: 🟡 IN PROGRESS — Core integration, content types, fact management, external context provider, news system, and anchor role implemented (PRs #175–178, FILM-1135, #182). UI integration remaining.
+> **Status**: ✅ COMPLETE — All 21 specs implemented across PRs #175–178, #181–185, #188.
 
 | Task ID | Name | Status | Effort | PR | Dependencies |
 |---------|------|--------|--------|-----|-------------|
@@ -501,8 +501,8 @@ graph TD
 
 | Task ID | Name | Status | Effort | Dependencies |
 |---------|------|--------|--------|--------------|
-| FILM-1201 | [clickhouse-migration](./phase-12-scale/database/FILM-1201-clickhouse-migration.md) | Draft | L | FILM-804 |
-| FILM-1202 | [network-strategy](./phase-12-scale/strategy/FILM-1202-network-strategy.md) | Draft | M | FILM-805, FILM-810 |
+| FILM-1201 | [clickhouse-migration](./phase-12-scale/database/FILM-1201-clickhouse-migration.md) | ✅ DONE | L | FILM-804 |
+| FILM-1202 | [network-strategy](./phase-12-scale/strategy/FILM-1202-network-strategy.md) | ✅ DONE | M | FILM-805, FILM-810 |
 
 ### Phase 13: Hook Optimization (2 specs)
 
@@ -584,11 +584,11 @@ SPIKE-01 through SPIKE-05
 | 8. Analytics | 10 | 0 | 0 | 0 | 0 | 10 |
 | 9. Integration | 6 | 0 | 0 | 0 | 0 | 6 |
 | 10. Canon Mgmt | 7 | 0 | 0 | 0 | 0 | 7 |
-| 11. Canon Integ | 21 | 4 | 0 | 0 | 0 | 17 |
-| 12. Scale | 2 | 2 | 0 | 0 | 0 | 0 |
+| 11. Canon Integ | 21 | 0 | 0 | 0 | 0 | 21 |
+| 12. Scale | 2 | 0 | 0 | 0 | 0 | 2 |
 | 13. Hook Opt | 2 | 2 | 0 | 0 | 0 | 0 |
 | Spikes | 5 | 0 | 0 | 0 | 0 | 5 |
-| **TOTAL** | **162** | **8** | **0** | **0** | **0** | **154** |
+| **TOTAL** | **162** | **2** | **0** | **0** | **0** | **160** |
 
 ### MVP Progress (Phases 1-5 + Cross-Cutting + Design System + Spikes)
 
@@ -596,8 +596,8 @@ SPIKE-01 through SPIKE-05
 |-------|-------|-----------|---|
 | MVP Specs | 93 | 93 | 100% |
 | Post-MVP (Ph 6-9) | 37 | 37 | 100% |
-| Canon (Ph 10-11) | 28 | 24 | 86% |
-| Scale & Hooks (Ph 12-13) | 4 | 0 | 0% |
+| Canon (Ph 10-11) | 28 | 28 | 100% |
+| Scale & Hooks (Ph 12-13) | 4 | 2 | 50% |
 
 ---
 
