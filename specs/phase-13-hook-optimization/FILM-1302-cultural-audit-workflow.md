@@ -239,10 +239,10 @@ if (publishLanguage !== project.primaryLanguage) {
     .eq('language_code', publishLanguage)
     .single();
 
-  if (audit && audit.status !== 'approved') {
+  if (!audit || audit.status !== 'approved') {
     throw new Error(
       `Cultural audit not approved for ${publishLanguage}. ` +
-      `Current status: ${audit.status}`
+      `Current status: ${audit?.status ?? 'not found'}`
     );
   }
 }

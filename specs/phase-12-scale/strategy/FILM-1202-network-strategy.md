@@ -436,6 +436,11 @@ All LLM interactions use the JSON-based prompt engine. Full registry of template
 | Insights Generation | `analytics/insights-generation.json` | AI-powered insights |
 | Language Insights | `analytics/language-insights.json` | Per-language analysis |
 
+### Movie
+| Template | File | Used By |
+|----------|------|---------|
+| Act Context Extraction | `movie/act-context-extraction.json` | Long-form act structure extraction |
+
 **Prompt Engine Base Path:** `packages/features/prompt-engine/src/prompts/`
 
 ---

@@ -75,7 +75,6 @@ CREATE TABLE hook_tests (
   hypothesis TEXT,                              -- "I believe X will beat Y"
   status TEXT NOT NULL DEFAULT 'draft'
     CHECK (status IN ('draft', 'generating', 'rendering', 'live', 'completed', 'archived')),
-  winner_variant_id UUID,                       -- Set when test concludes
   viral_threshold NUMERIC DEFAULT 0.75,         -- 3s retention threshold (0-1)
   account_id UUID NOT NULL REFERENCES accounts(id),
   created_by UUID REFERENCES auth.users(id),
@@ -101,6 +100,9 @@ CREATE TABLE hook_variants (
   is_winner BOOLEAN DEFAULT false,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Enforce single winner per test at the DB level
+CREATE UNIQUE INDEX uq_one_winner_per_test ON hook_variants (test_id) WHERE is_winner IS TRUE;
 
 -- RLS policies
 ALTER TABLE hook_tests ENABLE ROW LEVEL SECURITY;
@@ -359,10 +361,15 @@ export const promoteToEpisodeAction = enhanceAction(
       durationSeconds: variant.duration_seconds,
     });
 
-    // 3. Mark test as completed
+    // 3. Mark variant as winner and test as completed
+    await client
+      .from('hook_variants')
+      .update({ is_winner: true })
+      .eq('id', data.variantId);
+
     await client
       .from('hook_tests')
-      .update({ status: 'completed', winner_variant_id: data.variantId })
+      .update({ status: 'completed' })
       .eq('id', variant.test_id);
   },
   { schema: PromoteSchema }
