@@ -1,7 +1,7 @@
 ---
 spec_id: FILM-1301
 title: Hook Testing Engine (The "Hook Lab")
-status: Draft
+status: 🟡 Needs Architectural Decision
 effort: L
 dependencies: FILM-1201, FILM-716
 ---
@@ -10,10 +10,16 @@ dependencies: FILM-1201, FILM-716
 
 ## 1. Overview
 
-The **Hook Lab** allows creators to generate, render, and A/B test 5-15 variations of a video's first 3-10 seconds ("Hooks") before committing to full episode production. This shifts the workflow from "Production First" to "Validation First", aligning with the Brendan Kane methodology of iterative testing.
+The **Hook Lab** allows creators to generate, test, and optimize the first 3-10 seconds of video content ("hooks") using data-driven A/B testing. This shifts the workflow from "Production First" to **"Validation First"**, aligning with the Brendan Kane methodology of iterative testing.
 
 > [!IMPORTANT]
 > This spec maps every proposed component to concrete codebase integration points, so AI agents can implement the Hook Lab incrementally with full context.
+
+> [!CAUTION]
+> **ARCHITECTURAL DECISION REQUIRED** — Before implementation, we must decide between
+> two fundamentally different approaches. See **Section 9: Architectural Discussion** below.
+> The backend tables, scoring logic, and prompt templates are shared across both approaches;
+> only the **workflow integration point** changes.
 
 ---
 
@@ -164,6 +170,10 @@ LIMIT 1
 ### 4.1 New Package: `@kit/hooks` (or extend `@kit/episodes`)
 
 > Decision point: Create standalone `packages/features/hooks/` OR add as a sub-module within `packages/features/episodes/`. **Recommendation:** Standalone package — the Hook Lab has its own DB tables, routes, and lifecycle independent of episodes.
+>
+> **UPDATE (2026-02-16):** During initial implementation attempt, we chose Option C (inside `@kit/episodes`)
+> because hook testing is tightly coupled to episode content. See **Section 9** for the full
+> architectural discussion about whether this should be standalone, embedded, or hybrid.
 
 **Proposed package structure:**
 ```
@@ -455,3 +465,168 @@ export async function queryHookRetention(testId: string) {
 | Dashboard route | `apps/web/app/home/[account]/studio/[projectSlug]/hooks/page.tsx` |
 | Experiment route | `apps/web/app/home/[account]/studio/[projectSlug]/hooks/[hookTestId]/page.tsx` |
 | Sidebar modification | `apps/web/app/home/[account]/studio/[projectSlug]/layout.tsx` |
+
+---
+
+## 9. 🔴 Architectural Discussion: Standalone Lab vs. Embedded A/B
+
+> [!WARNING]
+> **This section captures a critical architectural discussion from 2026-02-16.**
+> The decision here fundamentally changes how hooks are tested and where the
+> feature lives in the product. **Must be resolved before implementation.**
+
+### 9.1 The Core Tension
+
+The original spec (Sections 2-8 above) designs the Hook Lab as a **standalone,
+detached tool** — you go to a separate "Hook Lab" section, create isolated test
+clips, publish them to burner channels, measure retention, then promote a winner
+back into an episode.
+
+But in practice, the real workflow is more nuanced: **you try different hooks
+across actual episodes and shorts to see what's clicking with your audience.**
+This suggests the hook testing should be **embedded** into the existing
+production flow, not bolted on as a separate laboratory.
+
+### 9.2 Two Approaches Compared
+
+| Dimension | **Approach A: Standalone Lab** | **Approach B: Embedded A/B** |
+|-----------|-------------------------------|------------------------------|
+| **When testing happens** | Before production — dedicated experimentation phase | During production — test as part of normal publishing |
+| **Content used** | Isolated 5-10s hook clips (rendered just for the test) | Real episodes and shorts you're already making |
+| **Signal quality** | Retention on synthetic test clips (lower ecological validity) | Retention on actual published content (high ecological validity) |
+| **Learning scope** | Per-test winner ("Variant A beat Variant B for this topic") | Cross-episode patterns ("Question hooks do 2x for our channel over 20 episodes") |
+| **Workflow** | Separate route (`/hooks`), separate dashboard | Options inside existing episode/screenplay/publishing flow |
+| **DB model** | `hook_tests` + `hook_variants` (separate tables) | Could extend `episodes` or `shorts_groups` with `hook_strategy` metadata |
+| **User effort** | High — must create separate test, wait for results, then go back to episodes | Low — just choose "try 3 hook variants" when publishing |
+| **Platform risk** | Burner channels may confuse platform algorithms | A/B on production channels requires careful traffic splitting |
+| **Complexity** | Self-contained, simpler to build | Deeply integrated, requires changes across publishing, analytics, episode workflow |
+
+### 9.3 Open Questions (Must Answer Before Building)
+
+> [!IMPORTANT]
+> These questions emerged during the 2026-02-16 discussion. Answering them will
+> determine the correct architecture.
+
+**Q1: Publishing flow integration**
+When you publish an episode, would you want to optionally publish 2-3 versions
+with different opening hooks, then let ClickHouse data tell you which one
+retained better? If yes, this means the hook testing is inseparable from the
+publishing pipeline — you'd need to extend `publishToAllAction` to handle
+multi-variant publishing, and the analytics pipeline to track retention
+per-variant for the same "logical" episode.
+
+**Q2: Shorts as the primary test vehicle**
+Since shorts are quick to produce (1-3 minutes), are they the natural vehicle for
+hook testing? Shorts already have `hookType` and `viralScore` in `ShortsMetadata`.
+If so, the Hook Lab might just be a "create 3 versions of this short with
+different openings" button in the shorts workflow, not a separate section at all.
+
+**Q3: Cross-episode learning vs. per-test results**
+Are you more interested in:
+- **(a) Individual A/B results** — "Hook A beat Hook B for this specific episode"
+- **(b) Aggregate pattern insights** — "Across 20 episodes, question hooks
+  outperform shock hooks by 30% for our channel"
+- **(c) Both** — individual results that feed into an aggregate learning system
+
+If (b) or (c), we need a **hook performance tracking layer** that tags every
+published video's hook type and builds aggregate analytics in ClickHouse. This
+is fundamentally different from a test-by-test experiment model.
+
+**Q4: Scope of "hook" — script only or script + visuals?**
+Is a hook variant:
+- **(a) Just the opening line/script** — same visual, different words
+- **(b) Script + visual direction** — different camera angles, pacing, effects
+- **(c) Full alternate opening** — different story setup entirely
+
+This affects rendering cost (VEO generations per variant) and the DB model
+(whether `veo_prompt` is per-variant or shared).
+
+**Q5: How many variants are practical?**
+Kane's methodology suggests 5-15 variants, but:
+- Each VEO render costs ~$0.05-0.10
+- 15 variants × 3 platforms = 45 published videos to manage
+- More variants = more noise in analytics with low view counts
+
+Is 3-5 variants with a clear hypothesis more actionable than 15 variants
+casting a wide net?
+
+### 9.4 Possible Hybrid Approach (Option C)
+
+A third option combines the best of both worlds:
+
+1. **Lightweight hook tagging** (always on): Every episode/short automatically
+   gets its hook classified by type (`question`, `shock`, `story`, etc.) during
+   story generation. ClickHouse tracks retention by hook type across all content.
+   This gives **free aggregate learning** with zero extra effort.
+
+2. **Intentional A/B testing** (opt-in): When a creator wants to deliberately
+   test hooks, they use the Hook Lab to generate variants and publish them as
+   separate shorts. This gives **controlled experiments** for specific topics.
+
+3. **Cross-pollination**: The aggregate dashboard shows "Your question hooks
+   average 82% 3s retention vs. 61% for shock hooks" — which informs the
+   creator's next deliberate test and their everyday hook choices.
+
+**This hybrid approach means the DB schema stays the same (hook_tests +
+hook_variants for deliberate tests), but we ADD a hook_type tag to every
+published video in the analytics pipeline.** The aggregate learning layer
+is essentially a reporting view in ClickHouse, not a separate feature.
+
+### 9.5 What Was Already Built (On Feature Branch)
+
+> [!NOTE]
+> An initial implementation attempt was made on branch
+> `feature/FILM-1301-hook-testing-engine` (15 files, 1,535 lines). It was
+> shelved pending architectural decision. The code is preserved on that branch
+> and can be cherry-picked or discarded.
+
+**Branch:** `feature/FILM-1301-hook-testing-engine`
+
+| Step | What Was Built | Status |
+|------|---------------|--------|
+| DB Schema | `70-hook-testing.sql` — `hook_tests` + `hook_variants` with RLS, triggers, indexes | ✅ Complete |
+| ClickHouse | `002_hook_retention.ts` DDL + `HookRetentionMetric` type + insert/query functions | ✅ Complete |
+| Types/Schemas | `hook-types.ts`, `hook-constants.ts`, `hook-schemas.ts`, `hook-scoring.ts` in `@kit/episodes` | ✅ Complete |
+| Server Actions | `hook-test-actions.ts` (CRUD) + `hook-variant-actions.ts` (generate via `executeLLM`, declare winner, promote) | ✅ Complete |
+| Prompt Template | `hook-variant-generation.json` (Gemini 3 Pro, temp 0.85, 8 hook types) | ✅ Complete |
+| UI Components | Not started | ❌ Pending |
+| Publishing Integration | Not started | ❌ Pending |
+
+**All code typechecks cleanly** across `@kit/episodes`, `@kit/clickhouse`, and
+`@kit/prompt-engine`. If Approach A (Standalone) is chosen, this code can be
+used directly. If Approach B (Embedded) is chosen, the types, schemas, scoring
+logic, and prompt template are still reusable — only the server actions and
+DB schema would need refactoring.
+
+### 9.6 Recommendation
+
+**Start with the Hybrid Approach (Option C):**
+
+1. **Phase 1 (Low effort):** Add `hook_type` classification to every video
+   published through the platform. Build an aggregate ClickHouse view showing
+   retention by hook type per project. This is ~2 hours of work and delivers
+   immediate insight.
+
+2. **Phase 2 (Medium effort):** Build the deliberate testing flow (current spec
+   Sections 2-5) for when creators want controlled experiments. Use the code
+   already built on the feature branch.
+
+3. **Phase 3 (Future):** Add "Try 3 hooks" button to the shorts publishing
+   flow for embedded A/B testing on production content.
+
+This way, creators start learning about their hooks immediately (Phase 1),
+get a dedicated lab when they want it (Phase 2), and eventually get friction-free
+testing in their normal workflow (Phase 3).
+
+---
+
+## 10. Acceptance Criteria
+
+- [ ] **Architectural approach decided** (Standalone / Embedded / Hybrid)
+- [ ] Creator can generate 3-8 hook variants from a topic
+- [ ] Each variant has a distinct hook type and VEO 3.1 visual direction
+- [ ] Variants can be published to test channels
+- [ ] ClickHouse tracks per-variant retention (1s, 3s, 5s, full)
+- [ ] System auto-declares winner based on configurable threshold
+- [ ] Winner can be promoted to episode intro
+- [ ] Aggregate hook performance visible across projects

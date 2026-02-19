@@ -232,9 +232,6 @@ importers:
       '@kit/episodes':
         specifier: workspace:*
         version: link:../../packages/features/episodes
-      '@kit/film-studio':
-        specifier: workspace:*
-        version: link:../../packages/features/film-studio
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../../packages/features/film-studio-schemas
@@ -1478,9 +1475,6 @@ importers:
       '@kit/cache':
         specifier: workspace:*
         version: link:../../cache
-      '@kit/film-studio':
-        specifier: workspace:*
-        version: link:../film-studio
       '@kit/film-studio-schemas':
         specifier: workspace:*
         version: link:../film-studio-schemas
@@ -1575,97 +1569,6 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.12)(@types/node@25.0.3)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.44.1)(tsx@4.21.0)
-      zod:
-        specifier: ^3.25.74
-        version: 3.25.76
-
-  packages/features/film-studio:
-    dependencies:
-      '@kit/clickhouse':
-        specifier: workspace:*
-        version: link:../../clickhouse
-      '@kit/film-studio-schemas':
-        specifier: workspace:*
-        version: link:../film-studio-schemas
-      '@kit/llm':
-        specifier: workspace:*
-        version: link:../../llm
-      '@kit/next':
-        specifier: workspace:*
-        version: link:../../next
-      '@kit/shared':
-        specifier: workspace:*
-        version: link:../../shared
-      '@kit/supabase':
-        specifier: workspace:*
-        version: link:../../supabase
-      '@tanstack/react-query':
-        specifier: 5.89.0
-        version: 5.89.0(react@19.1.1)
-      date-fns:
-        specifier: ^4.1.0
-        version: 4.1.0
-      uuid:
-        specifier: ^11.1.0
-        version: 11.1.0
-    devDependencies:
-      '@hookform/resolvers':
-        specifier: ^4.1.3
-        version: 4.1.3(react-hook-form@7.62.0(react@19.1.1))
-      '@kit/eslint-config':
-        specifier: workspace:*
-        version: link:../../../tooling/eslint
-      '@kit/prettier-config':
-        specifier: workspace:*
-        version: link:../../../tooling/prettier
-      '@kit/tsconfig':
-        specifier: workspace:*
-        version: link:../../../tooling/typescript
-      '@kit/ui':
-        specifier: workspace:*
-        version: link:../../ui
-      '@testing-library/react':
-        specifier: ^16.3.0
-        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.1.9(@types/react@19.1.13))(@types/react@19.1.13)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      '@types/node':
-        specifier: ^24.5.0
-        version: 24.5.0
-      '@types/react':
-        specifier: 19.1.13
-        version: 19.1.13
-      '@types/react-dom':
-        specifier: 19.1.9
-        version: 19.1.9(@types/react@19.1.13)
-      '@types/uuid':
-        specifier: ^10.0.0
-        version: 10.0.0
-      jsdom:
-        specifier: ^26.1.0
-        version: 26.1.0
-      lucide-react:
-        specifier: ^0.544.0
-        version: 0.544.0(react@19.1.1)
-      next:
-        specifier: 15.5.3
-        version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
-      react:
-        specifier: 19.1.1
-        version: 19.1.1
-      react-dom:
-        specifier: 19.1.1
-        version: 19.1.1(react@19.1.1)
-      react-hook-form:
-        specifier: ^7.62.0
-        version: 7.62.0(react@19.1.1)
-      server-only:
-        specifier: ^0.0.1
-        version: 0.0.1
-      typescript:
-        specifier: ^5.9.2
-        version: 5.9.2
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.12)(@types/node@24.5.0)(@vitest/ui@3.2.4)(happy-dom@18.0.1)(jiti@2.5.1)(jsdom@26.1.0)(lightningcss@1.30.1)(terser@5.44.1)(tsx@4.21.0)
       zod:
         specifier: ^3.25.74
         version: 3.25.76
@@ -12560,6 +12463,7 @@ snapshots:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
       lru-cache: 10.4.3
+    optional: true
 
   '@aws-cdk/asset-awscli-v1@2.2.242': {}
 
@@ -14209,12 +14113,14 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  '@csstools/color-helpers@5.1.0': {}
+  '@csstools/color-helpers@5.1.0':
+    optional: true
 
   '@csstools/css-calc@2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
     dependencies:
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
+    optional: true
 
   '@csstools/css-color-parser@3.1.0(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
     dependencies:
@@ -14222,12 +14128,15 @@ snapshots:
       '@csstools/css-calc': 2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
       '@csstools/css-tokenizer': 3.0.4
+    optional: true
 
   '@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4)':
     dependencies:
       '@csstools/css-tokenizer': 3.0.4
+    optional: true
 
-  '@csstools/css-tokenizer@3.0.4': {}
+  '@csstools/css-tokenizer@3.0.4':
+    optional: true
 
   '@date-fns/tz@1.4.1': {}
 
@@ -20067,6 +19976,7 @@ snapshots:
     dependencies:
       '@asamuzakjp/css-color': 3.2.0
       rrweb-cssom: 0.8.0
+    optional: true
 
   csstype@3.1.3: {}
 
@@ -20118,6 +20028,7 @@ snapshots:
     dependencies:
       whatwg-mimetype: 4.0.0
       whatwg-url: 14.2.0
+    optional: true
 
   data-view-buffer@1.0.2:
     dependencies:
@@ -20334,7 +20245,8 @@ snapshots:
 
   entities@4.5.0: {}
 
-  entities@6.0.1: {}
+  entities@6.0.1:
+    optional: true
 
   error-ex@1.3.2:
     dependencies:
@@ -20529,8 +20441,8 @@ snapshots:
       '@typescript-eslint/parser': 8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2)
       eslint: 9.35.0(jiti@2.5.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.35.0(jiti@2.5.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.35.0(jiti@2.5.1))
       eslint-plugin-jsx-a11y: 6.10.2(eslint@9.35.0(jiti@2.5.1))
       eslint-plugin-react: 7.37.5(eslint@9.35.0(jiti@2.5.1))
       eslint-plugin-react-hooks: 5.2.0(eslint@9.35.0(jiti@2.5.1))
@@ -20555,7 +20467,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)):
+  eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0)(eslint@9.35.0(jiti@2.5.1)):
     dependencies:
       '@nolyfill/is-core-module': 1.0.39
       debug: 4.4.3
@@ -20566,22 +20478,22 @@ snapshots:
       tinyglobby: 0.2.15
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1))
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.35.0(jiti@2.5.1))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)):
+  eslint-module-utils@2.12.1(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.35.0(jiti@2.5.1)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
       '@typescript-eslint/parser': 8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2)
       eslint: 9.35.0(jiti@2.5.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1))
+      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.35.0(jiti@2.5.1))
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-typescript@3.10.1)(eslint@9.35.0(jiti@2.5.1)):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -20592,7 +20504,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.35.0(jiti@2.5.1)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1)))(eslint@9.35.0(jiti@2.5.1))
+      eslint-module-utils: 2.12.1(@typescript-eslint/parser@8.44.0(eslint@9.35.0(jiti@2.5.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.10.1)(eslint@9.35.0(jiti@2.5.1))
       hasown: 2.0.2
       is-core-module: 2.16.1
       is-glob: 4.0.3
@@ -21311,6 +21223,7 @@ snapshots:
   html-encoding-sniffer@4.0.0:
     dependencies:
       whatwg-encoding: 3.1.1
+    optional: true
 
   html-escaper@2.0.2: {}
 
@@ -21631,7 +21544,8 @@ snapshots:
 
   is-plain-object@5.0.0: {}
 
-  is-potential-custom-element-name@1.0.1: {}
+  is-potential-custom-element-name@1.0.1:
+    optional: true
 
   is-promise@4.0.0: {}
 
@@ -21792,6 +21706,7 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+    optional: true
 
   jsesc@3.1.0: {}
 
@@ -22645,7 +22560,8 @@ snapshots:
     dependencies:
       boolbase: 1.0.0
 
-  nwsapi@2.2.23: {}
+  nwsapi@2.2.23:
+    optional: true
 
   object-assign@4.1.1: {}
 
@@ -22864,6 +22780,7 @@ snapshots:
   parse5@7.3.0:
     dependencies:
       entities: 6.0.1
+    optional: true
 
   parseley@0.12.1:
     dependencies:
@@ -23695,7 +23612,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  rrweb-cssom@0.8.0: {}
+  rrweb-cssom@0.8.0:
+    optional: true
 
   run-async@2.4.1: {}
 
@@ -23745,6 +23663,7 @@ snapshots:
   saxes@6.0.0:
     dependencies:
       xmlchars: 2.2.0
+    optional: true
 
   scheduler@0.25.0-rc-603e6108-20241029: {}
 
@@ -24283,7 +24202,8 @@ snapshots:
       lower-case: 1.1.4
       upper-case: 1.1.3
 
-  symbol-tree@3.2.4: {}
+  symbol-tree@3.2.4:
+    optional: true
 
   tabbable@6.2.0: {}
 
@@ -24381,11 +24301,13 @@ snapshots:
       no-case: 2.3.2
       upper-case: 1.1.3
 
-  tldts-core@6.1.86: {}
+  tldts-core@6.1.86:
+    optional: true
 
   tldts@6.1.86:
     dependencies:
       tldts-core: 6.1.86
+    optional: true
 
   tmp@0.0.33:
     dependencies:
@@ -24406,12 +24328,14 @@ snapshots:
   tough-cookie@5.1.2:
     dependencies:
       tldts: 6.1.86
+    optional: true
 
   tr46@0.0.3: {}
 
   tr46@5.1.1:
     dependencies:
       punycode: 2.3.1
+    optional: true
 
   tree-kill@1.2.2: {}
 
@@ -24967,6 +24891,7 @@ snapshots:
   w3c-xmlserializer@5.0.0:
     dependencies:
       xml-name-validator: 5.0.0
+    optional: true
 
   watchpack@2.5.0:
     dependencies:
@@ -24983,7 +24908,8 @@ snapshots:
 
   webidl-conversions@3.0.1: {}
 
-  webidl-conversions@7.0.0: {}
+  webidl-conversions@7.0.0:
+    optional: true
 
   webpack-bundle-analyzer@4.10.1:
     dependencies:
@@ -25043,15 +24969,18 @@ snapshots:
   whatwg-encoding@3.1.1:
     dependencies:
       iconv-lite: 0.6.3
+    optional: true
 
   whatwg-mimetype@3.0.0: {}
 
-  whatwg-mimetype@4.0.0: {}
+  whatwg-mimetype@4.0.0:
+    optional: true
 
   whatwg-url@14.2.0:
     dependencies:
       tr46: 5.1.1
       webidl-conversions: 7.0.0
+    optional: true
 
   whatwg-url@5.0.0:
     dependencies:
@@ -25147,7 +25076,8 @@ snapshots:
 
   ws@8.18.3: {}
 
-  xml-name-validator@5.0.0: {}
+  xml-name-validator@5.0.0:
+    optional: true
 
   xml2js@0.6.2:
     dependencies:
@@ -25156,7 +25086,8 @@ snapshots:
 
   xmlbuilder@11.0.1: {}
 
-  xmlchars@2.2.0: {}
+  xmlchars@2.2.0:
+    optional: true
 
   xtend@4.0.2: {}
 

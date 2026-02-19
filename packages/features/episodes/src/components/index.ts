@@ -18,16 +18,6 @@ export { SceneNavigation } from './screenplay-viewer/scene-navigation';
 export { BatchEpisodeCreator } from './batch-episode-creator/batch-episode-creator';
 export { EpisodePreviewDialog } from './batch-episode-creator/episode-preview-dialog';
 
-// Timeline Editor (FILM-601)
-export { TimelineEditor, useTimelineContext } from './timeline-editor';
-export type {
-  TimelineEditorProps,
-  TimelineData,
-  TimelineClip,
-  TimelineTrack,
-  ClipType,
-} from './timeline-editor';
-
 // Video Upload
 export { VideoUploader, type VideoUploaderProps } from './video-uploader';
 
