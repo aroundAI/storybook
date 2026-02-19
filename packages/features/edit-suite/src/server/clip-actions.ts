@@ -21,6 +21,7 @@ import {
     mapEditTransitionRow,
 } from '../lib/types';
 import type { EditClip, SplitClipResult } from '../lib/types';
+import { getEditSuiteClient } from './db-client';
 
 // ──────────────────────────────────────────
 // Clip CRUD
@@ -36,15 +37,16 @@ export const createClipAction = enhanceAction(
 
         logger.info(ctx, 'Creating clip');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: clip, error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const { data: clip, error } = await client
             .from('edit_clips')
             .insert({
                 track_id: data.trackId,
@@ -94,12 +96,14 @@ export const updateClipAction = enhanceAction(
 
         logger.info(ctx, 'Updating clip');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
+
+        const client = getEditSuiteClient();
 
         const updates: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
@@ -116,8 +120,7 @@ export const updateClipAction = enhanceAction(
         if (data.sortOrder !== undefined) updates.sort_order = data.sortOrder;
         if (data.isActive !== undefined) updates.is_active = data.isActive;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: clip, error } = await (client as any)
+        const { data: clip, error } = await client
             .from('edit_clips')
             .update(updates)
             .eq('id', data.clipId)
@@ -150,16 +153,17 @@ export const deleteClipAction = enhanceAction(
 
         logger.info(ctx, 'Deleting clip');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
+        const client = getEditSuiteClient();
+
         // Hard delete — keyframes cascade via FK
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (client as any)
+        const { error } = await client
             .from('edit_clips')
             .delete()
             .eq('id', data.clipId);
@@ -178,8 +182,9 @@ export const deleteClipAction = enhanceAction(
 );
 
 /**
- * Split a clip at a given timeline position.
- * Creates two clips from one, preserving keyframes split across both.
+ * Split a clip at a given timeline position atomically.
+ * Uses a PostgreSQL function to ensure the split (update original,
+ * create second clip, redistribute keyframes) happens in one transaction.
  */
 export const splitClipAction = enhanceAction(
     async (data): Promise<{ success: true; result: SplitClipResult }> => {
@@ -188,145 +193,55 @@ export const splitClipAction = enhanceAction(
 
         logger.info(ctx, 'Splitting clip');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // Fetch the clip to split
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: originalClip, error: fetchError } = await (client as any)
-            .from('edit_clips')
-            .select('*')
-            .eq('id', data.clipId)
-            .single();
+        const client = getEditSuiteClient();
 
-        if (fetchError || !originalClip) {
-            throw new Error('Clip not found');
+        // Call the atomic RPC function
+        const { data: result, error: rpcError } = await client.rpc(
+            'split_edit_clip',
+            {
+                p_clip_id: data.clipId,
+                p_split_at_ms: data.splitAtMs,
+            },
+        );
+
+        if (rpcError) {
+            logger.error({ ...ctx, error: rpcError }, 'Failed to split clip');
+            throw new Error(`Failed to split clip: ${rpcError.message}`);
         }
 
-        // Validate split point is within clip bounds
-        if (data.splitAtMs <= originalClip.start_ms || data.splitAtMs >= originalClip.end_ms) {
-            throw new Error('Split point must be within clip boundaries');
+        const rpcResult = result as { firstClipId: string; secondClipId: string };
+
+        // Fetch both clips for the response
+        const [firstClipResult, secondClipResult] = await Promise.all([
+            client.from('edit_clips').select('*').eq('id', rpcResult.firstClipId).single(),
+            client.from('edit_clips').select('*').eq('id', rpcResult.secondClipId).single(),
+        ]);
+
+        if (firstClipResult.error || !firstClipResult.data) {
+            throw new Error('Failed to fetch first clip after split');
         }
-
-        // Calculate source offset at split point
-        const clipDuration = originalClip.end_ms - originalClip.start_ms;
-        const sourceDuration = originalClip.out_point_ms - originalClip.in_point_ms;
-        const splitRatio = (data.splitAtMs - originalClip.start_ms) / clipDuration;
-        const sourceOffsetAtSplit = originalClip.in_point_ms + Math.round(sourceDuration * splitRatio);
-
-        // Update first clip (trim end)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: firstClip, error: updateError } = await (client as any)
-            .from('edit_clips')
-            .update({
-                end_ms: data.splitAtMs,
-                out_point_ms: sourceOffsetAtSplit,
-                updated_at: new Date().toISOString(),
-            })
-            .eq('id', data.clipId)
-            .select()
-            .single();
-
-        if (updateError) {
-            throw new Error(`Failed to update first clip: ${updateError.message}`);
+        if (secondClipResult.error || !secondClipResult.data) {
+            throw new Error('Failed to fetch second clip after split');
         }
-
-        // Create second clip (from split point to original end)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: secondClip, error: createError } = await (client as any)
-            .from('edit_clips')
-            .insert({
-                track_id: originalClip.track_id,
-                source_shot_id: originalClip.source_shot_id,
-                source_dialogue_id: originalClip.source_dialogue_id,
-                source_dubbed_dialogue_id: originalClip.source_dubbed_dialogue_id,
-                source_audio_track_id: originalClip.source_audio_track_id,
-                source_upload_url: originalClip.source_upload_url,
-                media_url: originalClip.media_url,
-                thumbnail_url: originalClip.thumbnail_url,
-                start_ms: data.splitAtMs,
-                end_ms: originalClip.end_ms,
-                in_point_ms: sourceOffsetAtSplit,
-                out_point_ms: originalClip.out_point_ms,
-                volume: originalClip.volume,
-                speed: originalClip.speed,
-                fade_in_ms: 0,
-                fade_out_ms: originalClip.fade_out_ms,
-                sort_order: originalClip.sort_order + 1,
-                sync_group_id: originalClip.sync_group_id,
-                language: originalClip.language,
-                is_active: originalClip.is_active,
-            })
-            .select()
-            .single();
-
-        if (createError) {
-            throw new Error(`Failed to create second clip: ${createError.message}`);
-        }
-
-        // Split keyframes: fetch all for original clip, distribute
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: keyframes } = await (client as any)
-            .from('edit_keyframes')
-            .select('*')
-            .eq('clip_id', data.clipId);
-
-        if (keyframes && keyframes.length > 0) {
-            const splitOffsetMs = data.splitAtMs - originalClip.start_ms;
-
-            // Keyframes for second clip: those after split point, with adjusted offset
-            const secondClipKeyframes = keyframes
-                .filter((kf: Record<string, unknown>) => (kf.offset_ms as number) >= splitOffsetMs)
-                .map((kf: Record<string, unknown>) => ({
-                    clip_id: secondClip.id,
-                    property: kf.property,
-                    offset_ms: (kf.offset_ms as number) - splitOffsetMs,
-                    value: kf.value,
-                    easing: kf.easing,
-                    bezier_cp1_x: kf.bezier_cp1_x,
-                    bezier_cp1_y: kf.bezier_cp1_y,
-                    bezier_cp2_x: kf.bezier_cp2_x,
-                    bezier_cp2_y: kf.bezier_cp2_y,
-                }));
-
-            if (secondClipKeyframes.length > 0) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await (client as any)
-                    .from('edit_keyframes')
-                    .insert(secondClipKeyframes);
-            }
-
-            // Remove keyframes beyond split from first clip
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            await (client as any)
-                .from('edit_keyframes')
-                .delete()
-                .eq('clip_id', data.clipId)
-                .gt('offset_ms', splitOffsetMs);
-        }
-
-        // Remove the outgoing fade from the first clip since it's now split
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (client as any)
-            .from('edit_clips')
-            .update({ fade_out_ms: 0 })
-            .eq('id', data.clipId);
 
         logger.info(
-            { ...ctx, firstClipId: firstClip.id, secondClipId: secondClip.id },
-            'Clip split',
+            { ...ctx, firstClipId: rpcResult.firstClipId, secondClipId: rpcResult.secondClipId },
+            'Clip split (atomic)',
         );
         revalidatePath('/home/[account]/studio/[projectId]/episodes/[episodeId]', 'page');
 
         return {
             success: true,
             result: {
-                firstClip: mapEditClipRow(firstClip),
-                secondClip: mapEditClipRow(secondClip),
+                firstClip: mapEditClipRow(firstClipResult.data),
+                secondClip: mapEditClipRow(secondClipResult.data),
             },
         };
     },
@@ -347,15 +262,16 @@ export const createTransitionAction = enhanceAction(
 
         logger.info(ctx, 'Creating transition');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: transition, error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const { data: transition, error } = await client
             .from('edit_transitions')
             .insert({
                 from_clip_id: data.fromClipId,
@@ -389,12 +305,14 @@ export const updateTransitionAction = enhanceAction(
 
         logger.info(ctx, 'Updating transition');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
+
+        const client = getEditSuiteClient();
 
         const updates: Record<string, unknown> = {};
 
@@ -402,8 +320,7 @@ export const updateTransitionAction = enhanceAction(
         if (data.durationMs !== undefined) updates.duration_ms = data.durationMs;
         if (data.params !== undefined) updates.params = data.params;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: transition, error } = await (client as any)
+        const { data: transition, error } = await client
             .from('edit_transitions')
             .update(updates)
             .eq('id', data.transitionId)
@@ -432,15 +349,16 @@ export const deleteTransitionAction = enhanceAction(
 
         logger.info(ctx, 'Deleting transition');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const { error } = await client
             .from('edit_transitions')
             .delete()
             .eq('id', data.transitionId);

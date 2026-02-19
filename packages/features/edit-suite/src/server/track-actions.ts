@@ -1,5 +1,7 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -11,27 +13,28 @@ import {
     UpdateTrackSchema,
 } from '../lib/schemas';
 import { mapEditTrackRow } from '../lib/types';
-import type { EditTrack } from '../lib/types';
+import { getEditSuiteClient } from './db-client';
 
 /**
- * Create a new track on an edit project.
+ * Create a new track in an edit project.
  */
 export const createTrackAction = enhanceAction(
     async (data) => {
         const logger = await getLogger();
-        const ctx = { name: 'editSuite.createTrack', projectId: data.editProjectId };
+        const ctx = { name: 'editSuite.createTrack', editProjectId: data.editProjectId };
 
         logger.info(ctx, 'Creating track');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: track, error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const { data: track, error } = await client
             .from('edit_tracks')
             .insert({
                 edit_project_id: data.editProjectId,
@@ -49,6 +52,7 @@ export const createTrackAction = enhanceAction(
         }
 
         logger.info({ ...ctx, trackId: track.id }, 'Track created');
+        revalidatePath('/home/[account]/studio/[projectId]/episodes/[episodeId]', 'page');
 
         return { success: true, track: mapEditTrackRow(track) };
     },
@@ -65,12 +69,14 @@ export const updateTrackAction = enhanceAction(
 
         logger.info(ctx, 'Updating track');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
+
+        const client = getEditSuiteClient();
 
         const updates: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
@@ -84,8 +90,7 @@ export const updateTrackAction = enhanceAction(
         if (data.isLocked !== undefined) updates.is_locked = data.isLocked;
         if (data.height !== undefined) updates.height = data.height;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: track, error } = await (client as any)
+        const { data: track, error } = await client
             .from('edit_tracks')
             .update(updates)
             .eq('id', data.trackId)
@@ -97,13 +102,9 @@ export const updateTrackAction = enhanceAction(
             throw new Error(`Failed to update track: ${error.message}`);
         }
 
-        if (!track) {
-            throw new Error('Track not found');
-        }
-
         logger.info(ctx, 'Track updated');
 
-        return { success: true, track: mapEditTrackRow(track) as EditTrack };
+        return { success: true, track: mapEditTrackRow(track) };
     },
     { schema: UpdateTrackSchema },
 );
@@ -118,15 +119,16 @@ export const deleteTrackAction = enhanceAction(
 
         logger.info(ctx, 'Deleting track');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const { error } = await client
             .from('edit_tracks')
             .delete()
             .eq('id', data.trackId);
@@ -137,6 +139,7 @@ export const deleteTrackAction = enhanceAction(
         }
 
         logger.info(ctx, 'Track deleted');
+        revalidatePath('/home/[account]/studio/[projectId]/episodes/[episodeId]', 'page');
 
         return { success: true, trackId: data.trackId };
     },

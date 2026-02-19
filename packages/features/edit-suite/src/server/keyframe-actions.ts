@@ -11,39 +11,43 @@ import {
     UpdateKeyframeSchema,
 } from '../lib/schemas';
 import { mapEditKeyframeRow } from '../lib/types';
-import type { EditKeyframe } from '../lib/types';
+import { getEditSuiteClient } from './db-client';
 
 /**
- * Create a keyframe for a clip property.
+ * Create a new keyframe on a clip.
  */
 export const createKeyframeAction = enhanceAction(
     async (data) => {
         const logger = await getLogger();
-        const ctx = { name: 'editSuite.createKeyframe', clipId: data.clipId, property: data.property };
+        const ctx = { name: 'editSuite.createKeyframe', clipId: data.clipId };
 
         logger.info(ctx, 'Creating keyframe');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: keyframe, error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const insertData: Record<string, unknown> = {
+            clip_id: data.clipId,
+            property: data.property,
+            offset_ms: data.offsetMs,
+            value: data.value,
+            easing: data.easing,
+        };
+
+        if (data.bezierCp1X !== undefined) insertData.bezier_cp1_x = data.bezierCp1X;
+        if (data.bezierCp1Y !== undefined) insertData.bezier_cp1_y = data.bezierCp1Y;
+        if (data.bezierCp2X !== undefined) insertData.bezier_cp2_x = data.bezierCp2X;
+        if (data.bezierCp2Y !== undefined) insertData.bezier_cp2_y = data.bezierCp2Y;
+
+        const { data: keyframe, error } = await client
             .from('edit_keyframes')
-            .insert({
-                clip_id: data.clipId,
-                property: data.property,
-                offset_ms: data.offsetMs,
-                value: data.value,
-                easing: data.easing,
-                bezier_cp1_x: data.bezierCp1X ?? null,
-                bezier_cp1_y: data.bezierCp1Y ?? null,
-                bezier_cp2_x: data.bezierCp2X ?? null,
-                bezier_cp2_y: data.bezierCp2Y ?? null,
-            })
+            .insert(insertData)
             .select()
             .single();
 
@@ -60,7 +64,7 @@ export const createKeyframeAction = enhanceAction(
 );
 
 /**
- * Update a keyframe's value, offset, easing, or bezier control points.
+ * Update keyframe properties (value, offset, easing, bezier control points).
  */
 export const updateKeyframeAction = enhanceAction(
     async (data) => {
@@ -69,12 +73,14 @@ export const updateKeyframeAction = enhanceAction(
 
         logger.info(ctx, 'Updating keyframe');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
+
+        const client = getEditSuiteClient();
 
         const updates: Record<string, unknown> = {};
 
@@ -86,8 +92,7 @@ export const updateKeyframeAction = enhanceAction(
         if (data.bezierCp2X !== undefined) updates.bezier_cp2_x = data.bezierCp2X;
         if (data.bezierCp2Y !== undefined) updates.bezier_cp2_y = data.bezierCp2Y;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: keyframe, error } = await (client as any)
+        const { data: keyframe, error } = await client
             .from('edit_keyframes')
             .update(updates)
             .eq('id', data.keyframeId)
@@ -99,13 +104,9 @@ export const updateKeyframeAction = enhanceAction(
             throw new Error(`Failed to update keyframe: ${error.message}`);
         }
 
-        if (!keyframe) {
-            throw new Error('Keyframe not found');
-        }
-
         logger.info(ctx, 'Keyframe updated');
 
-        return { success: true, keyframe: mapEditKeyframeRow(keyframe) as EditKeyframe };
+        return { success: true, keyframe: mapEditKeyframeRow(keyframe) };
     },
     { schema: UpdateKeyframeSchema },
 );
@@ -120,15 +121,16 @@ export const deleteKeyframeAction = enhanceAction(
 
         logger.info(ctx, 'Deleting keyframe');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (client as any)
+        const client = getEditSuiteClient();
+
+        const { error } = await client
             .from('edit_keyframes')
             .delete()
             .eq('id', data.keyframeId);

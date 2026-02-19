@@ -13,6 +13,8 @@ export const TrackTypeSchema = z.enum([
     'title',
     'upload',
 ]);
+/** Alias for use in row-validation schemas */
+export const TrackTypeEnum = TrackTypeSchema;
 
 export const RenderStatusSchema = z.enum([
     'none',
@@ -21,6 +23,7 @@ export const RenderStatusSchema = z.enum([
     'completed',
     'failed',
 ]);
+export const RenderStatusEnum = RenderStatusSchema;
 
 export const TransitionTypeSchema = z.enum([
     'cut',
@@ -31,6 +34,7 @@ export const TransitionTypeSchema = z.enum([
     'wipe_right',
     'dissolve',
 ]);
+export const TransitionTypeEnum = TransitionTypeSchema;
 
 export const KeyframePropertySchema = z.enum([
     'volume',
@@ -40,6 +44,7 @@ export const KeyframePropertySchema = z.enum([
     'rotation',
     'opacity',
 ]);
+export const KeyframePropertyEnum = KeyframePropertySchema;
 
 export const KeyframeEasingSchema = z.enum([
     'linear',
@@ -49,6 +54,7 @@ export const KeyframeEasingSchema = z.enum([
     'hold',
     'bezier',
 ]);
+export const KeyframeEasingEnum = KeyframeEasingSchema;
 
 // ──────────────────────────────────────────
 // Edit Project schemas
@@ -63,7 +69,7 @@ export const CreateEditProjectSchema = z.object({
 });
 
 export const GetEditProjectSchema = z.object({
-    episodeId: z.string().uuid(),
+    editProjectId: z.string().uuid(),
 });
 
 export const UpdateEditProjectSchema = z.object({
@@ -158,12 +164,61 @@ export const SplitClipSchema = z.object({
 // Edit Transition schemas
 // ──────────────────────────────────────────
 
+/** Typed transition params per transition type (discriminated union) */
+const CutParams = z.object({}).default({});
+
+const CrossfadeParams = z.object({
+    curve: z.enum(['linear', 'ease_in', 'ease_out']).default('linear'),
+}).default({});
+
+const FadeParams = z.object({
+    curve: z.enum(['linear', 'ease_in', 'ease_out']).default('linear'),
+}).default({});
+
+const WipeParams = z.object({
+    angle: z.number().min(0).max(360).default(0),
+    softness: z.number().min(0).max(1).default(0.1),
+}).default({});
+
+const DissolveParams = z.object({
+    curve: z.enum(['linear', 'ease_in', 'ease_out']).default('linear'),
+}).default({});
+
+/**
+ * Map from transition type → typed params schema.
+ * Used for validation at the action boundary; stored as JSONB in the DB.
+ */
+const TransitionParamsMap = {
+    cut: CutParams,
+    crossfade: CrossfadeParams,
+    fade_black: FadeParams,
+    fade_white: FadeParams,
+    wipe_left: WipeParams,
+    wipe_right: WipeParams,
+    dissolve: DissolveParams,
+} as const;
+
 export const CreateTransitionSchema = z.object({
     fromClipId: z.string().uuid(),
     toClipId: z.string().uuid(),
     type: TransitionTypeSchema.default('cut'),
     durationMs: z.number().int().min(0).max(5000).default(500),
     params: z.record(z.unknown()).default({}),
+}).superRefine((val, ctx) => {
+    const paramsSchema = TransitionParamsMap[val.type];
+
+    if (paramsSchema) {
+        const result = paramsSchema.safeParse(val.params);
+
+        if (!result.success) {
+            result.error.issues.forEach((issue) => {
+                ctx.addIssue({
+                    ...issue,
+                    path: ['params', ...issue.path],
+                });
+            });
+        }
+    }
 });
 
 export const UpdateTransitionSchema = z.object({

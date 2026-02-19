@@ -1,9 +1,18 @@
+import { z } from 'zod';
+
 import type {
     KeyframeEasing,
     KeyframeProperty,
     RenderStatus,
     TrackType,
     TransitionType,
+} from './schemas';
+import {
+    KeyframeEasingEnum,
+    KeyframePropertyEnum,
+    RenderStatusEnum,
+    TrackTypeEnum,
+    TransitionTypeEnum,
 } from './schemas';
 
 // ──────────────────────────────────────────
@@ -104,8 +113,7 @@ export interface DialogueSyncGroup {
 // Composite / response types
 // ──────────────────────────────────────────
 
-export interface EditProjectFull {
-    project: EditProject;
+export interface EditProjectWithRelations extends EditProject {
     tracks: EditTrack[];
     clips: EditClip[];
     transitions: EditTransition[];
@@ -137,113 +145,219 @@ export interface SplitClipResult {
 }
 
 // ──────────────────────────────────────────
+// Zod row schemas for runtime validation
+// ──────────────────────────────────────────
+// These validate the raw DB rows at the boundary, catching
+// type mismatches at runtime instead of silently casting.
+
+const EditProjectRowSchema = z.object({
+    id: z.string().uuid(),
+    episode_id: z.string().uuid(),
+    width: z.coerce.number().int(),
+    height: z.coerce.number().int(),
+    fps: z.coerce.number().int(),
+    active_language: z.string(),
+    render_status: RenderStatusEnum,
+    render_url: z.string().nullable().default(null),
+    render_error: z.string().nullable().default(null),
+    render_started_at: z.string().nullable().default(null),
+    render_completed_at: z.string().nullable().default(null),
+    version: z.coerce.number().int(),
+    created_at: z.string(),
+    updated_at: z.string(),
+});
+
+const EditTrackRowSchema = z.object({
+    id: z.string().uuid(),
+    edit_project_id: z.string().uuid(),
+    type: TrackTypeEnum,
+    name: z.string(),
+    sort_order: z.coerce.number().int(),
+    volume: z.coerce.number(),
+    is_muted: z.boolean(),
+    is_solo: z.boolean(),
+    is_locked: z.boolean(),
+    height: z.coerce.number().int(),
+    created_at: z.string(),
+    updated_at: z.string(),
+});
+
+const EditClipRowSchema = z.object({
+    id: z.string().uuid(),
+    track_id: z.string().uuid(),
+    source_shot_id: z.string().uuid().nullable().default(null),
+    source_dialogue_id: z.string().uuid().nullable().default(null),
+    source_dubbed_dialogue_id: z.string().uuid().nullable().default(null),
+    source_audio_track_id: z.string().uuid().nullable().default(null),
+    source_upload_url: z.string().nullable().default(null),
+    media_url: z.string().nullable().default(null),
+    thumbnail_url: z.string().nullable().default(null),
+    start_ms: z.coerce.number().int(),
+    end_ms: z.coerce.number().int(),
+    in_point_ms: z.coerce.number().int(),
+    out_point_ms: z.coerce.number().int(),
+    volume: z.coerce.number(),
+    speed: z.coerce.number(),
+    fade_in_ms: z.coerce.number().int(),
+    fade_out_ms: z.coerce.number().int(),
+    sort_order: z.coerce.number().int(),
+    sync_group_id: z.string().uuid().nullable().default(null),
+    language: z.string().nullable().default(null),
+    is_active: z.boolean(),
+    created_at: z.string(),
+    updated_at: z.string(),
+});
+
+const EditTransitionRowSchema = z.object({
+    id: z.string().uuid(),
+    from_clip_id: z.string().uuid(),
+    to_clip_id: z.string().uuid(),
+    type: TransitionTypeEnum,
+    duration_ms: z.coerce.number().int(),
+    params: z.record(z.unknown()).default({}),
+    created_at: z.string(),
+});
+
+const EditKeyframeRowSchema = z.object({
+    id: z.string().uuid(),
+    clip_id: z.string().uuid(),
+    property: KeyframePropertyEnum,
+    offset_ms: z.coerce.number().int(),
+    value: z.coerce.number(),
+    easing: KeyframeEasingEnum,
+    bezier_cp1_x: z.coerce.number().nullable().default(null),
+    bezier_cp1_y: z.coerce.number().nullable().default(null),
+    bezier_cp2_x: z.coerce.number().nullable().default(null),
+    bezier_cp2_y: z.coerce.number().nullable().default(null),
+    created_at: z.string(),
+});
+
+const DialogueSyncGroupRowSchema = z.object({
+    id: z.string().uuid(),
+    edit_project_id: z.string().uuid(),
+    anchor_dialogue_id: z.string().uuid(),
+    primary_clip_id: z.string().uuid().nullable().default(null),
+    created_at: z.string(),
+});
+
+// ──────────────────────────────────────────
 // Row mappers (snake_case DB → camelCase TS)
+// Uses Zod .parse() for runtime validation.
 // ──────────────────────────────────────────
 
 export function mapEditProjectRow(row: Record<string, unknown>): EditProject {
+    const r = EditProjectRowSchema.parse(row);
     return {
-        id: row.id as string,
-        episodeId: row.episode_id as string,
-        width: row.width as number,
-        height: row.height as number,
-        fps: row.fps as number,
-        activeLanguage: row.active_language as string,
-        renderStatus: row.render_status as RenderStatus,
-        renderUrl: (row.render_url as string) ?? null,
-        renderError: (row.render_error as string) ?? null,
-        renderStartedAt: (row.render_started_at as string) ?? null,
-        renderCompletedAt: (row.render_completed_at as string) ?? null,
-        version: row.version as number,
-        createdAt: row.created_at as string,
-        updatedAt: row.updated_at as string,
+        id: r.id,
+        episodeId: r.episode_id,
+        width: r.width,
+        height: r.height,
+        fps: r.fps,
+        activeLanguage: r.active_language,
+        renderStatus: r.render_status,
+        renderUrl: r.render_url,
+        renderError: r.render_error,
+        renderStartedAt: r.render_started_at,
+        renderCompletedAt: r.render_completed_at,
+        version: r.version,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
     };
 }
 
 export function mapEditTrackRow(row: Record<string, unknown>): EditTrack {
+    const r = EditTrackRowSchema.parse(row);
     return {
-        id: row.id as string,
-        editProjectId: row.edit_project_id as string,
-        type: row.type as TrackType,
-        name: row.name as string,
-        sortOrder: row.sort_order as number,
-        volume: Number(row.volume),
-        isMuted: row.is_muted as boolean,
-        isSolo: row.is_solo as boolean,
-        isLocked: row.is_locked as boolean,
-        height: row.height as number,
-        createdAt: row.created_at as string,
-        updatedAt: row.updated_at as string,
+        id: r.id,
+        editProjectId: r.edit_project_id,
+        type: r.type,
+        name: r.name,
+        sortOrder: r.sort_order,
+        volume: r.volume,
+        isMuted: r.is_muted,
+        isSolo: r.is_solo,
+        isLocked: r.is_locked,
+        height: r.height,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
     };
 }
 
 export function mapEditClipRow(row: Record<string, unknown>): EditClip {
+    const r = EditClipRowSchema.parse(row);
     return {
-        id: row.id as string,
-        trackId: row.track_id as string,
-        sourceShotId: (row.source_shot_id as string) ?? null,
-        sourceDialogueId: (row.source_dialogue_id as string) ?? null,
-        sourceDubbedDialogueId: (row.source_dubbed_dialogue_id as string) ?? null,
-        sourceAudioTrackId: (row.source_audio_track_id as string) ?? null,
-        sourceUploadUrl: (row.source_upload_url as string) ?? null,
-        mediaUrl: (row.media_url as string) ?? null,
-        thumbnailUrl: (row.thumbnail_url as string) ?? null,
-        startMs: row.start_ms as number,
-        endMs: row.end_ms as number,
-        inPointMs: row.in_point_ms as number,
-        outPointMs: row.out_point_ms as number,
-        volume: Number(row.volume),
-        speed: Number(row.speed),
-        fadeInMs: row.fade_in_ms as number,
-        fadeOutMs: row.fade_out_ms as number,
-        sortOrder: row.sort_order as number,
-        syncGroupId: (row.sync_group_id as string) ?? null,
-        language: (row.language as string) ?? null,
-        isActive: row.is_active as boolean,
-        createdAt: row.created_at as string,
-        updatedAt: row.updated_at as string,
+        id: r.id,
+        trackId: r.track_id,
+        sourceShotId: r.source_shot_id,
+        sourceDialogueId: r.source_dialogue_id,
+        sourceDubbedDialogueId: r.source_dubbed_dialogue_id,
+        sourceAudioTrackId: r.source_audio_track_id,
+        sourceUploadUrl: r.source_upload_url,
+        mediaUrl: r.media_url,
+        thumbnailUrl: r.thumbnail_url,
+        startMs: r.start_ms,
+        endMs: r.end_ms,
+        inPointMs: r.in_point_ms,
+        outPointMs: r.out_point_ms,
+        volume: r.volume,
+        speed: r.speed,
+        fadeInMs: r.fade_in_ms,
+        fadeOutMs: r.fade_out_ms,
+        sortOrder: r.sort_order,
+        syncGroupId: r.sync_group_id,
+        language: r.language,
+        isActive: r.is_active,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
     };
 }
 
 export function mapEditTransitionRow(
     row: Record<string, unknown>,
 ): EditTransition {
+    const r = EditTransitionRowSchema.parse(row);
     return {
-        id: row.id as string,
-        fromClipId: row.from_clip_id as string,
-        toClipId: row.to_clip_id as string,
-        type: row.type as TransitionType,
-        durationMs: row.duration_ms as number,
-        params: (row.params as Record<string, unknown>) ?? {},
-        createdAt: row.created_at as string,
+        id: r.id,
+        fromClipId: r.from_clip_id,
+        toClipId: r.to_clip_id,
+        type: r.type,
+        durationMs: r.duration_ms,
+        params: r.params,
+        createdAt: r.created_at,
     };
 }
 
 export function mapEditKeyframeRow(
     row: Record<string, unknown>,
 ): EditKeyframe {
+    const r = EditKeyframeRowSchema.parse(row);
     return {
-        id: row.id as string,
-        clipId: row.clip_id as string,
-        property: row.property as KeyframeProperty,
-        offsetMs: row.offset_ms as number,
-        value: Number(row.value),
-        easing: row.easing as KeyframeEasing,
-        bezierCp1X: row.bezier_cp1_x != null ? Number(row.bezier_cp1_x) : null,
-        bezierCp1Y: row.bezier_cp1_y != null ? Number(row.bezier_cp1_y) : null,
-        bezierCp2X: row.bezier_cp2_x != null ? Number(row.bezier_cp2_x) : null,
-        bezierCp2Y: row.bezier_cp2_y != null ? Number(row.bezier_cp2_y) : null,
-        createdAt: row.created_at as string,
+        id: r.id,
+        clipId: r.clip_id,
+        property: r.property,
+        offsetMs: r.offset_ms,
+        value: r.value,
+        easing: r.easing,
+        bezierCp1X: r.bezier_cp1_x,
+        bezierCp1Y: r.bezier_cp1_y,
+        bezierCp2X: r.bezier_cp2_x,
+        bezierCp2Y: r.bezier_cp2_y,
+        createdAt: r.created_at,
     };
 }
 
-export function mapDialogueSyncGroupRow(
+export function mapSyncGroupRow(
     row: Record<string, unknown>,
 ): DialogueSyncGroup {
+    const r = DialogueSyncGroupRowSchema.parse(row);
     return {
-        id: row.id as string,
-        editProjectId: row.edit_project_id as string,
-        anchorDialogueId: row.anchor_dialogue_id as string,
-        primaryClipId: (row.primary_clip_id as string) ?? null,
-        createdAt: row.created_at as string,
+        id: r.id,
+        editProjectId: r.edit_project_id,
+        anchorDialogueId: r.anchor_dialogue_id,
+        primaryClipId: r.primary_clip_id,
+        createdAt: r.created_at,
     };
 }
+
+/** @deprecated Use mapSyncGroupRow instead */
+export const mapDialogueSyncGroupRow = mapSyncGroupRow;

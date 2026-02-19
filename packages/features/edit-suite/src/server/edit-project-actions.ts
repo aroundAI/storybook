@@ -18,13 +18,14 @@ import {
     mapEditProjectRow,
     mapEditTrackRow,
     mapEditTransitionRow,
-    mapDialogueSyncGroupRow,
+    mapSyncGroupRow,
 } from '../lib/types';
-import type { EditProject, EditProjectFull } from '../lib/types';
+import type { EditProjectWithRelations } from '../lib/types';
+import { getEditSuiteClient } from './db-client';
 
 /**
- * Create a new edit project for an episode.
- * Also creates default tracks (video, dialogue, music, sfx, ambient).
+ * Create a new edit project for an episode with default tracks.
+ * Default tracks: Video A, Video B, Audio, SFX, Music
  */
 export const createEditProjectAction = enhanceAction(
     async (data) => {
@@ -33,29 +34,17 @@ export const createEditProjectAction = enhanceAction(
 
         logger.info(ctx, 'Creating edit project');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
-        // Check episode exists and user has access (RLS will enforce this)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: episode, error: episodeError } = await (client as any)
-            .from('episodes')
-            .select('id')
-            .eq('id', data.episodeId)
-            .is('deleted_at', null)
-            .single();
+        const client = getEditSuiteClient();
 
-        if (episodeError || !episode) {
-            throw new Error('Episode not found');
-        }
-
-        // Create edit project
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: project, error } = await (client as any)
+        // Create project
+        const { data: project, error } = await client
             .from('edit_projects')
             .insert({
                 episode_id: data.episodeId,
@@ -67,31 +56,30 @@ export const createEditProjectAction = enhanceAction(
             .select()
             .single();
 
-        if (error) {
+        if (error || !project) {
             logger.error({ ...ctx, error }, 'Failed to create edit project');
-            throw new Error(`Failed to create edit project: ${error.message}`);
+            throw new Error(`Failed to create edit project: ${error?.message}`);
         }
 
         // Create default tracks
         const defaultTracks = [
-            { type: 'video', name: 'Video', sort_order: 0, edit_project_id: project.id },
-            { type: 'dialogue', name: 'Dialogue (EN)', sort_order: 1, edit_project_id: project.id },
-            { type: 'music', name: 'Music', sort_order: 2, edit_project_id: project.id },
-            { type: 'sfx', name: 'SFX', sort_order: 3, edit_project_id: project.id },
-            { type: 'ambient', name: 'Ambient', sort_order: 4, edit_project_id: project.id },
+            { edit_project_id: project.id, type: 'video', name: 'Video A', sort_order: 0, volume: 1.0 },
+            { edit_project_id: project.id, type: 'video', name: 'Video B', sort_order: 1, volume: 1.0 },
+            { edit_project_id: project.id, type: 'dialogue', name: 'Dialogue', sort_order: 2, volume: 1.0 },
+            { edit_project_id: project.id, type: 'sfx', name: 'SFX', sort_order: 3, volume: 0.8 },
+            { edit_project_id: project.id, type: 'music', name: 'Music', sort_order: 4, volume: 0.5 },
         ];
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error: tracksError } = await (client as any)
+        const { error: trackError } = await client
             .from('edit_tracks')
             .insert(defaultTracks);
 
-        if (tracksError) {
-            logger.error({ ...ctx, error: tracksError }, 'Failed to create default tracks');
-            // Non-fatal — project was created, tracks can be added later
+        if (trackError) {
+            logger.error({ ...ctx, error: trackError }, 'Failed to create default tracks');
+            throw new Error(`Failed to create default tracks: ${trackError.message}`);
         }
 
-        logger.info({ ...ctx, projectId: project.id }, 'Edit project created');
+        logger.info({ ...ctx, projectId: project.id }, 'Edit project created with defaults');
         revalidatePath('/home/[account]/studio/[projectId]/episodes/[episodeId]', 'page');
 
         return { success: true, project: mapEditProjectRow(project) };
@@ -100,119 +88,131 @@ export const createEditProjectAction = enhanceAction(
 );
 
 /**
- * Get an edit project by episode ID with all related data.
- * Returns project + tracks + clips + transitions + keyframes + sync groups.
+ * Fetch an edit project with all related data:
+ * tracks, clips, keyframes, transitions, sync groups.
  */
 export const getEditProjectAction = enhanceAction(
-    async (data): Promise<{ success: true; data: EditProjectFull | null }> => {
+    async (data): Promise<{ success: true; project: EditProjectWithRelations }> => {
         const logger = await getLogger();
-        const ctx = { name: 'editSuite.getProject', episodeId: data.episodeId };
+        const ctx = { name: 'editSuite.getProject', editProjectId: data.editProjectId };
 
         logger.info(ctx, 'Fetching edit project');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
 
+        const client = getEditSuiteClient();
+
         // Fetch project
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: project, error: projectError } = await (client as any)
+        const { data: project, error: projectError } = await client
             .from('edit_projects')
             .select('*')
-            .eq('episode_id', data.episodeId)
+            .eq('id', data.editProjectId)
             .single();
 
         if (projectError || !project) {
-            // No project for this episode yet — return null (triggers auto-assembly)
-            return { success: true, data: null };
+            throw new Error('Edit project not found');
         }
 
-        // Fetch all related data in parallel
-        const [tracksResult, clipsResult, syncGroupsResult] = await Promise.all([
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (client as any)
-                .from('edit_tracks')
-                .select('*')
-                .eq('edit_project_id', project.id)
-                .order('sort_order', { ascending: true }),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (client as any)
+        // Fetch tracks
+        const { data: tracks, error: tracksError } = await client
+            .from('edit_tracks')
+            .select('*')
+            .eq('edit_project_id', data.editProjectId)
+            .order('sort_order');
+
+        if (tracksError) {
+            throw new Error(`Failed to fetch tracks: ${tracksError.message}`);
+        }
+
+        // Fetch clips for all tracks (join via track IDs)
+        const trackIds = (tracks ?? []).map((t: { id: string }) => t.id);
+        let clips: Array<Record<string, unknown>> = [];
+        let transitions: Array<Record<string, unknown>> = [];
+
+        if (trackIds.length > 0) {
+            const { data: clipData, error: clipsError } = await client
                 .from('edit_clips')
                 .select('*')
-                .in(
-                    'track_id',
-                    // We need track IDs — get them from a subquery
-                    // First fetch tracks, then use their IDs
-                    [],
-                ),
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (client as any)
-                .from('dialogue_sync_groups')
-                .select('*')
-                .eq('edit_project_id', project.id),
-        ]);
+                .in('track_id', trackIds)
+                .order('start_ms');
 
-        const tracks = (tracksResult.data ?? []) as Record<string, unknown>[];
-        const trackIds = tracks.map((t) => t.id as string);
+            if (clipsError) {
+                throw new Error(`Failed to fetch clips: ${clipsError.message}`);
+            }
 
-        // Now fetch clips for the actual track IDs
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: clips } = await (client as any)
-            .from('edit_clips')
-            .select('*')
-            .in('track_id', trackIds.length > 0 ? trackIds : ['__none__'])
-            .order('start_ms', { ascending: true });
+            clips = clipData ?? [];
 
-        const clipRows = (clips ?? []) as Record<string, unknown>[];
-        const clipIds = clipRows.map((c) => c.id as string);
+            // Fetch transitions (join via clip IDs)
+            const clipIds = clips.map((c) => c.id as string);
 
-        // Fetch keyframes + transitions for all clips
-        const [keyframesResult, transitionsResult] = await Promise.all([
-            clipIds.length > 0
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ? (client as any)
-                    .from('edit_keyframes')
-                    .select('*')
-                    .in('clip_id', clipIds)
-                    .order('offset_ms', { ascending: true })
-                : { data: [] },
-            clipIds.length > 0
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                ? (client as any)
+            if (clipIds.length > 0) {
+                const { data: transitionData, error: transitionsError } = await client
                     .from('edit_transitions')
                     .select('*')
-                    .or(`from_clip_id.in.(${clipIds.join(',')}),to_clip_id.in.(${clipIds.join(',')})`)
-                : { data: [] },
-        ]);
+                    .in('from_clip_id', clipIds);
+
+                if (transitionsError) {
+                    throw new Error(`Failed to fetch transitions: ${transitionsError.message}`);
+                }
+
+                transitions = transitionData ?? [];
+            }
+        }
+
+        // Fetch keyframes for all clips
+        const clipIds = clips.map((c) => c.id as string);
+        let keyframes: Array<Record<string, unknown>> = [];
+
+        if (clipIds.length > 0) {
+            const { data: keyframeData, error: keyframesError } = await client
+                .from('edit_keyframes')
+                .select('*')
+                .in('clip_id', clipIds)
+                .order('offset_ms');
+
+            if (keyframesError) {
+                throw new Error(`Failed to fetch keyframes: ${keyframesError.message}`);
+            }
+
+            keyframes = keyframeData ?? [];
+        }
+
+        // Fetch sync groups
+        const { data: syncGroups, error: syncGroupsError } = await client
+            .from('dialogue_sync_groups')
+            .select('*')
+            .eq('edit_project_id', data.editProjectId);
+
+        if (syncGroupsError) {
+            throw new Error(`Failed to fetch sync groups: ${syncGroupsError.message}`);
+        }
 
         logger.info(
             {
                 ...ctx,
-                trackCount: tracks.length,
-                clipCount: clipRows.length,
-                keyframeCount: (keyframesResult.data ?? []).length,
+                tracks: tracks?.length ?? 0,
+                clips: clips.length,
+                keyframes: keyframes.length,
+                transitions: transitions.length,
+                syncGroups: syncGroups?.length ?? 0,
             },
             'Edit project fetched',
         );
 
         return {
             success: true,
-            data: {
-                project: mapEditProjectRow(project),
-                tracks: tracks.map(mapEditTrackRow),
-                clips: clipRows.map(mapEditClipRow),
-                transitions: ((transitionsResult.data ?? []) as Record<string, unknown>[]).map(
-                    mapEditTransitionRow,
-                ),
-                keyframes: ((keyframesResult.data ?? []) as Record<string, unknown>[]).map(
-                    mapEditKeyframeRow,
-                ),
-                syncGroups: ((syncGroupsResult.data ?? []) as Record<string, unknown>[]).map(
-                    mapDialogueSyncGroupRow,
-                ),
+            project: {
+                ...mapEditProjectRow(project),
+                tracks: (tracks ?? []).map(mapEditTrackRow),
+                clips: clips.map(mapEditClipRow),
+                keyframes: keyframes.map(mapEditKeyframeRow),
+                transitions: transitions.map(mapEditTransitionRow),
+                syncGroups: (syncGroups ?? []).map(mapSyncGroupRow),
             },
         };
     },
@@ -220,21 +220,23 @@ export const getEditProjectAction = enhanceAction(
 );
 
 /**
- * Update edit project settings (fps, dimensions, language, render status).
+ * Update edit project settings (FPS, dimensions, language).
  */
 export const updateEditProjectAction = enhanceAction(
     async (data) => {
         const logger = await getLogger();
-        const ctx = { name: 'editSuite.updateProject', projectId: data.editProjectId };
+        const ctx = { name: 'editSuite.updateProject', editProjectId: data.editProjectId };
 
         logger.info(ctx, 'Updating edit project');
 
-        const client = getSupabaseServerClient();
-        const { data: user, error: authError } = await requireUser(client);
+        const authClient = getSupabaseServerClient();
+        const { data: user, error: authError } = await requireUser(authClient);
 
         if (authError || !user) {
             throw new Error('Authentication required');
         }
+
+        const client = getEditSuiteClient();
 
         const updates: Record<string, unknown> = {
             updated_at: new Date().toISOString(),
@@ -244,19 +246,8 @@ export const updateEditProjectAction = enhanceAction(
         if (data.height !== undefined) updates.height = data.height;
         if (data.fps !== undefined) updates.fps = data.fps;
         if (data.activeLanguage !== undefined) updates.active_language = data.activeLanguage;
-        if (data.renderStatus !== undefined) updates.render_status = data.renderStatus;
-        if (data.renderUrl !== undefined) updates.render_url = data.renderUrl;
-        if (data.renderError !== undefined) updates.render_error = data.renderError;
 
-        if (data.renderStatus === 'rendering') {
-            updates.render_started_at = new Date().toISOString();
-        }
-        if (data.renderStatus === 'completed' || data.renderStatus === 'failed') {
-            updates.render_completed_at = new Date().toISOString();
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: project, error } = await (client as any)
+        const { data: project, error } = await client
             .from('edit_projects')
             .update(updates)
             .eq('id', data.editProjectId)
@@ -275,7 +266,7 @@ export const updateEditProjectAction = enhanceAction(
         logger.info(ctx, 'Edit project updated');
         revalidatePath('/home/[account]/studio/[projectId]/episodes/[episodeId]', 'page');
 
-        return { success: true, project: mapEditProjectRow(project) as EditProject };
+        return { success: true, project: mapEditProjectRow(project) };
     },
     { schema: UpdateEditProjectSchema },
 );
