@@ -270,25 +270,29 @@ function ApiKeyDialog({
     onClose,
     onSave,
 }: ApiKeyDialogProps) {
-    const [apiKey, setApiKey] = useState('');
-    const [validationStatus, setValidationStatus] = useState<
-        'idle' | 'validating' | 'valid' | 'invalid'
-    >('idle');
-    const [error, setError] = useState<string | null>(null);
+    const [formState, setFormState] = useState<{
+        apiKey: string;
+        validationStatus: 'idle' | 'validating' | 'valid' | 'invalid';
+        error: string | null;
+    }>({
+        apiKey: '',
+        validationStatus: 'idle',
+        error: null,
+    });
 
     const saveMutation = useMutation({
         mutationFn: () =>
             saveApiKeyAction({
                 accountSlug,
                 provider: provider.id,
-                apiKey,
+                apiKey: formState.apiKey,
             }),
         onSuccess: () => {
             toast.success('API key saved successfully');
             onSave();
         },
         onError: (err) => {
-            setError(err instanceof Error ? err.message : 'Failed to save key');
+            setFormState((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to save key' }));
         },
     });
 
@@ -303,28 +307,31 @@ function ApiKeyDialog({
             onSave();
         },
         onError: (err) => {
-            setError(err instanceof Error ? err.message : 'Failed to remove key');
+            setFormState((prev) => ({ ...prev, error: err instanceof Error ? err.message : 'Failed to remove key' }));
         },
     });
 
     const validateKey = async () => {
-        if (!apiKey) return;
+        if (!formState.apiKey) return;
 
-        setValidationStatus('validating');
-        setError(null);
+        setFormState((prev) => ({ ...prev, validationStatus: 'validating', error: null }));
 
         try {
             const result = await validateApiKeyAction({
                 provider: provider.id,
-                apiKey,
+                apiKey: formState.apiKey,
             });
-            setValidationStatus(result.valid ? 'valid' : 'invalid');
-            if (!result.valid) {
-                setError(result.error ?? 'Invalid API key');
-            }
-        } catch {
-            setValidationStatus('invalid');
-            setError('Failed to validate key');
+            setFormState((prev) => ({
+                ...prev,
+                validationStatus: result.valid ? 'valid' : 'invalid',
+                error: result.valid ? null : (result.error ?? 'Invalid API key'),
+            }));
+        } catch (err) {
+            setFormState((prev) => ({
+                ...prev,
+                validationStatus: 'invalid',
+                error: err instanceof Error ? err.message : 'Failed to validate key',
+            }));
         }
     };
 
@@ -348,23 +355,25 @@ function ApiKeyDialog({
                                 id="api-key"
                                 type="password"
                                 placeholder={`Enter your ${provider.name} API key`}
-                                value={apiKey}
+                                value={formState.apiKey}
                                 onChange={(e) => {
-                                    setApiKey(e.target.value);
-                                    setValidationStatus('idle');
-                                    setError(null);
+                                    setFormState({
+                                        apiKey: e.target.value,
+                                        validationStatus: 'idle',
+                                        error: null,
+                                    });
                                 }}
                             />
                             <Button
                                 variant="outline"
                                 onClick={validateKey}
-                                disabled={!apiKey || validationStatus === 'validating'}
+                                disabled={!formState.apiKey || formState.validationStatus === 'validating'}
                             >
-                                {validationStatus === 'validating' ? (
+                                {formState.validationStatus === 'validating' ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : validationStatus === 'valid' ? (
+                                ) : formState.validationStatus === 'valid' ? (
                                     <CheckCircle className="h-4 w-4 text-green-500" />
-                                ) : validationStatus === 'invalid' ? (
+                                ) : formState.validationStatus === 'invalid' ? (
                                     <XCircle className="h-4 w-4 text-red-500" />
                                 ) : (
                                     'Test'
@@ -373,13 +382,13 @@ function ApiKeyDialog({
                         </div>
                     </div>
 
-                    {error && (
+                    {formState.error && (
                         <Alert variant="destructive">
-                            <AlertDescription>{error}</AlertDescription>
+                            <AlertDescription>{formState.error}</AlertDescription>
                         </Alert>
                     )}
 
-                    {validationStatus === 'valid' && (
+                    {formState.validationStatus === 'valid' && (
                         <Alert>
                             <CheckCircle className="h-4 w-4" />
                             <AlertDescription>API key is valid and working!</AlertDescription>
@@ -420,8 +429,8 @@ function ApiKeyDialog({
                         <Button
                             onClick={() => saveMutation.mutate()}
                             disabled={
-                                !apiKey ||
-                                validationStatus !== 'valid' ||
+                                !formState.apiKey ||
+                                formState.validationStatus !== 'valid' ||
                                 saveMutation.isPending
                             }
                         >

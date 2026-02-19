@@ -7,12 +7,13 @@ import { decrypt, encrypt } from '@kit/shared/crypto';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
+    ApiKeyProviders,
     DeleteApiKeySchema,
     GetApiKeysSchema,
     SaveApiKeySchema,
     ValidateApiKeySchema,
 } from '../api-keys.schema';
-import type { ApiKeyInfo, ValidationResult } from '../api-keys.schema';
+import type { ApiKeyInfo, ApiKeyProvider, ValidationResult } from '../api-keys.schema';
 
 /**
  * Resolves account_id from account slug
@@ -49,25 +50,35 @@ export const getApiKeysAction = enhanceAction(
             throw error;
         }
 
-        // Decrypt keys to get last 4 chars (async)
-        const results: ApiKeyInfo[] = [];
-        for (const key of keys ?? []) {
-            try {
-                const decryptedKey = await decrypt(key.encrypted_key);
-                results.push({
-                    provider: key.provider as ApiKeyInfo['provider'],
-                    lastFourChars: decryptedKey.slice(-4),
-                    isActive: key.is_active,
-                });
-            } catch {
-                // If decryption fails, still include the key but indicate it's corrupted
-                results.push({
-                    provider: key.provider as ApiKeyInfo['provider'],
-                    lastFourChars: '****',
-                    isActive: false,
-                });
-            }
-        }
+        // Decrypt keys in parallel and validate provider types
+        const results = (
+            await Promise.all(
+                (keys ?? []).map(async (key) => {
+                    if (
+                        !key.provider ||
+                        !ApiKeyProviders.includes(key.provider as ApiKeyProvider)
+                    ) {
+                        return null;
+                    }
+
+                    try {
+                        const decryptedKey = await decrypt(key.encrypted_key);
+                        return {
+                            provider: key.provider as ApiKeyProvider,
+                            lastFourChars: decryptedKey.slice(-4),
+                            isActive: key.is_active,
+                        };
+                    } catch {
+                        // If decryption fails, still include the key but indicate it's corrupted
+                        return {
+                            provider: key.provider as ApiKeyProvider,
+                            lastFourChars: '****',
+                            isActive: false,
+                        };
+                    }
+                }),
+            )
+        ).filter((result): result is ApiKeyInfo => result !== null);
 
         return results;
     },
