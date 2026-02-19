@@ -2,7 +2,7 @@ import {
   MultiFactorAuthFactorsList,
   UpdatePasswordFormContainer,
 } from '@kit/accounts/personal-account-settings';
-import { ApiKeysSettings } from '@kit/film-studio/components';
+import { ApiKeysSettings } from './_components/api-keys-settings';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
 import { TeamAccountSettingsContainer } from '@kit/team-accounts/components';

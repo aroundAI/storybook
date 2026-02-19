@@ -6,13 +6,62 @@
  */
 import 'server-only';
 
-import type {
-  ClipType,
-  TimelineClip,
-  TimelineData,
-  TimelineTrack,
-} from '../components/timeline-editor/types';
-import { DEFAULT_TRACKS } from '../components/timeline-editor/types';
+// ============================================================================
+// Timeline Types (inlined after timeline-editor deletion)
+// ============================================================================
+
+/** Clip types that can appear on the timeline */
+export type ClipType = 'video' | 'dialogue' | 'music' | 'sfx' | 'ambient';
+
+/** Individual clip on a timeline track */
+export interface TimelineClip {
+  id: string;
+  trackType: ClipType;
+  startFrame: number;
+  durationFrames: number;
+  name: string;
+  shotId?: string;
+  audioAssetId?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
+  waveformData?: number[];
+  isLocked: boolean;
+  sourceDurationFrames?: number;
+  sourceStartFrame?: number;
+  sourceEndFrame?: number;
+  notes?: string;
+}
+
+/** Timeline track containing clips */
+export interface TimelineTrack {
+  id: string;
+  type: ClipType;
+  name: string;
+  clips: TimelineClip[];
+  isMuted: boolean;
+  isSolo: boolean;
+  isLocked: boolean;
+  height: number;
+}
+
+/** Complete timeline data structure */
+export interface TimelineData {
+  tracks: TimelineTrack[];
+  totalFrames: number;
+  fps: number;
+  inPoint: number | null;
+  outPoint: number | null;
+  version: number;
+}
+
+/** Default track configuration */
+const DEFAULT_TRACKS: Omit<TimelineTrack, 'id' | 'clips'>[] = [
+  { type: 'video', name: 'Video', isMuted: false, isSolo: false, isLocked: false, height: 80 },
+  { type: 'dialogue', name: 'Dialogue', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  { type: 'music', name: 'Music', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  { type: 'sfx', name: 'SFX', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  { type: 'ambient', name: 'Ambient', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+];
 
 // ============================================================================
 // Input Types (mirror database schema)
@@ -32,12 +81,12 @@ export interface ShotInput {
   scene_number: number | null;
   shot_number: number | null;
   status:
-    | 'pending'
-    | 'queued'
-    | 'generating'
-    | 'completed'
-    | 'failed'
-    | 'approved';
+  | 'pending'
+  | 'queued'
+  | 'generating'
+  | 'completed'
+  | 'failed'
+  | 'approved';
 }
 
 /**
@@ -127,11 +176,11 @@ export interface AutoStitchInput {
  */
 export interface AutoStitchWarning {
   type:
-    | 'missing_video'
-    | 'missing_audio'
-    | 'gap'
-    | 'overlap'
-    | 'duration_mismatch';
+  | 'missing_video'
+  | 'missing_audio'
+  | 'gap'
+  | 'overlap'
+  | 'duration_mismatch';
   message: string;
   shotId?: string;
   dialogueLineId?: string;
@@ -410,9 +459,9 @@ function processMusic(
   const videoTrack = findTrack(tracks, 'video');
   const episodeDurationFrames = videoTrack
     ? Math.max(
-        ...videoTrack.clips.map((c) => c.startFrame + c.durationFrames),
-        0,
-      )
+      ...videoTrack.clips.map((c) => c.startFrame + c.durationFrames),
+      0,
+    )
     : 0;
 
   if (episodeDurationFrames === 0) return;

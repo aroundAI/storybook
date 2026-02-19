@@ -59,7 +59,6 @@
     "@kit/database-webhooks": "workspace:*",
     "@kit/email-templates": "workspace:*",
     "@kit/episodes": "workspace:*",
-    "@kit/film-studio": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",
     "@kit/i18n": "workspace:*",
     "@kit/jobs": "workspace:*",
