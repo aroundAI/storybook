@@ -43,46 +43,33 @@ export const createEditProjectAction = enhanceAction(
 
         const client = getEditSuiteClient();
 
-        // Create project
-        const { data: project, error } = await client
-            .from('edit_projects')
-            .insert({
-                episode_id: data.episodeId,
-                width: data.width,
-                height: data.height,
-                fps: data.fps,
-                active_language: data.activeLanguage,
-            })
-            .select()
-            .single();
+        // Atomic: create project + default tracks in a single transaction
+        const defaultTracks = [
+            { type: 'video', name: 'Video A', sort_order: 0, volume: 1.0 },
+            { type: 'video', name: 'Video B', sort_order: 1, volume: 1.0 },
+            { type: 'dialogue', name: 'Dialogue', sort_order: 2, volume: 1.0 },
+            { type: 'sfx', name: 'SFX', sort_order: 3, volume: 0.8 },
+            { type: 'music', name: 'Music', sort_order: 4, volume: 0.5 },
+        ];
 
-        if (error || !project) {
+        const { data: result, error } = await client.rpc('create_edit_project_with_tracks', {
+            p_episode_id: data.episodeId,
+            p_width: data.width,
+            p_height: data.height,
+            p_fps: data.fps,
+            p_active_language: data.activeLanguage,
+            p_default_tracks: defaultTracks,
+        });
+
+        if (error || !result) {
             logger.error({ ...ctx, error }, 'Failed to create edit project');
             throw new Error(`Failed to create edit project: ${error?.message}`);
         }
 
-        // Create default tracks
-        const defaultTracks = [
-            { edit_project_id: project.id, type: 'video', name: 'Video A', sort_order: 0, volume: 1.0 },
-            { edit_project_id: project.id, type: 'video', name: 'Video B', sort_order: 1, volume: 1.0 },
-            { edit_project_id: project.id, type: 'dialogue', name: 'Dialogue', sort_order: 2, volume: 1.0 },
-            { edit_project_id: project.id, type: 'sfx', name: 'SFX', sort_order: 3, volume: 0.8 },
-            { edit_project_id: project.id, type: 'music', name: 'Music', sort_order: 4, volume: 0.5 },
-        ];
-
-        const { error: trackError } = await client
-            .from('edit_tracks')
-            .insert(defaultTracks);
-
-        if (trackError) {
-            logger.error({ ...ctx, error: trackError }, 'Failed to create default tracks');
-            throw new Error(`Failed to create default tracks: ${trackError.message}`);
-        }
-
-        logger.info({ ...ctx, projectId: project.id }, 'Edit project created with defaults');
+        logger.info({ ...ctx, projectId: result.id }, 'Edit project created with defaults');
         revalidatePath('/home/[account]/studio/[projectId]/episodes/[episodeId]', 'page');
 
-        return { success: true, project: mapEditProjectRow(project) };
+        return { success: true, project: mapEditProjectRow(result) };
     },
     { schema: CreateEditProjectSchema },
 );

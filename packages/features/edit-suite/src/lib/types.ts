@@ -359,5 +359,3 @@ export function mapSyncGroupRow(
     };
 }
 
-/** @deprecated Use mapSyncGroupRow instead */
-export const mapDialogueSyncGroupRow = mapSyncGroupRow;

@@ -469,3 +469,77 @@ $$;
 
 comment on function public.split_edit_clip is
   'Atomically splits a clip at a given timeline position, distributing keyframes across both halves';
+
+-- ==================================
+-- Section: RPC — create_edit_project_with_tracks
+-- ==================================
+-- Atomically creates an edit project and its default tracks
+-- in a single transaction to prevent orphaned projects.
+
+create or replace function public.create_edit_project_with_tracks(
+  p_episode_id uuid,
+  p_width integer default 1920,
+  p_height integer default 1080,
+  p_fps integer default 30,
+  p_active_language varchar default 'en',
+  p_default_tracks jsonb default '[
+    {"type": "video", "name": "Video A", "sort_order": 0, "volume": 1.0},
+    {"type": "video", "name": "Video B", "sort_order": 1, "volume": 1.0},
+    {"type": "dialogue", "name": "Dialogue", "sort_order": 2, "volume": 1.0},
+    {"type": "sfx", "name": "SFX", "sort_order": 3, "volume": 0.8},
+    {"type": "music", "name": "Music", "sort_order": 4, "volume": 0.5}
+  ]'::jsonb
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_project_id uuid;
+  v_track record;
+  v_track_count integer := 0;
+begin
+  -- 1. Create the edit project
+  insert into public.edit_projects (episode_id, width, height, fps, active_language)
+  values (p_episode_id, p_width, p_height, p_fps, p_active_language)
+  returning id into v_project_id;
+
+  -- 2. Create default tracks
+  for v_track in select * from jsonb_array_elements(p_default_tracks)
+  loop
+    insert into public.edit_tracks (
+      edit_project_id, type, name, sort_order, volume
+    ) values (
+      v_project_id,
+      (v_track.value->>'type')::varchar,
+      (v_track.value->>'name')::varchar,
+      coalesce((v_track.value->>'sort_order')::integer, v_track_count),
+      coalesce((v_track.value->>'volume')::decimal, 1.0)
+    );
+    v_track_count := v_track_count + 1;
+  end loop;
+
+  -- Return the created project (fetch full row for mapping)
+  return (
+    select jsonb_build_object(
+      'id', ep.id,
+      'episode_id', ep.episode_id,
+      'width', ep.width,
+      'height', ep.height,
+      'fps', ep.fps,
+      'active_language', ep.active_language,
+      'render_status', ep.render_status,
+      'version', ep.version,
+      'created_at', ep.created_at,
+      'updated_at', ep.updated_at,
+      'track_count', v_track_count
+    )
+    from public.edit_projects ep
+    where ep.id = v_project_id
+  );
+end;
+$$;
+
+comment on function public.create_edit_project_with_tracks is
+  'Atomically creates an edit project with default tracks in a single transaction';
