@@ -558,22 +558,23 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [ ] Run `supabase migration up` + `supabase:web:typegen`
 - [ ] Verify generated types include all new tables
 
-#### 1.2 Server Actions
-- [ ] `createEditProjectAction` — create project + default tracks
-- [ ] `getEditProjectAction` — load project with all tracks, clips, keyframes, sync groups
-- [ ] `updateEditProjectAction` — update project settings (fps, dimensions, language)
-- [ ] `batchCreateEditProjectAction` — single action for auto-assembly (project + tracks + clips + sync groups + keyframes)
-- [ ] `saveClipPositionAction` — update clip start_ms/end_ms (batched)
-- [ ] `createClipAction` — add clip to track (from media bin drag)
-- [ ] `deleteClipAction` — remove clip (cascades keyframes)
-- [ ] `splitClipAction` — split at playhead position
-- [ ] `updateClipPropertiesAction` — volume, speed, fade_in/out
-- [ ] `batchSaveAction` — debounced save of all dirty clips/tracks/keyframes
+#### 1.2 Server Actions ✅
+- [x] `createEditProjectAction` — create project + default tracks
+- [x] `getEditProjectAction` — load project with all tracks, clips, keyframes, sync groups
+- [x] `updateEditProjectAction` — update project settings (fps, dimensions, language)
+- [x] `batchAssembleAction` — single action for auto-assembly (project + tracks + clips + sync groups + keyframes)
+- [x] `createClipAction` / `updateClipAction` / `deleteClipAction` — clip CRUD
+- [x] `splitClipAction` — split at playhead with keyframe distribution
+- [x] `createTrackAction` / `updateTrackAction` / `deleteTrackAction` — track CRUD
+- [x] `createKeyframeAction` / `updateKeyframeAction` / `deleteKeyframeAction` — keyframe CRUD
+- [x] `createTransitionAction` / `updateTransitionAction` / `deleteTransitionAction` — transition CRUD
+- [x] `batchSaveAction` — debounced save of all dirty clips/tracks/keyframes
 
 #### 1.3 Package Scaffold
-- [ ] Create `packages/features/edit-suite/package.json`
-- [ ] Configure `tsconfig.json` with path aliases
-- [ ] Create `src/state/types.ts` — all TypeScript interfaces
+- [x] Create `packages/features/edit-suite/package.json`
+- [x] Configure `tsconfig.json` with path aliases
+- [x] Create `src/lib/types.ts` — all TypeScript interfaces + row mappers
+- [x] Create `src/lib/schemas/index.ts` — Zod schemas for all entities
 - [ ] Create `src/state/edit-reducer.ts` — useReducer with all action types
 - [ ] Create `src/components/edit-suite-provider.tsx` — context provider
 - [ ] Add package to turbo pipeline
