@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -11,6 +12,31 @@ export type Database = {
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.1"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -1078,6 +1104,52 @@ export type Database = {
           },
         ]
       }
+      dialogue_sync_groups: {
+        Row: {
+          anchor_dialogue_id: string
+          created_at: string
+          edit_project_id: string
+          id: string
+          primary_clip_id: string | null
+        }
+        Insert: {
+          anchor_dialogue_id: string
+          created_at?: string
+          edit_project_id: string
+          id?: string
+          primary_clip_id?: string | null
+        }
+        Update: {
+          anchor_dialogue_id?: string
+          created_at?: string
+          edit_project_id?: string
+          id?: string
+          primary_clip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialogue_sync_groups_anchor_dialogue_id_fkey"
+            columns: ["anchor_dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dialogue_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialogue_sync_groups_edit_project_id_fkey"
+            columns: ["edit_project_id"]
+            isOneToOne: false
+            referencedRelation: "edit_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_dialogue_sync_groups_primary_clip"
+            columns: ["primary_clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dubbed_dialogue_lines: {
         Row: {
           audio_url: string | null
@@ -1181,6 +1253,334 @@ export type Database = {
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_clips: {
+        Row: {
+          created_at: string
+          end_ms: number
+          fade_in_ms: number
+          fade_out_ms: number
+          id: string
+          in_point_ms: number
+          is_active: boolean
+          language: string | null
+          media_url: string | null
+          out_point_ms: number
+          sort_order: number
+          source_audio_track_id: string | null
+          source_dialogue_id: string | null
+          source_dubbed_dialogue_id: string | null
+          source_shot_id: string | null
+          source_upload_url: string | null
+          speed: number
+          start_ms: number
+          sync_group_id: string | null
+          thumbnail_url: string | null
+          track_id: string
+          updated_at: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          end_ms: number
+          fade_in_ms?: number
+          fade_out_ms?: number
+          id?: string
+          in_point_ms?: number
+          is_active?: boolean
+          language?: string | null
+          media_url?: string | null
+          out_point_ms: number
+          sort_order?: number
+          source_audio_track_id?: string | null
+          source_dialogue_id?: string | null
+          source_dubbed_dialogue_id?: string | null
+          source_shot_id?: string | null
+          source_upload_url?: string | null
+          speed?: number
+          start_ms?: number
+          sync_group_id?: string | null
+          thumbnail_url?: string | null
+          track_id: string
+          updated_at?: string
+          volume?: number
+        }
+        Update: {
+          created_at?: string
+          end_ms?: number
+          fade_in_ms?: number
+          fade_out_ms?: number
+          id?: string
+          in_point_ms?: number
+          is_active?: boolean
+          language?: string | null
+          media_url?: string | null
+          out_point_ms?: number
+          sort_order?: number
+          source_audio_track_id?: string | null
+          source_dialogue_id?: string | null
+          source_dubbed_dialogue_id?: string | null
+          source_shot_id?: string | null
+          source_upload_url?: string | null
+          speed?: number
+          start_ms?: number
+          sync_group_id?: string | null
+          thumbnail_url?: string | null
+          track_id?: string
+          updated_at?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_clips_source_audio_track_id_fkey"
+            columns: ["source_audio_track_id"]
+            isOneToOne: false
+            referencedRelation: "audio_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_source_dialogue_id_fkey"
+            columns: ["source_dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dialogue_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_source_dubbed_dialogue_id_fkey"
+            columns: ["source_dubbed_dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dubbed_dialogue_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_source_shot_id_fkey"
+            columns: ["source_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_sync_group_id_fkey"
+            columns: ["sync_group_id"]
+            isOneToOne: false
+            referencedRelation: "dialogue_sync_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "edit_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_keyframes: {
+        Row: {
+          bezier_cp1_x: number | null
+          bezier_cp1_y: number | null
+          bezier_cp2_x: number | null
+          bezier_cp2_y: number | null
+          clip_id: string
+          created_at: string
+          easing: string
+          id: string
+          offset_ms: number
+          property: string
+          value: number
+        }
+        Insert: {
+          bezier_cp1_x?: number | null
+          bezier_cp1_y?: number | null
+          bezier_cp2_x?: number | null
+          bezier_cp2_y?: number | null
+          clip_id: string
+          created_at?: string
+          easing?: string
+          id?: string
+          offset_ms: number
+          property: string
+          value: number
+        }
+        Update: {
+          bezier_cp1_x?: number | null
+          bezier_cp1_y?: number | null
+          bezier_cp2_x?: number | null
+          bezier_cp2_y?: number | null
+          clip_id?: string
+          created_at?: string
+          easing?: string
+          id?: string
+          offset_ms?: number
+          property?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_keyframes_clip_id_fkey"
+            columns: ["clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_projects: {
+        Row: {
+          active_language: string
+          created_at: string
+          episode_id: string
+          fps: number
+          height: number
+          id: string
+          render_completed_at: string | null
+          render_error: string | null
+          render_started_at: string | null
+          render_status: string
+          render_url: string | null
+          updated_at: string
+          version: number
+          width: number
+        }
+        Insert: {
+          active_language?: string
+          created_at?: string
+          episode_id: string
+          fps?: number
+          height?: number
+          id?: string
+          render_completed_at?: string | null
+          render_error?: string | null
+          render_started_at?: string | null
+          render_status?: string
+          render_url?: string | null
+          updated_at?: string
+          version?: number
+          width?: number
+        }
+        Update: {
+          active_language?: string
+          created_at?: string
+          episode_id?: string
+          fps?: number
+          height?: number
+          id?: string
+          render_completed_at?: string | null
+          render_error?: string | null
+          render_started_at?: string | null
+          render_status?: string
+          render_url?: string | null
+          updated_at?: string
+          version?: number
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_projects_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: true
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_tracks: {
+        Row: {
+          created_at: string
+          edit_project_id: string
+          height: number
+          id: string
+          is_locked: boolean
+          is_muted: boolean
+          is_solo: boolean
+          name: string
+          sort_order: number
+          type: string
+          updated_at: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          edit_project_id: string
+          height?: number
+          id?: string
+          is_locked?: boolean
+          is_muted?: boolean
+          is_solo?: boolean
+          name: string
+          sort_order?: number
+          type: string
+          updated_at?: string
+          volume?: number
+        }
+        Update: {
+          created_at?: string
+          edit_project_id?: string
+          height?: number
+          id?: string
+          is_locked?: boolean
+          is_muted?: boolean
+          is_solo?: boolean
+          name?: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_tracks_edit_project_id_fkey"
+            columns: ["edit_project_id"]
+            isOneToOne: false
+            referencedRelation: "edit_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_transitions: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          from_clip_id: string
+          id: string
+          params: Json
+          to_clip_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number
+          from_clip_id: string
+          id?: string
+          params?: Json
+          to_clip_id: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          from_clip_id?: string
+          id?: string
+          params?: Json
+          to_clip_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_transitions_from_clip_id_fkey"
+            columns: ["from_clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_transitions_to_clip_id_fkey"
+            columns: ["to_clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
             referencedColumns: ["id"]
           },
         ]
@@ -4087,8 +4487,8 @@ export type Database = {
           name: string | null
           picture_url: string | null
           subscription_status:
-          | Database["public"]["Enums"]["subscription_status"]
-          | null
+            | Database["public"]["Enums"]["subscription_status"]
+            | null
         }
         Relationships: []
       }
@@ -4428,6 +4828,10 @@ export type Database = {
           total_cost_cents: number
         }[]
       }
+      get_project_id_for_edit_project: {
+        Args: { p_edit_project_id: string }
+        Returns: string
+      }
       get_project_members: {
         Args: { target_project_id: string }
         Returns: {
@@ -4711,78 +5115,583 @@ export type Database = {
     }
     Enums: {
       app_permissions:
-      | "roles.manage"
-      | "billing.manage"
-      | "settings.manage"
-      | "members.manage"
-      | "invites.manage"
+        | "roles.manage"
+        | "billing.manage"
+        | "settings.manage"
+        | "members.manage"
+        | "invites.manage"
       audit_action:
-      | "create"
-      | "update"
-      | "delete"
-      | "archive"
-      | "restore"
-      | "login"
-      | "logout"
-      | "invite"
-      | "accept_invite"
-      | "reject_invite"
-      | "permission_change"
-      | "settings_change"
-      | "export"
-      | "import"
-      | "custom"
+        | "create"
+        | "update"
+        | "delete"
+        | "archive"
+        | "restore"
+        | "login"
+        | "logout"
+        | "invite"
+        | "accept_invite"
+        | "reject_invite"
+        | "permission_change"
+        | "settings_change"
+        | "export"
+        | "import"
+        | "custom"
       audit_severity: "info" | "warning" | "critical"
       billing_provider: "stripe" | "lemon-squeezy" | "paddle"
       notification_channel: "in_app" | "email"
       notification_type: "info" | "warning" | "error"
       payment_status: "pending" | "succeeded" | "failed"
       project_action:
-      | "project.view"
-      | "project.edit"
-      | "project.delete"
-      | "project.members.view"
-      | "project.members.add"
-      | "project.members.remove"
-      | "project.settings.view"
-      | "project.settings.edit"
+        | "project.view"
+        | "project.edit"
+        | "project.delete"
+        | "project.members.view"
+        | "project.members.add"
+        | "project.members.remove"
+        | "project.settings.view"
+        | "project.settings.edit"
       project_role: "owner" | "admin" | "member" | "viewer"
       source_type_enum:
-      | "research_paper"
-      | "book"
-      | "news_article"
-      | "official_document"
-      | "documentary"
-      | "expert_interview"
-      | "dataset"
-      | "website"
-      | "encyclopedia"
-      | "court_document"
-      | "historical_record"
-      | "textbook"
-      | "other"
+        | "research_paper"
+        | "book"
+        | "news_article"
+        | "official_document"
+        | "documentary"
+        | "expert_interview"
+        | "dataset"
+        | "website"
+        | "encyclopedia"
+        | "court_document"
+        | "historical_record"
+        | "textbook"
+        | "other"
       subscription_item_type: "flat" | "per_seat" | "metered"
       subscription_status:
-      | "active"
-      | "trialing"
-      | "past_due"
-      | "canceled"
-      | "unpaid"
-      | "incomplete"
-      | "incomplete_expired"
-      | "paused"
+        | "active"
+        | "trialing"
+        | "past_due"
+        | "canceled"
+        | "unpaid"
+        | "incomplete"
+        | "incomplete_expired"
+        | "paused"
       verification_status_enum:
-      | "unverified"
-      | "pending_review"
-      | "verified"
-      | "disputed"
-      | "retracted"
+        | "unverified"
+        | "pending_review"
+        | "verified"
+        | "disputed"
+        | "retracted"
     }
     CompositeTypes: {
       invitation: {
         email: string | null
         role: string | null
       }
+    }
+  }
+  storage: {
+    Tables: {
+      buckets: {
+        Row: {
+          allowed_mime_types: string[] | null
+          avif_autodetection: boolean | null
+          created_at: string | null
+          file_size_limit: number | null
+          id: string
+          name: string
+          owner: string | null
+          owner_id: string | null
+          public: boolean | null
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string | null
+        }
+        Insert: {
+          allowed_mime_types?: string[] | null
+          avif_autodetection?: boolean | null
+          created_at?: string | null
+          file_size_limit?: number | null
+          id: string
+          name: string
+          owner?: string | null
+          owner_id?: string | null
+          public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string | null
+        }
+        Update: {
+          allowed_mime_types?: string[] | null
+          avif_autodetection?: boolean | null
+          created_at?: string | null
+          file_size_limit?: number | null
+          id?: string
+          name?: string
+          owner?: string | null
+          owner_id?: string | null
+          public?: boolean | null
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      buckets_analytics: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          format: string
+          id: string
+          name: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          format?: string
+          id?: string
+          name?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      buckets_vectors: {
+        Row: {
+          created_at: string
+          id: string
+          type: Database["storage"]["Enums"]["buckettype"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          type?: Database["storage"]["Enums"]["buckettype"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      migrations: {
+        Row: {
+          executed_at: string | null
+          hash: string
+          id: number
+          name: string
+        }
+        Insert: {
+          executed_at?: string | null
+          hash: string
+          id: number
+          name: string
+        }
+        Update: {
+          executed_at?: string | null
+          hash?: string
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      objects: {
+        Row: {
+          bucket_id: string | null
+          created_at: string | null
+          id: string
+          last_accessed_at: string | null
+          level: number | null
+          metadata: Json | null
+          name: string | null
+          owner: string | null
+          owner_id: string | null
+          path_tokens: string[] | null
+          updated_at: string | null
+          user_metadata: Json | null
+          version: string | null
+        }
+        Insert: {
+          bucket_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          level?: number | null
+          metadata?: Json | null
+          name?: string | null
+          owner?: string | null
+          owner_id?: string | null
+          path_tokens?: string[] | null
+          updated_at?: string | null
+          user_metadata?: Json | null
+          version?: string | null
+        }
+        Update: {
+          bucket_id?: string | null
+          created_at?: string | null
+          id?: string
+          last_accessed_at?: string | null
+          level?: number | null
+          metadata?: Json | null
+          name?: string | null
+          owner?: string | null
+          owner_id?: string | null
+          path_tokens?: string[] | null
+          updated_at?: string | null
+          user_metadata?: Json | null
+          version?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "objects_bucketId_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prefixes: {
+        Row: {
+          bucket_id: string
+          created_at: string | null
+          level: number
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string | null
+          level?: number
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string | null
+          level?: number
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prefixes_bucketId_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          id: string
+          in_progress_size: number
+          key: string
+          owner_id: string | null
+          upload_signature: string
+          user_metadata: Json | null
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          id: string
+          in_progress_size?: number
+          key: string
+          owner_id?: string | null
+          upload_signature: string
+          user_metadata?: Json | null
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          id?: string
+          in_progress_size?: number
+          key?: string
+          owner_id?: string | null
+          upload_signature?: string
+          user_metadata?: Json | null
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      s3_multipart_uploads_parts: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          etag: string
+          id: string
+          key: string
+          owner_id: string | null
+          part_number: number
+          size: number
+          upload_id: string
+          version: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          etag: string
+          id?: string
+          key: string
+          owner_id?: string | null
+          part_number: number
+          size?: number
+          upload_id: string
+          version: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          etag?: string
+          id?: string
+          key?: string
+          owner_id?: string | null
+          part_number?: number
+          size?: number
+          upload_id?: string
+          version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "s3_multipart_uploads_parts_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "s3_multipart_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vector_indexes: {
+        Row: {
+          bucket_id: string
+          created_at: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id: string
+          metadata_configuration: Json | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          bucket_id: string
+          created_at?: string
+          data_type: string
+          dimension: number
+          distance_metric: string
+          id?: string
+          metadata_configuration?: Json | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          bucket_id?: string
+          created_at?: string
+          data_type?: string
+          dimension?: number
+          distance_metric?: string
+          id?: string
+          metadata_configuration?: Json | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vector_indexes_bucket_id_fkey"
+            columns: ["bucket_id"]
+            isOneToOne: false
+            referencedRelation: "buckets_vectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      add_prefixes: {
+        Args: { _bucket_id: string; _name: string }
+        Returns: undefined
+      }
+      can_insert_object: {
+        Args: { bucketid: string; metadata: Json; name: string; owner: string }
+        Returns: undefined
+      }
+      delete_leaf_prefixes: {
+        Args: { bucket_ids: string[]; names: string[] }
+        Returns: undefined
+      }
+      delete_prefix: {
+        Args: { _bucket_id: string; _name: string }
+        Returns: boolean
+      }
+      extension: { Args: { name: string }; Returns: string }
+      filename: { Args: { name: string }; Returns: string }
+      foldername: { Args: { name: string }; Returns: string[] }
+      get_level: { Args: { name: string }; Returns: number }
+      get_prefix: { Args: { name: string }; Returns: string }
+      get_prefixes: { Args: { name: string }; Returns: string[] }
+      get_size_by_bucket: {
+        Args: never
+        Returns: {
+          bucket_id: string
+          size: number
+        }[]
+      }
+      list_multipart_uploads_with_delimiter: {
+        Args: {
+          bucket_id: string
+          delimiter_param: string
+          max_keys?: number
+          next_key_token?: string
+          next_upload_token?: string
+          prefix_param: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+        }[]
+      }
+      list_objects_with_delimiter: {
+        Args: {
+          bucket_id: string
+          delimiter_param: string
+          max_keys?: number
+          next_token?: string
+          prefix_param: string
+          start_after?: string
+        }
+        Returns: {
+          id: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      lock_top_prefixes: {
+        Args: { bucket_ids: string[]; names: string[] }
+        Returns: undefined
+      }
+      operation: { Args: never; Returns: string }
+      search: {
+        Args: {
+          bucketname: string
+          levels?: number
+          limits?: number
+          offsets?: number
+          prefix: string
+          search?: string
+          sortcolumn?: string
+          sortorder?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_legacy_v1: {
+        Args: {
+          bucketname: string
+          levels?: number
+          limits?: number
+          offsets?: number
+          prefix: string
+          search?: string
+          sortcolumn?: string
+          sortorder?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_v1_optimised: {
+        Args: {
+          bucketname: string
+          levels?: number
+          limits?: number
+          offsets?: number
+          prefix: string
+          search?: string
+          sortcolumn?: string
+          sortorder?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+      search_v2: {
+        Args: {
+          bucket_name: string
+          levels?: number
+          limits?: number
+          prefix: string
+          sort_column?: string
+          sort_column_after?: string
+          sort_order?: string
+          start_after?: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          key: string
+          last_accessed_at: string
+          metadata: Json
+          name: string
+          updated_at: string
+        }[]
+      }
+    }
+    Enums: {
+      buckettype: "STANDARD" | "ANALYTICS" | "VECTOR"
+    }
+    CompositeTypes: {
+      [_ in never]: never
     }
   }
 }
@@ -4793,118 +5702,121 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-  : never = never,
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-  ? R
-  : never
+    ? R
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])
-  ? (DefaultSchema["Tables"] &
-    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-      Row: infer R
-    }
-  ? R
-  : never
-  : never
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
+      Insert: infer I
+    }
+    ? I
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Insert: infer I
-  }
-  ? I
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-  | keyof DefaultSchema["Tables"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-    Update: infer U
-  }
-  ? U
-  : never
+      Update: infer U
+    }
+    ? U
+    : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-    Update: infer U
-  }
-  ? U
-  : never
-  : never
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-  | keyof DefaultSchema["Enums"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-  : never
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-  | keyof DefaultSchema["CompositeTypes"]
-  | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-  : never = never,
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-  : never
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       app_permissions: [
@@ -4982,4 +5894,11 @@ export const Constants = {
       ],
     },
   },
+  storage: {
+    Enums: {
+      buckettype: ["STANDARD", "ANALYTICS", "VECTOR"],
+    },
+  },
 } as const
+A new version of Supabase CLI is available: v2.75.0 (currently installed v2.62.10)
+We recommend updating regularly for new features and bug fixes: https://supabase.com/docs/guides/cli/getting-started#updating-the-supabase-cli
