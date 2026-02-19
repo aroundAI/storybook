@@ -12,29 +12,20 @@
  * these tables, this wrapper can be simplified to use the typed client directly.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js';
-
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-// Re-export Database type for convenience
-export type { Database } from '@kit/supabase/database';
-
 /**
- * Extended Supabase client type that includes edit suite tables.
+ * Get a Supabase server client for edit suite operations.
  *
- * Uses the base SupabaseClient type which provides full query builder
- * support for `.from()`, `.rpc()`, etc. without needing `as any`.
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type EditSuiteClient = SupabaseClient<any, 'public', any>;
-
-/**
- * Get a typed Supabase server client for edit suite operations.
+ * Returns the client typed as `any` so that `.from()` and `.rpc()` calls
+ * for tables/functions not yet in the generated types don't resolve to `never`.
  *
  * This is the single point where we handle the type gap between
  * generated types and our new tables. All server actions should
  * use this instead of `getSupabaseServerClient()` directly.
  */
-export function getEditSuiteClient(): EditSuiteClient {
-    return getSupabaseServerClient() as EditSuiteClient;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function getEditSuiteClient(): any {
+    return getSupabaseServerClient();
 }
+
