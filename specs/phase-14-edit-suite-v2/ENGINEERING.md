@@ -555,8 +555,8 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Add RLS policies for all 6 tables (select/insert/update/delete)
 - [x] Add indexes: `edit_clips(track_id)`, `edit_clips(sync_group_id)`, keyframe composite index
 - [x] Generate migration file with timestamp
-- [ ] Run `supabase migration up` + `supabase:web:typegen`
-- [ ] Verify generated types include all new tables
+- [x] Run `supabase gen types` against remote project
+- [x] Verify generated types include all new tables
 
 #### 1.2 Server Actions ✅
 - [x] `createEditProjectAction` — create project + default tracks
