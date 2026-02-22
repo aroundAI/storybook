@@ -1,4 +1,4 @@
-'use server';
+import 'server-only';
 
 /**
  * Typed wrapper around Supabase server client for edit suite tables.

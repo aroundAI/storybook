@@ -543,20 +543,20 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ### Build Phase 1: Foundation — Database + Skeleton (4–5 weeks)
 
-#### 1.1 Database Migration
-- [ ] Create schema file `apps/web/supabase/schemas/35-edit-suite.sql`
-- [ ] Define `edit_projects` table with all columns + constraints
-- [ ] Define `edit_tracks` table with type enum + volume/mute/solo/lock
-- [ ] Define `edit_clips` table with polymorphic source FKs
-- [ ] Define `edit_transitions` table with type enum + duration
-- [ ] Define `edit_keyframes` table with property enum + easing + bezier
-- [ ] Define `dialogue_sync_groups` table with unique constraint
-- [ ] Create `get_edit_project_account_id()` helper function for RLS
-- [ ] Add RLS policies for all 6 tables (select/insert/update/delete)
-- [ ] Add indexes: `edit_clips(track_id)`, `edit_clips(sync_group_id)`, keyframe composite index
-- [ ] Generate migration file with timestamp
-- [ ] Run `supabase migration up` + `supabase:web:typegen`
-- [ ] Verify generated types include all new tables
+#### 1.1 Database Migration ✅
+- [x] Create schema file `apps/web/supabase/schemas/35-edit-suite.sql`
+- [x] Define `edit_projects` table with all columns + constraints
+- [x] Define `edit_tracks` table with type enum + volume/mute/solo/lock
+- [x] Define `edit_clips` table with polymorphic source FKs
+- [x] Define `edit_transitions` table with type enum + duration
+- [x] Define `edit_keyframes` table with property enum + easing + bezier
+- [x] Define `dialogue_sync_groups` table with unique constraint
+- [x] Create `get_edit_project_account_id()` helper function for RLS
+- [x] Add RLS policies for all 6 tables (select/insert/update/delete)
+- [x] Add indexes: `edit_clips(track_id)`, `edit_clips(sync_group_id)`, keyframe composite index
+- [x] Generate migration file with timestamp
+- [x] Run `supabase gen types` against remote project
+- [x] Verify generated types include all new tables
 
 #### 1.2 Server Actions ✅
 - [x] `createEditProjectAction` — create project + default tracks
@@ -570,24 +570,27 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] `createTransitionAction` / `updateTransitionAction` / `deleteTransitionAction` — transition CRUD
 - [x] `batchSaveAction` — debounced save of all dirty clips/tracks/keyframes
 
-#### 1.3 Package Scaffold
+#### 1.3 Package Scaffold ✅
 - [x] Create `packages/features/edit-suite/package.json`
 - [x] Configure `tsconfig.json` with path aliases
 - [x] Create `src/lib/types.ts` — all TypeScript interfaces + row mappers
 - [x] Create `src/lib/schemas/index.ts` — Zod schemas for all entities
-- [ ] Create `src/state/edit-reducer.ts` — useReducer with all action types
-- [ ] Create `src/components/edit-suite-provider.tsx` — context provider
-- [ ] Add package to turbo pipeline
+- [x] Create `src/state/edit-reducer.ts` — useReducer with all action types
+- [x] Create `src/state/edit-commands.ts` — UndoManager + command classes
+- [x] Create `src/state/types.ts` — EditSuiteState + EditAction union
+- [x] Create `src/components/edit-suite-provider.tsx` — context provider with auto-save + keyboard shortcuts
+- [x] Create `src/components/index.ts` — barrel exports
+- [x] Add package to turbo pipeline
 
-#### 1.4 Route + Layout Shell
-- [ ] Create route `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit-suite/page.tsx`
-- [ ] Implement `ThreePanelLayout` with resizable panes (left/center/right + bottom)
-- [ ] Stub `Toolbar` with placeholder buttons
-- [ ] Stub `MediaBin` panel (left)
-- [ ] Stub `PreviewPanel` (center) with empty canvas
-- [ ] Stub `InspectorPanel` (right)
-- [ ] Stub `Timeline` (bottom) with empty track list
-- [ ] Add navigation link from episode page to Edit Suite
+#### 1.4 Route + Layout Shell ✅
+- [x] Create route `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit-suite/page.tsx`
+- [x] Implement `EditSuiteShell` with CSS Grid layout (toolbar + 3-col workspace + bottom timeline)
+- [x] `Toolbar` — undo/redo, language, zoom, snap toggle, save status, export
+- [x] `MediaBin` stub (left) — section placeholders for shots/dialogue/music/SFX/uploads
+- [x] `PreviewPanel` stub (center) — canvas placeholder, playback controls, timecode
+- [x] `InspectorPanel` stub (right) — context-aware (empty, single clip, multi-select)
+- [x] `Timeline` stub (bottom) — color-coded track headers, clip lanes, ruler, red playhead
+- [x] Add navigation link from episode page to Edit Suite
 
 #### 1.5 Media Bin
 - [ ] `useMediaBin` hook — fetch shots, dialogue, dubbed, audio tracks for episode

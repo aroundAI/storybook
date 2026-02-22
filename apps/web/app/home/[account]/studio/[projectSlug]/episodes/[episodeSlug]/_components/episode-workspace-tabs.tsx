@@ -10,6 +10,7 @@ import {
   ListOrdered,
   Lock,
   Music,
+  Scissors,
   Share2,
 } from 'lucide-react';
 
@@ -65,6 +66,13 @@ const STORY_TABS: TabConfig[] = [
 
 const POST_TABS: TabConfig[] = [
   {
+    id: 'edit-suite',
+    label: 'Edit Suite',
+    icon: Scissors,
+    path: 'edit-suite',
+    studioMode: 'post',
+  },
+  {
     id: 'publish',
     label: 'Publish',
     icon: Share2,
@@ -93,6 +101,7 @@ function getTabUnlockState(
     screenplay: hasStoryData, // Unlocked when story exists
     'shot-list': hasScreenplayData, // Unlocked when screenplay exists
     audio: hasShotList, // Unlocked when shot list exists
+    'edit-suite': hasShotList, // Unlocked when shot list exists
     publish: hasShotList, // Unlocked when shot list exists (user can upload video directly)
   };
 }
@@ -119,6 +128,7 @@ export function EpisodeWorkspaceTabs() {
     if (pathname.endsWith('/screenplay')) return 'screenplay';
     if (pathname.endsWith('/visual-studio')) return 'shot-list';
     if (pathname.endsWith('/audio-studio')) return 'audio';
+    if (pathname.endsWith('/edit-suite')) return 'edit-suite';
     if (pathname.endsWith('/publish')) return 'publish';
     return 'ideation';
   };

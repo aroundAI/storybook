@@ -4497,9 +4497,36 @@ export type Database = {
         }
         Returns: Database["public"]["Tables"]["invitations"]["Row"][]
       }
+      batch_assemble_edit_project: {
+        Args: {
+          p_active_language?: string
+          p_clips?: Json
+          p_episode_id: string
+          p_fps?: number
+          p_height?: number
+          p_keyframes?: Json
+          p_sync_groups?: Json
+          p_tracks?: Json
+          p_width?: number
+        }
+        Returns: Json
+      }
       batch_create_shots: {
         Args: { p_episode_id: string; p_shots: Json }
         Returns: string[]
+      }
+      batch_save_edit_project: {
+        Args: {
+          p_deleted_clip_ids?: Json
+          p_deleted_keyframe_ids?: Json
+          p_dirty_clips?: Json
+          p_dirty_keyframes?: Json
+          p_dirty_tracks?: Json
+          p_edit_project_id: string
+          p_new_clips?: Json
+          p_new_keyframes?: Json
+        }
+        Returns: Json
       }
       can_action_account_member: {
         Args: { target_team_account_id: string; target_user_id: string }
@@ -4545,6 +4572,17 @@ export type Database = {
           p_voice_asset_id?: string
         }
         Returns: string
+      }
+      create_edit_project_with_tracks: {
+        Args: {
+          p_active_language?: string
+          p_default_tracks?: Json
+          p_episode_id: string
+          p_fps?: number
+          p_height?: number
+          p_width?: number
+        }
+        Returns: Json
       }
       create_invitation: {
         Args: { account_id: string; email: string; role: string }
@@ -4971,6 +5009,10 @@ export type Database = {
         }[]
       }
       soft_delete_episode: { Args: { p_episode_id: string }; Returns: boolean }
+      split_edit_clip: {
+        Args: { p_clip_id: string; p_split_at_ms: number }
+        Returns: Json
+      }
       team_account_workspace: {
         Args: { account_slug: string }
         Returns: {

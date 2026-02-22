@@ -226,6 +226,9 @@ importers:
       '@kit/database-webhooks':
         specifier: workspace:*
         version: link:../../packages/database-webhooks
+      '@kit/edit-suite':
+        specifier: workspace:*
+        version: link:../../packages/features/edit-suite
       '@kit/email-templates':
         specifier: workspace:*
         version: link:../../packages/email-templates
@@ -1478,6 +1481,12 @@ importers:
       '@kit/tsconfig':
         specifier: workspace:*
         version: link:../../../tooling/typescript
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../ui
+      '@types/react':
+        specifier: 19.1.13
+        version: 19.1.13
       next:
         specifier: 15.5.3
         version: 15.5.3(@opentelemetry/api@1.9.0)(@playwright/test@1.55.0)(babel-plugin-react-compiler@19.1.0-rc.3)(react-dom@19.1.1(react@19.1.1))(react@19.1.1)
