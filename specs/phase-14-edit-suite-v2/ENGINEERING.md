@@ -611,7 +611,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Drop target on clip lane — receive drag from MediaBin, create clip
 - [x] Snap toggle + track-type color coding
 
-#### 1.7 Auto-Assembly
+#### 1.7 Auto-Assembly ✅
 - [x] `autoAssemble()` function in `lib/auto-assemble.ts`
 - [x] Parallel fetch: shots, dialogue_lines, dubbed_versions, audio_tracks
 - [x] Build tracks array (video + dialogue per language + music + sfx + ambient)
@@ -624,13 +624,15 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Call `batchCreateEditProjectAction` to persist
 - [x] Loading state with progress indicator during assembly
 
-#### 1.8 Auto-Save
+#### 1.8 Auto-Save ✅
 - [x] Dirty state tracking — mark clips/tracks as dirty on edit
 - [x] Debounced save (2s after last edit)
 - [x] `batchSaveAction` — update only dirty rows
 - [x] Save indicator in toolbar (✓ Saved / ● Saving...)
 - [x] `Cmd+S` shortcut for force save
 - [x] Error handling with retry on save failure
+
+> **Build Phase 1 complete** (PR #194, #195). All foundation, data layer, layout, media bin, timeline, auto-assembly, and auto-save are implemented. During PR review, IDOR ownership checks (episode → project → account membership) were added to `batchAssembleAction` and `getEditProjectAction` for defense-in-depth.
 
 ---
 
