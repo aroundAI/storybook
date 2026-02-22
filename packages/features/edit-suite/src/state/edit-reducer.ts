@@ -1,0 +1,297 @@
+'use client';
+
+/**
+ * Edit Suite reducer — pure function managing all editor state transitions.
+ *
+ * Every edit operation dispatches an action through this reducer.
+ * Side effects (server persistence) are handled by the context provider.
+ */
+
+import type { EditAction, EditSuiteState } from './types';
+
+export function editReducer(state: EditSuiteState, action: EditAction): EditSuiteState {
+    switch (action.type) {
+        // ── Project lifecycle ──
+
+        case 'LOAD_PROJECT':
+            return {
+                ...state,
+                project: action.payload.project,
+                tracks: action.payload.tracks,
+                clips: action.payload.clips,
+                keyframes: action.payload.keyframes,
+                transitions: action.payload.transitions,
+                syncGroups: action.payload.syncGroups,
+                activeLanguage: action.payload.project.activeLanguage,
+                saveStatus: 'saved',
+                dirtyClipIds: new Set(),
+                dirtyTrackIds: new Set(),
+                dirtyKeyframeIds: new Set(),
+            };
+
+        // ── Playback ──
+
+        case 'SET_PLAYHEAD':
+            return { ...state, playheadMs: Math.max(0, action.payload.ms) };
+
+        case 'SET_PLAYING':
+            return { ...state, isPlaying: action.payload.isPlaying };
+
+        // ── View controls ──
+
+        case 'SET_ZOOM':
+            return {
+                ...state,
+                zoom: Math.min(500, Math.max(10, action.payload.zoom)),
+            };
+
+        case 'SET_SCROLL_LEFT':
+            return { ...state, scrollLeft: Math.max(0, action.payload.scrollLeft) };
+
+        case 'TOGGLE_SNAP':
+            return { ...state, snapEnabled: !state.snapEnabled };
+
+        // ── Selection ──
+
+        case 'SELECT_CLIP': {
+            const next = action.payload.addToSelection
+                ? new Set(state.selectedClipIds)
+                : new Set<string>();
+            next.add(action.payload.clipId);
+            return { ...state, selectedClipIds: next };
+        }
+
+        case 'SELECT_CLIPS':
+            return {
+                ...state,
+                selectedClipIds: new Set(action.payload.clipIds),
+            };
+
+        case 'DESELECT_ALL':
+            return {
+                ...state,
+                selectedClipIds: new Set(),
+                selectedTrackId: null,
+            };
+
+        case 'SELECT_TRACK':
+            return { ...state, selectedTrackId: action.payload.trackId };
+
+        // ── Clips ──
+
+        case 'ADD_CLIP': {
+            const dirtyClipIds = new Set(state.dirtyClipIds);
+            dirtyClipIds.add(action.payload.clip.id);
+            return {
+                ...state,
+                clips: [...state.clips, action.payload.clip],
+                dirtyClipIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'UPDATE_CLIP': {
+            const dirtyClipIds = new Set(state.dirtyClipIds);
+            dirtyClipIds.add(action.payload.clipId);
+            return {
+                ...state,
+                clips: state.clips.map((c) =>
+                    c.id === action.payload.clipId
+                        ? { ...c, ...action.payload.changes }
+                        : c,
+                ),
+                dirtyClipIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'REMOVE_CLIP': {
+            const removedId = action.payload.clipId;
+            return {
+                ...state,
+                clips: state.clips.filter((c) => c.id !== removedId),
+                keyframes: state.keyframes.filter((k) => k.clipId !== removedId),
+                transitions: state.transitions.filter(
+                    (t) => t.fromClipId !== removedId && t.toClipId !== removedId,
+                ),
+                selectedClipIds: (() => {
+                    const next = new Set(state.selectedClipIds);
+                    next.delete(removedId);
+                    return next;
+                })(),
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'MOVE_CLIP': {
+            const dirtyClipIds = new Set(state.dirtyClipIds);
+            dirtyClipIds.add(action.payload.clipId);
+            return {
+                ...state,
+                clips: state.clips.map((c) =>
+                    c.id === action.payload.clipId
+                        ? {
+                            ...c,
+                            startMs: action.payload.startMs,
+                            endMs: action.payload.endMs,
+                            ...(action.payload.trackId ? { trackId: action.payload.trackId } : {}),
+                        }
+                        : c,
+                ),
+                dirtyClipIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        // ── Tracks ──
+
+        case 'ADD_TRACK': {
+            const dirtyTrackIds = new Set(state.dirtyTrackIds);
+            dirtyTrackIds.add(action.payload.track.id);
+            return {
+                ...state,
+                tracks: [...state.tracks, action.payload.track],
+                dirtyTrackIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'UPDATE_TRACK': {
+            const dirtyTrackIds = new Set(state.dirtyTrackIds);
+            dirtyTrackIds.add(action.payload.trackId);
+            return {
+                ...state,
+                tracks: state.tracks.map((t) =>
+                    t.id === action.payload.trackId
+                        ? { ...t, ...action.payload.changes }
+                        : t,
+                ),
+                dirtyTrackIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'REMOVE_TRACK': {
+            const removedId = action.payload.trackId;
+            const removedClipIds = new Set(
+                state.clips.filter((c) => c.trackId === removedId).map((c) => c.id),
+            );
+            return {
+                ...state,
+                tracks: state.tracks.filter((t) => t.id !== removedId),
+                clips: state.clips.filter((c) => c.trackId !== removedId),
+                keyframes: state.keyframes.filter(
+                    (k) => !removedClipIds.has(k.clipId),
+                ),
+                transitions: state.transitions.filter(
+                    (t) =>
+                        !removedClipIds.has(t.fromClipId) &&
+                        !removedClipIds.has(t.toClipId),
+                ),
+                saveStatus: 'dirty',
+            };
+        }
+
+        // ── Keyframes ──
+
+        case 'ADD_KEYFRAME': {
+            const dirtyKeyframeIds = new Set(state.dirtyKeyframeIds);
+            dirtyKeyframeIds.add(action.payload.keyframe.id);
+            return {
+                ...state,
+                keyframes: [...state.keyframes, action.payload.keyframe],
+                dirtyKeyframeIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'UPDATE_KEYFRAME': {
+            const dirtyKeyframeIds = new Set(state.dirtyKeyframeIds);
+            dirtyKeyframeIds.add(action.payload.keyframeId);
+            return {
+                ...state,
+                keyframes: state.keyframes.map((k) =>
+                    k.id === action.payload.keyframeId
+                        ? { ...k, ...action.payload.changes }
+                        : k,
+                ),
+                dirtyKeyframeIds,
+                saveStatus: 'dirty',
+            };
+        }
+
+        case 'REMOVE_KEYFRAME':
+            return {
+                ...state,
+                keyframes: state.keyframes.filter(
+                    (k) => k.id !== action.payload.keyframeId,
+                ),
+                saveStatus: 'dirty',
+            };
+
+        // ── Transitions ──
+
+        case 'ADD_TRANSITION':
+            return {
+                ...state,
+                transitions: [...state.transitions, action.payload.transition],
+                saveStatus: 'dirty',
+            };
+
+        case 'UPDATE_TRANSITION':
+            return {
+                ...state,
+                transitions: state.transitions.map((t) =>
+                    t.id === action.payload.transitionId
+                        ? { ...t, ...action.payload.changes }
+                        : t,
+                ),
+                saveStatus: 'dirty',
+            };
+
+        case 'REMOVE_TRANSITION':
+            return {
+                ...state,
+                transitions: state.transitions.filter(
+                    (t) => t.id !== action.payload.transitionId,
+                ),
+                saveStatus: 'dirty',
+            };
+
+        // ── Language ──
+
+        case 'SET_LANGUAGE':
+            return {
+                ...state,
+                activeLanguage: action.payload.language,
+                clips: state.clips.map((c) => {
+                    if (!c.syncGroupId || !c.language) return c;
+                    return {
+                        ...c,
+                        isActive: c.language === action.payload.language,
+                    };
+                }),
+                saveStatus: 'dirty',
+            };
+
+        // ── Persistence ──
+
+        case 'MARK_SAVING':
+            return { ...state, saveStatus: 'saving' };
+
+        case 'MARK_SAVED':
+            return {
+                ...state,
+                saveStatus: 'saved',
+                dirtyClipIds: new Set(),
+                dirtyTrackIds: new Set(),
+                dirtyKeyframeIds: new Set(),
+            };
+
+        case 'MARK_SAVE_ERROR':
+            return { ...state, saveStatus: 'error' };
+
+        default:
+            return state;
+    }
+}
