@@ -18,6 +18,8 @@
         "./server/actions": "./src/server/actions.ts"
     },
     "devDependencies": {
+        "@kit/audio-generation": "workspace:*",
+        "@kit/episodes": "workspace:*",
         "@kit/eslint-config": "workspace:*",
         "@kit/next": "workspace:*",
         "@kit/prettier-config": "workspace:*",

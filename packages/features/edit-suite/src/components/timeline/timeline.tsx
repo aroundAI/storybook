@@ -1,152 +1,180 @@
 'use client';
 
 /**
- * Timeline — bottom panel with track-based timeline editor.
+ * Timeline — bottom panel with tracks, clips, ruler, and playhead.
  *
- * Stub implementation. Will contain:
- * - TimelineRuler with time markers
- * - Playhead (vertical line)
- * - TrackList with TrackRow per track
- * - ClipLane with ClipBlock per clip
- * - Horizontal + vertical scrolling
+ * Composes:
+ * - TimelineRuler (adaptive tick marks, click-to-jump)
+ * - Playhead (draggable red line)
+ * - TrackRow × N (header + clip lane with drop target)
+ * - ClipBlock (positioned clips within each track)
+ * - Zoom controls (slider + buttons)
  */
 
-import { cn } from '@kit/ui/utils';
+import { useMemo, useRef } from 'react';
 
 import { useEditSuite } from '../edit-suite-provider';
+import { TimelineRuler } from './timeline-ruler';
+import { Playhead } from './playhead';
+import { TrackRow } from './track-row';
 
-const TRACK_COLORS: Record<string, string> = {
-    video: 'from-blue-500 to-blue-600',
-    dialogue: 'from-green-500 to-green-600',
-    music: 'from-purple-500 to-purple-600',
-    sfx: 'from-orange-500 to-orange-600',
-    ambient: 'from-cyan-500 to-cyan-600',
-    title: 'from-yellow-500 to-yellow-600',
-    upload: 'from-slate-500 to-slate-600',
-};
+// ──────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────
 
-const TRACK_DOT_COLORS: Record<string, string> = {
-    video: 'bg-blue-500',
-    dialogue: 'bg-green-500',
-    music: 'bg-purple-500',
-    sfx: 'bg-orange-500',
-    ambient: 'bg-cyan-500',
-    title: 'bg-yellow-500',
-    upload: 'bg-slate-500',
-};
+const MIN_ZOOM = 10;    // px per second (zoomed out)
+const MAX_ZOOM = 500;   // px per second (zoomed in)
+const ZOOM_STEP = 10;
+const MIN_DURATION_MS = 60_000; // 1 minute minimum
+const DURATION_BUFFER = 1.2;    // 20% extra beyond last clip
 
-const PLAYHEAD_COLOR = 'bg-red-500';
-const PLAYHEAD_BORDER_COLOR = 'border-t-red-500';
+// ──────────────────────────────────────────
+// Component
+// ──────────────────────────────────────────
 
 export function Timeline() {
-    const { state } = useEditSuite();
-    const sortedTracks = [...state.tracks].sort((a, b) => a.sortOrder - b.sortOrder);
+    const { state, dispatch } = useEditSuite();
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-    // Compute timeline duration from clips with a comfortable buffer
-    const maxClipEndMs = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
-    const contentDurationSeconds = maxClipEndMs / 1000;
-    const totalSeconds = Math.max(60, Math.ceil(contentDurationSeconds * 1.2)); // 20% buffer, min 60s
+    // Compute dynamic timeline duration based on clips
+    const durationMs = useMemo(() => {
+        const maxEnd = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
+        return Math.max(MIN_DURATION_MS, Math.round(maxEnd * DURATION_BUFFER));
+    }, [state.clips]);
+
+    // Group clips by track
+    const clipsByTrack = useMemo(() => {
+        const map = new Map<string, typeof state.clips>();
+        for (const track of state.tracks) {
+            map.set(track.id, []);
+        }
+        for (const clip of state.clips) {
+            const trackClips = map.get(clip.trackId);
+            if (trackClips) {
+                trackClips.push(clip);
+            }
+        }
+        return map;
+    }, [state.tracks, state.clips]);
+
+    // Selected clip IDs as a Set for O(1) lookups
+    const selectedClipIds = useMemo(
+        () => new Set(state.selectedClipIds),
+        [state.selectedClipIds],
+    );
+
+    const totalWidthPx = (durationMs / 1000) * state.zoom;
 
     return (
-        <div className="flex h-full flex-col overflow-hidden bg-[#0f0f12]">
-            {/* Track headers + lanes */}
-            <div className="flex min-h-0 flex-1 overflow-y-auto">
-                {/* Track headers column */}
-                <div className="w-40 min-w-[160px] shrink-0 border-r border-zinc-800 bg-zinc-900">
-                    <div className="flex h-7 items-center border-b border-zinc-800 px-2.5">
-                        <span className="text-[10px] uppercase tracking-wider text-zinc-600">
-                            Tracks
-                        </span>
-                    </div>
-                    {sortedTracks.map((track) => (
-                        <div
-                            key={track.id}
-                            className="flex h-12 cursor-pointer items-center gap-1.5 border-b border-[#1a1a1f] px-2.5 transition-colors hover:bg-[#1f1f23]"
-                        >
-                            <div className={cn('h-2 w-2 shrink-0 rounded-sm', TRACK_DOT_COLORS[track.type] ?? 'bg-zinc-500')} />
-                            <span className="truncate text-xs text-zinc-300">{track.name}</span>
-                        </div>
-                    ))}
-                    {sortedTracks.length === 0 && (
-                        <div className="flex items-center justify-center p-5 text-xs text-zinc-600">
-                            No tracks
-                        </div>
-                    )}
-                </div>
+        <div className="flex h-full flex-col overflow-hidden bg-[#0d0d0f]">
+            {/* Toolbar bar */}
+            <div className="flex items-center gap-3 border-b border-zinc-800 px-3 py-1.5">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Timeline
+                </h3>
 
-                {/* Track lanes (scrollable) */}
-                <div className="relative min-w-0 flex-1 overflow-x-auto">
-                    {/* Ruler */}
-                    <div className="sticky top-0 z-[2] h-7 border-b border-zinc-800 bg-[#0f0f12]">
-                        <TimelineRuler zoom={state.zoom} totalSeconds={totalSeconds} />
-                    </div>
-
-                    {/* Clip lanes */}
-                    {sortedTracks.map((track) => {
-                        const trackClips = state.clips.filter(
-                            (c) => c.trackId === track.id && c.isActive,
-                        );
-                        return (
-                            <div key={track.id} className="relative h-12 border-b border-[#1a1a1f]">
-                                {trackClips.map((clip) => (
-                                    <div
-                                        key={clip.id}
-                                        className={cn(
-                                            'absolute top-1 h-10 min-w-1 rounded bg-gradient-to-br opacity-90',
-                                            TRACK_COLORS[track.type] ?? 'from-zinc-500 to-zinc-600',
-                                        )}
-                                        style={{
-                                            left: `${(clip.startMs / 1000) * state.zoom}px`,
-                                            width: `${((clip.endMs - clip.startMs) / 1000) * state.zoom}px`,
-                                        }}
-                                        title={`${clip.startMs}ms – ${clip.endMs}ms`}
-                                    />
-                                ))}
-                            </div>
-                        );
-                    })}
-
-                    {sortedTracks.length === 0 && (
-                        <div className="flex items-center justify-center p-5 text-xs text-zinc-600">
-                            <p>Open the Edit Suite to auto-assemble your timeline</p>
-                        </div>
-                    )}
-
-                    {/* Playhead */}
-                    <div
-                        className={`pointer-events-none absolute inset-y-0 z-[5] w-0.5 ${PLAYHEAD_COLOR}`}
-                        style={{ left: `${(state.playheadMs / 1000) * state.zoom}px` }}
+                <div className="ml-auto flex items-center gap-2">
+                    {/* Snap toggle */}
+                    <button
+                        className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${state.snapEnabled
+                            ? 'bg-violet-600/30 text-violet-300'
+                            : 'text-zinc-500 hover:bg-zinc-800'
+                            }`}
+                        onClick={() => dispatch({ type: 'TOGGLE_SNAP' })}
+                        title="Snap to grid"
                     >
-                        <div className={`absolute -left-[5px] top-0 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[10px] border-l-transparent border-r-transparent ${PLAYHEAD_BORDER_COLOR}`} />
+                        Snap
+                    </button>
+
+                    {/* Zoom controls */}
+                    <button
+                        className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800"
+                        onClick={() => dispatch({
+                            type: 'SET_ZOOM',
+                            payload: { zoom: state.zoom - ZOOM_STEP },
+                        })}
+                        title="Zoom out"
+                    >
+                        −
+                    </button>
+                    <input
+                        type="range"
+                        min={MIN_ZOOM}
+                        max={MAX_ZOOM}
+                        step={ZOOM_STEP}
+                        value={state.zoom}
+                        onChange={(e) => dispatch({
+                            type: 'SET_ZOOM',
+                            payload: { zoom: parseInt(e.target.value, 10) },
+                        })}
+                        className="h-1 w-20 cursor-pointer accent-violet-500"
+                        title={`Zoom: ${state.zoom}px/s`}
+                    />
+                    <button
+                        className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800"
+                        onClick={() => dispatch({
+                            type: 'SET_ZOOM',
+                            payload: { zoom: state.zoom + ZOOM_STEP },
+                        })}
+                        title="Zoom in"
+                    >
+                        +
+                    </button>
+                    <span className="text-[10px] text-zinc-500">{state.zoom}px/s</span>
+                </div>
+            </div>
+
+            {/* Scrollable timeline area */}
+            <div
+                ref={scrollContainerRef}
+                className="relative flex-1 overflow-auto"
+                onScroll={(e) => {
+                    const target = e.target as HTMLDivElement;
+                    dispatch({ type: 'SET_SCROLL_LEFT', payload: { scrollLeft: target.scrollLeft } });
+                }}
+            >
+                {/* Inner container with computed width */}
+                <div className="relative" style={{ width: `${totalWidthPx}px`, minHeight: '100%' }}>
+                    {/* Ruler */}
+                    <div className="sticky top-0 z-10">
+                        <TimelineRuler
+                            durationMs={durationMs}
+                            zoom={state.zoom}
+                            dispatch={dispatch}
+                        />
+                    </div>
+
+                    {/* Tracks */}
+                    <div className="relative">
+                        {state.tracks.length === 0 ? (
+                            <div className="flex items-center justify-center py-12 text-sm text-zinc-500">
+                                No tracks. Use Auto-Assembly or drag assets from the Media Bin.
+                            </div>
+                        ) : (
+                            state.tracks
+                                .sort((a, b) => a.sortOrder - b.sortOrder)
+                                .map((track) => (
+                                    <TrackRow
+                                        key={track.id}
+                                        track={track}
+                                        clips={clipsByTrack.get(track.id) ?? []}
+                                        zoom={state.zoom}
+                                        selectedClipIds={selectedClipIds}
+                                        dispatch={dispatch}
+                                    />
+                                ))
+                        )}
+
+                        {/* Playhead overlay */}
+                        <Playhead
+                            playheadMs={state.playheadMs}
+                            zoom={state.zoom}
+                            containerRef={scrollContainerRef}
+                            dispatch={dispatch}
+                        />
                     </div>
                 </div>
             </div>
-        </div>
-    );
-}
-
-function TimelineRuler({ zoom, totalSeconds }: { zoom: number; totalSeconds: number }) {
-    // Generate tick marks at adaptive intervals
-    const tickInterval = zoom >= 100 ? 1 : zoom >= 30 ? 5 : 10; // seconds
-    const ticks: { second: number; left: number }[] = [];
-
-    for (let s = 0; s <= totalSeconds; s += tickInterval) {
-        ticks.push({ second: s, left: s * zoom });
-    }
-
-    return (
-        <div className="relative h-full min-w-full">
-            {ticks.map((tick) => (
-                <div
-                    key={tick.second}
-                    className="absolute inset-y-0 w-px bg-zinc-800"
-                    style={{ left: `${tick.left}px` }}
-                >
-                    <span className="absolute left-1 top-1 whitespace-nowrap text-[9px] text-zinc-600">
-                        {Math.floor(tick.second / 60)}:{String(tick.second % 60).padStart(2, '0')}
-                    </span>
-                </div>
-            ))}
         </div>
     );
 }
