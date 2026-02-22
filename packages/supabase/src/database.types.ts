@@ -1078,6 +1078,52 @@ export type Database = {
           },
         ]
       }
+      dialogue_sync_groups: {
+        Row: {
+          anchor_dialogue_id: string
+          created_at: string
+          edit_project_id: string
+          id: string
+          primary_clip_id: string | null
+        }
+        Insert: {
+          anchor_dialogue_id: string
+          created_at?: string
+          edit_project_id: string
+          id?: string
+          primary_clip_id?: string | null
+        }
+        Update: {
+          anchor_dialogue_id?: string
+          created_at?: string
+          edit_project_id?: string
+          id?: string
+          primary_clip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dialogue_sync_groups_anchor_dialogue_id_fkey"
+            columns: ["anchor_dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dialogue_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dialogue_sync_groups_edit_project_id_fkey"
+            columns: ["edit_project_id"]
+            isOneToOne: false
+            referencedRelation: "edit_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_dialogue_sync_groups_primary_clip"
+            columns: ["primary_clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dubbed_dialogue_lines: {
         Row: {
           audio_url: string | null
@@ -1181,6 +1227,334 @@ export type Database = {
             columns: ["episode_id"]
             isOneToOne: false
             referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_clips: {
+        Row: {
+          created_at: string
+          end_ms: number
+          fade_in_ms: number
+          fade_out_ms: number
+          id: string
+          in_point_ms: number
+          is_active: boolean
+          language: string | null
+          media_url: string | null
+          out_point_ms: number
+          sort_order: number
+          source_audio_track_id: string | null
+          source_dialogue_id: string | null
+          source_dubbed_dialogue_id: string | null
+          source_shot_id: string | null
+          source_upload_url: string | null
+          speed: number
+          start_ms: number
+          sync_group_id: string | null
+          thumbnail_url: string | null
+          track_id: string
+          updated_at: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          end_ms: number
+          fade_in_ms?: number
+          fade_out_ms?: number
+          id?: string
+          in_point_ms?: number
+          is_active?: boolean
+          language?: string | null
+          media_url?: string | null
+          out_point_ms: number
+          sort_order?: number
+          source_audio_track_id?: string | null
+          source_dialogue_id?: string | null
+          source_dubbed_dialogue_id?: string | null
+          source_shot_id?: string | null
+          source_upload_url?: string | null
+          speed?: number
+          start_ms?: number
+          sync_group_id?: string | null
+          thumbnail_url?: string | null
+          track_id: string
+          updated_at?: string
+          volume?: number
+        }
+        Update: {
+          created_at?: string
+          end_ms?: number
+          fade_in_ms?: number
+          fade_out_ms?: number
+          id?: string
+          in_point_ms?: number
+          is_active?: boolean
+          language?: string | null
+          media_url?: string | null
+          out_point_ms?: number
+          sort_order?: number
+          source_audio_track_id?: string | null
+          source_dialogue_id?: string | null
+          source_dubbed_dialogue_id?: string | null
+          source_shot_id?: string | null
+          source_upload_url?: string | null
+          speed?: number
+          start_ms?: number
+          sync_group_id?: string | null
+          thumbnail_url?: string | null
+          track_id?: string
+          updated_at?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_clips_source_audio_track_id_fkey"
+            columns: ["source_audio_track_id"]
+            isOneToOne: false
+            referencedRelation: "audio_tracks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_source_dialogue_id_fkey"
+            columns: ["source_dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dialogue_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_source_dubbed_dialogue_id_fkey"
+            columns: ["source_dubbed_dialogue_id"]
+            isOneToOne: false
+            referencedRelation: "dubbed_dialogue_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_source_shot_id_fkey"
+            columns: ["source_shot_id"]
+            isOneToOne: false
+            referencedRelation: "shots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_sync_group_id_fkey"
+            columns: ["sync_group_id"]
+            isOneToOne: false
+            referencedRelation: "dialogue_sync_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_clips_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "edit_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_keyframes: {
+        Row: {
+          bezier_cp1_x: number | null
+          bezier_cp1_y: number | null
+          bezier_cp2_x: number | null
+          bezier_cp2_y: number | null
+          clip_id: string
+          created_at: string
+          easing: string
+          id: string
+          offset_ms: number
+          property: string
+          value: number
+        }
+        Insert: {
+          bezier_cp1_x?: number | null
+          bezier_cp1_y?: number | null
+          bezier_cp2_x?: number | null
+          bezier_cp2_y?: number | null
+          clip_id: string
+          created_at?: string
+          easing?: string
+          id?: string
+          offset_ms: number
+          property: string
+          value: number
+        }
+        Update: {
+          bezier_cp1_x?: number | null
+          bezier_cp1_y?: number | null
+          bezier_cp2_x?: number | null
+          bezier_cp2_y?: number | null
+          clip_id?: string
+          created_at?: string
+          easing?: string
+          id?: string
+          offset_ms?: number
+          property?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_keyframes_clip_id_fkey"
+            columns: ["clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_projects: {
+        Row: {
+          active_language: string
+          created_at: string
+          episode_id: string
+          fps: number
+          height: number
+          id: string
+          render_completed_at: string | null
+          render_error: string | null
+          render_started_at: string | null
+          render_status: string
+          render_url: string | null
+          updated_at: string
+          version: number
+          width: number
+        }
+        Insert: {
+          active_language?: string
+          created_at?: string
+          episode_id: string
+          fps?: number
+          height?: number
+          id?: string
+          render_completed_at?: string | null
+          render_error?: string | null
+          render_started_at?: string | null
+          render_status?: string
+          render_url?: string | null
+          updated_at?: string
+          version?: number
+          width?: number
+        }
+        Update: {
+          active_language?: string
+          created_at?: string
+          episode_id?: string
+          fps?: number
+          height?: number
+          id?: string
+          render_completed_at?: string | null
+          render_error?: string | null
+          render_started_at?: string | null
+          render_status?: string
+          render_url?: string | null
+          updated_at?: string
+          version?: number
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_projects_episode_id_fkey"
+            columns: ["episode_id"]
+            isOneToOne: true
+            referencedRelation: "episodes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_tracks: {
+        Row: {
+          created_at: string
+          edit_project_id: string
+          height: number
+          id: string
+          is_locked: boolean
+          is_muted: boolean
+          is_solo: boolean
+          name: string
+          sort_order: number
+          type: string
+          updated_at: string
+          volume: number
+        }
+        Insert: {
+          created_at?: string
+          edit_project_id: string
+          height?: number
+          id?: string
+          is_locked?: boolean
+          is_muted?: boolean
+          is_solo?: boolean
+          name: string
+          sort_order?: number
+          type: string
+          updated_at?: string
+          volume?: number
+        }
+        Update: {
+          created_at?: string
+          edit_project_id?: string
+          height?: number
+          id?: string
+          is_locked?: boolean
+          is_muted?: boolean
+          is_solo?: boolean
+          name?: string
+          sort_order?: number
+          type?: string
+          updated_at?: string
+          volume?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_tracks_edit_project_id_fkey"
+            columns: ["edit_project_id"]
+            isOneToOne: false
+            referencedRelation: "edit_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edit_transitions: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          from_clip_id: string
+          id: string
+          params: Json
+          to_clip_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number
+          from_clip_id: string
+          id?: string
+          params?: Json
+          to_clip_id: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          from_clip_id?: string
+          id?: string
+          params?: Json
+          to_clip_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_transitions_from_clip_id_fkey"
+            columns: ["from_clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edit_transitions_to_clip_id_fkey"
+            columns: ["to_clip_id"]
+            isOneToOne: false
+            referencedRelation: "edit_clips"
             referencedColumns: ["id"]
           },
         ]
@@ -4427,6 +4801,10 @@ export type Database = {
           provider: string
           total_cost_cents: number
         }[]
+      }
+      get_project_id_for_edit_project: {
+        Args: { p_edit_project_id: string }
+        Returns: string
       }
       get_project_members: {
         Args: { target_project_id: string }
