@@ -276,6 +276,8 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                         type: 'LOAD_PROJECT',
                         payload: { project, tracks, clips, keyframes, transitions, syncGroups },
                     });
+                } else {
+                    throw new Error('Failed to load project after assembly');
                 }
 
                 setAssemblyStatus('done');
@@ -284,7 +286,7 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                 setAssemblyStatus('error');
             }
         },
-        [assemblyStatus],
+        [assemblyStatus, dispatch],
     );
 
     // ── Context value ──

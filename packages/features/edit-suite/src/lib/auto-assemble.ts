@@ -96,6 +96,7 @@ export interface AutoAssemblePayload {
 
 const DIALOGUE_OFFSET_MS = 500;   // Dialogue starts 500ms into its parent shot
 const DEFAULT_SHOT_DURATION_S = 5; // Fallback for missing shot duration
+const DIALOGUE_GAP_MS = 200;       // Gap between dialogue lines in the same scene
 
 // ──────────────────────────────────────────
 // Auto-assembly algorithm
@@ -276,7 +277,7 @@ export function buildAssemblyPayload(
             });
 
             dialogueClipMap.set(dl.id, { clipIndex, syncGroupIndex, startMs, durationMs });
-            sceneOffset += durationMs + 200; // 200ms gap between dialogue lines
+            sceneOffset += durationMs + DIALOGUE_GAP_MS; // Gap between dialogue lines
         }
     }
 
