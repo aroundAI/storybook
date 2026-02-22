@@ -592,25 +592,24 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] `Timeline` stub (bottom) — color-coded track headers, clip lanes, ruler, red playhead
 - [x] Add navigation link from episode page to Edit Suite
 
-#### 1.5 Media Bin
-- [ ] `useMediaBin` hook — fetch shots, dialogue, dubbed, audio tracks for episode
-- [ ] `MediaBin` component with collapsible `AssetGroup` sections
-- [ ] `AssetItem` component with thumbnail, name, duration badge
-- [ ] Drag source implementation using `onDragStart` with clip data in `dataTransfer`
-- [ ] Already-on-timeline indicator (✅) derived from edit_clips
-- [ ] `SearchFilter` component — text filter across all sections
+#### 1.5 Media Bin ✅
+- [x] `useMediaBin` hook — fetch shots, dialogue, dubbed, audio tracks for episode
+- [x] `MediaBin` component with collapsible `AssetGroup` sections
+- [x] `AssetItem` component with thumbnail, name, duration badge
+- [x] Drag source implementation using `onDragStart` with clip data in `dataTransfer`
+- [x] Already-on-timeline indicator (✓) derived from edit_clips
+- [x] `SearchFilter` component — text filter across all sections
 - [ ] Language filter for dubbed dialogue section
 
-#### 1.6 Timeline Foundation
-- [ ] `TrackList` — render tracks from state, vertical ordering
-- [ ] `TrackRow` with `TrackHeader` (name, mute, solo, lock, volume slider)
-- [ ] `ClipLane` — horizontal clip placement based on `start_ms` / `end_ms`
-- [ ] `ClipBlock` — colored block with label, draggable horizontally
-- [ ] `TimelineRuler` — time markers synced with zoom level
-- [ ] `Playhead` — vertical line, draggable for scrubbing
-- [ ] `ZoomControls` — zoom slider mapping px-per-second (10–500)
-- [ ] `ScrollContainer` — horizontal + vertical scroll with sync
-- [ ] Drop target on `ClipLane` — receive drag from MediaBin, create clip
+#### 1.6 Timeline Foundation ✅
+- [x] `TrackRow` with `TrackHeader` (name, mute, solo, lock, volume slider)
+- [x] `ClipBlock` — colored block with label, click/shift-click select
+- [x] `TimelineRuler` — adaptive time markers synced with zoom level
+- [x] `Playhead` — vertical red line with triangle handle, draggable for scrubbing
+- [x] `ZoomControls` — zoom slider + buttons (10–500 px/s)
+- [x] `ScrollContainer` — horizontal + vertical scroll with sync
+- [x] Drop target on clip lane — receive drag from MediaBin, create clip
+- [x] Snap toggle + track-type color coding
 
 #### 1.7 Auto-Assembly
 - [ ] `autoAssemble()` function in `lib/auto-assemble.ts`
