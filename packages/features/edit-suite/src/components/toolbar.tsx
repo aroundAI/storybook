@@ -7,73 +7,69 @@
  * Snap toggle, Save status, Export button.
  */
 
+import { cn } from '@kit/ui/utils';
+
 import { useEditSuite } from './edit-suite-provider';
 
 export function Toolbar() {
     const { state, dispatch, undo, redo, canUndo, canRedo, forceSave } = useEditSuite();
 
     return (
-        <div className="edit-toolbar">
+        <div className="flex min-h-[40px] items-center justify-between gap-3 bg-zinc-900 px-3 py-1.5">
             {/* Left: Undo / Redo */}
-            <div className="edit-toolbar-group">
-                <button
-                    className="edit-toolbar-btn"
-                    disabled={!canUndo}
-                    onClick={undo}
-                    title="Undo (Cmd+Z)"
-                >
+            <div className="flex items-center gap-1.5">
+                <ToolbarButton disabled={!canUndo} onClick={undo} title="Undo (Cmd+Z)">
                     ↩ Undo
-                </button>
-                <button
-                    className="edit-toolbar-btn"
-                    disabled={!canRedo}
-                    onClick={redo}
-                    title="Redo (Cmd+Shift+Z)"
-                >
+                </ToolbarButton>
+                <ToolbarButton disabled={!canRedo} onClick={redo} title="Redo (Cmd+Shift+Z)">
                     ↪ Redo
-                </button>
+                </ToolbarButton>
             </div>
 
             {/* Center: Language + Zoom */}
-            <div className="edit-toolbar-group">
-                <span className="edit-toolbar-label">
+            <div className="flex items-center gap-1.5">
+                <span className="px-1 text-xs text-zinc-400">
                     Lang: {state.activeLanguage.toUpperCase()}
                 </span>
 
-                <div className="edit-toolbar-divider" />
+                <div className="mx-1 h-5 w-px bg-zinc-700" />
 
-                <button
-                    className="edit-toolbar-btn"
+                <ToolbarButton
                     onClick={() => dispatch({ type: 'SET_ZOOM', payload: { zoom: state.zoom - 10 } })}
                     title="Zoom out (-)"
                 >
                     −
-                </button>
-                <span className="edit-toolbar-label edit-toolbar-zoom">
+                </ToolbarButton>
+                <span className="min-w-[52px] text-center text-xs text-zinc-400">
                     {Math.round(state.zoom)}px/s
                 </span>
-                <button
-                    className="edit-toolbar-btn"
+                <ToolbarButton
                     onClick={() => dispatch({ type: 'SET_ZOOM', payload: { zoom: state.zoom + 10 } })}
                     title="Zoom in (+)"
                 >
                     +
-                </button>
+                </ToolbarButton>
 
-                <div className="edit-toolbar-divider" />
+                <div className="mx-1 h-5 w-px bg-zinc-700" />
 
-                <button
-                    className={`edit-toolbar-btn ${state.snapEnabled ? 'edit-toolbar-btn-active' : ''}`}
+                <ToolbarButton
+                    active={state.snapEnabled}
                     onClick={() => dispatch({ type: 'TOGGLE_SNAP' })}
                     title="Toggle snap to grid"
                 >
                     🧲 Snap
-                </button>
+                </ToolbarButton>
             </div>
 
             {/* Right: Save status + Export */}
-            <div className="edit-toolbar-group">
-                <span className={`edit-toolbar-save-status edit-toolbar-save-${state.saveStatus}`}>
+            <div className="flex items-center gap-1.5">
+                <span className={cn(
+                    'rounded px-2 py-0.5 text-[11px]',
+                    state.saveStatus === 'saved' && 'text-green-400',
+                    state.saveStatus === 'dirty' && 'text-amber-400',
+                    state.saveStatus === 'saving' && 'text-blue-400',
+                    state.saveStatus === 'error' && 'text-red-400',
+                )}>
                     {state.saveStatus === 'saved' && '✓ Saved'}
                     {state.saveStatus === 'dirty' && '● Unsaved'}
                     {state.saveStatus === 'saving' && '⟳ Saving...'}
@@ -81,121 +77,55 @@ export function Toolbar() {
                 </span>
 
                 {(state.saveStatus === 'dirty' || state.saveStatus === 'error') && (
-                    <button
-                        className="edit-toolbar-btn"
+                    <ToolbarButton
                         onClick={() => void forceSave()}
                         title="Save now (Cmd+S)"
                     >
                         💾 Save
-                    </button>
+                    </ToolbarButton>
                 )}
 
-                <div className="edit-toolbar-divider" />
+                <div className="mx-1 h-5 w-px bg-zinc-700" />
 
-                <button className="edit-toolbar-btn edit-toolbar-btn-primary" title="Export video">
+                <ToolbarButton variant="primary" title="Export video">
                     🎬 Export
-                </button>
+                </ToolbarButton>
             </div>
-
-            <style>{`
-                .edit-toolbar {
-                    display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    padding: 6px 12px;
-                    background: #18181b;
-                    gap: 12px;
-                    min-height: 40px;
-                }
-
-                .edit-toolbar-group {
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                }
-
-                .edit-toolbar-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding: 4px 10px;
-                    border: 1px solid #3f3f46;
-                    border-radius: 6px;
-                    background: #27272a;
-                    color: #d4d4d8;
-                    font-size: 12px;
-                    cursor: pointer;
-                    transition: all 0.15s;
-                    white-space: nowrap;
-                }
-
-                .edit-toolbar-btn:hover:not(:disabled) {
-                    background: #3f3f46;
-                    border-color: #52525b;
-                }
-
-                .edit-toolbar-btn:disabled {
-                    opacity: 0.4;
-                    cursor: not-allowed;
-                }
-
-                .edit-toolbar-btn-active {
-                    background: #3b82f6;
-                    border-color: #2563eb;
-                    color: #fff;
-                }
-
-                .edit-toolbar-btn-primary {
-                    background: #7c3aed;
-                    border-color: #6d28d9;
-                    color: #fff;
-                }
-
-                .edit-toolbar-btn-primary:hover {
-                    background: #6d28d9 !important;
-                    border-color: #5b21b6 !important;
-                }
-
-                .edit-toolbar-label {
-                    font-size: 12px;
-                    color: #a1a1aa;
-                    padding: 0 4px;
-                }
-
-                .edit-toolbar-zoom {
-                    min-width: 52px;
-                    text-align: center;
-                }
-
-                .edit-toolbar-divider {
-                    width: 1px;
-                    height: 20px;
-                    background: #3f3f46;
-                    margin: 0 4px;
-                }
-
-                .edit-toolbar-save-status {
-                    font-size: 11px;
-                    padding: 2px 8px;
-                    border-radius: 4px;
-                }
-
-                .edit-toolbar-save-saved {
-                    color: #4ade80;
-                }
-
-                .edit-toolbar-save-dirty {
-                    color: #fbbf24;
-                }
-
-                .edit-toolbar-save-saving {
-                    color: #60a5fa;
-                }
-
-                .edit-toolbar-save-error {
-                    color: #f87171;
-                }
-            `}</style>
         </div>
+    );
+}
+
+function ToolbarButton({
+    children,
+    disabled,
+    onClick,
+    title,
+    active,
+    variant,
+}: {
+    children: React.ReactNode;
+    disabled?: boolean;
+    onClick?: () => void;
+    title?: string;
+    active?: boolean;
+    variant?: 'primary';
+}) {
+    return (
+        <button
+            className={cn(
+                'inline-flex items-center gap-1 whitespace-nowrap rounded-md border px-2.5 py-1 text-xs transition-all',
+                variant === 'primary'
+                    ? 'border-violet-700 bg-violet-600 text-white hover:bg-violet-700'
+                    : active
+                        ? 'border-blue-600 bg-blue-500 text-white'
+                        : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:border-zinc-600 hover:bg-zinc-700',
+                disabled && 'cursor-not-allowed opacity-40',
+            )}
+            disabled={disabled}
+            onClick={onClick}
+            title={title}
+        >
+            {children}
+        </button>
     );
 }

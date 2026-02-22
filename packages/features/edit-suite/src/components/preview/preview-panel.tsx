@@ -9,6 +9,8 @@
  * - Timecode display
  */
 
+import { cn } from '@kit/ui/utils';
+
 import { useEditSuite } from '../edit-suite-provider';
 
 function formatTimecode(ms: number): string {
@@ -23,14 +25,14 @@ export function PreviewPanel() {
     const { state, dispatch } = useEditSuite();
 
     return (
-        <div className="preview-panel">
+        <div className="flex h-full flex-col items-center justify-center gap-3 p-4">
             {/* Canvas area */}
-            <div className="preview-canvas-container">
+            <div className="flex min-h-0 flex-1 w-full items-center justify-center">
                 <div
-                    className="preview-canvas-placeholder"
+                    className="flex max-h-full max-w-full w-full items-center justify-center rounded-lg border border-zinc-800 bg-[#111113]"
                     style={{ aspectRatio: `${state.project?.width ?? 1920} / ${state.project?.height ?? 1080}` }}
                 >
-                    <span className="preview-canvas-label">
+                    <span className="text-[13px] text-zinc-600">
                         {state.project
                             ? `${state.project.width}×${state.project.height} @ ${state.project.fps}fps`
                             : 'No project loaded'}
@@ -39,23 +41,28 @@ export function PreviewPanel() {
             </div>
 
             {/* Playback controls */}
-            <div className="preview-controls">
+            <div className="flex items-center gap-2">
                 <button
-                    className="preview-control-btn"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
                     onClick={() => dispatch({ type: 'SET_PLAYHEAD', payload: { ms: 0 } })}
                     title="Go to start"
                 >
                     ⏮
                 </button>
                 <button
-                    className="preview-control-btn preview-control-btn-play"
+                    className={cn(
+                        'inline-flex h-10 w-10 items-center justify-center rounded-full text-base text-white transition-colors',
+                        state.isPlaying
+                            ? 'bg-violet-600 hover:bg-violet-700'
+                            : 'bg-violet-600 hover:bg-violet-700',
+                    )}
                     onClick={() => dispatch({ type: 'SET_PLAYING', payload: { isPlaying: !state.isPlaying } })}
                     title={state.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
                 >
                     {state.isPlaying ? '⏸' : '▶'}
                 </button>
                 <button
-                    className="preview-control-btn"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
                     onClick={() => {
                         dispatch({ type: 'SET_PLAYING', payload: { isPlaying: false } });
                         dispatch({ type: 'SET_PLAYHEAD', payload: { ms: 0 } });
@@ -65,96 +72,10 @@ export function PreviewPanel() {
                     ⏹
                 </button>
 
-                <span className="preview-timecode">
+                <span className="min-w-[80px] px-2 text-center font-mono text-sm text-zinc-400">
                     {formatTimecode(state.playheadMs)}
                 </span>
             </div>
-
-            <style>{`
-                .preview-panel {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    height: 100%;
-                    gap: 12px;
-                    padding: 16px;
-                }
-
-                .preview-canvas-container {
-                    flex: 1;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 100%;
-                    min-height: 0;
-                }
-
-                .preview-canvas-placeholder {
-                    max-width: 100%;
-                    max-height: 100%;
-                    width: 100%;
-                    background: #111113;
-                    border: 1px solid #27272a;
-                    border-radius: 8px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                }
-
-                .preview-canvas-label {
-                    font-size: 13px;
-                    color: #52525b;
-                }
-
-                .preview-controls {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-
-                .preview-control-btn {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    width: 32px;
-                    height: 32px;
-                    border: 1px solid #3f3f46;
-                    border-radius: 6px;
-                    background: #27272a;
-                    color: #d4d4d8;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.15s;
-                }
-
-                .preview-control-btn:hover {
-                    background: #3f3f46;
-                }
-
-                .preview-control-btn-play {
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    background: #7c3aed;
-                    border-color: #6d28d9;
-                    color: #fff;
-                    font-size: 16px;
-                }
-
-                .preview-control-btn-play:hover {
-                    background: #6d28d9;
-                }
-
-                .preview-timecode {
-                    font-family: 'JetBrains Mono', 'Fira Code', monospace;
-                    font-size: 14px;
-                    color: #a1a1aa;
-                    padding: 0 8px;
-                    min-width: 80px;
-                    text-align: center;
-                }
-            `}</style>
         </div>
     );
 }

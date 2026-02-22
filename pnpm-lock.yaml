@@ -1481,6 +1481,9 @@ importers:
       '@kit/tsconfig':
         specifier: workspace:*
         version: link:../../../tooling/typescript
+      '@kit/ui':
+        specifier: workspace:*
+        version: link:../../ui
       '@types/react':
         specifier: 19.1.13
         version: 19.1.13

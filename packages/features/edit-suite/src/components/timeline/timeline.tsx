@@ -11,35 +11,65 @@
  * - Horizontal + vertical scrolling
  */
 
+import { cn } from '@kit/ui/utils';
+
 import { useEditSuite } from '../edit-suite-provider';
+
+const TRACK_COLORS: Record<string, string> = {
+    video: 'from-blue-500 to-blue-600',
+    dialogue: 'from-green-500 to-green-600',
+    music: 'from-purple-500 to-purple-600',
+    sfx: 'from-orange-500 to-orange-600',
+    ambient: 'from-cyan-500 to-cyan-600',
+    title: 'from-yellow-500 to-yellow-600',
+    upload: 'from-slate-500 to-slate-600',
+};
+
+const TRACK_DOT_COLORS: Record<string, string> = {
+    video: 'bg-blue-500',
+    dialogue: 'bg-green-500',
+    music: 'bg-purple-500',
+    sfx: 'bg-orange-500',
+    ambient: 'bg-cyan-500',
+    title: 'bg-yellow-500',
+    upload: 'bg-slate-500',
+};
 
 export function Timeline() {
     const { state } = useEditSuite();
     const sortedTracks = [...state.tracks].sort((a, b) => a.sortOrder - b.sortOrder);
 
     return (
-        <div className="timeline">
+        <div className="flex h-full flex-col overflow-hidden bg-[#0f0f12]">
             {/* Track headers + lanes */}
-            <div className="timeline-content">
+            <div className="flex min-h-0 flex-1 overflow-y-auto">
                 {/* Track headers column */}
-                <div className="timeline-headers">
-                    <div className="timeline-ruler-header">
-                        <span className="timeline-ruler-label">Tracks</span>
+                <div className="w-40 min-w-[160px] shrink-0 border-r border-zinc-800 bg-zinc-900">
+                    <div className="flex h-7 items-center border-b border-zinc-800 px-2.5">
+                        <span className="text-[10px] uppercase tracking-wider text-zinc-600">
+                            Tracks
+                        </span>
                     </div>
                     {sortedTracks.map((track) => (
-                        <TrackHeader key={track.id} name={track.name} type={track.type} />
+                        <div
+                            key={track.id}
+                            className="flex h-12 cursor-pointer items-center gap-1.5 border-b border-[#1a1a1f] px-2.5 transition-colors hover:bg-[#1f1f23]"
+                        >
+                            <div className={cn('h-2 w-2 shrink-0 rounded-sm', TRACK_DOT_COLORS[track.type] ?? 'bg-zinc-500')} />
+                            <span className="truncate text-xs text-zinc-300">{track.name}</span>
+                        </div>
                     ))}
                     {sortedTracks.length === 0 && (
-                        <div className="timeline-empty-header">
+                        <div className="flex items-center justify-center p-5 text-xs text-zinc-600">
                             No tracks
                         </div>
                     )}
                 </div>
 
                 {/* Track lanes (scrollable) */}
-                <div className="timeline-lanes-scroll">
+                <div className="relative min-w-0 flex-1 overflow-x-auto">
                     {/* Ruler */}
-                    <div className="timeline-ruler">
+                    <div className="sticky top-0 z-[2] h-7 border-b border-zinc-800 bg-[#0f0f12]">
                         <TimelineRuler zoom={state.zoom} />
                     </div>
 
@@ -49,11 +79,14 @@ export function Timeline() {
                             (c) => c.trackId === track.id && c.isActive,
                         );
                         return (
-                            <div key={track.id} className="timeline-lane">
+                            <div key={track.id} className="relative h-12 border-b border-[#1a1a1f]">
                                 {trackClips.map((clip) => (
                                     <div
                                         key={clip.id}
-                                        className={`timeline-clip timeline-clip-${track.type}`}
+                                        className={cn(
+                                            'absolute top-1 h-10 min-w-1 rounded bg-gradient-to-br opacity-90',
+                                            TRACK_COLORS[track.type] ?? 'from-zinc-500 to-zinc-600',
+                                        )}
                                         style={{
                                             left: `${(clip.startMs / 1000) * state.zoom}px`,
                                             width: `${((clip.endMs - clip.startMs) / 1000) * state.zoom}px`,
@@ -66,225 +99,20 @@ export function Timeline() {
                     })}
 
                     {sortedTracks.length === 0 && (
-                        <div className="timeline-empty-lane">
+                        <div className="flex items-center justify-center p-5 text-xs text-zinc-600">
                             <p>Open the Edit Suite to auto-assemble your timeline</p>
                         </div>
                     )}
 
                     {/* Playhead */}
                     <div
-                        className="timeline-playhead"
+                        className="pointer-events-none absolute inset-y-0 z-[5] w-0.5 bg-red-500"
                         style={{ left: `${(state.playheadMs / 1000) * state.zoom}px` }}
-                    />
+                    >
+                        <div className="absolute -left-[5px] top-0 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[10px] border-l-transparent border-r-transparent border-t-red-500" />
+                    </div>
                 </div>
             </div>
-
-            <style>{`
-                .timeline {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    background: #0f0f12;
-                    overflow: hidden;
-                }
-
-                .timeline-content {
-                    display: flex;
-                    flex: 1;
-                    min-height: 0;
-                    overflow-y: auto;
-                }
-
-                .timeline-headers {
-                    width: 160px;
-                    min-width: 160px;
-                    border-right: 1px solid #27272a;
-                    background: #18181b;
-                    flex-shrink: 0;
-                }
-
-                .timeline-ruler-header {
-                    height: 28px;
-                    display: flex;
-                    align-items: center;
-                    padding: 0 10px;
-                    border-bottom: 1px solid #27272a;
-                }
-
-                .timeline-ruler-label {
-                    font-size: 10px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    color: #52525b;
-                }
-
-                .timeline-lanes-scroll {
-                    flex: 1;
-                    overflow-x: auto;
-                    position: relative;
-                    min-width: 0;
-                }
-
-                .timeline-ruler {
-                    height: 28px;
-                    border-bottom: 1px solid #27272a;
-                    position: sticky;
-                    top: 0;
-                    background: #0f0f12;
-                    z-index: 2;
-                }
-
-                .timeline-lane {
-                    height: 48px;
-                    position: relative;
-                    border-bottom: 1px solid #1a1a1f;
-                }
-
-                .timeline-clip {
-                    position: absolute;
-                    top: 4px;
-                    height: 40px;
-                    border-radius: 4px;
-                    opacity: 0.9;
-                    min-width: 4px;
-                }
-
-                .timeline-clip-video {
-                    background: linear-gradient(135deg, #3b82f6, #2563eb);
-                }
-
-                .timeline-clip-dialogue {
-                    background: linear-gradient(135deg, #22c55e, #16a34a);
-                }
-
-                .timeline-clip-music {
-                    background: linear-gradient(135deg, #a855f7, #7c3aed);
-                }
-
-                .timeline-clip-sfx {
-                    background: linear-gradient(135deg, #f97316, #ea580c);
-                }
-
-                .timeline-clip-ambient {
-                    background: linear-gradient(135deg, #06b6d4, #0891b2);
-                }
-
-                .timeline-clip-title {
-                    background: linear-gradient(135deg, #eab308, #ca8a04);
-                }
-
-                .timeline-clip-upload {
-                    background: linear-gradient(135deg, #64748b, #475569);
-                }
-
-                .timeline-playhead {
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    width: 2px;
-                    background: #ef4444;
-                    z-index: 5;
-                    pointer-events: none;
-                }
-
-                .timeline-playhead::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: -5px;
-                    width: 12px;
-                    height: 12px;
-                    background: #ef4444;
-                    clip-path: polygon(50% 100%, 0% 0%, 100% 0%);
-                }
-
-                .timeline-empty-header,
-                .timeline-empty-lane {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    padding: 20px;
-                    color: #52525b;
-                    font-size: 12px;
-                }
-
-                /* Track header */
-                .track-header {
-                    height: 48px;
-                    display: flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 0 10px;
-                    border-bottom: 1px solid #1a1a1f;
-                    cursor: pointer;
-                    transition: background 0.15s;
-                }
-
-                .track-header:hover {
-                    background: #1f1f23;
-                }
-
-                .track-header-dot {
-                    width: 8px;
-                    height: 8px;
-                    border-radius: 2px;
-                    flex-shrink: 0;
-                }
-
-                .track-header-name {
-                    font-size: 12px;
-                    color: #d4d4d8;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-
-                /* Ruler ticks */
-                .ruler-container {
-                    position: relative;
-                    height: 100%;
-                    min-width: 100%;
-                }
-
-                .ruler-tick {
-                    position: absolute;
-                    top: 0;
-                    bottom: 0;
-                    width: 1px;
-                    background: #27272a;
-                }
-
-                .ruler-tick-label {
-                    position: absolute;
-                    top: 4px;
-                    left: 4px;
-                    font-size: 9px;
-                    color: #52525b;
-                    white-space: nowrap;
-                }
-            `}</style>
-        </div>
-    );
-}
-
-const TRACK_COLORS: Record<string, string> = {
-    video: '#3b82f6',
-    dialogue: '#22c55e',
-    music: '#a855f7',
-    sfx: '#f97316',
-    ambient: '#06b6d4',
-    title: '#eab308',
-    upload: '#64748b',
-};
-
-function TrackHeader({ name, type }: { name: string; type: string }) {
-    return (
-        <div className="track-header">
-            <div
-                className="track-header-dot"
-                style={{ backgroundColor: TRACK_COLORS[type] ?? '#71717a' }}
-            />
-            <span className="track-header-name">{name}</span>
         </div>
     );
 }
@@ -300,10 +128,14 @@ function TimelineRuler({ zoom }: { zoom: number }) {
     }
 
     return (
-        <div className="ruler-container">
+        <div className="relative h-full min-w-full">
             {ticks.map((tick) => (
-                <div key={tick.second} className="ruler-tick" style={{ left: `${tick.left}px` }}>
-                    <span className="ruler-tick-label">
+                <div
+                    key={tick.second}
+                    className="absolute inset-y-0 w-px bg-zinc-800"
+                    style={{ left: `${tick.left}px` }}
+                >
+                    <span className="absolute left-1 top-1 whitespace-nowrap text-[9px] text-zinc-600">
                         {Math.floor(tick.second / 60)}:{String(tick.second % 60).padStart(2, '0')}
                     </span>
                 </div>

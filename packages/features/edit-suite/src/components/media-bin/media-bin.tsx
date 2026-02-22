@@ -12,12 +12,14 @@
 
 export function MediaBin() {
     return (
-        <div className="media-bin">
-            <div className="media-bin-header">
-                <h3 className="media-bin-title">Media Bin</h3>
+        <div className="flex h-full flex-col bg-zinc-900">
+            <div className="border-b border-zinc-800 px-3 py-2.5">
+                <h3 className="m-0 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Media Bin
+                </h3>
             </div>
 
-            <div className="media-bin-sections">
+            <div className="flex-1 overflow-y-auto py-1">
                 <MediaSection icon="🎬" label="Shots" count={0} />
                 <MediaSection icon="🗣" label="Dialogue" count={0} />
                 <MediaSection icon="🌐" label="Dubbed" count={0} />
@@ -25,76 +27,16 @@ export function MediaBin() {
                 <MediaSection icon="🔊" label="SFX" count={0} />
                 <MediaSection icon="📁" label="Uploads" count={0} />
             </div>
-
-            <style>{`
-                .media-bin {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    background: #18181b;
-                }
-
-                .media-bin-header {
-                    padding: 10px 12px;
-                    border-bottom: 1px solid #27272a;
-                }
-
-                .media-bin-title {
-                    font-size: 12px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    color: #a1a1aa;
-                    margin: 0;
-                }
-
-                .media-bin-sections {
-                    flex: 1;
-                    overflow-y: auto;
-                    padding: 4px 0;
-                }
-
-                .media-section {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 8px 12px;
-                    cursor: pointer;
-                    transition: background 0.15s;
-                }
-
-                .media-section:hover {
-                    background: #27272a;
-                }
-
-                .media-section-icon {
-                    font-size: 16px;
-                }
-
-                .media-section-label {
-                    flex: 1;
-                    font-size: 13px;
-                    color: #d4d4d8;
-                }
-
-                .media-section-count {
-                    font-size: 11px;
-                    color: #71717a;
-                    background: #27272a;
-                    padding: 1px 6px;
-                    border-radius: 8px;
-                }
-            `}</style>
         </div>
     );
 }
 
 function MediaSection({ icon, label, count }: { icon: string; label: string; count: number }) {
     return (
-        <div className="media-section">
-            <span className="media-section-icon">{icon}</span>
-            <span className="media-section-label">{label}</span>
-            <span className="media-section-count">{count}</span>
+        <div className="flex cursor-pointer items-center gap-2 px-3 py-2 transition-colors hover:bg-zinc-800">
+            <span className="text-base">{icon}</span>
+            <span className="flex-1 text-[13px] text-zinc-300">{label}</span>
+            <span className="rounded-lg bg-zinc-800 px-1.5 py-px text-[11px] text-zinc-500">{count}</span>
         </div>
     );
 }

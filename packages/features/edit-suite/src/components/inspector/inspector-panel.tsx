@@ -16,23 +16,25 @@ export function InspectorPanel() {
     const selectedCount = state.selectedClipIds.size;
 
     return (
-        <div className="inspector-panel">
-            <div className="inspector-header">
-                <h3 className="inspector-title">Inspector</h3>
+        <div className="flex h-full flex-col bg-zinc-900">
+            <div className="border-b border-zinc-800 px-3 py-2.5">
+                <h3 className="m-0 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+                    Inspector
+                </h3>
             </div>
 
-            <div className="inspector-body">
+            <div className="flex-1 overflow-y-auto p-2">
                 {selectedCount === 0 && (
-                    <div className="inspector-empty">
-                        <span className="inspector-empty-icon">🎯</span>
-                        <p className="inspector-empty-text">
+                    <div className="flex h-[200px] flex-col items-center justify-center gap-2">
+                        <span className="text-2xl opacity-50">🎯</span>
+                        <p className="m-0 text-center text-xs text-zinc-500">
                             Select a clip to view its properties
                         </p>
                     </div>
                 )}
 
                 {selectedCount === 1 && (
-                    <div className="inspector-sections">
+                    <div className="flex flex-col gap-1">
                         <InspectorSection title="Clip Properties" />
                         <InspectorSection title="Keyframes" />
                         <InspectorSection title="Transition" />
@@ -40,107 +42,24 @@ export function InspectorPanel() {
                 )}
 
                 {selectedCount > 1 && (
-                    <div className="inspector-empty">
-                        <p className="inspector-empty-text">
+                    <div className="flex h-[200px] flex-col items-center justify-center gap-2">
+                        <p className="m-0 text-center text-xs text-zinc-500">
                             {selectedCount} clips selected
                         </p>
                     </div>
                 )}
             </div>
-
-            <style>{`
-                .inspector-panel {
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    background: #18181b;
-                }
-
-                .inspector-header {
-                    padding: 10px 12px;
-                    border-bottom: 1px solid #27272a;
-                }
-
-                .inspector-title {
-                    font-size: 12px;
-                    font-weight: 600;
-                    text-transform: uppercase;
-                    letter-spacing: 0.05em;
-                    color: #a1a1aa;
-                    margin: 0;
-                }
-
-                .inspector-body {
-                    flex: 1;
-                    padding: 8px;
-                    overflow-y: auto;
-                }
-
-                .inspector-empty {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    justify-content: center;
-                    height: 200px;
-                    gap: 8px;
-                }
-
-                .inspector-empty-icon {
-                    font-size: 24px;
-                    opacity: 0.5;
-                }
-
-                .inspector-empty-text {
-                    font-size: 12px;
-                    color: #71717a;
-                    text-align: center;
-                    margin: 0;
-                }
-
-                .inspector-sections {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 4px;
-                }
-
-                .inspector-section {
-                    border: 1px solid #27272a;
-                    border-radius: 6px;
-                    overflow: hidden;
-                }
-
-                .inspector-section-header {
-                    display: flex;
-                    align-items: center;
-                    padding: 8px 10px;
-                    background: #1f1f23;
-                    cursor: pointer;
-                }
-
-                .inspector-section-title {
-                    font-size: 12px;
-                    font-weight: 500;
-                    color: #a1a1aa;
-                    margin: 0;
-                }
-
-                .inspector-section-body {
-                    padding: 10px;
-                    font-size: 12px;
-                    color: #52525b;
-                }
-            `}</style>
         </div>
     );
 }
 
 function InspectorSection({ title }: { title: string }) {
     return (
-        <div className="inspector-section">
-            <div className="inspector-section-header">
-                <span className="inspector-section-title">{title}</span>
+        <div className="overflow-hidden rounded-md border border-zinc-800">
+            <div className="flex cursor-pointer items-center bg-[#1f1f23] px-2.5 py-2">
+                <span className="m-0 text-xs font-medium text-zinc-400">{title}</span>
             </div>
-            <div className="inspector-section-body">
+            <div className="p-2.5 text-xs text-zinc-600">
                 Coming soon
             </div>
         </div>

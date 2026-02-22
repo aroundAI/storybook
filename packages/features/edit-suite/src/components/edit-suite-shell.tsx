@@ -19,79 +19,31 @@ import { Timeline } from './timeline/timeline';
 
 export function EditSuiteShell() {
     return (
-        <div className="edit-suite-shell">
+        <div className="grid h-screen w-full grid-rows-[auto_1fr_280px] overflow-hidden bg-[#0a0a0f] font-sans text-zinc-200">
             {/* Toolbar */}
-            <header className="edit-suite-toolbar-area">
+            <header className="z-10 border-b border-zinc-800">
                 <Toolbar />
             </header>
 
             {/* Three-panel workspace */}
-            <div className="edit-suite-workspace">
-                <aside className="edit-suite-media-bin">
+            <div className="grid min-h-0 grid-cols-[260px_1fr_280px] overflow-hidden">
+                <aside className="overflow-y-auto border-r border-zinc-800">
                     <MediaBin />
                 </aside>
 
-                <main className="edit-suite-preview">
+                <main className="flex min-w-0 items-center justify-center bg-[#09090b]">
                     <PreviewPanel />
                 </main>
 
-                <aside className="edit-suite-inspector">
+                <aside className="overflow-y-auto border-l border-zinc-800">
                     <InspectorPanel />
                 </aside>
             </div>
 
             {/* Timeline */}
-            <div className="edit-suite-timeline-area">
+            <div className="overflow-hidden border-t border-zinc-800">
                 <Timeline />
             </div>
-
-            <style>{`
-                .edit-suite-shell {
-                    display: grid;
-                    grid-template-rows: auto 1fr 280px;
-                    height: 100vh;
-                    width: 100%;
-                    background: #0a0a0f;
-                    color: #e4e4e7;
-                    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-                    overflow: hidden;
-                }
-
-                .edit-suite-toolbar-area {
-                    border-bottom: 1px solid #27272a;
-                    z-index: 10;
-                }
-
-                .edit-suite-workspace {
-                    display: grid;
-                    grid-template-columns: 260px 1fr 280px;
-                    min-height: 0;
-                    overflow: hidden;
-                }
-
-                .edit-suite-media-bin {
-                    border-right: 1px solid #27272a;
-                    overflow-y: auto;
-                }
-
-                .edit-suite-preview {
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-width: 0;
-                    background: #09090b;
-                }
-
-                .edit-suite-inspector {
-                    border-left: 1px solid #27272a;
-                    overflow-y: auto;
-                }
-
-                .edit-suite-timeline-area {
-                    border-top: 1px solid #27272a;
-                    overflow: hidden;
-                }
-            `}</style>
         </div>
     );
 }
