@@ -580,7 +580,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Create `src/state/types.ts` — EditSuiteState + EditAction union
 - [x] Create `src/components/edit-suite-provider.tsx` — context provider with auto-save + keyboard shortcuts
 - [x] Create `src/components/index.ts` — barrel exports
-- [ ] Add package to turbo pipeline
+- [x] Add package to turbo pipeline
 
 #### 1.4 Route + Layout Shell ✅
 - [x] Create route `apps/web/app/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]/edit-suite/page.tsx`
@@ -590,7 +590,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] `PreviewPanel` stub (center) — canvas placeholder, playback controls, timecode
 - [x] `InspectorPanel` stub (right) — context-aware (empty, single clip, multi-select)
 - [x] `Timeline` stub (bottom) — color-coded track headers, clip lanes, ruler, red playhead
-- [ ] Add navigation link from episode page to Edit Suite
+- [x] Add navigation link from episode page to Edit Suite
 
 #### 1.5 Media Bin
 - [ ] `useMediaBin` hook — fetch shots, dialogue, dubbed, audio tracks for episode
