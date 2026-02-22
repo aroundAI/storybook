@@ -12,16 +12,17 @@
 
 import { useEditSuite } from '../edit-suite-provider';
 
-function formatTimecode(ms: number): string {
+function formatTimecode(ms: number, fps: number): string {
     const totalSeconds = Math.floor(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    const frames = Math.floor((ms % 1000) / (1000 / 30)); // 30fps
+    const frames = Math.floor((ms % 1000) / (1000 / fps));
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
 }
 
 export function PreviewPanel() {
     const { state, dispatch } = useEditSuite();
+    const fps = state.project?.fps ?? 30;
 
     return (
         <div className="flex h-full flex-col items-center justify-center gap-3 p-4">
@@ -64,7 +65,7 @@ export function PreviewPanel() {
                 </button>
 
                 <span className="min-w-[80px] px-2 text-center font-mono text-sm text-zinc-400">
-                    {formatTimecode(state.playheadMs)}
+                    {formatTimecode(state.playheadMs, fps)}
                 </span>
             </div>
         </div>

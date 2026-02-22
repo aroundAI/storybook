@@ -106,6 +106,7 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
                     .filter((t) => state.dirtyTrackIds.has(t.id))
                     .map((t) => ({
                         id: t.id,
+                        type: t.type,
                         name: t.name,
                         sortOrder: t.sortOrder,
                         volume: t.volume,
@@ -115,9 +116,10 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
                         height: t.height,
                     })),
                 dirtyClips: state.clips
-                    .filter((c) => state.dirtyClipIds.has(c.id))
+                    .filter((c) => state.dirtyClipIds.has(c.id) && !state.newClipIds.has(c.id))
                     .map((c) => ({
                         id: c.id,
+                        trackId: c.trackId,
                         startMs: c.startMs,
                         endMs: c.endMs,
                         inPointMs: c.inPointMs,
@@ -130,9 +132,11 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
                         isActive: c.isActive,
                     })),
                 dirtyKeyframes: state.keyframes
-                    .filter((k) => state.dirtyKeyframeIds.has(k.id))
+                    .filter((k) => state.dirtyKeyframeIds.has(k.id) && !state.newKeyframeIds.has(k.id))
                     .map((k) => ({
                         id: k.id,
+                        clipId: k.clipId,
+                        property: k.property,
                         offsetMs: k.offsetMs,
                         value: k.value,
                         easing: k.easing,
@@ -143,8 +147,41 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
                     })),
                 deletedClipIds: [...state.deletedClipIds],
                 deletedKeyframeIds: [...state.deletedKeyframeIds],
-                newClips: [],
-                newKeyframes: [],
+                newClips: state.clips
+                    .filter((c) => state.newClipIds.has(c.id))
+                    .map((c) => ({
+                        id: c.id,
+                        trackId: c.trackId,
+                        startMs: c.startMs,
+                        endMs: c.endMs,
+                        inPointMs: c.inPointMs,
+                        outPointMs: c.outPointMs,
+                        volume: c.volume,
+                        speed: c.speed,
+                        fadeInMs: c.fadeInMs,
+                        fadeOutMs: c.fadeOutMs,
+                        sortOrder: c.sortOrder,
+                        isActive: c.isActive,
+                        ...(c.sourceShotId && { sourceShotId: c.sourceShotId }),
+                        ...(c.sourceDialogueId && { sourceDialogueId: c.sourceDialogueId }),
+                        ...(c.sourceDubbedDialogueId && { sourceDubbedDialogueId: c.sourceDubbedDialogueId }),
+                        ...(c.sourceAudioTrackId && { sourceAudioTrackId: c.sourceAudioTrackId }),
+                        ...(c.sourceUploadUrl && { sourceUploadUrl: c.sourceUploadUrl }),
+                    })),
+                newKeyframes: state.keyframes
+                    .filter((k) => state.newKeyframeIds.has(k.id))
+                    .map((k) => ({
+                        id: k.id,
+                        clipId: k.clipId,
+                        property: k.property,
+                        offsetMs: k.offsetMs,
+                        value: k.value,
+                        easing: k.easing,
+                        ...(k.bezierCp1X !== null && { bezierCp1X: k.bezierCp1X }),
+                        ...(k.bezierCp1Y !== null && { bezierCp1Y: k.bezierCp1Y }),
+                        ...(k.bezierCp2X !== null && { bezierCp2X: k.bezierCp2X }),
+                        ...(k.bezierCp2Y !== null && { bezierCp2Y: k.bezierCp2Y }),
+                    })),
             });
 
             dispatch({ type: 'MARK_SAVED' });
@@ -176,21 +213,21 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
             const isMeta = e.metaKey || e.ctrlKey;
 
             // Cmd+Z: Undo
-            if (isMeta && !e.shiftKey && e.key === 'z') {
+            if (isMeta && !e.shiftKey && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 undo();
                 return;
             }
 
             // Cmd+Shift+Z: Redo
-            if (isMeta && e.shiftKey && e.key === 'z') {
+            if (isMeta && e.shiftKey && e.key.toLowerCase() === 'z') {
                 e.preventDefault();
                 redo();
                 return;
             }
 
             // Cmd+S: Force save
-            if (isMeta && e.key === 's') {
+            if (isMeta && e.key.toLowerCase() === 's') {
                 e.preventDefault();
                 void performSave();
                 return;

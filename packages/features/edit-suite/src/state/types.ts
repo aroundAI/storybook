@@ -95,6 +95,12 @@ export interface EditSuiteState {
     /** IDs of tracks deleted since last save */
     deletedTrackIds: Set<string>;
 
+    /** IDs of clips that were newly added (not yet in DB) */
+    newClipIds: Set<string>;
+
+    /** IDs of keyframes that were newly added (not yet in DB) */
+    newKeyframeIds: Set<string>;
+
     // ── Active language ──
 
     /** The currently active language for preview */
@@ -127,6 +133,8 @@ export function createInitialState(): EditSuiteState {
         deletedClipIds: new Set(),
         deletedKeyframeIds: new Set(),
         deletedTrackIds: new Set(),
+        newClipIds: new Set(),
+        newKeyframeIds: new Set(),
         activeLanguage: 'en',
     };
 }
