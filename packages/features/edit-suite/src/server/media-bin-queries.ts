@@ -80,6 +80,17 @@ export async function getMediaBinDataAction(params: {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const db = client as any;
 
+    // Verify user has access to this episode (IDOR protection)
+    const { data: episode, error: episodeError } = await db
+        .from('episodes')
+        .select('id')
+        .eq('id', params.episodeId)
+        .single();
+
+    if (episodeError || !episode) {
+        throw new Error('Unauthorized or episode not found');
+    }
+
     // Fetch all data in parallel
     const [shotsRes, dialogueRes, dubbedRes, audioRes] = await Promise.all([
         // Shots
@@ -138,7 +149,7 @@ export async function getMediaBinDataAction(params: {
             characterAssetId: row.character_asset_id as string | null,
             sceneNumber: row.scene_number as number,
             audioUrl: row.audio_url as string | null,
-            estimatedDurationSeconds: (row.estimated_duration_seconds as number) || 2,
+            estimatedDurationSeconds: (row.estimated_duration_seconds as number) ?? 2,
         };
     });
 
@@ -149,7 +160,7 @@ export async function getMediaBinDataAction(params: {
         language: row.language as string,
         text: row.translated_text as string,
         audioUrl: row.audio_url as string | null,
-        estimatedDurationSeconds: (row.estimated_duration_seconds as number) || 2,
+        estimatedDurationSeconds: (row.estimated_duration_seconds as number) ?? 2,
     }));
 
     // Transform audio tracks

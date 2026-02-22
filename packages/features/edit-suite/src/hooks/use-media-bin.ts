@@ -5,12 +5,22 @@
  *
  * Uses a single server action (`getMediaBinDataAction`) that fetches
  * shots, dialogue lines, dubbed versions, and audio tracks in parallel.
+ *
+ * Data fetching and section building are separated to avoid stale
+ * closures — raw data is stored in state, sections are computed via
+ * useMemo whenever rawData or clips change.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import type { EditSuiteState } from '../state/types';
-import type { MediaBinQueryResult } from '../server/media-bin-queries';
+import type { EditClip } from '../lib/types';
+import type {
+    MediaBinQueryResult,
+    MediaBinShot,
+    MediaBinDialogueLine,
+    MediaBinDubbedVersion,
+    MediaBinAudioTrack,
+} from '../server/media-bin-queries';
 
 // ──────────────────────────────────────────
 // Types
@@ -54,20 +64,20 @@ export interface DragClipData {
 }
 
 // ──────────────────────────────────────────
-// Helpers
+// Section builder (pure function)
 // ──────────────────────────────────────────
 
 function buildSections(data: MediaBinQueryResult, onTimelineIds: Set<string>): MediaBinSection[] {
     const sections: MediaBinSection[] = [];
 
     // Shots (completed only)
-    const completedShots = data.shots.filter((s) => s.status === 'completed' && s.videoUrl);
+    const completedShots = data.shots.filter((s: MediaBinShot) => s.status === 'completed' && s.videoUrl);
     if (completedShots.length > 0) {
         sections.push({
             key: 'shots',
             icon: '🎬',
             label: 'Shots',
-            assets: completedShots.map((s) => ({
+            assets: completedShots.map((s: MediaBinShot) => ({
                 id: s.id,
                 type: 'shot' as const,
                 name: `S${s.sceneNumber}.${s.shotNumber}`,
@@ -86,7 +96,7 @@ function buildSections(data: MediaBinQueryResult, onTimelineIds: Set<string>): M
             key: 'dialogue',
             icon: '🗣',
             label: 'Dialogue',
-            assets: data.dialogueLines.map((d) => ({
+            assets: data.dialogueLines.map((d: MediaBinDialogueLine) => ({
                 id: d.id,
                 type: 'dialogue' as const,
                 name: d.characterName
@@ -107,7 +117,7 @@ function buildSections(data: MediaBinQueryResult, onTimelineIds: Set<string>): M
             key: 'dubbed',
             icon: '🌐',
             label: 'Dubbed',
-            assets: data.dubbedVersions.map((d) => ({
+            assets: data.dubbedVersions.map((d: MediaBinDubbedVersion) => ({
                 id: d.id,
                 type: 'dubbed' as const,
                 name: `[${d.language.toUpperCase()}] ${d.text.slice(0, 30)}…`,
@@ -128,14 +138,14 @@ function buildSections(data: MediaBinQueryResult, onTimelineIds: Set<string>): M
     };
 
     for (const track of data.audioTracks) {
-        if (track.status !== 'completed' || !track.fileUrl) continue;
-        const bucket = audioByType[track.type];
+        if ((track as MediaBinAudioTrack).status !== 'completed' || !(track as MediaBinAudioTrack).fileUrl) continue;
+        const bucket = audioByType[(track as MediaBinAudioTrack).type];
         if (!bucket) continue;
 
         bucket.assets.push({
             id: track.id,
-            type: track.type as MediaAsset['type'],
-            name: track.name ?? `${track.type} track`,
+            type: (track as MediaBinAudioTrack).type as MediaAsset['type'],
+            name: track.name ?? `${(track as MediaBinAudioTrack).type} track`,
             thumbnailUrl: null,
             mediaUrl: track.fileUrl,
             durationSeconds: track.durationSeconds ?? 0,
@@ -144,9 +154,9 @@ function buildSections(data: MediaBinQueryResult, onTimelineIds: Set<string>): M
         });
     }
 
-    for (const [key, data] of Object.entries(audioByType)) {
-        if (data.assets.length > 0) {
-            sections.push({ key, icon: data.icon, label: data.label, assets: data.assets });
+    for (const [key, bucket] of Object.entries(audioByType)) {
+        if (bucket.assets.length > 0) {
+            sections.push({ key, icon: bucket.icon, label: bucket.label, assets: bucket.assets });
         }
     }
 
@@ -159,20 +169,11 @@ function buildSections(data: MediaBinQueryResult, onTimelineIds: Set<string>): M
 
 export function useMediaBin(
     episodeId: string | undefined,
-    state: EditSuiteState,
+    clips: EditClip[],
 ): MediaBinData & { refetch: () => void } {
-    const [sections, setSections] = useState<MediaBinSection[]>([]);
+    const [rawData, setRawData] = useState<MediaBinQueryResult | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    // Derive "on timeline" set from current clips
-    const onTimelineIds = new Set<string>();
-    for (const clip of state.clips) {
-        if (clip.sourceShotId) onTimelineIds.add(clip.sourceShotId);
-        if (clip.sourceDialogueId) onTimelineIds.add(clip.sourceDialogueId);
-        if (clip.sourceDubbedDialogueId) onTimelineIds.add(clip.sourceDubbedDialogueId);
-        if (clip.sourceAudioTrackId) onTimelineIds.add(clip.sourceAudioTrackId);
-    }
 
     const fetchData = useCallback(async () => {
         if (!episodeId) return;
@@ -183,19 +184,31 @@ export function useMediaBin(
         try {
             const { getMediaBinDataAction } = await import('../server/media-bin-queries');
             const result = await getMediaBinDataAction({ episodeId });
-            setSections(buildSections(result, onTimelineIds));
+            setRawData(result);
         } catch (err) {
             console.error('Failed to fetch media bin data:', err);
             setError(err instanceof Error ? err.message : 'Failed to load media');
         } finally {
             setIsLoading(false);
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [episodeId]);
 
     useEffect(() => {
         void fetchData();
     }, [fetchData]);
+
+    // Compute sections from raw data + current clips (no stale closure)
+    const sections = useMemo(() => {
+        if (!rawData) return [];
+        const onTimelineIds = new Set<string>();
+        for (const clip of clips) {
+            if (clip.sourceShotId) onTimelineIds.add(clip.sourceShotId);
+            if (clip.sourceDialogueId) onTimelineIds.add(clip.sourceDialogueId);
+            if (clip.sourceDubbedDialogueId) onTimelineIds.add(clip.sourceDubbedDialogueId);
+            if (clip.sourceAudioTrackId) onTimelineIds.add(clip.sourceAudioTrackId);
+        }
+        return buildSections(rawData, onTimelineIds);
+    }, [rawData, clips]);
 
     return { sections, isLoading, error, refetch: fetchData };
 }

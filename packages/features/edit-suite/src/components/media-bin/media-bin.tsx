@@ -23,7 +23,7 @@ import { AssetItem } from './asset-item';
 export function MediaBin() {
     const { state } = useEditSuite();
     const episodeId = state.project?.episodeId ?? undefined;
-    const { sections, isLoading, error, refetch } = useMediaBin(episodeId, state);
+    const { sections, isLoading, error, refetch } = useMediaBin(episodeId, state.clips);
     const [search, setSearch] = useState('');
 
     // Filter assets by search term

@@ -77,8 +77,8 @@ export function Timeline() {
                     {/* Snap toggle */}
                     <button
                         className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${state.snapEnabled
-                                ? 'bg-violet-600/30 text-violet-300'
-                                : 'text-zinc-500 hover:bg-zinc-800'
+                            ? 'bg-violet-600/30 text-violet-300'
+                            : 'text-zinc-500 hover:bg-zinc-800'
                             }`}
                         onClick={() => dispatch({ type: 'TOGGLE_SNAP' })}
                         title="Snap to grid"
@@ -91,7 +91,7 @@ export function Timeline() {
                         className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800"
                         onClick={() => dispatch({
                             type: 'SET_ZOOM',
-                            payload: { zoom: Math.max(MIN_ZOOM, state.zoom - ZOOM_STEP) },
+                            payload: { zoom: state.zoom - ZOOM_STEP },
                         })}
                         title="Zoom out"
                     >
@@ -114,7 +114,7 @@ export function Timeline() {
                         className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800"
                         onClick={() => dispatch({
                             type: 'SET_ZOOM',
-                            payload: { zoom: Math.min(MAX_ZOOM, state.zoom + ZOOM_STEP) },
+                            payload: { zoom: state.zoom + ZOOM_STEP },
                         })}
                         title="Zoom in"
                     >
