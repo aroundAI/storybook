@@ -12,7 +12,7 @@ import { cn } from '@kit/ui/utils';
 import { useEditSuite } from './edit-suite-provider';
 
 export function Toolbar() {
-    const { state, dispatch, undo, redo, canUndo, canRedo, forceSave } = useEditSuite();
+    const { state, dispatch, undo, redo, canUndo, canRedo, forceSave, assemblyStatus, runAutoAssembly, episodeId } = useEditSuite();
 
     return (
         <div className="flex min-h-[40px] items-center justify-between gap-3 bg-zinc-900 px-3 py-1.5">
@@ -61,8 +61,28 @@ export function Toolbar() {
                 </ToolbarButton>
             </div>
 
-            {/* Right: Save status + Export */}
+            {/* Right: Assembly + Save status + Export */}
             <div className="flex items-center gap-1.5">
+                {/* Auto-Assemble — shown when no project is loaded */}
+                {!state.project && episodeId && (
+                    <ToolbarButton
+                        variant="primary"
+                        disabled={assemblyStatus === 'assembling'}
+                        onClick={() => void runAutoAssembly(episodeId)}
+                        title="Auto-assemble timeline from episode assets"
+                    >
+                        {assemblyStatus === 'assembling' ? (
+                            <span className="animate-pulse">⚡ Assembling…</span>
+                        ) : (
+                            '⚡ Auto-Assemble'
+                        )}
+                    </ToolbarButton>
+                )}
+
+                {assemblyStatus === 'error' && (
+                    <span className="text-[11px] text-red-400">Assembly failed</span>
+                )}
+
                 <span className={cn(
                     'rounded px-2 py-0.5 text-[11px]',
                     state.saveStatus === 'saved' && 'text-green-400',

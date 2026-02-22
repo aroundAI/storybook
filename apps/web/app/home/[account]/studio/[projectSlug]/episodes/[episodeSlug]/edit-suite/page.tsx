@@ -10,9 +10,13 @@
 import { EditSuiteProvider } from '@kit/edit-suite/components';
 import { EditSuiteShell } from '@kit/edit-suite/components';
 
+import { useEpisodeContext } from '../_components/episode-context-provider';
+
 export default function EditSuitePage() {
+    const { episode } = useEpisodeContext();
+
     return (
-        <EditSuiteProvider>
+        <EditSuiteProvider episodeId={episode.id}>
             <EditSuiteShell />
         </EditSuiteProvider>
     );

@@ -612,25 +612,25 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Snap toggle + track-type color coding
 
 #### 1.7 Auto-Assembly
-- [ ] `autoAssemble()` function in `lib/auto-assemble.ts`
-- [ ] Parallel fetch: shots, dialogue_lines, dubbed_versions, audio_tracks
-- [ ] Build tracks array (video + dialogue per language + music + sfx + ambient)
-- [ ] Place shots end-to-end on video track
-- [ ] Place dialogue aligned to parent shot start + 500ms offset
-- [ ] Create sync groups per dialogue_line
-- [ ] Place dubbed variants with `is_active = false` for non-primary
-- [ ] Place audio tracks (music, sfx, ambient) with original timeline positions
-- [ ] Create default volume keyframe (1.0 at offset 0) per clip
-- [ ] Call `batchCreateEditProjectAction` to persist
-- [ ] Loading state with progress indicator during assembly
+- [x] `autoAssemble()` function in `lib/auto-assemble.ts`
+- [x] Parallel fetch: shots, dialogue_lines, dubbed_versions, audio_tracks
+- [x] Build tracks array (video + dialogue per language + music + sfx + ambient)
+- [x] Place shots end-to-end on video track
+- [x] Place dialogue aligned to parent shot start + 500ms offset
+- [x] Create sync groups per dialogue_line
+- [x] Place dubbed variants with `is_active = false` for non-primary
+- [x] Place audio tracks (music, sfx, ambient) with original timeline positions
+- [x] Create default volume keyframe (1.0 at offset 0) per clip
+- [x] Call `batchCreateEditProjectAction` to persist
+- [x] Loading state with progress indicator during assembly
 
 #### 1.8 Auto-Save
-- [ ] Dirty state tracking — mark clips/tracks as dirty on edit
-- [ ] Debounced save (2s after last edit)
-- [ ] `batchSaveAction` — update only dirty rows
-- [ ] Save indicator in toolbar (✓ Saved / ● Saving...)
-- [ ] `Cmd+S` shortcut for force save
-- [ ] Error handling with retry on save failure
+- [x] Dirty state tracking — mark clips/tracks as dirty on edit
+- [x] Debounced save (2s after last edit)
+- [x] `batchSaveAction` — update only dirty rows
+- [x] Save indicator in toolbar (✓ Saved / ● Saving...)
+- [x] `Cmd+S` shortcut for force save
+- [x] Error handling with retry on save failure
 
 ---
 

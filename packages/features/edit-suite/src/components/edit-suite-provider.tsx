@@ -7,6 +7,7 @@
  * - useReducer-based state management
  * - UndoManager for undo/redo
  * - Auto-save (debounced 2s after last dirty change)
+ * - Auto-assembly (one-click project creation from episode assets)
  * - Keyboard shortcuts (Cmd+Z, Cmd+Shift+Z, Cmd+S)
  */
 
@@ -18,6 +19,7 @@ import {
     useMemo,
     useReducer,
     useRef,
+    useState,
 } from 'react';
 
 import type { Dispatch, ReactNode } from 'react';
@@ -31,6 +33,8 @@ import type { EditCommand } from '../state/edit-commands';
 // ──────────────────────────────────────────
 // Context shape
 // ──────────────────────────────────────────
+
+export type AssemblyStatus = 'idle' | 'assembling' | 'done' | 'error';
 
 interface EditSuiteContextValue {
     state: EditSuiteState;
@@ -53,6 +57,15 @@ interface EditSuiteContextValue {
 
     /** Force an immediate save */
     forceSave: () => void;
+
+    /** Auto-assembly status */
+    assemblyStatus: AssemblyStatus;
+
+    /** Run auto-assembly for an episode */
+    runAutoAssembly: (episodeId: string) => void;
+
+    /** Episode ID from route context (available before project creation) */
+    episodeId: string | undefined;
 }
 
 const EditSuiteContext = createContext<EditSuiteContextValue | null>(null);
@@ -65,12 +78,14 @@ const AUTO_SAVE_DELAY_MS = 2000;
 
 interface EditSuiteProviderProps {
     children: ReactNode;
+    episodeId?: string;
 }
 
-export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
+export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSuiteProviderProps) {
     const [state, dispatch] = useReducer(editReducer, undefined, createInitialState);
     const undoManagerRef = useRef(new UndoManager());
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [assemblyStatus, setAssemblyStatus] = useState<AssemblyStatus>('idle');
 
     // ── Undo / Redo ──
 
@@ -238,6 +253,40 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [undo, redo, performSave]);
 
+    // ── Auto-assembly ──
+
+    const runAutoAssembly = useCallback(
+        async (episodeId: string) => {
+            if (assemblyStatus === 'assembling') return;
+
+            setAssemblyStatus('assembling');
+
+            try {
+                // Import and run the assembly algorithm
+                const { autoAssemble } = await import('../lib/auto-assemble');
+                const result = await autoAssemble({ episodeId });
+
+                // Load the created project into state
+                const { getEditProjectAction } = await import('../server/edit-project-actions');
+                const projectData = await getEditProjectAction({ editProjectId: result.result.project.id });
+
+                if (projectData.success) {
+                    const { tracks, clips, keyframes, transitions, syncGroups, ...project } = projectData.project;
+                    dispatch({
+                        type: 'LOAD_PROJECT',
+                        payload: { project, tracks, clips, keyframes, transitions, syncGroups },
+                    });
+                }
+
+                setAssemblyStatus('done');
+            } catch (error) {
+                console.error('Auto-assembly failed:', error);
+                setAssemblyStatus('error');
+            }
+        },
+        [assemblyStatus],
+    );
+
     // ── Context value ──
 
     const value = useMemo<EditSuiteContextValue>(
@@ -250,8 +299,11 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
             canUndo: undoManagerRef.current.canUndo,
             canRedo: undoManagerRef.current.canRedo,
             forceSave: performSave,
+            assemblyStatus,
+            runAutoAssembly,
+            episodeId: episodeIdProp,
         }),
-        [state, executeCommand, undo, redo, performSave],
+        [state, executeCommand, undo, redo, performSave, assemblyStatus, runAutoAssembly, episodeIdProp],
     );
 
     return (
