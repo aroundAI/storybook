@@ -37,6 +37,9 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
         case 'SET_PLAYING':
             return { ...state, isPlaying: action.payload.isPlaying };
 
+        case 'STOP_PLAYBACK':
+            return { ...state, isPlaying: false, playheadMs: 0 };
+
         // ── View controls ──
 
         case 'SET_ZOOM':
@@ -107,6 +110,13 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
 
         case 'REMOVE_CLIP': {
             const removedId = action.payload.clipId;
+            const deletedClipIds = new Set(state.deletedClipIds);
+            deletedClipIds.add(removedId);
+            // Also track keyframes belonging to the removed clip
+            const deletedKeyframeIds = new Set(state.deletedKeyframeIds);
+            state.keyframes
+                .filter((k) => k.clipId === removedId)
+                .forEach((k) => deletedKeyframeIds.add(k.id));
             return {
                 ...state,
                 clips: state.clips.filter((c) => c.id !== removedId),
@@ -119,6 +129,8 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
                     next.delete(removedId);
                     return next;
                 })(),
+                deletedClipIds,
+                deletedKeyframeIds,
                 saveStatus: 'dirty',
             };
         }
@@ -176,6 +188,14 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
             const removedClipIds = new Set(
                 state.clips.filter((c) => c.trackId === removedId).map((c) => c.id),
             );
+            const deletedTrackIds = new Set(state.deletedTrackIds);
+            deletedTrackIds.add(removedId);
+            const deletedClipIds = new Set(state.deletedClipIds);
+            removedClipIds.forEach((id) => deletedClipIds.add(id));
+            const deletedKeyframeIds = new Set(state.deletedKeyframeIds);
+            state.keyframes
+                .filter((k) => removedClipIds.has(k.clipId))
+                .forEach((k) => deletedKeyframeIds.add(k.id));
             return {
                 ...state,
                 tracks: state.tracks.filter((t) => t.id !== removedId),
@@ -188,6 +208,9 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
                         !removedClipIds.has(t.fromClipId) &&
                         !removedClipIds.has(t.toClipId),
                 ),
+                deletedTrackIds,
+                deletedClipIds,
+                deletedKeyframeIds,
                 saveStatus: 'dirty',
             };
         }
@@ -220,14 +243,18 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
             };
         }
 
-        case 'REMOVE_KEYFRAME':
+        case 'REMOVE_KEYFRAME': {
+            const deletedKeyframeIds = new Set(state.deletedKeyframeIds);
+            deletedKeyframeIds.add(action.payload.keyframeId);
             return {
                 ...state,
                 keyframes: state.keyframes.filter(
                     (k) => k.id !== action.payload.keyframeId,
                 ),
+                deletedKeyframeIds,
                 saveStatus: 'dirty',
             };
+        }
 
         // ── Transitions ──
 
@@ -286,6 +313,9 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
                 dirtyClipIds: new Set(),
                 dirtyTrackIds: new Set(),
                 dirtyKeyframeIds: new Set(),
+                deletedClipIds: new Set(),
+                deletedKeyframeIds: new Set(),
+                deletedTrackIds: new Set(),
             };
 
         case 'MARK_SAVE_ERROR':

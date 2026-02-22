@@ -141,17 +141,18 @@ export function EditSuiteProvider({ children }: EditSuiteProviderProps) {
                         ...(k.bezierCp2X !== null && { bezierCp2X: k.bezierCp2X }),
                         ...(k.bezierCp2Y !== null && { bezierCp2Y: k.bezierCp2Y }),
                     })),
-                deletedClipIds: [],
-                deletedKeyframeIds: [],
+                deletedClipIds: [...state.deletedClipIds],
+                deletedKeyframeIds: [...state.deletedKeyframeIds],
                 newClips: [],
                 newKeyframes: [],
             });
 
             dispatch({ type: 'MARK_SAVED' });
-        } catch {
+        } catch (error) {
+            console.error('Failed to save edit project:', error);
             dispatch({ type: 'MARK_SAVE_ERROR' });
         }
-    }, [state.saveStatus, state.project, state.tracks, state.clips, state.keyframes, state.dirtyClipIds, state.dirtyTrackIds, state.dirtyKeyframeIds]);
+    }, [state.saveStatus, state.project, state.tracks, state.clips, state.keyframes, state.dirtyClipIds, state.dirtyTrackIds, state.dirtyKeyframeIds, state.deletedClipIds, state.deletedKeyframeIds]);
 
     // Debounced auto-save effect
     useEffect(() => {

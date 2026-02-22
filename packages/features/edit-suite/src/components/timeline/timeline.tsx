@@ -35,9 +35,17 @@ const TRACK_DOT_COLORS: Record<string, string> = {
     upload: 'bg-slate-500',
 };
 
+const PLAYHEAD_COLOR = 'bg-red-500';
+const PLAYHEAD_BORDER_COLOR = 'border-t-red-500';
+
 export function Timeline() {
     const { state } = useEditSuite();
     const sortedTracks = [...state.tracks].sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Compute timeline duration from clips with a comfortable buffer
+    const maxClipEndMs = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
+    const contentDurationSeconds = maxClipEndMs / 1000;
+    const totalSeconds = Math.max(60, Math.ceil(contentDurationSeconds * 1.2)); // 20% buffer, min 60s
 
     return (
         <div className="flex h-full flex-col overflow-hidden bg-[#0f0f12]">
@@ -70,7 +78,7 @@ export function Timeline() {
                 <div className="relative min-w-0 flex-1 overflow-x-auto">
                     {/* Ruler */}
                     <div className="sticky top-0 z-[2] h-7 border-b border-zinc-800 bg-[#0f0f12]">
-                        <TimelineRuler zoom={state.zoom} />
+                        <TimelineRuler zoom={state.zoom} totalSeconds={totalSeconds} />
                     </div>
 
                     {/* Clip lanes */}
@@ -106,10 +114,10 @@ export function Timeline() {
 
                     {/* Playhead */}
                     <div
-                        className="pointer-events-none absolute inset-y-0 z-[5] w-0.5 bg-red-500"
+                        className={`pointer-events-none absolute inset-y-0 z-[5] w-0.5 ${PLAYHEAD_COLOR}`}
                         style={{ left: `${(state.playheadMs / 1000) * state.zoom}px` }}
                     >
-                        <div className="absolute -left-[5px] top-0 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[10px] border-l-transparent border-r-transparent border-t-red-500" />
+                        <div className={`absolute -left-[5px] top-0 h-0 w-0 border-l-[6px] border-r-[6px] border-t-[10px] border-l-transparent border-r-transparent ${PLAYHEAD_BORDER_COLOR}`} />
                     </div>
                 </div>
             </div>
@@ -117,10 +125,9 @@ export function Timeline() {
     );
 }
 
-function TimelineRuler({ zoom }: { zoom: number }) {
-    // Generate tick marks every second
+function TimelineRuler({ zoom, totalSeconds }: { zoom: number; totalSeconds: number }) {
+    // Generate tick marks at adaptive intervals
     const tickInterval = zoom >= 100 ? 1 : zoom >= 30 ? 5 : 10; // seconds
-    const totalSeconds = 300; // 5 min default
     const ticks: { second: number; left: number }[] = [];
 
     for (let s = 0; s <= totalSeconds; s += tickInterval) {

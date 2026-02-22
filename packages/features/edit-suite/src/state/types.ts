@@ -86,6 +86,15 @@ export interface EditSuiteState {
     /** IDs of keyframes modified since last save */
     dirtyKeyframeIds: Set<string>;
 
+    /** IDs of clips deleted since last save (for server-side sync) */
+    deletedClipIds: Set<string>;
+
+    /** IDs of keyframes deleted since last save */
+    deletedKeyframeIds: Set<string>;
+
+    /** IDs of tracks deleted since last save */
+    deletedTrackIds: Set<string>;
+
     // ── Active language ──
 
     /** The currently active language for preview */
@@ -115,6 +124,9 @@ export function createInitialState(): EditSuiteState {
         dirtyClipIds: new Set(),
         dirtyTrackIds: new Set(),
         dirtyKeyframeIds: new Set(),
+        deletedClipIds: new Set(),
+        deletedKeyframeIds: new Set(),
+        deletedTrackIds: new Set(),
         activeLanguage: 'en',
     };
 }
@@ -130,6 +142,7 @@ export type EditAction =
     // ── Playback ──
     | { type: 'SET_PLAYHEAD'; payload: { ms: number } }
     | { type: 'SET_PLAYING'; payload: { isPlaying: boolean } }
+    | { type: 'STOP_PLAYBACK' }
 
     // ── View controls ──
     | { type: 'SET_ZOOM'; payload: { zoom: number } }

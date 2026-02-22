@@ -9,7 +9,6 @@
  * - Timecode display
  */
 
-import { cn } from '@kit/ui/utils';
 
 import { useEditSuite } from '../edit-suite-provider';
 
@@ -50,12 +49,7 @@ export function PreviewPanel() {
                     ⏮
                 </button>
                 <button
-                    className={cn(
-                        'inline-flex h-10 w-10 items-center justify-center rounded-full text-base text-white transition-colors',
-                        state.isPlaying
-                            ? 'bg-violet-600 hover:bg-violet-700'
-                            : 'bg-violet-600 hover:bg-violet-700',
-                    )}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-violet-600 text-base text-white transition-colors hover:bg-violet-700"
                     onClick={() => dispatch({ type: 'SET_PLAYING', payload: { isPlaying: !state.isPlaying } })}
                     title={state.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
                 >
@@ -63,10 +57,7 @@ export function PreviewPanel() {
                 </button>
                 <button
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
-                    onClick={() => {
-                        dispatch({ type: 'SET_PLAYING', payload: { isPlaying: false } });
-                        dispatch({ type: 'SET_PLAYHEAD', payload: { ms: 0 } });
-                    }}
+                    onClick={() => dispatch({ type: 'STOP_PLAYBACK' })}
                     title="Stop"
                 >
                     ⏹
