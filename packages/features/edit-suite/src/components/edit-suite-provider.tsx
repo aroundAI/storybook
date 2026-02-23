@@ -43,6 +43,9 @@ interface EditSuiteContextValue {
     /** Execute a command with undo/redo support */
     executeCommand: (command: EditCommand) => void;
 
+    /** Record a command for undo without executing it (state was already applied via dispatches) */
+    recordCommand: (command: EditCommand) => void;
+
     /** Undo the last command */
     undo: () => void;
 
@@ -102,6 +105,10 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
 
     const redo = useCallback(() => {
         undoManagerRef.current.redo(dispatch);
+    }, []);
+
+    const recordCommand = useCallback((command: EditCommand) => {
+        undoManagerRef.current.record(command);
     }, []);
 
     // ── Auto-save ──
@@ -257,8 +264,9 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                 if (state.selectedClipIds.size === 0) return;
                 e.preventDefault();
 
+                const clipsMap = new Map(state.clips.map((c) => [c.id, c]));
                 for (const clipId of state.selectedClipIds) {
-                    const clip = state.clips.find((c) => c.id === clipId);
+                    const clip = clipsMap.get(clipId);
                     if (clip) {
                         executeCommand(new DeleteClipCommand(clip));
                     }
@@ -336,6 +344,7 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
             state,
             dispatch,
             executeCommand,
+            recordCommand,
             undo,
             redo,
             canUndo: undoManagerRef.current.canUndo,
@@ -345,7 +354,7 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
             runAutoAssembly,
             episodeId: episodeIdProp,
         }),
-        [state, executeCommand, undo, redo, performSave, assemblyStatus, runAutoAssembly, episodeIdProp],
+        [state, executeCommand, recordCommand, undo, redo, performSave, assemblyStatus, runAutoAssembly, episodeIdProp],
     );
 
     return (

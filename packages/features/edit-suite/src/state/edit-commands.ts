@@ -60,6 +60,17 @@ export class UndoManager {
         this.redoStack = [];
     }
 
+    /** Record a command without executing it (state already applied via dispatches). */
+    record(command: EditCommand) {
+        this.undoStack.push(command);
+
+        if (this.undoStack.length > MAX_HISTORY) {
+            this.undoStack.shift();
+        }
+
+        this.redoStack = [];
+    }
+
     /** Undo the last command. */
     undo(dispatch: Dispatch<EditAction>) {
         const command = this.undoStack.pop();

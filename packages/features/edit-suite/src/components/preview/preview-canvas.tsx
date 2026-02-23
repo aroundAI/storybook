@@ -156,11 +156,8 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
                 const drawX = (width - drawW) / 2;
                 const drawY = (height - drawH) / 2;
 
-                // Apply clip volume as opacity if needed
-                const opacity = clip.volume ?? 1;
-                ctx.globalAlpha = opacity;
+                // Draw at full opacity (opacity control via keyframes, not volume)
                 ctx.drawImage(video, drawX, drawY, drawW, drawH);
-                ctx.globalAlpha = 1;
             }
         }
     }, [activeVideoClips, getVideo, state.playheadMs, width, height]);
@@ -197,8 +194,8 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
 
     // Cleanup video pool on unmount
     useEffect(() => {
+        const pool = videoPoolRef.current;
         return () => {
-            const pool = videoPoolRef.current;
             for (const [, entry] of pool) {
                 entry.video.pause();
                 entry.video.removeAttribute('src');

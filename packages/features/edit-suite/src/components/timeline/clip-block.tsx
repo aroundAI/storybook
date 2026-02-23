@@ -11,14 +11,14 @@
  * - Alt+Drag to duplicate
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Dispatch } from 'react';
 
 import type { EditClip } from '../../lib/types';
 import type { EditAction } from '../../state/types';
 import { useEditSuite } from '../edit-suite-provider';
-import { AddClipCommand } from '../../state/edit-commands';
+import { AddClipCommand, MoveClipCommand, TrimClipCommand } from '../../state/edit-commands';
 
 // ──────────────────────────────────────────
 // Constants
@@ -59,10 +59,16 @@ export function ClipBlock({
     allClips = [],
     playheadMs = 0,
 }: ClipBlockProps) {
-    const { executeCommand } = useEditSuite();
+    const { executeCommand, recordCommand } = useEditSuite();
     const blockRef = useRef<HTMLDivElement>(null);
     const [dragMode, setDragMode] = useState<DragMode>('none');
     const [snapLineX, setSnapLineX] = useState<number | null>(null);
+
+    // Track latest clip state via ref for stale-closure-safe access in mouseup
+    const clipRef = useRef(clip);
+    useEffect(() => {
+        clipRef.current = clip;
+    }, [clip]);
 
     const leftPx = (clip.startMs / 1000) * zoom;
     const widthPx = Math.max(4, ((clip.endMs - clip.startMs) / 1000) * zoom);
@@ -249,23 +255,37 @@ export function ClipBlock({
             window.removeEventListener('mousemove', handleMouseMove);
             window.removeEventListener('mouseup', handleMouseUp);
 
-            // Record the command for undo (only if position changed)
+            // Use ref for latest clip state (avoids stale closure)
+            const currentClip = clipRef.current;
+
+            // Record undo command (state was already applied via dispatches during drag)
             if (mode === 'move' && !isAltDuplicate) {
-                if (clip.startMs !== origStartMs || clip.endMs !== origEndMs) {
-                    // Don't re-execute, just record
-                    // The move already happened via dispatches during drag
+                if (currentClip.startMs !== origStartMs || currentClip.endMs !== origEndMs) {
+                    recordCommand(new MoveClipCommand(
+                        currentClip.id,
+                        origStartMs,
+                        origEndMs,
+                        currentClip.startMs,
+                        currentClip.endMs,
+                        currentClip.trackId,
+                        currentClip.trackId,
+                    ));
                 }
             }
             if (mode === 'trim-left' || mode === 'trim-right') {
-                if (clip.startMs !== origStartMs || clip.endMs !== origEndMs) {
-                    // Record trim command (will be dispatched but values already set)
+                if (currentClip.startMs !== origStartMs || currentClip.endMs !== origEndMs) {
+                    recordCommand(new TrimClipCommand(
+                        currentClip.id,
+                        { startMs: origStartMs, endMs: origEndMs, inPointMs: origInPointMs, outPointMs: origOutPointMs },
+                        { startMs: currentClip.startMs, endMs: currentClip.endMs, inPointMs: currentClip.inPointMs, outPointMs: currentClip.outPointMs },
+                    ));
                 }
             }
         };
 
         window.addEventListener('mousemove', handleMouseMove);
         window.addEventListener('mouseup', handleMouseUp);
-    }, [clip, zoom, isSelected, dispatch, getDragMode, findSnapTarget, executeCommand]);
+    }, [clip, zoom, isSelected, dispatch, getDragMode, findSnapTarget, executeCommand, recordCommand]);
 
     // ── Cursor style ──
 
