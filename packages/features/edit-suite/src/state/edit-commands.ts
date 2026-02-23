@@ -60,6 +60,17 @@ export class UndoManager {
         this.redoStack = [];
     }
 
+    /** Record a command without executing it (state already applied via dispatches). */
+    record(command: EditCommand) {
+        this.undoStack.push(command);
+
+        if (this.undoStack.length > MAX_HISTORY) {
+            this.undoStack.shift();
+        }
+
+        this.redoStack = [];
+    }
+
     /** Undo the last command. */
     undo(dispatch: Dispatch<EditAction>) {
         const command = this.undoStack.pop();
@@ -218,5 +229,49 @@ export class UpdateClipCommand implements EditCommand {
             type: 'UPDATE_CLIP',
             payload: { clipId: this.clipId, changes: this.prevChanges },
         });
+    }
+}
+
+/**
+ * Split a clip at a given position, creating two clips.
+ */
+export class SplitClipCommand implements EditCommand {
+    readonly label = 'Split clip';
+
+    private leftClip: EditClip;
+    private rightClip: EditClip;
+
+    constructor(
+        private originalClip: EditClip,
+        splitMs: number,
+    ) {
+        // Left half: original start → split point
+        this.leftClip = {
+            ...originalClip,
+            endMs: splitMs,
+            outPointMs: originalClip.inPointMs + (splitMs - originalClip.startMs),
+        };
+
+        // Right half: split point → original end
+        this.rightClip = {
+            ...originalClip,
+            id: crypto.randomUUID(),
+            startMs: splitMs,
+            inPointMs: originalClip.inPointMs + (splitMs - originalClip.startMs),
+        };
+    }
+
+    execute(dispatch: Dispatch<EditAction>) {
+        // Remove original, add both halves
+        dispatch({ type: 'REMOVE_CLIP', payload: { clipId: this.originalClip.id } });
+        dispatch({ type: 'ADD_CLIP', payload: { clip: this.leftClip } });
+        dispatch({ type: 'ADD_CLIP', payload: { clip: this.rightClip } });
+    }
+
+    undo(dispatch: Dispatch<EditAction>) {
+        // Remove both halves, restore original
+        dispatch({ type: 'REMOVE_CLIP', payload: { clipId: this.leftClip.id } });
+        dispatch({ type: 'REMOVE_CLIP', payload: { clipId: this.rightClip.id } });
+        dispatch({ type: 'ADD_CLIP', payload: { clip: this.originalClip } });
     }
 }
