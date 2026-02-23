@@ -105,6 +105,30 @@ export const getEditProjectAction = enhanceAction(
             throw new Error('Edit project not found');
         }
 
+        // IDOR protection: verify user has access via episode → project → account
+        const { data: episode, error: episodeError } = await client
+            .from('episodes')
+            .select('id, projects!inner(id, account_id)')
+            .eq('id', (project as { episode_id: string }).episode_id)
+            .is('deleted_at', null)
+            .single();
+
+        if (episodeError || !episode) {
+            throw new Error('Access denied: episode not found');
+        }
+
+        const accountId = (episode as { projects: { account_id: string } }).projects.account_id;
+        const { data: membership, error: memberError } = await client
+            .from('accounts_memberships')
+            .select('account_id')
+            .eq('account_id', accountId)
+            .eq('user_id', user.id)
+            .single();
+
+        if (memberError || !membership) {
+            throw new Error('Access denied: not a member of the project account');
+        }
+
         // Fetch tracks
         const { data: tracks, error: tracksError } = await client
             .from('edit_tracks')

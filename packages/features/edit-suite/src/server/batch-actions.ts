@@ -39,16 +39,30 @@ export const batchAssembleAction = enhanceAction(
 
         const client = getEditSuiteClient();
 
-        // Verify episode exists
+        // Verify user has access to this episode (IDOR protection)
+        // Join episode → project → account to verify ownership
         const { data: episode, error: episodeError } = await client
             .from('episodes')
-            .select('id')
+            .select('id, projects!inner(id, account_id)')
             .eq('id', data.episodeId)
             .is('deleted_at', null)
             .single();
 
         if (episodeError || !episode) {
-            throw new Error('Episode not found');
+            throw new Error('Episode not found or access denied');
+        }
+
+        // Verify the user is a member of the account that owns this project
+        const accountId = (episode as { projects: { account_id: string } }).projects.account_id;
+        const { data: membership, error: memberError } = await client
+            .from('accounts_memberships')
+            .select('account_id')
+            .eq('account_id', accountId)
+            .eq('user_id', user.id)
+            .single();
+
+        if (memberError || !membership) {
+            throw new Error('Access denied: not a member of the project account');
         }
 
         // Call the atomic RPC function
