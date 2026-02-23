@@ -18,11 +18,7 @@ import type { Dispatch } from 'react';
 import type { EditClip } from '../../lib/types';
 import type { EditAction } from '../../state/types';
 import { useEditSuite } from '../edit-suite-provider';
-import {
-    MoveClipCommand,
-    TrimClipCommand,
-    AddClipCommand,
-} from '../../state/edit-commands';
+import { AddClipCommand } from '../../state/edit-commands';
 
 // ──────────────────────────────────────────
 // Constants
