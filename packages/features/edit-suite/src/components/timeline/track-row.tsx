@@ -111,12 +111,14 @@ function TrackHeader({
 interface TrackRowProps {
     track: EditTrack;
     clips: EditClip[];
+    allClips: EditClip[];
     zoom: number; // px per second
+    playheadMs: number;
     selectedClipIds: Set<string>;
     dispatch: Dispatch<EditAction>;
 }
 
-export function TrackRow({ track, clips, zoom, selectedClipIds, dispatch }: TrackRowProps) {
+export function TrackRow({ track, clips, allClips, zoom, playheadMs, selectedClipIds, dispatch }: TrackRowProps) {
     const colors = TRACK_COLORS[track.type] ?? TRACK_COLORS.video!;
 
     const handleDragOver = (e: React.DragEvent) => {
@@ -196,6 +198,8 @@ export function TrackRow({ track, clips, zoom, selectedClipIds, dispatch }: Trac
                         isSelected={selectedClipIds.has(clip.id)}
                         colorClass={colors.clip}
                         dispatch={dispatch}
+                        allClips={allClips}
+                        playheadMs={playheadMs}
                     />
                 ))}
             </div>

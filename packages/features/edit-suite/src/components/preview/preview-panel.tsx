@@ -1,16 +1,26 @@
 'use client';
 
 /**
- * Preview Panel — center area for video preview.
+ * Preview Panel — center area for video preview + playback controls.
  *
- * Stub implementation. Will contain:
- * - Canvas element for composited video preview
- * - Playback controls (play/pause/stop)
- * - Timecode display
+ * Integrates:
+ * - PreviewCanvas for video compositing
+ * - PlaybackEngine for timeline playback
+ * - Keyboard shortcuts (Space, J/K/L, arrows)
+ * - Timecode display (MM:SS:FF)
  */
 
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 
+import { cn } from '@kit/ui/utils';
+
+import { PlaybackEngine } from '../../lib/playback-engine';
 import { useEditSuite } from '../edit-suite-provider';
+import { PreviewCanvas } from './preview-canvas';
+
+// ──────────────────────────────────────────
+// Timecode formatter
+// ──────────────────────────────────────────
 
 function formatTimecode(ms: number, fps: number): string {
     const totalSeconds = Math.floor(ms / 1000);
@@ -20,23 +30,116 @@ function formatTimecode(ms: number, fps: number): string {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}:${String(frames).padStart(2, '0')}`;
 }
 
+// ──────────────────────────────────────────
+// Component
+// ──────────────────────────────────────────
+
 export function PreviewPanel() {
     const { state, dispatch } = useEditSuite();
+    const engineRef = useRef<PlaybackEngine | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+
     const fps = state.project?.fps ?? 30;
+    const projectWidth = state.project?.width ?? 1920;
+    const projectHeight = state.project?.height ?? 1080;
+
+    // Timeline duration for auto-stop
+    const durationMs = useMemo(() => {
+        const maxEnd = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
+        return Math.max(60_000, Math.round(maxEnd * 1.2));
+    }, [state.clips]);
+
+    // Initialize engine
+    useEffect(() => {
+        const engine = new PlaybackEngine();
+        engineRef.current = engine;
+
+        engine.onTick = (ms) => {
+            dispatch({ type: 'SET_PLAYHEAD', payload: { ms } });
+        };
+
+        engine.onPlay = () => {
+            dispatch({ type: 'SET_PLAYING', payload: { isPlaying: true } });
+        };
+
+        engine.onPause = () => {
+            dispatch({ type: 'SET_PLAYING', payload: { isPlaying: false } });
+        };
+
+        return () => {
+            engine.dispose();
+            engineRef.current = null;
+        };
+    }, [dispatch]);
+
+    // Update engine config when project changes
+    useEffect(() => {
+        const engine = engineRef.current;
+        if (!engine) return;
+        engine.setDuration(durationMs);
+        engine.setFps(fps);
+    }, [durationMs, fps]);
+
+    // Sync engine position when playhead is dragged (external seek)
+    useEffect(() => {
+        const engine = engineRef.current;
+        if (!engine || engine.isPlaying) return;
+
+        // Only sync when not playing — during playback the engine drives the playhead
+        if (Math.abs(engine.currentMs - state.playheadMs) > 50) {
+            engine.seekTo(state.playheadMs);
+        }
+    }, [state.playheadMs]);
+
+    // ── Playback control handlers ──
+
+    const handlePlayPause = useCallback(() => {
+        engineRef.current?.togglePlayPause();
+    }, []);
+
+    const handleStop = useCallback(() => {
+        engineRef.current?.stop();
+    }, []);
+
+    const handleGoToStart = useCallback(() => {
+        engineRef.current?.seekTo(0);
+    }, []);
+
+    // Speed indicator for shuttle
+    const speedLabel = useMemo(() => {
+        const engine = engineRef.current;
+        if (!engine || !state.isPlaying) return null;
+        const speed = engine.speed;
+        if (speed === 1) return null;
+        return `${speed > 0 ? '' : ''}${speed}×`;
+    }, [state.isPlaying]);
 
     return (
-        <div className="flex h-full flex-col items-center justify-center gap-3 p-4">
+        <div
+            ref={containerRef}
+            className="flex h-full flex-col items-center justify-center gap-3 p-4"
+            tabIndex={-1}
+        >
             {/* Canvas area */}
-            <div className="flex min-h-0 flex-1 w-full items-center justify-center">
+            <div className="flex min-h-0 w-full flex-1 items-center justify-center">
                 <div
-                    className="flex max-h-full max-w-full w-full items-center justify-center rounded-lg border border-zinc-800 bg-[#111113]"
-                    style={{ aspectRatio: `${state.project?.width ?? 1920} / ${state.project?.height ?? 1080}` }}
+                    className="relative flex max-h-full max-w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-800 bg-black"
+                    style={{ aspectRatio: `${projectWidth} / ${projectHeight}` }}
                 >
-                    <span className="text-[13px] text-zinc-600">
-                        {state.project
-                            ? `${state.project.width}×${state.project.height} @ ${state.project.fps}fps`
-                            : 'No project loaded'}
-                    </span>
+                    {state.project ? (
+                        <PreviewCanvas width={projectWidth} height={projectHeight} />
+                    ) : (
+                        <span className="text-[13px] text-zinc-600">
+                            No project loaded
+                        </span>
+                    )}
+
+                    {/* Speed overlay */}
+                    {speedLabel && (
+                        <div className="absolute right-2 top-2 rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-amber-400">
+                            {speedLabel}
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -44,21 +147,26 @@ export function PreviewPanel() {
             <div className="flex items-center gap-2">
                 <button
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
-                    onClick={() => dispatch({ type: 'SET_PLAYHEAD', payload: { ms: 0 } })}
+                    onClick={handleGoToStart}
                     title="Go to start"
                 >
                     ⏮
                 </button>
                 <button
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-violet-600 text-base text-white transition-colors hover:bg-violet-700"
-                    onClick={() => dispatch({ type: 'SET_PLAYING', payload: { isPlaying: !state.isPlaying } })}
+                    className={cn(
+                        'inline-flex h-10 w-10 items-center justify-center rounded-full text-base text-white transition-colors',
+                        state.isPlaying
+                            ? 'bg-amber-600 hover:bg-amber-700'
+                            : 'bg-violet-600 hover:bg-violet-700',
+                    )}
+                    onClick={handlePlayPause}
                     title={state.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
                 >
                     {state.isPlaying ? '⏸' : '▶'}
                 </button>
                 <button
                     className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
-                    onClick={() => dispatch({ type: 'STOP_PLAYBACK' })}
+                    onClick={handleStop}
                     title="Stop"
                 >
                     ⏹

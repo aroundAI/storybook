@@ -27,7 +27,7 @@ import type { Dispatch, ReactNode } from 'react';
 import { editReducer } from '../state/edit-reducer';
 import type { EditAction, EditSuiteState } from '../state/types';
 import { createInitialState } from '../state/types';
-import { UndoManager } from '../state/edit-commands';
+import { UndoManager, DeleteClipCommand, SplitClipCommand } from '../state/edit-commands';
 import type { EditCommand } from '../state/edit-commands';
 
 // ──────────────────────────────────────────
@@ -225,6 +225,10 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
 
     useEffect(() => {
         function handleKeyDown(e: KeyboardEvent) {
+            // Skip if typing in an input/textarea
+            const tag = (e.target as HTMLElement)?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
             const isMeta = e.metaKey || e.ctrlKey;
 
             // Cmd+Z: Undo
@@ -247,11 +251,47 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                 void performSave();
                 return;
             }
+
+            // Delete / Backspace: Delete selected clips
+            if (e.key === 'Delete' || e.key === 'Backspace') {
+                if (state.selectedClipIds.size === 0) return;
+                e.preventDefault();
+
+                for (const clipId of state.selectedClipIds) {
+                    const clip = state.clips.find((c) => c.id === clipId);
+                    if (clip) {
+                        executeCommand(new DeleteClipCommand(clip));
+                    }
+                }
+                dispatch({ type: 'DESELECT_ALL' });
+                return;
+            }
+
+            // S: Split clip at playhead
+            if (e.key.toLowerCase() === 's' && !isMeta) {
+                // Find clips that overlap the playhead
+                const clipsAtPlayhead = state.clips.filter(
+                    (c) => c.startMs < state.playheadMs && c.endMs > state.playheadMs,
+                );
+
+                if (clipsAtPlayhead.length === 0) return;
+                e.preventDefault();
+
+                // If we have selected clips, only split those at the playhead
+                const toSplit = state.selectedClipIds.size > 0
+                    ? clipsAtPlayhead.filter((c) => state.selectedClipIds.has(c.id))
+                    : clipsAtPlayhead;
+
+                for (const clip of toSplit) {
+                    executeCommand(new SplitClipCommand(clip, state.playheadMs));
+                }
+                return;
+            }
         }
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo, performSave]);
+    }, [undo, redo, performSave, executeCommand, dispatch, state.selectedClipIds, state.clips, state.playheadMs]);
 
     // ── Auto-assembly ──
 

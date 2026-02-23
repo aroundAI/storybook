@@ -638,13 +638,13 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ### Build Phase 2: Playback + Core Editing (3–4 weeks)
 
-#### 2.1 Preview Canvas
-- [ ] `PreviewCanvas` — `<canvas>` element at project dimensions (1920×1080 scaled)
-- [ ] Hidden `<video>` elements pool — one per active clip on screen
-- [ ] `PlaybackEngine` class — `requestAnimationFrame` loop
-- [ ] Frame sync: on each rAF, seek each `<video>` to `clipOffsetMs`, `drawImage()` onto canvas
-- [ ] Layer compositing: draw clips in track sort order (bottom track first)
-- [ ] Aspect ratio handling for canvas scaling
+#### 2.1 Preview Canvas ✅
+- [x] `PreviewCanvas` — `<canvas>` element at project dimensions (1920×1080 scaled)
+- [x] Hidden `<video>` elements pool — one per active clip on screen
+- [x] `PlaybackEngine` class — `requestAnimationFrame` loop
+- [x] Frame sync: on each rAF, seek each `<video>` to `clipOffsetMs`, `drawImage()` onto canvas
+- [x] Layer compositing: draw clips in track sort order (bottom track first)
+- [x] Aspect ratio handling for canvas scaling
 
 #### 2.2 Audio Playback
 - [ ] `AudioContext` creation + `GainNode` per audio clip
@@ -654,31 +654,31 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [ ] Sync audio playback position with playhead
 - [ ] Start/stop audio sources on play/pause
 
-#### 2.3 Playback Controls
-- [ ] `PlaybackControls` — play/pause/stop buttons
-- [ ] `TimecodeDisplay` — MM:SS:FF format synced with playhead
-- [ ] `Space` to toggle play/pause
-- [ ] `J`/`K`/`L` shuttle: reverse / pause / forward (multi-tap = 2×, 4×)
+#### 2.3 Playback Controls ✅
+- [x] `PlaybackControls` — play/pause/stop buttons
+- [x] `TimecodeDisplay` — MM:SS:FF format synced with playhead
+- [x] `Space` to toggle play/pause
+- [x] `J`/`K`/`L` shuttle: reverse / pause / forward (multi-tap = 2×, 4×)
 - [ ] `I`/`O` to set in/out points on selected clip
-- [ ] Frame-step with arrow keys (left/right = ±1 frame)
+- [x] Frame-step with arrow keys (left/right = ±1 frame)
 
-#### 2.4 Playhead
-- [ ] Playhead line synced with playback position
-- [ ] Draggable for scrubbing (updates preview + audio position)
-- [ ] Click on ruler to jump playhead
-- [ ] Auto-scroll timeline when playhead reaches edge during playback
+#### 2.4 Playhead ✅
+- [x] Playhead line synced with playback position
+- [x] Draggable for scrubbing (updates preview + audio position)
+- [x] Click on ruler to jump playhead
+- [x] Auto-scroll timeline when playhead reaches edge during playback
 
-#### 2.5 Clip Editing
-- [ ] Horizontal drag to reposition clips
-- [ ] Snap-to-edges: snap to adjacent clip boundaries
-- [ ] Snap-to-playhead: snap to current playhead position
-- [ ] Snap indicators (vertical guides when snapping)
-- [ ] Edge drag to trim (adjust `in_point_ms` or `out_point_ms`)
-- [ ] Minimum clip duration (100ms)
-- [ ] Split clip at playhead (`S` key) — creates two clips from one
-- [ ] Delete selected clip(s) (`Delete` key)
-- [ ] Multi-select (shift+click, rubber-band)
-- [ ] `Alt+Drag` to duplicate clip
+#### 2.5 Clip Editing ✅
+- [x] Horizontal drag to reposition clips
+- [x] Snap-to-edges: snap to adjacent clip boundaries
+- [x] Snap-to-playhead: snap to current playhead position
+- [x] Snap indicators (vertical guides when snapping)
+- [x] Edge drag to trim (adjust `in_point_ms` or `out_point_ms`)
+- [x] Minimum clip duration (100ms)
+- [x] Split clip at playhead (`S` key) — creates two clips from one
+- [x] Delete selected clip(s) (`Delete` key)
+- [x] Multi-select (shift+click)
+- [x] `Alt+Drag` to duplicate clip
 
 #### 2.6 Waveform Rendering
 - [ ] `Waveform` component — render audio waveform on clip block
@@ -687,13 +687,13 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [ ] Canvas-based waveform drawing (filled, semi-transparent)
 - [ ] Cache waveform data per clip URL
 
-#### 2.7 Undo/Redo
-- [ ] `EditCommand` interface with `execute()` and `undo()`
-- [ ] `MoveClipCommand`, `TrimClipCommand`, `SplitClipCommand`, `DeleteClipCommand`
-- [ ] `UndoManager` class — 100-item stacks
-- [ ] `useUndoRedo` hook exposing `undo()`, `redo()`, `canUndo`, `canRedo`
-- [ ] `Cmd+Z` / `Cmd+Shift+Z` keyboard shortcuts
-- [ ] Undo/redo buttons in toolbar with disabled state
+#### 2.7 Undo/Redo ✅
+- [x] `EditCommand` interface with `execute()` and `undo()`
+- [x] `MoveClipCommand`, `TrimClipCommand`, `SplitClipCommand`, `DeleteClipCommand`
+- [x] `UndoManager` class — 100-item stacks
+- [x] `useUndoRedo` hook exposing `undo()`, `redo()`, `canUndo`, `canRedo`
+- [x] `Cmd+Z` / `Cmd+Shift+Z` keyboard shortcuts
+- [x] Undo/redo buttons in toolbar with disabled state
 
 ---
 

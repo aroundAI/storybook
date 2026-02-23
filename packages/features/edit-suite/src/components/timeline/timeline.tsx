@@ -11,7 +11,7 @@
  * - Zoom controls (slider + buttons)
  */
 
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { useEditSuite } from '../edit-suite-provider';
 import { TimelineRuler } from './timeline-ruler';
@@ -27,6 +27,7 @@ const MAX_ZOOM = 500;   // px per second (zoomed in)
 const ZOOM_STEP = 10;
 const MIN_DURATION_MS = 60_000; // 1 minute minimum
 const DURATION_BUFFER = 1.2;    // 20% extra beyond last clip
+const AUTO_SCROLL_MARGIN = 100; // px from edge to trigger auto-scroll
 
 // ──────────────────────────────────────────
 // Component
@@ -62,6 +63,26 @@ export function Timeline() {
         () => new Set(state.selectedClipIds),
         [state.selectedClipIds],
     );
+
+    // Auto-scroll to keep playhead visible during playback
+    useEffect(() => {
+        if (!state.isPlaying) return;
+        const container = scrollContainerRef.current;
+        if (!container) return;
+
+        const playheadPx = (state.playheadMs / 1000) * state.zoom;
+        const visibleLeft = container.scrollLeft;
+        const visibleRight = visibleLeft + container.clientWidth;
+
+        // Scroll if playhead is near the right edge
+        if (playheadPx > visibleRight - AUTO_SCROLL_MARGIN) {
+            container.scrollLeft = playheadPx - container.clientWidth / 3;
+        }
+        // Scroll if playhead is near the left edge (reverse playback)
+        else if (playheadPx < visibleLeft + AUTO_SCROLL_MARGIN) {
+            container.scrollLeft = Math.max(0, playheadPx - container.clientWidth * 2 / 3);
+        }
+    }, [state.isPlaying, state.playheadMs, state.zoom]);
 
     const totalWidthPx = (durationMs / 1000) * state.zoom;
 
@@ -158,7 +179,9 @@ export function Timeline() {
                                         key={track.id}
                                         track={track}
                                         clips={clipsByTrack.get(track.id) ?? []}
+                                        allClips={state.clips}
                                         zoom={state.zoom}
+                                        playheadMs={state.playheadMs}
                                         selectedClipIds={selectedClipIds}
                                         dispatch={dispatch}
                                     />
