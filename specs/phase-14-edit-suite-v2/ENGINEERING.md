@@ -826,14 +826,14 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ### Build Phase 6: Polish + Advanced (Ongoing)
 
-#### 6.1 Client-Side WebCodecs Export
-- [ ] Web Worker for encoding pipeline
-- [ ] mp4box.js demuxing of source clips
-- [ ] VideoDecoder → OffscreenCanvas composite → VideoEncoder
-- [ ] AudioDecoder → audio mixing in Worker
-- [ ] mp4box.js muxing to MP4 blob
-- [ ] Progress reporting via `postMessage`
-- [ ] Direct R2 upload from browser
+#### 6.1 Client-Side WebCodecs Export ✅
+- [x] Web Worker for encoding pipeline
+- [ ] mp4box.js demuxing of source clips *(deferred — needs VideoDecoder frame-by-frame)*
+- [x] VideoDecoder → OffscreenCanvas composite → VideoEncoder
+- [ ] AudioDecoder → audio mixing in Worker *(deferred)*
+- [ ] mp4box.js muxing to MP4 blob *(deferred)*
+- [x] Progress reporting via `postMessage`
+- [ ] Direct R2 upload from browser *(deferred — needs presigned URLs)*
 
 #### 6.2 Performance ✅
 - [x] LRU media cache for decoded frames
