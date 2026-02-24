@@ -84,6 +84,7 @@ export function ClipBlock({
     const [dragMode, setDragMode] = useState<DragMode>('none');
     const showWaveform = AUDIO_TRACK_TYPES.has(trackType) && !!clip.mediaUrl;
     const showThumbnails = trackType === 'video' && !!clip.mediaUrl;
+    const showTextOverlay = trackType === 'title' && !!clip.text;
     const [snapLineX, setSnapLineX] = useState<number | null>(null);
 
     // Track latest clip state via ref for stale-closure-safe access in mouseup
@@ -96,15 +97,17 @@ export function ClipBlock({
     const widthPx = Math.max(4, ((clip.endMs - clip.startMs) / 1000) * zoom);
 
     // Derive a display name from the clip's source
-    const name = clip.sourceShotId
-        ? 'Shot'
-        : clip.sourceDialogueId
-            ? 'Dialogue'
-            : clip.sourceDubbedDialogueId
-                ? 'Dubbed'
-                : clip.sourceAudioTrackId
-                    ? 'Audio'
-                    : 'Clip';
+    const name = clip.text
+        ? (clip.text.length > 20 ? clip.text.slice(0, 20) + '…' : clip.text)
+        : clip.sourceShotId
+            ? 'Shot'
+            : clip.sourceDialogueId
+                ? 'Dialogue'
+                : clip.sourceDubbedDialogueId
+                    ? 'Dubbed'
+                    : clip.sourceAudioTrackId
+                        ? 'Audio'
+                        : 'Clip';
 
     const durationMs = clip.endMs - clip.startMs;
     const durationLabel = durationMs >= 1000
@@ -371,6 +374,24 @@ export function ClipBlock({
                         heightPx={40}
                         getBuffer={(url) => audioEngineRef.current?.getAudioBuffer(url) ?? Promise.resolve(null)}
                     />
+                )}
+
+                {/* Text overlay for title clips */}
+                {showTextOverlay && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-r from-violet-900/60 to-fuchsia-900/60">
+                        <span
+                            className="truncate px-2 text-[11px] font-semibold"
+                            style={{
+                                color: clip.fontColor ?? '#ffffff',
+                                fontFamily: clip.fontFamily ?? 'inherit',
+                                textShadow: clip.textShadowColor
+                                    ? `0 1px ${clip.textShadowBlur ?? 4}px ${clip.textShadowColor}`
+                                    : '0 1px 2px rgba(0,0,0,0.8)',
+                            }}
+                        >
+                            {clip.text}
+                        </span>
+                    </div>
                 )}
 
                 {/* Clip content (only show if wide enough) */}

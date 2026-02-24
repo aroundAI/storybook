@@ -7,12 +7,13 @@
  * Snap toggle, Save status, Export button.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 import { cn } from '@kit/ui/utils';
 
 import { useEditSuite } from './edit-suite-provider';
 import { ExportDialog } from './export/export-dialog';
+import { DEFAULT_TEXT_CLIP_PROPS } from '../lib/types';
 
 // ──────────────────────────────────────────
 // Language labels
@@ -42,6 +43,72 @@ export function Toolbar() {
     const [exportOpen, setExportOpen] = useState(false);
 
     const hasMultipleLanguages = availableLanguages.length > 1;
+
+    // Add a title clip at the playhead position
+    const handleAddTitle = useCallback(() => {
+        // Find or create a title track
+        let titleTrack = state.tracks.find((t) => t.type === 'title');
+
+        if (!titleTrack) {
+            const newTrackId = crypto.randomUUID();
+            titleTrack = {
+                id: newTrackId,
+                editProjectId: state.project?.id ?? '',
+                type: 'title' as const,
+                name: 'Titles',
+                sortOrder: state.tracks.length,
+                volume: 1,
+                isMuted: false,
+                isSolo: false,
+                isLocked: false,
+                height: 48,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+            };
+            dispatch({ type: 'ADD_TRACK', payload: { track: titleTrack } });
+        }
+
+        // Create a default title clip (3 seconds at playhead)
+        const clipId = crypto.randomUUID();
+        const startMs = state.playheadMs;
+        const durationMs = 3000;
+
+        dispatch({
+            type: 'ADD_CLIP',
+            payload: {
+                clip: {
+                    id: clipId,
+                    trackId: titleTrack.id,
+                    sourceShotId: null,
+                    sourceDialogueId: null,
+                    sourceDubbedDialogueId: null,
+                    sourceAudioTrackId: null,
+                    sourceUploadUrl: null,
+                    mediaUrl: null,
+                    thumbnailUrl: null,
+                    startMs,
+                    endMs: startMs + durationMs,
+                    inPointMs: 0,
+                    outPointMs: durationMs,
+                    volume: 1,
+                    speed: 1,
+                    fadeInMs: 300,
+                    fadeOutMs: 300,
+                    sortOrder: 0,
+                    syncGroupId: null,
+                    language: null,
+                    isActive: true,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    // Spread centralized text defaults
+                    ...DEFAULT_TEXT_CLIP_PROPS,
+                },
+            },
+        });
+
+        // Select the new clip
+        dispatch({ type: 'SELECT_CLIPS', payload: { clipIds: [clipId] } });
+    }, [state.tracks, state.project?.id, state.playheadMs, dispatch]);
 
     return (
         <div className="flex min-h-[40px] items-center justify-between gap-3 bg-zinc-900 px-3 py-1.5">
@@ -151,6 +218,12 @@ export function Toolbar() {
                         💾 Save
                     </ToolbarButton>
                 )}
+
+                <div className="mx-1 h-5 w-px bg-zinc-700" />
+
+                <ToolbarButton onClick={handleAddTitle} title="Add title text at playhead">
+                    🔤 Add Title
+                </ToolbarButton>
 
                 <div className="mx-1 h-5 w-px bg-zinc-700" />
 

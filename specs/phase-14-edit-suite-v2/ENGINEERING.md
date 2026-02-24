@@ -835,17 +835,17 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [ ] Progress reporting via `postMessage`
 - [ ] Direct R2 upload from browser
 
-#### 6.2 Performance
-- [ ] LRU media cache for decoded frames
-- [ ] Virtual scrolling for timeline (only render visible clips)
-- [ ] Debounced re-render on property changes
+#### 6.2 Performance ✅
+- [x] LRU media cache for decoded frames
+- [x] Virtual scrolling for timeline (only render visible clips)
+- [x] Debounced re-render on property changes
 - [ ] OffscreenCanvas for waveform generation in Worker
 
-#### 6.3 Title/Text Overlays
-- [ ] Title track type
-- [ ] Text clip with font, size, color, position, duration
-- [ ] Canvas text rendering with shadow/outline
-- [ ] Fade-in/out via keyframe animation
+#### 6.3 Title/Text Overlays ✅
+- [x] Title track type
+- [x] Text clip with font, size, color, position, duration
+- [x] Canvas text rendering with shadow/outline
+- [x] Fade-in/out via keyframe animation
 
 #### 6.4 Collaborative Editing (Future)
 - [ ] WebSocket-based operational transforms
