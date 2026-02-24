@@ -839,7 +839,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] LRU media cache for decoded frames
 - [x] Virtual scrolling for timeline (only render visible clips)
 - [x] Debounced re-render on property changes
-- [ ] OffscreenCanvas for waveform generation in Worker
+- [x] OffscreenCanvas for waveform generation in Worker
 
 #### 6.3 Title/Text Overlays ✅
 - [x] Title track type
