@@ -13,6 +13,7 @@ import { cn } from '@kit/ui/utils';
 
 import { useEditSuite } from './edit-suite-provider';
 import { ExportDialog } from './export/export-dialog';
+import { DEFAULT_TEXT_CLIP_PROPS } from '../lib/types';
 
 // ──────────────────────────────────────────
 // Language labels
@@ -99,20 +100,8 @@ export function Toolbar() {
                     isActive: true,
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
-                    // Text defaults
-                    text: 'Title Text',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: 48,
-                    fontColor: '#ffffff',
-                    fontWeight: 'bold',
-                    textAlign: 'center',
-                    textPositionX: 0.5,
-                    textPositionY: 0.5,
-                    textShadowColor: 'rgba(0,0,0,0.6)',
-                    textShadowBlur: 4,
-                    textOutlineColor: null,
-                    textOutlineWidth: null,
-                    textBackgroundColor: null,
+                    // Spread centralized text defaults
+                    ...DEFAULT_TEXT_CLIP_PROPS,
                 },
             },
         });

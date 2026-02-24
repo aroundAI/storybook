@@ -92,6 +92,23 @@ export interface EditClip {
     textBackgroundColor: string | null;
 }
 
+/** Centralized defaults for text overlay properties on title clips. */
+export const DEFAULT_TEXT_CLIP_PROPS = {
+    text: 'Title Text',
+    fontFamily: 'Inter, sans-serif',
+    fontSize: 48,
+    fontColor: '#ffffff',
+    fontWeight: 'bold' as const,
+    textAlign: 'center' as const,
+    textPositionX: 0.5,
+    textPositionY: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowBlur: 4,
+    textOutlineColor: null,
+    textOutlineWidth: null,
+    textBackgroundColor: null,
+} satisfies Partial<EditClip>;
+
 export interface EditTransition {
     id: string;
     fromClipId: string;

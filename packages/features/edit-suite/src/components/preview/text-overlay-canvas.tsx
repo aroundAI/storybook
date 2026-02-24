@@ -135,7 +135,7 @@ export function TextOverlayCanvas({
             // Draw text outline (stroke)
             if (clip.textOutlineColor && (clip.textOutlineWidth ?? 0) > 0) {
                 ctx.strokeStyle = clip.textOutlineColor;
-                ctx.lineWidth = clip.textOutlineWidth! * 2;
+                ctx.lineWidth = clip.textOutlineWidth!;
                 ctx.lineJoin = 'round';
                 ctx.strokeText(clip.text, posX, posY);
             }
