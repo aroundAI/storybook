@@ -36,6 +36,8 @@ interface FFmpegResult {
     inputs: string[];
     /** Output arguments */
     outputArgs: string[];
+    /** Number of filter stages in the filter_complex graph */
+    filterStageCount: number;
 }
 
 // ──────────────────────────────────────────
@@ -54,6 +56,21 @@ const XFADE_MAP: Record<string, string> = {
     wipe_left: 'wipeleft',
     wipe_right: 'wiperight',
 };
+
+/**
+ * Escape a string for safe use in a shell command argument.
+ * Wraps in single quotes and escapes embedded single quotes.
+ */
+function escapeShellArg(arg: string): string {
+    return "'" + arg.replace(/'/g, "'\\''") + "'";
+}
+
+/**
+ * Sanitize an output path — allow only safe characters.
+ */
+function sanitizeOutputPath(path: string): string {
+    return path.replace(/[^a-zA-Z0-9._\-/]/g, '_');
+}
 
 // ──────────────────────────────────────────
 // Public API
@@ -89,6 +106,7 @@ export function buildFFmpegCommand(
             filterComplex: '',
             inputs: [],
             outputArgs: [],
+            filterStageCount: 0,
         };
     }
 
@@ -105,7 +123,7 @@ export function buildFFmpegCommand(
         }
     }
 
-    const inputArgs = inputs.map((inp) => `-i "${inp.url}"`);
+    const inputArgs = inputs.map((inp) => `-i ${escapeShellArg(inp.url)}`);
 
     // Separate clips by track type
     const videoClips = activeClips.filter((c) =>
@@ -146,8 +164,10 @@ export function buildFFmpegCommand(
         `-c:a aac -b:a 192k`,
         `-r ${project.fps}`,
         `-s ${project.width}x${project.height}`,
-        `-y "${outputPath}"`,
+        `-y ${escapeShellArg(sanitizeOutputPath(outputPath))}`,
     );
+
+    const filterStageCount = filterLines.length;
 
     // ── Assemble full command ──
     const command = [
@@ -159,7 +179,7 @@ export function buildFFmpegCommand(
         ...outputArgs,
     ].join(' \\\n  ');
 
-    return { command, filterComplex, inputs: inputArgs, outputArgs };
+    return { command, filterComplex, inputs: inputArgs, outputArgs, filterStageCount };
 }
 
 // ──────────────────────────────────────────
@@ -379,6 +399,6 @@ function buildVolumeKeyframeExpression(
     parts.push(lastKf.value.toFixed(3));
 
     // Close all if() brackets
-    const closingParens = ')'.repeat(parts.length);
+    const closingParens = ')'.repeat(parts.length - 1);
     return parts.join(',') + closingParens;
 }

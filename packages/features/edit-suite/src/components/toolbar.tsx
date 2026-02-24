@@ -7,7 +7,7 @@
  * Snap toggle, Save status, Export button.
  */
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 
 import { cn } from '@kit/ui/utils';
 
@@ -38,19 +38,8 @@ const LANGUAGE_LABELS: Record<string, string> = {
 // ──────────────────────────────────────────
 
 export function Toolbar() {
-    const { state, dispatch, undo, redo, canUndo, canRedo, forceSave, assemblyStatus, runAutoAssembly, episodeId } = useEditSuite();
+    const { state, dispatch, undo, redo, canUndo, canRedo, forceSave, assemblyStatus, runAutoAssembly, episodeId, availableLanguages } = useEditSuite();
     const [exportOpen, setExportOpen] = useState(false);
-
-    // Derive available languages from clips that have a language field
-    const availableLanguages = useMemo(() => {
-        const langs = new Set<string>();
-        for (const clip of state.clips) {
-            if (clip.language) langs.add(clip.language);
-        }
-        // Always include the active language
-        langs.add(state.activeLanguage);
-        return [...langs].sort();
-    }, [state.clips, state.activeLanguage]);
 
     const hasMultipleLanguages = availableLanguages.length > 1;
 

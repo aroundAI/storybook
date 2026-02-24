@@ -77,6 +77,9 @@ interface EditSuiteContextValue {
 
     /** Ref for AudioEngine — set by PreviewPanel, shared for waveform rendering */
     audioEngineRef: MutableRefObject<AudioEngine | null>;
+
+    /** Derived list of available languages from clips */
+    availableLanguages: string[];
 }
 
 const EditSuiteContext = createContext<EditSuiteContextValue | null>(null);
@@ -419,6 +422,16 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
         [assemblyStatus, dispatch],
     );
 
+    // ── Derived values ──
+    const availableLanguages = useMemo(() => {
+        const langs = new Set<string>();
+        for (const clip of state.clips) {
+            if (clip.language) langs.add(clip.language);
+        }
+        langs.add(state.activeLanguage);
+        return [...langs].sort();
+    }, [state.clips, state.activeLanguage]);
+
     // ── Context value ──
 
     const value = useMemo<EditSuiteContextValue>(
@@ -437,8 +450,9 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
             episodeId: episodeIdProp,
             playbackEngineRef,
             audioEngineRef,
+            availableLanguages,
         }),
-        [state, executeCommand, recordCommand, undo, redo, performSave, assemblyStatus, runAutoAssembly, episodeIdProp],
+        [state, executeCommand, recordCommand, undo, redo, performSave, assemblyStatus, runAutoAssembly, episodeIdProp, availableLanguages],
     );
 
     return (

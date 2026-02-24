@@ -10,7 +10,7 @@
  * - Render status display
  */
 
-import { useMemo, useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 
 import { cn } from '@kit/ui/utils';
 
@@ -26,20 +26,20 @@ interface ExportDialogProps {
     onClose: () => void;
 }
 
+/** Only allow http/https URLs to prevent javascript: or data: URI attacks */
+function isSafeUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+        return false;
+    }
+}
+
 export function ExportDialog({ open, onClose }: ExportDialogProps) {
-    const { state } = useEditSuite();
+    const { state, availableLanguages } = useEditSuite();
     const [selectedLang, setSelectedLang] = useState<string | 'all'>(state.activeLanguage);
     const [copied, setCopied] = useState(false);
-
-    // Derive available languages
-    const availableLanguages = useMemo(() => {
-        const langs = new Set<string>();
-        for (const clip of state.clips) {
-            if (clip.language) langs.add(clip.language);
-        }
-        langs.add(state.activeLanguage);
-        return [...langs].sort();
-    }, [state.clips, state.activeLanguage]);
 
     // Build FFmpeg command for the selected language
     const ffmpegResult = useMemo(() => {
@@ -143,7 +143,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                             {renderStatus === 'completed' && (
                                 <span>
                                     ✓ Render complete
-                                    {state.project?.renderUrl && (
+                                    {state.project?.renderUrl && isSafeUrl(state.project.renderUrl) && (
                                         <a
                                             href={state.project.renderUrl}
                                             target="_blank"
@@ -185,7 +185,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                                 <div className="text-[10px] text-zinc-500">Input files</div>
                             </div>
                             <div className="rounded-lg border border-zinc-800 bg-zinc-800/50 py-2">
-                                <div className="text-lg font-bold text-white">{ffmpegResult.filterComplex.split(';').length}</div>
+                                <div className="text-lg font-bold text-white">{ffmpegResult.filterStageCount}</div>
                                 <div className="text-[10px] text-zinc-500">Filter stages</div>
                             </div>
                             <div className="rounded-lg border border-zinc-800 bg-zinc-800/50 py-2">
