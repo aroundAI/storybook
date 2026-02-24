@@ -7,12 +7,41 @@
  * Snap toggle, Save status, Export button.
  */
 
+import { useState } from 'react';
+
 import { cn } from '@kit/ui/utils';
 
 import { useEditSuite } from './edit-suite-provider';
+import { ExportDialog } from './export/export-dialog';
+
+// ──────────────────────────────────────────
+// Language labels
+// ──────────────────────────────────────────
+
+const LANGUAGE_LABELS: Record<string, string> = {
+    en: '🇺🇸 English',
+    es: '🇪🇸 Spanish',
+    fr: '🇫🇷 French',
+    de: '🇩🇪 German',
+    pt: '🇧🇷 Portuguese',
+    hi: '🇮🇳 Hindi',
+    ja: '🇯🇵 Japanese',
+    ko: '🇰🇷 Korean',
+    zh: '🇨🇳 Chinese',
+    ar: '🇸🇦 Arabic',
+    it: '🇮🇹 Italian',
+    ru: '🇷🇺 Russian',
+};
+
+// ──────────────────────────────────────────
+// Toolbar
+// ──────────────────────────────────────────
 
 export function Toolbar() {
-    const { state, dispatch, undo, redo, canUndo, canRedo, forceSave, assemblyStatus, runAutoAssembly, episodeId } = useEditSuite();
+    const { state, dispatch, undo, redo, canUndo, canRedo, forceSave, assemblyStatus, runAutoAssembly, episodeId, availableLanguages } = useEditSuite();
+    const [exportOpen, setExportOpen] = useState(false);
+
+    const hasMultipleLanguages = availableLanguages.length > 1;
 
     return (
         <div className="flex min-h-[40px] items-center justify-between gap-3 bg-zinc-900 px-3 py-1.5">
@@ -28,9 +57,27 @@ export function Toolbar() {
 
             {/* Center: Language + Zoom */}
             <div className="flex items-center gap-1.5">
-                <span className="px-1 text-xs text-zinc-400">
-                    Lang: {state.activeLanguage.toUpperCase()}
-                </span>
+                {/* Language Switcher */}
+                {hasMultipleLanguages ? (
+                    <select
+                        className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 outline-none focus:border-violet-500"
+                        value={state.activeLanguage}
+                        onChange={(e) =>
+                            dispatch({ type: 'SET_LANGUAGE', payload: { language: e.target.value } })
+                        }
+                        title="Switch language"
+                    >
+                        {availableLanguages.map((lang) => (
+                            <option key={lang} value={lang}>
+                                {LANGUAGE_LABELS[lang] ?? lang.toUpperCase()}
+                            </option>
+                        ))}
+                    </select>
+                ) : (
+                    <span className="px-1 text-xs text-zinc-400">
+                        {LANGUAGE_LABELS[state.activeLanguage] ?? state.activeLanguage.toUpperCase()}
+                    </span>
+                )}
 
                 <div className="mx-1 h-5 w-px bg-zinc-700" />
 
@@ -107,13 +154,19 @@ export function Toolbar() {
 
                 <div className="mx-1 h-5 w-px bg-zinc-700" />
 
-                <ToolbarButton variant="primary" title="Export video">
+                <ToolbarButton variant="primary" title="Export video" onClick={() => setExportOpen(true)}>
                     🎬 Export
                 </ToolbarButton>
+
+                <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} />
             </div>
         </div>
     );
 }
+
+// ──────────────────────────────────────────
+// ToolbarButton
+// ──────────────────────────────────────────
 
 function ToolbarButton({
     children,

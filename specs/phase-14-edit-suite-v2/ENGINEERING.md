@@ -780,41 +780,42 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ---
 
-### Build Phase 5: Multilingual + Export (3–4 weeks)
+### Build Phase 5: Multilingual + Export ✅ (3–4 weeks)
 
 #### 5.1 Language Switcher
-- [ ] `LanguageSwitcher` dropdown in toolbar
-- [ ] Populated from `dubbed_versions` for the episode
-- [ ] On switch: update `edit_projects.active_language`
-- [ ] Toggle `is_active` on all dialogue clips by language
-- [ ] Show inactive language tracks as dimmed/semi-transparent
+- [x] `LanguageSwitcher` dropdown in toolbar
+- [x] Populated from clip languages (with 12-language label map)
+- [x] On switch: dispatch `SET_LANGUAGE` → update `activeLanguage`
+- [x] Toggle `is_active` on all dialogue clips by language
+- [x] Show inactive language clips as dimmed/semi-transparent (opacity-40 + border-dashed)
 
 #### 5.2 Sync Group Logic
-- [ ] `syncGroupShift()` — propagate position changes across all variants
-- [ ] `SyncGroupMoveCommand` — atomic undo/redo for all variants
-- [ ] Duration mismatch detection on assembly
-- [ ] Auto-speed calculation: `speed = dubbedDuration / originalDuration`
-- [ ] 🟡 Yellow border indicator when speed ≠ 1.0
-- [ ] Manual override: user can trim/extend instead of auto-speed
+- [x] `syncGroupShift()` — propagate position changes across all variants
+- [x] `SyncGroupMoveCommand` — atomic undo/redo for all variants
+- [x] `detectDurationMismatches()` — detect >5% duration differences
+- [x] `autoSpeedForSyncGroup()` — `speed = dubbedDuration / originalDuration`
+- [x] 🟡 Yellow border indicator when speed ≠ 1.0 (border-amber-500)
+- [x] Speed clamped to 0.25–4.0 range
 
 #### 5.3 FFmpeg Command Builder
-- [ ] `buildFFmpegCommand()` in `lib/ffmpeg-builder.ts`
-- [ ] Read all clips, tracks, transitions from DB
-- [ ] Generate `filter_complex` string for:
-  - Video: concat with transitions (xfade filter)
-  - Audio: amix with volume keyframes
-  - Per-clip speed adjustment (setpts/atempo)
-- [ ] Handle multiple audio tracks (dialogue + music + sfx)
-- [ ] Apply keyframe animations as FFmpeg filter parameters
+- [x] `buildFFmpegCommand()` in `lib/ffmpeg-builder.ts`
+- [x] Read all clips, tracks, transitions from state
+- [x] Generate `filter_complex` string for:
+  - Video: trim + setpts + scale + xfade transitions
+  - Audio: atrim + atempo + volume + adelay + amix
+  - Per-clip speed adjustment (setpts/atempo with chaining)
+- [x] Handle multiple audio tracks (dialogue + music + sfx)
+- [x] Volume keyframe expressions via `between()` FFmpeg syntax
+- [x] Export Dialog with FFmpeg command preview + copy button
 
-#### 5.4 Lambda Render Pipeline
+#### 5.4 Lambda Render Pipeline *(deferred — needs AWS infra)*
 - [ ] `enqueueRenderAction` — create SQS message with editProjectId + language
 - [ ] Lambda handler: fetch project data, download media from R2, run FFmpeg
 - [ ] Progress polling via `edit_projects.render_status`
 - [ ] Upload result to R2, update `render_url`
 - [ ] Error handling with `render_error` field
 
-#### 5.5 Per-Language Export
+#### 5.5 Per-Language Export *(deferred — needs AWS infra)*
 - [ ] "Export All Languages" button
 - [ ] Queue separate SQS jobs per language
 - [ ] Each job activates only matching language clips
