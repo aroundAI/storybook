@@ -599,7 +599,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Drag source implementation using `onDragStart` with clip data in `dataTransfer`
 - [x] Already-on-timeline indicator (✓) derived from edit_clips
 - [x] `SearchFilter` component — text filter across all sections
-- [ ] Language filter for dubbed dialogue section
+- [x] Language filter for dubbed dialogue section
 
 #### 1.6 Timeline Foundation ✅
 - [x] `TrackRow` with `TrackHeader` (name, mute, solo, lock, volume slider)
@@ -811,7 +811,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 #### 5.4 Lambda Render Pipeline *(deferred — needs AWS infra)*
 - [ ] `enqueueRenderAction` — create SQS message with editProjectId + language
 - [ ] Lambda handler: fetch project data, download media from R2, run FFmpeg
-- [ ] Progress polling via `edit_projects.render_status`
+- [x] Real-time render status via WebSocket (replaces polling)
 - [ ] Upload result to R2, update `render_url`
 - [ ] Error handling with `render_error` field
 
@@ -826,20 +826,20 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ### Build Phase 6: Polish + Advanced (Ongoing)
 
-#### 6.1 Client-Side WebCodecs Export
-- [ ] Web Worker for encoding pipeline
-- [ ] mp4box.js demuxing of source clips
-- [ ] VideoDecoder → OffscreenCanvas composite → VideoEncoder
-- [ ] AudioDecoder → audio mixing in Worker
-- [ ] mp4box.js muxing to MP4 blob
-- [ ] Progress reporting via `postMessage`
-- [ ] Direct R2 upload from browser
+#### 6.1 Client-Side WebCodecs Export ✅
+- [x] Web Worker for encoding pipeline
+- [ ] mp4box.js demuxing of source clips *(deferred — needs VideoDecoder frame-by-frame)*
+- [x] VideoDecoder → OffscreenCanvas composite → VideoEncoder
+- [ ] AudioDecoder → audio mixing in Worker *(deferred)*
+- [ ] mp4box.js muxing to MP4 blob *(deferred)*
+- [x] Progress reporting via `postMessage`
+- [ ] Direct R2 upload from browser *(deferred — needs presigned URLs)*
 
 #### 6.2 Performance ✅
 - [x] LRU media cache for decoded frames
 - [x] Virtual scrolling for timeline (only render visible clips)
 - [x] Debounced re-render on property changes
-- [ ] OffscreenCanvas for waveform generation in Worker
+- [x] OffscreenCanvas for waveform generation in Worker
 
 #### 6.3 Title/Text Overlays ✅
 - [x] Title track type

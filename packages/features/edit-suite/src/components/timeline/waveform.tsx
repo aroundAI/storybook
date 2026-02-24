@@ -10,49 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-// ──────────────────────────────────────────
-// Module-level peaks cache
-// ──────────────────────────────────────────
-
-const peaksCache = new Map<string, Float32Array>();
-const MAX_PEAK_BUCKETS = 50_000;
-
-// ──────────────────────────────────────────
-// Peaks extraction
-// ──────────────────────────────────────────
-
-/**
- * Extract peaks from an AudioBuffer at the given resolution.
- * Returns the absolute max amplitude per bucket.
- */
-function extractPeaks(buffer: AudioBuffer, bucketCount: number): Float32Array {
-    const peaks = new Float32Array(bucketCount);
-    const channelData = buffer.getChannelData(0); // Use first channel
-    const samplesPerBucket = Math.floor(channelData.length / bucketCount);
-
-    if (samplesPerBucket < 1) {
-        // Buffer is shorter than bucket count — fill what we can
-        for (let i = 0; i < Math.min(channelData.length, bucketCount); i++) {
-            peaks[i] = Math.abs(channelData[i]!);
-        }
-        return peaks;
-    }
-
-    for (let bucket = 0; bucket < bucketCount; bucket++) {
-        let max = 0;
-        const start = bucket * samplesPerBucket;
-        const end = Math.min(start + samplesPerBucket, channelData.length);
-
-        for (let j = start; j < end; j++) {
-            const abs = Math.abs(channelData[j]!);
-            if (abs > max) max = abs;
-        }
-
-        peaks[bucket] = max;
-    }
-
-    return peaks;
-}
+import { useWaveformWorker } from '../../hooks/use-waveform-worker';
 
 // ──────────────────────────────────────────
 // Component
@@ -71,7 +29,7 @@ interface WaveformProps {
     heightPx: number;
     /** Color for the waveform fill (CSS color string) */
     color?: string;
-    /** Decoded AudioBuffer provider — call AudioEngine.getAudioBuffer() */
+    /** @deprecated — no longer needed, Worker handles decoding */
     getBuffer?: (url: string) => Promise<AudioBuffer | null>;
 }
 
@@ -82,56 +40,23 @@ export function Waveform({
     widthPx,
     heightPx,
     color = 'rgba(255, 255, 255, 0.35)',
-    getBuffer,
 }: WaveformProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [peaks, setPeaks] = useState<Float32Array | null>(null);
+    const { requestPeaks } = useWaveformWorker();
 
-    // Decode and extract peaks
+    // Decode and extract peaks via Worker
     useEffect(() => {
         if (!mediaUrl || widthPx < 2) return;
 
         let cancelled = false;
 
         const loadPeaks = async () => {
-            // Check module cache first (high-res peaks, then slice)
-            const cacheKey = mediaUrl;
-            const cachedPeaks = peaksCache.get(cacheKey);
+            const result = await requestPeaks(mediaUrl);
+            if (!result || cancelled) return;
 
-            if (cachedPeaks) {
-                if (!cancelled) {
-                    setPeaks(slicePeaks(cachedPeaks, inPointMs, outPointMs, widthPx));
-                }
-                return;
-            }
-
-            // Decode the buffer
-            let buffer: AudioBuffer | null = null;
-
-            if (getBuffer) {
-                buffer = await getBuffer(mediaUrl);
-            } else {
-                // Fallback: decode ourselves
-                try {
-                    const ctx = new OfflineAudioContext(1, 1, 44100);
-                    const response = await fetch(mediaUrl);
-                    const arrayBuffer = await response.arrayBuffer();
-                    buffer = await ctx.decodeAudioData(arrayBuffer);
-                } catch {
-                    return;
-                }
-            }
-
-            if (!buffer || cancelled) return;
-
-            // Extract at high resolution (1 peak per ms)
-            const totalBuckets = Math.ceil(buffer.duration * 1000);
-            const fullPeaks = extractPeaks(buffer, Math.min(totalBuckets, MAX_PEAK_BUCKETS));
-            peaksCache.set(cacheKey, fullPeaks);
-
-            if (!cancelled) {
-                setPeaks(slicePeaks(fullPeaks, inPointMs, outPointMs, widthPx));
-            }
+            // Slice the full-resolution peaks to the visible region
+            setPeaks(slicePeaks(result.peaks, inPointMs, outPointMs, widthPx));
         };
 
         void loadPeaks();
@@ -139,7 +64,7 @@ export function Waveform({
         return () => {
             cancelled = true;
         };
-    }, [mediaUrl, inPointMs, outPointMs, widthPx, getBuffer]);
+    }, [mediaUrl, inPointMs, outPointMs, widthPx, requestPeaks]);
 
     // Draw waveform when peaks change or dimensions change
     useEffect(() => {

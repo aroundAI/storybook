@@ -32,6 +32,8 @@ import { createInitialState } from '../state/types';
 import { UndoManager, DeleteClipCommand, SplitClipCommand } from '../state/edit-commands';
 import type { EditCommand } from '../state/edit-commands';
 
+import { useEditSuiteWebSocket } from '../hooks/use-edit-suite-websocket';
+
 // ──────────────────────────────────────────
 // Context shape
 // ──────────────────────────────────────────
@@ -102,6 +104,9 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
     const [assemblyStatus, setAssemblyStatus] = useState<AssemblyStatus>('idle');
     const playbackEngineRef = useRef<PlaybackEngine | null>(null);
     const audioEngineRef = useRef<AudioEngine | null>(null);
+
+    // ── WebSocket for real-time render status ──
+    useEditSuiteWebSocket(state.project?.id, dispatch);
 
     // ── Undo / Redo ──
 

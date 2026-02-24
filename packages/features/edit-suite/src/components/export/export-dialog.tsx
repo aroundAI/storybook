@@ -16,6 +16,18 @@ import { cn } from '@kit/ui/utils';
 
 import { useEditSuite } from '../edit-suite-provider';
 import { buildFFmpegCommand } from '../../lib/ffmpeg-builder';
+import { useExportWorker } from '../../hooks/use-export-worker';
+import type { ExportClipManifest, ExportSettings } from '../../workers/export.worker';
+
+// ──────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────
+
+const DEFAULT_BROWSER_EXPORT_SETTINGS: Pick<ExportSettings, 'videoBitrate' | 'audioBitrate' | 'audioSampleRate'> = {
+    videoBitrate: 8_000_000,
+    audioBitrate: 128_000,
+    audioSampleRate: 48_000,
+};
 
 // ──────────────────────────────────────────
 // ExportDialog
@@ -40,6 +52,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     const { state, availableLanguages } = useEditSuite();
     const [selectedLang, setSelectedLang] = useState<string | 'all'>(state.activeLanguage);
     const [copied, setCopied] = useState(false);
+    const { exportState, startExport, cancelExport, downloadResult } = useExportWorker();
 
     // Build FFmpeg command for the selected language
     const ffmpegResult = useMemo(() => {
@@ -77,9 +90,44 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         setTimeout(() => setCopied(false), 2000);
     }, [ffmpegResult]);
 
+    const handleBrowserExport = useCallback(() => {
+        if (!state.project) return;
+
+        const tracksMap = new Map(state.tracks.map((t) => [t.id, t.type]));
+
+        const exportClips: ExportClipManifest[] = state.clips
+            .filter((c) => c.isActive && c.mediaUrl)
+            .filter((c) => {
+                if (selectedLang === 'all') return true;
+                if (!c.language) return true;
+                return c.language === selectedLang;
+            })
+            .map((c) => ({
+                id: c.id,
+                mediaUrl: c.mediaUrl!,
+                startMs: c.startMs,
+                endMs: c.endMs,
+                inPointMs: c.inPointMs,
+                outPointMs: c.outPointMs,
+                trackType: tracksMap.get(c.trackId) ?? 'video',
+                opacity: 1.0, // EditClip doesn't have opacity yet — default to full
+                speedMultiplier: c.speed,
+                volume: c.volume,
+            }));
+
+        const totalDurationMs = Math.max(...exportClips.map((c) => c.endMs), 0);
+
+        startExport(exportClips, {
+            width: state.project.width,
+            height: state.project.height,
+            fps: state.project.fps,
+            ...DEFAULT_BROWSER_EXPORT_SETTINGS,
+        }, totalDurationMs);
+    }, [state, selectedLang, startExport]);
+
     if (!open) return null;
 
-    const renderStatus = state.project?.renderStatus ?? 'idle';
+    const renderStatus = state.renderStatus;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -204,13 +252,50 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                     >
                         Cancel
                     </button>
-                    <button
-                        className="rounded-md border border-violet-600 bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
-                        disabled={renderStatus === 'rendering' || !state.project}
-                        title="Server-side rendering (requires AWS Lambda)"
-                    >
-                        🚀 Start Render
-                    </button>
+
+                    {/* Browser export section */}
+                    {exportState.isExporting ? (
+                        <div className="flex items-center gap-3">
+                            <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-32 overflow-hidden rounded-full bg-zinc-700">
+                                        <div
+                                            className="h-full rounded-full bg-violet-500 transition-all duration-300"
+                                            style={{ width: `${exportState.progress}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] text-zinc-400">{exportState.progress}%</span>
+                                </div>
+                                <span className="text-[10px] text-zinc-500 capitalize">{exportState.stage}</span>
+                            </div>
+                            <button
+                                className="rounded-md border border-red-700 bg-red-900/50 px-3 py-1.5 text-xs text-red-300 hover:bg-red-900"
+                                onClick={cancelExport}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    ) : exportState.stage === 'complete' ? (
+                        <button
+                            className="rounded-md border border-green-600 bg-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                            onClick={downloadResult}
+                        >
+                            ⬇ Download MP4
+                        </button>
+                    ) : (
+                        <button
+                            className="rounded-md border border-violet-600 bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={renderStatus === 'rendering' || !state.project}
+                            onClick={handleBrowserExport}
+                            title="Export video directly in your browser using WebCodecs"
+                        >
+                            🎬 Browser Export
+                        </button>
+                    )}
+
+                    {exportState.stage === 'error' && (
+                        <span className="text-[10px] text-red-400">{exportState.error}</span>
+                    )}
                 </div>
             </div>
         </div>
