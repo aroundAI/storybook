@@ -8,13 +8,14 @@
  * Peaks are cached per mediaUrl to avoid redundant processing.
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // ──────────────────────────────────────────
 // Module-level peaks cache
 // ──────────────────────────────────────────
 
 const peaksCache = new Map<string, Float32Array>();
+const MAX_PEAK_BUCKETS = 50_000;
 
 // ──────────────────────────────────────────
 // Peaks extraction
@@ -84,7 +85,7 @@ export function Waveform({
     getBuffer,
 }: WaveformProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const peaksRef = useRef<Float32Array | null>(null);
+    const [peaks, setPeaks] = useState<Float32Array | null>(null);
 
     // Decode and extract peaks
     useEffect(() => {
@@ -99,7 +100,7 @@ export function Waveform({
 
             if (cachedPeaks) {
                 if (!cancelled) {
-                    peaksRef.current = slicePeaks(cachedPeaks, inPointMs, outPointMs, widthPx);
+                    setPeaks(slicePeaks(cachedPeaks, inPointMs, outPointMs, widthPx));
                 }
                 return;
             }
@@ -125,11 +126,11 @@ export function Waveform({
 
             // Extract at high resolution (1 peak per ms)
             const totalBuckets = Math.ceil(buffer.duration * 1000);
-            const fullPeaks = extractPeaks(buffer, Math.min(totalBuckets, 50_000));
+            const fullPeaks = extractPeaks(buffer, Math.min(totalBuckets, MAX_PEAK_BUCKETS));
             peaksCache.set(cacheKey, fullPeaks);
 
             if (!cancelled) {
-                peaksRef.current = slicePeaks(fullPeaks, inPointMs, outPointMs, widthPx);
+                setPeaks(slicePeaks(fullPeaks, inPointMs, outPointMs, widthPx));
             }
         };
 
@@ -143,7 +144,6 @@ export function Waveform({
     // Draw waveform when peaks change or dimensions change
     useEffect(() => {
         const canvas = canvasRef.current;
-        const peaks = peaksRef.current;
         if (!canvas || !peaks || peaks.length === 0) return;
 
         const ctx = canvas.getContext('2d');
@@ -182,7 +182,7 @@ export function Waveform({
 
         ctx.closePath();
         ctx.fill();
-    }, [widthPx, heightPx, color, inPointMs, outPointMs, mediaUrl]);
+    }, [peaks, widthPx, heightPx, color]);
 
     if (widthPx < 4) return null;
 

@@ -74,7 +74,7 @@ export class AudioEngine {
         const cached = this._bufferCache.get(url);
         if (cached) return cached;
 
-        // Dedloop pending decodes
+        // Dedupe pending decodes
         const pending = this._pendingDecodes.get(url);
         if (pending) return pending;
 
@@ -85,7 +85,8 @@ export class AudioEngine {
                 const audioBuffer = await this.getContext().decodeAudioData(arrayBuffer);
                 this._bufferCache.set(url, audioBuffer);
                 return audioBuffer;
-            } catch {
+            } catch (error) {
+                console.error(`Failed to decode audio from URL: ${url}`, error);
                 // Audio decode failed (probably not an audio file, or CORS)
                 return null;
             } finally {

@@ -306,55 +306,50 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                 return;
             }
 
-            // Space: Toggle play/pause
-            if (e.key === ' ') {
+            // ── Playback shortcuts (handler map) ──
+
+            const playbackHandlers: Record<string, () => void> = {
+                ' ': () => playbackEngineRef.current?.togglePlayPause(),
+                'j': () => playbackEngineRef.current?.shuttleReverse(),
+                'k': () => playbackEngineRef.current?.shuttlePause(),
+                'l': () => playbackEngineRef.current?.shuttleForward(),
+            };
+
+            // Arrow keys (case-sensitive, skip if meta held)
+            if (!isMeta) {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    playbackEngineRef.current?.stepBackward();
+                    return;
+                }
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    playbackEngineRef.current?.stepForward();
+                    return;
+                }
+            }
+
+            const playbackHandler = playbackHandlers[e.key.toLowerCase()] ?? playbackHandlers[e.key];
+            if (playbackHandler) {
                 e.preventDefault();
-                playbackEngineRef.current?.togglePlayPause();
+                playbackHandler();
                 return;
             }
 
-            // J: Shuttle reverse
-            if (e.key.toLowerCase() === 'j') {
-                e.preventDefault();
-                playbackEngineRef.current?.shuttleReverse();
-                return;
-            }
+            // ── I/O mark in/out points ──
 
-            // K: Shuttle pause
-            if (e.key.toLowerCase() === 'k') {
-                e.preventDefault();
-                playbackEngineRef.current?.shuttlePause();
-                return;
-            }
-
-            // L: Shuttle forward
-            if (e.key.toLowerCase() === 'l') {
-                e.preventDefault();
-                playbackEngineRef.current?.shuttleForward();
-                return;
-            }
-
-            // Left arrow: Frame step backward
-            if (e.key === 'ArrowLeft' && !isMeta) {
-                e.preventDefault();
-                playbackEngineRef.current?.stepBackward();
-                return;
-            }
-
-            // Right arrow: Frame step forward
-            if (e.key === 'ArrowRight' && !isMeta) {
-                e.preventDefault();
-                playbackEngineRef.current?.stepForward();
-                return;
-            }
-
-            // I: Set in-point on selected clip
-            if (e.key.toLowerCase() === 'i' && !isMeta) {
+            if ((e.key.toLowerCase() === 'i' || e.key.toLowerCase() === 'o') && !isMeta) {
                 if (state.selectedClipIds.size === 0) return;
                 e.preventDefault();
+
+                const clipsById = new Map(state.clips.map((c) => [c.id, c]));
+                const isInPoint = e.key.toLowerCase() === 'i';
+
                 for (const clipId of state.selectedClipIds) {
-                    const clip = state.clips.find((c) => c.id === clipId);
-                    if (clip && state.playheadMs >= clip.startMs && state.playheadMs < clip.endMs) {
+                    const clip = clipsById.get(clipId);
+                    if (!clip) continue;
+
+                    if (isInPoint && state.playheadMs >= clip.startMs && state.playheadMs < clip.endMs) {
                         const trimDelta = state.playheadMs - clip.startMs;
                         dispatch({
                             type: 'UPDATE_CLIP',
@@ -366,18 +361,7 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                                 },
                             },
                         });
-                    }
-                }
-                return;
-            }
-
-            // O: Set out-point on selected clip
-            if (e.key.toLowerCase() === 'o' && !isMeta) {
-                if (state.selectedClipIds.size === 0) return;
-                e.preventDefault();
-                for (const clipId of state.selectedClipIds) {
-                    const clip = state.clips.find((c) => c.id === clipId);
-                    if (clip && state.playheadMs > clip.startMs && state.playheadMs <= clip.endMs) {
+                    } else if (!isInPoint && state.playheadMs > clip.startMs && state.playheadMs <= clip.endMs) {
                         const trimDelta = state.playheadMs - clip.endMs;
                         dispatch({
                             type: 'UPDATE_CLIP',
