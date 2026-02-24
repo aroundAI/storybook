@@ -14,10 +14,12 @@ interface AssetGroupProps {
     label: string;
     count: number;
     defaultOpen?: boolean;
+    /** Optional inline control rendered in the header (e.g. language filter) */
+    headerAction?: ReactNode;
     children: ReactNode;
 }
 
-export function AssetGroup({ icon, label, count, defaultOpen = true, children }: AssetGroupProps) {
+export function AssetGroup({ icon, label, count, defaultOpen = true, headerAction, children }: AssetGroupProps) {
     const [isOpen, setIsOpen] = useState(defaultOpen);
 
     return (
@@ -37,6 +39,9 @@ export function AssetGroup({ icon, label, count, defaultOpen = true, children }:
                 <span className="rounded-full bg-zinc-700/50 px-1.5 py-0.5 text-[10px] text-zinc-400">
                     {count}
                 </span>
+                {headerAction && (
+                    <span className="ml-1">{headerAction}</span>
+                )}
             </button>
 
             {isOpen && (

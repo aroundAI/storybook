@@ -599,7 +599,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Drag source implementation using `onDragStart` with clip data in `dataTransfer`
 - [x] Already-on-timeline indicator (✓) derived from edit_clips
 - [x] `SearchFilter` component — text filter across all sections
-- [ ] Language filter for dubbed dialogue section
+- [x] Language filter for dubbed dialogue section
 
 #### 1.6 Timeline Foundation ✅
 - [x] `TrackRow` with `TrackHeader` (name, mute, solo, lock, volume slider)

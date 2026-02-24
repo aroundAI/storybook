@@ -25,18 +25,50 @@ export function MediaBin() {
     const episodeId = state.project?.episodeId ?? undefined;
     const { sections, isLoading, error, refetch } = useMediaBin(episodeId, state.clips);
     const [search, setSearch] = useState('');
+    const [dubbedLanguageFilter, setDubbedLanguageFilter] = useState<string | null>(null);
 
     // Filter assets by search term
     const filteredSections = useMemo(() => {
-        if (!search.trim()) return sections;
-        const q = search.toLowerCase();
-        return sections
-            .map((section) => ({
-                ...section,
-                assets: section.assets.filter((a) => a.name.toLowerCase().includes(q)),
-            }))
-            .filter((section) => section.assets.length > 0);
-    }, [sections, search]);
+        let result = sections;
+
+        // Filter dubbed section by selected language
+        if (dubbedLanguageFilter) {
+            result = result.map((section) => {
+                if (section.key !== 'dubbed') return section;
+                return {
+                    ...section,
+                    assets: section.assets.filter(
+                        (a) => (a.meta.language as string)?.toLowerCase() === dubbedLanguageFilter.toLowerCase(),
+                    ),
+                };
+            });
+        }
+
+        // Filter by text search
+        if (search.trim()) {
+            const q = search.toLowerCase();
+            result = result
+                .map((section) => ({
+                    ...section,
+                    assets: section.assets.filter((a) => a.name.toLowerCase().includes(q)),
+                }))
+                .filter((section) => section.assets.length > 0);
+        }
+
+        return result;
+    }, [sections, search, dubbedLanguageFilter]);
+
+    // Derive available languages from dubbed section
+    const dubbedLanguages = useMemo(() => {
+        const dubbedSection = sections.find((s) => s.key === 'dubbed');
+        if (!dubbedSection) return [];
+        const langs = new Set<string>();
+        for (const asset of dubbedSection.assets) {
+            const lang = asset.meta.language as string | undefined;
+            if (lang) langs.add(lang.toLowerCase());
+        }
+        return [...langs].sort();
+    }, [sections]);
 
     // Total asset count
     const totalCount = sections.reduce((sum, s) => sum + s.assets.length, 0);
@@ -96,6 +128,24 @@ export function MediaBin() {
                         icon={section.icon}
                         label={section.label}
                         count={section.assets.length}
+                        headerAction={
+                            section.key === 'dubbed' && dubbedLanguages.length > 1 ? (
+                                <select
+                                    value={dubbedLanguageFilter ?? ''}
+                                    onChange={(e) => setDubbedLanguageFilter(e.target.value || null)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-[10px] text-zinc-300 focus:border-violet-500 focus:outline-none"
+                                    title="Filter by language"
+                                >
+                                    <option value="">All</option>
+                                    {dubbedLanguages.map((lang) => (
+                                        <option key={lang} value={lang}>
+                                            {lang.toUpperCase()}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : undefined
+                        }
                     >
                         {section.assets.map((asset) => (
                             <AssetItem key={asset.id} asset={asset} />
