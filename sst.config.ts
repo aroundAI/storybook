@@ -406,6 +406,37 @@ export default $config({
 
     console.log(`✓ Publish queue configured with 5-minute visibility timeout`);
 
+    // Dead Letter Queue for failed render jobs
+    const renderDLQ = new sst.aws.Queue('StorybookRenderDLQ', {
+      fifo: false,
+      transform: {
+        queue: {
+          // Retain messages in DLQ for 14 days for investigation
+          messageRetentionPeriodSeconds: 1209600, // 14 days
+        },
+      },
+    });
+
+    // AWS SQS queue for video render processing (FFmpeg)
+    const renderQueue = new sst.aws.Queue('StorybookRenderQueue', {
+      fifo: false,
+      transform: {
+        queue: (args) => {
+          // Visibility timeout must be >= Lambda timeout (15 minutes)
+          // FFmpeg renders can take a long time for longer videos
+          args.visibilityTimeoutSeconds = 900; // 15 minutes
+
+          // Configure Dead Letter Queue
+          // After 3 failed attempts, move message to DLQ for investigation
+          args.redrivePolicy = $interpolate`{"deadLetterTargetArn":"${renderDLQ.arn}","maxReceiveCount":3}`;
+        },
+      },
+    });
+
+    console.log(
+      `✓ Render queue configured with 15-minute visibility timeout`,
+    );
+
     // DynamoDB table for WebSocket connection tracking
     const connectionsTable = new sst.aws.Dynamo(
       'StorybookWebSocketConnections',
@@ -737,6 +768,69 @@ export default $config({
 
     console.log(`✓ Publish Worker Lambda configured with 5-minute timeout`);
 
+    // Render Worker Lambda - Processes video render jobs from SQS
+    // Downloads media from R2, runs FFmpeg, uploads result back to R2
+    const renderWorker = renderQueue.subscribe({
+      handler: 'apps/web/lambda/render-worker/index.handler',
+      timeout: '15 minutes', // FFmpeg renders can take a long time
+      memory: '2048 MB', // FFmpeg needs RAM for video processing
+      architecture: 'arm64',
+      link: [connectionsTable, websocket, renderQueue],
+      permissions: [
+        {
+          // Permission to send WebSocket messages to users
+          actions: ['execute-api:ManageConnections'],
+          resources: ['*'],
+        },
+        {
+          actions: ['kms:Decrypt'],
+          resources: [kmsKey.arn],
+        },
+      ],
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+      },
+      environment: {
+        // Supabase configuration
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
+        // R2 Storage configuration (for media download and render upload)
+        ...(process.env.R2_ACCOUNT_ID && {
+          R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+        }),
+        ...(process.env.R2_ACCESS_KEY_ID && {
+          R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+        }),
+        ...(process.env.R2_SECRET_ACCESS_KEY && {
+          R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+        }),
+        ...(process.env.R2_BUCKET_NAME && {
+          R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
+        }),
+        ...(process.env.R2_PUBLIC_URL && {
+          R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+        }),
+
+        // WebSocket configuration
+        CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
+      },
+      nodejs: {
+        install: [
+          '@supabase/supabase-js',
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-apigatewaymanagementapi',
+          '@aws-sdk/client-s3',
+        ],
+      },
+    });
+
+    console.log(`✓ Render Worker Lambda configured with 15-minute timeout`);
+
     // Deploy Next.js application
     const web = new sst.aws.Nextjs('StorybookWeb', {
       path: 'apps/web',
@@ -757,6 +851,7 @@ export default $config({
         queue,
         llmJobsQueue,
         publishQueue,
+        renderQueue,
         connectionsTable,
         websocket,
       ],
@@ -854,6 +949,7 @@ export default $config({
         ),
         AWS_SQS_QUEUE_URL: queue.url,
         PUBLISH_QUEUE_URL: publishQueue.url,
+        RENDER_QUEUE_URL: renderQueue.url,
         AWS_WEBSOCKET_ENDPOINT: websocket.url,
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
 
@@ -960,7 +1056,7 @@ export default $config({
           {
             Effect: 'Allow',
             Action: 'sqs:SendMessage',
-            Resource: queue.arn,
+            Resource: [queue.arn, renderQueue.arn],
           },
         ],
       }),
