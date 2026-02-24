@@ -808,19 +808,19 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Volume keyframe expressions via `between()` FFmpeg syntax
 - [x] Export Dialog with FFmpeg command preview + copy button
 
-#### 5.4 Lambda Render Pipeline *(deferred — needs AWS infra)*
-- [ ] `enqueueRenderAction` — create SQS message with editProjectId + language
-- [ ] Lambda handler: fetch project data, download media from R2, run FFmpeg
+#### 5.4 Lambda Render Pipeline ✅ *(implemented — deploy via `npx sst deploy`)*
+- [x] `enqueueRenderAction` — create SQS message with editProjectId + language
+- [x] Lambda handler: fetch project data, download media from R2, run FFmpeg
 - [x] Real-time render status via WebSocket (replaces polling)
-- [ ] Upload result to R2, update `render_url`
-- [ ] Error handling with `render_error` field
+- [x] Upload result to R2, update `render_url`
+- [x] Error handling with `render_error` field
 
-#### 5.5 Per-Language Export *(deferred — needs AWS infra)*
-- [ ] "Export All Languages" button
-- [ ] Queue separate SQS jobs per language
-- [ ] Each job activates only matching language clips
-- [ ] Results stored with language suffix in R2 path
-- [ ] Master video asset creation via existing FILM-716 system
+#### 5.5 Per-Language Export ✅ *(implemented — deploy via `npx sst deploy`)*
+- [x] "Export All Languages" button
+- [x] Queue separate SQS jobs per language
+- [x] Each job activates only matching language clips
+- [x] Results stored with language suffix in R2 path
+- [ ] Master video asset creation via existing FILM-716 system *(follow-up)*
 
 ---
 
