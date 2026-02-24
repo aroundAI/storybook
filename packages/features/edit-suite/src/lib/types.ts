@@ -75,6 +75,21 @@ export interface EditClip {
     isActive: boolean;
     createdAt: string;
     updatedAt: string;
+
+    // ── Text overlay fields (title track clips only) ──
+    text: string | null;
+    fontFamily: string | null;
+    fontSize: number | null;
+    fontColor: string | null;
+    fontWeight: 'normal' | 'bold' | null;
+    textAlign: 'left' | 'center' | 'right' | null;
+    textPositionX: number | null; // 0-1 normalized
+    textPositionY: number | null; // 0-1 normalized
+    textShadowColor: string | null;
+    textShadowBlur: number | null;
+    textOutlineColor: string | null;
+    textOutlineWidth: number | null;
+    textBackgroundColor: string | null;
 }
 
 export interface EditTransition {
@@ -206,6 +221,20 @@ const EditClipRowSchema = z.object({
     is_active: z.boolean(),
     created_at: z.string(),
     updated_at: z.string(),
+    // Text overlay fields
+    text: z.string().nullable().default(null),
+    font_family: z.string().nullable().default(null),
+    font_size: z.coerce.number().nullable().default(null),
+    font_color: z.string().nullable().default(null),
+    font_weight: z.enum(['normal', 'bold']).nullable().default(null),
+    text_align: z.enum(['left', 'center', 'right']).nullable().default(null),
+    text_position_x: z.coerce.number().nullable().default(null),
+    text_position_y: z.coerce.number().nullable().default(null),
+    text_shadow_color: z.string().nullable().default(null),
+    text_shadow_blur: z.coerce.number().nullable().default(null),
+    text_outline_color: z.string().nullable().default(null),
+    text_outline_width: z.coerce.number().nullable().default(null),
+    text_background_color: z.string().nullable().default(null),
 });
 
 const EditTransitionRowSchema = z.object({
@@ -309,6 +338,19 @@ export function mapEditClipRow(row: Record<string, unknown>): EditClip {
         isActive: r.is_active,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
+        text: r.text,
+        fontFamily: r.font_family,
+        fontSize: r.font_size,
+        fontColor: r.font_color,
+        fontWeight: r.font_weight,
+        textAlign: r.text_align,
+        textPositionX: r.text_position_x,
+        textPositionY: r.text_position_y,
+        textShadowColor: r.text_shadow_color,
+        textShadowBlur: r.text_shadow_blur,
+        textOutlineColor: r.text_outline_color,
+        textOutlineWidth: r.text_outline_width,
+        textBackgroundColor: r.text_background_color,
     };
 }
 

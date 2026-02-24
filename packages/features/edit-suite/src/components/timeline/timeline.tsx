@@ -1,5 +1,7 @@
 'use client';
 
+import { useDeferredValue } from 'react';
+
 /**
  * Timeline — bottom panel with tracks, clips, ruler, and playhead.
  *
@@ -14,6 +16,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 
 import { useEditSuite } from '../edit-suite-provider';
+import { useVisibleClips } from '../../hooks/use-visible-clips';
 import { TimelineRuler } from './timeline-ruler';
 import { Playhead } from './playhead';
 import { TrackRow } from './track-row';
@@ -37,6 +40,9 @@ export function Timeline() {
     const { state, dispatch } = useEditSuite();
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+    // Use deferred zoom to prevent jank during rapid zoom slider changes
+    const deferredZoom = useDeferredValue(state.zoom);
+
     // Compute dynamic timeline duration based on clips
     const durationMs = useMemo(() => {
         const maxEnd = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
@@ -57,6 +63,28 @@ export function Timeline() {
         }
         return map;
     }, [state.tracks, state.clips]);
+
+    // Virtual scrolling: only render clips within the viewport + buffer
+    const { visibleClips } = useVisibleClips({
+        clips: state.clips,
+        zoom: deferredZoom,
+        scrollContainerRef,
+    });
+
+    // Group VISIBLE clips by track (for rendering)
+    const visibleClipsByTrack = useMemo(() => {
+        const map = new Map<string, typeof state.clips>();
+        for (const track of state.tracks) {
+            map.set(track.id, []);
+        }
+        for (const clip of visibleClips) {
+            const trackClips = map.get(clip.trackId);
+            if (trackClips) {
+                trackClips.push(clip);
+            }
+        }
+        return map;
+    }, [state.tracks, visibleClips]);
 
     // Selected clip IDs as a Set for O(1) lookups
     const selectedClipIds = useMemo(
@@ -208,8 +236,8 @@ export function Timeline() {
                                     <TrackRow
                                         key={track.id}
                                         track={track}
-                                        clips={clipsByTrack.get(track.id) ?? []}
-                                        allClips={state.clips}
+                                        clips={visibleClipsByTrack.get(track.id) ?? []}
+                                        allClips={clipsByTrack.get(track.id) ?? []}
                                         transitions={transitionsByTrack.get(track.id) ?? []}
                                         keyframes={keyframesByTrack.get(track.id) ?? []}
                                         zoom={state.zoom}
