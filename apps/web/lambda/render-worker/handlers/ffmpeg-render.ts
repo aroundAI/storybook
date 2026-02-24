@@ -5,7 +5,7 @@
  * executes FFmpeg, and returns the rendered video buffer.
  */
 import { execFile } from 'child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from 'fs';
 import { createHash } from 'crypto';
 import { pipeline } from 'stream/promises';
 import { tmpdir } from 'os';
@@ -392,7 +392,6 @@ function runFFmpeg(
 
 function cleanupWorkDir(): void {
     try {
-        const { readdirSync } = require('fs');
         const files = readdirSync(WORK_DIR);
         for (const file of files) {
             try {

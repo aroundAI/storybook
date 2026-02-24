@@ -256,7 +256,6 @@ async function processRender(job: RenderJobMessage): Promise<void> {
 
     // 6. Upload result to R2
     const { uploadToR2 } = await import('./utils/r2-storage');
-    const renderPath = `renders/${editProjectId}/${language}/output.mp4`;
     const uploadResult = await uploadToR2(
         'renders',
         `${editProjectId}/${language}/output.mp4`,
