@@ -126,7 +126,7 @@ export function interpolateKeyframes(
     offsetMs: number,
 ): number {
     if (keyframes.length === 0) {
-        return KEYFRAME_DEFAULTS[keyframes[0]?.property ?? 'volume'];
+        return KEYFRAME_DEFAULTS['volume'];
     }
 
     // Sort by offset (should already be sorted, but defensive)

@@ -70,7 +70,7 @@ export function KeyframeEditor({ clip, keyframes, dispatch }: KeyframeEditorProp
     const [dragIdx, setDragIdx] = useState<number | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
 
-    const propOption = PROPERTY_OPTIONS.find((p) => p.value === selectedProperty)!;
+    const propOption = PROPERTY_OPTIONS.find((p) => p.value === selectedProperty) ?? PROPERTY_OPTIONS[0]!;
     const range = PROPERTY_RANGES[selectedProperty];
     const clipDurationMs = clip.outPointMs - clip.inPointMs;
 
