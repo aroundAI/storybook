@@ -38,7 +38,7 @@ export function MediaBin() {
                 return {
                     ...section,
                     assets: section.assets.filter(
-                        (a) => (a.meta.language as string)?.toLowerCase() === dubbedLanguageFilter.toLowerCase(),
+                        (a) => typeof a.meta.language === 'string' && a.meta.language.toLowerCase() === dubbedLanguageFilter.toLowerCase(),
                     ),
                 };
             });
@@ -64,8 +64,8 @@ export function MediaBin() {
         if (!dubbedSection) return [];
         const langs = new Set<string>();
         for (const asset of dubbedSection.assets) {
-            const lang = asset.meta.language as string | undefined;
-            if (lang) langs.add(lang.toLowerCase());
+            const lang = asset.meta.language;
+            if (typeof lang === 'string' && lang) langs.add(lang.toLowerCase());
         }
         return [...langs].sort();
     }, [sections]);

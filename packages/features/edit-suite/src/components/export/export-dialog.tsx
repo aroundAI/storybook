@@ -17,7 +17,17 @@ import { cn } from '@kit/ui/utils';
 import { useEditSuite } from '../edit-suite-provider';
 import { buildFFmpegCommand } from '../../lib/ffmpeg-builder';
 import { useExportWorker } from '../../hooks/use-export-worker';
-import type { ExportClipManifest } from '../../workers/export.worker';
+import type { ExportClipManifest, ExportSettings } from '../../workers/export.worker';
+
+// ──────────────────────────────────────────
+// Constants
+// ──────────────────────────────────────────
+
+const DEFAULT_BROWSER_EXPORT_SETTINGS: Pick<ExportSettings, 'videoBitrate' | 'audioBitrate' | 'audioSampleRate'> = {
+    videoBitrate: 8_000_000,
+    audioBitrate: 128_000,
+    audioSampleRate: 48_000,
+};
 
 // ──────────────────────────────────────────
 // ExportDialog
@@ -83,6 +93,8 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     const handleBrowserExport = useCallback(() => {
         if (!state.project) return;
 
+        const tracksMap = new Map(state.tracks.map((t) => [t.id, t.type]));
+
         const exportClips: ExportClipManifest[] = state.clips
             .filter((c) => c.isActive && c.mediaUrl)
             .filter((c) => {
@@ -97,7 +109,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                 endMs: c.endMs,
                 inPointMs: c.inPointMs,
                 outPointMs: c.outPointMs,
-                trackType: state.tracks.find((t) => t.id === c.trackId)?.type ?? 'video',
+                trackType: tracksMap.get(c.trackId) ?? 'video',
                 opacity: 1.0, // EditClip doesn't have opacity yet — default to full
                 speedMultiplier: c.speed,
                 volume: c.volume,
@@ -109,9 +121,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
             width: state.project.width,
             height: state.project.height,
             fps: state.project.fps,
-            videoBitrate: 8_000_000,
-            audioBitrate: 128_000,
-            audioSampleRate: 48_000,
+            ...DEFAULT_BROWSER_EXPORT_SETTINGS,
         }, totalDurationMs);
     }, [state, selectedLang, startExport]);
 

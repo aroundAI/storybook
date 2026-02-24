@@ -84,6 +84,18 @@ function isWebCodecsSupported(): boolean {
 }
 
 // ──────────────────────────────────────────
+// Encoder configuration
+// ──────────────────────────────────────────
+
+/** H.264 High Profile Level 4.0 — widely supported across devices */
+const VIDEO_ENCODER_CONFIG = {
+    codec: 'avc1.640028',
+    hardwareAcceleration: 'prefer-hardware' as const,
+};
+
+const KEYFRAME_INTERVAL_SECONDS = 2;
+
+// ──────────────────────────────────────────
 // Compositing canvas
 // ──────────────────────────────────────────
 
@@ -122,12 +134,11 @@ async function runExport(manifest: StartExportMessage) {
     });
 
     videoEncoder.configure({
-        codec: 'avc1.640028', // H.264 High Profile Level 4.0
+        ...VIDEO_ENCODER_CONFIG,
         width,
         height,
         bitrate: videoBitrate,
         framerate: fps,
-        hardwareAcceleration: 'prefer-hardware',
     });
 
     // ── Fetch and cache source media as ImageBitmaps ──
@@ -181,7 +192,7 @@ async function runExport(manifest: StartExportMessage) {
         });
 
         // Encode the frame (keyframe every 2 seconds)
-        const isKeyFrame = frame % (fps * 2) === 0;
+        const isKeyFrame = frame % (fps * KEYFRAME_INTERVAL_SECONDS) === 0;
         videoEncoder.encode(videoFrame, { keyFrame: isKeyFrame });
         videoFrame.close();
 

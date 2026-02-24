@@ -96,7 +96,9 @@ export function useEditSuiteWebSocket(
                     }
 
                     case 'subscribed':
-                        console.log(`[EditSuite WS] Subscribed to ${msg.channel}`);
+                        if (process.env.NODE_ENV === 'development') {
+                            console.log(`[EditSuite WS] Subscribed to ${msg.channel}`);
+                        }
                         break;
 
                     case 'pong':
@@ -119,7 +121,9 @@ export function useEditSuiteWebSocket(
 
         const wsUrl = process.env.NEXT_PUBLIC_WEBSOCKET_URL;
         if (!wsUrl) {
-            console.warn('[EditSuite WS] NEXT_PUBLIC_WEBSOCKET_URL not configured');
+            if (process.env.NODE_ENV === 'development') {
+                console.warn('[EditSuite WS] NEXT_PUBLIC_WEBSOCKET_URL not configured');
+            }
             return;
         }
 
@@ -132,7 +136,9 @@ export function useEditSuiteWebSocket(
         wsRef.current = ws;
 
         ws.onopen = () => {
-            console.log(`[EditSuite WS] Connected, subscribing to ${channel}`);
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[EditSuite WS] Connected, subscribing to ${channel}`);
+            }
             reconnectDelayRef.current = INITIAL_RECONNECT_MS;
 
             // Subscribe to project channel
@@ -159,14 +165,18 @@ export function useEditSuiteWebSocket(
             // Auto-reconnect with exponential backoff
             if (!isUnmountedRef.current) {
                 const delay = reconnectDelayRef.current;
-                console.log(`[EditSuite WS] Disconnected, reconnecting in ${delay}ms`);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[EditSuite WS] Disconnected, reconnecting in ${delay}ms`);
+                }
                 reconnectTimeoutRef.current = setTimeout(connect, delay);
                 reconnectDelayRef.current = Math.min(delay * 2, MAX_RECONNECT_MS);
             }
         };
 
         ws.onerror = (err) => {
-            console.error('[EditSuite WS] Error:', err);
+            if (process.env.NODE_ENV === 'development') {
+                console.error('[EditSuite WS] Error:', err);
+            }
             ws.close();
         };
     }, [channel, handleMessage]);
