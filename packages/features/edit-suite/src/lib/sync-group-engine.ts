@@ -28,7 +28,7 @@ export function syncGroupShift(
     movedClipId: string,
     deltaMs: number,
     clips: EditClip[],
-    syncGroups: DialogueSyncGroup[],
+    _syncGroups: DialogueSyncGroup[],
 ): Array<{ clipId: string; startMs: number; endMs: number }> {
     const movedClip = clips.find((c) => c.id === movedClipId);
     if (!movedClip?.syncGroupId) return [];
