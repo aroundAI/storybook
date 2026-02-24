@@ -172,13 +172,14 @@ export function ThumbnailStrip({
         const thumbW = thumbnails[0]!.width * (h / thumbnails[0]!.height);
         const thumbsInView = Math.ceil(widthPx / thumbW) + 1;
 
-        // Map inPoint/outPoint to thumbnail indices
-        const startFraction = (inPointMs / 1000) / (thumbnails.length * THUMBNAIL_INTERVAL_SEC);
+        // Map inPoint to thumbnail index using source duration fraction
+        const startFraction = (inPointMs / 1000) / sourceDurationSec;
         const startThumbIdx = Math.floor(startFraction * thumbnails.length);
 
         for (let i = 0; i < thumbsInView; i++) {
-            const idx = (startThumbIdx + i) % thumbnails.length;
-            if (idx < 0 || idx >= thumbnails.length) continue;
+            let idx = (startThumbIdx + i) % thumbnails.length;
+            if (idx < 0) idx += thumbnails.length;
+            if (idx >= thumbnails.length) continue;
 
             const bitmap = thumbnails[idx]!;
             const x = i * thumbW;
@@ -188,7 +189,7 @@ export function ThumbnailStrip({
             const drawW = Math.min(thumbW, widthPx - x);
             ctx.drawImage(bitmap, 0, 0, bitmap.width, bitmap.height, x, 0, drawW, h);
         }
-    }, [thumbnails, widthPx, inPointMs, speed]);
+    }, [thumbnails, widthPx, inPointMs, sourceDurationSec, speed]);
 
     if (widthPx < 20) return null;
 
