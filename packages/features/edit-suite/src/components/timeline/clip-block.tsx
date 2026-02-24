@@ -16,9 +16,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch } from 'react';
 
 import type { EditClip } from '../../lib/types';
+import type { TrackType } from '../../lib/schemas';
 import type { EditAction } from '../../state/types';
 import { useEditSuite } from '../edit-suite-provider';
 import { AddClipCommand, MoveClipCommand, TrimClipCommand } from '../../state/edit-commands';
+import { Waveform } from './waveform';
 
 // ──────────────────────────────────────────
 // Constants
@@ -27,6 +29,7 @@ import { AddClipCommand, MoveClipCommand, TrimClipCommand } from '../../state/ed
 const EDGE_HIT_ZONE_PX = 8;      // Width of trim edge handles
 const MIN_CLIP_DURATION_MS = 100; // Minimum clip duration
 const SNAP_THRESHOLD_PX = 10;    // Distance for snap engagement
+const AUDIO_TRACK_TYPES = new Set<TrackType>(['dialogue', 'music', 'sfx', 'ambient', 'upload']);
 
 // ──────────────────────────────────────────
 // Types
@@ -40,6 +43,8 @@ interface ClipBlockProps {
     isSelected: boolean;
     colorClass: string;
     dispatch: Dispatch<EditAction>;
+    /** Track type for waveform rendering */
+    trackType: TrackType;
     /** All clips for snap targets */
     allClips?: EditClip[];
     /** Current playhead ms for snap-to-playhead */
@@ -56,12 +61,14 @@ export function ClipBlock({
     isSelected,
     colorClass,
     dispatch,
+    trackType,
     allClips = [],
     playheadMs = 0,
 }: ClipBlockProps) {
-    const { executeCommand, recordCommand } = useEditSuite();
+    const { executeCommand, recordCommand, audioEngineRef } = useEditSuite();
     const blockRef = useRef<HTMLDivElement>(null);
     const [dragMode, setDragMode] = useState<DragMode>('none');
+    const showWaveform = AUDIO_TRACK_TYPES.has(trackType) && !!clip.mediaUrl;
     const [snapLineX, setSnapLineX] = useState<number | null>(null);
 
     // Track latest clip state via ref for stale-closure-safe access in mouseup
@@ -326,14 +333,26 @@ export function ClipBlock({
                 {/* Left trim handle indicator */}
                 <div className="absolute left-0 top-0 h-full w-1 bg-white/0 transition-colors hover:bg-white/30" />
 
+                {/* Waveform for audio clips */}
+                {showWaveform && (
+                    <Waveform
+                        mediaUrl={clip.mediaUrl!}
+                        inPointMs={clip.inPointMs}
+                        outPointMs={clip.outPointMs}
+                        widthPx={widthPx}
+                        heightPx={40}
+                        getBuffer={(url) => audioEngineRef.current?.getAudioBuffer(url) ?? Promise.resolve(null)}
+                    />
+                )}
+
                 {/* Clip content (only show if wide enough) */}
                 {widthPx > 40 && (
-                    <span className="truncate px-1.5 py-0.5 font-medium">
+                    <span className="relative z-[1] truncate px-1.5 py-0.5 font-medium drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
                         {name}
                     </span>
                 )}
                 {widthPx > 80 && (
-                    <span className="ml-auto flex-shrink-0 px-1 text-[9px] text-white/50">
+                    <span className="relative z-[1] ml-auto flex-shrink-0 px-1 text-[9px] text-white/50 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
                         {durationLabel}
                     </span>
                 )}

@@ -8,7 +8,7 @@
  * - UndoManager for undo/redo
  * - Auto-save (debounced 2s after last dirty change)
  * - Auto-assembly (one-click project creation from episode assets)
- * - Keyboard shortcuts (Cmd+Z, Cmd+Shift+Z, Cmd+S)
+ * - Keyboard shortcuts (Cmd+Z, Cmd+Shift+Z, Cmd+S, Space, J/K/L, ←/→, I/O)
  */
 
 import {
@@ -22,8 +22,10 @@ import {
     useState,
 } from 'react';
 
-import type { Dispatch, ReactNode } from 'react';
+import type { Dispatch, MutableRefObject, ReactNode } from 'react';
 
+import type { AudioEngine } from '../lib/audio-engine';
+import type { PlaybackEngine } from '../lib/playback-engine';
 import { editReducer } from '../state/edit-reducer';
 import type { EditAction, EditSuiteState } from '../state/types';
 import { createInitialState } from '../state/types';
@@ -69,6 +71,12 @@ interface EditSuiteContextValue {
 
     /** Episode ID from route context (available before project creation) */
     episodeId: string | undefined;
+
+    /** Ref for PlaybackEngine — set by PreviewPanel, read by keyboard shortcuts */
+    playbackEngineRef: MutableRefObject<PlaybackEngine | null>;
+
+    /** Ref for AudioEngine — set by PreviewPanel, shared for waveform rendering */
+    audioEngineRef: MutableRefObject<AudioEngine | null>;
 }
 
 const EditSuiteContext = createContext<EditSuiteContextValue | null>(null);
@@ -89,6 +97,8 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
     const undoManagerRef = useRef(new UndoManager());
     const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [assemblyStatus, setAssemblyStatus] = useState<AssemblyStatus>('idle');
+    const playbackEngineRef = useRef<PlaybackEngine | null>(null);
+    const audioEngineRef = useRef<AudioEngine | null>(null);
 
     // ── Undo / Redo ──
 
@@ -295,11 +305,83 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
                 }
                 return;
             }
+
+            // ── Playback shortcuts (handler map) ──
+
+            const playbackHandlers: Record<string, () => void> = {
+                ' ': () => playbackEngineRef.current?.togglePlayPause(),
+                'j': () => playbackEngineRef.current?.shuttleReverse(),
+                'k': () => playbackEngineRef.current?.shuttlePause(),
+                'l': () => playbackEngineRef.current?.shuttleForward(),
+            };
+
+            // Arrow keys (case-sensitive, skip if meta held)
+            if (!isMeta) {
+                if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    playbackEngineRef.current?.stepBackward();
+                    return;
+                }
+                if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    playbackEngineRef.current?.stepForward();
+                    return;
+                }
+            }
+
+            const playbackHandler = playbackHandlers[e.key.toLowerCase()] ?? playbackHandlers[e.key];
+            if (playbackHandler) {
+                e.preventDefault();
+                playbackHandler();
+                return;
+            }
+
+            // ── I/O mark in/out points ──
+
+            if ((e.key.toLowerCase() === 'i' || e.key.toLowerCase() === 'o') && !isMeta) {
+                if (state.selectedClipIds.size === 0) return;
+                e.preventDefault();
+
+                const clipsById = new Map(state.clips.map((c) => [c.id, c]));
+                const isInPoint = e.key.toLowerCase() === 'i';
+
+                for (const clipId of state.selectedClipIds) {
+                    const clip = clipsById.get(clipId);
+                    if (!clip) continue;
+
+                    if (isInPoint && state.playheadMs >= clip.startMs && state.playheadMs < clip.endMs) {
+                        const trimDelta = state.playheadMs - clip.startMs;
+                        dispatch({
+                            type: 'UPDATE_CLIP',
+                            payload: {
+                                clipId: clip.id,
+                                changes: {
+                                    startMs: state.playheadMs,
+                                    inPointMs: clip.inPointMs + trimDelta,
+                                },
+                            },
+                        });
+                    } else if (!isInPoint && state.playheadMs > clip.startMs && state.playheadMs <= clip.endMs) {
+                        const trimDelta = state.playheadMs - clip.endMs;
+                        dispatch({
+                            type: 'UPDATE_CLIP',
+                            payload: {
+                                clipId: clip.id,
+                                changes: {
+                                    endMs: state.playheadMs,
+                                    outPointMs: clip.outPointMs + trimDelta,
+                                },
+                            },
+                        });
+                    }
+                }
+                return;
+            }
         }
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [undo, redo, performSave, executeCommand, dispatch, state.selectedClipIds, state.clips, state.playheadMs]);
+    }, [undo, redo, performSave, executeCommand, dispatch, state.selectedClipIds, state.clips, state.playheadMs, playbackEngineRef]);
 
     // ── Auto-assembly ──
 
@@ -353,6 +435,8 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
             assemblyStatus,
             runAutoAssembly,
             episodeId: episodeIdProp,
+            playbackEngineRef,
+            audioEngineRef,
         }),
         [state, executeCommand, recordCommand, undo, redo, performSave, assemblyStatus, runAutoAssembly, episodeIdProp],
     );
