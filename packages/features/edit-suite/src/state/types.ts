@@ -105,6 +105,20 @@ export interface EditSuiteState {
 
     /** The currently active language for preview */
     activeLanguage: string;
+
+    // ── Render status (WebSocket-driven) ──
+
+    /** Current render pipeline status */
+    renderStatus: 'idle' | 'queued' | 'rendering' | 'completed' | 'failed';
+
+    /** URL of the rendered video (set on completion) */
+    renderUrl: string | null;
+
+    /** Error message if render failed */
+    renderError: string | null;
+
+    /** Render progress percentage (0-100) */
+    renderProgress: number;
 }
 
 // ──────────────────────────────────────────
@@ -136,6 +150,10 @@ export function createInitialState(): EditSuiteState {
         newClipIds: new Set(),
         newKeyframeIds: new Set(),
         activeLanguage: 'en',
+        renderStatus: 'idle',
+        renderUrl: null,
+        renderError: null,
+        renderProgress: 0,
     };
 }
 
@@ -190,4 +208,7 @@ export type EditAction =
     // ── Persistence ──
     | { type: 'MARK_SAVING' }
     | { type: 'MARK_SAVED' }
-    | { type: 'MARK_SAVE_ERROR' };
+    | { type: 'MARK_SAVE_ERROR' }
+
+    // ── Render status (WebSocket) ──
+    | { type: 'SET_RENDER_STATUS'; payload: { status: 'queued' | 'rendering' | 'completed' | 'failed'; renderUrl?: string | null; renderError?: string | null; progress?: number } };

@@ -348,6 +348,17 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
         case 'MARK_SAVE_ERROR':
             return { ...state, saveStatus: 'error' };
 
+        // ── Render status (WebSocket) ──
+
+        case 'SET_RENDER_STATUS':
+            return {
+                ...state,
+                renderStatus: action.payload.status,
+                renderUrl: action.payload.renderUrl ?? state.renderUrl,
+                renderError: action.payload.renderError ?? state.renderError,
+                renderProgress: action.payload.progress ?? state.renderProgress,
+            };
+
         default:
             return state;
     }

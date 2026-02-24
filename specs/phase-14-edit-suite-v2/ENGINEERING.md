@@ -811,7 +811,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 #### 5.4 Lambda Render Pipeline *(deferred — needs AWS infra)*
 - [ ] `enqueueRenderAction` — create SQS message with editProjectId + language
 - [ ] Lambda handler: fetch project data, download media from R2, run FFmpeg
-- [ ] Progress polling via `edit_projects.render_status`
+- [x] Real-time render status via WebSocket (replaces polling)
 - [ ] Upload result to R2, update `render_url`
 - [ ] Error handling with `render_error` field
 
