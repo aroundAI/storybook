@@ -64,6 +64,21 @@ export function Timeline() {
         [state.selectedClipIds],
     );
 
+    // Group transitions by track (keyed by fromClipId's track)
+    const transitionsByTrack = useMemo(() => {
+        const clipTrack = new Map(state.clips.map((c) => [c.id, c.trackId]));
+        const map = new Map<string, typeof state.transitions>();
+        for (const t of state.transitions) {
+            const trackId = clipTrack.get(t.fromClipId);
+            if (trackId) {
+                const arr = map.get(trackId);
+                if (arr) arr.push(t);
+                else map.set(trackId, [t]);
+            }
+        }
+        return map;
+    }, [state.clips, state.transitions]);
+
     // Auto-scroll to keep playhead visible during playback
     useEffect(() => {
         if (!state.isPlaying) return;
@@ -180,6 +195,7 @@ export function Timeline() {
                                         track={track}
                                         clips={clipsByTrack.get(track.id) ?? []}
                                         allClips={state.clips}
+                                        transitions={transitionsByTrack.get(track.id) ?? []}
                                         zoom={state.zoom}
                                         playheadMs={state.playheadMs}
                                         selectedClipIds={selectedClipIds}
