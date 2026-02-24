@@ -275,3 +275,70 @@ export class SplitClipCommand implements EditCommand {
         dispatch({ type: 'ADD_CLIP', payload: { clip: this.originalClip } });
     }
 }
+
+/**
+ * Move all clips in a sync group atomically.
+ *
+ * When a user drags one clip that belongs to a sync group,
+ * all sibling clips shift by the same delta. This command
+ * enables undo/redo of the entire batch.
+ */
+export class SyncGroupMoveCommand implements EditCommand {
+    readonly label = 'Move sync group';
+
+    constructor(
+        /** The clip the user actually dragged */
+        private primaryMove: { clipId: string; prevStartMs: number; prevEndMs: number; nextStartMs: number; nextEndMs: number },
+        /** All sibling clips that also need to shift */
+        private siblingMoves: Array<{ clipId: string; prevStartMs: number; prevEndMs: number; nextStartMs: number; nextEndMs: number }>,
+    ) { }
+
+    execute(dispatch: Dispatch<EditAction>) {
+        // Move primary clip
+        dispatch({
+            type: 'MOVE_CLIP',
+            payload: {
+                clipId: this.primaryMove.clipId,
+                startMs: this.primaryMove.nextStartMs,
+                endMs: this.primaryMove.nextEndMs,
+            },
+        });
+
+        // Move all siblings
+        for (const move of this.siblingMoves) {
+            dispatch({
+                type: 'MOVE_CLIP',
+                payload: {
+                    clipId: move.clipId,
+                    startMs: move.nextStartMs,
+                    endMs: move.nextEndMs,
+                },
+            });
+        }
+    }
+
+    undo(dispatch: Dispatch<EditAction>) {
+        // Restore primary clip
+        dispatch({
+            type: 'MOVE_CLIP',
+            payload: {
+                clipId: this.primaryMove.clipId,
+                startMs: this.primaryMove.prevStartMs,
+                endMs: this.primaryMove.prevEndMs,
+            },
+        });
+
+        // Restore all siblings
+        for (const move of this.siblingMoves) {
+            dispatch({
+                type: 'MOVE_CLIP',
+                payload: {
+                    clipId: move.clipId,
+                    startMs: move.prevStartMs,
+                    endMs: move.prevEndMs,
+                },
+            });
+        }
+    }
+}
+

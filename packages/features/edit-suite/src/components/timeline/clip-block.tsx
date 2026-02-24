@@ -328,10 +328,12 @@ export function ClipBlock({
         <>
             <div
                 ref={blockRef}
-                className={`absolute top-1 flex items-center overflow-hidden rounded-[3px] border text-[10px] text-white/90 transition-shadow ${colorClass} ${isSelected
+                className={`group/clip absolute top-1 flex items-center overflow-hidden rounded-[3px] border text-[10px] text-white/90 transition-shadow ${colorClass} ${isSelected
                     ? 'border-violet-400 shadow-[0_0_0_1px_rgba(139,92,246,0.5)] z-10'
-                    : 'border-white/10 hover:border-white/25'
-                    } ${dragMode !== 'none' ? 'opacity-90' : ''}`}
+                    : clip.syncGroupId && clip.speed !== 1
+                        ? 'border-amber-500 border-2'
+                        : 'border-white/10 hover:border-white/25'
+                    } ${dragMode !== 'none' ? 'opacity-90' : ''} ${!clip.isActive ? 'opacity-40 border-dashed' : ''}`}
                 style={{
                     left: `${leftPx}px`,
                     width: `${widthPx}px`,
