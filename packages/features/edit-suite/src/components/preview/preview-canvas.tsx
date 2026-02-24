@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 import type { EditClip } from '../../lib/types';
 import { useEditSuite } from '../edit-suite-provider';
 import { renderTransition, getTransitionProgress, type TransitionFrame } from '../../lib/transition-renderer';
+import { getInterpolatedValues } from '../../lib/keyframe-engine';
 
 // ──────────────────────────────────────────
 // Types
@@ -223,10 +224,57 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
             // Normal rendering (no transition)
             if (!transitionRendered) {
                 const dims = getDrawDims(video);
-                ctx.drawImage(video, dims.drawX, dims.drawY, dims.drawW, dims.drawH);
+
+                // Apply visual keyframe transforms
+                const clipOffsetForKf = state.playheadMs - clip.startMs;
+                const kfValues = getInterpolatedValues(state.keyframes, clip.id, clipOffsetForKf);
+
+                const hasTranforms =
+                    kfValues.position_x !== undefined ||
+                    kfValues.position_y !== undefined ||
+                    kfValues.scale !== undefined ||
+                    kfValues.rotation !== undefined ||
+                    kfValues.opacity !== undefined;
+
+                if (hasTranforms) {
+                    ctx.save();
+
+                    // Apply opacity
+                    if (kfValues.opacity !== undefined) {
+                        ctx.globalAlpha = Math.max(0, Math.min(1, kfValues.opacity));
+                    }
+
+                    // Transform origin at clip center
+                    const centerX = dims.drawX + dims.drawW / 2;
+                    const centerY = dims.drawY + dims.drawH / 2;
+                    ctx.translate(centerX, centerY);
+
+                    // Apply position offset
+                    if (kfValues.position_x !== undefined || kfValues.position_y !== undefined) {
+                        ctx.translate(kfValues.position_x ?? 0, kfValues.position_y ?? 0);
+                    }
+
+                    // Apply scale
+                    if (kfValues.scale !== undefined) {
+                        ctx.scale(kfValues.scale, kfValues.scale);
+                    }
+
+                    // Apply rotation (value is in degrees)
+                    if (kfValues.rotation !== undefined) {
+                        ctx.rotate((kfValues.rotation * Math.PI) / 180);
+                    }
+
+                    // Draw relative to center
+                    ctx.translate(-centerX, -centerY);
+                    ctx.drawImage(video, dims.drawX, dims.drawY, dims.drawW, dims.drawH);
+
+                    ctx.restore();
+                } else {
+                    ctx.drawImage(video, dims.drawX, dims.drawY, dims.drawW, dims.drawH);
+                }
             }
         }
-    }, [activeVideoClips, getVideo, state.playheadMs, state.transitions, width, height]);
+    }, [activeVideoClips, getVideo, state.playheadMs, state.transitions, state.keyframes, width, height]);
 
     // Render on playhead change
     useEffect(() => {

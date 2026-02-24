@@ -735,48 +735,48 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ---
 
-### Build Phase 4: Keyframe Animation (3–4 weeks)
+### Build Phase 4: Keyframe Animation ✅ (3–4 weeks)
 
 #### 4.1 Keyframe CRUD
-- [ ] `createKeyframeAction` — add keyframe for clip + property + offset
-- [ ] `updateKeyframeAction` — update value, easing, bezier control points
-- [ ] `deleteKeyframeAction` — remove keyframe
-- [ ] `batchUpdateKeyframesAction` — save all dirty keyframes
+- [x] `createKeyframeAction` — add keyframe for clip + property + offset
+- [x] `updateKeyframeAction` — update value, easing, bezier control points
+- [x] `deleteKeyframeAction` — remove keyframe
+- [x] `batchUpdateKeyframesAction` — save all dirty keyframes
 
 #### 4.2 Keyframe Engine
-- [ ] `interpolateKeyframes()` function in `lib/keyframe-engine.ts`
-- [ ] All 6 easing types implemented
-- [ ] `cubicBezier()` function for custom curves
-- [ ] `getInterpolatedValues()` — returns all property values at given offset
+- [x] `interpolateKeyframes()` function in `lib/keyframe-engine.ts`
+- [x] All 6 easing types implemented
+- [x] `cubicBezier()` function for custom curves
+- [x] `getInterpolatedValues()` — returns all property values at given offset
 
 #### 4.3 Volume Keyframes
-- [ ] Apply volume keyframes via `gainNode.gain.linearRampToValueAtTime()`
-- [ ] Real-time preview: update gain scheduling on keyframe change
-- [ ] Handle `hold` easing with `setValueAtTime()`
+- [x] Apply volume keyframes via `gainNode.gain.linearRampToValueAtTime()`
+- [x] Real-time preview: update gain scheduling on keyframe change
+- [x] Handle `hold` easing with `setValueAtTime()`
 
 #### 4.4 Visual Keyframes
-- [ ] Apply position_x/y via `ctx.translate()` during composite
-- [ ] Apply scale via `ctx.scale()` during composite
-- [ ] Apply rotation via `ctx.rotate()` during composite
-- [ ] Apply opacity via `ctx.globalAlpha` during composite
-- [ ] Transform origin at clip center
+- [x] Apply position_x/y via `ctx.translate()` during composite
+- [x] Apply scale via `ctx.scale()` during composite
+- [x] Apply rotation via `ctx.rotate()` during composite
+- [x] Apply opacity via `ctx.globalAlpha` during composite
+- [x] Transform origin at clip center
 
 #### 4.5 Curve Editor UI
-- [ ] `KeyframeEditor` component in Inspector
-- [ ] Property selector dropdown (volume, position_x, etc.)
-- [ ] SVG canvas for curve visualization
-- [ ] Draggable ◆ diamonds — horizontal (time) + vertical (value)
-- [ ] Curve line drawn between keyframes using easing function
-- [ ] Double-click to add keyframe at position
-- [ ] Right-click context menu to delete / change easing
-- [ ] Easing preset buttons (linear, ease-in, ease-out, ease-in-out, hold)
-- [ ] Bezier handle editing when easing = 'bezier'
+- [x] `KeyframeEditor` component in Inspector
+- [x] Property selector dropdown (volume, position_x, etc.)
+- [x] SVG canvas for curve visualization
+- [x] Draggable ◆ diamonds — horizontal (time) + vertical (value)
+- [x] Curve line drawn between keyframes using easing function
+- [x] Double-click to add keyframe at position
+- [x] Right-click context menu to delete / change easing
+- [x] Easing preset buttons (linear, ease-in, ease-out, ease-in-out, hold)
+- [x] Bezier handle editing when easing = 'bezier'
 
 #### 4.6 Keyframe Diamonds on Clips
-- [ ] Small ◆ markers on clip blocks in timeline
-- [ ] Show on hover or when clip is selected
-- [ ] Color-coded by property
-- [ ] Draggable horizontally to adjust offset within clip
+- [x] Small ◆ markers on clip blocks in timeline
+- [x] Show on hover or when clip is selected
+- [x] Color-coded by property
+- [x] Draggable horizontally to adjust offset within clip
 
 ---
 

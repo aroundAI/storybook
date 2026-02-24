@@ -114,6 +114,7 @@ export function PreviewPanel() {
                 state.clips,
                 state.tracks,
                 engine?.speed ?? 1,
+                state.keyframes,
             );
         } else {
             audio.stopPlayback();
@@ -132,6 +133,7 @@ export function PreviewPanel() {
             state.clips,
             state.tracks,
             engine?.speed ?? 1,
+            state.keyframes,
         );
     }, [state.playheadMs, state.isPlaying, state.clips, state.tracks, audioEngineRef, playbackEngineRef]);
 
