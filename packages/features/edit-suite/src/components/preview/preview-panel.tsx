@@ -5,8 +5,8 @@
  *
  * Integrates:
  * - PreviewCanvas for video compositing
- * - PlaybackEngine for timeline playback
- * - Keyboard shortcuts (Space, J/K/L, arrows)
+ * - PlaybackEngine for timeline playback (registered in provider context)
+ * - AudioEngine for audio playback (registered in provider context)
  * - Timecode display (MM:SS:FF)
  */
 
@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import { cn } from '@kit/ui/utils';
 
+import { AudioEngine } from '../../lib/audio-engine';
 import { PlaybackEngine } from '../../lib/playback-engine';
 import { useEditSuite } from '../edit-suite-provider';
 import { PreviewCanvas } from './preview-canvas';
@@ -35,8 +36,7 @@ function formatTimecode(ms: number, fps: number): string {
 // ──────────────────────────────────────────
 
 export function PreviewPanel() {
-    const { state, dispatch } = useEditSuite();
-    const engineRef = useRef<PlaybackEngine | null>(null);
+    const { state, dispatch, playbackEngineRef, audioEngineRef } = useEditSuite();
     const containerRef = useRef<HTMLDivElement>(null);
 
     const fps = state.project?.fps ?? 30;
@@ -49,10 +49,10 @@ export function PreviewPanel() {
         return Math.max(60_000, Math.round(maxEnd * 1.2));
     }, [state.clips]);
 
-    // Initialize engine
+    // Initialize PlaybackEngine
     useEffect(() => {
         const engine = new PlaybackEngine();
-        engineRef.current = engine;
+        playbackEngineRef.current = engine;
 
         engine.onTick = (ms) => {
             dispatch({ type: 'SET_PLAYHEAD', payload: { ms } });
@@ -68,51 +68,105 @@ export function PreviewPanel() {
 
         return () => {
             engine.dispose();
-            engineRef.current = null;
+            playbackEngineRef.current = null;
         };
-    }, [dispatch]);
+    }, [dispatch, playbackEngineRef]);
+
+    // Initialize AudioEngine
+    useEffect(() => {
+        const audio = new AudioEngine();
+        audioEngineRef.current = audio;
+
+        return () => {
+            audio.dispose();
+            audioEngineRef.current = null;
+        };
+    }, [audioEngineRef]);
 
     // Update engine config when project changes
     useEffect(() => {
-        const engine = engineRef.current;
+        const engine = playbackEngineRef.current;
         if (!engine) return;
         engine.setDuration(durationMs);
         engine.setFps(fps);
-    }, [durationMs, fps]);
+    }, [durationMs, fps, playbackEngineRef]);
 
     // Sync engine position when playhead is dragged (external seek)
     useEffect(() => {
-        const engine = engineRef.current;
+        const engine = playbackEngineRef.current;
         if (!engine || engine.isPlaying) return;
 
         // Only sync when not playing — during playback the engine drives the playhead
         if (Math.abs(engine.currentMs - state.playheadMs) > 50) {
             engine.seekTo(state.playheadMs);
         }
-    }, [state.playheadMs]);
+    }, [state.playheadMs, playbackEngineRef]);
+
+    // Start/stop audio on play/pause
+    useEffect(() => {
+        const audio = audioEngineRef.current;
+        if (!audio) return;
+
+        if (state.isPlaying) {
+            const engine = playbackEngineRef.current;
+            void audio.startPlayback(
+                state.playheadMs,
+                state.clips,
+                state.tracks,
+                engine?.speed ?? 1,
+            );
+        } else {
+            audio.stopPlayback();
+        }
+    }, [state.isPlaying, audioEngineRef, playbackEngineRef]);
+
+    // Sync audio on playhead tick during playback
+    useEffect(() => {
+        if (!state.isPlaying) return;
+        const audio = audioEngineRef.current;
+        if (!audio) return;
+
+        const engine = playbackEngineRef.current;
+        void audio.syncToPlayhead(
+            state.playheadMs,
+            state.clips,
+            state.tracks,
+            engine?.speed ?? 1,
+        );
+    }, [state.playheadMs, state.isPlaying, state.clips, state.tracks, audioEngineRef, playbackEngineRef]);
+
+    // Update track gain nodes when mute/solo/volume changes
+    useEffect(() => {
+        audioEngineRef.current?.updateTracks(state.tracks);
+    }, [state.tracks, audioEngineRef]);
+
+    // Preload audio buffers when clips change
+    useEffect(() => {
+        audioEngineRef.current?.preloadClips(state.clips);
+    }, [state.clips, audioEngineRef]);
 
     // ── Playback control handlers ──
 
     const handlePlayPause = useCallback(() => {
-        engineRef.current?.togglePlayPause();
-    }, []);
+        playbackEngineRef.current?.togglePlayPause();
+    }, [playbackEngineRef]);
 
     const handleStop = useCallback(() => {
-        engineRef.current?.stop();
-    }, []);
+        playbackEngineRef.current?.stop();
+    }, [playbackEngineRef]);
 
     const handleGoToStart = useCallback(() => {
-        engineRef.current?.seekTo(0);
-    }, []);
+        playbackEngineRef.current?.seekTo(0);
+    }, [playbackEngineRef]);
 
     // Speed indicator for shuttle
     const speedLabel = useMemo(() => {
-        const engine = engineRef.current;
+        const engine = playbackEngineRef.current;
         if (!engine || !state.isPlaying) return null;
         const speed = engine.speed;
         if (speed === 1) return null;
-        return `${speed > 0 ? '' : ''}${speed}×`;
-    }, [state.isPlaying]);
+        return `${speed}×`;
+    }, [state.isPlaying, playbackEngineRef]);
 
     return (
         <div

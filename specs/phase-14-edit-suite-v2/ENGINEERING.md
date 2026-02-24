@@ -541,7 +541,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ## 13. Task Breakdown
 
-### Build Phase 1: Foundation — Database + Skeleton (4–5 weeks)
+### Build Phase 1: Foundation — Database + Skeleton ✅
 
 #### 1.1 Database Migration ✅
 - [x] Create schema file `apps/web/supabase/schemas/35-edit-suite.sql`
@@ -636,7 +636,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ---
 
-### Build Phase 2: Playback + Core Editing (3–4 weeks)
+### Build Phase 2: Playback + Core Editing ✅
 
 #### 2.1 Preview Canvas ✅
 - [x] `PreviewCanvas` — `<canvas>` element at project dimensions (1920×1080 scaled)
@@ -646,20 +646,20 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Layer compositing: draw clips in track sort order (bottom track first)
 - [x] Aspect ratio handling for canvas scaling
 
-#### 2.2 Audio Playback
-- [ ] `AudioContext` creation + `GainNode` per audio clip
-- [ ] Track-level volume: master `GainNode` per track
-- [ ] Clip-level volume: per-clip `GainNode`
-- [ ] Mute/solo logic: muted tracks disconnect `GainNode`
-- [ ] Sync audio playback position with playhead
-- [ ] Start/stop audio sources on play/pause
+#### 2.2 Audio Playback ✅
+- [x] `AudioContext` creation + `GainNode` per audio clip
+- [x] Track-level volume: master `GainNode` per track
+- [x] Clip-level volume: per-clip `GainNode`
+- [x] Mute/solo logic: muted tracks disconnect `GainNode`
+- [x] Sync audio playback position with playhead
+- [x] Start/stop audio sources on play/pause
 
 #### 2.3 Playback Controls ✅
 - [x] `PlaybackControls` — play/pause/stop buttons
 - [x] `TimecodeDisplay` — MM:SS:FF format synced with playhead
 - [x] `Space` to toggle play/pause
 - [x] `J`/`K`/`L` shuttle: reverse / pause / forward (multi-tap = 2×, 4×)
-- [ ] `I`/`O` to set in/out points on selected clip
+- [x] `I`/`O` to set in/out points on selected clip
 - [x] Frame-step with arrow keys (left/right = ±1 frame)
 
 #### 2.4 Playhead ✅
@@ -680,12 +680,12 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Multi-select (shift+click)
 - [x] `Alt+Drag` to duplicate clip
 
-#### 2.6 Waveform Rendering
-- [ ] `Waveform` component — render audio waveform on clip block
-- [ ] Web Audio API `OfflineAudioContext` to decode audio buffer
-- [ ] Downsample to peaks array matching clip pixel width
-- [ ] Canvas-based waveform drawing (filled, semi-transparent)
-- [ ] Cache waveform data per clip URL
+#### 2.6 Waveform Rendering ✅
+- [x] `Waveform` component — render audio waveform on clip block
+- [x] Web Audio API `OfflineAudioContext` to decode audio buffer
+- [x] Downsample to peaks array matching clip pixel width
+- [x] Canvas-based waveform drawing (filled, semi-transparent)
+- [x] Cache waveform data per clip URL
 
 #### 2.7 Undo/Redo ✅
 - [x] `EditCommand` interface with `execute()` and `undo()`

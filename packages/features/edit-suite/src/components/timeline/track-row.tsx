@@ -198,6 +198,7 @@ export function TrackRow({ track, clips, allClips, zoom, playheadMs, selectedCli
                         isSelected={selectedClipIds.has(clip.id)}
                         colorClass={colors.clip}
                         dispatch={dispatch}
+                        trackType={track.type}
                         allClips={allClips}
                         playheadMs={playheadMs}
                     />
