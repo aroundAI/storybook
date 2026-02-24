@@ -697,41 +697,41 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 ---
 
-### Build Phase 3: Transitions + Effects (2–3 weeks)
+### Build Phase 3: Transitions + Effects ✅ (2–3 weeks)
 
 #### 3.1 Transition UI
-- [ ] `TransitionHandle` — appears between adjacent clips on hover
-- [ ] `TransitionPicker` in Inspector — grid of transition types with preview
-- [ ] Click transition handle to open picker
-- [ ] Transition duration slider (100ms–5000ms)
-- [ ] Visual indicator: overlap region between clips shown as gradient
+- [x] `TransitionHandle` — appears between adjacent clips on hover
+- [x] `TransitionPicker` in Inspector — grid of transition types with preview
+- [x] Click transition handle to open picker
+- [x] Transition duration slider (100ms–5000ms)
+- [x] Visual indicator: overlap region between clips shown as gradient
 
 #### 3.2 Transition Rendering
-- [ ] `crossfade` — alpha blend between outgoing and incoming frames
-- [ ] `fade_black` — fade out to black, fade in from black
-- [ ] `fade_white` — same with white
-- [ ] `dissolve` — pixel-level blend using `globalCompositeOperation`
-- [ ] `wipe_left` / `wipe_right` — clip-path based wipe
-- [ ] Server actions: `createTransitionAction`, `updateTransitionAction`, `deleteTransitionAction`
+- [x] `crossfade` — alpha blend between outgoing and incoming frames
+- [x] `fade_black` — fade out to black, fade in from black
+- [x] `fade_white` — same with white
+- [x] `dissolve` — pixel-level blend using `globalCompositeOperation`
+- [x] `wipe_left` / `wipe_right` — clip-path based wipe
+- [x] Server actions: `createTransitionAction`, `updateTransitionAction`, `deleteTransitionAction`
 
 #### 3.3 Speed Control
-- [ ] Speed slider in Inspector (0.25×–4×)
-- [ ] Clip duration recalculates on speed change
-- [ ] `<video>.playbackRate` updated during preview
-- [ ] Visual indicator on clip block (e.g., "2×" badge)
+- [x] Speed slider in Inspector (0.25×–4×)
+- [x] Clip duration recalculates on speed change
+- [x] `<video>.playbackRate` updated during preview
+- [x] Visual indicator on clip block (e.g., "2×" badge)
 
 #### 3.4 Thumbnail Strip
-- [ ] `ThumbnailStrip` component on video clips
-- [ ] Extract frames at regular intervals using `<video>` + `<canvas>`
-- [ ] Render as strip of small thumbnails across clip width
-- [ ] Cache thumbnails per clip URL
+- [x] `ThumbnailStrip` component on video clips
+- [x] Extract frames at regular intervals using `<video>` + `<canvas>`
+- [x] Render as strip of small thumbnails across clip width
+- [x] Cache thumbnails per clip URL
 
 #### 3.5 Snap System
-- [ ] Snap-to-grid: quantize to nearest frame boundary
-- [ ] Snap-to-edges: adjacent clip start/end points
-- [ ] Snap-to-playhead
-- [ ] `SnapToggle` in toolbar to enable/disable
-- [ ] Visual snap guides (thin lines) during drag
+- [x] Snap-to-grid: quantize to nearest frame boundary
+- [x] Snap-to-edges: adjacent clip start/end points
+- [x] Snap-to-playhead
+- [x] `SnapToggle` in toolbar to enable/disable
+- [x] Visual snap guides (thin lines) during drag
 
 ---
 

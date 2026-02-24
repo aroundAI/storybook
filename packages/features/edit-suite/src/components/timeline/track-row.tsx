@@ -7,10 +7,12 @@
  * Right side: ClipLane where clips are rendered and assets can be dropped.
  */
 
-import type { EditTrack, EditClip } from '../../lib/types';
+import type { EditTrack, EditClip, EditTransition } from '../../lib/types';
 import type { EditAction } from '../../state/types';
 import type { Dispatch } from 'react';
+import { useMemo } from 'react';
 import { ClipBlock } from './clip-block';
+import { TransitionHandle } from './transition-handle';
 import { DRAG_CLIP_MIME } from '../media-bin/asset-item';
 import type { DragClipData } from '../../hooks/use-media-bin';
 
@@ -112,14 +114,30 @@ interface TrackRowProps {
     track: EditTrack;
     clips: EditClip[];
     allClips: EditClip[];
+    transitions: EditTransition[];
     zoom: number; // px per second
     playheadMs: number;
     selectedClipIds: Set<string>;
     dispatch: Dispatch<EditAction>;
 }
 
-export function TrackRow({ track, clips, allClips, zoom, playheadMs, selectedClipIds, dispatch }: TrackRowProps) {
+export function TrackRow({ track, clips, allClips, transitions, zoom, playheadMs, selectedClipIds, dispatch }: TrackRowProps) {
     const colors = TRACK_COLORS[track.type] ?? TRACK_COLORS.video!;
+
+    // Sort clips by start time to find adjacent pairs for transition handles
+    const sortedClips = useMemo(
+        () => [...clips].sort((a, b) => a.startMs - b.startMs),
+        [clips],
+    );
+
+    // Build a lookup for transitions between clip pairs
+    const transitionMap = useMemo(() => {
+        const map = new Map<string, EditTransition>();
+        for (const t of transitions) {
+            map.set(`${t.fromClipId}:${t.toClipId}`, t);
+        }
+        return map;
+    }, [transitions]);
 
     const handleDragOver = (e: React.DragEvent) => {
         if (track.isLocked) return;
@@ -181,7 +199,7 @@ export function TrackRow({ track, clips, allClips, zoom, playheadMs, selectedCli
     };
 
     return (
-        <div className={`flex border-b ${colors.border}`} style={{ height: `${track.height}px` }}>
+        <div className={`group flex border-b ${colors.border}`} style={{ height: `${track.height}px` }}>
             <TrackHeader track={track} dispatch={dispatch} />
 
             {/* Clip lane */}
@@ -203,6 +221,24 @@ export function TrackRow({ track, clips, allClips, zoom, playheadMs, selectedCli
                         playheadMs={playheadMs}
                     />
                 ))}
+
+                {/* Transition handles between adjacent clips */}
+                {sortedClips.map((clip, i) => {
+                    if (i >= sortedClips.length - 1) return null;
+                    const nextClip = sortedClips[i + 1]!;
+                    const transition = transitionMap.get(`${clip.id}:${nextClip.id}`) ?? null;
+
+                    return (
+                        <TransitionHandle
+                            key={`tr-${clip.id}-${nextClip.id}`}
+                            fromClip={clip}
+                            toClip={nextClip}
+                            transition={transition}
+                            zoom={zoom}
+                            dispatch={dispatch}
+                        />
+                    );
+                })}
             </div>
         </div>
     );

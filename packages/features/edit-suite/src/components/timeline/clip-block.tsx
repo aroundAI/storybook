@@ -21,6 +21,7 @@ import type { EditAction } from '../../state/types';
 import { useEditSuite } from '../edit-suite-provider';
 import { AddClipCommand, MoveClipCommand, TrimClipCommand } from '../../state/edit-commands';
 import { Waveform } from './waveform';
+import { ThumbnailStrip } from './thumbnail-strip';
 
 // ──────────────────────────────────────────
 // Constants
@@ -69,6 +70,7 @@ export function ClipBlock({
     const blockRef = useRef<HTMLDivElement>(null);
     const [dragMode, setDragMode] = useState<DragMode>('none');
     const showWaveform = AUDIO_TRACK_TYPES.has(trackType) && !!clip.mediaUrl;
+    const showThumbnails = trackType === 'video' && !!clip.mediaUrl;
     const [snapLineX, setSnapLineX] = useState<number | null>(null);
 
     // Track latest clip state via ref for stale-closure-safe access in mouseup
@@ -333,6 +335,17 @@ export function ClipBlock({
                 {/* Left trim handle indicator */}
                 <div className="absolute left-0 top-0 h-full w-1 bg-white/0 transition-colors hover:bg-white/30" />
 
+                {/* Thumbnail strip for video clips */}
+                {showThumbnails && (
+                    <ThumbnailStrip
+                        mediaUrl={clip.mediaUrl!}
+                        inPointMs={clip.inPointMs}
+                        outPointMs={clip.outPointMs}
+                        widthPx={widthPx}
+                        speed={clip.speed}
+                    />
+                )}
+
                 {/* Waveform for audio clips */}
                 {showWaveform && (
                     <Waveform
@@ -354,6 +367,13 @@ export function ClipBlock({
                 {widthPx > 80 && (
                     <span className="relative z-[1] ml-auto flex-shrink-0 px-1 text-[9px] text-white/50 drop-shadow-[0_1px_1px_rgba(0,0,0,0.8)]">
                         {durationLabel}
+                    </span>
+                )}
+
+                {/* Speed badge */}
+                {clip.speed !== 1 && widthPx > 50 && (
+                    <span className="absolute bottom-0.5 right-1 z-[1] rounded bg-black/60 px-1 py-px text-[8px] font-bold text-amber-300">
+                        {clip.speed}×
                     </span>
                 )}
 

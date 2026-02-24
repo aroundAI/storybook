@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef } from 'react';
 
 import type { EditClip } from '../../lib/types';
 import { useEditSuite } from '../edit-suite-provider';
+import { renderTransition, getTransitionProgress, type TransitionFrame } from '../../lib/transition-renderer';
 
 // ──────────────────────────────────────────
 // Types
@@ -131,9 +132,32 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
 
         if (activeVideoClips.length === 0) return;
 
-        for (const clip of activeVideoClips) {
+        // Build a transition lookup for overlapping clips
+        const transitionMap = new Map(
+            state.transitions.map((t) => [`${t.fromClipId}:${t.toClipId}`, t]),
+        );
+
+        // Helper to compute draw dimensions for a video
+        const getDrawDims = (video: HTMLVideoElement) => {
+            const vw = video.videoWidth || width;
+            const vh = video.videoHeight || height;
+            const scale = Math.max(width / vw, height / vh);
+            const drawW = vw * scale;
+            const drawH = vh * scale;
+            const drawX = (width - drawW) / 2;
+            const drawY = (height - drawH) / 2;
+            return { drawX, drawY, drawW, drawH };
+        };
+
+        for (let i = 0; i < activeVideoClips.length; i++) {
+            const clip = activeVideoClips[i]!;
             const video = getVideo(clip);
             if (!video) continue;
+
+            // Set playback rate from clip speed
+            if (video.playbackRate !== clip.speed) {
+                video.playbackRate = clip.speed;
+            }
 
             // Calculate the offset within the clip's source media
             const clipOffsetMs = state.playheadMs - clip.startMs + clip.inPointMs;
@@ -145,22 +169,64 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
                 entry.lastSeekMs = clipOffsetMs;
             }
 
-            // Draw the video frame onto the canvas
-            if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-                // Scale video to fill canvas while preserving aspect ratio
-                const vw = video.videoWidth || width;
-                const vh = video.videoHeight || height;
-                const scale = Math.max(width / vw, height / vh);
-                const drawW = vw * scale;
-                const drawH = vh * scale;
-                const drawX = (width - drawW) / 2;
-                const drawY = (height - drawH) / 2;
+            if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) continue;
 
-                // Draw at full opacity (opacity control via keyframes, not volume)
-                ctx.drawImage(video, drawX, drawY, drawW, drawH);
+            // Check if this clip has a transition with the previous clip
+            let transitionRendered = false;
+
+            if (i > 0) {
+                const prevClip = activeVideoClips[i - 1]!;
+                const transition = transitionMap.get(`${prevClip.id}:${clip.id}`);
+
+                if (transition && transition.type !== 'cut') {
+                    // The transition region: centered at the cut point
+                    const cutPointMs = clip.startMs;
+                    const halfDuration = transition.durationMs / 2;
+                    const transitionStartMs = cutPointMs - halfDuration;
+
+                    const progress = getTransitionProgress(
+                        state.playheadMs,
+                        transitionStartMs,
+                        transition.durationMs,
+                    );
+
+                    if (progress !== null) {
+                        const prevVideo = getVideo(prevClip);
+                        if (prevVideo && prevVideo.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+                            const outDims = getDrawDims(prevVideo);
+                            const inDims = getDrawDims(video);
+
+                            const outgoing: TransitionFrame = {
+                                source: prevVideo,
+                                ...outDims,
+                            };
+                            const incoming: TransitionFrame = {
+                                source: video,
+                                ...inDims,
+                            };
+
+                            renderTransition(transition.type, {
+                                ctx,
+                                canvasW: width,
+                                canvasH: height,
+                                outgoing,
+                                incoming,
+                                progress,
+                            });
+
+                            transitionRendered = true;
+                        }
+                    }
+                }
+            }
+
+            // Normal rendering (no transition)
+            if (!transitionRendered) {
+                const dims = getDrawDims(video);
+                ctx.drawImage(video, dims.drawX, dims.drawY, dims.drawW, dims.drawH);
             }
         }
-    }, [activeVideoClips, getVideo, state.playheadMs, width, height]);
+    }, [activeVideoClips, getVideo, state.playheadMs, state.transitions, width, height]);
 
     // Render on playhead change
     useEffect(() => {
