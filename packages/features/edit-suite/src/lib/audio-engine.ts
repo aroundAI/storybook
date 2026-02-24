@@ -16,7 +16,8 @@
  * (Non-audio types: video, title — ignored by AudioEngine)
  */
 
-import type { EditClip, EditTrack } from './types';
+import type { EditClip, EditTrack, EditKeyframe } from './types';
+import { getKeyframesForProperty, interpolateKeyframes } from './keyframe-engine';
 
 // ──────────────────────────────────────────
 // Constants
@@ -149,6 +150,7 @@ export class AudioEngine {
         clips: EditClip[],
         tracks: EditTrack[],
         speed: number = 1,
+        keyframes: EditKeyframe[] = [],
     ) {
         this.stopPlayback();
         this.updateTracks(tracks);
@@ -169,7 +171,7 @@ export class AudioEngine {
         );
 
         for (const clip of audioClips) {
-            await this.scheduleClip(clip, playheadMs, speed);
+            await this.scheduleClip(clip, playheadMs, speed, keyframes);
         }
     }
 
@@ -198,6 +200,7 @@ export class AudioEngine {
         clips: EditClip[],
         tracks: EditTrack[],
         speed: number = 1,
+        keyframes: EditKeyframe[] = [],
     ) {
         const ctx = this.getContext();
 
@@ -235,7 +238,7 @@ export class AudioEngine {
         for (const clipId of shouldPlay) {
             const clip = clips.find((c) => c.id === clipId);
             if (clip) {
-                await this.scheduleClip(clip, playheadMs, speed);
+                await this.scheduleClip(clip, playheadMs, speed, keyframes);
             }
         }
 
@@ -252,7 +255,7 @@ export class AudioEngine {
 
     // ── Internal scheduling ──
 
-    private async scheduleClip(clip: EditClip, playheadMs: number, speed: number) {
+    private async scheduleClip(clip: EditClip, playheadMs: number, speed: number, keyframes: EditKeyframe[] = []) {
         if (!clip.mediaUrl) return;
 
         const buffer = await this.decodeUrl(clip.mediaUrl);
@@ -284,6 +287,9 @@ export class AudioEngine {
         source.connect(clipGain);
         clipGain.connect(trackGain);
 
+        // Schedule volume keyframes on the clip gain node
+        this.scheduleVolumeKeyframes(clipGain, clip, playheadMs, keyframes);
+
         // Start playback
         source.start(0, offsetSec, durationSec);
 
@@ -302,6 +308,47 @@ export class AudioEngine {
             contextStartTime: ctx.currentTime,
             bufferOffsetSec: offsetSec,
         });
+    }
+
+    /**
+     * Schedule volume keyframes as Web Audio gain ramps.
+     * Uses linearRampToValueAtTime for smooth interpolation,
+     * and setValueAtTime for 'hold' easing (step function).
+     */
+    private scheduleVolumeKeyframes(
+        clipGain: GainNode,
+        clip: EditClip,
+        playheadMs: number,
+        allKeyframes: EditKeyframe[],
+    ) {
+        const volumeKfs = getKeyframesForProperty(allKeyframes, clip.id, 'volume');
+        if (volumeKfs.length === 0) return;
+
+        const ctx = this.getContext();
+        const now = ctx.currentTime;
+        const clipOffsetMs = playheadMs - clip.startMs;
+
+        // Cancel any previous scheduled ramps
+        clipGain.gain.cancelScheduledValues(now);
+
+        // Set current interpolated volume
+        const currentVolume = interpolateKeyframes(volumeKfs, clipOffsetMs);
+        clipGain.gain.setValueAtTime(currentVolume * clip.volume, now);
+
+        // Schedule future keyframes
+        for (const kf of volumeKfs) {
+            if (kf.offsetMs <= clipOffsetMs) continue; // Already past
+
+            const futureOffsetSec = (kf.offsetMs - clipOffsetMs) / 1000;
+            const targetTime = now + futureOffsetSec;
+            const value = kf.value * clip.volume;
+
+            if (kf.easing === 'hold') {
+                clipGain.gain.setValueAtTime(value, targetTime);
+            } else {
+                clipGain.gain.linearRampToValueAtTime(value, targetTime);
+            }
+        }
     }
 
     // ── Helpers ──

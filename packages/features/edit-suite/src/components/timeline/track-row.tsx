@@ -7,7 +7,7 @@
  * Right side: ClipLane where clips are rendered and assets can be dropped.
  */
 
-import type { EditTrack, EditClip, EditTransition } from '../../lib/types';
+import type { EditClip, EditTrack, EditTransition, EditKeyframe } from '../../lib/types';
 import type { EditAction } from '../../state/types';
 import type { Dispatch } from 'react';
 import { useMemo } from 'react';
@@ -115,13 +115,14 @@ interface TrackRowProps {
     clips: EditClip[];
     allClips: EditClip[];
     transitions: EditTransition[];
+    keyframes: EditKeyframe[];
     zoom: number; // px per second
     playheadMs: number;
     selectedClipIds: Set<string>;
     dispatch: Dispatch<EditAction>;
 }
 
-export function TrackRow({ track, clips, allClips, transitions, zoom, playheadMs, selectedClipIds, dispatch }: TrackRowProps) {
+export function TrackRow({ track, clips, allClips, transitions, keyframes, zoom, playheadMs, selectedClipIds, dispatch }: TrackRowProps) {
     const colors = TRACK_COLORS[track.type] ?? TRACK_COLORS.video!;
 
     // Sort clips by start time to find adjacent pairs for transition handles
@@ -219,6 +220,7 @@ export function TrackRow({ track, clips, allClips, transitions, zoom, playheadMs
                         trackType={track.type}
                         allClips={allClips}
                         playheadMs={playheadMs}
+                        clipKeyframes={keyframes.filter((kf) => kf.clipId === clip.id)}
                     />
                 ))}
 

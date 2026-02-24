@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Dispatch } from 'react';
 
-import type { EditClip } from '../../lib/types';
+import type { EditClip, EditKeyframe } from '../../lib/types';
 import type { TrackType } from '../../lib/schemas';
 import type { EditAction } from '../../state/types';
 import { useEditSuite } from '../edit-suite-provider';
@@ -50,7 +50,19 @@ interface ClipBlockProps {
     allClips?: EditClip[];
     /** Current playhead ms for snap-to-playhead */
     playheadMs?: number;
+    /** Keyframes for this clip (for diamond markers) */
+    clipKeyframes?: EditKeyframe[];
 }
+
+/** Color palette for keyframe property diamonds */
+const KF_PROPERTY_COLORS: Record<string, string> = {
+    volume: '#10b981',
+    opacity: '#8b5cf6',
+    position_x: '#3b82f6',
+    position_y: '#06b6d4',
+    scale: '#f59e0b',
+    rotation: '#ef4444',
+};
 
 // ──────────────────────────────────────────
 // Component
@@ -65,6 +77,7 @@ export function ClipBlock({
     trackType,
     allClips = [],
     playheadMs = 0,
+    clipKeyframes = [],
 }: ClipBlockProps) {
     const { executeCommand, recordCommand, audioEngineRef } = useEditSuite();
     const blockRef = useRef<HTMLDivElement>(null);
@@ -375,6 +388,40 @@ export function ClipBlock({
                     <span className="absolute bottom-0.5 right-1 z-[1] rounded bg-black/60 px-1 py-px text-[8px] font-bold text-amber-300">
                         {clip.speed}×
                     </span>
+                )}
+
+                {/* Keyframe diamond markers (visible when selected or hovered) */}
+                {clipKeyframes.length > 0 && (
+                    <div className={`absolute bottom-0 left-0 h-2.5 w-full ${isSelected ? 'opacity-100' : 'opacity-0 group-hover/clip:opacity-70'} transition-opacity`}>
+                        {clipKeyframes.map((kf) => {
+                            const clipDurationMs = clip.endMs - clip.startMs;
+                            if (clipDurationMs <= 0) return null;
+                            const xFraction = kf.offsetMs / clipDurationMs;
+                            if (xFraction < 0 || xFraction > 1) return null;
+                            const color = KF_PROPERTY_COLORS[kf.property] ?? '#888';
+                            return (
+                                <div
+                                    key={kf.id}
+                                    className="absolute -translate-x-1/2"
+                                    style={{
+                                        left: `${xFraction * 100}%`,
+                                        bottom: '1px',
+                                    }}
+                                    title={`${kf.property}: ${kf.value} @ ${kf.offsetMs}ms`}
+                                >
+                                    <svg width="7" height="7" viewBox="0 0 7 7">
+                                        <rect
+                                            x="1" y="1" width="5" height="5"
+                                            fill={color}
+                                            stroke="#000"
+                                            strokeWidth="0.5"
+                                            transform="rotate(45 3.5 3.5)"
+                                        />
+                                    </svg>
+                                </div>
+                            );
+                        })}
+                    </div>
                 )}
 
                 {/* Right trim handle indicator */}
