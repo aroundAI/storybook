@@ -10,13 +10,17 @@
  * - Render status display
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useTransition } from 'react';
 
 import { cn } from '@kit/ui/utils';
 
 import { useEditSuite } from '../edit-suite-provider';
 import { buildFFmpegCommand } from '../../lib/ffmpeg-builder';
 import { useExportWorker } from '../../hooks/use-export-worker';
+import {
+    enqueueRenderAction,
+    enqueueMultiLanguageRenderAction,
+} from '../../server/render-actions';
 import type { ExportClipManifest, ExportSettings } from '../../workers/export.worker';
 
 // ──────────────────────────────────────────
@@ -53,6 +57,8 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     const [selectedLang, setSelectedLang] = useState<string | 'all'>(state.activeLanguage);
     const [copied, setCopied] = useState(false);
     const { exportState, startExport, cancelExport, downloadResult } = useExportWorker();
+    const [isPending, startTransition] = useTransition();
+    const [serverError, setServerError] = useState<string | null>(null);
 
     // Build FFmpeg command for the selected language
     const ffmpegResult = useMemo(() => {
@@ -125,6 +131,36 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         }, totalDurationMs);
     }, [state, selectedLang, startExport]);
 
+    const handleServerRender = useCallback(() => {
+        if (!state.project) return;
+        setServerError(null);
+        startTransition(async () => {
+            try {
+                await enqueueRenderAction({
+                    editProjectId: state.project!.id,
+                    language: selectedLang === 'all' ? state.activeLanguage : selectedLang,
+                });
+            } catch (err) {
+                setServerError(err instanceof Error ? err.message : 'Failed to enqueue render');
+            }
+        });
+    }, [state.project, state.activeLanguage, selectedLang, startTransition]);
+
+    const handleExportAllLanguages = useCallback(() => {
+        if (!state.project || availableLanguages.length < 2) return;
+        setServerError(null);
+        startTransition(async () => {
+            try {
+                await enqueueMultiLanguageRenderAction({
+                    editProjectId: state.project!.id,
+                    languages: availableLanguages,
+                });
+            } catch (err) {
+                setServerError(err instanceof Error ? err.message : 'Failed to enqueue renders');
+            }
+        });
+    }, [state.project, availableLanguages, startTransition]);
+
     if (!open) return null;
 
     const renderStatus = state.renderStatus;
@@ -180,14 +216,31 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                     )}
 
                     {/* Render status */}
-                    {renderStatus !== 'idle' && (
+                    {(renderStatus !== 'idle' || isPending) && (
                         <div className={cn(
                             'rounded-lg border p-3 text-xs',
-                            renderStatus === 'rendering' && 'border-blue-500/30 bg-blue-950/30 text-blue-300',
+                            (renderStatus === 'rendering' || renderStatus === 'queued' || isPending) && 'border-blue-500/30 bg-blue-950/30 text-blue-300',
                             renderStatus === 'completed' && 'border-green-500/30 bg-green-950/30 text-green-300',
                             renderStatus === 'failed' && 'border-red-500/30 bg-red-950/30 text-red-300',
                         )}>
-                            {renderStatus === 'rendering' && '⟳ Rendering in progress…'}
+                            {isPending && '⟳ Queueing render job…'}
+                            {renderStatus === 'queued' && !isPending && '⏳ Render queued, waiting for worker…'}
+                            {renderStatus === 'rendering' && (
+                                <div className="space-y-2">
+                                    <span>⟳ Rendering in progress…</span>
+                                    {typeof state.renderProgress === 'number' && (
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-700">
+                                                <div
+                                                    className="h-full rounded-full bg-blue-500 transition-all duration-300"
+                                                    style={{ width: `${state.renderProgress}%` }}
+                                                />
+                                            </div>
+                                            <span className="text-[10px] text-zinc-400">{state.renderProgress}%</span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             {renderStatus === 'completed' && (
                                 <span>
                                     ✓ Render complete
@@ -295,6 +348,32 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
 
                     {exportState.stage === 'error' && (
                         <span className="text-[10px] text-red-400">{exportState.error}</span>
+                    )}
+
+                    {/* Server render buttons */}
+                    <div className="flex items-center gap-2 border-l border-zinc-700 pl-3">
+                        <button
+                            className="rounded-md border border-blue-600 bg-blue-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={isPending || renderStatus === 'rendering' || renderStatus === 'queued' || !state.project}
+                            onClick={handleServerRender}
+                            title="Render video on server using FFmpeg (higher quality)"
+                        >
+                            🖥 Server Render
+                        </button>
+                        {availableLanguages.length > 1 && (
+                            <button
+                                className="rounded-md border border-amber-600 bg-amber-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                disabled={isPending || renderStatus === 'rendering' || renderStatus === 'queued' || !state.project}
+                                onClick={handleExportAllLanguages}
+                                title={`Queue ${availableLanguages.length} render jobs — one per language`}
+                            >
+                                🌐 Export All ({availableLanguages.length})
+                            </button>
+                        )}
+                    </div>
+
+                    {serverError && (
+                        <span className="text-[10px] text-red-400">{serverError}</span>
                     )}
                 </div>
             </div>
