@@ -6,6 +6,7 @@
  */
 
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import type { Readable } from 'stream';
 
 // Singleton S3 client
 let s3Client: S3Client | null = null;
@@ -45,14 +46,14 @@ export interface R2UploadResult {
  *
  * @param bucket - Logical bucket name (used as path prefix)
  * @param path - File path within bucket
- * @param data - File buffer
+ * @param data - File buffer or readable stream (stream avoids loading entire file into RAM)
  * @param contentType - MIME type
  * @returns Public URL and path
  */
 export async function uploadToR2(
     bucket: string,
     path: string,
-    data: Buffer,
+    data: Buffer | Readable,
     contentType: string,
 ): Promise<R2UploadResult> {
     const client = getR2Client();

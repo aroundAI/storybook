@@ -5,9 +5,11 @@
  * executes FFmpeg, and returns the rendered video buffer.
  */
 import { execFile } from 'child_process';
-import { createWriteStream, existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync } from 'fs';
+import { createWriteStream, existsSync, mkdirSync, statSync, readdirSync, unlinkSync } from 'fs';
 import { createHash } from 'crypto';
+import { lookup } from 'dns/promises';
 import { pipeline } from 'stream/promises';
+import { Readable } from 'stream';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
@@ -73,7 +75,7 @@ interface RenderInput {
 }
 
 interface RenderResult {
-    buffer: Buffer;
+    outputPath: string;
     durationMs: number;
 }
 
@@ -85,14 +87,68 @@ const WORK_DIR = join(tmpdir(), 'render');
 const FFMPEG_PATH = process.env.FFMPEG_PATH || '/opt/bin/ffmpeg';
 
 // ──────────────────────────────────────────
+// SSRF Protection
+// ──────────────────────────────────────────
+
+/** Allowed URL prefixes for media downloads (R2 public URL) */
+function getAllowedOrigins(): string[] {
+    const origins: string[] = [];
+    if (process.env.R2_PUBLIC_URL) {
+        origins.push(process.env.R2_PUBLIC_URL);
+    }
+    return origins;
+}
+
+/** IPv4/IPv6 ranges that must never be fetched */
+const BLOCKED_IP_RANGES = [
+    /^127\./, /^10\./, /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./,
+    /^169\.254\./, /^0\./, /^::1$/, /^fc00:/, /^fe80:/,
+];
+
+/**
+ * Validate a URL is safe to fetch (SSRF protection).
+ * 1. Must use https.
+ * 2. Must match an allowed origin prefix (R2 bucket).
+ * 3. Resolved IP must not be in private/reserved ranges.
+ */
+async function validateMediaUrl(url: string): Promise<void> {
+    const parsed = new URL(url);
+
+    if (parsed.protocol !== 'https:') {
+        throw new Error(`SSRF blocked: non-HTTPS URL: ${parsed.protocol}`);
+    }
+
+    const allowed = getAllowedOrigins();
+    if (allowed.length > 0 && !allowed.some((origin) => url.startsWith(origin))) {
+        throw new Error(`SSRF blocked: URL not in allowed origins: ${parsed.hostname}`);
+    }
+
+    // DNS-rebinding protection: resolve hostname and check IP
+    try {
+        const { address } = await lookup(parsed.hostname);
+        if (BLOCKED_IP_RANGES.some((r) => r.test(address))) {
+            throw new Error(`SSRF blocked: resolved to private IP: ${address}`);
+        }
+    } catch (err) {
+        if (err instanceof Error && err.message.startsWith('SSRF')) throw err;
+        // DNS resolution failure — allow (might be CDN edge that doesn't resolve locally)
+        console.warn(`[SSRF] DNS lookup failed for ${parsed.hostname}, proceeding`);
+    }
+}
+
+// ──────────────────────────────────────────
 // Media download
 // ──────────────────────────────────────────
 
 /**
  * Download a media file from URL to /tmp
- * Uses content hash for deduplication
+ * Uses content hash for deduplication.
+ * Validates URL against allowlist and private IP ranges (SSRF protection).
  */
 async function downloadMedia(url: string): Promise<string> {
+    // SSRF protection
+    await validateMediaUrl(url);
+
     const hash = createHash('md5').update(url).digest('hex');
     const ext = url.split('.').pop()?.split('?')[0] || 'mp4';
     const localPath = join(WORK_DIR, `${hash}.${ext}`);
@@ -110,8 +166,7 @@ async function downloadMedia(url: string): Promise<string> {
     }
 
     const fileStream = createWriteStream(localPath);
-    // @ts-expect-error Node.js ReadableStream compatibility
-    await pipeline(response.body, fileStream);
+    await pipeline(Readable.fromWeb(response.body as never), fileStream);
 
     return localPath;
 }
@@ -446,15 +501,15 @@ export async function processFFmpegRender(
             await onProgress(0.4 + p * 0.6); // 40-100%
         });
 
-        // 5. Read output file
-        const buffer = readFileSync(outputPath);
+        // 5. Return output path for streaming upload (avoids loading entire video into RAM)
+        const { size } = statSync(outputPath);
 
         console.log(
-            `[FFmpeg] Render complete: ${buffer.length} bytes (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`,
+            `[FFmpeg] Render complete: ${size} bytes (${(size / 1024 / 1024).toFixed(1)} MB)`,
         );
 
         return {
-            buffer,
+            outputPath,
             durationMs: maxEndMs,
         };
     } finally {

@@ -209,18 +209,19 @@ async function processRender(job: RenderJobMessage): Promise<void> {
         .from('edit_keyframes')
         .select('*');
 
-    // 4. Filter clips by language
+    // 4. Filter clips by language, activation status, and track mute state
     const activeClips = (clips ?? []).filter((clip) => {
-        // Video/music/sfx/ambient clips are always active
-        const track = (tracks ?? []).find((t) => t.id === clip.track_id);
-        if (!track) return false;
+        // Skip deactivated clips
+        if (!clip.is_active) return false;
 
-        const audioTrackTypes = ['dialogue'];
-        if (!audioTrackTypes.includes(track.type)) return true;
+        const track = (tracks ?? []).find((t) => t.id === clip.track_id);
+        if (!track || track.is_muted) return false;
+
+        // Non-dialogue clips are always included (if active + unmuted)
+        if (track.type !== 'dialogue') return true;
 
         // For dialogue clips, filter by language
-        if (!clip.language) return true;
-        return clip.language === language;
+        return !clip.language || clip.language === language;
     });
 
     await sendRenderStatus(userId, editProjectId, 'rendering', {
@@ -254,12 +255,14 @@ async function processRender(job: RenderJobMessage): Promise<void> {
         progress: 90,
     });
 
-    // 6. Upload result to R2
+    // 6. Upload result to R2 using streaming (avoids loading entire video into RAM)
     const { uploadToR2 } = await import('./utils/r2-storage');
+    const { createReadStream } = await import('fs');
+    const fileStream = createReadStream(result.outputPath);
     const uploadResult = await uploadToR2(
         'renders',
         `${editProjectId}/${language}/output.mp4`,
-        result.buffer,
+        fileStream,
         'video/mp4',
     );
 
