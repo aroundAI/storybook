@@ -11,12 +11,16 @@
  * - Auto-reconnect with exponential backoff (1s → 2s → 4s … 30s)
  * - Ping/pong keepalive every 25s
  * - Channel subscription on connect
+ * - Operational transform integration for collaborative editing
+ * - Cursor presence broadcasting (debounced)
  * - Type-safe message handling
  */
 
 import { useCallback, useEffect, useRef } from 'react';
 
 import type { EditAction } from '../state/types';
+import type { EditOperation } from '../lib/operational-transforms';
+import { OperationBuffer, getPresenceColor } from '../lib/operational-transforms';
 
 // ──────────────────────────────────────────
 // Message types received from WebSocket
@@ -50,11 +54,48 @@ interface SubscribedMessage {
     channel: string;
 }
 
+interface RemoteOperationMessage {
+    type: 'remote-operation';
+    channel: string;
+    operation: EditOperation;
+    senderId: string;
+    timestamp: string;
+}
+
+interface CursorPositionMessage {
+    type: 'cursor-position';
+    channel: string;
+    userId: string;
+    cursorData: {
+        cursorPositionMs: number;
+        activeClipId: string | null;
+        displayName: string;
+    };
+    timestamp: string;
+}
+
+interface OperationAckMessage {
+    type: 'operation-ack';
+    channel: string;
+    operationId: string;
+    timestamp: string;
+}
+
+interface UserLeftMessage {
+    type: 'user-left';
+    userId: string;
+    connectionId: string;
+}
+
 type EditSuiteWSMessage =
     | RenderStatusMessage
     | SaveAckMessage
     | PongMessage
-    | SubscribedMessage;
+    | SubscribedMessage
+    | RemoteOperationMessage
+    | CursorPositionMessage
+    | OperationAckMessage
+    | UserLeftMessage;
 
 // ──────────────────────────────────────────
 // Constants
@@ -63,6 +104,16 @@ type EditSuiteWSMessage =
 const PING_INTERVAL_MS = 25_000;
 const INITIAL_RECONNECT_MS = 1_000;
 const MAX_RECONNECT_MS = 30_000;
+const CURSOR_DEBOUNCE_MS = 100;
+
+// ──────────────────────────────────────────
+// Return type
+// ──────────────────────────────────────────
+
+export interface EditSuiteWSControls {
+    sendOperation: (op: EditOperation) => void;
+    sendCursorUpdate: (cursorMs: number, activeClipId: string | null, displayName: string) => void;
+}
 
 // ──────────────────────────────────────────
 // Hook
@@ -71,12 +122,14 @@ const MAX_RECONNECT_MS = 30_000;
 export function useEditSuiteWebSocket(
     editProjectId: string | undefined,
     dispatch: React.Dispatch<EditAction>,
-) {
+): EditSuiteWSControls {
     const wsRef = useRef<WebSocket | null>(null);
     const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const reconnectDelayRef = useRef(INITIAL_RECONNECT_MS);
     const isUnmountedRef = useRef(false);
+    const opBufferRef = useRef(new OperationBuffer());
+    const cursorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const channel = editProjectId ? `edit-project:${editProjectId}` : null;
 
@@ -95,6 +148,43 @@ export function useEditSuiteWebSocket(
                         break;
                     }
 
+                    case 'remote-operation': {
+                        // Transform remote operation against our pending local ops
+                        const transformedOp = opBufferRef.current.transformAgainstRemote(msg.operation);
+                        if (transformedOp) {
+                            dispatch({
+                                type: 'APPLY_REMOTE_OPERATION',
+                                payload: {
+                                    operation: transformedOp,
+                                    senderId: msg.senderId,
+                                },
+                            });
+                        }
+                        break;
+                    }
+
+                    case 'operation-ack': {
+                        // Server acknowledged our operation
+                        opBufferRef.current.acknowledge(
+                            opBufferRef.current.getServerVersion() + 1,
+                        );
+                        break;
+                    }
+
+                    case 'cursor-position': {
+                        dispatch({
+                            type: 'UPDATE_REMOTE_CURSOR',
+                            payload: {
+                                userId: msg.userId,
+                                displayName: msg.cursorData.displayName,
+                                color: getPresenceColor(msg.userId),
+                                cursorPositionMs: msg.cursorData.cursorPositionMs,
+                                activeClipId: msg.cursorData.activeClipId,
+                            },
+                        });
+                        break;
+                    }
+
                     case 'subscribed':
                         if (process.env.NODE_ENV === 'development') {
                             console.log(`[EditSuite WS] Subscribed to ${msg.channel}`);
@@ -104,6 +194,15 @@ export function useEditSuiteWebSocket(
                     case 'pong':
                         // Keepalive acknowledged
                         break;
+
+                    case 'user-left': {
+                        // Remove disconnected user's cursor and presence
+                        dispatch({
+                            type: 'REMOVE_PRESENCE',
+                            payload: { userId: msg.userId },
+                        });
+                        break;
+                    }
 
                     default:
                         // Ignore unhandled message types
@@ -140,6 +239,7 @@ export function useEditSuiteWebSocket(
                 console.log(`[EditSuite WS] Connected, subscribing to ${channel}`);
             }
             reconnectDelayRef.current = INITIAL_RECONNECT_MS;
+            opBufferRef.current.clear(); // Clear pending ops on reconnect
 
             // Subscribe to project channel
             ws.send(JSON.stringify({ action: 'subscribe', channel }));
@@ -181,6 +281,33 @@ export function useEditSuiteWebSocket(
         };
     }, [channel, handleMessage]);
 
+    // Send a local edit operation to the server
+    const sendOperation = useCallback((op: EditOperation) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !channel) return;
+
+        opBufferRef.current.push(op);
+        wsRef.current.send(JSON.stringify({
+            action: 'edit-operation',
+            channel,
+            data: op,
+        }));
+    }, [channel]);
+
+    // Send cursor position update (debounced)
+    const sendCursorUpdate = useCallback((cursorMs: number, activeClipId: string | null, displayName: string) => {
+        if (cursorDebounceRef.current) clearTimeout(cursorDebounceRef.current);
+
+        cursorDebounceRef.current = setTimeout(() => {
+            if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN || !channel) return;
+
+            wsRef.current.send(JSON.stringify({
+                action: 'cursor-update',
+                channel,
+                data: { cursorPositionMs: cursorMs, activeClipId, displayName },
+            }));
+        }, CURSOR_DEBOUNCE_MS);
+    }, [channel]);
+
     // Connect when projectId is available
     useEffect(() => {
         isUnmountedRef.current = false;
@@ -198,10 +325,15 @@ export function useEditSuiteWebSocket(
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
             }
+            if (cursorDebounceRef.current) {
+                clearTimeout(cursorDebounceRef.current);
+            }
             if (wsRef.current) {
                 wsRef.current.close();
                 wsRef.current = null;
             }
         };
     }, [channel, connect]);
+
+    return { sendOperation, sendCursorUpdate };
 }

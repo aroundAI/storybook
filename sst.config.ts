@@ -554,9 +554,18 @@ export default $config({
           actions: ['kms:Decrypt'],
           resources: [kmsKey.arn],
         },
+        {
+          // Permission to notify channel peers when a user disconnects
+          actions: ['execute-api:ManageConnections'],
+          resources: ['*'],
+        },
       ],
       nodejs: {
-        install: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb'],
+        install: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-apigatewaymanagementapi',
+        ],
       },
     });
 
@@ -565,6 +574,10 @@ export default $config({
       link: [connectionsTable],
       environment: {
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        // Required for admin checks and DB queries in collaborative editing
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        SUPABASE_SERVICE_ROLE_KEY:
+          process.env.SUPABASE_SERVICE_ROLE_KEY || '',
       },
       transform: {
         function: {
@@ -576,12 +589,18 @@ export default $config({
           actions: ['kms:Decrypt'],
           resources: [kmsKey.arn],
         },
+        {
+          // Permission to broadcast WebSocket messages (edit-operation, cursor-update)
+          actions: ['execute-api:ManageConnections'],
+          resources: ['*'],
+        },
       ],
       nodejs: {
         install: [
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
+          '@supabase/supabase-js',
         ],
       },
     });
@@ -770,6 +789,7 @@ export default $config({
 
     // Render Worker Lambda - Processes video render jobs from SQS
     // Downloads media from R2, runs FFmpeg, uploads result back to R2
+    // FFmpeg binary is bundled via ffmpeg-static npm package (no Lambda Layer needed)
     const renderWorker = renderQueue.subscribe({
       handler: 'apps/web/lambda/render-worker/index.handler',
       timeout: '15 minutes', // FFmpeg renders can take a long time
@@ -825,6 +845,7 @@ export default $config({
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
           '@aws-sdk/client-s3',
+          'ffmpeg-static', // Bundles pre-compiled FFmpeg binary for arm64 Lambda
         ],
       },
     });

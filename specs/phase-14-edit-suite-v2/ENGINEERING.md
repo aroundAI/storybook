@@ -1,6 +1,6 @@
 # Phase 14: Edit Suite v2 — Engineering Specification
 
-> **Status:** 📋 Planning  
+> **Status:** ✅ Done  
 > **Owner:** Engineering  
 > **Supersedes:** Phase 6 (FILM-601–606) — old timeline editor  
 > **Scope:** Per-episode, in-browser NLE with WebCodecs + Canvas rendering  
@@ -820,7 +820,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Queue separate SQS jobs per language
 - [x] Each job activates only matching language clips
 - [x] Results stored with language suffix in R2 path
-- [ ] Master video asset creation via existing FILM-716 system *(follow-up)*
+- [x] Master video asset creation via existing FILM-716 system ✅ *(render worker creates `assets` row + links episode `master_video_asset_id`)*
 
 ---
 
@@ -828,12 +828,12 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 
 #### 6.1 Client-Side WebCodecs Export ✅
 - [x] Web Worker for encoding pipeline
-- [ ] mp4box.js demuxing of source clips *(deferred — needs VideoDecoder frame-by-frame)*
+- [x] mp4box.js demuxing of source clips ✅ *(full VideoDecoder frame-by-frame extraction)*
 - [x] VideoDecoder → OffscreenCanvas composite → VideoEncoder
-- [ ] AudioDecoder → audio mixing in Worker *(deferred)*
-- [ ] mp4box.js muxing to MP4 blob *(deferred)*
+- [x] AudioDecoder → audio mixing in Worker ✅ *(multi-source mixing with volume control)*
+- [x] mp4box.js muxing to MP4 blob ✅ *(proper MP4 container with video + audio tracks)*
 - [x] Progress reporting via `postMessage`
-- [ ] Direct R2 upload from browser *(deferred — needs presigned URLs)*
+- [x] Direct R2 upload from browser ✅ *(presigned-upload.ts + Upload to R2 button in export dialog)*
 
 #### 6.2 Performance ✅
 - [x] LRU media cache for decoded frames
@@ -847,7 +847,7 @@ Route: `apps/web/app/home/[account]/studio/[projectId]/episodes/[episodeId]/edit
 - [x] Canvas text rendering with shadow/outline
 - [x] Fade-in/out via keyframe animation
 
-#### 6.4 Collaborative Editing (Future)
-- [ ] WebSocket-based operational transforms
-- [ ] Cursor presence indicators
-- [ ] Conflict resolution for simultaneous clip edits
+#### 6.4 Collaborative Editing ✅
+- [x] WebSocket-based operational transforms ✅ *(OT engine with 8 op types, OperationBuffer, server-wins conflict resolution)*
+- [x] Cursor presence indicators ✅ *(CursorPresence overlay + ActiveEditorsList component)*
+- [x] Conflict resolution for simultaneous clip edits ✅ *(transformOperation() + WebSocket edit-operation/cursor-update handlers)*

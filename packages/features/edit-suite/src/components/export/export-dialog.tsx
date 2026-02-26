@@ -21,6 +21,7 @@ import {
     enqueueRenderAction,
     enqueueMultiLanguageRenderAction,
 } from '../../server/render-actions';
+import { uploadToR2Presigned } from '../../lib/presigned-upload';
 import type { ExportClipManifest, ExportSettings } from '../../workers/export.worker';
 
 // ──────────────────────────────────────────
@@ -59,6 +60,36 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     const { exportState, startExport, cancelExport, downloadResult } = useExportWorker();
     const [isPending, startTransition] = useTransition();
     const [serverError, setServerError] = useState<string | null>(null);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+    const [uploadResult, setUploadResult] = useState<string | null>(null);
+    const [uploadError, setUploadError] = useState<string | null>(null);
+
+    const handleUploadToR2 = useCallback(async () => {
+        if (!exportState.resultBlob || !state.project) return;
+        setUploadError(null);
+        setUploadProgress(0);
+
+        try {
+            const projectId = state.project.id;
+            const timestamp = Date.now();
+            const filename = selectedLang === 'all'
+                ? `export_all_${timestamp}.mp4`
+                : `export_${selectedLang}_${timestamp}.mp4`;
+
+            const result = await uploadToR2Presigned(exportState.resultBlob, {
+                bucket: process.env.NEXT_PUBLIC_R2_BUCKET_NAME ?? 'storybook-assets',
+                path: `projects/${projectId}/assets/master_video/${filename}`,
+                contentType: 'video/mp4',
+                onProgress: setUploadProgress,
+            });
+
+            setUploadResult(result.publicUrl);
+            setUploadProgress(null);
+        } catch (err) {
+            setUploadError(err instanceof Error ? err.message : 'Upload failed');
+            setUploadProgress(null);
+        }
+    }, [exportState.resultBlob, state.project, selectedLang]);
 
     // Build FFmpeg command for the selected language
     const ffmpegResult = useMemo(() => {
@@ -329,12 +360,37 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                             </button>
                         </div>
                     ) : exportState.stage === 'complete' ? (
-                        <button
-                            className="rounded-md border border-green-600 bg-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-700"
-                            onClick={downloadResult}
-                        >
-                            ⬇ Download MP4
-                        </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                className="rounded-md border border-green-600 bg-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-700"
+                                onClick={downloadResult}
+                            >
+                                ⬇ Download MP4
+                            </button>
+                            {uploadResult ? (
+                                <span className="text-[10px] text-green-400">✓ Uploaded to cloud</span>
+                            ) : uploadProgress !== null ? (
+                                <div className="flex items-center gap-2">
+                                    <div className="h-1.5 w-20 overflow-hidden rounded-full bg-zinc-700">
+                                        <div
+                                            className="h-full rounded-full bg-cyan-500 transition-all duration-300"
+                                            style={{ width: `${uploadProgress}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] text-zinc-400">{uploadProgress}%</span>
+                                </div>
+                            ) : (
+                                <button
+                                    className="rounded-md border border-cyan-600 bg-cyan-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-cyan-700"
+                                    onClick={handleUploadToR2}
+                                >
+                                    ☁ Upload to R2
+                                </button>
+                            )}
+                            {uploadError && (
+                                <span className="text-[10px] text-red-400">{uploadError}</span>
+                            )}
+                        </div>
                     ) : (
                         <button
                             className="rounded-md border border-violet-600 bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
