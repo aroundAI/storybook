@@ -433,18 +433,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
           break;
         }
 
-        // Update connection record with channel subscription
-        await ddb.send(
-          new UpdateCommand({
-            TableName: TABLE_NAME,
-            Key: { connectionId },
-            UpdateExpression:
-              'SET #ch = if_not_exists(#ch, :empty_set)',
-            ExpressionAttributeNames: { '#ch': 'channels' },
-            ExpressionAttributeValues: { ':empty_set': new Set(['__init__']) },
-          }),
-        );
-        // Add the channel to the set
+        // Add channel to the subscription set (ADD creates the set if it doesn't exist)
         await ddb.send(
           new UpdateCommand({
             TableName: TABLE_NAME,
@@ -499,6 +488,8 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
         console.log(`[Collab] Edit operation on channel ${channel} from ${senderId.substring(0, 8)}...`);
 
+        // TODO: Replace ScanCommand with GSI-based query for channel subscribers
+        // A GSI on 'channels' or a separate subscriptions table would avoid full table scans.
         // Find all connections subscribed to this channel
         const allConns = await ddb.send(
           new ScanCommand({
@@ -567,6 +558,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         const senderId = await getSenderUserId(connectionId);
         if (!senderId || !channel) break;
 
+        // TODO: Replace ScanCommand with GSI-based query for channel subscribers
         // Find all connections subscribed to this channel
         const allConns = await ddb.send(
           new ScanCommand({

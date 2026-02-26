@@ -257,7 +257,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
 
     // 6. Upload result to R2 using streaming (avoids loading entire video into RAM)
     const { uploadToR2 } = await import('./utils/r2-storage');
-    const { createReadStream, readFileSync, statSync } = await import('fs');
+    const { createReadStream, statSync } = await import('fs');
     const { createHash } = await import('crypto');
     const fileStream = createReadStream(result.outputPath);
     const uploadResult = await uploadToR2(
@@ -274,9 +274,15 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     // 6.5 Create master video asset (FILM-716 integration)
     // Compute SHA-256 hash for dedup, create asset record, link to episode
     try {
-        const fileBuffer = readFileSync(result.outputPath);
-        const fileHash = createHash('sha256').update(fileBuffer).digest('hex');
+        // Stream-based hashing to avoid loading entire video into RAM
         const fileSizeBytes = statSync(result.outputPath).size;
+        const fileHash = await new Promise<string>((resolve, reject) => {
+            const hash = createHash('sha256');
+            const stream = createReadStream(result.outputPath);
+            stream.on('error', reject);
+            stream.on('data', (d) => hash.update(d as unknown as string));
+            stream.on('end', () => resolve(hash.digest('hex')));
+        });
 
         // Check if a master_video asset with this hash already exists for the project
         const episodeId = project.episode_id;
@@ -299,7 +305,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
                 .is('deleted_at', null)
                 .maybeSingle();
 
-            let masterAssetId: string;
+            let masterAssetId: string | undefined;
 
             if (existingAsset) {
                 // Reuse existing asset (identical file)
@@ -336,7 +342,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
             }
 
             // Link master asset to episode (only for primary language renders)
-            if (masterAssetId! && language === 'en') {
+            if (masterAssetId && language === 'en') {
                 await supabase
                     .from('episodes')
                     .update({ master_video_asset_id: masterAssetId })

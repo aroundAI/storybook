@@ -54,6 +54,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       });
 
       // Find all other connections that share a channel
+      // TODO: Replace ScanCommand with GSI-based query for channel subscribers
       const { Items: allConnections } = await ddb.send(
         new ScanCommand({ TableName: TABLE_NAME }),
       );

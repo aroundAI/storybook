@@ -138,6 +138,8 @@ async function demuxVideoFrames(
         const mp4File = MP4Box.createFile();
 
         let decoder: VideoDecoder | null = null;
+        // eslint-disable-next-line prefer-const
+        let decoderRef: { current: VideoDecoder | null } = { current: null };
 
         mp4File.onReady = (info: { videoTracks: Array<{ id: number; codec: string; timescale: number; video: { width: number; height: number } }> }) => {
             if (info.videoTracks.length === 0) {
@@ -166,6 +168,7 @@ async function demuxVideoFrames(
                 },
                 error: (err) => reject(err),
             });
+            decoderRef.current = decoder;
 
             const decoderConfig: VideoDecoderConfig = {
                 codec: trackInfo.codec,
@@ -204,10 +207,6 @@ async function demuxVideoFrames(
                 });
                 decoder!.decode(chunk);
             }
-
-            decoder!.flush().then(() => {
-                resolve(frames);
-            }).catch(reject);
         };
 
         mp4File.onError = (e: string) => reject(new Error(e));
@@ -216,6 +215,11 @@ async function demuxVideoFrames(
         (arrayBuffer as ArrayBuffer & { fileStart: number }).fileStart = 0;
         mp4File.appendBuffer(arrayBuffer);
         mp4File.flush();
+
+        // mp4box triggers onReady/onSamples synchronously during appendBuffer,
+        // so decoder is guaranteed to be assigned at this point.
+        // Flush the decoder to get remaining frames, then resolve.
+        decoderRef.current!.flush().then(() => resolve(frames)).catch(reject);
     });
 }
 
@@ -247,6 +251,8 @@ async function demuxAudioSamples(
 
         const mp4File = MP4Box.createFile();
         let decoder: AudioDecoder | null = null;
+        // eslint-disable-next-line prefer-const
+        let decoderRef: { current: AudioDecoder | null } = { current: null };
 
         mp4File.onReady = (info: { audioTracks: Array<{ id: number; codec: string; timescale: number; audio: { sample_rate: number; channel_count: number } }> }) => {
             if (info.audioTracks.length === 0) {
@@ -267,6 +273,7 @@ async function demuxAudioSamples(
                 },
                 error: (err) => reject(err),
             });
+            decoderRef.current = decoder;
 
             const decoderConfig: AudioDecoderConfig = {
                 codec: trackInfo.codec,
@@ -304,50 +311,6 @@ async function demuxAudioSamples(
                 });
                 decoder!.decode(chunk);
             }
-
-            decoder!.flush().then(() => {
-                // Convert AudioData chunks to Float32 PCM
-                const channels = audioTrack!.audio.channel_count;
-                const sampleRate = audioTrack!.audio.sample_rate;
-                const inSample = Math.floor((inPointMs / 1000) * sampleRate);
-                const outSample = Math.ceil((outPointMs / 1000) * sampleRate);
-
-                // Collect all samples
-                let totalSamples = 0;
-                for (const chunk of pcmChunks) {
-                    totalSamples += chunk.numberOfFrames;
-                }
-
-                const channelData: Float32Array[] = [];
-                for (let c = 0; c < channels; c++) {
-                    channelData.push(new Float32Array(totalSamples));
-                }
-
-                let offset = 0;
-                for (const chunk of pcmChunks) {
-                    for (let c = 0; c < channels; c++) {
-                        const buffer = new Float32Array(chunk.numberOfFrames);
-                        chunk.copyTo(buffer, {
-                            planeIndex: c,
-                            format: 'f32-planar',
-                        });
-                        channelData[c]!.set(buffer, offset);
-                    }
-                    offset += chunk.numberOfFrames;
-                    chunk.close();
-                }
-
-                // Trim to in/out range
-                const startIdx = Math.max(0, inSample);
-                const endIdx = Math.min(totalSamples, outSample);
-                const trimmedChannels = channelData.map(ch => ch.slice(startIdx, endIdx));
-
-                resolve({
-                    sampleRate,
-                    channels,
-                    samples: trimmedChannels,
-                });
-            }).catch(reject);
         };
 
         mp4File.onError = (e: string) => reject(new Error(e));
@@ -355,6 +318,52 @@ async function demuxAudioSamples(
         (arrayBuffer as ArrayBuffer & { fileStart: number }).fileStart = 0;
         mp4File.appendBuffer(arrayBuffer);
         mp4File.flush();
+
+        // mp4box triggers onReady/onSamples synchronously during appendBuffer.
+        // Flush the decoder to get remaining audio data, then process PCM.
+        decoderRef.current!.flush().then(() => {
+            // Convert AudioData chunks to Float32 PCM
+            const channels = audioTrack!.audio.channel_count;
+            const sampleRate = audioTrack!.audio.sample_rate;
+            const inSample = Math.floor((inPointMs / 1000) * sampleRate);
+            const outSample = Math.ceil((outPointMs / 1000) * sampleRate);
+
+            // Collect all samples
+            let totalSamples = 0;
+            for (const chunk of pcmChunks) {
+                totalSamples += chunk.numberOfFrames;
+            }
+
+            const channelData: Float32Array[] = [];
+            for (let c = 0; c < channels; c++) {
+                channelData.push(new Float32Array(totalSamples));
+            }
+
+            let offset = 0;
+            for (const chunk of pcmChunks) {
+                for (let c = 0; c < channels; c++) {
+                    const buffer = new Float32Array(chunk.numberOfFrames);
+                    chunk.copyTo(buffer, {
+                        planeIndex: c,
+                        format: 'f32-planar',
+                    });
+                    channelData[c]!.set(buffer, offset);
+                }
+                offset += chunk.numberOfFrames;
+                chunk.close();
+            }
+
+            // Trim to in/out range
+            const startIdx = Math.max(0, inSample);
+            const endIdx = Math.min(totalSamples, outSample);
+            const trimmedChannels = channelData.map(ch => ch.slice(startIdx, endIdx));
+
+            resolve({
+                sampleRate,
+                channels,
+                samples: trimmedChannels,
+            });
+        }).catch(reject);
     });
 }
 
