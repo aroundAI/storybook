@@ -382,7 +382,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                             ) : (
                                 <button
                                     className="rounded-md border border-cyan-600 bg-cyan-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-cyan-700"
-                                    onClick={() => void handleUploadToR2()}
+                                    onClick={handleUploadToR2}
                                 >
                                     ☁ Upload to R2
                                 </button>

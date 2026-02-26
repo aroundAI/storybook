@@ -280,7 +280,8 @@ async function processRender(job: RenderJobMessage): Promise<void> {
             const hash = createHash('sha256');
             const stream = createReadStream(result.outputPath);
             stream.on('error', reject);
-            stream.on('data', (d) => hash.update(d as unknown as string));
+            // @ts-expect-error Node.js Buffer is compatible with hash.update() at runtime
+            stream.on('data', (d) => hash.update(d));
             stream.on('end', () => resolve(hash.digest('hex')));
         });
 
