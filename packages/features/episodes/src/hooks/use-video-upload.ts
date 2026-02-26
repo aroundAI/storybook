@@ -324,8 +324,8 @@ export function useVideoUpload(
 
       const timestamp = Date.now();
       const sanitizedName = sanitizeFilename(file.name);
-      const videoPath = `${projectId}/shots/${shotId}/video-${timestamp}-${sanitizedName}`;
-      const thumbnailPath = `${projectId}/shots/${shotId}/thumbnail-${timestamp}.webp`;
+      const videoPath = `projects/${projectId}/shots/${shotId}/video/${timestamp}-${sanitizedName}`;
+      const thumbnailPath = `projects/${projectId}/shots/${shotId}/thumbnail/${timestamp}.webp`;
 
       let videoUrl: string;
       let thumbnailUrl: string;
