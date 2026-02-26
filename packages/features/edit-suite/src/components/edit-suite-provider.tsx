@@ -105,6 +105,44 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
     const playbackEngineRef = useRef<PlaybackEngine | null>(null);
     const audioEngineRef = useRef<AudioEngine | null>(null);
 
+    // ── Load existing project on mount ──
+    useEffect(() => {
+        if (!episodeIdProp || state.project) return;
+
+        let cancelled = false;
+
+        async function loadExistingProject() {
+            try {
+                const { findEditProjectByEpisodeAction } = await import('../server/edit-project-actions');
+                const found = await findEditProjectByEpisodeAction({ episodeId: episodeIdProp! });
+
+                if (!found || cancelled) return;
+
+                const { getEditProjectAction } = await import('../server/edit-project-actions');
+                const projectData = await getEditProjectAction({ editProjectId: found.editProjectId });
+
+                if (cancelled) return;
+
+                if (projectData.success) {
+                    const { tracks, clips, keyframes, transitions, syncGroups, ...project } = projectData.project;
+                    dispatch({
+                        type: 'LOAD_PROJECT',
+                        payload: { project, tracks, clips, keyframes, transitions, syncGroups },
+                    });
+                }
+            } catch (err) {
+                // No existing project — that's fine, user will click Auto-Assemble
+                console.debug('No existing edit project for episode:', err);
+            }
+        }
+
+        void loadExistingProject();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [episodeIdProp]); // eslint-disable-line react-hooks/exhaustive-deps
+
     // ── WebSocket for real-time render status ──
     useEditSuiteWebSocket(state.project?.id, dispatch);
 

@@ -75,6 +75,33 @@ export const createEditProjectAction = enhanceAction(
 );
 
 /**
+ * Find an existing edit project for an episode (returns { id } or null).
+ */
+export async function findEditProjectByEpisodeAction(params: {
+    episodeId: string;
+}): Promise<{ editProjectId: string } | null> {
+    const authClient = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(authClient);
+
+    if (authError || !user) {
+        throw new Error('Authentication required');
+    }
+
+    const client = getEditSuiteClient();
+
+    const { data: project } = await client
+        .from('edit_projects')
+        .select('id')
+        .eq('episode_id', params.episodeId)
+        .limit(1)
+        .maybeSingle();
+
+    if (!project) return null;
+
+    return { editProjectId: project.id as string };
+}
+
+/**
  * Fetch an edit project with all related data:
  * tracks, clips, keyframes, transitions, sync groups.
  */

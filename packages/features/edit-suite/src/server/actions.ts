@@ -3,6 +3,7 @@
 // Project CRUD
 export {
     createEditProjectAction,
+    findEditProjectByEpisodeAction,
     getEditProjectAction,
     updateEditProjectAction,
 } from './edit-project-actions';

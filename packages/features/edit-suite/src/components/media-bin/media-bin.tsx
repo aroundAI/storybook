@@ -21,8 +21,8 @@ import { AssetGroup } from './asset-group';
 import { AssetItem } from './asset-item';
 
 export function MediaBin() {
-    const { state } = useEditSuite();
-    const episodeId = state.project?.episodeId ?? undefined;
+    const { state, episodeId: episodeIdFromContext } = useEditSuite();
+    const episodeId = episodeIdFromContext ?? state.project?.episodeId ?? undefined;
     const { sections, isLoading, error, refetch } = useMediaBin(episodeId, state.clips);
     const [search, setSearch] = useState('');
     const [dubbedLanguageFilter, setDubbedLanguageFilter] = useState<string | null>(null);
