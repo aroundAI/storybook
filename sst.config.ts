@@ -565,6 +565,10 @@ export default $config({
       link: [connectionsTable],
       environment: {
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        // Required for admin checks and DB queries in collaborative editing
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+        SUPABASE_SERVICE_ROLE_KEY:
+          process.env.SUPABASE_SERVICE_ROLE_KEY || '',
       },
       transform: {
         function: {
@@ -576,12 +580,18 @@ export default $config({
           actions: ['kms:Decrypt'],
           resources: [kmsKey.arn],
         },
+        {
+          // Permission to broadcast WebSocket messages (edit-operation, cursor-update)
+          actions: ['execute-api:ManageConnections'],
+          resources: ['*'],
+        },
       ],
       nodejs: {
         install: [
           '@aws-sdk/client-dynamodb',
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
+          '@supabase/supabase-js',
         ],
       },
     });
