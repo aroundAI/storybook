@@ -10,6 +10,9 @@
 
 import { useCallback, useRef, useState } from 'react';
 
+import { PROJECT_ASSETS_BUCKET } from '@kit/assets/lib';
+import { sanitizeFilename } from '@kit/assets/upload-validation';
+
 /**
  * useVideoUpload Hook
  *
@@ -320,7 +323,7 @@ export function useVideoUpload(
       });
 
       const timestamp = Date.now();
-      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const sanitizedName = sanitizeFilename(file.name);
       const videoPath = `${projectId}/shots/${shotId}/video-${timestamp}-${sanitizedName}`;
       const thumbnailPath = `${projectId}/shots/${shotId}/thumbnail-${timestamp}.webp`;
 
@@ -334,7 +337,7 @@ export function useVideoUpload(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              bucket: 'project-assets',
+              bucket: PROJECT_ASSETS_BUCKET,
               path: videoPath,
               contentType: file.type,
             }),
@@ -343,7 +346,7 @@ export function useVideoUpload(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              bucket: 'project-assets',
+              bucket: PROJECT_ASSETS_BUCKET,
               path: thumbnailPath,
               contentType: 'image/webp',
             }),

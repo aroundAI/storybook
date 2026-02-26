@@ -1,8 +1,78 @@
 import { NextResponse } from 'next/server';
 
+import { z } from 'zod';
+
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+
+const ALLOWED_VIDEO_CONTENT_TYPES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+];
+
+/**
+ * Build a list of allowed URL prefixes for storage URLs.
+ * This prevents SSRF by ensuring URLs come from known storage domains.
+ */
+function getAllowedStorageOrigins(): string[] {
+  const origins: string[] = [];
+
+  // Supabase storage
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (supabaseUrl) {
+    origins.push(`${supabaseUrl}/storage/`);
+  }
+
+  // R2 / B2 public URLs
+  const r2PublicUrl = process.env.R2_PUBLIC_URL;
+  if (r2PublicUrl) {
+    origins.push(r2PublicUrl);
+  }
+
+  const b2PublicUrl = process.env.B2_PUBLIC_URL;
+  if (b2PublicUrl) {
+    origins.push(b2PublicUrl);
+  }
+
+  // Local storage (dev only)
+  if (process.env.STORAGE_PROVIDER === 'local') {
+    origins.push('/api/storage/');
+    origins.push('http://localhost');
+  }
+
+  return origins;
+}
+
+function isAllowedStorageUrl(url: string): boolean {
+  const origins = getAllowedStorageOrigins();
+
+  // If no origins configured (shouldn't happen), reject all
+  if (origins.length === 0) {
+    return false;
+  }
+
+  return origins.some((origin) => url.startsWith(origin));
+}
+
+/**
+ * Zod schema for the upload metadata request body.
+ */
+const UploadMetadataSchema = z.object({
+  videoUrl: z.string().url(),
+  thumbnailUrl: z.string().url(),
+  duration: z.string().optional(),
+  width: z.string().optional(),
+  height: z.string().optional(),
+  size: z.number().int().positive().optional(),
+  contentType: z
+    .string()
+    .refine((ct) => ALLOWED_VIDEO_CONTENT_TYPES.includes(ct), {
+      message: `Content type must be one of: ${ALLOWED_VIDEO_CONTENT_TYPES.join(', ')}`,
+    })
+    .optional(),
+});
 
 /**
  * POST /api/projects/[projectId]/shots/[shotId]/upload
@@ -11,17 +81,17 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  * directly to storage via presigned URLs.
  *
  * Request: application/json with:
- * - videoUrl: Public URL of the uploaded video (required)
- * - thumbnailUrl: Public URL of the uploaded thumbnail (required)
+ * - videoUrl: Public URL of the uploaded video (required, must be allowed domain)
+ * - thumbnailUrl: Public URL of the uploaded thumbnail (required, must be allowed domain)
  * - duration: Video duration in seconds (optional)
  * - width: Video width in pixels (optional)
  * - height: Video height in pixels (optional)
  * - size: Video file size in bytes (optional)
- * - contentType: Video MIME type (optional)
+ * - contentType: Video MIME type (optional, validated against allowlist)
  *
  * Response:
  * - 200: Success with videoUrl, thumbnailUrl
- * - 400: Missing required fields
+ * - 400: Missing/invalid fields or disallowed URL domain
  * - 403: Unauthorized (via enhanceRouteHandler)
  * - 404: Shot or project not found
  * - 500: Database update failure
@@ -79,19 +149,11 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    // 2. Parse JSON body
-    let body: {
-      videoUrl?: string;
-      thumbnailUrl?: string;
-      duration?: string;
-      width?: string;
-      height?: string;
-      size?: number;
-      contentType?: string;
-    };
+    // 2. Parse and validate JSON body with Zod
+    let rawBody: unknown;
 
     try {
-      body = (await request.json()) as typeof body;
+      rawBody = await request.json();
     } catch (error) {
       logger.error({ ...ctx, error }, 'Failed to parse JSON body');
       return NextResponse.json(
@@ -100,23 +162,52 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    const { videoUrl, thumbnailUrl, duration, width, height, size, contentType } = body;
+    const parsed = UploadMetadataSchema.safeParse(rawBody);
 
-    if (!videoUrl) {
+    if (!parsed.success) {
+      logger.warn(
+        { ...ctx, errors: parsed.error.flatten() },
+        'Request validation failed',
+      );
+
       return NextResponse.json(
-        { error: 'videoUrl is required' },
+        {
+          error: 'Invalid request body',
+          details: parsed.error.flatten().fieldErrors,
+        },
         { status: 400 },
       );
     }
 
-    if (!thumbnailUrl) {
+    const { videoUrl, thumbnailUrl, duration, width, height, size, contentType } =
+      parsed.data;
+
+    // 3. Validate URLs belong to allowed storage domains (prevent SSRF/XSS)
+    if (!isAllowedStorageUrl(videoUrl)) {
+      logger.warn(
+        { ...ctx, videoUrl },
+        'Video URL rejected: not from an allowed storage domain',
+      );
+
       return NextResponse.json(
-        { error: 'thumbnailUrl is required' },
+        { error: 'videoUrl is not from an allowed storage domain' },
         { status: 400 },
       );
     }
 
-    // 3. Update shot with video and thumbnail URLs
+    if (!isAllowedStorageUrl(thumbnailUrl)) {
+      logger.warn(
+        { ...ctx, thumbnailUrl },
+        'Thumbnail URL rejected: not from an allowed storage domain',
+      );
+
+      return NextResponse.json(
+        { error: 'thumbnailUrl is not from an allowed storage domain' },
+        { status: 400 },
+      );
+    }
+
+    // 4. Update shot with video and thumbnail URLs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (client as any)
       .from('shots')
@@ -146,7 +237,7 @@ export const POST = enhanceRouteHandler(
 
     logger.info(ctx, 'Shot video upload completed successfully');
 
-    // 4. Return success response
+    // 5. Return success response
     return NextResponse.json({
       success: true,
       videoUrl,
