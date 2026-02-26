@@ -15,6 +15,7 @@ const {
   mockScanCommand,
   mockDeleteCommand,
   mockGetCommand,
+  mockUpdateCommand,
   mockApiGatewayClientSend,
   mockDdbClientSend,
   mockSupabaseRpc,
@@ -24,6 +25,7 @@ const {
   mockScanCommand: vi.fn(),
   mockDeleteCommand: vi.fn(),
   mockGetCommand: vi.fn(),
+  mockUpdateCommand: vi.fn(),
   mockApiGatewayClientSend: vi.fn(),
   mockDdbClientSend: vi.fn(),
   mockSupabaseRpc: vi.fn(),
@@ -64,6 +66,10 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
   }),
   GetCommand: vi.fn((params) => {
     mockGetCommand(params);
+    return params;
+  }),
+  UpdateCommand: vi.fn((params) => {
+    mockUpdateCommand(params);
     return params;
   }),
 }));
