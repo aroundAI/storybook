@@ -1,7 +1,7 @@
 /**
  * WebSocket Disconnect Handler Tests
  *
- * Tests connection cleanup when WebSocket disconnects
+ * Tests connection cleanup + peer notification when WebSocket disconnects
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -9,10 +9,15 @@ import { handler } from '../disconnect';
 import { createMockDisconnectEvent } from './utils/test-helpers';
 
 // Use vi.hoisted() to ensure mocks are available during hoisting phase
-const { mockDeleteCommand, mockSend } = vi.hoisted(() => ({
-  mockDeleteCommand: vi.fn(),
-  mockSend: vi.fn(),
-}));
+const { mockDeleteCommand, mockGetCommand, mockScanCommand, mockSend, mockApiGwSend, mockPostToConnectionCommand } =
+  vi.hoisted(() => ({
+    mockDeleteCommand: vi.fn(),
+    mockGetCommand: vi.fn(),
+    mockScanCommand: vi.fn(),
+    mockSend: vi.fn(),
+    mockApiGwSend: vi.fn(),
+    mockPostToConnectionCommand: vi.fn(),
+  }));
 
 // Mock AWS DynamoDB
 vi.mock('@aws-sdk/client-dynamodb', () => ({
@@ -27,7 +32,26 @@ vi.mock('@aws-sdk/lib-dynamodb', () => ({
   },
   DeleteCommand: vi.fn((params) => {
     mockDeleteCommand(params);
-    return params;
+    return { _type: 'DeleteCommand', ...params };
+  }),
+  GetCommand: vi.fn((params) => {
+    mockGetCommand(params);
+    return { _type: 'GetCommand', ...params };
+  }),
+  ScanCommand: vi.fn((params) => {
+    mockScanCommand(params);
+    return { _type: 'ScanCommand', ...params };
+  }),
+}));
+
+// Mock API Gateway Management API
+vi.mock('@aws-sdk/client-apigatewaymanagementapi', () => ({
+  ApiGatewayManagementApiClient: vi.fn(() => ({
+    send: mockApiGwSend,
+  })),
+  PostToConnectionCommand: vi.fn((params) => {
+    mockPostToConnectionCommand(params);
+    return { _type: 'PostToConnectionCommand', ...params };
   }),
 }));
 
@@ -38,8 +62,22 @@ describe('WebSocket Disconnect Handler', () => {
     // Set environment variable
     process.env.CONNECTIONS_TABLE_NAME = 'test-connections-table';
 
-    // Default: delete succeeds
-    mockSend.mockResolvedValue({});
+    // Default mocks:
+    // GetCommand returns a connection with no channels (simple disconnect)
+    // ScanCommand returns empty (no peers)
+    // DeleteCommand succeeds
+    mockSend.mockImplementation((cmd: { _type: string }) => {
+      if (cmd._type === 'GetCommand') {
+        return Promise.resolve({ Item: { connectionId: 'test-conn', channels: [], userId: '' } });
+      }
+      if (cmd._type === 'ScanCommand') {
+        return Promise.resolve({ Items: [] });
+      }
+      // DeleteCommand
+      return Promise.resolve({});
+    });
+
+    mockApiGwSend.mockResolvedValue({});
   });
 
   describe('Successful Disconnect', () => {
@@ -53,15 +91,17 @@ describe('WebSocket Disconnect Handler', () => {
         message: 'Disconnected',
       });
 
+      // Verify GetCommand was called first to read connection
+      expect(mockGetCommand).toHaveBeenCalledWith({
+        TableName: 'test-connections-table',
+        Key: { connectionId: 'connection-123' },
+      });
+
       // Verify connection deleted from DynamoDB
       expect(mockDeleteCommand).toHaveBeenCalledWith({
         TableName: 'test-connections-table',
-        Key: {
-          connectionId: 'connection-123',
-        },
+        Key: { connectionId: 'connection-123' },
       });
-
-      expect(mockSend).toHaveBeenCalled();
     });
 
     it('should handle disconnect for different connection IDs', async () => {
@@ -69,11 +109,15 @@ describe('WebSocket Disconnect Handler', () => {
 
       await handler(event);
 
+      expect(mockGetCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          Key: { connectionId: 'unique-connection-456' },
+        }),
+      );
+
       expect(mockDeleteCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          Key: {
-            connectionId: 'unique-connection-456',
-          },
+          Key: { connectionId: 'unique-connection-456' },
         }),
       );
     });
@@ -81,8 +125,11 @@ describe('WebSocket Disconnect Handler', () => {
     it('should successfully disconnect even if connection not found in DynamoDB', async () => {
       const event = createMockDisconnectEvent();
 
-      // Mock: connection not found (already deleted or never stored)
-      mockSend.mockResolvedValueOnce({});
+      // Mock: GetCommand returns no item (connection already gone)
+      mockSend.mockImplementation((cmd: { _type: string }) => {
+        if (cmd._type === 'GetCommand') return Promise.resolve({ Item: undefined });
+        return Promise.resolve({});
+      });
 
       const result = await handler(event);
 
@@ -91,11 +138,103 @@ describe('WebSocket Disconnect Handler', () => {
     });
   });
 
+  describe('Peer Notification', () => {
+    it('should notify peers in shared channels when user disconnects', async () => {
+      const event = createMockDisconnectEvent('user-conn-1');
+
+      // Mock: connection has channels and userId
+      mockSend.mockImplementation((cmd: { _type: string }) => {
+        if (cmd._type === 'GetCommand') {
+          return Promise.resolve({
+            Item: {
+              connectionId: 'user-conn-1',
+              channels: ['edit:project-123'],
+              userId: 'user-abc',
+            },
+          });
+        }
+        if (cmd._type === 'ScanCommand') {
+          return Promise.resolve({
+            Items: [
+              // The disconnecting user's own connection (should be skipped)
+              { connectionId: 'user-conn-1', channels: ['edit:project-123'], userId: 'user-abc' },
+              // A peer in the same channel (should be notified)
+              { connectionId: 'peer-conn-2', channels: ['edit:project-123'], userId: 'user-def' },
+              // A connection in a different channel (should NOT be notified)
+              { connectionId: 'other-conn-3', channels: ['edit:other-project'], userId: 'user-ghi' },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      const result = await handler(event);
+
+      expect(result.statusCode).toBe(200);
+
+      // Should send user-left to peer-conn-2 only
+      expect(mockPostToConnectionCommand).toHaveBeenCalledTimes(1);
+      expect(mockPostToConnectionCommand).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ConnectionId: 'peer-conn-2',
+        }),
+      );
+    });
+
+    it('should not notify peers when connection has no channels', async () => {
+      const event = createMockDisconnectEvent('no-channel-conn');
+
+      mockSend.mockImplementation((cmd: { _type: string }) => {
+        if (cmd._type === 'GetCommand') {
+          return Promise.resolve({
+            Item: { connectionId: 'no-channel-conn', channels: [], userId: 'user-xyz' },
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      const result = await handler(event);
+
+      expect(result.statusCode).toBe(200);
+      // Should not scan or send any notifications
+      expect(mockScanCommand).not.toHaveBeenCalled();
+      expect(mockPostToConnectionCommand).not.toHaveBeenCalled();
+    });
+
+    it('should handle stale peer connections (410 Gone)', async () => {
+      const event = createMockDisconnectEvent('user-conn-1');
+
+      mockSend.mockImplementation((cmd: { _type: string }) => {
+        if (cmd._type === 'GetCommand') {
+          return Promise.resolve({
+            Item: { connectionId: 'user-conn-1', channels: ['ch1'], userId: 'user-a' },
+          });
+        }
+        if (cmd._type === 'ScanCommand') {
+          return Promise.resolve({
+            Items: [
+              { connectionId: 'stale-peer', channels: ['ch1'], userId: 'user-b' },
+            ],
+          });
+        }
+        return Promise.resolve({});
+      });
+
+      // Simulate 410 Gone from API Gateway
+      mockApiGwSend.mockRejectedValueOnce({ statusCode: 410 });
+
+      const result = await handler(event);
+
+      // Should still succeed despite stale peer
+      expect(result.statusCode).toBe(200);
+    });
+  });
+
   describe('DynamoDB Errors', () => {
     it('should handle DynamoDB connection failure', async () => {
       const event = createMockDisconnectEvent();
 
-      mockSend.mockRejectedValueOnce(new Error('DynamoDB connection timeout'));
+      mockSend.mockRejectedValue(new Error('DynamoDB connection timeout'));
 
       const result = await handler(event);
 
@@ -108,7 +247,7 @@ describe('WebSocket Disconnect Handler', () => {
     it('should handle DynamoDB delete errors', async () => {
       const event = createMockDisconnectEvent();
 
-      mockSend.mockRejectedValueOnce(new Error('Access denied'));
+      mockSend.mockRejectedValue(new Error('Access denied'));
 
       const result = await handler(event);
 
@@ -119,7 +258,7 @@ describe('WebSocket Disconnect Handler', () => {
     it('should handle throttling errors from DynamoDB', async () => {
       const event = createMockDisconnectEvent();
 
-      mockSend.mockRejectedValueOnce(
+      mockSend.mockRejectedValue(
         new Error('ProvisionedThroughputExceededException'),
       );
 
@@ -137,13 +276,11 @@ describe('WebSocket Disconnect Handler', () => {
 
       expect(mockDeleteCommand).toHaveBeenCalledWith({
         TableName: 'test-connections-table',
-        Key: {
-          connectionId: 'cleanup-test-123',
-        },
+        Key: { connectionId: 'cleanup-test-123' },
       });
 
       // Should only include connectionId in Key (not userId)
-      const callArgs = mockDeleteCommand.mock.calls[0][0];
+      const callArgs = mockDeleteCommand.mock.calls[0]![0];
       expect(Object.keys(callArgs.Key)).toEqual(['connectionId']);
     });
 
@@ -154,9 +291,12 @@ describe('WebSocket Disconnect Handler', () => {
       const result1 = await handler(event);
       expect(result1.statusCode).toBe(200);
 
-      // Clear and mock "already deleted"
+      // Clear and re-setup mocks
       vi.clearAllMocks();
-      mockSend.mockResolvedValueOnce({});
+      mockSend.mockImplementation((cmd: { _type: string }) => {
+        if (cmd._type === 'GetCommand') return Promise.resolve({ Item: undefined });
+        return Promise.resolve({});
+      });
 
       // Second disconnect (connection already deleted)
       const result2 = await handler(event);
@@ -166,28 +306,11 @@ describe('WebSocket Disconnect Handler', () => {
 
   describe('Environment Configuration', () => {
     it('should use CONNECTIONS_TABLE_NAME from environment', async () => {
-      // Note: Environment variable is read at module load time
-      // This test verifies the handler uses the configured value from vitest.setup.ts
       const event = createMockDisconnectEvent();
 
       await handler(event);
 
-      expect(mockDeleteCommand).toHaveBeenCalledWith(
-        expect.objectContaining({
-          TableName: 'test-connections-table', // From vitest.setup.ts
-        }),
-      );
-    });
-
-    it('should use default table name when not overridden', async () => {
-      // Note: CONNECTIONS_TABLE_NAME is set in vitest.setup.ts
-      // This test verifies the handler uses the configured value
-      const event = createMockDisconnectEvent();
-
-      await handler(event);
-
-      // Should use the default test table name
-      expect(mockDeleteCommand).toHaveBeenCalledWith(
+      expect(mockGetCommand).toHaveBeenCalledWith(
         expect.objectContaining({
           TableName: 'test-connections-table',
         }),
@@ -205,9 +328,7 @@ describe('WebSocket Disconnect Handler', () => {
       expect(result.statusCode).toBe(200);
       expect(mockDeleteCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          Key: {
-            connectionId: longConnectionId,
-          },
+          Key: { connectionId: longConnectionId },
         }),
       );
     });
@@ -221,9 +342,7 @@ describe('WebSocket Disconnect Handler', () => {
       expect(result.statusCode).toBe(200);
       expect(mockDeleteCommand).toHaveBeenCalledWith(
         expect.objectContaining({
-          Key: {
-            connectionId: specialConnectionId,
-          },
+          Key: { connectionId: specialConnectionId },
         }),
       );
     });
@@ -277,12 +396,12 @@ describe('WebSocket Disconnect Handler', () => {
       const consoleSpy = vi.spyOn(console, 'error');
       const event = createMockDisconnectEvent();
 
-      mockSend.mockRejectedValueOnce(new Error('Test error'));
+      mockSend.mockRejectedValue(new Error('Test error'));
 
       await handler(event);
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        'Error deleting connection:',
+        'Error during disconnect cleanup:',
         expect.any(Error),
       );
 

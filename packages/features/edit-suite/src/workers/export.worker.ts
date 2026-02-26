@@ -236,7 +236,7 @@ async function demuxAudioSamples(
     url: string,
     inPointMs: number,
     outPointMs: number,
-    targetSampleRate: number,
+    _targetSampleRate: number,
 ): Promise<DecodedAudio | null> {
     const response = await fetch(url);
     const arrayBuffer = await response.arrayBuffer();

@@ -3,6 +3,7 @@ import {
   DeleteCommand,
   DynamoDBDocumentClient,
   GetCommand,
+  ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import {
   ApiGatewayManagementApiClient,
@@ -44,9 +45,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
 
     // 2. If this connection had channel subscriptions, notify peers
     if (channels.length > 0 && userId) {
-      const apiGw = new ApiGatewayManagementApiClient({
-        endpoint,
-      });
+      const apiGw = new ApiGatewayManagementApiClient({ endpoint });
 
       const message = JSON.stringify({
         type: 'user-left',
@@ -54,19 +53,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         connectionId,
       });
 
-      // For each channel, find other connections subscribed to it and notify them
-      // We use a simple scan since the connections table is small
-      // In production at scale, consider a GSI on channels
-      const { DynamoDBClient: _DDBClient, ...rest } = await import(
-        '@aws-sdk/client-dynamodb'
-      );
-      void rest; // unused import destructure
-      const { ScanCommand } = await import('@aws-sdk/lib-dynamodb');
-
+      // Find all other connections that share a channel
       const { Items: allConnections } = await ddb.send(
-        new ScanCommand({
-          TableName: TABLE_NAME,
-        }),
+        new ScanCommand({ TableName: TABLE_NAME }),
       );
 
       const peerConnectionIds = new Set<string>();
@@ -74,7 +63,6 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       for (const conn of allConnections ?? []) {
         if (conn.connectionId === connectionId) continue;
         const connChannels: string[] = conn.channels ?? [];
-        // If this peer shares any channel with the disconnecting user
         if (connChannels.some((ch: string) => channels.includes(ch))) {
           peerConnectionIds.add(conn.connectionId);
         }
@@ -91,7 +79,6 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
               }),
             );
           } catch (err: unknown) {
-            // Connection might already be gone — ignore
             const error = err as { statusCode?: number };
             if (error.statusCode === 410) {
               console.log(
