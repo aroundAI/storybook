@@ -311,7 +311,7 @@ export function useVideoUpload(
         return;
       }
 
-      // 3. Prepare FormData with video and thumbnail
+      // 3. Upload video and thumbnail via presigned URLs (bypasses API Gateway 10MB limit)
       setState('uploading');
       setProgress({
         loaded: 0,
@@ -319,128 +319,162 @@ export function useVideoUpload(
         percentage: 0,
       });
 
-      const formData = new FormData();
-      formData.append('video', file);
-      formData.append(
-        'thumbnail',
-        thumbnailBlob,
-        `thumbnail-${Date.now()}.webp`,
-      );
-      formData.append('duration', String(Math.round(metadata.duration)));
-      formData.append('width', String(metadata.width));
-      formData.append('height', String(metadata.height));
+      const timestamp = Date.now();
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const videoPath = `${projectId}/shots/${shotId}/video-${timestamp}-${sanitizedName}`;
+      const thumbnailPath = `${projectId}/shots/${shotId}/thumbnail-${timestamp}.webp`;
 
-      // 4. Upload with XMLHttpRequest for progress tracking
-      return new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhrRef.current = xhr;
+      let videoUrl: string;
+      let thumbnailUrl: string;
 
-        // Track upload progress
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percentage = Math.round((event.loaded / event.total) * 100);
-            setProgress({
-              loaded: event.loaded,
-              total: event.total,
-              percentage,
-            });
-          }
-        });
+      try {
+        // 3a. Get presigned URLs for both files
+        const [videoPresign, thumbnailPresign] = await Promise.all([
+          fetch('/api/storage/presign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bucket: 'project-assets',
+              path: videoPath,
+              contentType: file.type,
+            }),
+          }).then((r) => r.json() as Promise<{ uploadUrl: string; publicUrl: string; error?: string }>),
+          fetch('/api/storage/presign', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              bucket: 'project-assets',
+              path: thumbnailPath,
+              contentType: 'image/webp',
+            }),
+          }).then((r) => r.json() as Promise<{ uploadUrl: string; publicUrl: string; error?: string }>),
+        ]);
 
-        // Handle successful response
-        xhr.addEventListener('load', () => {
-          xhrRef.current = null;
+        if (videoPresign.error || thumbnailPresign.error) {
+          throw new Error(videoPresign.error || thumbnailPresign.error || 'Failed to get presigned URLs');
+        }
 
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const response = JSON.parse(xhr.responseText) as {
-                success: boolean;
-                videoUrl: string;
-                thumbnailUrl: string;
-              };
+        // 3b. Upload video directly to storage with progress tracking
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhrRef.current = xhr;
 
-              setState('success');
-              setVideoInfo({
-                videoUrl: response.videoUrl,
-                thumbnailUrl: response.thumbnailUrl,
-                duration: metadata.duration,
-                width: metadata.width,
-                height: metadata.height,
-                size: file.size,
-                contentType: file.type,
-                name: file.name,
+          xhr.upload.addEventListener('progress', (event) => {
+            if (event.lengthComputable) {
+              const percentage = Math.round((event.loaded / event.total) * 95); // 95% for video
+              setProgress({
+                loaded: event.loaded,
+                total: file.size,
+                percentage,
               });
-              onUploadComplete?.(response.videoUrl, response.thumbnailUrl);
+            }
+          });
+
+          xhr.addEventListener('load', () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
               resolve();
-            } catch {
-              const parseError: VideoUploadError = {
-                code: 'PARSE_ERROR',
-                message: 'Failed to parse server response',
-              };
-              setState('error');
-              setError(parseError);
-              onError?.(parseError);
-              reject(new Error('Failed to parse response'));
+            } else {
+              reject(new Error(`Video upload failed with status ${xhr.status}`));
             }
-          } else {
-            // Handle HTTP errors
-            try {
-              const errorResponse = JSON.parse(xhr.responseText) as Record<
-                string,
-                unknown
-              > | null;
-              const uploadError: VideoUploadError = {
-                code:
-                  typeof errorResponse?.code === 'string'
-                    ? errorResponse.code
-                    : 'UPLOAD_FAILED',
-                message:
-                  typeof errorResponse?.error === 'string'
-                    ? errorResponse.error
-                    : 'Upload failed',
-                details: errorResponse?.details as Record<string, unknown>,
-              };
-              setState('error');
-              setError(uploadError);
-              onError?.(uploadError);
-            } catch {
-              const uploadError: VideoUploadError = {
-                code: 'UPLOAD_FAILED',
-                message: `Upload failed with status ${xhr.status}`,
-              };
-              setState('error');
-              setError(uploadError);
-              onError?.(uploadError);
-            }
-            reject(new Error('Upload failed'));
-          }
+          });
+
+          xhr.addEventListener('error', () => reject(new Error('Video upload network error')));
+          xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+
+          xhr.open('PUT', videoPresign.uploadUrl, true);
+          xhr.setRequestHeader('Content-Type', file.type);
+          xhr.send(file);
         });
 
-        // Handle network errors
-        xhr.addEventListener('error', () => {
-          xhrRef.current = null;
-          const networkError: VideoUploadError = {
-            code: 'NETWORK_ERROR',
-            message: 'Network error occurred. Please check your connection.',
-          };
-          setState('error');
-          setError(networkError);
-          onError?.(networkError);
-          reject(new Error('Network error'));
+        videoUrl = videoPresign.publicUrl;
+        xhrRef.current = null;
+
+        // 3c. Upload thumbnail (small, no progress tracking needed)
+        setProgress((prev) => ({ ...prev, percentage: 97 }));
+        const thumbResponse = await fetch(thumbnailPresign.uploadUrl, {
+          method: 'PUT',
+          body: thumbnailBlob,
+          headers: { 'Content-Type': 'image/webp' },
         });
 
-        // Handle abort
-        xhr.addEventListener('abort', () => {
-          xhrRef.current = null;
+        if (!thumbResponse.ok) {
+          throw new Error(`Thumbnail upload failed with status ${thumbResponse.status}`);
+        }
+
+        thumbnailUrl = thumbnailPresign.publicUrl;
+      } catch (err) {
+        xhrRef.current = null;
+        if (err instanceof Error && err.message === 'Upload cancelled') {
           setState('idle');
           setProgress({ loaded: 0, total: 0, percentage: 0 });
-          resolve();
-        });
+          return;
+        }
+        const uploadError: VideoUploadError = {
+          code: 'UPLOAD_FAILED',
+          message: err instanceof Error ? err.message : 'Upload failed',
+        };
+        setState('error');
+        setError(uploadError);
+        onError?.(uploadError);
+        return;
+      }
 
-        // Send request
-        xhr.open('POST', `/api/projects/${projectId}/shots/${shotId}/upload`);
-        xhr.send(formData);
-      });
+      // 4. Update shot record with metadata (small JSON, well under API Gateway limit)
+      setProgress((prev) => ({ ...prev, percentage: 99 }));
+
+      try {
+        const metadataResponse = await fetch(
+          `/api/projects/${projectId}/shots/${shotId}/upload`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              videoUrl,
+              thumbnailUrl,
+              duration: String(Math.round(metadata.duration)),
+              width: String(metadata.width),
+              height: String(metadata.height),
+              size: file.size,
+              contentType: file.type,
+            }),
+          },
+        );
+
+        if (!metadataResponse.ok) {
+          const errorBody = await metadataResponse.json().catch(() => ({})) as Record<string, unknown>;
+          throw new Error(
+            (errorBody.error as string) || `Metadata update failed with status ${metadataResponse.status}`,
+          );
+        }
+
+        const response = (await metadataResponse.json()) as {
+          success: boolean;
+          videoUrl: string;
+          thumbnailUrl: string;
+        };
+
+        setState('success');
+        setProgress({ loaded: file.size, total: file.size, percentage: 100 });
+        setVideoInfo({
+          videoUrl: response.videoUrl,
+          thumbnailUrl: response.thumbnailUrl,
+          duration: metadata.duration,
+          width: metadata.width,
+          height: metadata.height,
+          size: file.size,
+          contentType: file.type,
+          name: file.name,
+        });
+        onUploadComplete?.(response.videoUrl, response.thumbnailUrl);
+      } catch (err) {
+        const metadataError: VideoUploadError = {
+          code: 'METADATA_UPDATE_FAILED',
+          message: err instanceof Error ? err.message : 'Failed to update shot record',
+        };
+        setState('error');
+        setError(metadataError);
+        onError?.(metadataError);
+      }
     },
     [projectId, shotId, validate, onUploadComplete, onError],
   );
