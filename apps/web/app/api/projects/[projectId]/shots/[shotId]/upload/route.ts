@@ -1,37 +1,100 @@
 import { NextResponse } from 'next/server';
 
-import {
-  PROJECT_ASSETS_BUCKET,
-  deleteFromStorage,
-  uploadToStorage,
-} from '@kit/assets/upload';
-import {
-  sanitizeFilename,
-  validateUpload,
-} from '@kit/assets/upload-validation';
+import { z } from 'zod';
+
 import { enhanceRouteHandler } from '@kit/next/routes';
 import { getLogger } from '@kit/shared/logger';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+const ALLOWED_VIDEO_CONTENT_TYPES = [
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+];
+
+/**
+ * Build a list of allowed URL prefixes for storage URLs.
+ * This prevents SSRF by ensuring URLs come from known storage domains.
+ */
+function getAllowedStorageOrigins(): string[] {
+  const origins: string[] = [];
+
+  // Supabase storage
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (supabaseUrl) {
+    origins.push(`${supabaseUrl}/storage/`);
+  }
+
+  // R2 / B2 public URLs
+  const r2PublicUrl = process.env.R2_PUBLIC_URL;
+  if (r2PublicUrl) {
+    origins.push(r2PublicUrl);
+  }
+
+  const b2PublicUrl = process.env.B2_PUBLIC_URL;
+  if (b2PublicUrl) {
+    origins.push(b2PublicUrl);
+  }
+
+  // Local storage (dev only)
+  if (process.env.STORAGE_PROVIDER === 'local') {
+    origins.push('/api/storage/');
+    origins.push('http://localhost');
+  }
+
+  return origins;
+}
+
+function isAllowedStorageUrl(url: string): boolean {
+  const origins = getAllowedStorageOrigins();
+
+  // If no origins configured (shouldn't happen), reject all
+  if (origins.length === 0) {
+    return false;
+  }
+
+  return origins.some((origin) => url.startsWith(origin));
+}
+
+/**
+ * Zod schema for the upload metadata request body.
+ */
+const UploadMetadataSchema = z.object({
+  videoUrl: z.string().url(),
+  thumbnailUrl: z.string().url(),
+  duration: z.string().optional(),
+  width: z.string().optional(),
+  height: z.string().optional(),
+  size: z.number().int().positive().optional(),
+  contentType: z
+    .string()
+    .refine((ct) => ALLOWED_VIDEO_CONTENT_TYPES.includes(ct), {
+      message: `Content type must be one of: ${ALLOWED_VIDEO_CONTENT_TYPES.join(', ')}`,
+    })
+    .optional(),
+});
+
 /**
  * POST /api/projects/[projectId]/shots/[shotId]/upload
  *
- * Upload a video file for a shot with browser-extracted thumbnail.
+ * Update a shot record after video and thumbnail have been uploaded
+ * directly to storage via presigned URLs.
  *
- * Request: multipart/form-data with:
- * - video: The video file (required)
- * - thumbnail: The thumbnail image blob (required, extracted client-side)
+ * Request: application/json with:
+ * - videoUrl: Public URL of the uploaded video (required, must be allowed domain)
+ * - thumbnailUrl: Public URL of the uploaded thumbnail (required, must be allowed domain)
  * - duration: Video duration in seconds (optional)
  * - width: Video width in pixels (optional)
  * - height: Video height in pixels (optional)
+ * - size: Video file size in bytes (optional)
+ * - contentType: Video MIME type (optional, validated against allowlist)
  *
  * Response:
  * - 200: Success with videoUrl, thumbnailUrl
- * - 400: Invalid file type or missing file
+ * - 400: Missing/invalid fields or disallowed URL domain
  * - 403: Unauthorized (via enhanceRouteHandler)
  * - 404: Shot or project not found
- * - 413: File too large
- * - 500: Storage failure
+ * - 500: Database update failure
  */
 export const POST = enhanceRouteHandler(
   async ({ request, user, params }) => {
@@ -45,7 +108,7 @@ export const POST = enhanceRouteHandler(
       userId: user.id,
     };
 
-    logger.info(ctx, 'Processing shot video upload request');
+    logger.info(ctx, 'Processing shot video upload metadata');
 
     const client = getSupabaseServerClient();
 
@@ -86,150 +149,79 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    // 2. Parse form data
-    let formData: FormData;
+    // 2. Parse and validate JSON body with Zod
+    let rawBody: unknown;
+
     try {
-      formData = await request.formData();
+      rawBody = await request.json();
     } catch (error) {
-      logger.error({ ...ctx, error }, 'Failed to parse form data');
-      return NextResponse.json({ error: 'Invalid form data' }, { status: 400 });
-    }
-
-    const videoFile = formData.get('video') as File | null;
-    const thumbnailBlob = formData.get('thumbnail') as File | null;
-    const duration = formData.get('duration') as string | null;
-    const width = formData.get('width') as string | null;
-    const height = formData.get('height') as string | null;
-
-    if (!videoFile) {
-      logger.warn(ctx, 'No video file provided');
+      logger.error({ ...ctx, error }, 'Failed to parse JSON body');
       return NextResponse.json(
-        { error: 'No video file provided' },
+        { error: 'Invalid JSON body' },
         { status: 400 },
       );
     }
 
-    if (!thumbnailBlob) {
-      logger.warn(ctx, 'No thumbnail provided');
-      return NextResponse.json(
-        { error: 'No thumbnail provided' },
-        { status: 400 },
-      );
-    }
+    const parsed = UploadMetadataSchema.safeParse(rawBody);
 
-    // 3. Validate video file
-    const validation = await validateUpload(videoFile, 'video');
-
-    if (!validation.valid) {
+    if (!parsed.success) {
       logger.warn(
-        { ...ctx, code: validation.error?.code },
-        'Video validation failed',
+        { ...ctx, errors: parsed.error.flatten() },
+        'Request validation failed',
       );
 
-      const status = validation.error?.code === 'FILE_TOO_LARGE' ? 413 : 400;
       return NextResponse.json(
         {
-          error: validation.error?.message,
-          code: validation.error?.code,
-          details: validation.error?.details,
+          error: 'Invalid request body',
+          details: parsed.error.flatten().fieldErrors,
         },
-        { status },
+        { status: 400 },
       );
     }
 
-    // 4. Read file buffers
-    let videoBuffer: Buffer;
-    let thumbnailBuffer: Buffer;
-    try {
-      const [videoArrayBuffer, thumbnailArrayBuffer] = await Promise.all([
-        videoFile.arrayBuffer(),
-        thumbnailBlob.arrayBuffer(),
-      ]);
-      videoBuffer = Buffer.from(videoArrayBuffer);
-      thumbnailBuffer = Buffer.from(thumbnailArrayBuffer);
-    } catch (error) {
-      logger.error({ ...ctx, error }, 'Failed to read file buffers');
-      return NextResponse.json(
-        { error: 'Failed to read files' },
-        { status: 500 },
-      );
-    }
+    const { videoUrl, thumbnailUrl, duration, width, height, size, contentType } =
+      parsed.data;
 
-    // 5. Generate storage paths
-    const sanitizedVideoName = sanitizeFilename(videoFile.name);
-    const timestamp = Date.now();
-
-    // Path format: {projectId}/shots/{shotId}/video-{timestamp}-{name}
-    const videoPath = `${projectId}/shots/${shotId}/video-${timestamp}-${sanitizedVideoName}`;
-    const thumbnailPath = `${projectId}/shots/${shotId}/thumbnail-${timestamp}.webp`;
-
-    // 6. Upload video
-    let videoResult: { url: string };
-    try {
-      logger.info({ ...ctx, path: videoPath }, 'Uploading video');
-      videoResult = await uploadToStorage(
-        client,
-        PROJECT_ASSETS_BUCKET,
-        videoPath,
-        videoBuffer,
-        { contentType: videoFile.type },
-      );
-    } catch (error) {
-      logger.error({ ...ctx, error }, 'Video upload failed');
-      return NextResponse.json(
-        { error: 'Video upload failed. Please try again.' },
-        { status: 500 },
-      );
-    }
-
-    // 7. Upload thumbnail
-    let thumbnailResult: { url: string };
-    try {
-      logger.info({ ...ctx, path: thumbnailPath }, 'Uploading thumbnail');
-      thumbnailResult = await uploadToStorage(
-        client,
-        PROJECT_ASSETS_BUCKET,
-        thumbnailPath,
-        thumbnailBuffer,
-        { contentType: 'image/webp' },
-      );
-    } catch (error) {
-      // Cleanup: delete the video since thumbnail failed
+    // 3. Validate URLs belong to allowed storage domains (prevent SSRF/XSS)
+    if (!isAllowedStorageUrl(videoUrl)) {
       logger.warn(
-        { ...ctx, path: videoPath },
-        'Thumbnail upload failed, cleaning up video',
+        { ...ctx, videoUrl },
+        'Video URL rejected: not from an allowed storage domain',
       );
-      try {
-        await deleteFromStorage(client, PROJECT_ASSETS_BUCKET, videoPath);
-      } catch (cleanupError) {
-        logger.error(
-          { ...ctx, error: cleanupError, path: videoPath },
-          'Failed to cleanup video after thumbnail failure',
-        );
-      }
 
-      logger.error({ ...ctx, error }, 'Thumbnail upload failed');
       return NextResponse.json(
-        { error: 'Upload failed. Please try again.' },
-        { status: 500 },
+        { error: 'videoUrl is not from an allowed storage domain' },
+        { status: 400 },
       );
     }
 
-    // 8. Update shot with video and thumbnail URLs
+    if (!isAllowedStorageUrl(thumbnailUrl)) {
+      logger.warn(
+        { ...ctx, thumbnailUrl },
+        'Thumbnail URL rejected: not from an allowed storage domain',
+      );
+
+      return NextResponse.json(
+        { error: 'thumbnailUrl is not from an allowed storage domain' },
+        { status: 400 },
+      );
+    }
+
+    // 4. Update shot with video and thumbnail URLs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: updateError } = await (client as any)
       .from('shots')
       .update({
-        video_url: videoResult.url,
-        thumbnail_url: thumbnailResult.url,
+        video_url: videoUrl,
+        thumbnail_url: thumbnailUrl,
         status: 'completed',
         updated_at: new Date().toISOString(),
         generation_metadata: {
           video_duration: duration ? parseFloat(duration) : null,
           video_width: width ? parseInt(width, 10) : null,
           video_height: height ? parseInt(height, 10) : null,
-          video_size: videoFile.size,
-          video_content_type: videoFile.type,
+          video_size: size ?? null,
+          video_content_type: contentType ?? null,
           uploaded_at: new Date().toISOString(),
         },
       })
@@ -237,7 +229,6 @@ export const POST = enhanceRouteHandler(
 
     if (updateError) {
       logger.error({ ...ctx, error: updateError }, 'Failed to update shot');
-      // Don't delete uploaded files - they can be recovered
       return NextResponse.json(
         { error: 'Failed to update shot record' },
         { status: 500 },
@@ -246,11 +237,11 @@ export const POST = enhanceRouteHandler(
 
     logger.info(ctx, 'Shot video upload completed successfully');
 
-    // 9. Return success response
+    // 5. Return success response
     return NextResponse.json({
       success: true,
-      videoUrl: videoResult.url,
-      thumbnailUrl: thumbnailResult.url,
+      videoUrl,
+      thumbnailUrl,
     });
   },
   { auth: true },
