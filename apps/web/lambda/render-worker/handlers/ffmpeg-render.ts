@@ -84,7 +84,25 @@ interface RenderResult {
 // ──────────────────────────────────────────
 
 const WORK_DIR = join(tmpdir(), 'render');
-const FFMPEG_PATH = process.env.FFMPEG_PATH || '/opt/bin/ffmpeg';
+
+// Resolve FFmpeg binary path:
+// 1. ffmpeg-static npm package (bundled in Lambda via nodejs.install)
+// 2. FFMPEG_PATH env var (custom override)
+// 3. /opt/bin/ffmpeg (Lambda Layer fallback)
+function resolveFFmpegPath(): string {
+    if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
+    try {
+        // ffmpeg-static exports the path to the binary
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const ffmpegPath = require('ffmpeg-static') as string;
+        if (ffmpegPath) return ffmpegPath;
+    } catch {
+        // Package not available, fall through
+    }
+    return '/opt/bin/ffmpeg';
+}
+
+const FFMPEG_PATH = resolveFFmpegPath();
 
 // ──────────────────────────────────────────
 // SSRF Protection

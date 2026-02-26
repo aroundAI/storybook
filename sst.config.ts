@@ -780,6 +780,7 @@ export default $config({
 
     // Render Worker Lambda - Processes video render jobs from SQS
     // Downloads media from R2, runs FFmpeg, uploads result back to R2
+    // FFmpeg binary is bundled via ffmpeg-static npm package (no Lambda Layer needed)
     const renderWorker = renderQueue.subscribe({
       handler: 'apps/web/lambda/render-worker/index.handler',
       timeout: '15 minutes', // FFmpeg renders can take a long time
@@ -800,22 +801,12 @@ export default $config({
       transform: {
         function: {
           kmsKeyArn: kmsKey.arn,
-          // FFmpeg Lambda Layer — provides /opt/bin/ffmpeg binary
-          // Set FFMPEG_LAMBDA_LAYER_ARN env var to the ARN of an FFmpeg layer
-          // compatible with arm64 Lambda in your region.
-          // Example: arn:aws:lambda:us-east-1:XXX:layer:ffmpeg:1
-          ...(process.env.FFMPEG_LAMBDA_LAYER_ARN && {
-            layers: [process.env.FFMPEG_LAMBDA_LAYER_ARN],
-          }),
         },
       },
       environment: {
         // Supabase configuration
         NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
         SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-
-        // FFmpeg binary path (provided by Lambda Layer at /opt/bin/ffmpeg)
-        FFMPEG_PATH: process.env.FFMPEG_PATH || '/opt/bin/ffmpeg',
 
         // R2 Storage configuration (for media download and render upload)
         ...(process.env.R2_ACCOUNT_ID && {
@@ -845,6 +836,7 @@ export default $config({
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
           '@aws-sdk/client-s3',
+          'ffmpeg-static', // Bundles pre-compiled FFmpeg binary for arm64 Lambda
         ],
       },
     });
