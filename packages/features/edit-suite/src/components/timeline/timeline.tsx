@@ -20,6 +20,7 @@ import { useVisibleClips } from '../../hooks/use-visible-clips';
 import { TimelineRuler } from './timeline-ruler';
 import { Playhead } from './playhead';
 import { TrackRow } from './track-row';
+import { CursorPresence, ActiveEditorsList } from './cursor-presence';
 
 // ──────────────────────────────────────────
 // Constants
@@ -200,6 +201,9 @@ export function Timeline() {
                         +
                     </button>
                     <span className="text-[10px] text-zinc-500">{state.zoom}px/s</span>
+
+                    {/* Active collaborators */}
+                    <ActiveEditorsList />
                 </div>
             </div>
 
@@ -255,6 +259,9 @@ export function Timeline() {
                             containerRef={scrollContainerRef}
                             dispatch={dispatch}
                         />
+
+                        {/* Remote cursors overlay (collaborative editing) */}
+                        <CursorPresence />
                     </div>
                 </div>
             </div>

@@ -81,6 +81,12 @@ interface OperationAckMessage {
     timestamp: string;
 }
 
+interface UserLeftMessage {
+    type: 'user-left';
+    userId: string;
+    connectionId: string;
+}
+
 type EditSuiteWSMessage =
     | RenderStatusMessage
     | SaveAckMessage
@@ -88,7 +94,8 @@ type EditSuiteWSMessage =
     | SubscribedMessage
     | RemoteOperationMessage
     | CursorPositionMessage
-    | OperationAckMessage;
+    | OperationAckMessage
+    | UserLeftMessage;
 
 // ──────────────────────────────────────────
 // Constants
@@ -187,6 +194,15 @@ export function useEditSuiteWebSocket(
                     case 'pong':
                         // Keepalive acknowledged
                         break;
+
+                    case 'user-left': {
+                        // Remove disconnected user's cursor and presence
+                        dispatch({
+                            type: 'REMOVE_PRESENCE',
+                            payload: { userId: msg.userId },
+                        });
+                        break;
+                    }
 
                     default:
                         // Ignore unhandled message types

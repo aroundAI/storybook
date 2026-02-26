@@ -554,9 +554,18 @@ export default $config({
           actions: ['kms:Decrypt'],
           resources: [kmsKey.arn],
         },
+        {
+          // Permission to notify channel peers when a user disconnects
+          actions: ['execute-api:ManageConnections'],
+          resources: ['*'],
+        },
       ],
       nodejs: {
-        install: ['@aws-sdk/client-dynamodb', '@aws-sdk/lib-dynamodb'],
+        install: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-apigatewaymanagementapi',
+        ],
       },
     });
 
