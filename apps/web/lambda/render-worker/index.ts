@@ -257,7 +257,8 @@ async function processRender(job: RenderJobMessage): Promise<void> {
 
     // 6. Upload result to R2 using streaming (avoids loading entire video into RAM)
     const { uploadToR2 } = await import('./utils/r2-storage');
-    const { createReadStream } = await import('fs');
+    const { createReadStream, readFileSync, statSync } = await import('fs');
+    const { createHash } = await import('crypto');
     const fileStream = createReadStream(result.outputPath);
     const uploadResult = await uploadToR2(
         'renders',
@@ -265,6 +266,88 @@ async function processRender(job: RenderJobMessage): Promise<void> {
         fileStream,
         'video/mp4',
     );
+
+    await sendRenderStatus(userId, editProjectId, 'rendering', {
+        progress: 92,
+    });
+
+    // 6.5 Create master video asset (FILM-716 integration)
+    // Compute SHA-256 hash for dedup, create asset record, link to episode
+    try {
+        const fileBuffer = readFileSync(result.outputPath);
+        const fileHash = createHash('sha256').update(fileBuffer).digest('hex');
+        const fileSizeBytes = statSync(result.outputPath).size;
+
+        // Check if a master_video asset with this hash already exists for the project
+        const episodeId = project.episode_id;
+        const { data: episode } = await supabase
+            .from('episodes')
+            .select('project_id')
+            .eq('id', episodeId)
+            .single();
+
+        const projectId = episode?.project_id;
+
+        if (projectId) {
+            // Check for existing asset with same hash (dedup)
+            const { data: existingAsset } = await supabase
+                .from('assets')
+                .select('id')
+                .eq('project_id', projectId)
+                .eq('file_hash', fileHash)
+                .eq('type', 'master_video')
+                .is('deleted_at', null)
+                .maybeSingle();
+
+            let masterAssetId: string;
+
+            if (existingAsset) {
+                // Reuse existing asset (identical file)
+                masterAssetId = existingAsset.id;
+                console.log(`[Render] Reusing existing master asset: ${masterAssetId}`);
+            } else {
+                // Create new master video asset
+                const { data: newAsset, error: assetError } = await supabase
+                    .from('assets')
+                    .insert({
+                        project_id: projectId,
+                        episode_id: episodeId,
+                        type: 'master_video',
+                        name: `Master Video (${language.toUpperCase()})`,
+                        file_url: uploadResult.url,
+                        file_hash: fileHash,
+                        file_size_bytes: fileSizeBytes,
+                        content_type: 'video/mp4',
+                        metadata: {
+                            language,
+                            editProjectId,
+                            renderedAt: new Date().toISOString(),
+                        },
+                    })
+                    .select('id')
+                    .single();
+
+                if (assetError || !newAsset) {
+                    console.error('[Render] Failed to create master asset:', assetError);
+                } else {
+                    masterAssetId = newAsset.id;
+                    console.log(`[Render] Created master asset: ${masterAssetId}`);
+                }
+            }
+
+            // Link master asset to episode (only for primary language renders)
+            if (masterAssetId! && language === 'en') {
+                await supabase
+                    .from('episodes')
+                    .update({ master_video_asset_id: masterAssetId })
+                    .eq('id', episodeId);
+                console.log(`[Render] Linked master asset to episode ${episodeId}`);
+            }
+        }
+    } catch (assetErr) {
+        // Non-fatal: log and continue — the render itself succeeded
+        console.error('[Render] Master asset creation failed (non-fatal):', assetErr);
+    }
 
     await sendRenderStatus(userId, editProjectId, 'rendering', {
         progress: 95,

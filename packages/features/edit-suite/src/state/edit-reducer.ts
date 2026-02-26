@@ -359,6 +359,90 @@ export function editReducer(state: EditSuiteState, action: EditAction): EditSuit
                 renderProgress: action.payload.progress ?? state.renderProgress,
             };
 
+        // ── Collaborative editing ──
+
+        case 'APPLY_REMOTE_OPERATION': {
+            const { operation } = action.payload;
+
+            switch (operation.type) {
+                case 'move-clip': {
+                    const clip = state.clips.find(c => c.id === operation.clipId);
+                    if (!clip) return state;
+                    const durationMs = clip.endMs - clip.startMs;
+                    return {
+                        ...state,
+                        clips: state.clips.map(c =>
+                            c.id === operation.clipId
+                                ? { ...c, startMs: operation.toStartMs, endMs: operation.toStartMs + durationMs, trackId: operation.toTrackId }
+                                : c,
+                        ),
+                    };
+                }
+                case 'resize-clip':
+                    return {
+                        ...state,
+                        clips: state.clips.map(c =>
+                            c.id === operation.clipId
+                                ? { ...c, startMs: operation.toStartMs, endMs: operation.toEndMs }
+                                : c,
+                        ),
+                    };
+                case 'delete-clip':
+                    return {
+                        ...state,
+                        clips: state.clips.filter(c => c.id !== operation.clipId),
+                        selectedClipIds: state.selectedClipIds.has(operation.clipId)
+                            ? new Set([...state.selectedClipIds].filter(id => id !== operation.clipId))
+                            : state.selectedClipIds,
+                    };
+                case 'update-clip-property':
+                    return {
+                        ...state,
+                        clips: state.clips.map(c =>
+                            c.id === operation.clipId
+                                ? { ...c, [operation.property]: operation.newValue }
+                                : c,
+                        ),
+                    };
+                case 'delete-track':
+                    return {
+                        ...state,
+                        tracks: state.tracks.filter(t => t.id !== operation.trackId),
+                        clips: state.clips.filter(c => c.trackId !== operation.trackId),
+                    };
+                case 'reorder-track': {
+                    const reorderedTracks = [...state.tracks];
+                    const trackIdx = reorderedTracks.findIndex(t => t.id === operation.trackId);
+                    if (trackIdx === -1) return state;
+                    const [moved] = reorderedTracks.splice(trackIdx, 1);
+                    reorderedTracks.splice(operation.toIndex, 0, moved!);
+                    return { ...state, tracks: reorderedTracks };
+                }
+                default:
+                    return state;
+            }
+        }
+
+        case 'UPDATE_PRESENCE': {
+            const newEditors = new Map(state.activeEditors);
+            newEditors.set(action.payload.userId, action.payload.presence);
+            return { ...state, activeEditors: newEditors };
+        }
+
+        case 'REMOVE_PRESENCE': {
+            const newEditors = new Map(state.activeEditors);
+            newEditors.delete(action.payload.userId);
+            const newCursors = new Map(state.remoteCursors);
+            newCursors.delete(action.payload.userId);
+            return { ...state, activeEditors: newEditors, remoteCursors: newCursors };
+        }
+
+        case 'UPDATE_REMOTE_CURSOR': {
+            const newCursors = new Map(state.remoteCursors);
+            newCursors.set(action.payload.userId, action.payload);
+            return { ...state, remoteCursors: newCursors };
+        }
+
         default:
             return state;
     }

@@ -24,7 +24,7 @@ import type {
 export interface ExportState {
     isExporting: boolean;
     progress: number; // 0-100
-    stage: 'idle' | 'decoding' | 'encoding' | 'muxing' | 'complete' | 'error';
+    stage: 'idle' | 'decoding' | 'encoding' | 'audio' | 'muxing' | 'complete' | 'error';
     error: string | null;
     resultBlob: Blob | null;
     durationMs: number | null;

@@ -41,5 +41,8 @@
                 "src/*"
             ]
         }
+    },
+    "dependencies": {
+        "mp4box": "^2.3.0"
     }
 }

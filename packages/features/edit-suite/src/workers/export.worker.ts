@@ -1,15 +1,18 @@
 /**
  * WebCodecs Export Worker — browser-based video encoding pipeline.
  *
- * Receives an export manifest (clips, tracks, transitions, settings),
- * fetches media, decodes with VideoDecoder/AudioDecoder, composites
- * frames on OffscreenCanvas, re-encodes with VideoEncoder/AudioEncoder,
- * and muxes to a Blob via a simple MP4 writer.
+ * Uses mp4box.js to demux source media, WebCodecs VideoDecoder/AudioDecoder
+ * to decode individual frames and audio samples, composites frames on
+ * OffscreenCanvas, re-encodes with VideoEncoder/AudioEncoder, and muxes
+ * to a proper MP4 container via mp4box.js.
  *
  * Progress is reported via `postMessage`.
  *
  * ⚠️ Requires browser support for WebCodecs API (Chrome 94+, Edge 94+).
  */
+
+// @ts-expect-error — mp4box doesn't ship TS declarations
+import MP4Box from 'mp4box';
 
 // ──────────────────────────────────────────
 // Message types
@@ -49,7 +52,7 @@ export interface ExportProgressMessage {
     percent: number;
     framesEncoded: number;
     totalFrames: number;
-    stage: 'decoding' | 'encoding' | 'muxing';
+    stage: 'decoding' | 'encoding' | 'muxing' | 'audio';
 }
 
 export interface ExportCompleteMessage {
@@ -88,12 +91,10 @@ function isWebCodecsSupported(): boolean {
 // ──────────────────────────────────────────
 
 /** H.264 High Profile Level 4.0 — widely supported across devices */
-const VIDEO_ENCODER_CONFIG = {
-    codec: 'avc1.640028',
-    hardwareAcceleration: 'prefer-hardware' as const,
-};
-
+const VIDEO_CODEC = 'avc1.640028';
+const AUDIO_CODEC = 'mp4a.40.2'; // AAC-LC
 const KEYFRAME_INTERVAL_SECONDS = 2;
+const AUDIO_CHANNELS = 2; // Stereo
 
 // ──────────────────────────────────────────
 // Compositing canvas
@@ -111,45 +112,512 @@ function getCanvas(width: number, height: number) {
 }
 
 // ──────────────────────────────────────────
-// Frame-by-frame encoding pipeline
+// mp4box.js demuxer: extract decoded video frames
+// ──────────────────────────────────────────
+
+interface DecodedFrame {
+    frame: VideoFrame;
+    timestampUs: number;
+}
+
+/**
+ * Demux a video URL into individual VideoFrames using mp4box.js + VideoDecoder.
+ */
+async function demuxVideoFrames(
+    url: string,
+    inPointMs: number,
+    outPointMs: number,
+): Promise<DecodedFrame[]> {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+
+    return new Promise<DecodedFrame[]>((resolve, reject) => {
+        const frames: DecodedFrame[] = [];
+        let videoTrack: { id: number; codec: string; timescale: number } | null = null;
+
+        const mp4File = MP4Box.createFile();
+
+        let decoder: VideoDecoder | null = null;
+
+        mp4File.onReady = (info: { videoTracks: Array<{ id: number; codec: string; timescale: number; video: { width: number; height: number } }> }) => {
+            if (info.videoTracks.length === 0) {
+                resolve([]);
+                return;
+            }
+
+            videoTrack = info.videoTracks[0]!;
+            const trackInfo = info.videoTracks[0]!;
+
+            // Get codec description from track
+            const trak = mp4File.getTrackById(videoTrack.id);
+            const codecDescription = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0]?.avcC;
+
+            decoder = new VideoDecoder({
+                output: (videoFrame) => {
+                    const tsMs = (videoFrame.timestamp / 1000); // μs → ms
+                    if (tsMs >= inPointMs && tsMs <= outPointMs) {
+                        frames.push({
+                            frame: videoFrame,
+                            timestampUs: videoFrame.timestamp,
+                        });
+                    } else {
+                        videoFrame.close();
+                    }
+                },
+                error: (err) => reject(err),
+            });
+
+            const decoderConfig: VideoDecoderConfig = {
+                codec: trackInfo.codec,
+                codedWidth: trackInfo.video.width,
+                codedHeight: trackInfo.video.height,
+            };
+
+            // Add description if available (needed for H.264 avcC)
+            if (codecDescription) {
+                const stream = new MP4Box.DataStream(undefined, 0, MP4Box.DataStream.BIG_ENDIAN);
+                codecDescription.write(stream);
+                decoderConfig.description = new Uint8Array(stream.buffer, 8);
+            }
+
+            decoder.configure(decoderConfig);
+
+            mp4File.setExtractionOptions(videoTrack.id, null, {
+                nbSamples: 100,
+            });
+            mp4File.start();
+        };
+
+        mp4File.onSamples = (_trackId: number, _ref: unknown, samples: Array<{
+            data: ArrayBuffer;
+            is_sync: boolean;
+            cts: number;
+            duration: number;
+            timescale: number;
+        }>) => {
+            for (const sample of samples) {
+                const chunk = new EncodedVideoChunk({
+                    type: sample.is_sync ? 'key' : 'delta',
+                    timestamp: (sample.cts / sample.timescale) * 1_000_000, // → μs
+                    duration: (sample.duration / sample.timescale) * 1_000_000,
+                    data: sample.data,
+                });
+                decoder!.decode(chunk);
+            }
+
+            decoder!.flush().then(() => {
+                resolve(frames);
+            }).catch(reject);
+        };
+
+        mp4File.onError = (e: string) => reject(new Error(e));
+
+        // Feed the buffer to mp4box
+        (arrayBuffer as ArrayBuffer & { fileStart: number }).fileStart = 0;
+        mp4File.appendBuffer(arrayBuffer);
+        mp4File.flush();
+    });
+}
+
+// ──────────────────────────────────────────
+// mp4box.js demuxer: extract decoded audio samples
+// ──────────────────────────────────────────
+
+interface DecodedAudio {
+    sampleRate: number;
+    channels: number;
+    samples: Float32Array[]; // Per-channel PCM data
+}
+
+/**
+ * Demux audio from a video URL into raw PCM Float32 samples.
+ */
+async function demuxAudioSamples(
+    url: string,
+    inPointMs: number,
+    outPointMs: number,
+    targetSampleRate: number,
+): Promise<DecodedAudio | null> {
+    const response = await fetch(url);
+    const arrayBuffer = await response.arrayBuffer();
+
+    return new Promise<DecodedAudio | null>((resolve, reject) => {
+        const pcmChunks: AudioData[] = [];
+        let audioTrack: { id: number; codec: string; timescale: number; audio: { sample_rate: number; channel_count: number } } | null = null;
+
+        const mp4File = MP4Box.createFile();
+        let decoder: AudioDecoder | null = null;
+
+        mp4File.onReady = (info: { audioTracks: Array<{ id: number; codec: string; timescale: number; audio: { sample_rate: number; channel_count: number } }> }) => {
+            if (info.audioTracks.length === 0) {
+                resolve(null);
+                return;
+            }
+
+            audioTrack = info.audioTracks[0]!;
+            const trackInfo = info.audioTracks[0]!;
+
+            // Get codec description
+            const trak = mp4File.getTrackById(audioTrack.id);
+            const esds = trak?.mdia?.minf?.stbl?.stsd?.entries?.[0]?.esds;
+
+            decoder = new AudioDecoder({
+                output: (audioData) => {
+                    pcmChunks.push(audioData);
+                },
+                error: (err) => reject(err),
+            });
+
+            const decoderConfig: AudioDecoderConfig = {
+                codec: trackInfo.codec,
+                sampleRate: trackInfo.audio.sample_rate,
+                numberOfChannels: trackInfo.audio.channel_count,
+            };
+
+            if (esds) {
+                const stream = new MP4Box.DataStream(undefined, 0, MP4Box.DataStream.BIG_ENDIAN);
+                esds.write(stream);
+                decoderConfig.description = new Uint8Array(stream.buffer, 8);
+            }
+
+            decoder.configure(decoderConfig);
+
+            mp4File.setExtractionOptions(audioTrack.id, null, {
+                nbSamples: 1000,
+            });
+            mp4File.start();
+        };
+
+        mp4File.onSamples = (_trackId: number, _ref: unknown, samples: Array<{
+            data: ArrayBuffer;
+            is_sync: boolean;
+            cts: number;
+            duration: number;
+            timescale: number;
+        }>) => {
+            for (const sample of samples) {
+                const chunk = new EncodedAudioChunk({
+                    type: sample.is_sync ? 'key' : 'delta',
+                    timestamp: (sample.cts / sample.timescale) * 1_000_000,
+                    duration: (sample.duration / sample.timescale) * 1_000_000,
+                    data: sample.data,
+                });
+                decoder!.decode(chunk);
+            }
+
+            decoder!.flush().then(() => {
+                // Convert AudioData chunks to Float32 PCM
+                const channels = audioTrack!.audio.channel_count;
+                const sampleRate = audioTrack!.audio.sample_rate;
+                const inSample = Math.floor((inPointMs / 1000) * sampleRate);
+                const outSample = Math.ceil((outPointMs / 1000) * sampleRate);
+
+                // Collect all samples
+                let totalSamples = 0;
+                for (const chunk of pcmChunks) {
+                    totalSamples += chunk.numberOfFrames;
+                }
+
+                const channelData: Float32Array[] = [];
+                for (let c = 0; c < channels; c++) {
+                    channelData.push(new Float32Array(totalSamples));
+                }
+
+                let offset = 0;
+                for (const chunk of pcmChunks) {
+                    for (let c = 0; c < channels; c++) {
+                        const buffer = new Float32Array(chunk.numberOfFrames);
+                        chunk.copyTo(buffer, {
+                            planeIndex: c,
+                            format: 'f32-planar',
+                        });
+                        channelData[c]!.set(buffer, offset);
+                    }
+                    offset += chunk.numberOfFrames;
+                    chunk.close();
+                }
+
+                // Trim to in/out range
+                const startIdx = Math.max(0, inSample);
+                const endIdx = Math.min(totalSamples, outSample);
+                const trimmedChannels = channelData.map(ch => ch.slice(startIdx, endIdx));
+
+                resolve({
+                    sampleRate,
+                    channels,
+                    samples: trimmedChannels,
+                });
+            }).catch(reject);
+        };
+
+        mp4File.onError = (e: string) => reject(new Error(e));
+
+        (arrayBuffer as ArrayBuffer & { fileStart: number }).fileStart = 0;
+        mp4File.appendBuffer(arrayBuffer);
+        mp4File.flush();
+    });
+}
+
+// ──────────────────────────────────────────
+// Audio mixing: combine multiple audio sources
+// ──────────────────────────────────────────
+
+function mixAudio(
+    sources: { audio: DecodedAudio; startMs: number; volume: number }[],
+    totalDurationMs: number,
+    targetSampleRate: number,
+    targetChannels: number,
+): Float32Array[] {
+    const totalSamples = Math.ceil((totalDurationMs / 1000) * targetSampleRate);
+    const output: Float32Array[] = [];
+
+    for (let c = 0; c < targetChannels; c++) {
+        output.push(new Float32Array(totalSamples));
+    }
+
+    for (const source of sources) {
+        const startSample = Math.floor((source.startMs / 1000) * targetSampleRate);
+        const srcChannels = source.audio.channels;
+        const srcRate = source.audio.sampleRate;
+
+        for (let c = 0; c < targetChannels; c++) {
+            const srcChannel = c < srcChannels ? c : 0; // Mono → duplicate to stereo
+            const srcData = source.audio.samples[srcChannel]!;
+
+            for (let i = 0; i < srcData.length; i++) {
+                // Simple sample rate conversion (nearest neighbor)
+                const srcIdx = srcRate !== targetSampleRate
+                    ? Math.floor(i * (srcRate / targetSampleRate))
+                    : i;
+
+                const dstIdx = startSample + i;
+                if (dstIdx >= 0 && dstIdx < totalSamples && srcIdx < srcData.length) {
+                    output[c]![dstIdx]! += srcData[srcIdx]! * source.volume;
+                }
+            }
+        }
+    }
+
+    // Clamp to [-1, 1]
+    for (const channel of output) {
+        for (let i = 0; i < channel.length; i++) {
+            channel[i] = Math.max(-1, Math.min(1, channel[i]!));
+        }
+    }
+
+    return output;
+}
+
+// ──────────────────────────────────────────
+// mp4box.js muxer: create proper MP4 container
+// ──────────────────────────────────────────
+
+function muxToMp4(
+    videoChunks: { chunk: EncodedVideoChunk; meta?: EncodedVideoChunkMetadata }[],
+    audioChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[],
+    settings: ExportSettings,
+): Blob {
+    const mp4File = MP4Box.createFile();
+
+    // Add video track
+    const videoTrackId = mp4File.addTrack({
+        timescale: 90_000,
+        width: settings.width,
+        height: settings.height,
+        nb_samples: videoChunks.length,
+        codec: VIDEO_CODEC,
+        ...(videoChunks[0]?.meta?.decoderConfig?.description
+            ? { avcDecoderConfigRecord: videoChunks[0].meta.decoderConfig.description }
+            : {}),
+    });
+
+    for (const { chunk } of videoChunks) {
+        const buf = new ArrayBuffer(chunk.byteLength);
+        chunk.copyTo(buf);
+
+        mp4File.addSample(videoTrackId, buf, {
+            duration: Math.round(((chunk.duration ?? 0) / 1_000_000) * 90_000),
+            cts: Math.round((chunk.timestamp / 1_000_000) * 90_000),
+            is_sync: chunk.type === 'key',
+        });
+    }
+
+    // Add audio track if we have audio chunks
+    if (audioChunks.length > 0) {
+        const audioTrackId = mp4File.addTrack({
+            timescale: settings.audioSampleRate,
+            samplerate: settings.audioSampleRate,
+            channel_count: AUDIO_CHANNELS,
+            codec: AUDIO_CODEC,
+            ...(audioChunks[0]?.meta?.decoderConfig?.description
+                ? { audioSpecificConfig: audioChunks[0].meta.decoderConfig.description }
+                : {}),
+        });
+
+        for (const { chunk } of audioChunks) {
+            const buf = new ArrayBuffer(chunk.byteLength);
+            chunk.copyTo(buf);
+
+            mp4File.addSample(audioTrackId, buf, {
+                duration: Math.round(((chunk.duration ?? 0) / 1_000_000) * settings.audioSampleRate),
+                cts: Math.round((chunk.timestamp / 1_000_000) * settings.audioSampleRate),
+                is_sync: chunk.type === 'key',
+            });
+        }
+    }
+
+    // Generate MP4 data
+    const outputBuffer = mp4File.getBuffer();
+    return new Blob([outputBuffer], { type: 'video/mp4' });
+}
+
+// ──────────────────────────────────────────
+// Main export pipeline
 // ──────────────────────────────────────────
 
 async function runExport(manifest: StartExportMessage) {
     const { clips, settings, totalDurationMs } = manifest;
-    const { width, height, fps, videoBitrate } = settings;
+    const { width, height, fps, videoBitrate, audioBitrate, audioSampleRate } = settings;
     const totalFrames = Math.ceil((totalDurationMs / 1000) * fps);
     const frameDurationUs = Math.round(1_000_000 / fps); // microseconds
 
-    // Collect encoded chunks
+    // ── 1. Demux source video clips into decoded frames ──
+    postProgress(0, 0, totalFrames, 'decoding');
+
+    const videoClips = clips.filter((c) =>
+        ['video', 'shot', 'main'].includes(c.trackType),
+    );
+    const audioClips = clips.filter((c) =>
+        ['dialogue', 'music', 'sfx', 'audio'].includes(c.trackType) ||
+        (['video', 'shot', 'main'].includes(c.trackType) && c.volume > 0),
+    );
+
+    // Demux video frames from source clips
+    const clipFrameMap = new Map<string, DecodedFrame[]>();
+    for (let i = 0; i < videoClips.length; i++) {
+        const clip = videoClips[i]!;
+        try {
+            const frames = await demuxVideoFrames(
+                clip.mediaUrl,
+                clip.inPointMs,
+                clip.outPointMs,
+            );
+            clipFrameMap.set(clip.id, frames);
+        } catch (err) {
+            console.warn(`[Export] Failed to demux video clip ${clip.id}:`, err);
+            // Continue — clip will use fallback (black frame)
+        }
+        postProgress(
+            Math.round(((i + 1) / Math.max(videoClips.length, 1)) * 20),
+            0, totalFrames, 'decoding',
+        );
+    }
+
+    // ── 2. Demux and mix audio ──
+    postProgress(20, 0, totalFrames, 'audio');
+
+    const audioSources: { audio: DecodedAudio; startMs: number; volume: number }[] = [];
+    for (let i = 0; i < audioClips.length; i++) {
+        const clip = audioClips[i]!;
+        try {
+            const audio = await demuxAudioSamples(
+                clip.mediaUrl,
+                clip.inPointMs,
+                clip.outPointMs,
+                audioSampleRate,
+            );
+            if (audio) {
+                audioSources.push({
+                    audio,
+                    startMs: clip.startMs,
+                    volume: clip.volume,
+                });
+            }
+        } catch (err) {
+            console.warn(`[Export] Failed to demux audio clip ${clip.id}:`, err);
+        }
+        postProgress(
+            20 + Math.round(((i + 1) / Math.max(audioClips.length, 1)) * 10),
+            0, totalFrames, 'audio',
+        );
+    }
+
+    // Mix all audio sources into stereo PCM
+    const mixedAudio = audioSources.length > 0
+        ? mixAudio(audioSources, totalDurationMs, audioSampleRate, AUDIO_CHANNELS)
+        : null;
+
+    // ── 3. Encode audio with AudioEncoder ──
+    const encodedAudioChunks: { chunk: EncodedAudioChunk; meta?: EncodedAudioChunkMetadata }[] = [];
+
+    if (mixedAudio) {
+        const audioEncoder = new AudioEncoder({
+            output: (chunk, meta) => {
+                encodedAudioChunks.push({ chunk, meta });
+            },
+            error: (err) => postError(`AudioEncoder error: ${err.message}`),
+        });
+
+        audioEncoder.configure({
+            codec: AUDIO_CODEC,
+            sampleRate: audioSampleRate,
+            numberOfChannels: AUDIO_CHANNELS,
+            bitrate: audioBitrate,
+        });
+
+        // Feed mixed PCM to encoder in chunks (1024 samples per AudioData)
+        const chunkSize = 1024;
+        const totalAudioSamples = mixedAudio[0]!.length;
+
+        for (let offset = 0; offset < totalAudioSamples; offset += chunkSize) {
+            const remaining = Math.min(chunkSize, totalAudioSamples - offset);
+
+            // Interleave channels for AudioData
+            const interleaved = new Float32Array(remaining * AUDIO_CHANNELS);
+            for (let s = 0; s < remaining; s++) {
+                for (let c = 0; c < AUDIO_CHANNELS; c++) {
+                    interleaved[s * AUDIO_CHANNELS + c] = mixedAudio[c]![offset + s]!;
+                }
+            }
+
+            const audioData = new AudioData({
+                format: 'f32',
+                sampleRate: audioSampleRate,
+                numberOfFrames: remaining,
+                numberOfChannels: AUDIO_CHANNELS,
+                timestamp: Math.round((offset / audioSampleRate) * 1_000_000),
+                data: interleaved,
+            });
+
+            audioEncoder.encode(audioData);
+            audioData.close();
+        }
+
+        await audioEncoder.flush();
+        audioEncoder.close();
+    }
+
+    postProgress(35, 0, totalFrames, 'encoding');
+
+    // ── 4. Encode video frames ──
     const encodedVideoChunks: { chunk: EncodedVideoChunk; meta?: EncodedVideoChunkMetadata }[] = [];
 
-    // ── Video Encoder ──
     const videoEncoder = new VideoEncoder({
         output: (chunk, meta) => {
             encodedVideoChunks.push({ chunk, meta });
         },
-        error: (err) => {
-            postError(`VideoEncoder error: ${err.message}`);
-        },
+        error: (err) => postError(`VideoEncoder error: ${err.message}`),
     });
 
     videoEncoder.configure({
-        ...VIDEO_ENCODER_CONFIG,
+        codec: VIDEO_CODEC,
         width,
         height,
         bitrate: videoBitrate,
         framerate: fps,
+        hardwareAcceleration: 'prefer-hardware',
     });
 
-    // ── Fetch and cache source media as ImageBitmaps ──
-    // For this initial implementation, we fetch video sources as images
-    // at the clip's thumbnail URL. A full implementation would use
-    // VideoDecoder to decode individual frames from the video stream.
-    const videoClips = clips.filter((c) =>
-        ['video', 'shot', 'main'].includes(c.trackType),
-    );
-
-    // ── Generate frames ──
     const compositeCanvas = getCanvas(width, height);
 
     for (let frame = 0; frame < totalFrames; frame++) {
@@ -164,24 +632,39 @@ async function runExport(manifest: StartExportMessage) {
         for (const clip of videoClips) {
             if (timestampMs < clip.startMs || timestampMs >= clip.endMs) continue;
 
-            // Calculate source position within clip
+            const clipFrames = clipFrameMap.get(clip.id);
             const clipProgress = (timestampMs - clip.startMs) / (clip.endMs - clip.startMs);
             const sourceTimeMs = clip.inPointMs + clipProgress * (clip.outPointMs - clip.inPointMs);
+            const sourceTimeUs = sourceTimeMs * 1000;
 
-            // For now, draw a placeholder frame with clip info
-            // Full implementation would use VideoDecoder here
             compositeCanvas.ctx.globalAlpha = clip.opacity;
-            compositeCanvas.ctx.fillStyle = '#1a1a2e';
-            compositeCanvas.ctx.fillRect(0, 0, width, height);
 
-            // Draw clip identifier
-            compositeCanvas.ctx.fillStyle = '#ffffff';
-            compositeCanvas.ctx.font = '14px monospace';
-            compositeCanvas.ctx.fillText(
-                `Clip: ${clip.id.slice(0, 8)} @ ${Math.round(sourceTimeMs)}ms`,
-                20,
-                30,
-            );
+            if (clipFrames && clipFrames.length > 0) {
+                // Find closest decoded frame to the target timestamp
+                let bestFrame = clipFrames[0]!;
+                let bestDelta = Math.abs(bestFrame.timestampUs - sourceTimeUs);
+
+                for (const f of clipFrames) {
+                    const delta = Math.abs(f.timestampUs - sourceTimeUs);
+                    if (delta < bestDelta) {
+                        bestDelta = delta;
+                        bestFrame = f;
+                    }
+                }
+
+                // Draw the decoded frame onto canvas
+                compositeCanvas.ctx.drawImage(bestFrame.frame, 0, 0, width, height);
+            } else {
+                // Fallback: draw dark placeholder if demux failed
+                compositeCanvas.ctx.fillStyle = '#1a1a2e';
+                compositeCanvas.ctx.fillRect(0, 0, width, height);
+                compositeCanvas.ctx.fillStyle = '#ffffff';
+                compositeCanvas.ctx.font = '14px monospace';
+                compositeCanvas.ctx.fillText(
+                    `Clip: ${clip.id.slice(0, 8)} @ ${Math.round(sourceTimeMs)}ms`,
+                    20, 30,
+                );
+            }
             compositeCanvas.ctx.globalAlpha = 1;
         }
 
@@ -196,44 +679,29 @@ async function runExport(manifest: StartExportMessage) {
         videoEncoder.encode(videoFrame, { keyFrame: isKeyFrame });
         videoFrame.close();
 
-        // Report progress
+        // Report progress (35-90% for video encoding)
         if (frame % 10 === 0) {
-            const progressMsg: ExportProgressMessage = {
-                type: 'export-progress',
-                percent: Math.round((frame / totalFrames) * 90), // 0-90% for encoding
-                framesEncoded: frame,
-                totalFrames,
-                stage: 'encoding',
-            };
-            (self as unknown as Worker).postMessage(progressMsg);
+            postProgress(
+                35 + Math.round((frame / totalFrames) * 55),
+                frame, totalFrames, 'encoding',
+            );
         }
     }
 
-    // Flush remaining frames
     await videoEncoder.flush();
     videoEncoder.close();
 
-    // ── Muxing stage ──
-    const muxProgress: ExportProgressMessage = {
-        type: 'export-progress',
-        percent: 95,
-        framesEncoded: totalFrames,
-        totalFrames,
-        stage: 'muxing',
-    };
-    (self as unknown as Worker).postMessage(muxProgress);
-
-    // Simple blob creation from encoded chunks
-    // Note: A full implementation would use mp4box.js for proper MP4 muxing.
-    // For now, we create a raw H.264 bitstream blob.
-    const buffers: ArrayBuffer[] = [];
-    for (const { chunk } of encodedVideoChunks) {
-        const buf = new ArrayBuffer(chunk.byteLength);
-        chunk.copyTo(buf);
-        buffers.push(buf);
+    // ── 5. Clean up decoded frames ──
+    for (const frames of clipFrameMap.values()) {
+        for (const f of frames) {
+            f.frame.close();
+        }
     }
 
-    const blob = new Blob(buffers, { type: 'video/mp4' });
+    // ── 6. Mux to MP4 via mp4box.js ──
+    postProgress(92, totalFrames, totalFrames, 'muxing');
+
+    const blob = muxToMp4(encodedVideoChunks, encodedAudioChunks, settings);
 
     // ── Complete ──
     const completeMsg: ExportCompleteMessage = {
@@ -245,8 +713,24 @@ async function runExport(manifest: StartExportMessage) {
 }
 
 // ──────────────────────────────────────────
-// Error helper
+// Progress + error helpers
 // ──────────────────────────────────────────
+
+function postProgress(
+    percent: number,
+    framesEncoded: number,
+    totalFrames: number,
+    stage: ExportProgressMessage['stage'],
+) {
+    const msg: ExportProgressMessage = {
+        type: 'export-progress',
+        percent,
+        framesEncoded,
+        totalFrames,
+        stage,
+    };
+    (self as unknown as Worker).postMessage(msg);
+}
 
 function postError(error: string) {
     const msg: ExportErrorMessage = {

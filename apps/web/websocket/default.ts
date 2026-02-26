@@ -11,6 +11,7 @@ import {
   GetCommand,
   QueryCommand,
   ScanCommand,
+  UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 
@@ -303,9 +304,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                typeof error.statusCode === 'number'
+                  typeof error === 'object' &&
+                  'statusCode' in error &&
+                  typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -391,9 +392,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                typeof error === 'object' &&
-                'statusCode' in error &&
-                typeof error.statusCode === 'number'
+                  typeof error === 'object' &&
+                  'statusCode' in error &&
+                  typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -417,8 +418,43 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }
 
       case 'subscribe': {
-        // Handle channel subscription
-        // TODO: Store channel subscriptions in DynamoDB
+        // Store channel subscription in DynamoDB
+        const senderId = await getSenderUserId(connectionId);
+        if (!senderId) {
+          await apiGatewayClient.send(
+            new PostToConnectionCommand({
+              ConnectionId: connectionId,
+              Data: JSON.stringify({
+                type: 'error',
+                message: 'Unauthorized: Could not verify sender identity',
+              }),
+            }),
+          );
+          break;
+        }
+
+        // Update connection record with channel subscription
+        await ddb.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { connectionId },
+            UpdateExpression:
+              'SET #ch = if_not_exists(#ch, :empty_set)',
+            ExpressionAttributeNames: { '#ch': 'channels' },
+            ExpressionAttributeValues: { ':empty_set': new Set(['__init__']) },
+          }),
+        );
+        // Add the channel to the set
+        await ddb.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { connectionId },
+            UpdateExpression: 'ADD #ch :channel_set',
+            ExpressionAttributeNames: { '#ch': 'channels' },
+            ExpressionAttributeValues: { ':channel_set': new Set([channel]) },
+          }),
+        );
+
         await apiGatewayClient.send(
           new PostToConnectionCommand({
             ConnectionId: connectionId,
@@ -432,8 +468,17 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
       }
 
       case 'unsubscribe': {
-        // Handle channel unsubscription
-        // TODO: Remove channel subscription from DynamoDB
+        // Remove channel subscription from DynamoDB
+        await ddb.send(
+          new UpdateCommand({
+            TableName: TABLE_NAME,
+            Key: { connectionId },
+            UpdateExpression: 'DELETE #ch :channel_set',
+            ExpressionAttributeNames: { '#ch': 'channels' },
+            ExpressionAttributeValues: { ':channel_set': new Set([channel]) },
+          }),
+        );
+
         await apiGatewayClient.send(
           new PostToConnectionCommand({
             ConnectionId: connectionId,
@@ -443,6 +488,132 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             }),
           }),
         );
+        break;
+      }
+
+      case 'edit-operation': {
+        // Collaborative editing: broadcast an OT operation to all subscribers
+        // of the same edit-project channel (except the sender)
+        const senderId = await getSenderUserId(connectionId);
+        if (!senderId || !channel) break;
+
+        console.log(`[Collab] Edit operation on channel ${channel} from ${senderId.substring(0, 8)}...`);
+
+        // Find all connections subscribed to this channel
+        const allConns = await ddb.send(
+          new ScanCommand({
+            TableName: TABLE_NAME,
+            FilterExpression: 'contains(#ch, :channel)',
+            ExpressionAttributeNames: { '#ch': 'channels' },
+            ExpressionAttributeValues: { ':channel': channel },
+          }),
+        );
+
+        const broadcastCalls = (allConns.Items || [])
+          .filter((item) => item.connectionId !== connectionId) // Don't echo back to sender
+          .map(async (item) => {
+            try {
+              await apiGatewayClient.send(
+                new PostToConnectionCommand({
+                  ConnectionId: item.connectionId,
+                  Data: JSON.stringify({
+                    type: 'remote-operation',
+                    channel,
+                    operation: data,
+                    senderId,
+                    timestamp: new Date().toISOString(),
+                  }),
+                }),
+              );
+            } catch (error: unknown) {
+              const statusCode =
+                error &&
+                  typeof error === 'object' &&
+                  'statusCode' in error &&
+                  typeof error.statusCode === 'number'
+                  ? error.statusCode
+                  : null;
+
+              if (statusCode === 410) {
+                await ddb.send(
+                  new DeleteCommand({
+                    TableName: TABLE_NAME,
+                    Key: { connectionId: item.connectionId },
+                  }),
+                );
+              }
+            }
+          });
+
+        await Promise.all(broadcastCalls);
+
+        // Acknowledge the operation back to sender
+        await apiGatewayClient.send(
+          new PostToConnectionCommand({
+            ConnectionId: connectionId,
+            Data: JSON.stringify({
+              type: 'operation-ack',
+              channel,
+              operationId: data?.id,
+              timestamp: new Date().toISOString(),
+            }),
+          }),
+        );
+        break;
+      }
+
+      case 'cursor-update': {
+        // Collaborative editing: broadcast cursor position to channel subscribers
+        const senderId = await getSenderUserId(connectionId);
+        if (!senderId || !channel) break;
+
+        // Find all connections subscribed to this channel
+        const allConns = await ddb.send(
+          new ScanCommand({
+            TableName: TABLE_NAME,
+            FilterExpression: 'contains(#ch, :channel)',
+            ExpressionAttributeNames: { '#ch': 'channels' },
+            ExpressionAttributeValues: { ':channel': channel },
+          }),
+        );
+
+        const cursorCalls = (allConns.Items || [])
+          .filter((item) => item.connectionId !== connectionId)
+          .map(async (item) => {
+            try {
+              await apiGatewayClient.send(
+                new PostToConnectionCommand({
+                  ConnectionId: item.connectionId,
+                  Data: JSON.stringify({
+                    type: 'cursor-position',
+                    channel,
+                    userId: senderId,
+                    cursorData: data,
+                    timestamp: new Date().toISOString(),
+                  }),
+                }),
+              );
+            } catch (error: unknown) {
+              const statusCode =
+                error &&
+                  typeof error === 'object' &&
+                  'statusCode' in error &&
+                  typeof error.statusCode === 'number'
+                  ? error.statusCode
+                  : null;
+
+              if (statusCode === 410) {
+                await ddb.send(
+                  new DeleteCommand({
+                    TableName: TABLE_NAME,
+                    Key: { connectionId: item.connectionId },
+                  }),
+                );
+              }
+            }
+          });
+
+        await Promise.all(cursorCalls);
         break;
       }
 

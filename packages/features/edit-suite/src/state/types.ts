@@ -1,5 +1,8 @@
 'use client';
 
+import type { UserPresence } from '../lib/operational-transforms';
+import type { EditOperation } from '../lib/operational-transforms';
+
 /**
  * State types for the Edit Suite v2.
  *
@@ -119,6 +122,14 @@ export interface EditSuiteState {
 
     /** Render progress percentage (0-100) */
     renderProgress: number;
+
+    // ── Collaborative editing ──
+
+    /** Active editors on this project (userId → presence) */
+    activeEditors: Map<string, UserPresence>;
+
+    /** Remote user cursor positions (userId → cursorMs) */
+    remoteCursors: Map<string, { userId: string; displayName: string; color: string; cursorPositionMs: number; activeClipId: string | null }>;
 }
 
 // ──────────────────────────────────────────
@@ -154,6 +165,8 @@ export function createInitialState(): EditSuiteState {
         renderUrl: null,
         renderError: null,
         renderProgress: 0,
+        activeEditors: new Map(),
+        remoteCursors: new Map(),
     };
 }
 
@@ -211,4 +224,10 @@ export type EditAction =
     | { type: 'MARK_SAVE_ERROR' }
 
     // ── Render status (WebSocket) ──
-    | { type: 'SET_RENDER_STATUS'; payload: { status: 'queued' | 'rendering' | 'completed' | 'failed'; renderUrl?: string | null; renderError?: string | null; progress?: number } };
+    | { type: 'SET_RENDER_STATUS'; payload: { status: 'queued' | 'rendering' | 'completed' | 'failed'; renderUrl?: string | null; renderError?: string | null; progress?: number } }
+
+    // ── Collaborative editing ──
+    | { type: 'APPLY_REMOTE_OPERATION'; payload: { operation: EditOperation; senderId: string } }
+    | { type: 'UPDATE_PRESENCE'; payload: { userId: string; presence: UserPresence } }
+    | { type: 'REMOVE_PRESENCE'; payload: { userId: string } }
+    | { type: 'UPDATE_REMOTE_CURSOR'; payload: { userId: string; displayName: string; color: string; cursorPositionMs: number; activeClipId: string | null } };
