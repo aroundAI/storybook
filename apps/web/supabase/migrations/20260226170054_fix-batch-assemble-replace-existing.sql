@@ -154,3 +154,12 @@ begin
   );
 end;
 $$;
+
+-- Re-grant EXECUTE permissions (CREATE OR REPLACE drops existing grants)
+grant execute on function public.batch_assemble_edit_project(
+  uuid, integer, integer, integer, varchar, jsonb, jsonb, jsonb, jsonb
+) to authenticated;
+
+grant execute on function public.batch_assemble_edit_project(
+  uuid, integer, integer, integer, varchar, jsonb, jsonb, jsonb, jsonb
+) to service_role;
