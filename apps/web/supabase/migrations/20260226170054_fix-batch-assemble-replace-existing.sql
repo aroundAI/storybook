@@ -1,11 +1,17 @@
 -- ==================================
--- Fix: batch_assemble_edit_project should replace existing project
+-- Fix: batch_assemble_edit_project
 -- ==================================
--- The edit_projects table has a unique(episode_id) constraint.
--- When Auto-Assemble is clicked again for an episode that already
--- has a project, it hits a unique constraint violation.
--- Fix: delete the existing project (cascades to tracks, clips,
--- keyframes, transitions, sync groups) before creating the new one.
+-- Issues fixed:
+-- 1. Unique constraint violation: DELETE existing project before INSERT
+-- 2. Permission denied: GRANT EXECUTE to authenticated/service_role
+-- 3. Double-serialized JSON: Accept text params and cast to jsonb internally
+--    (JS client calls JSON.stringify() before passing to client.rpc(),
+--     causing double-encoding when params are typed as jsonb)
+
+-- Drop the old jsonb-parameter version
+drop function if exists public.batch_assemble_edit_project(
+  uuid, integer, integer, integer, varchar, jsonb, jsonb, jsonb, jsonb
+);
 
 create or replace function public.batch_assemble_edit_project(
   p_episode_id uuid,
@@ -13,10 +19,10 @@ create or replace function public.batch_assemble_edit_project(
   p_height integer default 1080,
   p_fps integer default 30,
   p_active_language varchar default 'en',
-  p_tracks jsonb default '[]'::jsonb,
-  p_clips jsonb default '[]'::jsonb,
-  p_keyframes jsonb default '[]'::jsonb,
-  p_sync_groups jsonb default '[]'::jsonb
+  p_tracks text default '[]',
+  p_clips text default '[]',
+  p_keyframes text default '[]',
+  p_sync_groups text default '[]'
 )
 returns jsonb
 language plpgsql
@@ -36,7 +42,18 @@ declare
   v_sg_id uuid;
   v_clip_id uuid;
   v_idx integer;
+  -- Cast text params to jsonb
+  j_tracks jsonb;
+  j_clips jsonb;
+  j_keyframes jsonb;
+  j_sync_groups jsonb;
 begin
+  -- Parse text inputs as jsonb
+  j_tracks := p_tracks::jsonb;
+  j_clips := p_clips::jsonb;
+  j_keyframes := p_keyframes::jsonb;
+  j_sync_groups := p_sync_groups::jsonb;
+
   -- 0. Delete existing project for this episode (cascade deletes
   --    tracks, clips, keyframes, transitions, sync groups)
   delete from public.edit_projects where episode_id = p_episode_id;
@@ -48,7 +65,7 @@ begin
 
   -- 2. Create tracks (in order)
   v_track_ids := array[]::uuid[];
-  for v_track in select * from jsonb_array_elements(p_tracks) with ordinality as t(elem, idx)
+  for v_track in select * from jsonb_array_elements(j_tracks) with ordinality as t(elem, idx)
   loop
     insert into public.edit_tracks (
       edit_project_id, type, name, sort_order, volume
@@ -65,7 +82,7 @@ begin
 
   -- 3. Create sync groups
   v_sync_group_ids := array[]::uuid[];
-  for v_sg in select * from jsonb_array_elements(p_sync_groups) with ordinality as sg(elem, idx)
+  for v_sg in select * from jsonb_array_elements(j_sync_groups) with ordinality as sg(elem, idx)
   loop
     insert into public.dialogue_sync_groups (
       edit_project_id, anchor_dialogue_id
@@ -79,7 +96,7 @@ begin
 
   -- 4. Create clips (resolve trackIndex → track ID, syncGroupIndex → sync group ID)
   v_clip_ids := array[]::uuid[];
-  for v_clip in select * from jsonb_array_elements(p_clips) with ordinality as c(elem, idx)
+  for v_clip in select * from jsonb_array_elements(j_clips) with ordinality as c(elem, idx)
   loop
     v_idx := (v_clip.elem->>'trackIndex')::integer;
     insert into public.edit_clips (
@@ -119,7 +136,7 @@ begin
   end loop;
 
   -- 5. Update primary_clip_id on sync groups
-  for v_sg in select * from jsonb_array_elements(p_sync_groups) with ordinality as sg(elem, idx)
+  for v_sg in select * from jsonb_array_elements(j_sync_groups) with ordinality as sg(elem, idx)
   loop
     if v_sg.elem->>'primaryClipIndex' is not null then
       v_idx := (v_sg.elem->>'primaryClipIndex')::integer;
@@ -130,7 +147,7 @@ begin
   end loop;
 
   -- 6. Create keyframes (resolve clipIndex → clip ID)
-  for v_kf in select * from jsonb_array_elements(p_keyframes)
+  for v_kf in select * from jsonb_array_elements(j_keyframes)
   loop
     v_idx := (v_kf.value->>'clipIndex')::integer;
     insert into public.edit_keyframes (
@@ -149,17 +166,17 @@ begin
     'projectId', v_project_id,
     'trackCount', array_length(v_track_ids, 1),
     'clipCount', array_length(v_clip_ids, 1),
-    'keyframeCount', jsonb_array_length(p_keyframes),
+    'keyframeCount', jsonb_array_length(j_keyframes),
     'syncGroupCount', array_length(v_sync_group_ids, 1)
   );
 end;
 $$;
 
--- Re-grant EXECUTE permissions (CREATE OR REPLACE drops existing grants)
+-- Grant EXECUTE permissions
 grant execute on function public.batch_assemble_edit_project(
-  uuid, integer, integer, integer, varchar, jsonb, jsonb, jsonb, jsonb
+  uuid, integer, integer, integer, varchar, text, text, text, text
 ) to authenticated;
 
 grant execute on function public.batch_assemble_edit_project(
-  uuid, integer, integer, integer, varchar, jsonb, jsonb, jsonb, jsonb
+  uuid, integer, integer, integer, varchar, text, text, text, text
 ) to service_role;
