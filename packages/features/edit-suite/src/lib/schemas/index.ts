@@ -72,6 +72,10 @@ export const GetEditProjectSchema = z.object({
     editProjectId: z.string().uuid(),
 });
 
+export const FindEditProjectByEpisodeSchema = z.object({
+    episodeId: z.string().uuid(),
+});
+
 export const UpdateEditProjectSchema = z.object({
     editProjectId: z.string().uuid(),
     width: z.number().int().positive().optional(),

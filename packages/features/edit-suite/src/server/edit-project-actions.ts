@@ -9,6 +9,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
     CreateEditProjectSchema,
+    FindEditProjectByEpisodeSchema,
     GetEditProjectSchema,
     UpdateEditProjectSchema,
 } from '../lib/schemas';
@@ -72,6 +73,28 @@ export const createEditProjectAction = enhanceAction(
         return { success: true, project: mapEditProjectRow(result) };
     },
     { schema: CreateEditProjectSchema },
+);
+
+/**
+ * Find an existing edit project for an episode (returns { editProjectId } or null).
+ * Uses enhanceAction for consistent auth + schema validation.
+ */
+export const findEditProjectByEpisodeAction = enhanceAction(
+    async (params): Promise<{ editProjectId: string } | null> => {
+        const client = getEditSuiteClient();
+
+        const { data: project } = await client
+            .from('edit_projects')
+            .select('id')
+            .eq('episode_id', params.episodeId)
+            .limit(1)
+            .maybeSingle();
+
+        if (!project) return null;
+
+        return { editProjectId: project.id as string };
+    },
+    { schema: FindEditProjectByEpisodeSchema },
 );
 
 /**
