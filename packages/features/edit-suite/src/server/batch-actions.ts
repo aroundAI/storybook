@@ -70,6 +70,7 @@ export const batchAssembleAction = enhanceAction(
             'batch_assemble_edit_project',
             {
                 p_episode_id: data.episodeId,
+                p_user_id: user.id,
                 p_width: data.width,
                 p_height: data.height,
                 p_fps: data.fps,

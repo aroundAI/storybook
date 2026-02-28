@@ -15,6 +15,7 @@ drop function if exists public.batch_assemble_edit_project(
 
 create or replace function public.batch_assemble_edit_project(
   p_episode_id uuid,
+  p_user_id uuid,
   p_width integer default 1920,
   p_height integer default 1080,
   p_fps integer default 30,
@@ -42,12 +43,30 @@ declare
   v_sg_id uuid;
   v_clip_id uuid;
   v_idx integer;
+  v_account_id uuid;
   -- Cast text params to jsonb
   j_tracks jsonb;
   j_clips jsonb;
   j_keyframes jsonb;
   j_sync_groups jsonb;
 begin
+  -- Authorization: verify user is a member of the account that owns this episode
+  select p.account_id into v_account_id
+  from public.episodes e
+  join public.projects p on p.id = e.project_id
+  where e.id = p_episode_id and e.deleted_at is null;
+
+  if v_account_id is null then
+    raise exception 'Episode not found or has been deleted';
+  end if;
+
+  if not exists (
+    select 1 from public.accounts_memberships
+    where account_id = v_account_id and user_id = p_user_id
+  ) then
+    raise exception 'Access denied: user is not a member of the project account';
+  end if;
+
   -- Parse text inputs as jsonb
   j_tracks := p_tracks::jsonb;
   j_clips := p_clips::jsonb;
@@ -174,9 +193,9 @@ $$;
 
 -- Grant EXECUTE permissions
 grant execute on function public.batch_assemble_edit_project(
-  uuid, integer, integer, integer, varchar, text, text, text, text
+  uuid, uuid, integer, integer, integer, varchar, text, text, text, text
 ) to authenticated;
 
 grant execute on function public.batch_assemble_edit_project(
-  uuid, integer, integer, integer, varchar, text, text, text, text
+  uuid, uuid, integer, integer, integer, varchar, text, text, text, text
 ) to service_role;

@@ -9,6 +9,7 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
     CreateEditProjectSchema,
+    FindEditProjectByEpisodeSchema,
     GetEditProjectSchema,
     UpdateEditProjectSchema,
 } from '../lib/schemas';
@@ -75,31 +76,26 @@ export const createEditProjectAction = enhanceAction(
 );
 
 /**
- * Find an existing edit project for an episode (returns { id } or null).
+ * Find an existing edit project for an episode (returns { editProjectId } or null).
+ * Uses enhanceAction for consistent auth + schema validation.
  */
-export async function findEditProjectByEpisodeAction(params: {
-    episodeId: string;
-}): Promise<{ editProjectId: string } | null> {
-    const authClient = getSupabaseServerClient();
-    const { data: user, error: authError } = await requireUser(authClient);
+export const findEditProjectByEpisodeAction = enhanceAction(
+    async (params): Promise<{ editProjectId: string } | null> => {
+        const client = getEditSuiteClient();
 
-    if (authError || !user) {
-        throw new Error('Authentication required');
-    }
+        const { data: project } = await client
+            .from('edit_projects')
+            .select('id')
+            .eq('episode_id', params.episodeId)
+            .limit(1)
+            .maybeSingle();
 
-    const client = getEditSuiteClient();
+        if (!project) return null;
 
-    const { data: project } = await client
-        .from('edit_projects')
-        .select('id')
-        .eq('episode_id', params.episodeId)
-        .limit(1)
-        .maybeSingle();
-
-    if (!project) return null;
-
-    return { editProjectId: project.id as string };
-}
+        return { editProjectId: project.id as string };
+    },
+    { schema: FindEditProjectByEpisodeSchema },
+);
 
 /**
  * Fetch an edit project with all related data:

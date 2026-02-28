@@ -113,12 +113,13 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
 
         async function loadExistingProject() {
             try {
-                const { findEditProjectByEpisodeAction } = await import('../server/edit-project-actions');
+                const { findEditProjectByEpisodeAction, getEditProjectAction } = await import(
+                    '../server/edit-project-actions'
+                );
                 const found = await findEditProjectByEpisodeAction({ episodeId: episodeIdProp! });
 
                 if (!found || cancelled) return;
 
-                const { getEditProjectAction } = await import('../server/edit-project-actions');
                 const projectData = await getEditProjectAction({ editProjectId: found.editProjectId });
 
                 if (cancelled) return;
@@ -141,7 +142,7 @@ export function EditSuiteProvider({ children, episodeId: episodeIdProp }: EditSu
         return () => {
             cancelled = true;
         };
-    }, [episodeIdProp]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [episodeIdProp, state.project, dispatch]);
 
     // ── WebSocket for real-time render status ──
     useEditSuiteWebSocket(state.project?.id, dispatch);
