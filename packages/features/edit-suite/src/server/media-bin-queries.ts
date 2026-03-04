@@ -112,12 +112,15 @@ export async function getMediaBinDataAction(params: {
             .eq('episode_id', params.episodeId)
             .order('sequence_number', { ascending: true }),
 
-        // Dubbed dialogue versions
+        // Dubbed dialogue lines (joined with dubbed_versions for language + episode filtering)
         db
-            .from('dubbed_dialogue_versions')
-            .select('id, dialogue_line_id, language, translated_text, audio_url, estimated_duration_seconds')
-            .eq('episode_id', params.episodeId)
-            .order('language', { ascending: true }),
+            .from('dubbed_dialogue_lines')
+            .select(`
+                id, original_dialogue_id, translated_text, audio_url, duration_seconds, status,
+                dubbed_versions!dubbed_dialogue_lines_dubbed_version_id_fkey(language, episode_id)
+            `)
+            .not('dubbed_versions', 'is', null)
+            .order('created_at', { ascending: true }),
 
         // Audio tracks
         db
@@ -153,15 +156,23 @@ export async function getMediaBinDataAction(params: {
         };
     });
 
-    // Transform dubbed versions
-    const dubbedVersions: MediaBinDubbedVersion[] = (dubbedRes.data ?? []).map((row: Record<string, unknown>) => ({
-        id: row.id as string,
-        dialogueLineId: row.dialogue_line_id as string,
-        language: row.language as string,
-        text: row.translated_text as string,
-        audioUrl: row.audio_url as string | null,
-        estimatedDurationSeconds: (row.estimated_duration_seconds as number) ?? 2,
-    }));
+    // Transform dubbed versions (filter by episode_id since we joined through dubbed_versions)
+    const dubbedVersions: MediaBinDubbedVersion[] = (dubbedRes.data ?? [])
+        .filter((row: Record<string, unknown>) => {
+            const dv = row.dubbed_versions as Record<string, unknown> | null;
+            return dv && dv.episode_id === params.episodeId;
+        })
+        .map((row: Record<string, unknown>) => {
+            const dv = row.dubbed_versions as Record<string, unknown>;
+            return {
+                id: row.id as string,
+                dialogueLineId: row.original_dialogue_id as string,
+                language: dv.language as string,
+                text: row.translated_text as string,
+                audioUrl: row.audio_url as string | null,
+                estimatedDurationSeconds: (row.duration_seconds as number) ?? 2,
+            };
+        });
 
     // Transform audio tracks
     const audioTracks: MediaBinAudioTrack[] = (audioRes.data ?? []).map((row: Record<string, unknown>) => {
