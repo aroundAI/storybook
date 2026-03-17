@@ -5,7 +5,7 @@
  * All queries target the video_metrics / video_daily_stats tables.
  */
 
-import { getClickHouseClient } from './client';
+import { getClickHouseClient, isClickHouseEnabled } from './client';
 import type {
     AggregatedTotals,
     DailyDataPoint,
@@ -28,7 +28,7 @@ import type {
 export async function insertVideoMetrics(
     metrics: VideoMetric[],
 ): Promise<void> {
-    if (metrics.length === 0) return;
+    if (metrics.length === 0 || !isClickHouseEnabled()) return;
 
     const client = getClickHouseClient();
 
@@ -109,6 +109,7 @@ function buildWhereClause(filters: QueryFilters): {
 export async function queryTotals(
     filters: QueryFilters & { projectId: string } | QueryFilters & { videoIds: string[] },
 ): Promise<AggregatedTotals> {
+    if (!isClickHouseEnabled()) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, watch_time_seconds: 0, revenue_cents: 0, subscribers_gained: 0 };
     const client = getClickHouseClient();
     assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
@@ -170,6 +171,7 @@ export async function queryTotals(
 export async function queryDailyTimeSeries(
     filters: QueryFilters,
 ): Promise<DailyDataPoint[]> {
+    if (!isClickHouseEnabled()) return [];
     assertScopedFilters(filters);
     const client = getClickHouseClient();
     const { clause, params } = buildWhereClause(filters);
@@ -217,6 +219,7 @@ export async function queryDailyTimeSeries(
 export async function queryPlatformBreakdown(
     filters: QueryFilters,
 ): Promise<PlatformBreakdown[]> {
+    if (!isClickHouseEnabled()) return [];
     assertScopedFilters(filters);
     const client = getClickHouseClient();
     const { clause, params } = buildWhereClause(filters);
@@ -262,6 +265,7 @@ export async function queryPlatformBreakdown(
 export async function queryPerVideoTotals(
     filters: QueryFilters & { videoIds: string[] },
 ): Promise<Map<string, AggregatedTotals>> {
+    if (!isClickHouseEnabled()) return new Map();
     assertScopedFilters(filters);
     const client = getClickHouseClient();
     const { clause, params } = buildWhereClause(filters);
@@ -314,6 +318,7 @@ export async function queryPerVideoTotals(
 export async function queryDailyStats(
     filters: QueryFilters,
 ): Promise<DailyStats[]> {
+    if (!isClickHouseEnabled()) return [];
     const client = getClickHouseClient();
     assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
@@ -370,7 +375,7 @@ export async function queryViewsForVideos(
     projectId: string,
     videoIds: string[],
 ): Promise<number> {
-    if (videoIds.length === 0) return 0;
+    if (videoIds.length === 0 || !isClickHouseEnabled()) return 0;
 
     const client = getClickHouseClient();
     const filters: QueryFilters = { projectId, videoIds };
@@ -401,6 +406,7 @@ export async function queryViewsForVideos(
 export async function queryDailyTimeSeriesByPlatform(
     filters: QueryFilters,
 ): Promise<DailyPlatformBreakdown[]> {
+    if (!isClickHouseEnabled()) return [];
     const client = getClickHouseClient();
     assertScopedFilters(filters);
     const { clause, params } = buildWhereClause(filters);
@@ -471,7 +477,7 @@ export async function queryTotalsByVideoIds(
     videoIds: string[],
     options?: { startDate?: string; endDate?: string },
 ): Promise<Map<string, AggregatedTotals>> {
-    if (videoIds.length === 0) return new Map();
+    if (videoIds.length === 0 || !isClickHouseEnabled()) return new Map();
 
     const filters: QueryFilters & { videoIds: string[] } = {
         videoIds,

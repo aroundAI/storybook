@@ -302,6 +302,64 @@ fi
 echo ""
 
 ###############################################################################
+# 5b. Apply ClickHouse Migrations
+###############################################################################
+
+echo -e "${YELLOW}📊 Applying ClickHouse migrations...${NC}"
+
+if [ -z "$CLICKHOUSE_HOST" ]; then
+    echo -e "${YELLOW}⚠️  CLICKHOUSE_HOST not set. Skipping ClickHouse migrations.${NC}"
+    echo -e "  To enable, add CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DB"
+    echo -e "  to deployment/config/${STAGE}.env"
+else
+    MIGRATIONS_DIR="packages/clickhouse/src/migrations"
+
+    if [ ! -d "$MIGRATIONS_DIR" ]; then
+        echo -e "${YELLOW}⚠️  No ClickHouse migrations directory found at ${MIGRATIONS_DIR}${NC}"
+    else
+        # Collect migration files in numeric order (001_, 002_, ...)
+        MIGRATION_FILES=$(ls "$MIGRATIONS_DIR"/*.ts 2>/dev/null | sort)
+
+        if [ -z "$MIGRATION_FILES" ]; then
+            echo -e "${GREEN}✓ No ClickHouse migration files found — nothing to run${NC}"
+        else
+            echo "  Found ClickHouse migrations:"
+            for f in $MIGRATION_FILES; do
+                echo "    - $(basename "$f")"
+            done
+            echo ""
+
+            MIGRATION_FAILED=false
+            for MIGRATION_FILE in $MIGRATION_FILES; do
+                MIGRATION_NAME=$(basename "$MIGRATION_FILE")
+                echo -e "  Running ${MIGRATION_NAME}..."
+
+                set +e
+                npx tsx "$MIGRATION_FILE"
+                MIGRATION_EXIT=$?
+                set -e
+
+                if [ $MIGRATION_EXIT -eq 0 ]; then
+                    echo -e "  ${GREEN}✓ ${MIGRATION_NAME} applied${NC}"
+                else
+                    echo -e "  ${RED}✗ ${MIGRATION_NAME} failed (exit code: ${MIGRATION_EXIT})${NC}"
+                    MIGRATION_FAILED=true
+                    break
+                fi
+            done
+
+            if [ "$MIGRATION_FAILED" = true ]; then
+                echo -e "${RED}❌ ClickHouse migrations failed. Aborting deployment.${NC}"
+                exit 1
+            fi
+
+            echo -e "${GREEN}✓ All ClickHouse migrations applied successfully${NC}"
+        fi
+    fi
+fi
+
+
+###############################################################################
 # 6. Build Application
 ###############################################################################
 
