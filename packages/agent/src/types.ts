@@ -14,6 +14,15 @@ import type { ChatMessage, LLMProvider } from '@kit/llm';
 // =============================================================================
 
 /**
+ * Execution context provided to tools during an agent run.
+ * Ensures multi-tenant isolation and correct analytics tracking.
+ */
+export interface AgentRunContext {
+    accountId: string;
+    userId?: string;
+}
+
+/**
  * A tool the agent can invoke during execution.
  * Tools are the primary mechanism for agents to interact with external systems.
  */
@@ -28,7 +37,7 @@ export interface AgentTool<
     /** Zod schema defining expected parameters */
     parameters: TParams;
     /** Function that executes the tool's logic */
-    execute: (params: z.infer<TParams>) => Promise<ToolResult<TResult>>;
+    execute: (params: z.infer<TParams>, context: AgentRunContext) => Promise<ToolResult<TResult>>;
 }
 
 /**

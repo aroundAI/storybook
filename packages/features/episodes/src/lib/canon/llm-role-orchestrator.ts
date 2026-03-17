@@ -16,7 +16,6 @@ import type {
     RoleExecutionResult,
     ContinuityValidationResult,
 } from './types';
-import { ROLE_PERMISSIONS } from './types';
 import { validatePlotSkeleton } from './continuity-validator';
 
 /** Maximum retries per role when validation failures occur */
@@ -204,7 +203,7 @@ async function executeRole(
         role: context.role,
         output,
         validationResult,
-        tokenUsage: 0,
+        tokenUsage: response.metadata.tokens ?? 0,
         executedAt: new Date().toISOString(),
     };
 }

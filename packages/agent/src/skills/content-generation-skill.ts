@@ -36,7 +36,7 @@ const generateStoryTool = createTool({
             .optional()
             .describe('Additional context like character descriptions, world-building, etc.'),
     }),
-    execute: async ({ concept, targetDuration, genre, tone, additionalContext }) => {
+    execute: async ({ concept, targetDuration, genre, tone, additionalContext }, context) => {
         try {
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -51,7 +51,7 @@ const generateStoryTool = createTool({
                 },
                 context: {
                     name: 'agent.generateStory',
-                    accountId: '',
+                    accountId: context.accountId,
                 },
             });
 
@@ -80,7 +80,7 @@ const generateScreenplayTool = createTool({
             .optional()
             .describe('Target duration in seconds'),
     }),
-    execute: async ({ story, targetDuration }) => {
+    execute: async ({ story, targetDuration }, context) => {
         try {
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -92,7 +92,7 @@ const generateScreenplayTool = createTool({
                 },
                 context: {
                     name: 'agent.generateScreenplay',
-                    accountId: '',
+                    accountId: context.accountId,
                 },
             });
 
@@ -122,7 +122,7 @@ const generateShotsTool = createTool({
             .optional()
             .describe('Character descriptions for visual consistency'),
     }),
-    execute: async ({ sceneContent, sceneNumber, characterContext }) => {
+    execute: async ({ sceneContent, sceneNumber, characterContext }, context) => {
         try {
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -135,7 +135,7 @@ const generateShotsTool = createTool({
                 },
                 context: {
                     name: 'agent.generateShots',
-                    accountId: '',
+                    accountId: context.accountId,
                 },
             });
 
@@ -161,7 +161,7 @@ const generateAudioCuesTool = createTool({
         sceneContent: z.string().describe('The scene content to extract audio cues from'),
         sceneNumber: z.number().describe('Scene number'),
     }),
-    execute: async ({ sceneContent, sceneNumber }) => {
+    execute: async ({ sceneContent, sceneNumber }, context) => {
         try {
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -173,7 +173,7 @@ const generateAudioCuesTool = createTool({
                 },
                 context: {
                     name: 'agent.generateAudioCues',
-                    accountId: '',
+                    accountId: context.accountId,
                 },
             });
 

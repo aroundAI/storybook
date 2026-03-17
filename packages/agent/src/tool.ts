@@ -28,7 +28,6 @@ import type { AgentTool, AgentToolAny, ToolResult } from './types';
 export function createTool<TParams extends z.ZodTypeAny, TResult = any>(
     definition: AgentTool<TParams, TResult>,
 ): AgentToolAny {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return definition as unknown as AgentToolAny;
 }
 

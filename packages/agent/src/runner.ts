@@ -20,6 +20,7 @@ import { applySkills } from './skills';
 import type {
     AgentConfig,
     AgentMessage,
+    AgentRunContext,
     AgentRunResult,
     AgentStep,
     AgentTool,
@@ -264,6 +265,7 @@ function getApiKeyForProvider(provider: string): string {
 export async function runAgent<T = unknown>(
     config: AgentConfig,
     input: { userPrompt: string; context?: Record<string, unknown> },
+    runContext: AgentRunContext,
 ): Promise<AgentRunResult<T>> {
     // Apply skills to merge tools and context into config
     const resolved = config.skills?.length
@@ -389,7 +391,7 @@ export async function runAgent<T = unknown>(
                 try {
                     // Validate params with zod schema
                     const validatedParams = tool.parameters.parse(parsed.params);
-                    toolResult = await tool.execute(validatedParams);
+                    toolResult = await tool.execute(validatedParams, runContext);
                 } catch (toolError) {
                     toolResult = {
                         success: false,

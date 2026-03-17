@@ -184,6 +184,7 @@ Your task is to generate a high-quality, canon-compliant story for Episode ${inp
 Project ID: ${input.projectId}
 Episode Number: ${input.episodeNumber}`,
     },
+    { accountId: input.projectId },
   );
 
   logger.info(
