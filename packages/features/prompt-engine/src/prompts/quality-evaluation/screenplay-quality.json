@@ -6,8 +6,8 @@
   "description": "Evaluates a generated screenplay on structure, scene transitions, dialogue timing, and visual suitability for video production. Returns scores and actionable revision guidance.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
+    "provider": "gemini",
+    "model": "gemini-2.0-flash-lite",
     "max_tokens": 1500,
     "temperature": 0.2,
     "response_format": {

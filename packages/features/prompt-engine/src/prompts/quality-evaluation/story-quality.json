@@ -6,8 +6,8 @@
   "description": "Evaluates a generated story on narrative quality dimensions. Returns scores, critique, strengths, and weaknesses for agent-based self-correction loops.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
-    "provider": "openai",
-    "model": "gpt-4o-mini",
+    "provider": "gemini",
+    "model": "gemini-2.0-flash-lite",
     "max_tokens": 1500,
     "temperature": 0.2,
     "response_format": {
