@@ -1,0 +1,79 @@
+{
+  "slug": "screenplay-quality",
+  "name": "Screenplay Quality Evaluation",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Evaluates a generated screenplay on structure, scene transitions, dialogue timing, and visual suitability for video production. Returns scores and actionable revision guidance.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "max_tokens": 1500,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Screenplay Editor Role",
+      "content": "You are a professional screenplay editor and script supervisor with expertise in evaluating scripts for short-form video production. You assess whether a screenplay can be produced efficiently within the target duration and whether scenes are visually executable. Score strictly — 0.8+ means production-ready, 0.6-0.79 means revision needed, below 0.6 means major structural rework.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON only. No text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 2
+    }
+  ],
+  "user_prompt": "Evaluate the following screenplay for quality and production readiness.\n\n{{context_hint}}\n\n---\n\n{{screenplay_content}}\n\n---\n\nScore each dimension from 0.0 (unusable) to 1.0 (production-ready):\n\n- **sceneStructure** (0-1): Does each scene have a clear INT./EXT. header, action lines, and dialogue? Are scenes self-contained with clear purpose?\n- **transitionQuality** (0-1): Do scenes flow naturally into each other? Are transitions (CUT TO, DISSOLVE, etc.) used appropriately?\n- **dialogueTiming** (0-1): Is dialogue properly formatted with character cues and parentheticals? Are speech lengths appropriate for the scene's emotional beat?\n- **visualExecutability** (0-1): Are all described visuals possible to produce? Are action lines concrete and directable (not abstract)?\n- **paceAndRhythm** (0-1): Does the screenplay maintain appropriate pace for the target duration? Are there scenes that run too long or feel rushed?\n- **sceneCountAccuracy** (0-1): Is the number of scenes appropriate for the target duration? ({{target_scene_count}} scenes expected)\n- **formattingCompliance** (0-1): Does the screenplay follow standard format conventions (headers, action, dialogue indentation, character names in CAPS)?\n\nRespond with JSON:\n```json\n{\n  \"overallScore\": 0.0,\n  \"dimensions\": {\n    \"sceneStructure\": 0.0,\n    \"transitionQuality\": 0.0,\n    \"dialogueTiming\": 0.0,\n    \"visualExecutability\": 0.0,\n    \"paceAndRhythm\": 0.0,\n    \"sceneCountAccuracy\": 0.0,\n    \"formattingCompliance\": 0.0\n  },\n  \"sceneCount\": 0,\n  \"estimatedDurationSeconds\": 0,\n  \"critique\": \"1-2 sentences on the most critical production issues\",\n  \"strengths\": [\"specific strength 1\"],\n  \"weaknesses\": [\"specific weakness 1\"],\n  \"revisionPriority\": \"The single most important change needed before production\"\n}\n```",
+  "variables": {
+    "screenplay_content": {
+      "type": "text",
+      "required": true,
+      "description": "The full screenplay text to evaluate, in standard screenplay format"
+    },
+    "context_hint": {
+      "type": "text",
+      "required": false,
+      "description": "Optional context: target duration, genre, production constraints"
+    },
+    "target_scene_count": {
+      "type": "text",
+      "required": false,
+      "description": "Expected number of scenes based on target duration (e.g., '5-8 scenes for 5 minutes')"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ overallScore: z.number().min(0).max(1), dimensions: z.object({ sceneStructure: z.number().min(0).max(1), transitionQuality: z.number().min(0).max(1), dialogueTiming: z.number().min(0).max(1), visualExecutability: z.number().min(0).max(1), paceAndRhythm: z.number().min(0).max(1), sceneCountAccuracy: z.number().min(0).max(1), formattingCompliance: z.number().min(0).max(1) }), sceneCount: z.number(), estimatedDurationSeconds: z.number(), critique: z.string(), strengths: z.array(z.string()), weaknesses: z.array(z.string()), revisionPriority: z.string() })"
+    },
+    "schema_for_llm": "Return JSON: { \"overallScore\": number, \"dimensions\": { \"sceneStructure\": number, \"transitionQuality\": number, \"dialogueTiming\": number, \"visualExecutability\": number, \"paceAndRhythm\": number, \"sceneCountAccuracy\": number, \"formattingCompliance\": number }, \"sceneCount\": number, \"estimatedDurationSeconds\": number, \"critique\": \"string\", \"strengths\": [\"string\"], \"weaknesses\": [\"string\"], \"revisionPriority\": \"string\" }",
+    "example_output": {
+      "overallScore": 0.79,
+      "dimensions": {
+        "sceneStructure": 0.90,
+        "transitionQuality": 0.75,
+        "dialogueTiming": 0.80,
+        "visualExecutability": 0.85,
+        "paceAndRhythm": 0.70,
+        "sceneCountAccuracy": 0.72,
+        "formattingCompliance": 0.88
+      },
+      "sceneCount": 7,
+      "estimatedDurationSeconds": 380,
+      "critique": "Scene 3 runs too long with 4 consecutive dialogue exchanges without action beats, creating a static visual. The transition from Scene 5 to Scene 6 is abrupt and needs a bridging beat.",
+      "strengths": ["Strong visual action lines throughout", "Character formatting is consistent and professional"],
+      "weaknesses": ["Scene 3 is visually static — no action beats between dialogue", "Abrupt cut from scene 5 to 6 disrupts tension"],
+      "revisionPriority": "Break up Scene 3's dialogue with physical business or environmental details to create visual rhythm"
+    }
+  }
+}

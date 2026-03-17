@@ -1,0 +1,86 @@
+{
+  "slug": "shot-quality",
+  "name": "Shot List Quality Evaluation",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Evaluates a generated VEO 3.1 shot list for prompt compliance, visual consistency, shot diversity, and production suitability. Returns scores with specific per-shot issues identified.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "max_tokens": 2000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Cinematographer Role",
+      "content": "You are a professional cinematographer and VFX supervisor specializing in AI-generated video production with VEO 3.1. You evaluate shot prompts for technical compliance, visual quality, and production consistency. A compliant VEO 3.1 shot must contain all 7 components: Subject (15+ attributes), Action, Scene, Style, Dialogue (colon syntax), Sounds, and Negative (must exclude subtitles/watermarks). Score strictly — 0.8+ means ready for VEO generation, 0.6-0.79 means some shots need revision, below 0.6 means systematic issues requiring rework.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "veo_format",
+      "name": "VEO 3.1 Format Reference",
+      "content": "## VEO 3.1 Shot Structure Reference\n\nEach shot must have these 7 components:\n1. **Subject**: Character with 15+ attributes (age, ethnicity, hair color, eye color, build, clothing, accessories, expression)\n2. **Action**: Specific movements, gestures, timing, micro-expressions\n3. **Scene**: Environment, props, lighting quality, color temperature, weather\n4. **Style**: Camera shot type (ECU/CU/MS/LS/WS), angle (eye/low/high), movement (static/pan/dolly/handheld)\n5. **Dialogue**: Format `\"[Name]: 'text' (Tone: emotion)\"` — colon syntax PREVENTS subtitle generation\n6. **Sounds**: Specific ambient sounds + effects (prevents audio hallucinations)\n7. **Negative**: Must include `no subtitles, no captions, no text overlay, no watermarks`",
+      "layer_type": "context",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON only. No text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Evaluate the following VEO 3.1 shot list for quality and compliance.\n\n{{context_hint}}\n\n---\n\n{{shots_content}}\n\n---\n\nScore each dimension from 0.0 (non-compliant/unusable) to 1.0 (production-ready):\n\n- **veoCompliance** (0-1): Do all shots have all 7 required VEO 3.1 components? Are Subject descriptions 15+ attributes? Is Dialogue using colon syntax? Does Negative include subtitle exclusions?\n- **characterConsistency** (0-1): Are character physical descriptions (age, hair, eyes, build, clothing) consistent across all shots featuring the same character?\n- **shotDiversity** (0-1): Is there meaningful variety in shot types (ECU/CU/MS/LS/WS), angles (eye level/low/high/overhead), and camera movements (static/pan/dolly/handheld/crane)?\n- **visualContinuity** (0-1): Is lighting (time of day, quality, color temperature) consistent within scenes? Does the environment match the screenplay's established world?\n- **audioSpecificity** (0-1): Are Sounds components specific and distinct per shot (not generic \"ambient sound\")? Do they prevent audio hallucinations?\n- **negativePromptCompleteness** (0-1): Do all Negative components include the required exclusions (subtitles, captions, text overlay, watermarks)?\n- **subjectRichness** (0-1): Are Subject descriptions detailed enough (15+ attributes)? Generic descriptions hurt VEO output quality.\n\nAlso identify specific shots with issues.\n\nRespond with JSON:\n```json\n{\n  \"overallScore\": 0.0,\n  \"dimensions\": {\n    \"veoCompliance\": 0.0,\n    \"characterConsistency\": 0.0,\n    \"shotDiversity\": 0.0,\n    \"visualContinuity\": 0.0,\n    \"audioSpecificity\": 0.0,\n    \"negativePromptCompleteness\": 0.0,\n    \"subjectRichness\": 0.0\n  },\n  \"totalShots\": 0,\n  \"compliantShots\": 0,\n  \"critique\": \"1-2 sentences on the most critical issues\",\n  \"strengths\": [\"specific strength 1\"],\n  \"weaknesses\": [\"specific weakness 1\"],\n  \"shotIssues\": [\n    {\n      \"shotNumber\": 0,\n      \"issue\": \"missing component or consistency error\",\n      \"fix\": \"specific correction\"\n    }\n  ],\n  \"revisionPriority\": \"The single most impactful change across the entire shot list\"\n}\n```",
+  "variables": {
+    "shots_content": {
+      "type": "text",
+      "required": true,
+      "description": "The shot list to evaluate — JSON array or structured text format with all 7 VEO 3.1 components per shot"
+    },
+    "context_hint": {
+      "type": "text",
+      "required": false,
+      "description": "Optional context: episode title, character names, scene numbers being evaluated, or specific concerns"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ overallScore: z.number().min(0).max(1), dimensions: z.object({ veoCompliance: z.number().min(0).max(1), characterConsistency: z.number().min(0).max(1), shotDiversity: z.number().min(0).max(1), visualContinuity: z.number().min(0).max(1), audioSpecificity: z.number().min(0).max(1), negativePromptCompleteness: z.number().min(0).max(1), subjectRichness: z.number().min(0).max(1) }), totalShots: z.number(), compliantShots: z.number(), critique: z.string(), strengths: z.array(z.string()), weaknesses: z.array(z.string()), shotIssues: z.array(z.object({ shotNumber: z.number(), issue: z.string(), fix: z.string() })), revisionPriority: z.string() })"
+    },
+    "schema_for_llm": "Return JSON: { \"overallScore\": number, \"dimensions\": { \"veoCompliance\": number, \"characterConsistency\": number, \"shotDiversity\": number, \"visualContinuity\": number, \"audioSpecificity\": number, \"negativePromptCompleteness\": number, \"subjectRichness\": number }, \"totalShots\": number, \"compliantShots\": number, \"critique\": \"string\", \"strengths\": [\"string\"], \"weaknesses\": [\"string\"], \"shotIssues\": [{ \"shotNumber\": number, \"issue\": \"string\", \"fix\": \"string\" }], \"revisionPriority\": \"string\" }",
+    "example_output": {
+      "overallScore": 0.82,
+      "dimensions": {
+        "veoCompliance": 0.88,
+        "characterConsistency": 0.92,
+        "shotDiversity": 0.75,
+        "visualContinuity": 0.85,
+        "audioSpecificity": 0.78,
+        "negativePromptCompleteness": 0.95,
+        "subjectRichness": 0.72
+      },
+      "totalShots": 12,
+      "compliantShots": 10,
+      "critique": "Shots 3 and 7 are missing the Negative component entirely. The shot diversity is limited with 8 of 12 shots using medium close-up at eye level.",
+      "strengths": ["Character descriptions are consistent across all 12 shots", "Negative prompts correctly exclude subtitles and watermarks on 10/12 shots"],
+      "weaknesses": ["Shots 3 and 7 missing Negative component — will produce subtitles", "Over-reliance on MCU/eye-level composition limits visual interest"],
+      "shotIssues": [
+        { "shotNumber": 3, "issue": "Missing Negative component", "fix": "Add: 'no subtitles, no captions, no text overlay, no watermarks, no borders'" },
+        { "shotNumber": 7, "issue": "Missing Negative component", "fix": "Add: 'no subtitles, no captions, no text overlay, no watermarks, no borders'" }
+      ],
+      "revisionPriority": "Add Negative components to shots 3 and 7 immediately — these will generate unwanted subtitles in VEO output"
+    }
+  }
+}

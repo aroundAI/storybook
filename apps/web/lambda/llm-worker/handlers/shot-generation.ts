@@ -342,6 +342,66 @@ export async function processShotGeneration(
       throw new Error('No shots were generated');
     }
 
+    // 5b. Run SHOT quality evaluation (non-blocking, advisory)
+    try {
+      const { executeLLM: evalLLM } = await import('@kit/prompt-engine/server');
+
+      // Evaluate a sample of shots (up to 15) to keep token cost low
+      const sampleShots = allShots.slice(0, 15).map((s) => ({
+        shotNumber: s.shot_number,
+        sceneNumber: s.scene_number,
+        prompt: s.prompt,
+        cameraDirection: s.camera_direction,
+        duration: s.duration_seconds,
+      }));
+
+      const qualityResult = await evalLLM<{
+        overallScore: number;
+        dimensions: Record<string, number>;
+        totalShots: number;
+        compliantShots: number;
+        critique: string;
+        shotIssues: Array<{ shotNumber: number; issue: string; fix: string }>;
+        revisionPriority: string;
+      }>({
+        templateSlug: 'quality-evaluation/shot-quality',
+        variables: {
+          shots_content: JSON.stringify(sampleShots, null, 2),
+          context_hint: `Episode "${episode.title}" — ${allShots.length} total shots across ${sceneResults.length} scenes`,
+        },
+        context: {
+          name: 'shot-quality-eval',
+          accountId: data.accountId,
+          userId: data.userId,
+        },
+        supabaseClient: supabase,
+      });
+
+      const score = qualityResult.data?.overallScore ?? 0;
+      const veoCompliance =
+        qualityResult.data?.dimensions?.veoCompliance ?? 0;
+      console.log(
+        `[Shot Generation] Quality score: ${score.toFixed(2)}, VEO compliance: ${veoCompliance.toFixed(2)} (${qualityResult.data?.compliantShots ?? '?'}/${sampleShots.length} sampled shots compliant)`,
+      );
+
+      const shotIssues = qualityResult.data?.shotIssues ?? [];
+      if (shotIssues.length > 0) {
+        console.warn(
+          `[Shot Generation] ${shotIssues.length} shot issue(s) detected. Priority: ${qualityResult.data?.revisionPriority ?? 'N/A'}`,
+        );
+        for (const issue of shotIssues.slice(0, 3)) {
+          console.warn(
+            `  Shot ${issue.shotNumber}: ${issue.issue} → Fix: ${issue.fix}`,
+          );
+        }
+      }
+    } catch (err) {
+      console.warn(
+        '[Shot Generation] Quality evaluation skipped:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+
     // 5. INSERT shots
     const { error: insertError } = await supabase
       .from('shots')

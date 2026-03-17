@@ -1,0 +1,72 @@
+{
+  "slug": "story-quality",
+  "name": "Story Quality Evaluation",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Evaluates a generated story on narrative quality dimensions. Returns scores, critique, strengths, and weaknesses for agent-based self-correction loops.",
+  "exported_at": "2025-01-01T00:00:00.000Z",
+  "llm": {
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "max_tokens": 1500,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Story Editor Role",
+      "content": "You are a professional story editor with 20+ years of experience in narrative development for film, television, and digital media. Your evaluations are precise, actionable, and grounded in craft principles. You score strictly — a 0.8+ means publication-ready, 0.6-0.79 means needs revision, below 0.6 means major rework required.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON only. No text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 2
+    }
+  ],
+  "user_prompt": "Evaluate the following story for quality.\n\n{{context_hint}}\n\n---\n\n{{story_content}}\n\n---\n\nScore each dimension from 0.0 (terrible) to 1.0 (exceptional):\n\n- **plotCoherence** (0-1): Is the plot logical, internally consistent, and well-structured? Does the beginning, middle, and end flow naturally?\n- **tensionArc** (0-1): Does tension rise and fall effectively? Is there a clear climax and satisfying resolution?\n- **characterDevelopment** (0-1): Are characters well-developed with distinct voices, clear motivations, and meaningful arcs?\n- **dialogueNaturalism** (0-1): Does dialogue sound natural, distinct per character, and serve the story?\n- **pacing** (0-1): Is the story well-paced without dragging or rushing? Are scene lengths appropriate?\n- **visualStorytelling** (0-1): Does the story prioritize showing over telling? Are visual descriptions cinematic?\n- **thematicClarity** (0-1): Is there a clear theme or message? Is it woven naturally without being heavy-handed?\n\nRespond with JSON:\n```json\n{\n  \"overallScore\": 0.0,\n  \"dimensions\": {\n    \"plotCoherence\": 0.0,\n    \"tensionArc\": 0.0,\n    \"characterDevelopment\": 0.0,\n    \"dialogueNaturalism\": 0.0,\n    \"pacing\": 0.0,\n    \"visualStorytelling\": 0.0,\n    \"thematicClarity\": 0.0\n  },\n  \"critique\": \"1-2 sentences on the most critical issues\",\n  \"strengths\": [\"specific strength 1\", \"specific strength 2\"],\n  \"weaknesses\": [\"specific weakness 1\", \"specific weakness 2\"],\n  \"revisionPriority\": \"The single most important change to make\"\n}\n```\n\noverallScore should be the weighted average of all dimensions, with plotCoherence and characterDevelopment weighted 1.5x.",
+  "variables": {
+    "story_content": {
+      "type": "text",
+      "required": true,
+      "description": "The full story text to evaluate"
+    },
+    "context_hint": {
+      "type": "text",
+      "required": false,
+      "description": "Optional context: target duration, genre, intended audience, or evaluation instructions"
+    }
+  },
+  "output": {
+    "type": "object",
+    "schema": {
+      "type": "zod",
+      "definition": "z.object({ overallScore: z.number().min(0).max(1), dimensions: z.object({ plotCoherence: z.number().min(0).max(1), tensionArc: z.number().min(0).max(1), characterDevelopment: z.number().min(0).max(1), dialogueNaturalism: z.number().min(0).max(1), pacing: z.number().min(0).max(1), visualStorytelling: z.number().min(0).max(1), thematicClarity: z.number().min(0).max(1) }), critique: z.string(), strengths: z.array(z.string()), weaknesses: z.array(z.string()), revisionPriority: z.string() })"
+    },
+    "schema_for_llm": "Return JSON: { \"overallScore\": number, \"dimensions\": { \"plotCoherence\": number, \"tensionArc\": number, \"characterDevelopment\": number, \"dialogueNaturalism\": number, \"pacing\": number, \"visualStorytelling\": number, \"thematicClarity\": number }, \"critique\": \"string\", \"strengths\": [\"string\"], \"weaknesses\": [\"string\"], \"revisionPriority\": \"string\" }",
+    "example_output": {
+      "overallScore": 0.74,
+      "dimensions": {
+        "plotCoherence": 0.85,
+        "tensionArc": 0.70,
+        "characterDevelopment": 0.68,
+        "dialogueNaturalism": 0.72,
+        "pacing": 0.80,
+        "visualStorytelling": 0.65,
+        "thematicClarity": 0.78
+      },
+      "critique": "The story's tension plateau in act 2 prevents the climax from landing with full impact. Character motivations are stated rather than shown through action.",
+      "strengths": ["Strong three-act structure with clear beats", "Natural, distinct dialogue for each character"],
+      "weaknesses": ["Act 2 tension doesn't escalate sufficiently", "Protagonist motivation told via internal monologue rather than dramatized"],
+      "revisionPriority": "Add a false victory/defeat moment at the end of act 2 to create a stronger emotional low before the climax"
+    }
+  }
+}
