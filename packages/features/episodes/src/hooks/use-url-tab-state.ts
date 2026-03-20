@@ -22,7 +22,11 @@ export function useUrlTabState(
 ): [StudioTab, (tab: StudioTab) => void] {
   const router = useRouter();
   const pathname = usePathname() ?? '';
-  const searchParams = useSearchParams() ?? new URLSearchParams();
+  const rawSearchParams = useSearchParams();
+  const searchParams = useMemo(
+    () => rawSearchParams ?? new URLSearchParams(),
+    [rawSearchParams],
+  );
 
   // Derive active tab directly from URL - single source of truth
   const activeTab = useMemo(() => {

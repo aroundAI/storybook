@@ -20,9 +20,11 @@
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",
     "./types": "./src/lib/types.ts",
-    "./hooks": "./src/hooks/index.ts"
+    "./hooks": "./src/hooks/index.ts",
+    "./skills": "./src/agent/skills/index.ts"
   },
   "dependencies": {
+    "@kit/agent": "workspace:*",
     "@kit/assets": "workspace:*",
     "@kit/cache": "workspace:*",
     "@kit/film-studio-schemas": "workspace:*",

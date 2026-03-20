@@ -6,6 +6,8 @@
  * Each role has specific permissions and constraints.
  */
 
+import { executeLLM } from '@kit/prompt-engine/server';
+
 import type {
     LLMRole,
     MemoryContext,
@@ -14,8 +16,10 @@ import type {
     RoleExecutionResult,
     ContinuityValidationResult,
 } from './types';
-import { ROLE_PERMISSIONS } from './types';
 import { validatePlotSkeleton } from './continuity-validator';
+
+/** Maximum retries per role when validation failures occur */
+const MAX_ROLE_RETRIES = 2;
 
 // =============================================================================
 // TYPES
@@ -72,30 +76,63 @@ export async function runRolePipeline(
     const roles: LLMRole[] = ['planner', 'writer', 'editor', 'stylist'];
 
     for (const role of roles) {
+        const baseConstraints = buildRoleConstraints(role, input.memoryContext);
         const context: RoleExecutionContext = {
             role,
-            constraints: buildRoleConstraints(role, input.memoryContext),
+            constraints: [...baseConstraints],
             previousOutput: currentOutput || undefined,
             memoryContext: input.memoryContext,
         };
 
-        try {
-            const result = await executeRole(input, context);
-            roleResults.push(result);
-            totalTokens += result.tokenUsage;
-            currentOutput = result.output;
+        let lastResult: RoleExecutionResult | undefined;
+        let retries = 0;
 
-            // Extract plot skeleton from planner output
-            if (role === 'planner') {
-                plotSkeleton = extractPlotSkeleton(result.output);
-            }
+        while (retries <= MAX_ROLE_RETRIES) {
+            try {
+                const result = await executeRole(input, context);
+                lastResult = result;
+                roleResults.push(result);
+                totalTokens += result.tokenUsage;
+                currentOutput = result.output;
 
-            // Check for error-level violations
-            const criticalFailures = result.validationResult.violations.filter(
-                (v) => v.severity === 'error'
-            );
+                // Extract plot skeleton from planner output
+                if (role === 'planner') {
+                    plotSkeleton = extractPlotSkeleton(result.output);
+                }
 
-            if (criticalFailures.length > 0) {
+                // Check for error-level violations
+                const criticalFailures = result.validationResult.violations.filter(
+                    (v) => v.severity === 'error'
+                );
+
+                if (criticalFailures.length === 0) {
+                    // Role passed validation — move to next role
+                    break;
+                }
+
+                if (retries >= MAX_ROLE_RETRIES) {
+                    // Give up after max retries
+                    return {
+                        success: false,
+                        finalOutput: currentOutput,
+                        plotSkeleton,
+                        roleResults,
+                        totalTokens,
+                        executionTimeMs: Date.now() - startTime,
+                    };
+                }
+
+                // Feed violations back as constraints for the next retry
+                retries++;
+                context.previousOutput = result.output;
+                context.constraints = [
+                    ...baseConstraints,
+                    ...criticalFailures.map(
+                        (v) => `MUST FIX (${v.code}): ${v.message}. Suggestion: ${v.suggestion}`
+                    ),
+                ];
+            } catch (error) {
+                console.error(`Role ${role} execution failed (attempt ${retries + 1}):`, error);
                 return {
                     success: false,
                     finalOutput: currentOutput,
@@ -105,17 +142,9 @@ export async function runRolePipeline(
                     executionTimeMs: Date.now() - startTime,
                 };
             }
-        } catch (error) {
-            console.error(`Role ${role} execution failed:`, error);
-            return {
-                success: false,
-                finalOutput: currentOutput,
-                plotSkeleton,
-                roleResults,
-                totalTokens,
-                executionTimeMs: Date.now() - startTime,
-            };
         }
+
+        void lastResult; // suppress unused variable warning
     }
 
     return {
@@ -133,50 +162,103 @@ export async function runRolePipeline(
 // =============================================================================
 
 /**
- * Executes a single role in the pipeline.
- * Note: This is a stub that should be connected to actual LLM execution.
+ * Executes a single role in the pipeline via executeLLM.
+ * Uses role-aware variable mapping to match each template's declared variables.
  */
 async function executeRole(
     input: RolePipelineInput,
     context: RoleExecutionContext
 ): Promise<RoleExecutionResult> {
-    const _promptTemplate = ROLE_PROMPT_TEMPLATES[context.role];
+    const promptTemplate = ROLE_PROMPT_TEMPLATES[context.role];
+    const memoryContext = formatContextForRole(context);
 
-    // Build LLM input with role-specific context
-    const _llmInput = {
-        user_prompt: input.userPrompt,
-        previous_output: context.previousOutput ?? '',
-        memory_context: formatContextForRole(context),
+    const variables = buildRoleVariables(context.role, {
+        userPrompt: input.userPrompt,
+        previousOutput: context.previousOutput ?? '',
+        memoryContext,
         constraints: context.constraints.join('\n'),
-        permissions: ROLE_PERMISSIONS[context.role],
-    };
+        targetDuration: input.targetDuration ?? 300,
+    });
 
-    // TODO: Connect to actual LLM execution via @kit/prompt-engine
-    // const response = await executeLLM({
-    //     promptKey: `story-generation/${promptTemplate}`,
-    //     input: llmInput,
-    // });
+    const response = await executeLLM({
+        templateSlug: `canon-roles/${promptTemplate}`,
+        variables,
+        context: {
+            name: `canon-orchestrator.${context.role}`,
+            accountId: input.projectId,
+        },
+    });
 
-    // Stub response for now
-    const response = {
-        result: context.previousOutput ?? 'Generated content placeholder',
-        usage: { totalTokens: 100 },
-    };
+    const output = typeof response.data === 'string'
+        ? response.data
+        : JSON.stringify(response.data);
 
-    // Validate output
     const validationResult = await validateRoleOutput(
         context.role,
-        response.result,
+        output,
         context.memoryContext
     );
 
     return {
         role: context.role,
-        output: response.result,
+        output,
         validationResult,
-        tokenUsage: response.usage?.totalTokens ?? 0,
+        tokenUsage: response.metadata.tokens ?? 0,
         executedAt: new Date().toISOString(),
     };
+}
+
+/**
+ * Builds role-specific variable maps matching each template's declared variable list.
+ */
+function buildRoleVariables(
+    role: LLMRole,
+    args: {
+        userPrompt: string;
+        previousOutput: string;
+        memoryContext: string;
+        constraints: string;
+        targetDuration: number;
+    }
+): Record<string, string> {
+    const { userPrompt, previousOutput, memoryContext, constraints, targetDuration } = args;
+
+    switch (role) {
+        case 'planner':
+            return {
+                memoryContext,
+                episodeNumber: '1',
+                premise: userPrompt,
+                targetDuration: String(Math.round(targetDuration / 60)),
+                characterList: '',
+                activeThreads: constraints,
+            };
+        case 'writer':
+            return {
+                memoryContext,
+                plannerConstraints: constraints,
+                sceneNumber: '1',
+                sceneStructure: previousOutput,
+                charactersPresent: '',
+                scenePurpose: userPrompt,
+                dialoguePlaceholder: '',
+            };
+        case 'editor':
+            return {
+                memoryContext,
+                sceneNumber: '1',
+                originalContent: previousOutput,
+                characterVoices: '',
+                focusAreas: constraints || 'clarity, consistency, emotional resonance',
+            };
+        case 'stylist':
+            return {
+                memoryContext,
+                content: previousOutput,
+                styleConstraints: constraints,
+                targetTone: userPrompt,
+            };
+    }
 }
 
 /**

@@ -231,7 +231,56 @@ export async function processScreenplayConversion(
       );
     }
 
-    // 5. Prepare screenplay_data with full metadata for episode header display
+    // 4b. Run SCREENPLAY quality evaluation (non-blocking, advisory)
+    try {
+      const { executeLLM } = await import('@kit/prompt-engine/server');
+
+      const screenplayText = result.data.screenplay.scenes
+        .map(
+          (scene) =>
+            `${scene.heading}\n${scene.description}\n${(scene.action ?? []).join('\n')}`,
+        )
+        .join('\n\n');
+
+      const targetSceneRange = `${scaling.screenplay.sceneCountMin}-${scaling.screenplay.sceneCountMax} scenes for ${Math.round(targetDuration / 60)} minutes`;
+
+      const qualityResult = await executeLLM<{
+        overallScore: number;
+        dimensions: Record<string, number>;
+        critique: string;
+        revisionPriority: string;
+      }>({
+        templateSlug: 'quality-evaluation/screenplay-quality',
+        variables: {
+          screenplay_content: screenplayText,
+          context_hint: `Episode "${episode.title}" — target: ${Math.round(targetDuration / 60)} minutes, genre: ${projectMetadata.genre ?? 'general'}`,
+          target_scene_count: targetSceneRange,
+        },
+        context: {
+          name: 'screenplay-quality-eval',
+          accountId: data.accountId,
+          userId: data.userId,
+        },
+        supabaseClient: supabase,
+      });
+
+      const score = qualityResult.data?.overallScore ?? 0;
+      console.log(
+        `[Screenplay Conversion] Quality score: ${score.toFixed(2)} — ${qualityResult.data?.critique ?? 'No critique'}`,
+      );
+
+      if (score < 0.65) {
+        console.warn(
+          `[Screenplay Conversion] Low quality score (${score.toFixed(2)}). Revision priority: ${qualityResult.data?.revisionPriority ?? 'N/A'}`,
+        );
+      }
+    } catch (err) {
+      console.warn(
+        '[Screenplay Conversion] Quality evaluation skipped:',
+        err instanceof Error ? err.message : err,
+      );
+    }
+
     // Extract unique locations from all scenes
     const uniqueLocations = [
       ...new Set(
