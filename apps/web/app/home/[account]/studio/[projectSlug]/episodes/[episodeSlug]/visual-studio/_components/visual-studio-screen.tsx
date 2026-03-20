@@ -5,10 +5,12 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import {
   Download,
   Filter,
+  Flame,
   Loader2,
   Play,
   PlusCircle,
   Search,
+  Sparkles,
   X,
 } from 'lucide-react';
 
@@ -25,6 +27,7 @@ import {
   SelectValue,
 } from '@kit/ui/select';
 import { toast } from '@kit/ui/sonner';
+import { cn } from '@kit/ui/utils';
 
 import { ShotCard } from './shot-card';
 import { ShotDetailsSidebar } from './shot-details-sidebar';
@@ -59,6 +62,7 @@ export function VisualStudioScreen({
   const [_isPending, _startTransition] = useTransition();
   const [filter, setFilter] = useState<ShotFilter>({});
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
+  const [showShortsOnly, setShowShortsOnly] = useState(false);
 
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
   const {
@@ -129,6 +133,7 @@ export function VisualStudioScreen({
   // Apply filters
   const filteredShots = useMemo(() => {
     return shots.filter((shot) => {
+      if (showShortsOnly && !shot.shortsCandidate) return false;
       if (filter.sceneNumber && shot.sceneNumber !== filter.sceneNumber) {
         return false;
       }
@@ -145,7 +150,7 @@ export function VisualStudioScreen({
       }
       return true;
     });
-  }, [shots, filter]);
+  }, [shots, filter, showShortsOnly]);
 
   // Group shots by scene
   const shotsByScene = useMemo(() => {
@@ -168,8 +173,22 @@ export function VisualStudioScreen({
     const completed = shots.filter((s) => s.status === 'completed').length;
     const failed = shots.filter((s) => s.status === 'failed').length;
     const totalDuration = shots.reduce((acc, s) => acc + s.duration, 0);
-    return { total, pending, generating, completed, failed, totalDuration };
+    const shortsCandidates = shots.filter((s) => s.shortsCandidate).length;
+    return { total, pending, generating, completed, failed, totalDuration, shortsCandidates };
   }, [shots]);
+
+  // Derived list of shorts candidates (sorted by viral score)
+  const shortsCandidateShots = useMemo(
+    () =>
+      shots
+        .filter((s) => s.shortsCandidate)
+        .sort(
+          (a, b) =>
+            ((b.shortsMetadata?.viralScore as number | undefined) ?? 0) -
+            ((a.shortsMetadata?.viralScore as number | undefined) ?? 0),
+        ),
+    [shots],
+  );
 
   const handleGenerateAll = () => {
     const pendingShots = shots.filter((s) => s.status === 'pending');
@@ -619,6 +638,15 @@ export function VisualStudioScreen({
               <span>{stats.total} shots</span>
               <span>•</span>
               <span>~{Math.round(stats.totalDuration / 60)} min</span>
+              {stats.shortsCandidates > 0 && (
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 font-medium text-orange-500">
+                    <Flame className="h-3.5 w-3.5" />
+                    {stats.shortsCandidates} shorts candidates
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -731,6 +759,22 @@ export function VisualStudioScreen({
             </SelectContent>
           </Select>
 
+          {/* Shorts Only Toggle */}
+          {stats.shortsCandidates > 0 && (
+            <button
+              onClick={() => setShowShortsOnly((v) => !v)}
+              className={cn(
+                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all',
+                showShortsOnly
+                  ? 'border-orange-400 bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md'
+                  : 'border-gray-200 bg-white/5 text-gray-500 hover:border-orange-300 hover:text-orange-500 dark:border-white/10',
+              )}
+            >
+              <Flame className="h-3.5 w-3.5" />
+              Shorts Only
+            </button>
+          )}
+
           {/* Clear Filters */}
           {(filter.sceneNumber || filter.status || filter.searchQuery) && (
             <Button
@@ -744,6 +788,45 @@ export function VisualStudioScreen({
             </Button>
           )}
         </div>
+
+        {/* Shorts Candidates Panel */}
+        {stats.shortsCandidates > 0 && (
+          <div className="border-b border-orange-500/20 bg-gradient-to-r from-orange-950/20 to-red-950/10 px-6 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-orange-400" />
+                <span className="text-sm font-semibold text-orange-300">
+                  {stats.shortsCandidates} Shorts Candidates
+                </span>
+                <span className="text-xs text-gray-500">
+                  — shots flagged by the AI as high viral potential
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {shortsCandidateShots.slice(0, 4).map((shot) => (
+                  <button
+                    key={shot.id}
+                    onClick={() => setSelectedShot(shot)}
+                    className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-900/30 px-2.5 py-1 text-xs font-medium text-orange-300 transition-all hover:bg-orange-900/50"
+                  >
+                    <Flame className="h-3 w-3" />
+                    {shot.sceneNumber}.{shot.shotNumber}
+                    {shot.shortsMetadata?.viralScore && (
+                      <span className="ml-0.5 font-bold text-orange-200">
+                        {shot.shortsMetadata.viralScore as number}/10
+                      </span>
+                    )}
+                  </button>
+                ))}
+                {shortsCandidateShots.length > 4 && (
+                  <span className="text-xs text-gray-500">
+                    +{shortsCandidateShots.length - 4} more
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Comic Strip Shot Grid */}
         <div className="flex-1 overflow-y-auto bg-slate-950/50 p-8">
