@@ -184,8 +184,8 @@ export function VisualStudioScreen({
         .filter((s) => s.shortsCandidate)
         .sort(
           (a, b) =>
-            ((b.shortsMetadata?.viralScore as number | undefined) ?? 0) -
-            ((a.shortsMetadata?.viralScore as number | undefined) ?? 0),
+            (b.shortsMetadata?.viralScore ?? 0) -
+            (a.shortsMetadata?.viralScore ?? 0),
         ),
     [shots],
   );
@@ -813,7 +813,7 @@ export function VisualStudioScreen({
                     {shot.sceneNumber}.{shot.shotNumber}
                     {shot.shortsMetadata?.viralScore && (
                       <span className="ml-0.5 font-bold text-orange-200">
-                        {shot.shortsMetadata.viralScore as number}/10
+                        {shot.shortsMetadata.viralScore}/10
                       </span>
                     )}
                   </button>
