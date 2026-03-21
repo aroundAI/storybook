@@ -62,6 +62,7 @@ export function EpisodeHeader({
       <QuickActionsMenu
         episodeId={episode.id}
         episodeTitle={episode.title}
+        episodeVersion={episode.version}
         projectId={projectId}
         account={account}
       />

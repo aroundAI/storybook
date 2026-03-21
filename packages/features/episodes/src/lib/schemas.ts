@@ -123,6 +123,7 @@ export const DeleteEpisodeSchema = z.object({
  */
 export const ResetEpisodeSchema = z.object({
   episodeId: z.string().uuid(),
+  version: z.number().int().positive(),
 });
 
 export const ShotMetadataSchema = z.object({

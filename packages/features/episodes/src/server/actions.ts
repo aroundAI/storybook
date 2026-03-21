@@ -774,6 +774,11 @@ export const resetEpisodeAction = enhanceAction(
       throw new Error('Episode not found');
     }
 
+    // Optimistic lock: ensure the version the client holds matches what's in the DB
+    if (episode.version !== data.version) {
+      throw new OptimisticLockError('episode');
+    }
+
     // Hard-delete all shots for this episode
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: shotsError } = await (client as any)
@@ -786,9 +791,9 @@ export const resetEpisodeAction = enhanceAction(
       throw new Error('Failed to delete shots');
     }
 
-    // Reset episode fields back to draft state
+    // Reset episode fields back to draft state, verifying version hasn't changed
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: updateError } = await (client as any)
+    const { data: updatedEpisode, error: updateError } = await (client as any)
       .from('episodes')
       .update({
         status: 'draft',
@@ -798,11 +803,18 @@ export const resetEpisodeAction = enhanceAction(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      .is('deleted_at', null);
+      .eq('version', data.version)
+      .is('deleted_at', null)
+      .select('id')
+      .single();
 
     if (updateError) {
       logger.error({ ...ctx, error: updateError }, 'Failed to reset episode');
       throw new Error('Failed to reset episode');
+    }
+
+    if (!updatedEpisode) {
+      throw new OptimisticLockError('episode');
     }
 
     // Audit log
