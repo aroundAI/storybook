@@ -276,6 +276,8 @@ export async function processShotGeneration(
       duration_seconds: number;
       camera_direction: string | null;
       status: string;
+      shorts_candidate: boolean;
+      shorts_metadata: Record<string, unknown> | null;
       generation_metadata: Record<string, unknown>;
     }> = [];
 
@@ -315,6 +317,8 @@ export async function processShotGeneration(
           duration_seconds: shot.duration,
           camera_direction: shot.cameraDirection ?? null,
           status: 'pending',
+          shorts_candidate: shot.shortsCandidate ?? false,
+          shorts_metadata: shot.shortsMetadata ?? null,
           generation_metadata: {
             shotType: shot.shotType,
             location: shot.metadata.location,

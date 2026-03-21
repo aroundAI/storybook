@@ -83,6 +83,8 @@ export const getEpisodeShotsAction = enhanceAction(
         lastFrameUrl: shot.last_frame_url as string | null,
         generationJobId: shot.generation_job_id as string | null,
         metadata: shot.generation_metadata as Record<string, unknown>,
+        shortsCandidate: (shot.shorts_candidate as boolean | null) ?? false,
+        shortsMetadata: (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
         createdAt: shot.created_at as string,
         updatedAt: shot.updated_at as string,
         deletedAt: shot.deleted_at as string | null,
