@@ -16,6 +16,7 @@ import {
   DeleteEpisodeSchema,
   GetEpisodeSchema,
   ListProjectEpisodesSchema,
+  ResetEpisodeSchema,
   UpdateEpisodeSchema,
   UpdateEpisodeStatusSchema,
 } from '../lib/schemas';
@@ -733,3 +734,106 @@ export const deleteEpisodeAction = enhanceAction(
 
 // Shot CRUD actions have been moved to lib/server/mutations/shot-actions.ts (FILM-303)
 // Shot list generation has been moved to lib/server/mutations/shot-list-actions.ts (FILM-307)
+
+/**
+ * Reset an episode back to draft state.
+ * Clears story_data, screenplay_data, shot_list, deletes all shots rows,
+ * and sets status to 'draft'. Intended as an escape hatch for episodes that
+ * need to be fully regenerated from scratch.
+ */
+export const resetEpisodeAction = enhanceAction(
+  async (data) => {
+    const logger = await getLogger();
+    const ctx = { name: 'episodes.reset', episodeId: data.episodeId };
+
+    logger.info(ctx, 'Resetting episode to draft');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized episode reset attempt');
+      throw new Error('Authentication required');
+    }
+
+    // Fetch episode for audit log and project context
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episode, error: fetchError } = await (client as any)
+      .from('episodes')
+      .select(
+        `
+        id, project_id, title, status, version,
+        project:projects(account_id)
+      `,
+      )
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (fetchError || !episode) {
+      throw new Error('Episode not found');
+    }
+
+    // Hard-delete all shots for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: shotsError } = await (client as any)
+      .from('shots')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (shotsError) {
+      logger.error({ ...ctx, error: shotsError }, 'Failed to delete shots during reset');
+      throw new Error('Failed to delete shots');
+    }
+
+    // Reset episode fields back to draft state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: updateError } = await (client as any)
+      .from('episodes')
+      .update({
+        status: 'draft',
+        story_data: null,
+        screenplay_data: null,
+        shot_list: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', data.episodeId)
+      .is('deleted_at', null);
+
+    if (updateError) {
+      logger.error({ ...ctx, error: updateError }, 'Failed to reset episode');
+      throw new Error('Failed to reset episode');
+    }
+
+    // Audit log
+    const accountId = episode.project?.account_id;
+    if (accountId) {
+      const networkContext = await extractNetworkContext();
+
+      await createAuditLog({
+        accountId,
+        userId: user.id,
+        action: 'update',
+        objectType: 'episode',
+        objectId: episode.id,
+        objectName: episode.title,
+        before: { status: episode.status },
+        after: { status: 'draft' },
+        scopes: [
+          { type: 'account', id: accountId },
+          { type: 'project', id: episode.project_id },
+          { type: 'episode', id: episode.id },
+        ],
+        ...networkContext,
+      });
+    }
+
+    logger.info(ctx, 'Episode reset to draft');
+    revalidatePath('/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]', 'layout');
+
+    return { success: true };
+  },
+  {
+    schema: ResetEpisodeSchema,
+  },
+);

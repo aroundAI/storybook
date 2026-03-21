@@ -117,6 +117,14 @@ export const DeleteEpisodeSchema = z.object({
   episodeId: z.string().uuid(),
 });
 
+/**
+ * Schema for resetting an episode to draft state.
+ * Clears story_data, screenplay_data, shot_list and all shots rows.
+ */
+export const ResetEpisodeSchema = z.object({
+  episodeId: z.string().uuid(),
+});
+
 export const ShotMetadataSchema = z.object({
   characters: z.array(z.string()).optional(),
   locations: z.array(z.string()).optional(),
@@ -185,6 +193,7 @@ export type ListProjectEpisodesInput = z.infer<
 >;
 export type UpdateEpisodeInput = z.infer<typeof UpdateEpisodeSchema>;
 export type DeleteEpisodeInput = z.infer<typeof DeleteEpisodeSchema>;
+export type ResetEpisodeInput = z.infer<typeof ResetEpisodeSchema>;
 export type CreateShotInput = z.infer<typeof CreateShotSchema>;
 export type UpdateShotInput = z.infer<typeof UpdateShotSchema>;
 export type ReorderShotsInput = z.infer<typeof ReorderShotsSchema>;

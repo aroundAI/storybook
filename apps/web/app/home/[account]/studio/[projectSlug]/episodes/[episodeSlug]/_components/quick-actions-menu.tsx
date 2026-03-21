@@ -4,9 +4,16 @@ import { useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import { Copy, Download, Loader2, MoreVertical, Trash2 } from 'lucide-react';
+import {
+  Copy,
+  Download,
+  Loader2,
+  MoreVertical,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react';
 
-import { deleteEpisodeAction } from '@kit/episodes/server/actions';
+import { deleteEpisodeAction, resetEpisodeAction } from '@kit/episodes/server/actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,7 +49,9 @@ export function QuickActionsMenu({
 }: QuickActionsMenuProps) {
   const router = useRouter();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   async function handleDelete() {
     setIsDeleting(true);
@@ -62,6 +71,27 @@ export function QuickActionsMenu({
     } finally {
       setIsDeleting(false);
       setShowDeleteDialog(false);
+    }
+  }
+
+  async function handleReset() {
+    setIsResetting(true);
+    try {
+      const result = await resetEpisodeAction({ episodeId });
+
+      if (result.success) {
+        toast.success('Episode reset to Draft — all content has been cleared');
+        router.refresh();
+      } else {
+        toast.error('Failed to reset episode');
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to reset episode',
+      );
+    } finally {
+      setIsResetting(false);
+      setShowResetDialog(false);
     }
   }
 
@@ -93,6 +123,14 @@ export function QuickActionsMenu({
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
+            onClick={() => setShowResetDialog(true)}
+            className="text-amber-600 focus:text-amber-600 dark:text-amber-500 dark:focus:text-amber-500"
+          >
+            <RotateCcw className="mr-2 h-4 w-4" />
+            Reset to Draft
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
             onClick={() => setShowDeleteDialog(true)}
             className="text-destructive focus:text-destructive"
           >
@@ -102,6 +140,44 @@ export function QuickActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {/* Reset to Draft confirmation */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Episode to Draft?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This will permanently erase all generated content for{' '}
+                  <strong>&quot;{episodeTitle}&quot;</strong>:
+                </p>
+                <ul className="ml-4 list-disc space-y-1 text-sm">
+                  <li>Story &amp; narrative</li>
+                  <li>Screenplay &amp; all scenes</li>
+                  <li>Shot list &amp; all individual shots</li>
+                </ul>
+                <p className="font-medium text-amber-600 dark:text-amber-500">
+                  This cannot be undone. The episode will return to Draft status
+                  so you can regenerate from scratch.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReset}
+              disabled={isResetting}
+              className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
+            >
+              {isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Reset to Draft
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
