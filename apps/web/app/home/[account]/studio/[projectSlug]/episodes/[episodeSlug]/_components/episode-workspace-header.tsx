@@ -81,6 +81,7 @@ export function EpisodeWorkspaceHeader() {
           <QuickActionsMenu
             episodeId={episode.id}
             episodeTitle={episode.title}
+            episodeVersion={episode.version}
             projectId={projectId}
             account={accountSlug}
           />
