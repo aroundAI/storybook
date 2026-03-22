@@ -8,6 +8,7 @@ import type {
   EpisodeWithShots,
   ScreenplayData,
   ShortsGroup,
+  ShortsMetadata,
   ShotListData,
   StoryData,
 } from '@kit/episodes/types';
@@ -151,6 +152,7 @@ async function EpisodeWorkspaceLayout({
       duration_seconds, scene_description, action_description,
       prompt, camera_direction, status, video_url, thumbnail_url,
       first_frame_url, last_frame_url, generation_job_id, generation_metadata,
+      shorts_candidate, shorts_metadata,
       created_at, updated_at, deleted_at
     `,
     )
@@ -227,6 +229,12 @@ async function EpisodeWorkspaceLayout({
         generationSettings: null,
         generationStartedAt: null,
         generationCompletedAt: null,
+        shortsCandidate:
+          ((shot as { shorts_candidate?: boolean | null }).shorts_candidate) ??
+          false,
+        shortsMetadata:
+          ((shot as { shorts_metadata?: ShortsMetadata | null })
+            .shorts_metadata) ?? null,
         createdAt: shot.created_at,
         updatedAt: shot.updated_at,
         deletedAt: shot.deleted_at,
