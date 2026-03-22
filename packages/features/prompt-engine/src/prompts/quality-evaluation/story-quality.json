@@ -1,14 +1,14 @@
 {
   "slug": "story-quality",
-  "name": "Story Quality Evaluation",
-  "version": 1,
+  "name": "Viral Story Quality Gate",
+  "version": 2,
   "category": "quality-evaluation",
-  "description": "Evaluates a generated story on narrative quality dimensions. Returns scores, critique, strengths, and weaknesses for agent-based self-correction loops.",
+  "description": "Evaluate a generated story's viral potential across 7 dimensions. Returns a pass/fail decision with per-dimension scores and actionable revision suggestions. Stories scoring below 0.65 overall should be revised before screenplay conversion.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
     "provider": "gemini",
     "model": "gemini-2.0-flash-lite",
-    "max_tokens": 1500,
+    "max_tokens": 2000,
     "temperature": 0.2,
     "response_format": {
       "type": "json_object"
@@ -17,56 +17,122 @@
   "system_prompts": [
     {
       "slug": "role",
-      "name": "Story Editor Role",
-      "content": "You are a professional story editor with 20+ years of experience in narrative development for film, television, and digital media. Your evaluations are precise, actionable, and grounded in craft principles. You score strictly — a 0.8+ means publication-ready, 0.6-0.79 means needs revision, below 0.6 means major rework required.",
+      "name": "Viral Content Analyst",
+      "content": "You are a viral content specialist and story analyst. You have studied what makes short-form video content spread — the psychological principles of curiosity gaps, emotional arcs, shareability, and cinematic engagement. Your role is to objectively evaluate story quality against proven viral content frameworks. Be specific and actionable in your feedback. Cite exact lines or moments from the story when making assessments.",
       "layer_type": "role",
       "scope": "template",
       "order": 1
     },
     {
-      "slug": "format",
-      "name": "JSON Output Format",
-      "content": "IMPORTANT: Always respond with valid JSON only. No text outside the JSON object.",
-      "layer_type": "format",
+      "slug": "evaluation-framework",
+      "name": "7-Dimension Viral Framework",
+      "content": "VIRAL EVALUATION FRAMEWORK — Score each dimension 0.0 to 1.0:\n\n1. HOOK STRENGTH (weight 0.20)\n   Does the story open mid-action, mid-conflict, or with a jarring image? 1.0 = alarm/anomaly/action in the first moment. 0.0 = backstory or exposition as the opening.\n\n2. CURIOSITY GAP (weight 0.20)\n   Is there a specific, urgent mystery or withheld fact that drives the viewer to the end? 1.0 = a single precise question that can't be resolved until the finale. 0.0 = no mystery, events unfold predictably.\n\n3. EMOTIONAL ARC (weight 0.15)\n   Does the story move through 3 distinct emotional phases (intrigue → tension → catharsis)? 1.0 = all 3 phases are clear and escalating. 0.0 = flat single tone throughout.\n\n4. SETUP-PAYOFF (weight 0.20)\n   Is there a specific detail, object, or line planted in Act 1 that pays off unexpectedly in Act 3? 1.0 = clear foreshadowing with genuinely surprising callback. 0.0 = no planted detail or the twist is disconnected from Act 1.\n\n5. DIALOGUE SUBTEXT (weight 0.10)\n   In emotional scenes, do characters convey inner state through action and indirection rather than literal statements? 1.0 = no character directly states their emotion; all is shown through behavior. 0.0 = characters explain their feelings verbatim.\n\n6. LOOPABILITY (weight 0.10)\n   Does the ending echo the opening in a way that creates an 'oh wait' rewatch moment? 1.0 = final image/line is a direct, meaningful inversion or echo of the opening. 0.0 = the ending has no relationship to the opening.\n\n7. MEMORABLE MOMENT (weight 0.05)\n   Is there a single scene so striking the viewer would describe it to someone else? 1.0 = yes, unmistakably designed and identifiable. 0.0 = no scene stands out above the others.\n\nOVERALL SCORE: hookStrength*0.20 + curiosityGap*0.20 + emotionalArc*0.15 + setupPayoff*0.20 + dialogueSubtext*0.10 + loopability*0.10 + memorableMoment*0.05\n\nPASS THRESHOLD: 0.65\n- PASS (≥ 0.65): Ready for screenplay conversion\n- REVISE (0.50–0.64): Strong foundation, targeted fixes needed\n- MAJOR REWRITE (< 0.50): Core viral mechanics missing, rebuild before proceeding",
+      "layer_type": "constraints",
       "scope": "template",
       "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
     }
   ],
-  "user_prompt": "Evaluate the following story for quality.\n\n{{context_hint}}\n\n---\n\n{{story_content}}\n\n---\n\nScore each dimension from 0.0 (terrible) to 1.0 (exceptional):\n\n- **plotCoherence** (0-1): Is the plot logical, internally consistent, and well-structured? Does the beginning, middle, and end flow naturally?\n- **tensionArc** (0-1): Does tension rise and fall effectively? Is there a clear climax and satisfying resolution?\n- **characterDevelopment** (0-1): Are characters well-developed with distinct voices, clear motivations, and meaningful arcs?\n- **dialogueNaturalism** (0-1): Does dialogue sound natural, distinct per character, and serve the story?\n- **pacing** (0-1): Is the story well-paced without dragging or rushing? Are scene lengths appropriate?\n- **visualStorytelling** (0-1): Does the story prioritize showing over telling? Are visual descriptions cinematic?\n- **thematicClarity** (0-1): Is there a clear theme or message? Is it woven naturally without being heavy-handed?\n\nRespond with JSON:\n```json\n{\n  \"overallScore\": 0.0,\n  \"dimensions\": {\n    \"plotCoherence\": 0.0,\n    \"tensionArc\": 0.0,\n    \"characterDevelopment\": 0.0,\n    \"dialogueNaturalism\": 0.0,\n    \"pacing\": 0.0,\n    \"visualStorytelling\": 0.0,\n    \"thematicClarity\": 0.0\n  },\n  \"critique\": \"1-2 sentences on the most critical issues\",\n  \"strengths\": [\"specific strength 1\", \"specific strength 2\"],\n  \"weaknesses\": [\"specific weakness 1\", \"specific weakness 2\"],\n  \"revisionPriority\": \"The single most important change to make\"\n}\n```\n\noverallScore should be the weighted average of all dimensions, with plotCoherence and characterDevelopment weighted 1.5x.",
+  "user_prompt": "Evaluate this story's viral potential using the 7-dimension framework:\n\n**Story Title**: {{title}}\n**Genre**: {{genre}}\n**Target Audience**: {{target_audience}}\n**Target Duration**: {{target_duration}} seconds\n\n**Story Text**:\n{{story_text}}\n\nEvaluate each of the 7 viral dimensions honestly. Cite specific lines or moments from the story when scoring. Compute the weighted overall score. Return your evaluation as JSON.\n\n```json\n{\n  \"evaluation\": {\n    \"title\": \"string\",\n    \"overallScore\": number (0.0–1.0, weighted average),\n    \"decision\": \"pass | revise | major-rewrite\",\n    \"dimensions\": {\n      \"hookStrength\": {\n        \"score\": number (0.0–1.0),\n        \"evidence\": \"Quote or describe the opening moment that was evaluated\",\n        \"feedback\": \"What's working, what to improve\"\n      },\n      \"curiosityGap\": {\n        \"score\": number,\n        \"evidence\": \"The central mystery as it currently exists in the story\",\n        \"feedback\": \"string\"\n      },\n      \"emotionalArc\": {\n        \"score\": number,\n        \"phases\": [\"act 1 emotion\", \"act 2 emotion\", \"act 3 emotion\"],\n        \"feedback\": \"string\"\n      },\n      \"setupPayoff\": {\n        \"score\": number,\n        \"setup\": \"The planted detail or element in Act 1\",\n        \"payoff\": \"How it resolves in Act 3 (or 'none found')\",\n        \"feedback\": \"string\"\n      },\n      \"dialogueSubtext\": {\n        \"score\": number,\n        \"worstOffender\": \"The most on-the-nose line in the story (or 'none found')\",\n        \"feedback\": \"string\"\n      },\n      \"loopability\": {\n        \"score\": number,\n        \"openingBeat\": \"The story's opening image or moment\",\n        \"closingBeat\": \"The story's ending image or moment\",\n        \"feedback\": \"string\"\n      },\n      \"memorableMoment\": {\n        \"score\": number,\n        \"candidateScene\": \"The best candidate for the must-describe-to-someone moment\",\n        \"feedback\": \"string\"\n      }\n    },\n    \"topPriorities\": [\n      \"string — the single most important fix\",\n      \"string — second most important fix\",\n      \"string — third most important fix\"\n    ],\n    \"strengths\": [\"string — what's already working well\"]\n  }\n}\n```",
   "variables": {
-    "story_content": {
+    "title": {
       "type": "text",
-      "required": true,
-      "description": "The full story text to evaluate"
+      "description": "Story title",
+      "required": true
     },
-    "context_hint": {
+    "story_text": {
       "type": "text",
+      "description": "The full story text to evaluate",
+      "required": true
+    },
+    "genre": {
+      "type": "text",
+      "description": "Content genre (e.g. animation, drama, comedy)",
       "required": false,
-      "description": "Optional context: target duration, genre, intended audience, or evaluation instructions"
+      "default": "general"
+    },
+    "target_audience": {
+      "type": "text",
+      "description": "Target audience for the content",
+      "required": false,
+      "default": "general audience"
+    },
+    "target_duration": {
+      "type": "number",
+      "description": "Target duration in seconds",
+      "required": false,
+      "default": 180
     }
   },
   "output": {
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ overallScore: z.number().min(0).max(1), dimensions: z.object({ plotCoherence: z.number().min(0).max(1), tensionArc: z.number().min(0).max(1), characterDevelopment: z.number().min(0).max(1), dialogueNaturalism: z.number().min(0).max(1), pacing: z.number().min(0).max(1), visualStorytelling: z.number().min(0).max(1), thematicClarity: z.number().min(0).max(1) }), critique: z.string(), strengths: z.array(z.string()), weaknesses: z.array(z.string()), revisionPriority: z.string() })"
+      "definition": "z.object({ evaluation: z.object({ title: z.string(), overallScore: z.number().min(0).max(1), decision: z.enum(['pass', 'revise', 'major-rewrite']), dimensions: z.object({ hookStrength: z.object({ score: z.number(), evidence: z.string(), feedback: z.string() }), curiosityGap: z.object({ score: z.number(), evidence: z.string(), feedback: z.string() }), emotionalArc: z.object({ score: z.number(), phases: z.array(z.string()), feedback: z.string() }), setupPayoff: z.object({ score: z.number(), setup: z.string(), payoff: z.string(), feedback: z.string() }), dialogueSubtext: z.object({ score: z.number(), worstOffender: z.string(), feedback: z.string() }), loopability: z.object({ score: z.number(), openingBeat: z.string(), closingBeat: z.string(), feedback: z.string() }), memorableMoment: z.object({ score: z.number(), candidateScene: z.string(), feedback: z.string() }) }), topPriorities: z.array(z.string()), strengths: z.array(z.string()) }) })"
     },
-    "schema_for_llm": "Return JSON: { \"overallScore\": number, \"dimensions\": { \"plotCoherence\": number, \"tensionArc\": number, \"characterDevelopment\": number, \"dialogueNaturalism\": number, \"pacing\": number, \"visualStorytelling\": number, \"thematicClarity\": number }, \"critique\": \"string\", \"strengths\": [\"string\"], \"weaknesses\": [\"string\"], \"revisionPriority\": \"string\" }",
+    "schema_for_llm": "Return JSON: { \"evaluation\": { \"title\": \"string\", \"overallScore\": number, \"decision\": \"pass|revise|major-rewrite\", \"dimensions\": { \"hookStrength\": { \"score\": number, \"evidence\": \"string\", \"feedback\": \"string\" }, \"curiosityGap\": { \"score\": number, \"evidence\": \"string\", \"feedback\": \"string\" }, \"emotionalArc\": { \"score\": number, \"phases\": [\"string\"], \"feedback\": \"string\" }, \"setupPayoff\": { \"score\": number, \"setup\": \"string\", \"payoff\": \"string\", \"feedback\": \"string\" }, \"dialogueSubtext\": { \"score\": number, \"worstOffender\": \"string\", \"feedback\": \"string\" }, \"loopability\": { \"score\": number, \"openingBeat\": \"string\", \"closingBeat\": \"string\", \"feedback\": \"string\" }, \"memorableMoment\": { \"score\": number, \"candidateScene\": \"string\", \"feedback\": \"string\" } }, \"topPriorities\": [\"string\"], \"strengths\": [\"string\"] } }",
     "example_output": {
-      "overallScore": 0.74,
-      "dimensions": {
-        "plotCoherence": 0.85,
-        "tensionArc": 0.70,
-        "characterDevelopment": 0.68,
-        "dialogueNaturalism": 0.72,
-        "pacing": 0.80,
-        "visualStorytelling": 0.65,
-        "thematicClarity": 0.78
-      },
-      "critique": "The story's tension plateau in act 2 prevents the climax from landing with full impact. Character motivations are stated rather than shown through action.",
-      "strengths": ["Strong three-act structure with clear beats", "Natural, distinct dialogue for each character"],
-      "weaknesses": ["Act 2 tension doesn't escalate sufficiently", "Protagonist motivation told via internal monologue rather than dramatized"],
-      "revisionPriority": "Add a false victory/defeat moment at the end of act 2 to create a stronger emotional low before the climax"
+      "evaluation": {
+        "title": "The Last Signal",
+        "overallScore": 0.82,
+        "decision": "pass",
+        "dimensions": {
+          "hookStrength": {
+            "score": 0.9,
+            "evidence": "Maya's monitor screams an alarm — a signal from coordinates that don't exist",
+            "feedback": "Excellent hook. Opens on an anomaly with immediate urgency. The 'coordinates that don't exist' detail adds compelling specificity."
+          },
+          "curiosityGap": {
+            "score": 0.85,
+            "evidence": "Who sent the signal — and how does it contain information about events that haven't happened yet?",
+            "feedback": "Strong curiosity gap with a specific, time-bound mystery. Could be heightened by having Maya recognize a personal detail in the signal even earlier."
+          },
+          "emotionalArc": {
+            "score": 0.8,
+            "phases": ["unsettled curiosity", "rising dread", "awe and purpose"],
+            "feedback": "Clear three-phase journey. The transition from dread to awe could be sharpened with a single quiet beat of silence."
+          },
+          "setupPayoff": {
+            "score": 0.9,
+            "setup": "Maya mentions her recurring dream about 'a voice calling from nowhere'",
+            "payoff": "The signal contains her own future voice — she sent it to herself through a temporal loop",
+            "feedback": "Outstanding setup-payoff. Foreshadowed subtly, paid off with genuine surprise."
+          },
+          "dialogueSubtext": {
+            "score": 0.7,
+            "worstOffender": "'I'm scared, Chen. What does this mean?' — too direct",
+            "feedback": "Most dialogue is strong. Replace the fear-statement with Chen asking Maya to run diagnostics twice, unable to verbalize why."
+          },
+          "loopability": {
+            "score": 0.85,
+            "openingBeat": "Maya alone at the console, reading incoming signal",
+            "closingBeat": "Maya alone at the console, transmitting outgoing signal",
+            "feedback": "Clean mirror. The action verb flips from receiving to sending — viewers who rewatch will catch it immediately."
+          },
+          "memorableMoment": {
+            "score": 0.9,
+            "candidateScene": "Maya plays back the signal and hears her own voice describing events happening around her in real time",
+            "feedback": "Unmistakably the scene a viewer would describe. Have one predicted event happen on screen as she listens to deepen the effect."
+          }
+        },
+        "topPriorities": [
+          "Replace the explicit fear-statement in dialogue with a behavioral tell (running diagnostics twice instead of saying 'I'm scared')",
+          "Add one on-screen event predicted by the signal that happens in real time during playback",
+          "Sharpen the dread-to-awe transition with a single beat of silence before Maya accepts her purpose"
+        ],
+        "strengths": [
+          "Exceptional hook with immediate anomaly and urgency",
+          "Setup-payoff pair is among the strongest possible — personal, foreshadowed, and genuinely surprising",
+          "The loop structure (reading → sending) is elegant and designed for rewatches"
+        ]
+      }
     }
   }
 }

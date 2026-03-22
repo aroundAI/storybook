@@ -1,7 +1,7 @@
 {
   "slug": "scene-shot-generation",
   "name": "VEO 3.1 Scene Shot Generation with Timestamps",
-  "version": 2,
+  "version": 3,
   "category": "story-generation",
   "description": "Generate concise VEO 3.1 shots with timestamp-based prompts. Designed for Ingredients-to-Video workflow where reference images are attached.",
   "exported_at": "2025-01-01T00:00:00.000Z",
@@ -24,12 +24,20 @@
       "order": 1
     },
     {
+      "slug": "cinematic-authority",
+      "name": "VEO 3.1 Cinematic Authority",
+      "content": "VEO 3.1 CINEMATIC AUTHORITY — use professional language for every shot:\n\nLENS SPECIFICITY (always include in STYLE line):\n- Intimate/emotional moments → 85mm portrait look, shallow depth of field, face fills frame\n- Wide establishing or spectacle → 24mm wide angle, slight barrel distortion, deep focus\n- Tension, POV, chase → 35mm, eye-level, handheld with subtle motion\n- Dramatic reveals or compressed perspective → 100mm telephoto, subject snaps from blur to sharp\n- Extreme intimacy or detail → 100mm macro, razor-thin focus plane\n\nLIGHTING AUTHORITY (specify in STYLE line with these exact terms):\n- Conflict/confrontation → hard side-lighting, deep shadows, 3:1 contrast ratio\n- Resolution/warmth → golden hour backlight, soft fill, halation on highlights\n- Mystery/unease → motivated single source (candle, screen, streetlamp), slightly underexposed\n- Hope/reveal → rim light from above, golden warm tones, gentle vignette\n- Fear/disorientation → harsh overhead, unflattering angle, cool desaturated tones\n\nCAMERA MOVEMENT = EMOTION (always include in shotLine):\n- Static = power, authority, deadlock, or uncomfortable silence\n- Slow dolly-in = revelation, growing realization, dawning dread\n- Slow dolly-out = isolation, loss, character being left behind\n- Handheld = instability, fear, urgency, raw emotion\n- Rack focus mid-shot = perspective shift — reframing who or what really matters\n- Orbital/arc = two characters with unresolved tension\n\nFIRST-SHOT HOOK RULE: The opening shot of every scene MUST create intrigue in frames 0-3 seconds. Use motion, an anomaly in frame, a character with strong emotion, or an out-of-context detail. NEVER open a scene on a neutral static face.",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
       "slug": "scene-shorts",
       "name": "Scene Shorts Candidate Scoring",
       "content": "SCENE-LEVEL REEL SCORING:\n\nAfter generating all shots, evaluate the ENTIRE SCENE as a potential reel (30-64 seconds). Rate the scene's viral potential 1-10.\n\nHIGH REEL POTENTIAL (8-10) — sceneViralScore ≥ 7 marks the scene as a shorts candidate:\n- Complete mini-story arc with beginning, middle, end\n- Strong emotional peak or payoff (humor, surprise, awe, heartwarming)\n- Memorable standalone dialogue or punchline\n- Makes total sense WITHOUT context from other scenes\n- Visual spectacle or character moment that hooks in 3s\n\nMEDIUM (5-7):\n- Good content but needs prior context to fully land\n- Setup scene that pays off in another scene\n- Carries narrative but not self-contained\n\nLOW (1-4):\n- Pure exposition or transition\n- Requires extensive prior context\n- Minimal action or dialogue\n\nOutput these THREE fields at the TOP LEVEL of your response (NOT inside a shot):\n- sceneViralScore: 1-10\n- sceneHookType: one of humor, reveal, conflict, visual, cliffhanger, character, action, reaction, punchline\n- sceneStandaloneSummary: one sentence that gives a viewer enough context to enjoy the reel",
       "layer_type": "constraints",
       "scope": "template",
-      "order": 2
+      "order": 3
     },
     {
       "slug": "format",
@@ -37,7 +45,7 @@
       "content": "OUTPUT FORMAT - Use timestamps within each 8-second shot:\n\nSHOT: [Shot type], [Camera movement] (thats where the camera is)\n\n[00:00-03:00] [Character] [action]. Setting: [brief location/lighting].\n\n[03:00-06:00] [Character]: \"[Dialogue]\" (Tone: [emotion])\n\n[06:00-08:00] [Reaction or next action]\n\nAUDIO: [Ambient sounds], [SFX]\n\nSTYLE: [Aesthetic], [lighting], [mood]\n\nAVOID: subtitles, captions, watermarks, text overlays\n\nKEY RULES:\n- Use colon syntax for dialogue (prevents subtitles)\n- Include '(thats where the camera is)' for spatial clarity\n- Reference characters by NAME only - images provide visual reference\n- One main action per shot\n- Max 8 seconds per clip",
       "layer_type": "format",
       "scope": "template",
-      "order": 3
+      "order": 4
     },
     {
       "slug": "context",
@@ -45,7 +53,7 @@
       "content": "REFERENCE IMAGE WORKFLOW:\n\nCharacters and locations provided below have reference images that will be attached to VEO 3.1 during generation. This means:\n\n1. DO NOT describe character appearances (age, ethnicity, clothing, hair, eyes, etc.)\n2. DO reference characters by their exact NAME\n3. DO describe their ACTIONS, MOVEMENTS, and EMOTIONS\n4. DO include dialogue with timing and emotional tone\n5. DO describe camera work and shot composition\n6. Location images provide the setting - just reference the mood/lighting\n\nThe images ARE the visual reference. Your prompt provides the ACTION and STORY.",
       "layer_type": "constraints",
       "scope": "template",
-      "order": 4
+      "order": 5
     },
     {
       "slug": "audio-cues",
@@ -53,10 +61,10 @@
       "content": "AUDIO CUE GENERATION (per shot):\n\nGenerate structured audioCues for each shot. The scene provides audio design context - refine to shot-level timing.\n\nFOLLOW ELEVENLABS BEST PRACTICES:\n\n**SFX (type: 'sfx')** - Discrete sound effects\n- Duration: 0.1-30 seconds\n- Simple: 'Glass shattering on concrete', 'Heavy door creaking open'\n- Complex: 'Footsteps on gravel, then metallic door opens'\n- Terminology: impact, whoosh, braam, glitch, drone\n\n**MUSIC (type: 'music')** - Background score\n- Duration: 10-300 seconds\n- REQUIRED: BPM, mood, key signature\n- Format: '[Genre] score, [BPM] BPM, in [key], [mood], instrumental only'\n- Examples:\n  - 'Suspenseful orchestral, 80 BPM, in C minor, builds tension, instrumental only'\n  - 'Upbeat detective jazz, 120 BPM, in F major, playful saxophone lead, instrumental only'\n  - 'Gentle piano melody, 90 BPM, in G major, soulful and raw'\n\n**AMBIENT (type: 'ambient')** - Background atmosphere (loopable)\n- Duration: 10-30 seconds (will loop)\n- isLoopable: true\n- Examples: 'Quiet park with birds chirping, soft wind', 'Busy coffee shop chatter, room tone'\n\nRULES:\n- Each shot: 1-3 audio cues\n- startOffset: seconds from shot start\n- duration: length in seconds\n- Match audio to shot action and mood",
       "layer_type": "constraints",
       "scope": "template",
-      "order": 5
+      "order": 6
     }
   ],
-  "user_prompt": "Generate VEO 3.1 shots for Scene {{scene_number}} of {{total_scenes}}.\n\n## CHARACTERS (Reference images will be attached)\n{{characters}}\n\n## LOCATION (Reference image will be attached)\n{{locations}}\n\n## EPISODE CONTEXT\n{{episode_metadata}}\n\n## PREVIOUS SCENE\n{{previous_scene_summary}}\n\n## CURRENT SCENE CONTENT\n{{scene_content}}\n\n## REQUIREMENTS\n\n1. Generate 3-8 shots for this scene\n2. Each shot is MAX 8 seconds\n3. Use TIMESTAMP format: [00:00-03:00] Action description\n4. Reference characters by NAME only (images provide visuals)\n5. Use colon syntax for dialogue: Character: \"text\" (Tone: emotion)\n6. Include '(thats where the camera is)' for camera positioning\n7. Keep prompts CONCISE: 100-150 words per shot\n8. After generating shots, evaluate the ENTIRE SCENE as a reel candidate (sceneViralScore 1-10)\n9. If sceneViralScore ≥ 7, the whole scene qualifies as a short (NOT individual shots)\n\n## SHOT TYPES (USE EXACT VALUES - NO VARIATIONS)\n✓ CORRECT: wide, medium, close-up, extreme-close-up, two-shot, three-shot, over-shoulder, pov, establishing, reaction, extreme-wide, medium-wide, medium-close-up, group-shot, full-body, profile, three-quarter, low-angle, high-angle, dutch-angle, bird-eye, insert, silhouette\n✗ WRONG: \"medium shot\", \"close up\" (no hyphen), \"extreme close-up\" (use hyphen), \"medium two-shot\", \"tracking\" (use in cameraDirection instead)\n\nIMPORTANT: Use the EXACT kebab-case value. Do NOT add 'shot' suffix or use spaces instead of hyphens.\n\n## OUTPUT JSON\n{\n  \"shots\": [{\n    \"shotNumber\": 1,\n    \"shotType\": \"medium|wide|close-up|etc\",\n    \"cameraDirection\": \"static|pan_left|dolly_in|tracking|etc\",\n    \"description\": \"Brief shot description\",\n    \"characters\": [\"Character Name\"],\n    \"duration\": 8,\n    \"veoPrompt\": {\n      \"shotLine\": \"SHOT: Medium two-shot, tracking from the side (thats where the camera is)\",\n      \"timeline\": [\n        {\n          \"startTime\": \"00:00\",\n          \"endTime\": \"03:00\",\n          \"type\": \"action\",\n          \"character\": \"Character Name\",\n          \"content\": \"action description\",\n          \"emotion\": null\n        },\n        {\n          \"startTime\": \"03:00\",\n          \"endTime\": \"06:00\",\n          \"type\": \"dialogue\",\n          \"character\": \"Character Name\",\n          \"content\": \"Dialogue text here\",\n          \"emotion\": \"surprised\"\n        }\n      ],\n      \"audio\": \"Ambient sounds, SFX description\",\n      \"style\": \"Visual aesthetic, lighting, mood\",\n      \"avoid\": \"subtitles, captions, watermarks, text overlays\",\n      \"fullPrompt\": \"Complete formatted prompt ready for VEO 3.1\"\n    },\n    \"metadata\": {\n      \"location\": \"location name\",\n      \"timeOfDay\": \"golden-hour|night|day|etc\",\n      \"mood\": \"emotional tone\"\n    }\n  }],\n  \"sceneSummary\": \"One sentence summary\",\n  \"sceneViralScore\": 8,\n  \"sceneHookType\": \"humor|reveal|conflict|visual|cliffhanger|character|action|reaction|punchline\",\n  \"sceneStandaloneSummary\": \"One sentence giving viewer enough context to enjoy the reel without watching other episodes\"\n}",
+  "user_prompt": "Generate VEO 3.1 shots for Scene {{scene_number}} of {{total_scenes}}.\n\n## CHARACTERS (Reference images will be attached)\n{{characters}}\n\n## LOCATION (Reference image will be attached)\n{{locations}}\n\n## EPISODE CONTEXT\n{{episode_metadata}}\n\n## PREVIOUS SCENE\n{{previous_scene_summary}}\n\n## CURRENT SCENE CONTENT\n{{scene_content}}\n\n## REQUIREMENTS\n\n1. Generate 3-8 shots for this scene\n2. Each shot is MAX 8 seconds\n3. Use TIMESTAMP format: [00:00-03:00] Action description\n4. Reference characters by NAME only (images provide visuals)\n5. Use colon syntax for dialogue: Character: \"text\" (Tone: emotion)\n6. Include '(thats where the camera is)' for camera positioning\n7. Keep prompts CONCISE: 100-150 words per shot\n8. Apply CINEMATIC AUTHORITY rules (lens specificity, lighting, camera movement = emotion)\n9. Every scene's first shot MUST hook in 0-3 seconds via motion, anomaly, or strong emotion\n10. After generating shots, evaluate the ENTIRE SCENE as a reel candidate (sceneViralScore 1-10)\n11. If sceneViralScore ≥ 7, the whole scene qualifies as a short (NOT individual shots)\n\n## SHOT TYPES (USE EXACT VALUES - NO VARIATIONS)\n✓ CORRECT: wide, medium, close-up, extreme-close-up, two-shot, three-shot, over-shoulder, pov, establishing, reaction, extreme-wide, medium-wide, medium-close-up, group-shot, full-body, profile, three-quarter, low-angle, high-angle, dutch-angle, bird-eye, insert, silhouette\n✗ WRONG: \"medium shot\", \"close up\" (no hyphen), \"extreme close-up\" (use hyphen), \"medium two-shot\", \"tracking\" (use in cameraDirection instead)\n\nIMPORTANT: Use the EXACT kebab-case value. Do NOT add 'shot' suffix or use spaces instead of hyphens.\n\n## OUTPUT JSON\n{\n  \"shots\": [{\n    \"shotNumber\": 1,\n    \"shotType\": \"medium|wide|close-up|etc\",\n    \"cameraDirection\": \"static|pan_left|dolly_in|tracking|etc\",\n    \"description\": \"Brief shot description\",\n    \"characters\": [\"Character Name\"],\n    \"duration\": 8,\n    \"hookMoment\": \"what creates intrigue in the first 0-3 seconds of this shot\",\n    \"emotionalTone\": \"the feeling this shot should generate in the viewer\",\n    \"veoPrompt\": {\n      \"shotLine\": \"SHOT: Medium two-shot, tracking from the side (thats where the camera is)\",\n      \"timeline\": [\n        {\n          \"startTime\": \"00:00\",\n          \"endTime\": \"03:00\",\n          \"type\": \"action\",\n          \"character\": \"Character Name\",\n          \"content\": \"action description\",\n          \"emotion\": null\n        },\n        {\n          \"startTime\": \"03:00\",\n          \"endTime\": \"06:00\",\n          \"type\": \"dialogue\",\n          \"character\": \"Character Name\",\n          \"content\": \"Dialogue text here\",\n          \"emotion\": \"surprised\"\n        }\n      ],\n      \"audio\": \"Ambient sounds, SFX description\",\n      \"style\": \"Visual aesthetic, lens (e.g. 85mm portrait look), lighting (e.g. hard side-lighting 3:1 contrast), mood\",\n      \"avoid\": \"subtitles, captions, watermarks, text overlays\",\n      \"fullPrompt\": \"Complete formatted prompt ready for VEO 3.1\"\n    },\n    \"metadata\": {\n      \"location\": \"location name\",\n      \"timeOfDay\": \"golden-hour|night|day|etc\",\n      \"mood\": \"emotional tone\"\n    }\n  }],\n  \"sceneSummary\": \"One sentence summary\",\n  \"sceneViralScore\": 8,\n  \"sceneHookType\": \"humor|reveal|conflict|visual|cliffhanger|character|action|reaction|punchline\",\n  \"sceneStandaloneSummary\": \"One sentence giving viewer enough context to enjoy the reel without watching other episodes\"\n}",
   "variables": {
     "scene_number": {
       "type": "number",
@@ -98,9 +106,9 @@
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ shots: z.array(z.object({ shotNumber: z.number(), shotType: z.enum(['extreme-wide', 'wide', 'medium-wide', 'medium', 'medium-close-up', 'close-up', 'extreme-close-up', 'two-shot', 'three-shot', 'group-shot', 'over-shoulder', 'full-body', 'profile', 'three-quarter', 'low-angle', 'high-angle', 'dutch-angle', 'bird-eye', 'pov', 'insert', 'establishing', 'reaction', 'silhouette', 'tracking']), cameraDirection: z.string(), description: z.string(), characters: z.array(z.string()), duration: z.number().min(3).max(10), veoPrompt: z.object({ shotLine: z.string(), timeline: z.array(z.object({ startTime: z.string(), endTime: z.string(), type: z.enum(['action', 'dialogue', 'transition', 'reaction']), character: z.string().nullish(), content: z.string(), emotion: z.string().nullable().optional() })), audio: z.string(), style: z.string(), avoid: z.string(), fullPrompt: z.string() }), metadata: z.object({ location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), mood: z.string().optional() }) })), sceneSummary: z.string(), sceneViralScore: z.number().min(1).max(10), sceneHookType: z.enum(['humor', 'reveal', 'conflict', 'visual', 'cliffhanger', 'character', 'action', 'reaction', 'punchline']).nullish(), sceneStandaloneSummary: z.string().nullish() })"
+      "definition": "z.object({ shots: z.array(z.object({ shotNumber: z.number(), shotType: z.enum(['extreme-wide', 'wide', 'medium-wide', 'medium', 'medium-close-up', 'close-up', 'extreme-close-up', 'two-shot', 'three-shot', 'group-shot', 'over-shoulder', 'full-body', 'profile', 'three-quarter', 'low-angle', 'high-angle', 'dutch-angle', 'bird-eye', 'pov', 'insert', 'establishing', 'reaction', 'silhouette', 'tracking']), cameraDirection: z.string(), description: z.string(), characters: z.array(z.string()), duration: z.number().min(3).max(10), hookMoment: z.string().optional(), emotionalTone: z.string().optional(), veoPrompt: z.object({ shotLine: z.string(), timeline: z.array(z.object({ startTime: z.string(), endTime: z.string(), type: z.enum(['action', 'dialogue', 'transition', 'reaction']), character: z.string().nullish(), content: z.string(), emotion: z.string().nullable().optional() })), audio: z.string(), style: z.string(), avoid: z.string(), fullPrompt: z.string() }), metadata: z.object({ location: z.string(), timeOfDay: z.enum(['dawn', 'morning', 'midday', 'afternoon', 'golden-hour', 'dusk', 'night', 'day']), mood: z.string().optional() }) })), sceneSummary: z.string(), sceneViralScore: z.number().min(1).max(10), sceneHookType: z.enum(['humor', 'reveal', 'conflict', 'visual', 'cliffhanger', 'character', 'action', 'reaction', 'punchline']).nullish(), sceneStandaloneSummary: z.string().nullish() })"
     },
-    "schema_for_llm": "Return JSON: { \"shots\": [{ \"shotNumber\": 1, \"shotType\": \"wide|medium|close-up|etc\", \"cameraDirection\": \"static|pan|dolly|tracking\", \"description\": \"brief\", \"characters\": [\"Name\"], \"duration\": 8, \"veoPrompt\": { \"shotLine\": \"SHOT: type, movement (thats where the camera is)\", \"timeline\": [{ \"startTime\": \"00:00\", \"endTime\": \"03:00\", \"type\": \"action|dialogue|transition\", \"character\": \"Name\", \"content\": \"...\", \"emotion\": \"...\" }], \"audio\": \"...\", \"style\": \"...\", \"avoid\": \"subtitles, captions, watermarks\", \"fullPrompt\": \"complete prompt\" }, \"metadata\": {...} }], \"sceneSummary\": \"...\", \"sceneViralScore\": 8, \"sceneHookType\": \"humor|reveal|...\", \"sceneStandaloneSummary\": \"...\" }",
+    "schema_for_llm": "Return JSON: { \"shots\": [{ \"shotNumber\": 1, \"shotType\": \"wide|medium|close-up|etc\", \"cameraDirection\": \"static|pan|dolly|tracking\", \"description\": \"brief\", \"characters\": [\"Name\"], \"duration\": 8, \"hookMoment\": \"string\", \"emotionalTone\": \"string\", \"veoPrompt\": { \"shotLine\": \"SHOT: type, movement (thats where the camera is)\", \"timeline\": [{ \"startTime\": \"00:00\", \"endTime\": \"03:00\", \"type\": \"action|dialogue|transition\", \"character\": \"Name\", \"content\": \"...\", \"emotion\": \"...\" }], \"audio\": \"...\", \"style\": \"lens + lighting + mood\", \"avoid\": \"subtitles, captions, watermarks\", \"fullPrompt\": \"complete prompt\" }, \"metadata\": {...} }], \"sceneSummary\": \"...\", \"sceneViralScore\": 8, \"sceneHookType\": \"humor|reveal|...\", \"sceneStandaloneSummary\": \"...\" }",
     "example_output": {
       "shots": [
         {
@@ -110,6 +118,8 @@
           "description": "Establishing shot of Maya entering office",
           "characters": ["Maya Chen"],
           "duration": 6,
+          "hookMoment": "Maya enters and immediately freezes — something on her desk is wrong",
+          "emotionalTone": "unease and curiosity",
           "veoPrompt": {
             "shotLine": "SHOT: Wide establishing, static camera at standing height (thats where the camera is)",
             "timeline": [
@@ -126,14 +136,14 @@
                 "endTime": "06:00",
                 "type": "action",
                 "character": "Maya Chen",
-                "content": "pauses, notices something off-screen, expression shifts to curiosity",
+                "content": "pauses, stares at her desk, expression shifts from routine to alarmed curiosity.",
                 "emotion": "curious"
               }
             ],
             "audio": "Soft footsteps on hardwood, ambient office hum, distant city traffic",
-            "style": "Cinematic, golden hour light streaming through windows, warm color grading",
+            "style": "Cinematic, golden hour light streaming through windows, 24mm wide angle, deep focus, warm color grading",
             "avoid": "subtitles, captions, watermarks, text overlays, anime style",
-            "fullPrompt": "SHOT: Wide establishing, static camera at standing height (thats where the camera is)\n\n[00:00-03:00] Maya Chen enters frame from right, walks toward desk with purpose. Setting: Modern corner office, golden hour light.\n\n[03:00-06:00] Maya Chen pauses, notices something off-screen, expression shifts to curiosity.\n\nAUDIO: Soft footsteps on hardwood, ambient office hum, distant city traffic\n\nSTYLE: Cinematic, golden hour light streaming through windows, warm color grading\n\nAVOID: subtitles, captions, watermarks, text overlays, anime style"
+            "fullPrompt": "SHOT: Wide establishing, slow dolly-in, camera at standing height (thats where the camera is)\n\n[00:00-03:00] Maya Chen enters frame from right, walks toward desk with purpose — then stops dead. Setting: Modern corner office, golden hour light. 24mm wide angle, soft fill.\n\n[03:00-06:00] Maya Chen pauses, stares at her desk, expression shifts from routine to alarmed curiosity.\n\nAUDIO: Soft footsteps on hardwood, ambient office hum, distant city traffic\n\nSTYLE: Cinematic, golden hour light streaming through windows, 24mm wide angle, deep focus, warm color grading\n\nAVOID: subtitles, captions, watermarks, text overlays, anime style"
           },
           "metadata": {
             "location": "Maya's Corner Office",
@@ -148,6 +158,8 @@
           "description": "Maya reacts with surprise, delivers dialogue",
           "characters": ["Maya Chen"],
           "duration": 6,
+          "hookMoment": "Extreme close-up on Maya's eyes widening — she recognizes something she shouldn't be seeing",
+          "emotionalTone": "dread mixed with recognition",
           "veoPrompt": {
             "shotLine": "SHOT: Close-up, static camera at eye level (thats where the camera is)",
             "timeline": [
@@ -177,9 +189,9 @@
               }
             ],
             "audio": "Sharp intake of breath, ambient office hum",
-            "style": "Shallow depth of field, warm rim lighting on hair, intimate framing",
+            "style": "85mm portrait look, shallow depth of field, hard side-lighting 3:1 contrast, face fills frame, cool tones",
             "avoid": "subtitles, captions, watermarks, text overlays, blurry face",
-            "fullPrompt": "SHOT: Close-up, static camera at eye level (thats where the camera is)\n\n[00:00-02:00] Maya Chen eyes widen, eyebrows raise in surprise.\n\n[02:00-05:00] Maya Chen: \"I didn't expect to see you here.\" (Tone: surprised)\n\n[05:00-06:00] Maya Chen crosses arms defensively, chin lifts slightly.\n\nAUDIO: Sharp intake of breath, ambient office hum\n\nSTYLE: Shallow depth of field, warm rim lighting on hair, intimate framing\n\nAVOID: subtitles, captions, watermarks, text overlays, blurry face"
+            "fullPrompt": "SHOT: Close-up, rack focus from background to face, static camera at eye level (thats where the camera is)\n\n[00:00-02:00] Maya Chen eyes widen — rack focus snaps from blurred background to her face in sharp relief.\n\n[02:00-05:00] Maya Chen: \"I didn't expect to see you here.\" (Tone: disguised surprise, voice steady but jaw tight)\n\n[05:00-06:00] Maya Chen crosses arms, chin lifts. The warmth drains from her expression.\n\nAUDIO: Sharp intake of breath, ambient office hum\n\nSTYLE: 85mm portrait look, shallow depth of field, hard side-lighting 3:1 contrast, cool tones under warm rim light\n\nAVOID: subtitles, captions, watermarks, text overlays, blurry face"
           },
           "metadata": {
             "location": "Maya's Corner Office",
