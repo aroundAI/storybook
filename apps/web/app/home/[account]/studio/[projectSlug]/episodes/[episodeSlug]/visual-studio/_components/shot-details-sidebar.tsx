@@ -454,7 +454,96 @@ export function ShotDetailsSidebar({
         );
       })()}
 
+      {/* Scene Viral Intelligence */}
+      {shot.shortsCandidate && shot.shortsMetadata && (
+        <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
+          <div className="mb-2 flex items-center gap-2">
+            <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
+              🔥 Scene Viral Intelligence
+            </span>
+            <Badge
+              variant="secondary"
+              className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+            >
+              {shot.shortsMetadata.viralScore?.toFixed(1) ?? 'N/A'}/10
+            </Badge>
+            {shot.shortsMetadata.hookType && (
+              <Badge
+                variant="secondary"
+                className="bg-purple-100 text-purple-700 capitalize dark:bg-purple-900/50 dark:text-purple-300"
+              >
+                {shot.shortsMetadata.hookType}
+              </Badge>
+            )}
+          </div>
+
+          <div className="space-y-2 text-xs">
+            {shot.shortsMetadata.whyThisWorksAsReel && (
+              <div className="rounded-md bg-green-50 p-2 dark:bg-green-950/30">
+                <p className="mb-0.5 font-semibold text-green-700 dark:text-green-400">
+                  ✓ Why this works as a Reel
+                </p>
+                <p className="leading-relaxed text-green-900 dark:text-green-200">
+                  {shot.shortsMetadata.whyThisWorksAsReel}
+                </p>
+              </div>
+            )}
+
+            {shot.shortsMetadata.keyMoment && (
+              <div className="rounded-md bg-amber-50 p-2 dark:bg-amber-950/30">
+                <p className="mb-0.5 font-semibold text-amber-700 dark:text-amber-400">
+                  ⚡ Key cinematic moment
+                </p>
+                <p className="leading-relaxed text-amber-900 dark:text-amber-200">
+                  {shot.shortsMetadata.keyMoment}
+                </p>
+              </div>
+            )}
+
+            {shot.shortsMetadata.sceneEmotionalArc && (
+              <div className="rounded-md bg-blue-50 p-2 dark:bg-blue-950/30">
+                <p className="mb-0.5 font-semibold text-blue-700 dark:text-blue-400">
+                  🎭 Emotional arc
+                </p>
+                <p className="text-blue-900 dark:text-blue-200">
+                  {shot.shortsMetadata.sceneEmotionalArc}
+                </p>
+              </div>
+            )}
+
+            {shot.shortsMetadata.improvementSuggestion && (
+              <div className="rounded-md bg-gray-50 p-2 dark:bg-gray-800/50">
+                <p className="mb-0.5 font-semibold text-gray-600 dark:text-gray-400">
+                  💡 Reel Scout suggestion
+                </p>
+                <p className="leading-relaxed text-gray-700 dark:text-gray-300">
+                  {shot.shortsMetadata.improvementSuggestion}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Scene Non-candidate reasoning */}
+      {!shot.shortsCandidate && shot.shortsMetadata?.whyItDoesntWork && (
+        <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
+          <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
+            🚫 Not a Reel candidate
+          </p>
+          <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
+            {shot.shortsMetadata.whyItDoesntWork}
+          </p>
+          {shot.shortsMetadata.improvementSuggestion && (
+            <p className="mt-1 text-xs italic text-gray-400 dark:text-gray-500">
+              Tip: {shot.shortsMetadata.improvementSuggestion}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* Content */}
+
       <div className="flex-1 overflow-y-auto">
         {/* Tab Headers */}
         <div className="flex items-center gap-2 border-b border-white/20 px-4 py-2 dark:border-white/10">
