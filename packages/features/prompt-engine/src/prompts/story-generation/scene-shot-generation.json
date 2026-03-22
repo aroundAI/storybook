@@ -191,7 +191,7 @@
             "audio": "Sharp intake of breath, ambient office hum",
             "style": "85mm portrait look, shallow depth of field, hard side-lighting 3:1 contrast, face fills frame, cool tones",
             "avoid": "subtitles, captions, watermarks, text overlays, blurry face",
-            "fullPrompt": "SHOT: Close-up, rack focus from background to face, static camera at eye level (thats where the camera is)\n\n[00:00-02:00] Maya Chen eyes widen — rack focus snaps from blurred background to her face in sharp relief.\n\n[02:00-05:00] Maya Chen: \"I didn't expect to see you here.\" (Tone: disguised surprise, voice steady but jaw tight)\n\n[05:00-06:00] Maya Chen crosses arms, chin lifts. The warmth drains from her expression.\n\nAUDIO: Sharp intake of breath, ambient office hum\n\nSTYLE: 85mm portrait look, shallow depth of field, hard side-lighting 3:1 contrast, cool tones under warm rim light\n\nAVOID: subtitles, captions, watermarks, text overlays, blurry face"
+            "fullPrompt": "SHOT: Close-up, rack focus from background to face, static camera at eye level (thats where the camera is)\n\n[00:00-02:00] Maya Chen eyes widen — rack focus snaps from blurred background to her face in sharp relief.\n\n[02:00-05:00] Maya Chen: \"I didn't expect to see you here.\" (Tone: disguised surprise, voice steady but jaw tight)\n\n[05:00-06:00] Maya Chen crosses arms, chin lifts. The warmth drains from her expression.\n\nAUDIO: Sharp intake of breath, ambient office hum\n\nSTYLE: 85mm portrait look, shallow depth of field, hard side-lighting 3:1 contrast, face fills frame, cool tones\n\nAVOID: subtitles, captions, watermarks, text overlays, blurry face"
           },
           "metadata": {
             "location": "Maya's Corner Office",

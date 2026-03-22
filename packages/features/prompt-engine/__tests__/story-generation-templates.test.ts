@@ -27,7 +27,7 @@ describe('Story Generation Prompt Templates', () => {
 
     it('should have correct metadata', () => {
       expect(storyIdeation.slug).toBe('story-ideation');
-      expect(storyIdeation.version).toBe(1);
+      expect(storyIdeation.version).toBe(2);
       expect(storyIdeation.category).toBe('story-generation');
     });
 
@@ -80,7 +80,7 @@ describe('Story Generation Prompt Templates', () => {
 
     it('should have correct metadata', () => {
       expect(storyGeneration.slug).toBe('story-generation');
-      expect(storyGeneration.version).toBe(1);
+      expect(storyGeneration.version).toBe(2);
       expect(storyGeneration.category).toBe('story-generation');
     });
 
@@ -132,7 +132,7 @@ describe('Story Generation Prompt Templates', () => {
 
     it('should have correct metadata', () => {
       expect(screenplayConversion.slug).toBe('screenplay-conversion');
-      expect(screenplayConversion.version).toBe(1);
+      expect(screenplayConversion.version).toBe(2);
       expect(screenplayConversion.category).toBe('story-generation');
     });
 
