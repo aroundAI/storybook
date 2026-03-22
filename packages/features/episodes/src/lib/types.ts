@@ -392,27 +392,30 @@ export interface ShotGenerationSettings {
 }
 
 /**
- * Metadata for shorts/clips potential
+ * Metadata for shorts/clips potential — evaluated at SCENE level.
+ * All shots within a candidate scene share the same metadata.
  */
 export interface ShortsMetadata {
-  /** LLM-rated viral potential 1-10 */
+  /** LLM-rated viral potential 1-10 (scene-level score) */
   viralScore: number;
-  /** Type of hook this shot contains */
+  /** Primary hook type for the scene */
   hookType?:
   | 'question'
   | 'reveal'
   | 'conflict'
   | 'visual'
   | 'humor'
-  | 'cliffhanger';
-  /** Suggested offset from shot start for optimal clip (seconds) */
-  suggestedStartOffset?: number;
-  /** Suggested clip duration (seconds) */
-  suggestedDuration?: number;
-  /** Brief context so clip makes sense standalone */
+  | 'cliffhanger'
+  | 'character'
+  | 'action'
+  | 'reaction'
+  | 'punchline';
+  /** Brief context so the reel makes sense standalone */
   standaloneSummary?: string;
-  /** Suggested hashtags */
-  hashtags?: string[];
+  /** Number of shots in this scene (inherited by all shots in scene) */
+  shotCount?: number;
+  /** Estimated reel duration in seconds (sum of shot durations) */
+  estimatedDurationSeconds?: number;
 }
 
 export interface Shot {

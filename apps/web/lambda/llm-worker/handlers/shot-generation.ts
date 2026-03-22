@@ -76,19 +76,17 @@ interface GeneratedShot {
     lighting?: string;
   };
   veoPrompt: VeoPrompt;
-  shortsCandidate?: boolean;
-  shortsMetadata?: {
-    viralScore: number;
-    hookType?: string;
-    standaloneSummary?: string;
-  };
 }
 
 interface SceneResult {
   sceneNumber: number;
   shots: GeneratedShot[];
   sceneSummary: string;
+  sceneViralScore?: number;
+  sceneHookType?: string;
+  sceneStandaloneSummary?: string;
 }
+
 
 interface ShotGenerationResult {
   success: boolean;
@@ -234,6 +232,9 @@ export async function processShotGeneration(
             sceneNumber,
             shots: result.data.shots,
             sceneSummary: result.data.sceneSummary,
+            sceneViralScore: result.data.sceneViralScore,
+            sceneHookType: result.data.sceneHookType,
+            sceneStandaloneSummary: result.data.sceneStandaloneSummary,
           };
         } catch (error) {
           console.error(
@@ -285,7 +286,23 @@ export async function processShotGeneration(
     let totalDuration = 0;
 
     for (const sceneResult of sceneResults) {
-      for (const shot of sceneResult.shots) {
+      // Scene-level shorts decision: all shots in a candidate scene share the same decision
+    const sceneIsCandidate = (sceneResult.sceneViralScore ?? 0) >= 7;
+    const sceneEstimatedDuration = sceneResult.shots.reduce(
+      (sum, sh) => sum + sh.duration,
+      0,
+    );
+    const sceneShortsMetadata = sceneIsCandidate
+      ? {
+          viralScore: sceneResult.sceneViralScore!,
+          hookType: sceneResult.sceneHookType,
+          standaloneSummary: sceneResult.sceneStandaloneSummary,
+          shotCount: sceneResult.shots.length,
+          estimatedDurationSeconds: sceneEstimatedDuration,
+        }
+      : null;
+
+    for (const shot of sceneResult.shots) {
         // Derive action from timeline events (matching local aggregateSceneResults)
         const derivedAction =
           shot.veoPrompt?.timeline
@@ -317,8 +334,8 @@ export async function processShotGeneration(
           duration_seconds: shot.duration,
           camera_direction: shot.cameraDirection ?? null,
           status: 'pending',
-          shorts_candidate: shot.shortsCandidate ?? false,
-          shorts_metadata: shot.shortsMetadata ?? null,
+          shorts_candidate: sceneIsCandidate,
+          shorts_metadata: sceneShortsMetadata,
           generation_metadata: {
             shotType: shot.shotType,
             location: shot.metadata.location,
@@ -329,8 +346,8 @@ export async function processShotGeneration(
             dialogueTiming:
               dialogueTiming.length > 0 ? dialogueTiming : undefined,
             veoPrompt: shot.veoPrompt,
-            shortsCandidate: shot.shortsCandidate,
-            shortsMetadata: shot.shortsMetadata,
+            shortsCandidate: sceneIsCandidate,
+            shortsMetadata: sceneShortsMetadata,
           },
         });
 

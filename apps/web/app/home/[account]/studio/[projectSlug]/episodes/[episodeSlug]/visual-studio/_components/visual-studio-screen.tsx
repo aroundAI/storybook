@@ -130,10 +130,39 @@ export function VisualStudioScreen({
     return numbers.sort((a, b) => a - b);
   }, [shots]);
 
+  // Scene-level shorts candidates (all shots in a scene share the same decision)
+  const shortsCandidateScenes = useMemo(() => {
+    const sceneMap = new Map<number, Shot[]>();
+    for (const shot of shots) {
+      if (!shot.shortsCandidate) continue;
+      if (!sceneMap.has(shot.sceneNumber)) sceneMap.set(shot.sceneNumber, []);
+      sceneMap.get(shot.sceneNumber)!.push(shot);
+    }
+    return [...sceneMap.entries()]
+      .map(([sceneNumber, sceneShots]) => ({
+        sceneNumber,
+        shots: sceneShots,
+        viralScore: sceneShots[0]?.shortsMetadata?.viralScore ?? 0,
+        estimatedDurationSeconds:
+          sceneShots[0]?.shortsMetadata?.estimatedDurationSeconds ??
+          sceneShots.reduce((s, sh) => s + (sh.durationSeconds ?? sh.duration ?? 8), 0),
+        hookType: sceneShots[0]?.shortsMetadata?.hookType,
+        standaloneSummary: sceneShots[0]?.shortsMetadata?.standaloneSummary,
+      }))
+      .sort((a, b) => b.viralScore - a.viralScore);
+  }, [shots]);
+
+  // Set of scene numbers that are reel candidates (used by filteredShots)
+  const candidateSceneNumbers = useMemo(
+    () => new Set(shortsCandidateScenes.map((s) => s.sceneNumber)),
+    [shortsCandidateScenes],
+  );
+
   // Apply filters
   const filteredShots = useMemo(() => {
     return shots.filter((shot) => {
-      if (showShortsOnly && !shot.shortsCandidate) return false;
+      if (showShortsOnly && !candidateSceneNumbers.has(shot.sceneNumber))
+        return false;
       if (filter.sceneNumber && shot.sceneNumber !== filter.sceneNumber) {
         return false;
       }
@@ -150,7 +179,7 @@ export function VisualStudioScreen({
       }
       return true;
     });
-  }, [shots, filter, showShortsOnly]);
+  }, [shots, filter, showShortsOnly, candidateSceneNumbers]);
 
   // Group shots by scene
   const shotsByScene = useMemo(() => {
@@ -173,22 +202,20 @@ export function VisualStudioScreen({
     const completed = shots.filter((s) => s.status === 'completed').length;
     const failed = shots.filter((s) => s.status === 'failed').length;
     const totalDuration = shots.reduce((acc, s) => acc + s.duration, 0);
-    const shortsCandidates = shots.filter((s) => s.shortsCandidate).length;
-    return { total, pending, generating, completed, failed, totalDuration, shortsCandidates };
+    // Count candidate SCENES (not shots) for the UI
+    const shortsCandidateSceneCount = new Set(
+      shots.filter((s) => s.shortsCandidate).map((s) => s.sceneNumber),
+    ).size;
+    return {
+      total,
+      pending,
+      generating,
+      completed,
+      failed,
+      totalDuration,
+      shortsCandidates: shortsCandidateSceneCount,
+    };
   }, [shots]);
-
-  // Derived list of shorts candidates (sorted by viral score)
-  const shortsCandidateShots = useMemo(
-    () =>
-      shots
-        .filter((s) => s.shortsCandidate)
-        .sort(
-          (a, b) =>
-            (b.shortsMetadata?.viralScore ?? 0) -
-            (a.shortsMetadata?.viralScore ?? 0),
-        ),
-    [shots],
-  );
 
   const handleGenerateAll = () => {
     const pendingShots = shots.filter((s) => s.status === 'pending');
@@ -635,7 +662,9 @@ export function VisualStudioScreen({
               Visual Studio
             </h2>
             <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span>{stats.total} shots</span>
+              <span>
+                {stats.total} shots
+              </span>
               <span>•</span>
               <span>~{Math.round(stats.totalDuration / 60)} min</span>
               {stats.shortsCandidates > 0 && (
@@ -643,7 +672,7 @@ export function VisualStudioScreen({
                   <span>•</span>
                   <span className="flex items-center gap-1 font-medium text-orange-500">
                     <Flame className="h-3.5 w-3.5" />
-                    {stats.shortsCandidates} shorts candidates
+                    {stats.shortsCandidates} reel{stats.shortsCandidates === 1 ? '' : 's'}
                   </span>
                 </>
               )}
@@ -789,38 +818,49 @@ export function VisualStudioScreen({
           )}
         </div>
 
-        {/* Shorts Candidates Panel */}
-        {stats.shortsCandidates > 0 && (
+        {/* Shorts Candidates Panel — scene-level reel candidates */}
+        {shortsCandidateScenes.length > 0 && (
           <div className="border-b border-orange-500/20 bg-gradient-to-r from-orange-950/20 to-red-950/10 px-6 py-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-orange-400" />
                 <span className="text-sm font-semibold text-orange-300">
-                  {stats.shortsCandidates} Shorts Candidates
+                  {shortsCandidateScenes.length} Reel{shortsCandidateScenes.length === 1 ? '' : 's'}
                 </span>
                 <span className="text-xs text-gray-500">
-                  — shots flagged by the AI as high viral potential
+                  — complete scenes flagged by AI as standalone reels (30-60s)
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {shortsCandidateShots.slice(0, 4).map((shot) => (
+                {shortsCandidateScenes.slice(0, 5).map((scene) => (
                   <button
-                    key={shot.id}
-                    onClick={() => setSelectedShot(shot)}
+                    key={scene.sceneNumber}
+                    onClick={() =>
+                      setFilter((f) => ({
+                        ...f,
+                        sceneNumber:
+                          f.sceneNumber === scene.sceneNumber
+                            ? undefined
+                            : scene.sceneNumber,
+                      }))
+                    }
+                    title={scene.standaloneSummary ?? `Scene ${scene.sceneNumber}`}
                     className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-900/30 px-2.5 py-1 text-xs font-medium text-orange-300 transition-all hover:bg-orange-900/50"
                   >
                     <Flame className="h-3 w-3" />
-                    {shot.sceneNumber}.{shot.shotNumber}
-                    {shot.shortsMetadata?.viralScore && (
-                      <span className="ml-0.5 font-bold text-orange-200">
-                        {shot.shortsMetadata.viralScore}/10
-                      </span>
-                    )}
+                    Scene {scene.sceneNumber}
+                    <span className="text-orange-400/70">·</span>
+                    <span className="font-bold text-orange-200">
+                      {scene.viralScore}/10
+                    </span>
+                    <span className="text-orange-500/60">
+                      ~{Math.round(scene.estimatedDurationSeconds)}s
+                    </span>
                   </button>
                 ))}
-                {shortsCandidateShots.length > 4 && (
+                {shortsCandidateScenes.length > 5 && (
                   <span className="text-xs text-gray-500">
-                    +{shortsCandidateShots.length - 4} more
+                    +{shortsCandidateScenes.length - 5} more
                   </span>
                 )}
               </div>
