@@ -40,7 +40,9 @@
   },
   "typesVersions": {
     "*": {
-      "lambda-admin-client": ["src/clients/lambda-admin-client.ts"],
+      "lambda-admin-client": [
+        "src/clients/lambda-admin-client.ts"
+      ],
       "*": [
         "src/*"
       ]

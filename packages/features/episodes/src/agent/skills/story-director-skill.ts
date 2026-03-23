@@ -75,6 +75,12 @@ const generateStoryTool = createTool({
             .describe(
                 'Existing story text to revise. If provided, the director revises rather than generating from scratch.',
             ),
+        recurringElement: z
+            .string()
+            .optional()
+            .describe(
+                'Recurring episode element from project settings (e.g. ending pattern: "Each episode ends with Dante writing a note in his detective journal"). Pass verbatim — the story MUST honour this pattern.',
+            ),
     }),
 
     execute: async ({
@@ -92,6 +98,7 @@ const generateStoryTool = createTool({
         viralGoals,
         revisionInstructions,
         existingStoryText,
+        recurringElement,
     }) => {
         try {
             const { executeLLM } = await import('@kit/prompt-engine/server');
@@ -138,7 +145,7 @@ const generateStoryTool = createTool({
                     previous_episodes: previousEpisodes ?? '',
                     visual_style: visualStyle ?? '',
                     style: 'balanced',
-                    recurring_element: '',
+                    recurring_element: recurringElement ?? '',
                     canon_context: '',
                     plot_beats: '',
                     // Inject viral goals if provided

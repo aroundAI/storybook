@@ -1,34 +1,28 @@
 /**
- * Story Generation Handler — Agentic Mode
+ * Story Generation Handler — Stage 1
  *
- * Entry point for the full multi-agent content generation pipeline.
- * Instead of a single LLM call, this invokes the Content Generation Orchestrator,
- * which coordinates 6 specialist agents across all 4 stages:
+ * Stage 1 of the 3-stage agentic content pipeline.
+ * Runs the Story Orchestrator: Story Director → Viral Analyst → Continuity Guardian.
+ * The orchestrator handles the story quality revision loop and stops once
+ * story quality is acceptable.
  *
- *   Stage 1: Story Director → Viral Analyst → Continuity Guardian → (revision loop)
- *   Stage 2: Screenplay Director
- *   Stage 3: Reel Scout
- *   Stage 4: Shot Director
- *
- * The Orchestrator persists screenplay_data, shots, and viral_quality to the DB.
- * This handler only persists story_data and marks the job.
+ * After this handler:
+ *   - story_data + viral_quality written to DB
+ *   - episode status → 'story'
+ *   - Stage 2 (screenplay-conversion) triggered by user action on the Story tab
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
-  formatCharactersForVeoPrompt,
   formatLocationsForPrompt,
-  formatLocationsForVeoPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementForPrompt,
-  formatBeatsForPrompt,
 } from '../utils/context-builder';
 import {
   type ContentStyle,
   calculateContentScaling,
-  formatDuration,
 } from '../utils/duration-scaling';
 import {
   markJobCompleted,
@@ -103,28 +97,31 @@ export async function processStoryGeneration(
       contentStyle,
     });
 
-    // 2. Pre-format all context blocks (shared across all agents)
+    // 2. Pre-format Stage 1 context blocks (story/viral/continuity only)
     const charactersContext = formatCharactersForPrompt(episodeContext.characters);
     const locationsContext = formatLocationsForPrompt(episodeContext.locations);
-    const charactersVeoContext = formatCharactersForVeoPrompt(episodeContext.characters);
-    const locationsVeoContext = formatLocationsForVeoPrompt(episodeContext.locations);
     const previousEpisodesContext = formatPreviousEpisodesForPrompt(
       episodeContext.previousEpisodes,
     );
     const seasonContext = episodeContext.seasonPremise
       ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
       : '';
+    // Recurring element — Bug 1 fix: was never computed or passed
+    const recurringElementContext = episodeContext.recurringElement
+      ? formatRecurringElementForPrompt(episodeContext.recurringElement)
+      : undefined;
 
     console.log(
-      `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations`,
+      `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
+      (recurringElementContext ? ', recurring element: yes' : ''),
     );
 
-    // 3. Run the full multi-agent orchestrator
-    const { runContentOrchestrator } = await import(
-      '@kit/episodes/agent/orchestrator'
+    // 3. Run the Stage 1 Story Orchestrator
+    const { runStoryOrchestrator } = await import(
+      '@kit/episodes/agent/story-orchestrator'
     );
 
-    const orchestratorResult = await runContentOrchestrator(
+    const orchestratorResult = await runStoryOrchestrator(
       {
         episodeId: data.episodeId,
         episodeTitle: data.title,
@@ -136,26 +133,24 @@ export async function processStoryGeneration(
         projectId: data.projectId,
         episodeNumber: episodeContext.episodeNumber ?? 1,
         accountId: data.accountId,
-        // Pre-formatted context blocks
         charactersContext,
         locationsContext,
-        charactersVeoContext,
-        locationsVeoContext,
         seasonContext,
         previousEpisodesContext,
         visualStyle: episodeContext.visualStyle,
+        recurringElementContext,
       },
       supabase,
     );
 
     if (!orchestratorResult.success) {
       throw new Error(
-        `Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+        `Story Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
       );
     }
 
     console.log(
-      `[Story Generation] Orchestrator complete. Steps: ${orchestratorResult.orchestratorSteps}, Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}`,
+      `[Story Generation] Stage 1 complete. Steps: ${orchestratorResult.orchestratorSteps}, Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}`,
     );
 
     const generatedAt = new Date().toISOString();
@@ -181,18 +176,16 @@ export async function processStoryGeneration(
       viralQuality: orchestratorResult.viralQuality,
     };
 
-    // 5. UPDATE DATABASE: episode.story_data + status
+    // 5. UPDATE DATABASE: episode.story_data + status → 'story'
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
         story_data: storyData,
-        status: orchestratorResult.screenplay ? 'storyboard' : 'story',
+        status: 'story',
         target_duration_seconds: data.targetDuration,
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      // NOTE: No .eq('version', ...) here — the orchestrator writes viral_quality
-      // and screenplay_data mid-run which bumps the version, causing a 0-row match.
       .is('deleted_at', null)
       .select()
       .single();
@@ -206,71 +199,17 @@ export async function processStoryGeneration(
       throw new Error('Episode was modified by another user (optimistic lock failed)');
     }
 
-    // 6. Insert dialogue_lines from screenplay (if orchestrator generated screenplay)
-    if (orchestratorResult.screenplay?.scenes) {
-      try {
-        const characterMap = new Map(
-          episodeContext.characters.map((c) => [c.name.toLowerCase(), c.id]),
-        );
-
-        const dialogueLines: Array<{
-          episode_id: string;
-          character_asset_id: string | null;
-          text: string;
-          sequence_number: number;
-          scene_number: number;
-          language: string;
-          status: string;
-        }> = [];
-
-        let sequenceNumber = 1;
-        for (const scene of orchestratorResult.screenplay.scenes as Array<{
-          number: number;
-          dialogue?: Array<{ character: string; text: string }>;
-        }>) {
-          for (const line of scene.dialogue ?? []) {
-            dialogueLines.push({
-              episode_id: data.episodeId,
-              character_asset_id:
-                characterMap.get(line.character?.toLowerCase()) ?? null,
-              text: line.text,
-              sequence_number: sequenceNumber++,
-              scene_number: scene.number,
-              language: 'en',
-              status: 'pending',
-            });
-          }
-        }
-
-        if (dialogueLines.length > 0) {
-          const { error: insertError } = await supabase
-            .from('dialogue_lines')
-            .insert(dialogueLines);
-
-          if (insertError) {
-            console.warn('[Story Generation] Dialogue lines insert failed (non-fatal):', insertError.message);
-          } else {
-            console.log(`[Story Generation] ${dialogueLines.length} dialogue lines inserted`);
-          }
-        }
-      } catch (err) {
-        console.warn('[Story Generation] Dialogue extraction skipped:', err);
-      }
-    }
-
     console.log(
-      `[Story Generation] Episode updated. Status: ${updatedEpisode.status}. ` +
-      `Screenplay: ${orchestratorResult.screenplay ? 'yes' : 'no'}, ` +
-      `Shots: ${orchestratorResult.shots ? (orchestratorResult.shots as unknown[]).length : 0}`,
+      `[Story Generation] Stage 1 complete. Status: story. ` +
+      `Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
+      `Stage 2 (Screenplay) will run on user action.`,
     );
 
     // Mark job as completed
     await markJobCompleted(supabase, data.episodeId, 'story', {
-      mode: 'agentic',
+      mode: 'agentic-stage1',
       orchestratorSteps: orchestratorResult.orchestratorSteps,
       viralScore: orchestratorResult.viralQuality?.overallScore,
-      generatedScreenplay: !!orchestratorResult.screenplay,
-      generatedShots: !!(orchestratorResult.shots as unknown[] | undefined)?.length,
     });
 
     // Synthesize a StoryOutput for the return value
@@ -281,8 +220,7 @@ export async function processStoryGeneration(
       characters: episodeContext.characters.map((c) => c.name),
       themes: [],
       tone: contentStyle,
-      estimatedSceneCount:
-        (orchestratorResult.screenplay?.scenes as unknown[] | undefined)?.length ?? scaling.screenplay.sceneCountMin,
+      estimatedSceneCount: scaling.screenplay.sceneCountMin,
       episodeSummary: orchestratorResult.viralQuality?.whyThisWorks,
       sentimentScore: orchestratorResult.viralQuality?.overallScore,
     };

@@ -50,6 +50,13 @@ const evaluateContentTool = createTool({
             const { overallScore, decision, dimensions, topPriorities, strengths } =
                 result.data.evaluation;
 
+            // Validate the score is a real number — prevent silent undefined propagation
+            if (typeof overallScore !== 'number' || isNaN(overallScore)) {
+                return toolError(
+                    `Viral Analyst returned an invalid score (${overallScore}). LLM response may be malformed. Retry.`,
+                );
+            }
+
             // Synthesize textual whyThisWorks from strong dimensions
             const strongDimensions = Object.entries(dimensions)
                 .filter(([, v]) => v.score >= 0.7)
