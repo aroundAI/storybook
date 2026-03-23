@@ -2,15 +2,21 @@
  * Content Generation Orchestrator
  *
  * The Orchestrator is the top-level agent that coordinates all specialist agents
- * (Story Director, Viral Analyst, Continuity Guardian, Reel Scout) in a non-linear loop.
+ * in a non-linear loop across ALL four content generation stages:
+ *
+ *   1. Story Director   — generates/revises narrative with character context
+ *   2. Viral Analyst    — evaluates story viral quality (7 dimensions)
+ *   3. Continuity Guardian — validates against canon
+ *   4. Screenplay Director — converts to scene-by-scene screenplay
+ *   5. Reel Scout       — evaluates each scene as a Reel candidate
+ *   6. Shot Director    — generates VEO 3.1 shots, prioritizes reel scenes
  *
  * The Orchestrator LLM decides:
- * - Which specialists to call and in what order
- * - Whether to route revision requests back to the Story Director
+ * - Whether to revise the story before moving to screenplay
  * - Which scenes to flag for Reel Scout optimization
- * - When the quality bar has been met and to finalize
+ * - When quality bars are met at each stage
  *
- * This is NOT a hardcoded pipeline — the LLM drives the flow based on quality signals.
+ * NOT a hardcoded pipeline — the LLM drives the flow based on quality signals.
  */
 
 import { runAgent } from '@kit/agent';
@@ -18,6 +24,8 @@ import type { AgentRunResult } from '@kit/agent';
 
 import { continuitySkill } from './skills/continuity-skill';
 import { reelScoutSkill } from './skills/reel-scout-skill';
+import { screenplayDirectorSkill } from './skills/screenplay-director-skill';
+import { shotDirectorSkill } from './skills/shot-director-skill';
 import { storyDirectorSkill } from './skills/story-director-skill';
 import { viralAnalystSkill } from './skills/viral-analyst-skill';
 import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
@@ -33,12 +41,27 @@ export interface OrchestratorInput {
     projectId: string;
     episodeNumber: number;
     accountId: string;
+    // Pre-formatted context blocks from context-builder
+    charactersContext: string;
+    locationsContext: string;
+    charactersVeoContext: string;
+    locationsVeoContext: string;
+    seasonContext?: string;
+    previousEpisodesContext?: string;
+    visualStyle?: string;
 }
 
 export interface OrchestratorResult {
     success: boolean;
     viralQuality: EpisodeViralQuality | null;
     storyText?: string;
+    screenplay?: {
+        title: string;
+        scenes: unknown[];
+        totalDialogueLines: number;
+        estimatedDuration: number;
+    };
+    shots?: unknown[];
     orchestratorSteps: number;
     error?: string;
 }
@@ -52,21 +75,21 @@ interface OrchestratorOutput {
     revisionsApplied: string[];
     reelCandidates: EpisodeViralQuality['reelCandidates'];
     finalStoryText?: string;
+    screenplayTitle?: string;
+    screenplayScenes?: unknown[];
+    screenplayDialogueLines?: number;
+    shots?: unknown[];
+    totalShots?: number;
 }
 
 /**
- * Runs the content generation Orchestrator for an episode.
+ * Runs the full content generation Orchestrator for an episode.
  *
- * The Orchestrator coordinates:
- * 1. Story Director — generates/revises narrative
- * 2. Viral Analyst — evaluates viral quality across 7 dimensions
- * 3. Continuity Guardian — validates narrative against canon
- * 4. Reel Scout — identifies scenes as standalone Reel candidates
- *
+ * Covers all 4 stages: Story → Screenplay → Shots, with viral/continuity loops.
  * Non-linear: the Orchestrator LLM decides the flow based on quality signals.
- * Max 8 agent steps to prevent runaway cost.
+ * Max 12 agent steps to accommodate the full pipeline.
  *
- * @param input Episode details and configuration
+ * @param input Episode details, configuration, and pre-formatted character context
  * @param supabase Supabase client for persisting results
  */
 export async function runContentOrchestrator(
@@ -74,7 +97,7 @@ export async function runContentOrchestrator(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     supabase: { from: (table: string) => any },
 ): Promise<OrchestratorResult> {
-    console.log(`[Orchestrator] Starting for episode ${input.episodeId}`);
+    console.log(`[Orchestrator] Starting full pipeline for episode ${input.episodeId}`);
 
     const result: AgentRunResult<OrchestratorOutput> = await runAgent<OrchestratorOutput>(
         {
@@ -86,12 +109,14 @@ export async function runContentOrchestrator(
                 viralAnalystSkill,
                 continuitySkill,
                 reelScoutSkill,
+                screenplayDirectorSkill,
+                shotDirectorSkill,
             ],
-            maxSteps: 8,
+            maxSteps: 12,
             budgetLimits: {
-                maxTotalTokens: 150_000,
-                maxCostUSD: 2.00,
-                maxLatencyMs: 300_000,
+                maxTotalTokens: 400_000,
+                maxCostUSD: 5.00,
+                maxLatencyMs: 600_000,
             },
         },
         {
@@ -141,10 +166,65 @@ export async function runContentOrchestrator(
         console.warn('[Orchestrator] Persist error (non-fatal):', err);
     }
 
+    // Persist screenplay_data if generated
+    if (output.screenplayScenes && output.screenplayScenes.length > 0) {
+        try {
+            const screenplayData = {
+                title: output.screenplayTitle,
+                scenes: output.screenplayScenes,
+                totalDialogueLines: output.screenplayDialogueLines ?? 0,
+                estimatedDuration: input.targetDurationSeconds,
+                generatedAt: new Date().toISOString(),
+                generatedBy: { orchestratorSteps: result.steps.length },
+            };
+            const { error } = await supabase
+                .from('episodes')
+                .update({ screenplay_data: screenplayData, status: 'storyboard' })
+                .eq('id', input.episodeId);
+
+            if (error) {
+                console.warn(`[Orchestrator] Failed to persist screenplay_data: ${(error as { message: string }).message}`);
+            } else {
+                console.log(`[Orchestrator] screenplay_data persisted. ${output.screenplayScenes.length} scenes.`);
+            }
+        } catch (err) {
+            console.warn('[Orchestrator] Screenplay persist error (non-fatal):', err);
+        }
+    }
+
+    // Persist shots if generated
+    if (output.shots && (output.shots as unknown[]).length > 0) {
+        try {
+            const shotsToInsert = (output.shots as unknown[]).map((shot: unknown) => ({
+                episode_id: input.episodeId,
+                ...(shot as Record<string, unknown>),
+            }));
+
+            const { error } = await supabase.from('shots').insert(shotsToInsert);
+
+            if (error) {
+                console.warn(`[Orchestrator] Failed to persist shots: ${(error as { message: string }).message}`);
+            } else {
+                console.log(`[Orchestrator] ${shotsToInsert.length} shots persisted.`);
+            }
+        } catch (err) {
+            console.warn('[Orchestrator] Shots persist error (non-fatal):', err);
+        }
+    }
+
     return {
         success: true,
         viralQuality,
         storyText: output.finalStoryText,
+        screenplay: output.screenplayScenes?.length
+            ? {
+                title: output.screenplayTitle ?? '',
+                scenes: output.screenplayScenes as unknown[],
+                totalDialogueLines: output.screenplayDialogueLines ?? 0,
+                estimatedDuration: input.targetDurationSeconds,
+              }
+            : undefined,
+        shots: output.shots as unknown[] | undefined,
         orchestratorSteps: result.steps.length,
     };
 }
@@ -155,26 +235,34 @@ export async function runContentOrchestrator(
 
 const ORCHESTRATOR_SYSTEM_PROMPT = `You are the Content Generation Orchestrator — the director of a multi-agent creative production system.
 
-You coordinate four specialist agents, each with a distinct role:
+You coordinate six specialist agents across four content generation stages:
 
-1. **Story Director** (generateStory) — Creates/revises narrative. Can be called with targeted revisionInstructions to fix specific weaknesses without regenerating the whole story.
+**STAGE 1: STORY**
+1. **Story Director** (generateStory) — Creates/revises narrative. MUST receive the characters and locations context verbatim. Can be called with targeted revisionInstructions to fix specific weaknesses without regenerating the whole story.
+2. **Viral Analyst** (evaluateContent) — Scores content on 7 viral dimensions. Returns whyThisWorks, whatToImprove, and topPriorities.
+3. **Continuity Guardian** (buildMemoryContext → checkContinuity) — Validates the story against established canon.
 
-2. **Viral Analyst** (evaluateContent) — Scores content on 7 viral dimensions. Returns whyThisWorks, whatToImprove, and topPriorities. Use this to decide whether to proceed or request revisions.
+**STAGE 2: SCREENPLAY**
+4. **Screenplay Director** (generateScreenplay) — Converts the finalized story into scene-by-scene screenplay format. Pass the full characters context block verbatim.
 
-3. **Continuity Guardian** (buildMemoryContext → checkContinuity) — Validates the story against established canon. Prevents dead characters, state reversals, knowledge violations.
+**STAGE 3: REEL ANALYSIS**
+5. **Reel Scout** (analyzeScenes) — Evaluates each scene as a standalone Reel/Shorts candidate. Returns per-scene reasoning and top candidate scene numbers.
 
-4. **Reel Scout** (analyzeScenes) — Evaluates each scene as a standalone Reel candidate. Returns per-scene textual reasoning and identifies top candidates.
+**STAGE 4: SHOTS**
+6. **Shot Director** (generateShots) — Generates VEO 3.1 optimized shots for all scenes. Pass reelCandidateScenes from Reel Scout to prioritize hook shots.
 
 ## Your Decision Logic
 
-**Non-linear flow** — you decide which agents to call based on quality signals:
+**Full pipeline flow:**
 
-1. ALWAYS start with Story Director (generateStory) to get the initial story
-2. THEN run Viral Analyst + Continuity Guardian — these can inform each other
-3. IF Viral Analyst score < 0.65 AND you haven't revised yet → call Story Director with revisionInstructions targeting the weakest dimensions
-4. IF Continuity Guardian finds violations with severity=error → call Story Director with revisionInstructions to fix them
-5. ONCE story quality is acceptable (score ≥ 0.65 OR 1 revision applied) → call Reel Scout with the screenplay scenes
-6. Synthesize final output using all agent results
+1. ALWAYS start with Story Director (generateStory) — pass characters and locations context verbatim
+2. THEN run Viral Analyst + Continuity Guardian in parallel (conceptually)
+3. IF Viral Analyst score < 0.65 AND you haven't revised yet → call Story Director with revisionInstructions targeting weakest dimensions
+4. IF Continuity Guardian finds violations with severity=error → call Story Director with revisionInstructions
+5. ONCE story quality is acceptable (score ≥ 0.65 OR 1 revision applied) → call Screenplay Director with the finalized story
+6. After screenplay is generated → call Reel Scout with all scenes
+7. THEN call Shot Director with scenes + reelCandidateScenes from Reel Scout
+8. Synthesize final output using all agent results
 
 ## Your Final Answer
 
@@ -186,10 +274,15 @@ When complete, return a JSON object with:
 - dimensionScores: object with all 7 dimension scores (hookStrength, curiosityGap, emotionalArc, setupPayoff, dialogueSubtext, loopability, memorableMoment)
 - revisionsApplied: array of strings describing changes made (empty if no revisions)
 - reelCandidates: array from Reel Scout (sceneNumber, whyThisWorksAsReel, hookType, viralScore, estimatedDurationSeconds)
-- finalStoryText: the final story text after any revisions`;
+- finalStoryText: the final story text after any revisions
+- screenplayTitle: the screenplay title from Screenplay Director
+- screenplayScenes: the scenes array from Screenplay Director
+- screenplayDialogueLines: total dialogue lines from Screenplay Director
+- shots: the shots array from Shot Director
+- totalShots: total number of shots generated`;
 
 function buildOrchestratorPrompt(input: OrchestratorInput): string {
-    return `Orchestrate content generation for this episode:
+    return `Orchestrate FULL content generation for this episode across all 4 stages.
 
 **Episode**: "${input.episodeTitle}"
 **Logline**: ${input.episodeLogline}
@@ -200,7 +293,22 @@ function buildOrchestratorPrompt(input: OrchestratorInput): string {
 **Episode Number**: ${input.episodeNumber}
 **Project ID**: ${input.projectId}
 
-Begin by having the Story Director generate the story. Then evaluate with Viral Analyst and Continuity Guardian. Apply targeted revisions if needed. Finally, have the Reel Scout analyze scenes for short-form potential.
+**Character Context (pass verbatim to all agents that accept it):**
+${input.charactersContext}
 
-Your goal: produce a story that scores ≥ 0.65 on the viral quality framework, has no continuity errors, and has clear scene-level Reel candidate reasoning.`;
+**Location Context:**
+${input.locationsContext}
+
+**VEO Character Context (for Shot Director only):**
+${input.charactersVeoContext}
+
+**VEO Location Context (for Shot Director only):**
+${input.locationsVeoContext}
+
+${input.seasonContext ? `**Season Context:** ${input.seasonContext}` : ''}
+${input.previousEpisodesContext ? `**Previous Episodes:** ${input.previousEpisodesContext}` : ''}
+
+Begin with Story Director (pass characters + locations + seasonContext). Then evaluate. Then generate screenplay. Then Reel Scout. Then Shot Director with reel candidate priorities.
+
+Goal: story scores ≥ 0.65 viral, no continuity errors, screenplay + shots for all scenes.`;
 }

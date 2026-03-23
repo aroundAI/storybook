@@ -35,6 +35,28 @@ const generateStoryTool = createTool({
             .enum(['dialogue-heavy', 'balanced', 'action-heavy'])
             .default('dialogue-heavy')
             .describe('Content balance style'),
+        characters: z
+            .string()
+            .optional()
+            .describe(
+                'Pre-formatted LOCKED IDENTITY character context from formatCharactersForPrompt. Pass verbatim — identities are non-negotiable.',
+            ),
+        locations: z
+            .string()
+            .optional()
+            .describe('Pre-formatted location context from formatLocationsForPrompt.'),
+        seasonContext: z
+            .string()
+            .optional()
+            .describe('Season and episode number context string'),
+        previousEpisodes: z
+            .string()
+            .optional()
+            .describe('Summary of previous episodes for continuity'),
+        visualStyle: z
+            .string()
+            .optional()
+            .describe('Project visual style from project metadata'),
         viralGoals: z
             .string()
             .optional()
@@ -54,6 +76,7 @@ const generateStoryTool = createTool({
                 'Existing story text to revise. If provided, the director revises rather than generating from scratch.',
             ),
     }),
+
     execute: async ({
         title,
         logline,
@@ -61,6 +84,11 @@ const generateStoryTool = createTool({
         targetAudience,
         targetDurationSeconds,
         contentStyle,
+        characters,
+        locations,
+        seasonContext,
+        previousEpisodes,
+        visualStyle,
         viralGoals,
         revisionInstructions,
         existingStoryText,
@@ -102,11 +130,12 @@ const generateStoryTool = createTool({
                     estimated_scene_count_min: sceneCountMin,
                     estimated_scene_count_max: sceneCountMax,
                     content_style: contentStyle,
-                    characters: '',
-                    locations: '',
-                    season_context: '',
-                    previous_episodes: '',
-                    visual_style: '',
+                    // Inject pre-formatted context (no longer empty)
+                    characters: characters ?? '',
+                    locations: locations ?? '',
+                    season_context: seasonContext ?? '',
+                    previous_episodes: previousEpisodes ?? '',
+                    visual_style: visualStyle ?? '',
                     style: 'balanced',
                     recurring_element: '',
                     canon_context: '',

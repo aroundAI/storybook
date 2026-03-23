@@ -1,21 +1,30 @@
 /**
- * Story Generation Handler
+ * Story Generation Handler — Agentic Mode
  *
- * Generates a full story from a selected idea.
- * Uses buildEpisodeContext for rich context (same as local server action).
- * WRITES TO DATABASE: Updates episode.story_data and status
+ * Entry point for the full multi-agent content generation pipeline.
+ * Instead of a single LLM call, this invokes the Content Generation Orchestrator,
+ * which coordinates 6 specialist agents across all 4 stages:
+ *
+ *   Stage 1: Story Director → Viral Analyst → Continuity Guardian → (revision loop)
+ *   Stage 2: Screenplay Director
+ *   Stage 3: Reel Scout
+ *   Stage 4: Shot Director
+ *
+ * The Orchestrator persists screenplay_data, shots, and viral_quality to the DB.
+ * This handler only persists story_data and marks the job.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import {
   buildEpisodeContext,
-  formatBeatsForPrompt,
   formatCharactersForPrompt,
+  formatCharactersForVeoPrompt,
   formatLocationsForPrompt,
+  formatLocationsForVeoPrompt,
   formatPreviousEpisodesForPrompt,
   formatRecurringElementForPrompt,
+  formatBeatsForPrompt,
 } from '../utils/context-builder';
-// Import shared content scaling utilities
 import {
   type ContentStyle,
   calculateContentScaling,
@@ -68,6 +77,7 @@ interface StoryGenerationResult {
       costCents: number;
       tokensUsed: number;
       generatedAt: string;
+      orchestratorSteps?: number;
     };
   };
 }
@@ -78,191 +88,105 @@ export async function processStoryGeneration(
 ): Promise<StoryGenerationResult> {
   const data = payload as StoryGenerationPayload;
 
-  console.log(`[Story Generation] Processing for episode ${data.episodeId}`);
+  console.log(`[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`);
 
   // Mark job as processing
   await markJobProcessing(supabase, data.episodeId, 'story');
 
   try {
-    // 1. Build rich context using shared context-builder (matches local server action)
+    // 1. Build rich context using shared context-builder
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
 
-    // 2. Calculate content scaling based on target duration
-    const contentStyle = (data.contentStyle ??
-      'dialogue-heavy') as ContentStyle;
+    const contentStyle = (data.contentStyle ?? 'dialogue-heavy') as ContentStyle;
     const scaling = calculateContentScaling({
       targetDurationSeconds: data.targetDuration,
       contentStyle,
     });
 
-    // 3. Build canon memory context (FILM-1102)
-    let canonContext = '';
-    try {
-      const { buildMemoryContext, formatMemoryContextForPrompt } =
-        await import(
-          '../../../../packages/features/episodes/src/lib/canon/memory-context-builder'
-        );
+    // 2. Pre-format all context blocks (shared across all agents)
+    const charactersContext = formatCharactersForPrompt(episodeContext.characters);
+    const locationsContext = formatLocationsForPrompt(episodeContext.locations);
+    const charactersVeoContext = formatCharactersForVeoPrompt(episodeContext.characters);
+    const locationsVeoContext = formatLocationsForVeoPrompt(episodeContext.locations);
+    const previousEpisodesContext = formatPreviousEpisodesForPrompt(
+      episodeContext.previousEpisodes,
+    );
+    const seasonContext = episodeContext.seasonPremise
+      ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
+      : '';
 
-      const memoryCtx = await buildMemoryContext({
-        projectId: data.projectId,
-        episodeNumber: episodeContext.episodeNumber ?? 1,
-      });
-
-      canonContext = formatMemoryContextForPrompt(memoryCtx);
-      console.log(
-        `[Story Generation] Memory context built: ${memoryCtx.tokenBudget.allocated} tokens used`,
-      );
-    } catch (err) {
-      console.warn(
-        '[Story Generation] Memory context build failed, continuing without:',
-        err,
-      );
-      // Non-fatal: continue without canon context
-    }
-
-    // 4. Prepare variables for prompt template (same logic as local server action)
-    const { sanitizePromptInput } = await import(
-      '../utils/sanitize-prompt-input'
+    console.log(
+      `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations`,
     );
 
-    const variables = {
-      title: sanitizePromptInput(data.title, 500),
-      logline: sanitizePromptInput(data.logline, 2000),
-      premise: episodeContext.premise,
-      target_duration: data.targetDuration,
-      duration_description: formatDuration(data.targetDuration),
-      word_count_min: scaling.story.wordCountMin,
-      word_count_max: scaling.story.wordCountMax,
-      estimated_scene_count_min: scaling.screenplay.sceneCountMin,
-      estimated_scene_count_max: scaling.screenplay.sceneCountMax,
-      content_style: contentStyle,
-      characters: formatCharactersForPrompt(episodeContext.characters),
-      locations: formatLocationsForPrompt(episodeContext.locations),
-      season_context: episodeContext.seasonPremise
-        ? `This is Episode ${episodeContext.episodeNumber} of Season ${episodeContext.seasonNumber}. Season Premise: ${episodeContext.seasonPremise}`
-        : '',
-      previous_episodes: formatPreviousEpisodesForPrompt(
-        episodeContext.previousEpisodes,
-      ),
-      genre: episodeContext.genre,
-      target_audience: episodeContext.targetAudience,
-      visual_style: episodeContext.visualStyle,
-      style: data.style ?? 'balanced',
-      recurring_element: formatRecurringElementForPrompt(
-        episodeContext.recurringElement,
-      ),
-      // Canon context injected via FILM-1102
-      canon_context: canonContext,
-      plot_beats: formatBeatsForPrompt({
-        synopsis: episodeContext.synopsis,
-        beats: episodeContext.beats,
-        moral: episodeContext.moral,
-        signatureLine: episodeContext.signatureLine,
-      }),
-    };
+    // 3. Run the full multi-agent orchestrator
+    const { runContentOrchestrator } = await import(
+      '@kit/episodes/agent/orchestrator'
+    );
 
-    // 4. Execute LLM
-    const { executeLLM } = await import('@kit/prompt-engine/server');
-
-    const result = await executeLLM<{ story: StoryOutput }>({
-      templateSlug: 'story-generation',
-      variables,
-      context: {
-        name: 'story-generation',
-        accountId: data.accountId,
-        userId: data.userId,
-      },
-      supabaseClient: supabase,
-    });
-
-    const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
-    const generatedAt = new Date().toISOString();
-
-    // 5. FILM-1104: Run STORY validation checkpoint
-    try {
-      const { runValidationCheckpoint } = await import(
-        '../utils/validation-checkpoint'
-      );
-
-      const plotSkeleton = {
-        premise: data.logline,
+    const orchestratorResult = await runContentOrchestrator(
+      {
+        episodeId: data.episodeId,
+        episodeTitle: data.title,
+        episodeLogline: data.logline,
+        genre: episodeContext.genre ?? 'general',
+        targetAudience: episodeContext.targetAudience ?? 'general',
+        targetDurationSeconds: data.targetDuration,
+        contentStyle,
+        projectId: data.projectId,
         episodeNumber: episodeContext.episodeNumber ?? 1,
-        scenes: (() => {
-          const ab = result.data.story.actBreakdown;
-          if (!ab) return [];
-          // actBreakdown can be an object {act1, act2, act3} or an array
-          if (Array.isArray(ab)) {
-            return ab.map((act: { act: number; summary: string }, i: number) => ({
-              sceneNumber: i + 1,
-              summary: typeof act === 'string' ? act : act.summary ?? String(act),
-              charactersPresent: [],
-            }));
-          }
-          // Object form: { act1: string, act2: string, act3: string }
-          return Object.values(ab as Record<string, string>).map((summary, i) => ({
-            sceneNumber: i + 1,
-            summary,
-            charactersPresent: [],
-          }));
-        })(),
-        characters: (result.data.story.characters ?? []).map((name) => ({
-          characterId: name.toLowerCase().replace(/\s+/g, '-'),
-          name,
-        })),
-      };
+        accountId: data.accountId,
+        // Pre-formatted context blocks
+        charactersContext,
+        locationsContext,
+        charactersVeoContext,
+        locationsVeoContext,
+        seasonContext,
+        previousEpisodesContext,
+        visualStyle: episodeContext.visualStyle,
+      },
+      supabase,
+    );
 
-      const validation = await runValidationCheckpoint(
-        {
-          checkpoint: 'STORY',
-          enforcement: 'flexible', // Warn, don't block
-          projectId: data.projectId,
-          episodeNumber: episodeContext.episodeNumber ?? 1,
-          supabase,
-        },
-        { plotSkeleton },
+    if (!orchestratorResult.success) {
+      throw new Error(
+        `Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
       );
-
-      if (validation.messages.length > 0) {
-        console.log(
-          `[Story Generation] Continuity validation: ${validation.messages.join(' | ')}`,
-        );
-      }
-    } catch (err) {
-      console.warn('[Story Generation] Validation checkpoint skipped:', err);
     }
 
-    // 6. Prepare story_data for episode
+    console.log(
+      `[Story Generation] Orchestrator complete. Steps: ${orchestratorResult.orchestratorSteps}, Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}`,
+    );
+
+    const generatedAt = new Date().toISOString();
+    const storyText = orchestratorResult.storyText ?? '';
+
+    // 4. Build story_data for DB write (Orchestrator handles screenplay_data and shots)
     const storyData = {
       premise: data.logline,
-      fullStory: result.data.story.fullText,
+      fullStory: storyText,
       generatedAt,
       generatedBy: {
-        model: result.metadata.model,
-        provider: result.metadata.provider,
-        costCents,
+        mode: 'agentic',
+        orchestratorSteps: orchestratorResult.orchestratorSteps,
+        viralScore: orchestratorResult.viralQuality?.overallScore,
       },
-      title: result.data.story.title,
-      actBreakdown: result.data.story.actBreakdown,
-      characters: result.data.story.characters,
-      themes: result.data.story.themes,
-      tone: result.data.story.tone,
-      estimatedSceneCount: result.data.story.estimatedSceneCount,
+      title: data.title,
       targetDuration: data.targetDuration,
-      contentStyle: contentStyle,
+      contentStyle,
       genre: episodeContext.genre,
       targetAudience: episodeContext.targetAudience,
       videoStyle: episodeContext.visualStyle,
-      episodeSummary: result.data.story.episodeSummary,
-      sentimentScore: result.data.story.sentimentScore,
-      keyEvents: result.data.story.keyEvents,
+      // Viral quality inline for quick access
+      viralQuality: orchestratorResult.viralQuality,
     };
 
-    // 6. UPDATE DATABASE: episode.story_data + status = 'story'
+    // 5. UPDATE DATABASE: episode.story_data + status
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
         story_data: storyData,
-        status: 'story',
+        status: orchestratorResult.screenplay ? 'storyboard' : 'story',
         target_duration_seconds: data.targetDuration,
         updated_at: new Date().toISOString(),
       })
@@ -277,42 +201,110 @@ export async function processStoryGeneration(
     }
 
     if (!updatedEpisode) {
-      throw new Error(
-        'Episode was modified by another user (optimistic lock failed)',
-      );
+      throw new Error('Episode was modified by another user (optimistic lock failed)');
+    }
+
+    // 6. Insert dialogue_lines from screenplay (if orchestrator generated screenplay)
+    if (orchestratorResult.screenplay?.scenes) {
+      try {
+        const characterMap = new Map(
+          episodeContext.characters.map((c) => [c.name.toLowerCase(), c.id]),
+        );
+
+        const dialogueLines: Array<{
+          episode_id: string;
+          character_asset_id: string | null;
+          text: string;
+          sequence_number: number;
+          scene_number: number;
+          language: string;
+          status: string;
+        }> = [];
+
+        let sequenceNumber = 1;
+        for (const scene of orchestratorResult.screenplay.scenes as Array<{
+          number: number;
+          dialogue?: Array<{ character: string; text: string }>;
+        }>) {
+          for (const line of scene.dialogue ?? []) {
+            dialogueLines.push({
+              episode_id: data.episodeId,
+              character_asset_id:
+                characterMap.get(line.character?.toLowerCase()) ?? null,
+              text: line.text,
+              sequence_number: sequenceNumber++,
+              scene_number: scene.number,
+              language: 'en',
+              status: 'pending',
+            });
+          }
+        }
+
+        if (dialogueLines.length > 0) {
+          const { error: insertError } = await supabase
+            .from('dialogue_lines')
+            .insert(dialogueLines);
+
+          if (insertError) {
+            console.warn('[Story Generation] Dialogue lines insert failed (non-fatal):', insertError.message);
+          } else {
+            console.log(`[Story Generation] ${dialogueLines.length} dialogue lines inserted`);
+          }
+        }
+      } catch (err) {
+        console.warn('[Story Generation] Dialogue extraction skipped:', err);
+      }
     }
 
     console.log(
-      `[Story Generation] Episode updated, word count: ${result.data.story.fullText.split(/\s+/).length}`,
+      `[Story Generation] Episode updated. Status: ${updatedEpisode.status}. ` +
+      `Screenplay: ${orchestratorResult.screenplay ? 'yes' : 'no'}, ` +
+      `Shots: ${orchestratorResult.shots ? (orchestratorResult.shots as unknown[]).length : 0}`,
     );
 
     // Mark job as completed
     await markJobCompleted(supabase, data.episodeId, 'story', {
-      model: result.metadata.model,
-      provider: result.metadata.provider,
-      costCents,
+      mode: 'agentic',
+      orchestratorSteps: orchestratorResult.orchestratorSteps,
+      viralScore: orchestratorResult.viralQuality?.overallScore,
+      generatedScreenplay: !!orchestratorResult.screenplay,
+      generatedShots: !!(orchestratorResult.shots as unknown[] | undefined)?.length,
     });
+
+    // Synthesize a StoryOutput for the return value
+    const story: StoryOutput = {
+      fullText: storyText,
+      title: data.title,
+      actBreakdown: [],
+      characters: episodeContext.characters.map((c) => c.name),
+      themes: [],
+      tone: contentStyle,
+      estimatedSceneCount:
+        (orchestratorResult.screenplay?.scenes as unknown[] | undefined)?.length ?? scaling.screenplay.sceneCountMin,
+      episodeSummary: orchestratorResult.viralQuality?.whyThisWorks,
+      sentimentScore: orchestratorResult.viralQuality?.overallScore,
+    };
 
     return {
       success: true,
       data: {
-        story: result.data.story,
+        story,
         episode: {
           id: updatedEpisode.id,
           status: updatedEpisode.status,
           version: updatedEpisode.version,
         },
         metadata: {
-          provider: result.metadata.provider,
-          model: result.metadata.model,
-          costCents,
-          tokensUsed: result.metadata.tokens,
+          provider: 'orchestrator',
+          model: 'multi-agent',
+          costCents: 0, // Orchestrator tracks cost internally
+          tokensUsed: 0,
           generatedAt,
+          orchestratorSteps: orchestratorResult.orchestratorSteps,
         },
       },
     };
   } catch (error) {
-    // Mark job as failed
     await markJobFailed(
       supabase,
       data.episodeId,

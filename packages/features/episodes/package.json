@@ -23,7 +23,8 @@
     "./hooks": "./src/hooks/index.ts",
     "./skills": "./src/agent/skills/index.ts",
     "./lib/canon/memory-context-builder": "./src/lib/canon/memory-context-builder.ts",
-    "./lib/canon/continuity-validator": "./src/lib/canon/continuity-validator.ts"
+    "./lib/canon/continuity-validator": "./src/lib/canon/continuity-validator.ts",
+    "./agent/orchestrator": "./src/agent/orchestrator.ts"
   },
   "dependencies": {
     "@kit/agent": "workspace:*",
