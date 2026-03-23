@@ -9,6 +9,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
+import { validatePlotSkeleton, validateSceneBlocks } from '@kit/episodes/lib/canon/continuity-validator';
 
 // Re-export types consumers need
 export type EnforcementLevel = 'strict' | 'flexible';
@@ -82,21 +84,12 @@ export async function runValidationCheckpoint(
 
     try {
         // 1. Build memory context to get canon data
-        const { buildMemoryContext } = await import(
-            '../../../../packages/features/episodes/src/lib/canon/memory-context-builder'
-        );
-
         const memoryCtx = await buildMemoryContext({
             projectId: config.projectId,
             episodeNumber: config.episodeNumber,
         });
 
-        // 2. Import validators
-        const { validatePlotSkeleton, validateSceneBlocks } = await import(
-            '../../../../packages/features/episodes/src/lib/canon/continuity-validator'
-        );
-
-        // 3. Run appropriate validation based on checkpoint type
+        // 2. Run appropriate validation based on checkpoint type
         let validationResult;
 
         if (config.checkpoint === 'STORY' && contentData.plotSkeleton) {

@@ -187,11 +187,24 @@ export async function processStoryGeneration(
       const plotSkeleton = {
         premise: data.logline,
         episodeNumber: episodeContext.episodeNumber ?? 1,
-        scenes: (result.data.story.actBreakdown ?? []).map((act, i) => ({
-          sceneNumber: i + 1,
-          summary: act.summary,
-          charactersPresent: [], // Per-scene character data not available from story output
-        })),
+        scenes: (() => {
+          const ab = result.data.story.actBreakdown;
+          if (!ab) return [];
+          // actBreakdown can be an object {act1, act2, act3} or an array
+          if (Array.isArray(ab)) {
+            return ab.map((act: { act: number; summary: string }, i: number) => ({
+              sceneNumber: i + 1,
+              summary: typeof act === 'string' ? act : act.summary ?? String(act),
+              charactersPresent: [],
+            }));
+          }
+          // Object form: { act1: string, act2: string, act3: string }
+          return Object.values(ab as Record<string, string>).map((summary, i) => ({
+            sceneNumber: i + 1,
+            summary,
+            charactersPresent: [],
+          }));
+        })(),
         characters: (result.data.story.characters ?? []).map((name) => ({
           characterId: name.toLowerCase().replace(/\s+/g, '-'),
           name,

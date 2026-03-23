@@ -21,7 +21,9 @@
     "./schemas": "./src/lib/schemas.ts",
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts",
-    "./skills": "./src/agent/skills/index.ts"
+    "./skills": "./src/agent/skills/index.ts",
+    "./lib/canon/memory-context-builder": "./src/lib/canon/memory-context-builder.ts",
+    "./lib/canon/continuity-validator": "./src/lib/canon/continuity-validator.ts"
   },
   "dependencies": {
     "@kit/agent": "workspace:*",
