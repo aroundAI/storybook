@@ -431,7 +431,14 @@ export async function executeLLM<T = unknown>(
             'EHOSTUNREACH',
             'fetch failed',
             'network error',
+            // Gemini / Google API transient capacity errors
+            'UNAVAILABLE',
+            'high demand',
+            '503',
+            'overloaded',
+            'Resource has been exhausted',
           ],
+
         },
       );
       latency = Date.now() - startTime;
