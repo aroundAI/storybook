@@ -150,7 +150,8 @@ const generateShotsTool = createTool({
                             }>;
                             sceneSummary: string;
                         }>({
-                            templateSlug: 'story-generation/scene-shot-generation',
+                            templateSlug: 'scene-shot-generation',
+
                             variables: {
                                 scene_content: sceneContent,
                                 episode_metadata: episodeMetadata,

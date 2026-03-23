@@ -116,7 +116,8 @@ const generateStoryTool = createTool({
                     estimatedSceneCount: number;
                 };
             }>({
-                templateSlug: 'story-generation/story-generation',
+                templateSlug: 'story-generation',
+
                 variables: {
                     title,
                     logline: logline + promptContext,
