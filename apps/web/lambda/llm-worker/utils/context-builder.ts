@@ -478,19 +478,44 @@ async function fetchSequentialEpisodes(
 }
 
 /**
- * Format characters for prompt injection
+ * Format characters for prompt injection with locked identity enforcement.
+ * Uses a strong "LOCKED" framing to prevent LLMs from drifting gender, age, or personality.
  */
 export function formatCharactersForPrompt(
   characters: EpisodeContext['characters'],
 ): string {
   if (characters.length === 0) return '';
 
-  return `**Characters in This Episode**:\n${characters
-    .map(
-      (c) =>
-        `- **${c.name}** (${c.role}): ${c.description}${c.personality ? `\n  Personality: ${c.personality}` : ''}`,
-    )
-    .join('\n')}`;
+  const characterBlocks = characters
+    .map((c, i) => {
+      const lines: string[] = [
+        `CHARACTER ${i + 1} — LOCKED IDENTITY (do NOT change gender, age, or personality):`,
+        `  Name: ${c.name}`,
+        `  Role: ${c.role}`,
+        `  Description: ${c.description}`,
+      ];
+
+      if (c.personality) {
+        lines.push(`  Personality: ${c.personality}`);
+      }
+
+      // Include physical attributes if available to reinforce identity
+      const attrs = c.physicalAttributes;
+      if (attrs) {
+        const physParts: string[] = [];
+        if (attrs.gender) physParts.push(`Gender: ${attrs.gender}`);
+        if (attrs.age) physParts.push(`Age: ${attrs.age}`);
+        if (attrs.ageRange) physParts.push(`Age range: ${attrs.ageRange}`);
+        if (physParts.length > 0) {
+          lines.push(`  Identity (immutable): ${physParts.join(', ')}`);
+        }
+      }
+
+      return lines.join('\n');
+    })
+    .join('\n\n');
+
+  return `⚠️ CHARACTER IDENTITIES ARE NON-NEGOTIABLE. Use EXACTLY the characters below with EXACTLY the gender, age, and personality described. Do NOT invent attributes, rename, or rewrite any character.\n\n${characterBlocks}`;
 }
 
 /**
