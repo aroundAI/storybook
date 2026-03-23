@@ -191,10 +191,12 @@ export async function processStoryGeneration(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      .eq('version', data.version)
+      // NOTE: No .eq('version', ...) here — the orchestrator writes viral_quality
+      // and screenplay_data mid-run which bumps the version, causing a 0-row match.
       .is('deleted_at', null)
       .select()
       .single();
+
 
     if (updateError) {
       throw new Error(`Failed to update episode: ${updateError.message}`);
