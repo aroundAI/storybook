@@ -633,11 +633,13 @@ export async function executeLLM<T = unknown>(
       if (config.supabaseClient) {
         client = config.supabaseClient;
       } else {
-        // Dynamic import to avoid server-only at module level (for Next.js context)
-        const { getSupabaseServerAdminClient } = await import(
-          '@kit/supabase/server-admin-client'
+        // Lambda-safe: build client directly from env vars.
+        // Avoids server-only import (getSupabaseServerAdminClient) which crashes in Lambda.
+        // NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are always set in Lambda.
+        const { createLambdaAdminClient } = await import(
+          '@kit/supabase/lambda-admin-client'
         );
-        client = getSupabaseServerAdminClient();
+        client = createLambdaAdminClient() ?? undefined;
       }
 
       await logLLMUsage(client, {
@@ -705,10 +707,10 @@ export async function executeLLM<T = unknown>(
       if (config.supabaseClient) {
         failureClient = config.supabaseClient;
       } else {
-        const { getSupabaseServerAdminClient } = await import(
-          '@kit/supabase/server-admin-client'
+        const { createLambdaAdminClient } = await import(
+          '@kit/supabase/lambda-admin-client'
         );
-        failureClient = getSupabaseServerAdminClient();
+        failureClient = createLambdaAdminClient() ?? undefined;
       }
 
       await logLLMUsage(failureClient, {

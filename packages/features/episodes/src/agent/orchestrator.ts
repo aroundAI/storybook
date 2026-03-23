@@ -137,6 +137,34 @@ export async function runContentOrchestrator(
 
     const output = result.data;
 
+    // Extract data from steps (more reliable than orchestrator LLM reproducing full content
+    // in its final JSON synthesis — the LLM may truncate or omit large fields like storyText).
+    type GenerateStoryResult = { storyText?: string };
+    type GenerateScreenplayResult = { title?: string; scenes?: unknown[]; totalDialogueLines?: number };
+    type GenerateShotsResult = { shots?: unknown[] };
+
+    const storyStep = result.steps.find(
+        (s) => s.type === 'tool_call' && s.toolName === 'generateStory' && s.toolResult?.success,
+    );
+    const storyTextFromSteps = (storyStep?.toolResult?.data as GenerateStoryResult | undefined)?.storyText;
+
+    // Use the LAST successful generateScreenplay step (handles revision runs)
+    const screenplaySteps = result.steps.filter(
+        (s) => s.type === 'tool_call' && s.toolName === 'generateScreenplay' && s.toolResult?.success,
+    );
+    const lastScreenplayStep = screenplaySteps.at(-1);
+    const screenplayDataFromSteps = lastScreenplayStep?.toolResult?.data as GenerateScreenplayResult | undefined;
+
+    const shotsStep = result.steps.find(
+        (s) => s.type === 'tool_call' && s.toolName === 'generateShots' && s.toolResult?.success,
+    );
+    const shotsFromSteps = (shotsStep?.toolResult?.data as GenerateShotsResult | undefined)?.shots;
+
+    console.log(
+        `[Orchestrator] Extracted from steps — story: ${storyTextFromSteps ? storyTextFromSteps.split(/\s+/).length + ' words' : 'missing (will fallback to LLM synthesis)'}, ` +
+        `screenplay: ${screenplayDataFromSteps?.scenes?.length ?? 0} scenes, shots: ${shotsFromSteps?.length ?? 0}`,
+    );
+
     const viralQuality: EpisodeViralQuality = {
         overallScore: output.overallScore,
         decision: output.decision,
@@ -166,13 +194,19 @@ export async function runContentOrchestrator(
         console.warn('[Orchestrator] Persist error (non-fatal):', err);
     }
 
+    // Resolve screenplay/shots — prefer steps extraction, fall back to orchestrator LLM synthesis
+    const resolvedScreenplayScenes = screenplayDataFromSteps?.scenes ?? output.screenplayScenes;
+    const resolvedScreenplayTitle = screenplayDataFromSteps?.title ?? output.screenplayTitle;
+    const resolvedScreenplayDialogueLines = screenplayDataFromSteps?.totalDialogueLines ?? output.screenplayDialogueLines;
+    const resolvedShots = shotsFromSteps ?? (output.shots as unknown[] | undefined);
+
     // Persist screenplay_data if generated
-    if (output.screenplayScenes && output.screenplayScenes.length > 0) {
+    if (resolvedScreenplayScenes && resolvedScreenplayScenes.length > 0) {
         try {
             const screenplayData = {
-                title: output.screenplayTitle,
-                scenes: output.screenplayScenes,
-                totalDialogueLines: output.screenplayDialogueLines ?? 0,
+                title: resolvedScreenplayTitle,
+                scenes: resolvedScreenplayScenes,
+                totalDialogueLines: resolvedScreenplayDialogueLines ?? 0,
                 estimatedDuration: input.targetDurationSeconds,
                 generatedAt: new Date().toISOString(),
                 generatedBy: { orchestratorSteps: result.steps.length },
@@ -185,7 +219,7 @@ export async function runContentOrchestrator(
             if (error) {
                 console.warn(`[Orchestrator] Failed to persist screenplay_data: ${(error as { message: string }).message}`);
             } else {
-                console.log(`[Orchestrator] screenplay_data persisted. ${output.screenplayScenes.length} scenes.`);
+                console.log(`[Orchestrator] screenplay_data persisted. ${resolvedScreenplayScenes.length} scenes.`);
             }
         } catch (err) {
             console.warn('[Orchestrator] Screenplay persist error (non-fatal):', err);
@@ -193,9 +227,9 @@ export async function runContentOrchestrator(
     }
 
     // Persist shots if generated
-    if (output.shots && (output.shots as unknown[]).length > 0) {
+    if (resolvedShots && resolvedShots.length > 0) {
         try {
-            const shotsToInsert = (output.shots as unknown[]).map((shot: unknown) => ({
+            const shotsToInsert = resolvedShots.map((shot: unknown) => ({
                 episode_id: input.episodeId,
                 ...(shot as Record<string, unknown>),
             }));
@@ -212,19 +246,20 @@ export async function runContentOrchestrator(
         }
     }
 
+
     return {
         success: true,
         viralQuality,
-        storyText: output.finalStoryText,
-        screenplay: output.screenplayScenes?.length
+        storyText: storyTextFromSteps ?? output.finalStoryText,
+        screenplay: resolvedScreenplayScenes?.length
             ? {
-                title: output.screenplayTitle ?? '',
-                scenes: output.screenplayScenes as unknown[],
-                totalDialogueLines: output.screenplayDialogueLines ?? 0,
+                title: resolvedScreenplayTitle ?? '',
+                scenes: resolvedScreenplayScenes as unknown[],
+                totalDialogueLines: resolvedScreenplayDialogueLines ?? 0,
                 estimatedDuration: input.targetDurationSeconds,
               }
             : undefined,
-        shots: output.shots as unknown[] | undefined,
+        shots: resolvedShots,
         orchestratorSteps: result.steps.length,
     };
 }

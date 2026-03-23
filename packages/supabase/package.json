@@ -14,6 +14,7 @@
   "exports": {
     "./server-client": "./src/clients/server-client.ts",
     "./server-admin-client": "./src/clients/server-admin-client.ts",
+    "./lambda-admin-client": "./src/clients/lambda-admin-client.ts",
     "./middleware-client": "./src/clients/middleware-client.ts",
     "./browser-client": "./src/clients/browser-client.ts",
     "./check-requires-mfa": "./src/check-requires-mfa.ts",
@@ -39,6 +40,7 @@
   },
   "typesVersions": {
     "*": {
+      "lambda-admin-client": ["src/clients/lambda-admin-client.ts"],
       "*": [
         "src/*"
       ]
