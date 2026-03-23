@@ -625,18 +625,21 @@ export async function executeLLM<T = unknown>(
     }
 
     // 11. Log analytics (success) - use injected client or dynamic import for Next.js
-    let client;
-    if (config.supabaseClient) {
-      client = config.supabaseClient;
-    } else {
-      // Dynamic import to avoid server-only at module level (for Next.js context)
-      const { getSupabaseServerAdminClient } = await import(
-        '@kit/supabase/server-admin-client'
-      );
-      client = getSupabaseServerAdminClient();
-    }
-
+    // IMPORTANT: entire block (including client creation) is inside try/catch so that
+    // missing env vars (e.g. NEXT_PUBLIC_SUPABASE_PUBLIC_KEY in Lambda) or
+    // server-only import errors never crash the LLM result.
     try {
+      let client;
+      if (config.supabaseClient) {
+        client = config.supabaseClient;
+      } else {
+        // Dynamic import to avoid server-only at module level (for Next.js context)
+        const { getSupabaseServerAdminClient } = await import(
+          '@kit/supabase/server-admin-client'
+        );
+        client = getSupabaseServerAdminClient();
+      }
+
       await logLLMUsage(client, {
         accountId: config.context.accountId,
         userId: config.context.userId,
@@ -696,19 +699,18 @@ export async function executeLLM<T = unknown>(
       `LLM execution failed: ${config.templateSlug}`,
     );
 
-    // Log analytics (failure) - use injected client or dynamic import for Next.js
-    let failureClient;
-    if (config.supabaseClient) {
-      failureClient = config.supabaseClient;
-    } else {
-      // Dynamic import to avoid server-only at module level (for Next.js context)
-      const { getSupabaseServerAdminClient } = await import(
-        '@kit/supabase/server-admin-client'
-      );
-      failureClient = getSupabaseServerAdminClient();
-    }
-
+    // Log analytics (failure) - client creation also inside try/catch (same reason as above)
     try {
+      let failureClient;
+      if (config.supabaseClient) {
+        failureClient = config.supabaseClient;
+      } else {
+        const { getSupabaseServerAdminClient } = await import(
+          '@kit/supabase/server-admin-client'
+        );
+        failureClient = getSupabaseServerAdminClient();
+      }
+
       await logLLMUsage(failureClient, {
         accountId: config.context.accountId,
         userId: config.context.userId,
