@@ -8,6 +8,7 @@ import {
     Calendar,
     ChevronDown,
     ChevronRight,
+    FileText,
     GitBranch,
     Loader2,
     RefreshCw,
@@ -24,18 +25,10 @@ import { getActiveThreadsAction, getImmutableEventsAction, getProjectCharacterSt
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from '@kit/ui/card';
-import {
     Collapsible,
     CollapsibleContent,
     CollapsibleTrigger,
 } from '@kit/ui/collapsible';
-import { ScrollArea } from '@kit/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { AddEventDialog } from './add-event-dialog';
@@ -70,7 +63,6 @@ export function CanonDashboard({
     const [events, setEvents] = useState<ImmutableEvent[]>([]);
     const [threads, setThreads] = useState<NarrativeThread[]>([]);
     const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
-
     const [characterStates, setCharacterStates] = useState<CharacterStateRow[]>([]);
     const [factsCount, setFactsCount] = useState<number | null>(null);
 
@@ -84,16 +76,9 @@ export function CanonDashboard({
                 getProjectCharacterStatesAction({ projectId, limit: 20 }),
             ]);
 
-            // Actions return arrays directly
-            if (Array.isArray(eventsResult)) {
-                setEvents(eventsResult);
-            }
-            if (Array.isArray(threadsResult)) {
-                setThreads(threadsResult);
-            }
-            if (Array.isArray(statesResult)) {
-                setCharacterStates(statesResult);
-            }
+            if (Array.isArray(eventsResult)) setEvents(eventsResult);
+            if (Array.isArray(threadsResult)) setThreads(threadsResult);
+            if (Array.isArray(statesResult)) setCharacterStates(statesResult);
         });
     }, [projectId, canonEnabled]);
 
@@ -104,242 +89,297 @@ export function CanonDashboard({
     const toggleEvent = (eventId: string) => {
         setExpandedEvents((prev) => {
             const next = new Set(prev);
-            if (next.has(eventId)) {
-                next.delete(eventId);
-            } else {
-                next.add(eventId);
-            }
+            if (next.has(eventId)) next.delete(eventId);
+            else next.add(eventId);
             return next;
         });
     };
 
     if (!canonEnabled) {
         return (
-            <Card className="border-dashed">
-                <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-                    <Shield className="mb-3 h-10 w-10 text-muted-foreground" />
-                    <h3 className="font-medium">Canon Management Disabled</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                        Enable Canon Management in Project Settings to track story
-                        continuity
-                    </p>
-                </CardContent>
-            </Card>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Shield className="mb-3 h-10 w-10 text-muted-foreground opacity-40" />
+                <h3 className="text-sm font-medium">Canon Management Disabled</h3>
+                <p className="mt-1.5 max-w-[200px] text-xs leading-relaxed text-muted-foreground">
+                    Enable Canon Management in Project Settings to track story continuity
+                </p>
+            </div>
         );
     }
 
     return (
-        <Card>
-            <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                        <BookOpen className="h-5 w-5 text-violet-500" />
-                        <CardTitle className="text-base">Canon Timeline</CardTitle>
-                        <Badge variant="outline" className="text-xs">
-                            Episode {episodeNumber}
-                        </Badge>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={loadData}
-                        disabled={isPending}
-                    >
-                        {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                            <RefreshCw className="h-4 w-4" />
-                        )}
-                    </Button>
+        <div className="flex flex-col gap-3">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <BookOpen className="h-4 w-4 text-violet-500" />
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                        Canon Timeline
+                    </span>
+                    <Badge variant="outline" className="px-1.5 py-0 text-[10px]">
+                        Ep.{episodeNumber}
+                    </Badge>
                 </div>
-                <CardDescription>
-                    Immutable events, character states, and narrative threads
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Tabs defaultValue="events" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
-                        <TabsTrigger value="events" className="text-xs">
-                            Events ({events.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="threads" className="text-xs">
-                            Threads ({threads.length})
-                        </TabsTrigger>
-                        <TabsTrigger value="characters" className="text-xs">
-                            Characters
-                        </TabsTrigger>
-                        <TabsTrigger value="facts" className="text-xs">
-                            Facts{factsCount !== null && factsCount > 0 ? ` (${factsCount})` : ''}
-                        </TabsTrigger>
-                    </TabsList>
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground"
+                    onClick={loadData}
+                    disabled={isPending}
+                >
+                    {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                    )}
+                </Button>
+            </div>
 
-                    {/* Events Tab */}
-                    <TabsContent value="events" className="mt-3">
-                        <ScrollArea className="h-[300px]">
-                            {events.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 text-center">
-                                    <Calendar className="mb-2 h-8 w-8 text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">
-                                        No immutable events recorded yet
-                                    </p>
-                                    <AddEventDialog
-                                        projectId={projectId}
-                                        episodeId={episodeId}
-                                        season={season}
-                                        episodeNumber={episodeNumber}
-                                        onEventAdded={loadData}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {events.map((event) => (
-                                        <Collapsible
-                                            key={event.id}
-                                            open={expandedEvents.has(event.id)}
-                                            onOpenChange={() => toggleEvent(event.id)}
-                                        >
-                                            <CollapsibleTrigger asChild>
-                                                <div className="flex cursor-pointer items-center gap-2 rounded-lg border p-2 hover:bg-muted/50">
-                                                    {expandedEvents.has(event.id) ? (
-                                                        <ChevronDown className="h-4 w-4" />
-                                                    ) : (
-                                                        <ChevronRight className="h-4 w-4" />
-                                                    )}
-                                                    <EventIcon eventType={event.eventType} />
-                                                    <span className="flex-1 text-sm font-medium">
-                                                        {event.eventKey}
-                                                    </span>
-                                                    <Badge variant="secondary" className="text-xs">
-                                                        Ep. {event.episodeNumber}
-                                                    </Badge>
-                                                </div>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent className="ml-6 mt-1 rounded-md bg-muted/30 p-3">
-                                                <p className="text-sm">{event.description}</p>
-                                                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <Calendar className="h-3 w-3" />
-                                                    {new Date(event.createdAt).toLocaleDateString()}
-                                                </div>
-                                            </CollapsibleContent>
-                                        </Collapsible>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </TabsContent>
+            <Tabs defaultValue="events" className="w-full">
+                {/* 2×2 compact tab grid */}
+                <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1">
+                    <TabsTrigger
+                        value="events"
+                        className="flex items-center gap-1.5 py-1.5 text-xs"
+                    >
+                        <Calendar className="h-3 w-3 shrink-0" />
+                        Events
+                        {events.length > 0 && (
+                            <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
+                                {events.length}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="threads"
+                        className="flex items-center gap-1.5 py-1.5 text-xs"
+                    >
+                        <GitBranch className="h-3 w-3 shrink-0" />
+                        Threads
+                        {threads.length > 0 && (
+                            <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
+                                {threads.length}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="characters"
+                        className="flex items-center gap-1.5 py-1.5 text-xs"
+                    >
+                        <User className="h-3 w-3 shrink-0" />
+                        Characters
+                        {characterStates.length > 0 && (
+                            <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
+                                {characterStates.length}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                    <TabsTrigger
+                        value="facts"
+                        className="flex items-center gap-1.5 py-1.5 text-xs"
+                    >
+                        <FileText className="h-3 w-3 shrink-0" />
+                        Facts
+                        {factsCount !== null && factsCount > 0 && (
+                            <span className="ml-auto rounded bg-primary/15 px-1 text-[10px] font-medium text-primary">
+                                {factsCount}
+                            </span>
+                        )}
+                    </TabsTrigger>
+                </TabsList>
 
-                    {/* Threads Tab */}
-                    <TabsContent value="threads" className="mt-3">
-                        <ScrollArea className="h-[300px]">
-                            {threads.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 text-center">
-                                    <GitBranch className="mb-2 h-8 w-8 text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">
-                                        No narrative threads yet
-                                    </p>
-                                    <AddThreadDialog
-                                        projectId={projectId}
-                                        episodeId={episodeId}
-                                        onThreadAdded={loadData}
-                                    />
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {threads.map((thread) => (
-                                        <div
-                                            key={thread.id}
-                                            className="flex items-center gap-3 rounded-lg border p-3"
-                                        >
-                                            <GitBranch className="h-4 w-4 text-blue-500" />
-                                            <div className="flex-1">
-                                                <p className="text-sm font-medium">
-                                                    {thread.threadName}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    {thread.description}
-                                                </p>
-                                            </div>
-                                            <Badge
-                                                variant={
-                                                    thread.status === 'open'
-                                                        ? 'default'
-                                                        : thread.status === 'resolved'
-                                                            ? 'secondary'
-                                                            : 'outline'
-                                                }
-                                            >
-                                                {thread.status}
+                {/* Events */}
+                <TabsContent value="events" className="mt-3 space-y-2">
+                    {events.length === 0 ? (
+                        <EmptyState
+                            icon={<Calendar className="h-7 w-7" />}
+                            title="No immutable events"
+                            description="Key events are auto-extracted after story generation, or add them manually."
+                        >
+                            <AddEventDialog
+                                projectId={projectId}
+                                episodeId={episodeId}
+                                season={season}
+                                episodeNumber={episodeNumber}
+                                onEventAdded={loadData}
+                            />
+                        </EmptyState>
+                    ) : (
+                        <>
+                            {events.map((event) => (
+                                <Collapsible
+                                    key={event.id}
+                                    open={expandedEvents.has(event.id)}
+                                    onOpenChange={() => toggleEvent(event.id)}
+                                >
+                                    <CollapsibleTrigger asChild>
+                                        <div className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/60 bg-card/60 p-2.5 transition-colors hover:bg-muted/50">
+                                            {expandedEvents.has(event.id) ? (
+                                                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                            ) : (
+                                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                                            )}
+                                            <EventIcon eventType={event.eventType} />
+                                            <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                                                {event.eventKey}
+                                            </span>
+                                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
+                                                Ep.{event.episodeNumber}
                                             </Badge>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </TabsContent>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent className="ml-5 mt-1 rounded-md bg-muted/30 p-2.5">
+                                        <p className="text-xs leading-relaxed text-muted-foreground">{event.description}</p>
+                                        <p className="mt-1.5 text-[10px] text-muted-foreground/60">
+                                            {new Date(event.createdAt).toLocaleDateString()}
+                                        </p>
+                                    </CollapsibleContent>
+                                </Collapsible>
+                            ))}
+                            <AddEventDialog
+                                projectId={projectId}
+                                episodeId={episodeId}
+                                season={season}
+                                episodeNumber={episodeNumber}
+                                onEventAdded={loadData}
+                            />
+                        </>
+                    )}
+                </TabsContent>
 
-                    {/* Characters Tab */}
-                    <TabsContent value="characters" className="mt-3">
-                        <ScrollArea className="h-[300px]">
-                            {characterStates.length === 0 ? (
-                                <div className="flex flex-col items-center justify-center py-8 text-center">
-                                    <User className="mb-2 h-8 w-8 text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">
-                                        No character states tracked yet
-                                    </p>
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        States are recorded during story generation
-                                    </p>
+                {/* Threads */}
+                <TabsContent value="threads" className="mt-3 space-y-2">
+                    {threads.length === 0 ? (
+                        <EmptyState
+                            icon={<GitBranch className="h-7 w-7" />}
+                            title="No narrative threads"
+                            description="Threads track story arcs across episodes. They're auto-created after story generation."
+                        >
+                            <AddThreadDialog
+                                projectId={projectId}
+                                episodeId={episodeId}
+                                onThreadAdded={loadData}
+                            />
+                        </EmptyState>
+                    ) : (
+                        <>
+                            {threads.map((thread) => (
+                                <div
+                                    key={thread.id}
+                                    className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/60 p-2.5"
+                                >
+                                    <GitBranch className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-500" />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-medium">{thread.threadName}</p>
+                                        {thread.description && (
+                                            <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">
+                                                {thread.description}
+                                            </p>
+                                        )}
+                                    </div>
+                                    <Badge
+                                        variant={
+                                            thread.status === 'open'
+                                                ? 'default'
+                                                : thread.status === 'resolved'
+                                                    ? 'secondary'
+                                                    : 'outline'
+                                        }
+                                        className="shrink-0 text-[10px]"
+                                    >
+                                        {thread.status}
+                                    </Badge>
                                 </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {characterStates.map((state) => (
-                                        <div
-                                            key={state.id}
-                                            className="flex items-start gap-3 rounded-lg border p-3"
-                                        >
-                                            <User className="h-4 w-4 text-green-500 mt-0.5" />
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium truncate">
-                                                    {state.characters?.name ?? state.character_id}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground">
-                                                    Type: {state.state_type}
-                                                </p>
-                                                {state.trigger_event && (
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Trigger: {state.trigger_event}
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </ScrollArea>
-                    </TabsContent>
+                            ))}
+                            <AddThreadDialog
+                                projectId={projectId}
+                                episodeId={episodeId}
+                                onThreadAdded={loadData}
+                            />
+                        </>
+                    )}
+                </TabsContent>
 
-                    <TabsContent value="facts" className="mt-3">
-                        <EpisodeFactsPanel
-                            episodeId={episodeId}
-                            projectId={projectId}
-                            onCountChange={setFactsCount}
+                {/* Characters */}
+                <TabsContent value="characters" className="mt-3 space-y-2">
+                    {characterStates.length === 0 ? (
+                        <EmptyState
+                            icon={<User className="h-7 w-7" />}
+                            title="No character states"
+                            description="Character arcs are auto-tracked after story generation."
                         />
-                    </TabsContent>
-                </Tabs>
-            </CardContent>
-        </Card>
+                    ) : (
+                        characterStates.map((state) => (
+                            <div
+                                key={state.id}
+                                className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/60 p-2.5"
+                            >
+                                <User className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-xs font-medium">
+                                        {state.characters?.name ?? state.character_id}
+                                    </p>
+                                    <p className="text-[11px] text-muted-foreground">
+                                        {state.state_type}
+                                    </p>
+                                    {state.trigger_event && (
+                                        <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                                            Trigger: {state.trigger_event}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </TabsContent>
+
+                {/* Facts */}
+                <TabsContent value="facts" className="mt-3">
+                    <EpisodeFactsPanel
+                        episodeId={episodeId}
+                        projectId={projectId}
+                        onCountChange={setFactsCount}
+                    />
+                </TabsContent>
+            </Tabs>
+        </div>
     );
 }
+
+// ─── Shared empty state ──────────────────────────────────────────────────────
+
+function EmptyState({
+    icon,
+    title,
+    description,
+    children,
+}: {
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    children?: React.ReactNode;
+}) {
+    return (
+        <div className="flex flex-col items-center py-8 text-center">
+            <div className="mb-2 text-muted-foreground/40">{icon}</div>
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            <p className="mt-1 max-w-[200px] text-[11px] leading-relaxed text-muted-foreground/60">
+                {description}
+            </p>
+            {children && <div className="mt-3">{children}</div>}
+        </div>
+    );
+}
+
+// ─── Event icon ──────────────────────────────────────────────────────────────
 
 function EventIcon({ eventType }: { eventType: string }) {
     switch (eventType) {
         case 'death':
-            return <Skull className="h-4 w-4 text-red-500" />;
+            return <Skull className="h-3.5 w-3.5 text-red-500" />;
         case 'ability_loss':
-            return <AlertTriangle className="h-4 w-4 text-amber-500" />;
-        case 'location_destruction':
-            return <Shield className="h-4 w-4 text-purple-500" />;
+            return <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />;
         default:
-            return <Calendar className="h-4 w-4 text-blue-500" />;
+            return <Calendar className="h-3.5 w-3.5 text-blue-500" />;
     }
 }

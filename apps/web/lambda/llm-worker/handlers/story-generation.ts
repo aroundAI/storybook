@@ -29,6 +29,7 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
+import { commitStoryCanon } from '../utils/commit-story-canon';
 
 interface StoryGenerationPayload {
   episodeId: string;
@@ -221,6 +222,24 @@ export async function processStoryGeneration(
       orchestratorSteps: orchestratorResult.orchestratorSteps,
       viralScore: orchestratorResult.viralQuality?.overallScore,
     });
+
+    // 6. Commit story outputs to Canon tables (non-fatal)
+    try {
+      await commitStoryCanon({
+        projectId: data.projectId,
+        episodeId: data.episodeId,
+        episodeNumber: episodeContext.episodeNumber ?? 1,
+        season: episodeContext.seasonNumber ?? 1,
+        keyEvents: orchestratorResult.keyEvents ?? [],
+        characters: orchestratorResult.storyCharacters ?? [],
+        episodeSummary: orchestratorResult.episodeSummary,
+        themes: orchestratorResult.themes,
+        createdBy: data.userId,
+        supabase,
+      });
+    } catch (canonError) {
+      console.warn('[Story Generation] Canon commit failed (non-fatal):', canonError);
+    }
 
     // Synthesize a StoryOutput for the return value
     const story: StoryOutput = {
