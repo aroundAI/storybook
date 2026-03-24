@@ -25,11 +25,8 @@ export async function loadAndRenderPrompt(
   slug: string,
   variables: Record<string, unknown>,
 ): Promise<RenderedPrompt> {
-  // Normalize slug for registry lookup (handle both 'story-generation' and 'story/generation')
-  const registryKey = slug.includes('/') ? slug.replace(/\//g, '-') : slug;
-
-  // Load from bundled registry
-  const template = PROMPT_REGISTRY[registryKey];
+  // Load from bundled registry (use slug as-is — registry keys use '/' for categories)
+  const template = PROMPT_REGISTRY[slug];
 
   if (!template) {
     const availablePrompts = Object.keys(PROMPT_REGISTRY).join(', ');
