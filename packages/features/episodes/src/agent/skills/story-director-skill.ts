@@ -118,9 +118,22 @@ const generateStoryTool = createTool({
                 story: {
                     fullText: string;
                     title: string;
+                    actBreakdown: { act1: string; act2: string; act3: string };
+                    characters: Array<{ name: string; role: string; arc: string }>;
                     themes: string[];
                     tone: string;
                     estimatedSceneCount: number;
+                    episodeSummary: string;
+                    sentimentScore: number;
+                    keyEvents: string[];
+                    viralStructure: {
+                        openingHook: string;
+                        curiosityGap: string;
+                        emotionalArc: string[];
+                        setupPayoffPair: { setup: string; payoff: string };
+                        loopBeat: string;
+                        memorableScene: string;
+                    };
                 };
             }>({
                 templateSlug: 'story-generation',
@@ -162,9 +175,15 @@ const generateStoryTool = createTool({
             return toolSuccess({
                 storyText: story.fullText,
                 title: story.title,
+                actBreakdown: story.actBreakdown,
+                characters: story.characters,
                 themes: story.themes,
                 tone: story.tone,
                 estimatedSceneCount: story.estimatedSceneCount,
+                episodeSummary: story.episodeSummary,
+                sentimentScore: story.sentimentScore,
+                keyEvents: story.keyEvents,
+                viralStructure: story.viralStructure,
                 wasRevision: !!revisionInstructions,
                 summary: `Generated story "${story.title}" — ${story.fullText.split(/\s+/).length} words, ~${story.estimatedSceneCount} scenes`,
             });

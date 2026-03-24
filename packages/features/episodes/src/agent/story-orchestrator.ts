@@ -51,6 +51,17 @@ export interface StoryOrchestratorResult {
     success: boolean;
     viralQuality: EpisodeViralQuality | null;
     storyText?: string;
+    // Full story metadata for DB write
+    storyTitle?: string;
+    actBreakdown?: { act1: string; act2: string; act3: string };
+    storyCharacters?: Array<{ name: string; role: string; arc: string }>;
+    themes?: string[];
+    tone?: string;
+    estimatedSceneCount?: number;
+    episodeSummary?: string;
+    sentimentScore?: number;
+    keyEvents?: string[];
+    viralStructure?: Record<string, unknown>;
     orchestratorSteps: number;
     error?: string;
 }
@@ -108,12 +119,25 @@ export async function runStoryOrchestrator(
 
     const output = result.data;
 
-    // Extract story text from tool steps (more reliable than LLM synthesis for large text)
-    type GenerateStoryResult = { storyText?: string };
+    // Extract story data from tool steps (more reliable than LLM synthesis for large text)
+    type GenerateStoryResult = {
+        storyText?: string;
+        title?: string;
+        actBreakdown?: { act1: string; act2: string; act3: string };
+        characters?: Array<{ name: string; role: string; arc: string }>;
+        themes?: string[];
+        tone?: string;
+        estimatedSceneCount?: number;
+        episodeSummary?: string;
+        sentimentScore?: number;
+        keyEvents?: string[];
+        viralStructure?: Record<string, unknown>;
+    };
     const storyStep = result.steps.findLast(
         (s) => s.type === 'tool_call' && s.toolName === 'generateStory' && s.toolResult?.success,
     );
-    const storyTextFromSteps = (storyStep?.toolResult?.data as GenerateStoryResult | undefined)?.storyText;
+    const storyStepData = storyStep?.toolResult?.data as GenerateStoryResult | undefined;
+    const storyTextFromSteps = storyStepData?.storyText;
     const resolvedStoryText = storyTextFromSteps ?? output.finalStoryText;
 
     console.log(
@@ -155,6 +179,16 @@ export async function runStoryOrchestrator(
         success: true,
         viralQuality,
         storyText: resolvedStoryText,
+        storyTitle: storyStepData?.title,
+        actBreakdown: storyStepData?.actBreakdown,
+        storyCharacters: storyStepData?.characters,
+        themes: storyStepData?.themes,
+        tone: storyStepData?.tone,
+        estimatedSceneCount: storyStepData?.estimatedSceneCount,
+        episodeSummary: storyStepData?.episodeSummary,
+        sentimentScore: storyStepData?.sentimentScore,
+        keyEvents: storyStepData?.keyEvents,
+        viralStructure: storyStepData?.viralStructure,
         orchestratorSteps: result.steps.length,
     };
 }

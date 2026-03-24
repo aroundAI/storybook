@@ -172,6 +172,16 @@ export async function processStoryGeneration(
       genre: episodeContext.genre,
       targetAudience: episodeContext.targetAudience,
       videoStyle: episodeContext.visualStyle,
+      // Structured story metadata (for Story Info sidebar)
+      actBreakdown: orchestratorResult.actBreakdown,
+      characters: orchestratorResult.storyCharacters,
+      themes: orchestratorResult.themes,
+      tone: orchestratorResult.tone,
+      estimatedSceneCount: orchestratorResult.estimatedSceneCount,
+      episodeSummary: orchestratorResult.episodeSummary,
+      sentimentScore: orchestratorResult.sentimentScore,
+      keyEvents: orchestratorResult.keyEvents,
+      viralStructure: orchestratorResult.viralStructure,
       // Viral quality inline for quick access
       viralQuality: orchestratorResult.viralQuality,
     };
