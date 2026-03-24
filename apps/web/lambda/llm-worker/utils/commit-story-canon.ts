@@ -4,10 +4,11 @@
  * After story generation, auto-populates Canon tables from the structured
  * LLM output so the Canon Dashboard has data to show immediately.
  *
- * Writes:
- *  - immutable_events  — key events extracted from the story
- *  - character_states  — character arcs for characters found in project assets
- *  - narrative_threads — a thread for the episode's main story arc
+ * Steps:
+ *  0. CLEANUP — delete stale canon established by this episode
+ *  1. immutable_events  — key events extracted from the story
+ *  2. character_states  — character arcs for characters found in project assets
+ *  3. narrative_threads — a thread for the episode's main story arc
  *
  * All writes are non-fatal: failures are logged but don't break generation.
  */
@@ -29,7 +30,6 @@ export interface CommitStoryCanonInput {
 
 /**
  * Converts a free-text event description to a canonical event key slug.
- * e.g.  "Dante discovers the knot is tied backwards" → "dante-discovers-knot-tied-backwards-ep2"
  */
 function toEventKey(text: string, episodeNumber: number): string {
     const slug = text
@@ -55,10 +55,14 @@ export async function commitStoryCanon(input: CommitStoryCanonInput): Promise<vo
         supabase,
     } = input;
 
+    // Step 0: Remove stale canon from any previous story generation for this episode.
+    // This makes regeneration idempotent — new story replaces old canon cleanly.
+    await cleanupEpisodeCanon(episodeId, supabase);
+
     const results = await Promise.allSettled([
         commitKeyEvents({ projectId, episodeId, episodeNumber, season, keyEvents, createdBy, supabase }),
-        commitCharacterStates({ projectId, episodeId, characters, createdBy, supabase }),
-        commitNarrativeThread({ projectId, episodeId, episodeSummary, themes, createdBy, supabase }),
+        commitCharacterStates({ projectId, episodeId, characters, supabase }),
+        commitNarrativeThread({ projectId, episodeId, episodeSummary, themes, supabase }),
     ]);
 
     for (const result of results) {
@@ -68,7 +72,33 @@ export async function commitStoryCanon(input: CommitStoryCanonInput): Promise<vo
     }
 }
 
-// ─── Key Events ──────────────────────────────────────────────────────────────
+// ─── Step 0: Cleanup ─────────────────────────────────────────────────────────
+
+/**
+ * Deletes all canon data that was established by this specific episode.
+ * Called at the start of commitStoryCanon so regeneration is idempotent.
+ * FK CASCADE on episode deletion handles the delete-episode case separately.
+ */
+export async function cleanupEpisodeCanon(
+    episodeId: string,
+    supabase: SupabaseClient,
+): Promise<void> {
+    const results = await Promise.allSettled([
+        supabase.from('immutable_events').delete().eq('established_in', episodeId),
+        supabase.from('character_states').delete().eq('episode_id', episodeId),
+        supabase.from('narrative_threads').delete().eq('opened_at', episodeId),
+    ]);
+
+    for (const result of results) {
+        if (result.status === 'rejected') {
+            console.warn('[commitStoryCanon] Cleanup step failed:', result.reason);
+        }
+    }
+
+    console.log(`[commitStoryCanon] Cleaned up stale canon for episode ${episodeId}`);
+}
+
+// ─── Step 1: Key Events ───────────────────────────────────────────────────────
 
 async function commitKeyEvents({
     projectId,
@@ -89,32 +119,17 @@ async function commitKeyEvents({
 }) {
     if (!keyEvents.length) return;
 
-    // Get existing event keys to skip duplicates
-    const { data: existing } = await supabase
-        .from('immutable_events')
-        .select('event_key')
-        .eq('project_id', projectId);
-
-    const existingKeys = new Set((existing ?? []).map((e: { event_key: string }) => e.event_key));
-
-    const toInsert = keyEvents
-        .map((text) => ({
-            project_id: projectId,
-            event_type: 'world_fact' as const,
-            event_key: toEventKey(text, episodeNumber),
-            established_in: episodeId,
-            season,
-            episode_number: episodeNumber,
-            description: text,
-            metadata: { auto_generated: true, source: 'story_generation' },
-            created_by: createdBy,
-        }))
-        .filter((row) => !existingKeys.has(row.event_key));
-
-    if (!toInsert.length) {
-        console.log('[commitStoryCanon] All key events already exist, skipping');
-        return;
-    }
+    const toInsert = keyEvents.map((text) => ({
+        project_id: projectId,
+        event_type: 'world_fact' as const,
+        event_key: toEventKey(text, episodeNumber),
+        established_in: episodeId,
+        season,
+        episode_number: episodeNumber,
+        description: text,
+        metadata: { auto_generated: true, source: 'story_generation' },
+        created_by: createdBy,
+    }));
 
     const { error } = await supabase.from('immutable_events').insert(toInsert);
     if (error) {
@@ -123,24 +138,21 @@ async function commitKeyEvents({
     console.log(`[commitStoryCanon] Committed ${toInsert.length} key events`);
 }
 
-// ─── Character States ─────────────────────────────────────────────────────────
+// ─── Step 2: Character States ─────────────────────────────────────────────────
 
 async function commitCharacterStates({
     projectId,
     episodeId,
     characters,
-    createdBy,
     supabase,
 }: {
     projectId: string;
     episodeId: string;
     characters: Array<{ name: string; role: string; arc: string }>;
-    createdBy: string;
     supabase: SupabaseClient;
 }) {
     if (!characters.length) return;
 
-    // Look up character asset IDs by name (case-insensitive)
     const names = characters.map((c) => c.name);
     const { data: assets } = await supabase
         .from('assets')
@@ -166,7 +178,6 @@ async function commitCharacterStates({
             state_type: 'goal',
             state_value: { arc: c.arc, role: c.role },
             trigger_event: 'story_generation',
-            created_by: createdBy,
         }));
 
     if (!toInsert.length) return;
@@ -178,49 +189,32 @@ async function commitCharacterStates({
     console.log(`[commitStoryCanon] Committed ${toInsert.length} character states`);
 }
 
-// ─── Narrative Thread ─────────────────────────────────────────────────────────
+// ─── Step 3: Narrative Thread ─────────────────────────────────────────────────
 
 async function commitNarrativeThread({
     projectId,
     episodeId,
     episodeSummary,
     themes,
-    createdBy,
     supabase,
 }: {
     projectId: string;
     episodeId: string;
     episodeSummary?: string;
     themes?: string[];
-    createdBy: string;
     supabase: SupabaseClient;
 }) {
     if (!episodeSummary) return;
 
-    // Check if a thread for this episode already exists
-    const { data: existing } = await supabase
-        .from('narrative_threads')
-        .select('id')
-        .eq('project_id', projectId)
-        .eq('opened_at', episodeId)
-        .eq('thread_type', 'plot')
-        .limit(1)
-        .maybeSingle();
-
-    if (existing) {
-        console.log('[commitStoryCanon] Narrative thread for this episode already exists, skipping');
-        return;
-    }
-
+    // Note: no created_by column in narrative_threads
     const { error } = await supabase.from('narrative_threads').insert({
         project_id: projectId,
-        thread_name: `Episode arc`,
+        thread_name: 'Episode arc',
         thread_type: 'plot',
         opened_at: episodeId,
         description: episodeSummary,
         promises: themes ?? [],
         status: 'open',
-        created_by: createdBy,
     });
 
     if (error) {

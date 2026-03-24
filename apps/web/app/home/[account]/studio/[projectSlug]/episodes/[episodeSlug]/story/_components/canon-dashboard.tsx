@@ -6,8 +6,6 @@ import {
     AlertTriangle,
     BookOpen,
     Calendar,
-    ChevronDown,
-    ChevronRight,
     FileText,
     GitBranch,
     Loader2,
@@ -24,11 +22,6 @@ import type {
 import { getActiveThreadsAction, getImmutableEventsAction, getProjectCharacterStatesAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@kit/ui/collapsible';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@kit/ui/tabs';
 
 import { AddEventDialog } from './add-event-dialog';
@@ -62,7 +55,6 @@ export function CanonDashboard({
     const [isPending, startTransition] = useTransition();
     const [events, setEvents] = useState<ImmutableEvent[]>([]);
     const [threads, setThreads] = useState<NarrativeThread[]>([]);
-    const [expandedEvents, setExpandedEvents] = useState<Set<string>>(new Set());
     const [characterStates, setCharacterStates] = useState<CharacterStateRow[]>([]);
     const [factsCount, setFactsCount] = useState<number | null>(null);
 
@@ -85,15 +77,6 @@ export function CanonDashboard({
     useEffect(() => {
         loadData();
     }, [loadData]);
-
-    const toggleEvent = (eventId: string) => {
-        setExpandedEvents((prev) => {
-            const next = new Set(prev);
-            if (next.has(eventId)) next.delete(eventId);
-            else next.add(eventId);
-            return next;
-        });
-    };
 
     if (!canonEnabled) {
         return (
@@ -207,34 +190,24 @@ export function CanonDashboard({
                     ) : (
                         <>
                             {events.map((event) => (
-                                <Collapsible
+                                <div
                                     key={event.id}
-                                    open={expandedEvents.has(event.id)}
-                                    onOpenChange={() => toggleEvent(event.id)}
+                                    className="flex items-start gap-2 rounded-lg border border-border/60 bg-card/60 p-2.5"
                                 >
-                                    <CollapsibleTrigger asChild>
-                                        <div className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/60 bg-card/60 p-2.5 transition-colors hover:bg-muted/50">
-                                            {expandedEvents.has(event.id) ? (
-                                                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                            ) : (
-                                                <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                                            )}
-                                            <EventIcon eventType={event.eventType} />
-                                            <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                                                {event.eventKey}
-                                            </span>
-                                            <Badge variant="secondary" className="px-1.5 py-0 text-[10px]">
-                                                Ep.{event.episodeNumber}
-                                            </Badge>
-                                        </div>
-                                    </CollapsibleTrigger>
-                                    <CollapsibleContent className="ml-5 mt-1 rounded-md bg-muted/30 p-2.5">
-                                        <p className="text-xs leading-relaxed text-muted-foreground">{event.description}</p>
-                                        <p className="mt-1.5 text-[10px] text-muted-foreground/60">
+                                    <EventIcon eventType={event.eventType} />
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-xs font-medium leading-snug">{event.description}</p>
+                                        <p className="mt-0.5 font-mono text-[9px] text-muted-foreground/40">
+                                            {event.eventKey}
+                                        </p>
+                                        <p className="mt-1 text-[10px] text-muted-foreground/50">
                                             {new Date(event.createdAt).toLocaleDateString()}
                                         </p>
-                                    </CollapsibleContent>
-                                </Collapsible>
+                                    </div>
+                                    <Badge variant="secondary" className="shrink-0 px-1.5 py-0 text-[10px]">
+                                        Ep.{event.episodeNumber}
+                                    </Badge>
+                                </div>
                             ))}
                             <AddEventDialog
                                 projectId={projectId}
@@ -320,11 +293,11 @@ export function CanonDashboard({
                                         {state.characters?.name ?? state.character_id}
                                     </p>
                                     <p className="text-[11px] text-muted-foreground">
-                                        {state.state_type}
+                                        {formatStateType(state.state_type)}
                                     </p>
                                     {state.trigger_event && (
                                         <p className="mt-0.5 text-[10px] text-muted-foreground/60">
-                                            Trigger: {state.trigger_event}
+                                            {formatTrigger(state.trigger_event)}
                                         </p>
                                     )}
                                 </div>
@@ -369,6 +342,26 @@ function EmptyState({
             {children && <div className="mt-3">{children}</div>}
         </div>
     );
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function formatStateType(type: string): string {
+    const map: Record<string, string> = {
+        goal: 'Goal',
+        emotional: 'Emotional',
+        physical: 'Physical',
+        relationship: 'Relationship',
+        knowledge: 'Knowledge',
+        ability: 'Ability',
+        location: 'Location',
+    };
+    return map[type] ?? type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatTrigger(trigger: string): string {
+    if (trigger === 'story_generation') return 'Auto-generated from story';
+    return trigger.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 // ─── Event icon ──────────────────────────────────────────────────────────────
