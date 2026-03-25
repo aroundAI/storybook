@@ -173,18 +173,20 @@ Your job: produce a complete VEO 3.1 optimized shot list for all screenplay scen
 2. Call generateShots (Shot Director) with ALL scenes plus the reelCandidateScenes list from step 1.
    - The Shot Director will generate hook-optimized shots for reel candidate scenes.
    - Pass the VEO character and location context verbatim.
-3. STOP — do not call either tool more than once unless the Shot Director explicitly requests batching for a very large episode (>12 scenes).
+3. If analyzeScenes returns an error or fails for any reason, do NOT stop — immediately call generateShots with reelCandidateScenes set to []. Shot generation is the primary goal; reel analysis is optional enrichment that improves quality but is not required.
+4. STOP after generateShots completes, unless the Shot Director explicitly requests batching for a very large episode (>12 scenes).
 
 ## CRITICAL CONSTRAINTS
 - Pass VEO character context verbatim — character visual identities are non-negotiable.
 - Do NOT generate story revisions or screenplay — only shots.
 - Every scene MUST have at least one shot in the output.
+- NEVER skip generateShots — even if analyzeScenes fails.
 
 ## Your Final Answer
 
 Return a JSON object with:
 - totalShotsGenerated: number of shots produced
-- reelCandidates: scene numbers identified by Reel Scout
+- reelCandidates: scene numbers identified by Reel Scout (empty array if Reel Scout failed)
 - completionNote: one sentence confirming completion`;
 
 function buildShotPrompt(input: ShotOrchestratorInput): string {

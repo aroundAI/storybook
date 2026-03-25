@@ -140,9 +140,15 @@ export async function processShotGeneration(
       locationsVeoContext: locationsFormatted,
     });
 
-    if (!orchestratorResult.success || orchestratorResult.shots.length === 0) {
+    if (!orchestratorResult.success) {
       throw new Error(
-        `Shot Orchestrator failed: ${orchestratorResult.error ?? 'No shots generated'}`,
+        `Shot Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+      );
+    }
+
+    if (orchestratorResult.shots.length === 0) {
+      throw new Error(
+        'Shot Director produced no shots — Reel Scout model may be misconfigured. Check quality-evaluation/reel-scout.json model name.',
       );
     }
 
