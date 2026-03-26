@@ -86,7 +86,7 @@ const generateShotsTool = createTool({
             console.log(`[Shot Director] executeLLM imported successfully`);
 
             // Process scenes in parallel batches of 5
-            // Using Promise.allSettled so individual scene failures never abort the batch
+            // Using Promise.all (fail-fast): if any scene in a batch fails, the batch fails.
             const CONCURRENCY = 5;
             const allShots: Array<{
                 sceneNumber: number;

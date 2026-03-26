@@ -172,7 +172,7 @@ export function CanonDashboard({
                 </TabsList>
 
                 {/* Events */}
-                <TabsContent value="events" className="mt-3 space-y-2">
+                <TabsContent value="events" className="mt-3 max-h-[280px] space-y-2 overflow-y-auto">
                     {events.length === 0 ? (
                         <EmptyState
                             icon={<Calendar className="h-7 w-7" />}
@@ -221,7 +221,7 @@ export function CanonDashboard({
                 </TabsContent>
 
                 {/* Threads */}
-                <TabsContent value="threads" className="mt-3 space-y-2">
+                <TabsContent value="threads" className="mt-3 max-h-[280px] space-y-2 overflow-y-auto">
                     {threads.length === 0 ? (
                         <EmptyState
                             icon={<GitBranch className="h-7 w-7" />}
@@ -274,7 +274,7 @@ export function CanonDashboard({
                 </TabsContent>
 
                 {/* Characters */}
-                <TabsContent value="characters" className="mt-3 space-y-2">
+                <TabsContent value="characters" className="mt-3 max-h-[280px] space-y-2 overflow-y-auto">
                     {characterStates.length === 0 ? (
                         <EmptyState
                             icon={<User className="h-7 w-7" />}

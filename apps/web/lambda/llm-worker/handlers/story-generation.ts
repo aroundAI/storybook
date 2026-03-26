@@ -197,6 +197,7 @@ export async function processStoryGeneration(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
+      .eq('version', data.version)
       .is('deleted_at', null)
       .select()
       .single();
