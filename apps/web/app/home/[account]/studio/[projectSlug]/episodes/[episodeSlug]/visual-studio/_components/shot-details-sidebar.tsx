@@ -290,9 +290,11 @@ export function ShotDetailsSidebar({
   const shotCharacters = metadata?.characters ?? [];
   const hasVeoData = !!veoPrompt;
 
-  // Hoist character resolution out of JSX IIFE
+  // Hoist character resolution out of JSX IIFE.
+  // Read metadata?.characters directly inside the memo to avoid a new
+  // array reference on every render (which would retrigger the memo).
   const resolvedCharacters = useMemo(() => {
-    const chars = [...shotCharacters];
+    const chars = metadata?.characters ?? [];
     if (chars.length === 0 && veoPrompt && isVeoPromptV2(veoPrompt)) {
       const charSet = new Set<string>();
       for (const event of veoPrompt.timeline) {
@@ -301,7 +303,8 @@ export function ShotDetailsSidebar({
       return [...charSet];
     }
     return chars;
-  }, [shotCharacters, veoPrompt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metadata?.characters, veoPrompt]);
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
     if (veoPrompt && isVeoPromptV2(veoPrompt)) {

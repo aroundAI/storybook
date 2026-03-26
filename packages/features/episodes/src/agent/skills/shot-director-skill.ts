@@ -180,6 +180,7 @@ const generateShotsTool = createTool({
                                 characters,
                                 locations,
                                 previous_scene_summary: '',
+                                reel_note: reelNote,
                             },
                             context: {
                                 name: 'agent.shotDirector.generateShots',
