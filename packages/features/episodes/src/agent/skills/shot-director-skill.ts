@@ -105,7 +105,6 @@ const generateShotsTool = createTool({
                 };
             }> = [];
 
-            let failedScenes = 0;
 
             for (let i = 0; i < scenes.length; i += CONCURRENCY) {
                 const batch = scenes.slice(i, i + CONCURRENCY);
@@ -117,7 +116,7 @@ const generateShotsTool = createTool({
                     `(scenes ${batch.map((s) => s.number).join(', ')})`,
                 );
 
-                const batchResults = await Promise.allSettled(
+                const batchResults = await Promise.all(
                     batch.map(async (scene) => {
                         const isReelCandidate = reelCandidateScenes.includes(scene.number);
 
@@ -199,24 +198,11 @@ const generateShotsTool = createTool({
                     }),
                 );
 
-                // Collect results — log failures but keep successful shots
-                for (let j = 0; j < batchResults.length; j++) {
-                    const result = batchResults[j]!;
-                    const scene = batch[j]!;
-
-                    if (result.status === 'fulfilled') {
-                        allShots.push(...result.value);
-                    } else {
-                        failedScenes++;
-                        console.error(
-                            `[Shot Director] Scene ${scene.number} failed — ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
-                        );
-                    }
-                }
+                allShots.push(...batchResults.flat());
 
                 console.log(
                     `[Shot Director] Batch ${batchNum}/${totalBatches} done. ` +
-                    `Running total: ${allShots.length} shots, ${failedScenes} scene(s) failed`,
+                    `Running total: ${allShots.length} shots`,
                 );
             }
 
@@ -227,8 +213,7 @@ const generateShotsTool = createTool({
             }));
 
             console.log(
-                `[Shot Director] Complete — ${shotsWithSequence.length} shots across ` +
-                `${scenes.length} scenes (${failedScenes} scene(s) failed)`,
+                `[Shot Director] Complete — ${shotsWithSequence.length} shots across ${scenes.length} scenes`,
             );
 
             if (shotsWithSequence.length === 0) {
@@ -240,11 +225,9 @@ const generateShotsTool = createTool({
             return toolSuccess({
                 shots: shotsWithSequence,
                 totalShots: shotsWithSequence.length,
-                scenesProcessed: scenes.length - failedScenes,
-                scenesAttempted: scenes.length,
-                scenesFailed: failedScenes,
+                scenesProcessed: scenes.length,
                 reelCandidatesOptimized: reelCandidateScenes.length,
-                summary: `Generated ${shotsWithSequence.length} shots across ${scenes.length - failedScenes}/${scenes.length} scenes. ${reelCandidateScenes.length} scenes had hook-priority treatment.${failedScenes > 0 ? ` ${failedScenes} scene(s) had errors and were skipped.` : ''}`,
+                summary: `Generated ${shotsWithSequence.length} shots across ${scenes.length} scenes. ${reelCandidateScenes.length} scenes had hook-priority treatment.`,
             });
         } catch (error) {
             const message = (error as Error).message;
