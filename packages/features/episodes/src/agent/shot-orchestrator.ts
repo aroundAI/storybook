@@ -122,6 +122,23 @@ export async function runShotOrchestrator(
         { accountId: input.accountId },
     );
 
+    // Log the full agent result for diagnostics
+    console.log(
+        `[Shot Orchestrator] runAgent result — success: ${result.success}, ` +
+        `steps: ${result.steps.length}, error: ${result.error ?? 'none'}, ` +
+        `data: ${result.data ? JSON.stringify(result.data).substring(0, 200) : 'null'}`,
+    );
+
+    // Log each step type for visibility
+    for (const [i, step] of result.steps.entries()) {
+        console.log(
+            `[Shot Orchestrator] Step ${i + 1}: type=${step.type}, ` +
+            `tool=${step.toolName ?? 'n/a'}, ` +
+            `toolSuccess=${step.toolResult?.success ?? 'n/a'}, ` +
+            `tokens=${step.tokensUsed ?? 0}`,
+        );
+    }
+
     if (!result.success || !result.data) {
         console.warn(`[Shot Orchestrator] Failed: ${result.error}`);
         return {

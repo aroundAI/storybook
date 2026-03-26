@@ -287,6 +287,12 @@ export async function runAgent<T = unknown>(
     const provider = (resolved.provider ?? 'deepseek') as LLMProvider;
     const model = resolved.model ?? 'deepseek-chat';
 
+    console.log(
+        `[Agent:${config.name}] Starting. Provider: ${provider}, Model: ${model}, ` +
+        `MaxSteps: ${resolved.maxSteps}, Tools: [${resolved.tools.map(t => t.name).join(', ')}], ` +
+        `SystemPrompt: ${systemPrompt.length} chars, UserPrompt: ${input.userPrompt.length} chars`,
+    );
+
     const llm = createLLMClient({
         provider,
         model,
@@ -298,6 +304,11 @@ export async function runAgent<T = unknown>(
 
     for (let stepIdx = 0; stepIdx < resolved.maxSteps; stepIdx++) {
         const stepStartTime = Date.now();
+
+        console.log(
+            `[Agent:${config.name}] Step ${stepIdx + 1}/${resolved.maxSteps} — ` +
+            `calling LLM with ${conversationHistory.length} messages`,
+        );
 
         try {
             // 1. Call LLM with full conversation history
@@ -314,12 +325,20 @@ export async function runAgent<T = unknown>(
             const tokens = response.usage.totalTokens;
             const cost = response.cost?.total ?? 0;
 
+            console.log(
+                `[Agent:${config.name}] Step ${stepIdx + 1} — LLM responded in ${stepLatency}ms, ` +
+                `tokens: ${tokens}, cost: $${cost.toFixed(4)}`,
+            );
+
             // 2. Track budget
             budget.record(tokens, cost, stepLatency);
 
             // 3. Check budget
             const budgetCheck = budget.isExceeded();
             if (budgetCheck.exceeded) {
+                console.error(
+                    `[Agent:${config.name}] Budget exceeded at step ${stepIdx + 1}: ${budgetCheck.reason}`,
+                );
                 return {
                     success: false,
                     error: budgetCheck.reason,
@@ -330,6 +349,13 @@ export async function runAgent<T = unknown>(
 
             // 4. Parse response
             const responseContent = response.message.content ?? '';
+
+            // Log a preview of the raw LLM response (first 500 chars)
+            console.log(
+                `[Agent:${config.name}] Step ${stepIdx + 1} — Raw LLM response (${responseContent.length} chars): ` +
+                `${responseContent.substring(0, 500)}${responseContent.length > 500 ? '...' : ''}`,
+            );
+
             let parsed: ParsedAgentResponse;
 
             try {
@@ -337,6 +363,11 @@ export async function runAgent<T = unknown>(
             } catch (parseError) {
                 // If parsing fails, treat the raw response as a final answer
                 // This handles cases where the LLM doesn't follow the format
+                console.warn(
+                    `[Agent:${config.name}] Step ${stepIdx + 1} — PARSE FAILED: ${(parseError as Error).message}. ` +
+                    `Treating raw response as final_answer.`,
+                );
+
                 steps.push({
                     type: 'final_answer',
                     content: responseContent,
@@ -354,6 +385,11 @@ export async function runAgent<T = unknown>(
                     error: `Parse warning: ${(parseError as Error).message}`,
                 };
             }
+
+            console.log(
+                `[Agent:${config.name}] Step ${stepIdx + 1} — Parsed action: ${parsed.type}` +
+                `${parsed.type === 'tool_call' ? ` → tool: ${parsed.toolName}` : ''}`,
+            );
 
             // 5. Handle based on action type
             if (parsed.type === 'tool_call') {
@@ -387,18 +423,28 @@ export async function runAgent<T = unknown>(
                 }
 
                 // Execute the tool
+                console.log(
+                    `[Agent:${config.name}] Step ${stepIdx + 1} — Executing tool: ${parsed.toolName}`,
+                );
+
                 let toolResult;
                 try {
                     // Validate params with zod schema
                     const validatedParams = tool.parameters.parse(parsed.params);
                     toolResult = await tool.execute(validatedParams, runContext);
+
+                    console.log(
+                        `[Agent:${config.name}] Step ${stepIdx + 1} — Tool ${parsed.toolName} completed. ` +
+                        `Success: ${toolResult?.success ?? 'unknown'}`,
+                    );
                 } catch (toolError) {
+                    const errMsg = toolError instanceof Error ? toolError.message : 'Tool execution failed';
+                    console.error(
+                        `[Agent:${config.name}] Step ${stepIdx + 1} — Tool ${parsed.toolName} THREW: ${errMsg}`,
+                    );
                     toolResult = {
                         success: false,
-                        error:
-                            toolError instanceof Error
-                                ? toolError.message
-                                : 'Tool execution failed',
+                        error: errMsg,
                     };
                 }
 
@@ -424,6 +470,11 @@ export async function runAgent<T = unknown>(
                 );
             } else {
                 // Final answer — we're done
+                console.log(
+                    `[Agent:${config.name}] Step ${stepIdx + 1} — FINAL ANSWER received. ` +
+                    `Result preview: ${JSON.stringify(parsed.result).substring(0, 300)}`,
+                );
+
                 steps.push({
                     type: 'final_answer',
                     content: parsed.result,
@@ -442,6 +493,9 @@ export async function runAgent<T = unknown>(
             }
         } catch (error) {
             if (error instanceof BudgetExceededError) {
+                console.error(
+                    `[Agent:${config.name}] BudgetExceededError at step ${stepIdx + 1}: ${error.message}`,
+                );
                 return {
                     success: false,
                     error: error.message,
@@ -451,6 +505,10 @@ export async function runAgent<T = unknown>(
             }
 
             // LLM call failed — record and abort
+            console.error(
+                `[Agent:${config.name}] Step ${stepIdx + 1} — LLM CALL FAILED: ${(error as Error).message}`,
+            );
+
             steps.push({
                 type: 'tool_call',
                 content: `LLM call failed: ${(error as Error).message}`,
