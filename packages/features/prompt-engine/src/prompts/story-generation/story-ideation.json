@@ -1,13 +1,13 @@
 {
   "slug": "story-ideation",
   "name": "Story Ideation",
-  "version": 1,
+  "version": 2,
   "category": "story-generation",
   "description": "Generate multiple story ideas from a premise. Creates diverse, creative story concepts suitable for short-form video content.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
     "provider": "gemini",
-    "model": "gemini-3-pro-preview",
+    "model": "gemini-3-flash-preview",
     "max_tokens": 8000,
     "temperature": 0.8,
     "response_format": {
@@ -24,15 +24,23 @@
       "order": 1
     },
     {
+      "slug": "viral-scoring",
+      "name": "Viral Concept Scoring",
+      "content": "VIRAL POTENTIAL SCORING — Evaluate and score every idea you generate:\n\nFor each concept, assess:\n1. CURIOSITY GAP: What central mystery or withheld fact would make a viewer NEED to watch to the end?\n   Strong: A question so specific and personal that the viewer can't not find out the answer.\n   Weak: A vague mystery that doesn't feel urgent.\n\n2. EMOTIONAL ANCHOR: What universally relatable feeling does this story tap into?\n   Strong: 'A child trying to protect someone they love' — everyone has felt protective love.\n   Weak: 'A person has an adventure' — not specific enough to create connection.\n\n3. SHAREABILITY: What designed reaction makes a viewer say this to someone else?\n   - 'I can't believe it ended like that' (twist)\n   - 'This is so relatable, I felt this' (emotional mirror)\n   - 'You have to see what this character does' (memorable moment)\n   - 'I didn't expect to feel something today' (surprise emotion)\n\nScore 1-10:\n- 9-10: Must-watch premise, strong curiosity gap, universally relatable, designed for a specific share reaction\n- 7-8: Good premise, clear emotional hook, some viral potential\n- 5-6: Solid story, limited viral mechanics, great content but unlikely to spread\n- 1-4: Generic, no clear curiosity gap, low shareability",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
       "slug": "format",
       "name": "JSON Output Format",
       "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
       "layer_type": "format",
       "scope": "template",
-      "order": 2
+      "order": 3
     }
   ],
-  "user_prompt": "Generate {{number_of_ideas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n{{recurring_element}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: ALL story ideas MUST feature ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: ALL story ideas MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Be aware of previous episodes. Don't repeat plot points.\n4. **Recurring Element**: If a recurring element is specified above, each story idea MUST naturally incorporate it.\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{target_audience}}\n- Visual Style: {{visual_style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5 **Visual Potential**: Why this story works well for video\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\"\n    }\n  ]\n}\n```",
+  "user_prompt": "Generate {{number_of_ideas}} unique story ideas based on this premise:\n\n**Premise**: {{premise}}\n\n{{season_context}}\n\n{{characters}}\n\n{{locations}}\n\n{{previous_episodes}}\n\n{{recurring_element}}\n\n**CRITICAL CONSTRAINTS**:\n1. **Character Consistency**: ALL story ideas MUST feature ONLY the characters listed above. Do NOT invent new characters.\n2. **Location Consistency**: ALL story ideas MUST take place in the locations listed above. Do NOT create new locations.\n3. **Continuity**: Be aware of previous episodes. Don't repeat plot points.\n4. **Recurring Element**: If a recurring element is specified above, each story idea MUST naturally incorporate it.\n\n**Context**:\n- Genre: {{genre}}\n- Target Audience: {{target_audience}}\n- Visual Style: {{visual_style}}\n\nFor each story idea, provide:\n1. **Title**: A catchy, memorable title\n2. **Logline**: A compelling one-sentence summary\n3. **Themes**: 2-3 key themes or messages\n4. **Hook**: What makes this story unique and engaging?\n5. **Visual Potential**: Why this story works well for video\n6. **Viral Potential**: Score (1-10) plus reasoning:\n   - curiosityGap: The specific withheld mystery that would pull a viewer to the end\n   - emotionalAnchor: The universally relatable feeling this story taps into\n   - shareability: The designed reaction that makes a viewer tell someone about this\n\nEnsure each idea is distinct and explores different angles of the premise. Focus on stories that are:\n- Visually compelling\n- Emotionally engaging\n- Suitable for 1-10 minute runtime\n- Clear narrative structure (beginning, middle, end)\n- High viral potential (choose premises with strong curiosity gaps)\n\nRespond with a JSON object matching this structure:\n\n```json\n{\n  \"ideas\": [\n    {\n      \"title\": \"string\",\n      \"logline\": \"string\",\n      \"themes\": [\"string\"],\n      \"hook\": \"string\",\n      \"visualPotential\": \"string\",\n      \"viralPotential\": {\n        \"score\": number (1-10),\n        \"curiosityGap\": \"string — the specific mystery that makes a viewer need to watch to the end\",\n        \"emotionalAnchor\": \"string — the universally relatable feeling this taps into\",\n        \"shareability\": \"string — the designed share reaction ('I can't believe...', 'This is so relatable', 'You have to see...')\"\n      }\n    }\n  ]\n}\n```",
   "variables": {
     "premise": {
       "type": "text",
@@ -89,9 +97,9 @@
     "type": "object",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ ideas: z.array(z.object({ title: z.string(), logline: z.string(), themes: z.array(z.string()), hook: z.string(), visualPotential: z.string() })) })"
+      "definition": "z.object({ ideas: z.array(z.object({ title: z.string(), logline: z.string(), themes: z.array(z.string()), hook: z.string(), visualPotential: z.string(), viralPotential: z.object({ score: z.number().min(1).max(10), curiosityGap: z.string(), emotionalAnchor: z.string(), shareability: z.string() }).optional() })) })"
     },
-    "schema_for_llm": "Return JSON: { \"ideas\": [{ \"title\": \"string\", \"logline\": \"string\", \"themes\": [\"string\"], \"hook\": \"string\", \"visualPotential\": \"string\" }] }",
+    "schema_for_llm": "Return JSON: { \"ideas\": [{ \"title\": \"string\", \"logline\": \"string\", \"themes\": [\"string\"], \"hook\": \"string\", \"visualPotential\": \"string\", \"viralPotential\": { \"score\": number, \"curiosityGap\": \"string\", \"emotionalAnchor\": \"string\", \"shareability\": \"string\" } }] }",
     "example_output": {
       "ideas": [
         {
@@ -103,7 +111,13 @@
             "identity"
           ],
           "hook": "The twist reveals the message was sent from the future, creating a paradox the protagonist must resolve.",
-          "visualPotential": "Stunning space visuals, intimate spacecraft interiors, emotional close-ups of the astronaut's reactions."
+          "visualPotential": "Stunning space visuals, intimate spacecraft interiors, emotional close-ups of the astronaut's reactions.",
+          "viralPotential": {
+            "score": 9,
+            "curiosityGap": "Who sent the signal, and why does it contain Maya's own voice describing events that haven't happened yet?",
+            "emotionalAnchor": "The loneliness of being far from home — and the terror of receiving a message only you can hear",
+            "shareability": "I can't believe the signal was her own future voice — a predestination loop viewers will discuss for days"
+          }
         }
       ]
     }

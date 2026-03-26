@@ -431,7 +431,14 @@ export async function executeLLM<T = unknown>(
             'EHOSTUNREACH',
             'fetch failed',
             'network error',
+            // Gemini / Google API transient capacity errors
+            'UNAVAILABLE',
+            'high demand',
+            '503',
+            'overloaded',
+            'Resource has been exhausted',
           ],
+
         },
       );
       latency = Date.now() - startTime;
@@ -483,9 +490,17 @@ export async function executeLLM<T = unknown>(
             : 'Unknown error';
 
         // Check if this is a JSON syntax error (likely truncation)
+        // Also catch "No object/array found" — happens when the response is so
+        // truncated that findBalancedJSON can't locate a closing brace at all.
         const isJsonSyntaxError = errorMessage.includes('Invalid JSON syntax');
+        const isTruncationError =
+          errorMessage.includes('No object found') ||
+          errorMessage.includes('No array found');
 
-        if (isJsonSyntaxError && jsonRetryAttempt < MAX_JSON_RETRIES) {
+        if (
+          (isJsonSyntaxError || isTruncationError) &&
+          jsonRetryAttempt < MAX_JSON_RETRIES
+        ) {
           // Escalate max_tokens and retry
           const nextMaxTokens = Math.ceil(
             currentMaxTokens * JSON_RETRY_TOKEN_MULTIPLIER,
@@ -618,18 +633,23 @@ export async function executeLLM<T = unknown>(
     }
 
     // 11. Log analytics (success) - use injected client or dynamic import for Next.js
-    let client;
-    if (config.supabaseClient) {
-      client = config.supabaseClient;
-    } else {
-      // Dynamic import to avoid server-only at module level (for Next.js context)
-      const { getSupabaseServerAdminClient } = await import(
-        '@kit/supabase/server-admin-client'
-      );
-      client = getSupabaseServerAdminClient();
-    }
-
+    // IMPORTANT: entire block (including client creation) is inside try/catch so that
+    // missing env vars (e.g. NEXT_PUBLIC_SUPABASE_PUBLIC_KEY in Lambda) or
+    // server-only import errors never crash the LLM result.
     try {
+      let client;
+      if (config.supabaseClient) {
+        client = config.supabaseClient;
+      } else {
+        // Lambda-safe: build client directly from env vars.
+        // Avoids server-only import (getSupabaseServerAdminClient) which crashes in Lambda.
+        // NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are always set in Lambda.
+        const { createLambdaAdminClient } = await import(
+          '@kit/supabase/lambda-admin-client'
+        );
+        client = createLambdaAdminClient() ?? undefined;
+      }
+
       await logLLMUsage(client, {
         accountId: config.context.accountId,
         userId: config.context.userId,
@@ -689,19 +709,18 @@ export async function executeLLM<T = unknown>(
       `LLM execution failed: ${config.templateSlug}`,
     );
 
-    // Log analytics (failure) - use injected client or dynamic import for Next.js
-    let failureClient;
-    if (config.supabaseClient) {
-      failureClient = config.supabaseClient;
-    } else {
-      // Dynamic import to avoid server-only at module level (for Next.js context)
-      const { getSupabaseServerAdminClient } = await import(
-        '@kit/supabase/server-admin-client'
-      );
-      failureClient = getSupabaseServerAdminClient();
-    }
-
+    // Log analytics (failure) - client creation also inside try/catch (same reason as above)
     try {
+      let failureClient;
+      if (config.supabaseClient) {
+        failureClient = config.supabaseClient;
+      } else {
+        const { createLambdaAdminClient } = await import(
+          '@kit/supabase/lambda-admin-client'
+        );
+        failureClient = createLambdaAdminClient() ?? undefined;
+      }
+
       await logLLMUsage(failureClient, {
         accountId: config.context.accountId,
         userId: config.context.userId,

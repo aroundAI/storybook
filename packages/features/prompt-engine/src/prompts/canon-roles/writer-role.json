@@ -4,7 +4,7 @@
     "description": "Writer role for Canon Management System. Generates prose and dialogue within the structure defined by Planner. Cannot modify plot or structure.",
     "model": {
         "provider": "gemini",
-        "model": "gemini-3-pro-preview",
+        "model": "gemini-3-flash-preview",
         "temperature": 0.7,
         "max_tokens": 8192
     },

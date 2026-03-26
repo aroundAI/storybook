@@ -1,21 +1,21 @@
 /**
- * Shot Generation Handler
+ * Shot Generation Handler — Stage 3
  *
- * Generates shot list from screenplay using parallel scene processing.
+ * Stage 3 of the 3-stage agentic content pipeline.
+ * Runs the Shot Orchestrator: Reel Scout → Shot Director.
  * WRITES TO DATABASE:
  * - Inserts rows into shots table
  * - Updates episode.shot_list
- *
- * This is the most complex handler - processes scenes in parallel batches.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
+
+import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
 
 import {
   markJobCompleted,
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-import { parseTimeToSeconds } from '../utils/time-utils';
 
 interface ShotGenerationPayload {
   episodeId: string;
@@ -39,55 +39,6 @@ interface ScreenplayScene {
   }>;
 }
 
-interface VeoPrompt {
-  shotLine: string;
-  timeline: Array<{
-    startTime: string;
-    endTime: string;
-    type: 'action' | 'dialogue' | 'transition';
-    character?: string | null;
-    content: string;
-    emotion?: string | null;
-  }>;
-  audio: string;
-  style: string;
-  avoid: string;
-  fullPrompt: string;
-  audioCues?: Array<{
-    type: 'sfx' | 'ambient' | 'music';
-    prompt: string;
-    startOffset: number;
-    duration: number;
-    isLoopable?: boolean;
-  }>;
-}
-
-interface GeneratedShot {
-  shotNumber: number;
-  shotType: string;
-  cameraDirection: string;
-  description: string;
-  duration: number;
-  characters: string[];
-  metadata: {
-    location: string;
-    timeOfDay: string;
-    mood?: string;
-    lighting?: string;
-  };
-  veoPrompt: VeoPrompt;
-}
-
-interface SceneResult {
-  sceneNumber: number;
-  shots: GeneratedShot[];
-  sceneSummary: string;
-  sceneViralScore?: number;
-  sceneHookType?: string;
-  sceneStandaloneSummary?: string;
-}
-
-
 interface ShotGenerationResult {
   success: boolean;
   data: {
@@ -100,8 +51,6 @@ interface ShotGenerationResult {
     };
   };
 }
-
-const PARALLEL_CONCURRENCY = 5; // Process 5 scenes at a time
 
 export async function processShotGeneration(
   payload: Record<string, unknown>,
@@ -162,97 +111,106 @@ export async function processShotGeneration(
     const locationsFormatted =
       formatLocationsForVeoPrompt(locations) || 'No locations defined.';
 
-    const storyData = (episode.story_data as Record<string, unknown>) || {};
+    // 3. Run the Stage 3 Shot Orchestrator (Reel Scout + Shot Director)
+    const { runShotOrchestrator } = await import(
+      '@kit/episodes/agent/shot-orchestrator'
+    );
 
-    // Use episode context for consistent project settings
-    const episodeMetadata = JSON.stringify({
-      title: episode.title,
-      genre: episodeContext.genre,
-      targetAudience: episodeContext.targetAudience,
-      visualStyle: episodeContext.visualStyle,
-      aestheticStyle: episodeContext.aestheticStyle, // Project aesthetic style
-      tone: storyData.tone || 'balanced',
+    console.log(
+      `[Shot Generation] Starting Shot Orchestrator — ` +
+      `${scenes.length} scenes, ${characters.length} characters, ${locations.length} locations`,
+    );
+
+    // Diagnostic: inspect raw scene shape from DB so CloudWatch shows data issues immediately
+    console.log(
+      `[Shot Generation] Raw scene[0] keys: ${Object.keys(scenes[0] as unknown as Record<string, unknown>).join(', ')}`,
+    );
+    console.log(
+      `[Shot Generation] Scene action fields: ${scenes.map((s, i) => {
+        const raw = s as unknown as Record<string, unknown>;
+        return `scene${i + 1}=${Array.isArray(raw['action']) ? 'array(' + (raw['action'] as unknown[]).length + ')' : typeof raw['action']}`;
+      }).join(', ')}`,
+    );
+
+    const orchestratorResult = await runShotOrchestrator({
+      episodeId: data.episodeId,
+      episodeTitle: episode.title,
+      genre: episodeContext.genre ?? 'general',
+      targetAudience: episodeContext.targetAudience ?? 'general',
+      visualStyle: episodeContext.visualStyle ?? 'cinematic',
+      accountId: data.accountId,
+      // Map screenplay scenes — screenplay_data stores action lines in `description` (string),
+      // not in a separate `action` array. Derive action from description when absent.
+      scenes: scenes.map((s, idx) => {
+        const raw = s as unknown as Record<string, unknown>;
+        const hasStoredAction = Array.isArray(raw['action']) && (raw['action'] as unknown[]).length > 0;
+        const action = hasStoredAction
+          ? (raw['action'] as string[])
+          : (s.description ?? '').split('\n').map((l: string) => l.trim()).filter(Boolean);
+
+        console.log(
+          `[Shot Generation] Scene ${idx + 1}/${scenes.length} — ` +
+          `actionSource=${hasStoredAction ? 'stored-array' : 'description-split'}, ` +
+          `actionLines=${action.length}, dialogueLines=${(s.dialogue ?? []).length}`,
+        );
+
+        return {
+          number: s.number,
+          heading: s.heading,
+          location: s.location,
+          timeOfDay: s.timeOfDay,
+          description: s.description,
+          action,
+          dialogue: (s.dialogue ?? []).map((d) => ({
+            character: d.character,
+            text: (d as Record<string, unknown>).text as string ?? d.dialogue ?? '',
+            parenthetical: d.parenthetical,
+          })),
+          estimatedDuration: (s as Record<string, unknown>).estimatedDuration as number | undefined,
+        };
+      }),
+      charactersVeoContext: charactersFormatted,
+      locationsVeoContext: locationsFormatted,
     });
 
-    // 3. Process scenes in parallel batches
-    const { executeLLM } = await import('@kit/prompt-engine/server');
-    const sceneResults: SceneResult[] = [];
+    console.log(
+      `[Shot Generation] Orchestrator completed — ` +
+      `success: ${orchestratorResult.success}, ` +
+      `shots: ${orchestratorResult.shots.length}, ` +
+      `reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}, ` +
+      `steps: ${orchestratorResult.orchestratorSteps}`,
+    );
 
-    for (
-      let batchStart = 0;
-      batchStart < scenes.length;
-      batchStart += PARALLEL_CONCURRENCY
-    ) {
-      const batch = scenes.slice(batchStart, batchStart + PARALLEL_CONCURRENCY);
-
-      console.log(
-        `[Shot Generation] Processing scenes ${batchStart + 1}-${Math.min(batchStart + PARALLEL_CONCURRENCY, scenes.length)}`,
+    if (!orchestratorResult.success) {
+      throw new Error(
+        `Shot Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
       );
-
-      const batchPromises = batch.map(async (scene, batchIndex) => {
-        const sceneNumber = scene.number || batchStart + batchIndex + 1;
-
-        // Include audioCues from screenplay for Stage 2 refinement
-        const sceneContent = JSON.stringify({
-          number: sceneNumber,
-          heading: scene.heading,
-          location: scene.location,
-          timeOfDay: scene.timeOfDay,
-          description: scene.description,
-          action: scene.action,
-          dialogue: scene.dialogue,
-          audioCues: scene.audioCues || [], // Scene-level audio design from screenplay
-        });
-
-        try {
-          const result = await executeLLM<{
-            shots: GeneratedShot[];
-            sceneSummary: string;
-          }>({
-            templateSlug: 'scene-shot-generation',
-            variables: {
-              scene_number: sceneNumber,
-              total_scenes: scenes.length,
-              characters: charactersFormatted,
-              locations: locationsFormatted,
-              episode_metadata: episodeMetadata,
-              previous_scene_summary: 'Context from parallel processing.',
-              scene_content: sceneContent,
-            },
-            context: {
-              name: `shot-list.scene-${sceneNumber}`,
-              accountId: data.accountId,
-              userId: data.userId,
-            },
-            temperature: 0.4,
-            supabaseClient: supabase,
-          });
-
-          return {
-            sceneNumber,
-            shots: result.data.shots,
-            sceneSummary: result.data.sceneSummary,
-            sceneViralScore: result.data.sceneViralScore,
-            sceneHookType: result.data.sceneHookType,
-            sceneStandaloneSummary: result.data.sceneStandaloneSummary,
-          };
-        } catch (error) {
-          console.error(
-            `[Shot Generation] Scene ${sceneNumber} failed:`,
-            error,
-          );
-          return { sceneNumber, shots: [], sceneSummary: '' };
-        }
-      });
-
-      const batchResults = await Promise.all(batchPromises);
-      sceneResults.push(...batchResults);
     }
 
-    // Sort by scene number
-    sceneResults.sort((a, b) => a.sceneNumber - b.sceneNumber);
+    if (orchestratorResult.shots.length === 0) {
+      throw new Error(
+        'Shot Director returned 0 shots. All scene-shot-generation LLM calls failed. ' +
+        'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
+      );
+    }
 
-    // 4. Query existing shots for correct sequence number base (matching batchCreateShotsAction)
+    const reelCandidateSet = new Set(orchestratorResult.reelCandidateScenes);
+
+    // Build lookup: sceneNumber → full Reel Scout analysis (viralScore, hookType, etc.)
+    const sceneAnalysisMap = new Map<number, ReelSceneAnalysis>(
+      orchestratorResult.sceneAnalyses.map((a) => [a.sceneNumber, a]),
+    );
+    console.log(
+      `[Shot Generation] sceneAnalysisMap: ${sceneAnalysisMap.size} entries from Reel Scout. ` +
+      `Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
+    );
+    console.log(
+      `[Shot Generation] Per-scene viral scores: ${[...sceneAnalysisMap.entries()].map(
+        ([sceneNum, a]) => `scene${sceneNum}=${a.viralScore}(${a.isReelCandidate ? 'candidate' : 'non-candidate'})`
+      ).join(', ') || 'no data'}`,
+    );
+
+    // 4. Query existing shots for correct sequence number base
     const { data: existingShots } = await supabase
       .from('shots')
       .select('sequence_number')
@@ -266,7 +224,7 @@ export async function processShotGeneration(
       `[Shot Generation] Starting sequence number: ${sequenceNumber}`,
     );
 
-    // 5. Aggregate shots with global sequence numbers (matching batchCreateShotsAction)
+    // 5. Build shots table rows from flat orchestrator output
     const allShots: Array<{
       episode_id: string;
       scene_number: number;
@@ -285,142 +243,67 @@ export async function processShotGeneration(
     const shotTypes = { wide: 0, medium: 0, closeUp: 0 };
     let totalDuration = 0;
 
-    for (const sceneResult of sceneResults) {
-      // Scene-level shorts decision: all shots in a candidate scene share the same decision
-    const sceneIsCandidate = (sceneResult.sceneViralScore ?? 0) >= 7;
-    const sceneEstimatedDuration = sceneResult.shots.reduce(
-      (sum, sh) => sum + sh.duration,
-      0,
-    );
-    const sceneShortsMetadata = sceneIsCandidate
-      ? {
-          viralScore: sceneResult.sceneViralScore!,
-          hookType: sceneResult.sceneHookType,
-          standaloneSummary: sceneResult.sceneStandaloneSummary,
-          shotCount: sceneResult.shots.length,
-          estimatedDurationSeconds: sceneEstimatedDuration,
-        }
-      : null;
+    for (const shot of orchestratorResult.shots) {
+      const sceneIsCandidate = reelCandidateSet.has(shot.sceneNumber);
+      const sceneAnalysis = sceneAnalysisMap.get(shot.sceneNumber);
 
-    for (const shot of sceneResult.shots) {
-        // Derive action from timeline events (matching local aggregateSceneResults)
-        const derivedAction =
-          shot.veoPrompt?.timeline
-            ?.filter((event) => event.type === 'action')
-            .map((event) => event.content)
-            .join(' ') || shot.description;
+      // Log every shot so we can trace the data flow in CloudWatch
+      console.log(
+        `[Shot Generation] Shot ${shot.sceneNumber}.${shot.shotNumber} — ` +
+        `candidate=${sceneIsCandidate}, ` +
+        `viralScore=${sceneAnalysis?.viralScore ?? 'N/A'}, ` +
+        `hookType=${sceneAnalysis?.hookType ?? shot.metadata.hookType ?? 'none'}`,
+      );
 
-        // Extract dialogue timing for audio sync (matching local aggregateSceneResults)
-        const dialogueTiming =
-          shot.veoPrompt?.timeline
-            ?.filter((event) => event.type === 'dialogue' && event.character)
-            .map((event) => ({
-              startSeconds: parseTimeToSeconds(event.startTime),
-              durationSeconds:
-                parseTimeToSeconds(event.endTime) -
-                parseTimeToSeconds(event.startTime),
-              characterName: event.character || 'Unknown',
-              text: event.content,
-              emotion: event.emotion || null,
-            })) || [];
+      // Build shorts_metadata for ALL shots (not just candidates) so the sidebar
+      // can show viral intelligence and "not a candidate" reasoning for every scene.
+      const shortsMetadata: Record<string, unknown> | null = sceneAnalysis
+        ? {
+            viralScore: sceneAnalysis.viralScore,
+            hookType: sceneAnalysis.hookType ?? shot.metadata.hookType,
+            estimatedDurationSeconds: sceneAnalysis.estimatedDurationSeconds ?? shot.duration,
+            isReelCandidate: sceneAnalysis.isReelCandidate,
+            whyThisWorksAsReel: sceneAnalysis.whyThisWorksAsReel ?? null,
+            whyItDoesntWork: sceneAnalysis.whyItDoesntWork ?? null,
+            keyMoment: sceneAnalysis.keyMoment ?? null,
+            sceneEmotionalArc: sceneAnalysis.sceneEmotionalArc ?? null,
+            improvementSuggestion: sceneAnalysis.improvementSuggestion ?? null,
+          }
+        : (sceneIsCandidate
+          ? { hookType: shot.metadata.hookType, estimatedDurationSeconds: shot.duration, isReelCandidate: true }
+          : null);
 
-        allShots.push({
-          episode_id: data.episodeId,
-          scene_number: sceneResult.sceneNumber,
-          shot_number: shot.shotNumber,
-          sequence_number: sequenceNumber++,
-          scene_description: shot.description,
-          prompt: shot.veoPrompt?.fullPrompt || shot.description,
-          duration_seconds: shot.duration,
-          camera_direction: shot.cameraDirection ?? null,
-          status: 'pending',
-          shorts_candidate: sceneIsCandidate,
-          shorts_metadata: sceneShortsMetadata,
-          generation_metadata: {
-            shotType: shot.shotType,
-            location: shot.metadata.location,
-            timeOfDay: shot.metadata.timeOfDay,
-            mood: shot.metadata.mood,
-            characters: shot.characters ?? [],
-            action: derivedAction,
-            dialogueTiming:
-              dialogueTiming.length > 0 ? dialogueTiming : undefined,
-            veoPrompt: shot.veoPrompt,
-            shortsCandidate: sceneIsCandidate,
-            shortsMetadata: sceneShortsMetadata,
-          },
-        });
+      allShots.push({
+        episode_id: data.episodeId,
+        scene_number: shot.sceneNumber,
+        shot_number: shot.shotNumber,
+        sequence_number: sequenceNumber++,
+        scene_description: shot.description,
+        prompt: shot.veoPrompt?.fullPrompt || shot.description,
+        duration_seconds: shot.duration,
+        camera_direction: shot.cameraDirection ?? null,
+        status: 'pending',
+        shorts_candidate: sceneIsCandidate,
+        shorts_metadata: shortsMetadata,
+        generation_metadata: {
+          shotType: shot.shotType,
+          location: shot.metadata.location,
+          timeOfDay: shot.metadata.timeOfDay,
+          mood: shot.metadata.mood,
+          characters: shot.characters ?? [],
+          veoPrompt: shot.veoPrompt,
+          isReelCandidate: sceneIsCandidate,
+        },
+      });
 
-        // Track stats
-        if (shot.shotType === 'wide') shotTypes.wide++;
-        else if (shot.shotType === 'medium') shotTypes.medium++;
-        else if (shot.shotType?.includes('close')) shotTypes.closeUp++;
-        totalDuration += shot.duration;
-      }
+      if (shot.shotType === 'wide') shotTypes.wide++;
+      else if (shot.shotType === 'medium') shotTypes.medium++;
+      else if (shot.shotType?.includes('close')) shotTypes.closeUp++;
+      totalDuration += shot.duration;
     }
 
     if (allShots.length === 0) {
       throw new Error('No shots were generated');
-    }
-
-    // 5b. Run SHOT quality evaluation (non-blocking, advisory)
-    try {
-      const { executeLLM: evalLLM } = await import('@kit/prompt-engine/server');
-
-      // Evaluate a sample of shots (up to 15) to keep token cost low
-      const sampleShots = allShots.slice(0, 15).map((s) => ({
-        shotNumber: s.shot_number,
-        sceneNumber: s.scene_number,
-        prompt: s.prompt,
-        cameraDirection: s.camera_direction,
-        duration: s.duration_seconds,
-      }));
-
-      const qualityResult = await evalLLM<{
-        overallScore: number;
-        dimensions: Record<string, number>;
-        totalShots: number;
-        compliantShots: number;
-        critique: string;
-        shotIssues: Array<{ shotNumber: number; issue: string; fix: string }>;
-        revisionPriority: string;
-      }>({
-        templateSlug: 'quality-evaluation/shot-quality',
-        variables: {
-          shots_content: JSON.stringify(sampleShots, null, 2),
-          context_hint: `Episode "${episode.title}" — ${allShots.length} total shots across ${sceneResults.length} scenes`,
-        },
-        context: {
-          name: 'shot-quality-eval',
-          accountId: data.accountId,
-          userId: data.userId,
-        },
-        supabaseClient: supabase,
-      });
-
-      const score = qualityResult.data?.overallScore ?? 0;
-      const veoCompliance =
-        qualityResult.data?.dimensions?.veoCompliance ?? 0;
-      console.log(
-        `[Shot Generation] Quality score: ${score.toFixed(2)}, VEO compliance: ${veoCompliance.toFixed(2)} (${qualityResult.data?.compliantShots ?? '?'}/${sampleShots.length} sampled shots compliant)`,
-      );
-
-      const shotIssues = qualityResult.data?.shotIssues ?? [];
-      if (shotIssues.length > 0) {
-        console.warn(
-          `[Shot Generation] ${shotIssues.length} shot issue(s) detected. Priority: ${qualityResult.data?.revisionPriority ?? 'N/A'}`,
-        );
-        for (const issue of shotIssues.slice(0, 3)) {
-          console.warn(
-            `  Shot ${issue.shotNumber}: ${issue.issue} → Fix: ${issue.fix}`,
-          );
-        }
-      }
-    } catch (err) {
-      console.warn(
-        '[Shot Generation] Quality evaluation skipped:',
-        err instanceof Error ? err.message : err,
-      );
     }
 
     // 5. INSERT shots
@@ -438,8 +321,8 @@ export async function processShotGeneration(
       totalShots: allShots.length,
       totalDuration,
       shotTypes,
-      scenesProcessed: sceneResults.length,
-      processingMethod: 'parallel-batches',
+      scenesProcessed: scenes.length,
+      processingMethod: 'shot-orchestrator',
     };
 
     const { error: updateError } = await supabase
@@ -456,7 +339,7 @@ export async function processShotGeneration(
     }
 
     console.log(
-      `[Shot Generation] Created ${allShots.length} shots across ${sceneResults.length} scenes`,
+      `[Shot Generation] Stage 3 complete. ${allShots.length} shots across ${scenes.length} scenes. Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
     );
 
     // 7. Queue Audio Refinement Job (The Dedicated Audio Pass)
@@ -501,7 +384,7 @@ export async function processShotGeneration(
     // Mark job as completed
     await markJobCompleted(supabase, data.episodeId, 'shot_list', {
       totalShots: allShots.length,
-      scenesProcessed: sceneResults.length,
+      scenesProcessed: scenes.length,
       totalDuration,
     });
 
@@ -513,7 +396,7 @@ export async function processShotGeneration(
         metadata: {
           totalDuration,
           shotTypes,
-          scenesProcessed: sceneResults.length,
+          scenesProcessed: scenes.length,
         },
       },
     };

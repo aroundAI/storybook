@@ -4,7 +4,7 @@
     "description": "Stylist role for Canon Management System. Final polish pass for stylistic consistency, tone, and genre adherence. Most constrained role.",
     "model": {
         "provider": "gemini",
-        "model": "gemini-3-pro-preview",
+        "model": "gemini-3-flash-preview",
         "temperature": 0.5,
         "max_tokens": 8192
     },

@@ -1,0 +1,104 @@
+{
+  "slug": "reel-scout",
+  "name": "Reel Scout — Scene Virality Analyst",
+  "version": 1,
+  "category": "quality-evaluation",
+  "description": "Evaluates each screenplay scene as a standalone Reel/Shorts candidate. Returns per-scene textual reasoning (whyThisWorksAsReel / whyItDoesntWork), key moment, emotional arc, improvement suggestions, and viral score. Used by the Reel Scout agent to inform shot composition.",
+  "exported_at": "2026-03-23T00:00:00.000Z",
+  "llm": {
+    "provider": "gemini",
+    "model": "gemini-2.5-flash",
+    "max_tokens": 8000,
+    "temperature": 0.2,
+    "response_format": {
+      "type": "json_object"
+    }
+  },
+  "system_prompts": [
+    {
+      "slug": "role",
+      "name": "Reel Scout Persona",
+      "content": "You are a short-form content strategist who lives on TikTok and Instagram Reels. You instinctively know which scenes from a screenplay would perform as standalone Reels — scenes that are emotionally self-contained, have a hook in the first 3 seconds, and don't require episode context to grip a viewer. You also know exactly why a scene would FAIL as a Reel — too much context required, no emotional peak, flat dialogue, or no visual hook. Be brutally honest and specific. Quote exact dialogue or action beats from the scene when making your case.",
+      "layer_type": "role",
+      "scope": "template",
+      "order": 1
+    },
+    {
+      "slug": "reel-criteria",
+      "name": "Reel Candidate Criteria",
+      "content": "A scene qualifies as a Reel candidate if it meets ALL THREE:\n1. SELF-CONTAINED EMOTIONAL ARC: The scene has a beginning (setup), middle (escalation), and end (resolution or cliffhanger) that makes emotional sense WITHOUT episode context. A viewer who's never seen the show must feel something.\n2. HOOK WITHIN 3 SECONDS: The very first shot/action/line must grab attention — conflict already erupting, a shocking visual, a question being asked, a strong character reaction.\n3. SHAREABLE MOMENT: There must be one moment a viewer would say 'you have to see this' — a line delivery, a visual, a twist, a reaction.\n\nREEL DURATION: 30–90 seconds is ideal. Under 30s feels incomplete; over 90s loses casual viewers.\n\nSCORING (1–10):\n- 9–10: Drop-in Reel, use as-is\n- 7–8: Strong candidate, minor shot-level adjustments recommended\n- 5–6: Possible with significant editing\n- 1–4: Not a Reel candidate — explain exactly what's missing\n\nHOOK TYPES: question | reveal | conflict | visual | humor | cliffhanger | character | action | reaction | punchline",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2
+    },
+    {
+      "slug": "format",
+      "name": "JSON Output Format",
+      "content": "IMPORTANT: Always respond with valid JSON matching the specified output schema. Do not include any text outside the JSON object.",
+      "layer_type": "format",
+      "scope": "template",
+      "order": 3
+    }
+  ],
+  "user_prompt": "Analyze these screenplay scenes as standalone Reel candidates.\n\n**Episode Title**: {{episode_title}}\n**Genre**: {{genre}}\n**Total Scene Count**: {{total_scene_count}}\n\n**Scenes to Evaluate**:\n{{scenes_json}}\n\nFor EACH scene, evaluate its Reel potential. Be specific — quote dialogue, reference action beats. Return your analysis as JSON:\n\n```json\n{\n  \"sceneAnalyses\": [\n    {\n      \"sceneNumber\": 1,\n      \"isReelCandidate\": true,\n      \"viralScore\": 8.5,\n      \"hookType\": \"conflict\",\n      \"estimatedDurationSeconds\": 45,\n      \"keyMoment\": \"The exact moment the detective slams the evidence on the table — 'You were there.' A single accusation that lands like a gut punch.\",\n      \"sceneEmotionalArc\": \"Calm interrogation → building dread → explosive confrontation\",\n      \"whyThisWorksAsReel\": \"Self-contained: the accusation setup and denial play out fully in under 50 seconds. The hook triggers immediately — we open on the suspect's too-calm face before the detective reveals the evidence. The 'You were there' line is the shareable moment — every viewer will quote it.\",\n      \"whyItDoesntWork\": null,\n      \"improvementSuggestion\": \"Start the Reel on the detective picking up the photo (cut the first 2 lines of small talk). This puts the hook at second 0, not second 12.\"\n    },\n    {\n      \"sceneNumber\": 2,\n      \"isReelCandidate\": false,\n      \"viralScore\": 3.2,\n      \"hookType\": null,\n      \"estimatedDurationSeconds\": 60,\n      \"keyMoment\": null,\n      \"sceneEmotionalArc\": \"Exposition → more exposition → setup for Scene 3\",\n      \"whyThisWorksAsReel\": null,\n      \"whyItDoesntWork\": \"This scene exists purely to set up Scene 3 — a viewer with no context would be lost. There is no self-contained emotional arc; the scene ends on an unanswered question that only makes sense if you've watched episode 1. No shareable moment: the dialogue is functional, not quotable.\",\n      \"improvementSuggestion\": \"If a Reel is needed from this section, combine the last beat of Scene 2 with the opening of Scene 3 to create a compressed reveal sequence.\"\n    }\n  ],\n  \"topReelCandidates\": [1, 4, 6],\n  \"orchestratorNote\": \"Scenes 1, 4, and 6 are strong candidates. Scenes 2, 3, 5 require episode context. Shot Composer should prioritize visual hook optimization for Scene 1 (conflict type: expect extreme close-up on evidence reveal).\"\n}\n```",
+  "variables": {
+    "episode_title": {
+      "type": "text",
+      "description": "Episode title for context",
+      "required": true
+    },
+    "genre": {
+      "type": "text",
+      "description": "Genre of the content",
+      "required": true
+    },
+    "total_scene_count": {
+      "type": "number",
+      "description": "Total number of scenes in the screenplay",
+      "required": true
+    },
+    "scenes_json": {
+      "type": "json",
+      "description": "Array of scene objects with number, heading, description, and dialogue",
+      "required": true
+    }
+  },
+  "output": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "sceneAnalyses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "sceneNumber": { "type": "number" },
+              "isReelCandidate": { "type": "boolean" },
+              "viralScore": { "type": "number", "minimum": 1, "maximum": 10 },
+              "hookType": {
+                "type": ["string", "null"],
+                "enum": ["question", "reveal", "conflict", "visual", "humor", "cliffhanger", "character", "action", "reaction", "punchline", null]
+              },
+              "estimatedDurationSeconds": { "type": "number" },
+              "keyMoment": { "type": ["string", "null"] },
+              "sceneEmotionalArc": { "type": "string" },
+              "whyThisWorksAsReel": { "type": ["string", "null"] },
+              "whyItDoesntWork": { "type": ["string", "null"] },
+              "improvementSuggestion": { "type": ["string", "null"] }
+            },
+            "required": ["sceneNumber", "isReelCandidate", "viralScore", "sceneEmotionalArc"]
+          }
+        },
+        "topReelCandidates": {
+          "type": "array",
+          "items": { "type": "number" }
+        },
+        "orchestratorNote": {
+          "type": "string",
+          "description": "Strategic note for the Orchestrator on how to use this analysis"
+        }
+      },
+      "required": ["sceneAnalyses", "topReelCandidates", "orchestratorNote"]
+    }
+  }
+}

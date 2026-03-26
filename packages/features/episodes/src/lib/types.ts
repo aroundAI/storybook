@@ -332,6 +332,8 @@ export interface Episode {
   screenplayData: ScreenplayData | null;
   shotList: ShotListData | null;
   metadata: EpisodeMetadata | null;
+  /** Orchestrator agent's viral quality analysis */
+  viralQuality?: EpisodeViralQuality | null;
   version: number;
   createdAt: string;
   updatedAt: string;
@@ -392,6 +394,49 @@ export interface ShotGenerationSettings {
 }
 
 /**
+ * Dimension scores from the Viral Analyst agent.
+ */
+export interface ViralDimensionScores {
+  hookStrength: number;
+  curiosityGap: number;
+  emotionalArc: number;
+  setupPayoff: number;
+  dialogueSubtext: number;
+  loopability: number;
+  memorableMoment: number;
+}
+
+/**
+ * Episode-level viral quality analysis produced by the Orchestrator agent.
+ * Stored in episodes.viral_quality JSONB.
+ */
+export interface EpisodeViralQuality {
+  /** 0-1 composite score */
+  overallScore: number;
+  /** Orchestrator's final verdict */
+  decision: 'pass' | 'revised' | 'flag';
+  /** Textual explanation of why this episode works as viral content */
+  whyThisWorks: string;
+  /** Textual explanation of what could be improved */
+  whatToImprove: string;
+  /** Per-dimension breakdown */
+  dimensionScores: ViralDimensionScores;
+  /** Which revisions the Orchestrator applied (e.g. "Scene 3 hook strengthened") */
+  revisionsApplied: string[];
+  /** How many agent iterations it took */
+  orchestratorSteps: number;
+  /** Scene-level reel candidate analysis from Reel Scout */
+  reelCandidates: Array<{
+    sceneNumber: number;
+    /** Why this scene works as a standalone Reel */
+    whyThisWorksAsReel: string;
+    hookType: ShortsMetadata['hookType'];
+    viralScore: number;
+    estimatedDurationSeconds: number;
+  }>;
+}
+
+/**
  * Metadata for shorts/clips potential — evaluated at SCENE level.
  * All shots within a candidate scene share the same metadata.
  */
@@ -416,6 +461,17 @@ export interface ShortsMetadata {
   shotCount?: number;
   /** Estimated reel duration in seconds (sum of shot durations) */
   estimatedDurationSeconds?: number;
+  // --- Reel Scout textual reasoning fields ---
+  /** Why this scene works as a standalone Reel (full sentence reasoning) */
+  whyThisWorksAsReel?: string;
+  /** Why this scene does NOT work as a Reel (populated for non-candidates) */
+  whyItDoesntWork?: string;
+  /** The specific moment that makes this scene cinematically memorable */
+  keyMoment?: string;
+  /** The scene's emotional journey (e.g. "confusion → dread → resolve") */
+  sceneEmotionalArc?: string;
+  /** Reel Scout's suggestion for improving reel potential */
+  improvementSuggestion?: string;
 }
 
 export interface Shot {

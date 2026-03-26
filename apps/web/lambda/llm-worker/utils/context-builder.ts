@@ -478,19 +478,44 @@ async function fetchSequentialEpisodes(
 }
 
 /**
- * Format characters for prompt injection
+ * Format characters for prompt injection with locked identity enforcement.
+ * Uses a strong "LOCKED" framing to prevent LLMs from drifting gender, age, or personality.
  */
 export function formatCharactersForPrompt(
   characters: EpisodeContext['characters'],
 ): string {
   if (characters.length === 0) return '';
 
-  return `**Characters in This Episode**:\n${characters
-    .map(
-      (c) =>
-        `- **${c.name}** (${c.role}): ${c.description}${c.personality ? `\n  Personality: ${c.personality}` : ''}`,
-    )
-    .join('\n')}`;
+  const characterBlocks = characters
+    .map((c, i) => {
+      const lines: string[] = [
+        `CHARACTER ${i + 1} — LOCKED IDENTITY (do NOT change gender, age, or personality):`,
+        `  Name: ${c.name}`,
+        `  Role: ${c.role}`,
+        `  Description: ${c.description}`,
+      ];
+
+      if (c.personality) {
+        lines.push(`  Personality: ${c.personality}`);
+      }
+
+      // Include physical attributes if available to reinforce identity
+      const attrs = c.physicalAttributes;
+      if (attrs) {
+        const physParts: string[] = [];
+        if (attrs.gender) physParts.push(`Gender: ${attrs.gender}`);
+        if (attrs.age) physParts.push(`Age: ${attrs.age}`);
+        if (attrs.ageRange) physParts.push(`Age range: ${attrs.ageRange}`);
+        if (physParts.length > 0) {
+          lines.push(`  Identity (immutable): ${physParts.join(', ')}`);
+        }
+      }
+
+      return lines.join('\n');
+    })
+    .join('\n\n');
+
+  return `⚠️ CHARACTER IDENTITIES ARE NON-NEGOTIABLE. Use EXACTLY the characters below with EXACTLY the gender, age, and personality described. Do NOT invent attributes, rename, or rewrite any character.\n\n${characterBlocks}`;
 }
 
 /**
@@ -540,32 +565,55 @@ ${episodes
 }
 
 /**
- * Format recurring element for prompt injection
- * Creates a formatted string describing the recurring story element
+ * Format recurring element for prompt injection.
+ * Fully dynamic — no hardcoded values. Every word comes from project settings.
+ * Placement-aware: generates distinct instruction text for beginning/middle/end/throughout.
  */
 export function formatRecurringElementForPrompt(
   recurringElement: EpisodeContext['recurringElement'],
 ): string {
   if (!recurringElement?.enabled) return '';
 
-  const parts: string[] = [];
+  const placement = (recurringElement.placement ?? 'end').toLowerCase();
 
-  parts.push('**RECURRING STORY ELEMENT** (must appear in this episode):');
+  const placementInstruction: Record<string, string> = {
+    beginning:  'at the START of the episode — before the main story begins',
+    middle:     'at a natural midpoint of the episode',
+    end:        'as the FINAL moment of the episode — nothing follows it',
+    throughout: 'at multiple natural points distributed across the entire episode',
+  };
+  const when = placementInstruction[placement] ?? `at the ${recurringElement.placement} of the episode`;
+
+  const lines: string[] = [
+    '---',
+    `## RECURRING STORY ELEMENT — REQUIRED (Placement: ${recurringElement.placement ?? 'End'})`,
+    '',
+    `This element MUST appear ${when}.`,
+    '',
+  ];
 
   if (recurringElement.location) {
-    parts.push(`- Location/Context: ${recurringElement.location}`);
-  }
-  if (recurringElement.purpose) {
-    parts.push(`- Purpose: ${recurringElement.purpose}`);
-  }
-  if (recurringElement.placement) {
-    parts.push(`- Placement: ${recurringElement.placement} of episode`);
-  }
-  if (recurringElement.dialogueHints) {
-    parts.push(`- Dialogue Style: ${recurringElement.dialogueHints}`);
+    lines.push(`**Location / Context**: ${recurringElement.location}`);
+    lines.push(
+      'If the story is already in this location at the placement point, embed the element naturally.',
+      'If not, transition to this location at the appropriate time.',
+      '',
+    );
   }
 
-  return parts.join('\n');
+  if (recurringElement.purpose) {
+    lines.push(`**What must happen**: ${recurringElement.purpose}`);
+    lines.push('');
+  }
+
+  if (recurringElement.dialogueHints) {
+    lines.push('**Dialogue templates** (adapt to this episode\'s events — do not copy verbatim):');
+    lines.push(recurringElement.dialogueHints);
+    lines.push('');
+  }
+
+  lines.push('---');
+  return lines.join('\n');
 }
 
 /**

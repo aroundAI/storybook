@@ -129,7 +129,7 @@ export async function processScreenplayConversion(
       (episode.project?.metadata as Record<string, unknown>) || {};
 
     // Import content scaling utilities from local Lambda utils (avoids server-only issues)
-    const { calculateContentScaling, formatDuration } = await import(
+    const { calculateContentScaling } = await import(
       '../utils/duration-scaling'
     );
     type ContentStyle = 'dialogue-heavy' | 'action-heavy' | 'balanced';
@@ -153,49 +153,39 @@ export async function processScreenplayConversion(
     const locationNames =
       locations.map((l) => l.name).join(', ') || 'Various locations';
 
-    // Average scene duration for prompt
-    const avgSceneDuration = Math.round(
-      targetDuration /
-      ((scaling.screenplay.sceneCountMin + scaling.screenplay.sceneCountMax) /
-        2),
+    // 3. Run the Stage 2 Screenplay Orchestrator
+    const { runScreenplayOrchestrator } = await import(
+      '@kit/episodes/agent/screenplay-orchestrator'
     );
 
-    const variables = {
-      story: storyData.fullStory as string,
-      characters: charactersFormatted || 'No characters defined.',
-      character_names: characterNames,
-      location_names: locationNames,
-      target_duration: targetDuration,
-      duration_description: formatDuration(targetDuration),
-      content_style: contentStyle,
-      scene_count_min: scaling.screenplay.sceneCountMin,
-      scene_count_max: scaling.screenplay.sceneCountMax,
-      avg_scene_duration: avgSceneDuration,
-      dialogue_lines_per_scene_min: scaling.screenplay.dialogueLinesPerSceneMin,
-      dialogue_lines_per_scene_max: scaling.screenplay.dialogueLinesPerSceneMax,
-      total_dialogue_lines_min: scaling.screenplay.totalDialogueLinesMin,
-      total_dialogue_lines_max: scaling.screenplay.totalDialogueLinesMax,
-      style: data.dialogueStyle || 'natural',
-      genre: projectMetadata.genre || 'general',
-      target_audience: projectMetadata.targetAudience || 'general',
-    };
-
-    // 3. Execute LLM
-    const { executeLLM } = await import('@kit/prompt-engine/server');
-
-    const result = await executeLLM<ScreenplayOutput>({
-      templateSlug: 'screenplay-conversion',
-      variables,
-      context: {
-        name: 'screenplay-conversion',
-        accountId: data.accountId,
-        userId: data.userId,
-      },
-      supabaseClient: supabase,
+    const orchestratorResult = await runScreenplayOrchestrator({
+      episodeId: data.episodeId,
+      episodeTitle: episode.title,
+      episodeNumber: episode.number ?? 1,
+      genre: (projectMetadata.genre as string) || 'general',
+      targetAudience: (projectMetadata.targetAudience as string) || 'general',
+      targetDurationSeconds: targetDuration,
+      contentStyle,
+      accountId: data.accountId,
+      storyText: storyData.fullStory as string,
+      charactersContext: charactersFormatted || 'No characters defined.',
+      characterNames,
+      locationNames,
+      sceneCountMin: scaling.screenplay.sceneCountMin,
+      sceneCountMax: scaling.screenplay.sceneCountMax,
+      dialogueLinesPerSceneMin: scaling.screenplay.dialogueLinesPerSceneMin,
+      dialogueLinesPerSceneMax: scaling.screenplay.dialogueLinesPerSceneMax,
     });
 
-    const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
+    if (!orchestratorResult.success || orchestratorResult.scenes.length === 0) {
+      throw new Error(
+        `Screenplay Orchestrator failed: ${orchestratorResult.error ?? 'No scenes generated'}`,
+      );
+    }
+
+    const costCents = 0; // Agent orchestrator tracks cost internally
     const generatedAt = new Date().toISOString();
+
 
     // 4. FILM-1104: Run SCREENPLAY validation checkpoint
     try {
@@ -203,7 +193,7 @@ export async function processScreenplayConversion(
         '../utils/validation-checkpoint'
       );
 
-      const sceneBlocks = result.data.screenplay.scenes.map((scene) => ({
+      const sceneBlocks = orchestratorResult.scenes.map((scene) => ({
         sceneNumber: scene.number,
         content: `${scene.heading}\n${scene.description}\n${scene.action?.join('\n') ?? ''}`,
       }));
@@ -235,7 +225,7 @@ export async function processScreenplayConversion(
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
-      const screenplayText = result.data.screenplay.scenes
+      const screenplayText = orchestratorResult.scenes
         .map(
           (scene) =>
             `${scene.heading}\n${scene.description}\n${(scene.action ?? []).join('\n')}`,
@@ -284,7 +274,7 @@ export async function processScreenplayConversion(
     // Extract unique locations from all scenes
     const uniqueLocations = [
       ...new Set(
-        result.data.screenplay.scenes
+        orchestratorResult.scenes
           .map((scene) => scene.location)
           .filter((loc): loc is string => Boolean(loc)),
       ),
@@ -293,7 +283,7 @@ export async function processScreenplayConversion(
     // Extract unique characters from all dialogue lines across all scenes
     const uniqueCharacters = [
       ...new Set(
-        result.data.screenplay.scenes
+        orchestratorResult.scenes
           .flatMap((scene) => scene.dialogue || [])
           .map((line) => line.character)
           .filter((char): char is string => Boolean(char)),
@@ -301,27 +291,29 @@ export async function processScreenplayConversion(
     ];
 
     // Calculate total estimated duration from all scenes
-    const totalEstimatedDuration = result.data.screenplay.scenes.reduce(
+    const totalEstimatedDuration = orchestratorResult.scenes.reduce(
       (sum, scene) => sum + (scene.estimatedDuration || 0),
       0,
     );
 
     const screenplayData = {
-      scenes: result.data.screenplay.scenes,
+      scenes: orchestratorResult.scenes,
       generatedAt,
       generatedBy: {
-        model: result.metadata.model,
-        provider: result.metadata.provider,
+        model: 'screenplay-orchestrator',
+        provider: 'multi-agent',
         costCents,
       },
-      totalDialogueLines: result.data.screenplay.totalDialogueLines,
-      estimatedDuration: result.data.screenplay.estimatedDuration,
+      totalDialogueLines: orchestratorResult.scenes
+        .flatMap((s) => s.dialogue || [])
+        .length,
+      estimatedDuration: totalEstimatedDuration,
       approvedAt: null,
       // Full metadata for episode header display
       metadata: {
         locations: uniqueLocations,
         characters: uniqueCharacters,
-        totalScenes: result.data.screenplay.scenes.length,
+        totalScenes: orchestratorResult.scenes.length,
         estimatedDuration: totalEstimatedDuration,
       },
     };
@@ -365,7 +357,7 @@ export async function processScreenplayConversion(
     }> = [];
 
     let sequenceNumber = 1;
-    for (const scene of result.data.screenplay.scenes) {
+    for (const scene of orchestratorResult.scenes) {
       for (const line of scene.dialogue) {
         const characterId =
           characterMap.get(line.character.toLowerCase()) || null;
@@ -396,22 +388,27 @@ export async function processScreenplayConversion(
     }
 
     console.log(
-      `[Screenplay Conversion] Created ${result.data.screenplay.scenes.length} scenes, ${dialogueLines.length} dialogue lines`,
+      `[Screenplay Conversion] Created ${orchestratorResult.scenes.length} scenes, ${dialogueLines.length} dialogue lines`,
     );
 
     // Mark job as completed
     await markJobCompleted(supabase, data.episodeId, 'screenplay', {
-      model: result.metadata.model,
-      provider: result.metadata.provider,
+      model: 'screenplay-orchestrator',
+      provider: 'multi-agent',
       costCents,
-      scenesCreated: result.data.screenplay.scenes.length,
+      scenesCreated: orchestratorResult.scenes.length,
       dialogueLinesCreated: dialogueLines.length,
     });
 
     return {
       success: true,
       data: {
-        screenplay: result.data.screenplay,
+        screenplay: {
+          title: episode.title,
+          scenes: orchestratorResult.scenes,
+          totalDialogueLines: dialogueLines.length,
+          estimatedDuration: totalEstimatedDuration,
+        },
         dialogueLinesCreated: dialogueLines.length,
         episode: {
           id: updatedEpisode.id,
@@ -419,10 +416,10 @@ export async function processScreenplayConversion(
           version: updatedEpisode.version,
         },
         metadata: {
-          provider: result.metadata.provider,
-          model: result.metadata.model,
+          provider: 'multi-agent',
+          model: 'screenplay-orchestrator',
           costCents,
-          tokensUsed: result.metadata.tokens,
+          tokensUsed: 0,
           generatedAt,
         },
       },

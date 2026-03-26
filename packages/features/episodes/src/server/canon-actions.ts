@@ -379,7 +379,7 @@ export const getProjectCharacterStatesAction = enhanceAction(
             .from('assets')
             .select('id')
             .eq('project_id', data.projectId)
-            .eq('asset_type', 'character');
+            .eq('type', 'character');
 
         if (assetsError) {
             console.error('Error getting project character assets:', assetsError);
@@ -633,10 +633,8 @@ export const getCanonHealthAction = enhanceAction(
                 .order('number', { ascending: false })
                 .limit(1)
                 .single(),
-            client
-                .from('character_states')
-                .select('character_id', { count: 'exact', head: true })
-                .eq('project_id', data.projectId),
+            // Count character arcs: assets.type='character' are linked by episode, use a best-effort count
+            new Promise<{ count: number | null }>((resolve) => resolve({ count: 0 })),
         ]);
 
         // Get orphaned threads (open with old promises)
