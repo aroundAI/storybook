@@ -160,9 +160,20 @@ export async function runShotOrchestrator(
         );
     }
 
+    // Emit a step-by-step trace so every tool call is visible in CloudWatch
+    const toolCalls = result.steps.filter((s) => s.type === 'tool_call');
+    for (const step of toolCalls) {
+        const ok = step.toolResult?.success;
+        console.log(
+            `[Shot Orchestrator] Tool: ${step.toolName} — ${ok ? 'SUCCESS' : 'FAILED'}` +
+            (!ok ? ` — ${step.toolResult?.error ?? 'no error message'}` : ''),
+        );
+    }
+
     console.log(
         `[Shot Orchestrator] Complete. Steps: ${result.steps.length}, ` +
-        `Shots: ${shots.length}, Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
+        `ToolCalls: ${toolCalls.length}, Shots: ${shots.length}, ` +
+        `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
     );
 
     return {

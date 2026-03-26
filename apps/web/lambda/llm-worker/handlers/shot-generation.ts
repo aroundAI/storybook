@@ -114,6 +114,11 @@ export async function processShotGeneration(
       '@kit/episodes/agent/shot-orchestrator'
     );
 
+    console.log(
+      `[Shot Generation] Starting Shot Orchestrator — ` +
+      `${scenes.length} scenes, ${characters.length} characters, ${locations.length} locations`,
+    );
+
     const orchestratorResult = await runShotOrchestrator({
       episodeId: data.episodeId,
       episodeTitle: episode.title,
@@ -140,6 +145,14 @@ export async function processShotGeneration(
       locationsVeoContext: locationsFormatted,
     });
 
+    console.log(
+      `[Shot Generation] Orchestrator completed — ` +
+      `success: ${orchestratorResult.success}, ` +
+      `shots: ${orchestratorResult.shots.length}, ` +
+      `reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}, ` +
+      `steps: ${orchestratorResult.orchestratorSteps}`,
+    );
+
     if (!orchestratorResult.success) {
       throw new Error(
         `Shot Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
@@ -148,7 +161,8 @@ export async function processShotGeneration(
 
     if (orchestratorResult.shots.length === 0) {
       throw new Error(
-        'Shot Director produced no shots — Reel Scout model may be misconfigured. Check quality-evaluation/reel-scout.json model name.',
+        'Shot Director returned 0 shots. All scene-shot-generation LLM calls failed. ' +
+        'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
       );
     }
 

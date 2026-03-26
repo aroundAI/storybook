@@ -75,10 +75,18 @@ const generateShotsTool = createTool({
         reelCandidateScenes,
         tone,
     }) => {
+        console.log(
+            `[Shot Director] Starting shot generation for "${episodeTitle}". ` +
+            `Scenes: ${scenes.length}, Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
+        );
+
         try {
             const { executeLLM } = await import('@kit/prompt-engine/server');
 
+            console.log(`[Shot Director] executeLLM imported successfully`);
+
             // Process scenes in parallel batches of 5
+            // Using Promise.allSettled so individual scene failures never abort the batch
             const CONCURRENCY = 5;
             const allShots: Array<{
                 sceneNumber: number;
@@ -97,12 +105,26 @@ const generateShotsTool = createTool({
                 };
             }> = [];
 
+            let failedScenes = 0;
+
             for (let i = 0; i < scenes.length; i += CONCURRENCY) {
                 const batch = scenes.slice(i, i + CONCURRENCY);
+                const batchNum = Math.floor(i / CONCURRENCY) + 1;
+                const totalBatches = Math.ceil(scenes.length / CONCURRENCY);
 
-                const batchResults = await Promise.all(
+                console.log(
+                    `[Shot Director] Processing batch ${batchNum}/${totalBatches} ` +
+                    `(scenes ${batch.map((s) => s.number).join(', ')})`,
+                );
+
+                const batchResults = await Promise.allSettled(
                     batch.map(async (scene) => {
                         const isReelCandidate = reelCandidateScenes.includes(scene.number);
+
+                        console.log(
+                            `[Shot Director] Generating shots for scene ${scene.number}` +
+                            (isReelCandidate ? ' [REEL PRIORITY]' : ''),
+                        );
 
                         const sceneContent = JSON.stringify({
                             number: scene.number,
@@ -151,7 +173,6 @@ const generateShotsTool = createTool({
                             sceneSummary: string;
                         }>({
                             templateSlug: 'scene-shot-generation',
-
                             variables: {
                                 scene_content: sceneContent,
                                 episode_metadata: episodeMetadata,
@@ -165,14 +186,38 @@ const generateShotsTool = createTool({
                             },
                         });
 
-                        return result.data.shots.map((shot) => ({
+                        const shotsForScene = result.data.shots.map((shot) => ({
                             ...shot,
                             sceneNumber: scene.number,
                         }));
+
+                        console.log(
+                            `[Shot Director] Scene ${scene.number} complete — ${shotsForScene.length} shots generated`,
+                        );
+
+                        return shotsForScene;
                     }),
                 );
 
-                allShots.push(...batchResults.flat());
+                // Collect results — log failures but keep successful shots
+                for (let j = 0; j < batchResults.length; j++) {
+                    const result = batchResults[j]!;
+                    const scene = batch[j]!;
+
+                    if (result.status === 'fulfilled') {
+                        allShots.push(...result.value);
+                    } else {
+                        failedScenes++;
+                        console.error(
+                            `[Shot Director] Scene ${scene.number} failed — ${result.reason instanceof Error ? result.reason.message : String(result.reason)}`,
+                        );
+                    }
+                }
+
+                console.log(
+                    `[Shot Director] Batch ${batchNum}/${totalBatches} done. ` +
+                    `Running total: ${allShots.length} shots, ${failedScenes} scene(s) failed`,
+                );
             }
 
             // Reassign global sequence numbers
@@ -181,16 +226,29 @@ const generateShotsTool = createTool({
                 shotNumber: idx + 1,
             }));
 
+            console.log(
+                `[Shot Director] Complete — ${shotsWithSequence.length} shots across ` +
+                `${scenes.length} scenes (${failedScenes} scene(s) failed)`,
+            );
+
+            if (shotsWithSequence.length === 0) {
+                const errorMsg = `Shot Director generated 0 shots — all ${scenes.length} scenes failed. Check scene-shot-generation prompt and model config.`;
+                console.error(`[Shot Director] ${errorMsg}`);
+                return toolError(errorMsg);
+            }
+
             return toolSuccess({
                 shots: shotsWithSequence,
                 totalShots: shotsWithSequence.length,
-                scenesProcessed: scenes.length,
+                scenesProcessed: scenes.length - failedScenes,
+                scenesAttempted: scenes.length,
+                scenesFailed: failedScenes,
                 reelCandidatesOptimized: reelCandidateScenes.length,
-                summary: `Generated ${shotsWithSequence.length} shots across ${scenes.length} scenes. ${reelCandidateScenes.length} scenes had hook-priority treatment.`,
+                summary: `Generated ${shotsWithSequence.length} shots across ${scenes.length - failedScenes}/${scenes.length} scenes. ${reelCandidateScenes.length} scenes had hook-priority treatment.${failedScenes > 0 ? ` ${failedScenes} scene(s) had errors and were skipped.` : ''}`,
             });
         } catch (error) {
             const message = (error as Error).message;
-            console.error(`[Shot Director] generateShots failed: ${message}`, error);
+            console.error(`[Shot Director] Fatal error in generateShots: ${message}`, error);
             return toolError(
                 `Shot Director failed: ${message}`,
             );
