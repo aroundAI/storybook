@@ -94,6 +94,10 @@ interface ShotOrchestratorOutput {
  * Runs the Shot stage orchestrator.
  * 1. Reel Scout evaluates scenes for viral short-form candidacy.
  * 2. Shot Director generates VEO 3.1 shots for all scenes, prioritizing reel candidates.
+ *
+ * Uses maxTokensPerStep: 32000 to prevent response truncation — the generateShots
+ * tool call params include all scenes as JSON (~16k chars) so the LLM response
+ * must have sufficient output budget to avoid unbalanced-JSON parse failures.
  */
 export async function runShotOrchestrator(
     input: ShotOrchestratorInput,
@@ -106,10 +110,16 @@ export async function runShotOrchestrator(
     const result: AgentRunResult<ShotOrchestratorOutput> = await runAgent<ShotOrchestratorOutput>(
         {
             name: 'shot-orchestrator',
+            provider: 'deepseek',
+            model: 'deepseek-chat',
             systemPrompt: SHOT_SYSTEM_PROMPT,
             tools: [],
             skills: [reelScoutSkill, shotDirectorSkill],
             maxSteps: 16,
+            // 32000 output tokens — required because the generateShots tool_call
+            // params include all scene scenes as JSON. At 4000 (default) the
+            // response is truncated mid-JSON → parser fails → generateShots never runs.
+            maxTokensPerStep: 32000,
             budgetLimits: {
                 maxTotalTokens: 400_000,
                 maxCostUSD: 4.00,
