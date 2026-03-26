@@ -490,9 +490,17 @@ export async function executeLLM<T = unknown>(
             : 'Unknown error';
 
         // Check if this is a JSON syntax error (likely truncation)
+        // Also catch "No object/array found" — happens when the response is so
+        // truncated that findBalancedJSON can't locate a closing brace at all.
         const isJsonSyntaxError = errorMessage.includes('Invalid JSON syntax');
+        const isTruncationError =
+          errorMessage.includes('No object found') ||
+          errorMessage.includes('No array found');
 
-        if (isJsonSyntaxError && jsonRetryAttempt < MAX_JSON_RETRIES) {
+        if (
+          (isJsonSyntaxError || isTruncationError) &&
+          jsonRetryAttempt < MAX_JSON_RETRIES
+        ) {
           // Escalate max_tokens and retry
           const nextMaxTokens = Math.ceil(
             currentMaxTokens * JSON_RETRY_TOKEN_MULTIPLIER,
