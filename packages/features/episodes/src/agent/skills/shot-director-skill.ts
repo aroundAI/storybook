@@ -189,8 +189,10 @@ const generateShotsTool = createTool({
                 summary: `Generated ${shotsWithSequence.length} shots across ${scenes.length} scenes. ${reelCandidateScenes.length} scenes had hook-priority treatment.`,
             });
         } catch (error) {
+            const message = (error as Error).message;
+            console.error(`[Shot Director] generateShots failed: ${message}`, error);
             return toolError(
-                `Shot Director failed: ${(error as Error).message}`,
+                `Shot Director failed: ${message}`,
             );
         }
     },

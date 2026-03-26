@@ -150,6 +150,16 @@ export async function runShotOrchestrator(
     const reelData = reelStep?.toolResult?.data as AnalyzeScenesResult | undefined;
     const reelCandidateScenes = reelData?.topReelCandidates ?? [];
 
+    // Log any failed generateShots steps so the error is visible in CloudWatch
+    const failedShotsSteps = result.steps.filter(
+        (s) => s.type === 'tool_call' && s.toolName === 'generateShots' && !s.toolResult?.success,
+    );
+    for (const step of failedShotsSteps) {
+        console.error(
+            `[Shot Orchestrator] generateShots tool call failed: ${step.toolResult?.error ?? JSON.stringify(step.toolResult)}`,
+        );
+    }
+
     console.log(
         `[Shot Orchestrator] Complete. Steps: ${result.steps.length}, ` +
         `Shots: ${shots.length}, Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
