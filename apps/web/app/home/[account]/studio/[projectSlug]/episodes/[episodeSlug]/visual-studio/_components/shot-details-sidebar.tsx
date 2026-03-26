@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState, useTransition } from 'react';
+import { useCallback, useMemo, useRef, useState, useTransition } from 'react';
 
 import {
   AlertTriangle,
@@ -19,7 +19,6 @@ import {
   Play,
   RefreshCw,
   Trash2,
-  Users,
   Video,
   X,
 } from 'lucide-react';
@@ -291,6 +290,19 @@ export function ShotDetailsSidebar({
   const shotCharacters = metadata?.characters ?? [];
   const hasVeoData = !!veoPrompt;
 
+  // Hoist character resolution out of JSX IIFE
+  const resolvedCharacters = useMemo(() => {
+    const chars = [...shotCharacters];
+    if (chars.length === 0 && veoPrompt && isVeoPromptV2(veoPrompt)) {
+      const charSet = new Set<string>();
+      for (const event of veoPrompt.timeline) {
+        if (event.character) charSet.add(event.character);
+      }
+      return [...charSet];
+    }
+    return chars;
+  }, [shotCharacters, veoPrompt]);
+
   const [editedPrompt, setEditedPrompt] = useState(() => {
     if (veoPrompt && isVeoPromptV2(veoPrompt)) {
       return assembleVeoPrompt(veoPrompt, {
@@ -397,10 +409,10 @@ export function ShotDetailsSidebar({
         </div>
       </div>
 
-      {/* Info Bar */}
-      <div className="flex items-center gap-3 border-b border-white/20 px-4 py-3 dark:border-white/10">
+      {/* Identity Bar — duration + characters + reel score pill */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-white/20 px-4 py-2.5 dark:border-white/10">
         <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-          {shot.duration}s Duration
+          {shot.duration}s
         </span>
         <span className="text-gray-300 dark:text-gray-600">•</span>
         <span className="text-sm text-gray-500 dark:text-gray-400">16:9</span>
@@ -412,139 +424,142 @@ export function ShotDetailsSidebar({
             </span>
           </>
         )}
-      </div>
 
-      {/* Characters Section */}
-      {(() => {
-        // Use characters from shot metadata first, then fallback to timeline
-        let characters: string[] = [...shotCharacters];
+        {/* Inline character chips */}
+        {resolvedCharacters.length > 0 && (
+          <>
+            <span className="text-gray-300 dark:text-gray-600">•</span>
+            {resolvedCharacters.map((char) => (
+              <Badge
+                key={char}
+                variant="secondary"
+                className="bg-purple-100 px-1.5 py-0 text-xs text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+              >
+                {char}
+              </Badge>
+            ))}
+          </>
+        )}
 
-        // If no characters in metadata, extract from VEO timeline
-        if (characters.length === 0 && veoPrompt && isVeoPromptV2(veoPrompt)) {
-          const charSet = new Set<string>();
-          for (const event of veoPrompt.timeline) {
-            if (event.character) {
-              charSet.add(event.character);
-            }
-          }
-          characters = [...charSet];
-        }
-
-        if (characters.length === 0) return null;
-        return (
-          <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-600 dark:text-purple-400" />
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Characters
-              </span>
-            </div>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {characters.map((char) => (
-                <Badge
-                  key={char}
-                  variant="secondary"
-                  className="bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
-                >
-                  {char}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Scene Viral Intelligence */}
-      {shot.shortsCandidate && shot.shortsMetadata && (
-        <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="text-sm font-medium text-orange-600 dark:text-orange-400">
-              🔥 Scene Viral Intelligence
-            </span>
+        {/* At-a-glance reel score pill (right-aligned) */}
+        {shot.shortsMetadata?.viralScore != null && (
+          <div className="ml-auto flex items-center gap-1.5">
             <Badge
               variant="secondary"
-              className="bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300"
+              className={cn(
+                'text-xs font-bold',
+                shot.shortsMetadata.viralScore >= 7
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
+                  : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+              )}
             >
-              {shot.shortsMetadata.viralScore?.toFixed(1) ?? 'N/A'}/10
+              {shot.shortsMetadata.viralScore >= 7 ? '🔥 ' : ''}
+              {shot.shortsMetadata.viralScore.toFixed(1)}/10
             </Badge>
             {shot.shortsMetadata.hookType && (
               <Badge
                 variant="secondary"
-                className="bg-purple-100 text-purple-700 capitalize dark:bg-purple-900/50 dark:text-purple-300"
+                className="bg-purple-100 text-xs capitalize text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
               >
                 {shot.shortsMetadata.hookType}
               </Badge>
             )}
           </div>
+        )}
+      </div>
 
-          <div className="space-y-2 text-xs">
-            {shot.shortsMetadata.whyThisWorksAsReel && (
-              <div className="rounded-md bg-green-50 p-2 dark:bg-green-950/30">
-                <p className="mb-0.5 font-semibold text-green-700 dark:text-green-400">
-                  ✓ Why this works as a Reel
-                </p>
-                <p className="leading-relaxed text-green-900 dark:text-green-200">
-                  {shot.shortsMetadata.whyThisWorksAsReel}
-                </p>
-              </div>
-            )}
-
-            {shot.shortsMetadata.keyMoment && (
-              <div className="rounded-md bg-amber-50 p-2 dark:bg-amber-950/30">
-                <p className="mb-0.5 font-semibold text-amber-700 dark:text-amber-400">
-                  ⚡ Key cinematic moment
-                </p>
-                <p className="leading-relaxed text-amber-900 dark:text-amber-200">
-                  {shot.shortsMetadata.keyMoment}
-                </p>
-              </div>
-            )}
-
-            {shot.shortsMetadata.sceneEmotionalArc && (
-              <div className="rounded-md bg-blue-50 p-2 dark:bg-blue-950/30">
-                <p className="mb-0.5 font-semibold text-blue-700 dark:text-blue-400">
-                  🎭 Emotional arc
-                </p>
-                <p className="text-blue-900 dark:text-blue-200">
-                  {shot.shortsMetadata.sceneEmotionalArc}
-                </p>
-              </div>
-            )}
-
-            {shot.shortsMetadata.improvementSuggestion && (
-              <div className="rounded-md bg-gray-50 p-2 dark:bg-gray-800/50">
-                <p className="mb-0.5 font-semibold text-gray-600 dark:text-gray-400">
-                  💡 Reel Scout suggestion
-                </p>
-                <p className="leading-relaxed text-gray-700 dark:text-gray-300">
-                  {shot.shortsMetadata.improvementSuggestion}
-                </p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Scene Non-candidate reasoning */}
-      {!shot.shortsCandidate && shot.shortsMetadata?.whyItDoesntWork && (
-        <div className="border-b border-white/20 px-4 py-3 dark:border-white/10">
-          <p className="mb-1 text-xs font-medium text-gray-500 dark:text-gray-400">
-            🚫 Not a Reel candidate
-          </p>
-          <p className="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-            {shot.shortsMetadata.whyItDoesntWork}
-          </p>
-          {shot.shortsMetadata.improvementSuggestion && (
-            <p className="mt-1 text-xs italic text-gray-400 dark:text-gray-500">
-              Tip: {shot.shortsMetadata.improvementSuggestion}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* Content */}
-
+      {/* Scrollable Body — everything below identity bar scrolls */}
       <div className="flex-1 overflow-y-auto">
+        {/* Reel Intelligence Accordion */}
+        {shot.shortsMetadata &&
+          (shot.shortsCandidate || shot.shortsMetadata.whyItDoesntWork) && (
+            <Collapsible
+              defaultOpen={
+                shot.shortsMetadata.viralScore != null &&
+                shot.shortsMetadata.viralScore >= 7
+              }
+            >
+              <CollapsibleTrigger asChild>
+                <button className="flex w-full items-center justify-between border-b border-white/20 px-4 py-2.5 text-left transition-colors hover:bg-white/5 dark:border-white/10">
+                  <span className="text-sm font-medium">
+                    {shot.shortsCandidate
+                      ? '🔥 Reel Intelligence'
+                      : '🚫 Not a Reel candidate'}
+                  </span>
+                  <ChevronDown className="h-4 w-4 text-gray-400 transition-transform [[data-state=open]>&]:rotate-180" />
+                </button>
+              </CollapsibleTrigger>
+
+              <CollapsibleContent>
+                <div className="space-y-2 border-b border-white/20 px-4 py-3 text-xs dark:border-white/10">
+                  {/* Candidate cards */}
+                  {shot.shortsCandidate && (
+                    <>
+                      {shot.shortsMetadata.whyThisWorksAsReel && (
+                        <div className="rounded-md bg-green-50 p-2 dark:bg-green-950/30">
+                          <p className="mb-0.5 font-semibold text-green-700 dark:text-green-400">
+                            ✓ Why this works
+                          </p>
+                          <p className="line-clamp-3 leading-relaxed text-green-900 dark:text-green-200">
+                            {shot.shortsMetadata.whyThisWorksAsReel}
+                          </p>
+                        </div>
+                      )}
+
+                      {shot.shortsMetadata.keyMoment && (
+                        <div className="rounded-md bg-amber-50 p-2 dark:bg-amber-950/30">
+                          <p className="mb-0.5 font-semibold text-amber-700 dark:text-amber-400">
+                            ⚡ Key moment
+                          </p>
+                          <p className="line-clamp-2 leading-relaxed text-amber-900 dark:text-amber-200">
+                            {shot.shortsMetadata.keyMoment}
+                          </p>
+                        </div>
+                      )}
+
+                      {shot.shortsMetadata.sceneEmotionalArc && (
+                        <div className="rounded-md bg-blue-50 p-2 dark:bg-blue-950/30">
+                          <p className="mb-0.5 font-semibold text-blue-700 dark:text-blue-400">
+                            🎭 Emotional arc
+                          </p>
+                          <p className="line-clamp-2 text-blue-900 dark:text-blue-200">
+                            {shot.shortsMetadata.sceneEmotionalArc}
+                          </p>
+                        </div>
+                      )}
+
+                      {shot.shortsMetadata.improvementSuggestion && (
+                        <div className="rounded-md bg-gray-50 p-2 dark:bg-gray-800/50">
+                          <p className="mb-0.5 font-semibold text-gray-600 dark:text-gray-400">
+                            💡 Suggestion
+                          </p>
+                          <p className="line-clamp-2 leading-relaxed text-gray-700 dark:text-gray-300">
+                            {shot.shortsMetadata.improvementSuggestion}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Non-candidate reasoning */}
+                  {!shot.shortsCandidate && (
+                    <>
+                      {shot.shortsMetadata.whyItDoesntWork && (
+                        <p className="line-clamp-3 leading-relaxed text-gray-500 dark:text-gray-400">
+                          {shot.shortsMetadata.whyItDoesntWork}
+                        </p>
+                      )}
+                      {shot.shortsMetadata.improvementSuggestion && (
+                        <p className="italic text-gray-400 dark:text-gray-500">
+                          Tip: {shot.shortsMetadata.improvementSuggestion}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         {/* Tab Headers */}
         <div className="flex items-center gap-2 border-b border-white/20 px-4 py-2 dark:border-white/10">
           {hasVeoData && (

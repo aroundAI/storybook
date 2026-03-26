@@ -173,11 +173,13 @@ const generateShotsTool = createTool({
                         }>({
                             templateSlug: 'scene-shot-generation',
                             variables: {
+                                scene_number: scene.number,
+                                total_scenes: scenes.length,
                                 scene_content: sceneContent,
                                 episode_metadata: episodeMetadata,
-                                characters_context: characters,
-                                locations_context: locations,
-                                reel_note: reelNote,
+                                characters,
+                                locations,
+                                previous_scene_summary: '',
                             },
                             context: {
                                 name: 'agent.shotDirector.generateShots',

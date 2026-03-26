@@ -28,7 +28,7 @@ export interface ShotOrchestratorScene {
     location: string;
     timeOfDay: string;
     description: string;
-    action: string[];
+    action?: string[] | string;
     dialogue: Array<{
         character: string;
         text: string;
@@ -76,10 +76,25 @@ export interface GeneratedShotResult {
     };
 }
 
+export interface ReelSceneAnalysis {
+    sceneNumber: number;
+    isReelCandidate: boolean;
+    viralScore: number;
+    hookType?: 'question' | 'reveal' | 'conflict' | 'visual' | 'humor' | 'cliffhanger' | 'character' | 'action' | 'reaction' | 'punchline' | null;
+    estimatedDurationSeconds?: number;
+    keyMoment?: string | null;
+    sceneEmotionalArc: string;
+    whyThisWorksAsReel?: string | null;
+    whyItDoesntWork?: string | null;
+    improvementSuggestion?: string | null;
+}
+
 export interface ShotOrchestratorResult {
     success: boolean;
     shots: GeneratedShotResult[];
     reelCandidateScenes: number[];
+    /** Full per-scene Reel Scout analysis — viralScore, hookType, whyThisWorksAsReel, etc. */
+    sceneAnalyses: ReelSceneAnalysis[];
     orchestratorSteps: number;
     error?: string;
 }
@@ -155,6 +170,7 @@ export async function runShotOrchestrator(
             success: false,
             shots: [],
             reelCandidateScenes: [],
+            sceneAnalyses: [],
             orchestratorSteps: result.steps.length,
             error: result.error,
         };
@@ -162,7 +178,10 @@ export async function runShotOrchestrator(
 
     // Extract shots from tool steps (most reliable)
     type GenerateShotsResult = { shots?: GeneratedShotResult[] };
-    type AnalyzeScenesResult = { topReelCandidates?: number[] };
+    type AnalyzeScenesResult = {
+        topReelCandidates?: number[];
+        sceneAnalyses?: ReelSceneAnalysis[];
+    };
 
     const shotsSteps = result.steps.filter(
         (s) => s.type === 'tool_call' && s.toolName === 'generateShots' && s.toolResult?.success,
@@ -176,6 +195,22 @@ export async function runShotOrchestrator(
     );
     const reelData = reelStep?.toolResult?.data as AnalyzeScenesResult | undefined;
     const reelCandidateScenes = reelData?.topReelCandidates ?? [];
+    const sceneAnalyses = (reelData?.sceneAnalyses ?? []) as ReelSceneAnalysis[];
+
+    // Log full reel intelligence so every scene's viralScore is visible in CloudWatch
+    if (sceneAnalyses.length > 0) {
+        console.log(
+            `[Shot Orchestrator] Reel Scout sceneAnalyses: ${sceneAnalyses.length} scenes — ` +
+            sceneAnalyses.map((a) =>
+                `scene${a.sceneNumber}(score=${a.viralScore},candidate=${a.isReelCandidate},hook=${a.hookType ?? 'none'})`
+            ).join(', '),
+        );
+    } else {
+        console.warn(
+            `[Shot Orchestrator] Reel Scout returned no sceneAnalyses — ` +
+            `reelStep found: ${!!reelStep}, reelData keys: ${reelData ? Object.keys(reelData).join(', ') : 'null'}`,
+        );
+    }
 
     // Log any failed generateShots steps so the error is visible in CloudWatch
     const failedShotsSteps = result.steps.filter(
@@ -207,6 +242,7 @@ export async function runShotOrchestrator(
         success: true,
         shots,
         reelCandidateScenes,
+        sceneAnalyses,
         orchestratorSteps: result.steps.length,
     };
 }

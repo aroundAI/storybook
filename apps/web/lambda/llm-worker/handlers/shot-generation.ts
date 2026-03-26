@@ -9,6 +9,8 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import type { ReelSceneAnalysis } from '@kit/episodes/agent/shot-orchestrator';
+
 import {
   markJobCompleted,
   markJobFailed,
@@ -119,6 +121,17 @@ export async function processShotGeneration(
       `${scenes.length} scenes, ${characters.length} characters, ${locations.length} locations`,
     );
 
+    // Diagnostic: inspect raw scene shape from DB so CloudWatch shows data issues immediately
+    console.log(
+      `[Shot Generation] Raw scene[0] keys: ${Object.keys(scenes[0] as unknown as Record<string, unknown>).join(', ')}`,
+    );
+    console.log(
+      `[Shot Generation] Scene action fields: ${scenes.map((s, i) => {
+        const raw = s as unknown as Record<string, unknown>;
+        return `scene${i + 1}=${Array.isArray(raw['action']) ? 'array(' + (raw['action'] as unknown[]).length + ')' : typeof raw['action']}`;
+      }).join(', ')}`,
+    );
+
     const orchestratorResult = await runShotOrchestrator({
       episodeId: data.episodeId,
       episodeTitle: episode.title,
@@ -126,21 +139,36 @@ export async function processShotGeneration(
       targetAudience: episodeContext.targetAudience ?? 'general',
       visualStyle: episodeContext.visualStyle ?? 'cinematic',
       accountId: data.accountId,
-      // Map screenplay scenes — dialogue.text is the field name in ShotOrchestratorScene
-      scenes: scenes.map((s) => ({
-        number: s.number,
-        heading: s.heading,
-        location: s.location,
-        timeOfDay: s.timeOfDay,
-        description: s.description,
-        action: s.action,
-        dialogue: (s.dialogue ?? []).map((d) => ({
-          character: d.character,
-          text: (d as Record<string, unknown>).text as string ?? d.dialogue ?? '',
-          parenthetical: d.parenthetical,
-        })),
-        estimatedDuration: (s as Record<string, unknown>).estimatedDuration as number | undefined,
-      })),
+      // Map screenplay scenes — screenplay_data stores action lines in `description` (string),
+      // not in a separate `action` array. Derive action from description when absent.
+      scenes: scenes.map((s, idx) => {
+        const raw = s as unknown as Record<string, unknown>;
+        const hasStoredAction = Array.isArray(raw['action']) && (raw['action'] as unknown[]).length > 0;
+        const action = hasStoredAction
+          ? (raw['action'] as string[])
+          : (s.description ?? '').split('\n').map((l: string) => l.trim()).filter(Boolean);
+
+        console.log(
+          `[Shot Generation] Scene ${idx + 1}/${scenes.length} — ` +
+          `actionSource=${hasStoredAction ? 'stored-array' : 'description-split'}, ` +
+          `actionLines=${action.length}, dialogueLines=${(s.dialogue ?? []).length}`,
+        );
+
+        return {
+          number: s.number,
+          heading: s.heading,
+          location: s.location,
+          timeOfDay: s.timeOfDay,
+          description: s.description,
+          action,
+          dialogue: (s.dialogue ?? []).map((d) => ({
+            character: d.character,
+            text: (d as Record<string, unknown>).text as string ?? d.dialogue ?? '',
+            parenthetical: d.parenthetical,
+          })),
+          estimatedDuration: (s as Record<string, unknown>).estimatedDuration as number | undefined,
+        };
+      }),
       charactersVeoContext: charactersFormatted,
       locationsVeoContext: locationsFormatted,
     });
@@ -167,6 +195,20 @@ export async function processShotGeneration(
     }
 
     const reelCandidateSet = new Set(orchestratorResult.reelCandidateScenes);
+
+    // Build lookup: sceneNumber → full Reel Scout analysis (viralScore, hookType, etc.)
+    const sceneAnalysisMap = new Map<number, ReelSceneAnalysis>(
+      orchestratorResult.sceneAnalyses.map((a) => [a.sceneNumber, a]),
+    );
+    console.log(
+      `[Shot Generation] sceneAnalysisMap: ${sceneAnalysisMap.size} entries from Reel Scout. ` +
+      `Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
+    );
+    console.log(
+      `[Shot Generation] Per-scene viral scores: ${[...sceneAnalysisMap.entries()].map(
+        ([sceneNum, a]) => `scene${sceneNum}=${a.viralScore}(${a.isReelCandidate ? 'candidate' : 'non-candidate'})`
+      ).join(', ') || 'no data'}`,
+    );
 
     // 4. Query existing shots for correct sequence number base
     const { data: existingShots } = await supabase
@@ -203,6 +245,33 @@ export async function processShotGeneration(
 
     for (const shot of orchestratorResult.shots) {
       const sceneIsCandidate = reelCandidateSet.has(shot.sceneNumber);
+      const sceneAnalysis = sceneAnalysisMap.get(shot.sceneNumber);
+
+      // Log every shot so we can trace the data flow in CloudWatch
+      console.log(
+        `[Shot Generation] Shot ${shot.sceneNumber}.${shot.shotNumber} — ` +
+        `candidate=${sceneIsCandidate}, ` +
+        `viralScore=${sceneAnalysis?.viralScore ?? 'N/A'}, ` +
+        `hookType=${sceneAnalysis?.hookType ?? shot.metadata.hookType ?? 'none'}`,
+      );
+
+      // Build shorts_metadata for ALL shots (not just candidates) so the sidebar
+      // can show viral intelligence and "not a candidate" reasoning for every scene.
+      const shortsMetadata: Record<string, unknown> | null = sceneAnalysis
+        ? {
+            viralScore: sceneAnalysis.viralScore,
+            hookType: sceneAnalysis.hookType ?? shot.metadata.hookType,
+            estimatedDurationSeconds: sceneAnalysis.estimatedDurationSeconds ?? shot.duration,
+            isReelCandidate: sceneAnalysis.isReelCandidate,
+            whyThisWorksAsReel: sceneAnalysis.whyThisWorksAsReel ?? null,
+            whyItDoesntWork: sceneAnalysis.whyItDoesntWork ?? null,
+            keyMoment: sceneAnalysis.keyMoment ?? null,
+            sceneEmotionalArc: sceneAnalysis.sceneEmotionalArc ?? null,
+            improvementSuggestion: sceneAnalysis.improvementSuggestion ?? null,
+          }
+        : (sceneIsCandidate
+          ? { hookType: shot.metadata.hookType, estimatedDurationSeconds: shot.duration, isReelCandidate: true }
+          : null);
 
       allShots.push({
         episode_id: data.episodeId,
@@ -215,9 +284,7 @@ export async function processShotGeneration(
         camera_direction: shot.cameraDirection ?? null,
         status: 'pending',
         shorts_candidate: sceneIsCandidate,
-        shorts_metadata: sceneIsCandidate
-          ? { hookType: shot.metadata.hookType, estimatedDurationSeconds: shot.duration }
-          : null,
+        shorts_metadata: shortsMetadata,
         generation_metadata: {
           shotType: shot.shotType,
           location: shot.metadata.location,

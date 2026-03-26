@@ -71,12 +71,17 @@ export const ANTHROPIC_PRICING: Record<string, ModelPricing> = {
  * Source: https://ai.google.dev/pricing
  */
 export const GEMINI_PRICING: Record<string, ModelPricing> = {
-  // Gemini 3 Flash (latest - 64k output tokens)
-  'gemini-3-flash-preview': { prompt: 0.5, completion: 3 },
+  // Gemini 3 (active preview — frontier class)
+  'gemini-3-flash-preview': { prompt: 0.15, completion: 0.6 },
 
-  // Gemini 2.5 Flash
+  // Gemini 2.5 (stable GA)
   'gemini-2.5-flash': { prompt: 0.15, completion: 0.6 },
   'gemini-2.5-flash-preview-04-17': { prompt: 0.15, completion: 0.6 },
+  'gemini-2.5-flash-lite': { prompt: 0.075, completion: 0.3 },
+  'gemini-2.5-pro': { prompt: 1.25, completion: 10 },
+
+  // Gemini 2.0 (deprecated — kept for compat until migration complete)
+  'gemini-2.0-flash': { prompt: 0.1, completion: 0.4 },
 
   // Gemini 1.5 Pro
   'gemini-1.5-pro': { prompt: 1.25, completion: 5 },
