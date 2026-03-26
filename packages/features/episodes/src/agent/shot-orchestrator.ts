@@ -110,8 +110,8 @@ export async function runShotOrchestrator(
     const result: AgentRunResult<ShotOrchestratorOutput> = await runAgent<ShotOrchestratorOutput>(
         {
             name: 'shot-orchestrator',
-            provider: 'deepseek',
-            model: 'deepseek-chat',
+            provider: 'gemini',
+            model: 'gemini-2.5-flash',
             systemPrompt: SHOT_SYSTEM_PROMPT,
             tools: [],
             skills: [reelScoutSkill, shotDirectorSkill],

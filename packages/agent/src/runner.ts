@@ -284,8 +284,8 @@ export async function runAgent<T = unknown>(
     );
 
     // Create LLM client
-    const provider = (resolved.provider ?? 'deepseek') as LLMProvider;
-    const model = resolved.model ?? 'deepseek-chat';
+    const provider = (resolved.provider ?? 'gemini') as LLMProvider;
+    const model = resolved.model ?? 'gemini-2.5-flash';
 
     console.log(
         `[Agent:${config.name}] Starting. Provider: ${provider}, Model: ${model}, ` +
