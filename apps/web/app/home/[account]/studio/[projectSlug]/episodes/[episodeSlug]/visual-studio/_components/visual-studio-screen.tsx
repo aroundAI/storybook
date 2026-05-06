@@ -61,7 +61,9 @@ function getShotSize(index: number): 'lg' | 'md' | 'sm' {
   return index % 2 === 0 ? 'md' : 'sm';
 }
 
-// Helper to extract unique character names from shot metadata
+// Helper to extract unique character names from shot metadata.
+// Aggregates from both metadata.characters and the VEO timeline using a
+// case-insensitive Map to prevent duplicates (e.g. "Alice" and "alice").
 function extractCharacters(shot: Shot): string[] {
   const metadata = shot.metadata as {
     veoPrompt?: {
@@ -70,23 +72,23 @@ function extractCharacters(shot: Shot): string[] {
     characters?: string[];
   } | null;
 
-  // First try metadata.characters (direct field)
-  if (metadata?.characters && metadata.characters.length > 0) {
-    return metadata.characters;
+  const charMap = new Map<string, string>();
+  const addChar = (name: string) => {
+    const lower = name.toLowerCase();
+    if (!charMap.has(lower)) charMap.set(lower, name);
+  };
+
+  if (metadata?.characters) {
+    metadata.characters.forEach(addChar);
   }
 
-  // Then try extracting from VEO timeline
   if (metadata?.veoPrompt?.timeline) {
-    const chars = new Set<string>();
     for (const event of metadata.veoPrompt.timeline) {
-      if (event.character) {
-        chars.add(event.character);
-      }
+      if (event.character) addChar(event.character);
     }
-    return Array.from(chars);
   }
 
-  return [];
+  return Array.from(charMap.values());
 }
 
 export function VisualStudioScreen({
