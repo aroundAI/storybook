@@ -303,7 +303,7 @@ export function ShotDetailsSidebar({
       return [...charSet];
     }
     return chars;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [metadata?.characters, veoPrompt]);
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
