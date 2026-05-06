@@ -61,6 +61,34 @@ function getShotSize(index: number): 'lg' | 'md' | 'sm' {
   return index % 2 === 0 ? 'md' : 'sm';
 }
 
+// Helper to extract unique character names from shot metadata
+function extractCharacters(shot: Shot): string[] {
+  const metadata = shot.metadata as {
+    veoPrompt?: {
+      timeline?: Array<{ character?: string | null }>;
+    };
+    characters?: string[];
+  } | null;
+
+  // First try metadata.characters (direct field)
+  if (metadata?.characters && metadata.characters.length > 0) {
+    return metadata.characters;
+  }
+
+  // Then try extracting from VEO timeline
+  if (metadata?.veoPrompt?.timeline) {
+    const chars = new Set<string>();
+    for (const event of metadata.veoPrompt.timeline) {
+      if (event.character) {
+        chars.add(event.character);
+      }
+    }
+    return Array.from(chars);
+  }
+
+  return [];
+}
+
 export function VisualStudioScreen({
   episode,
   refetchEpisode,
@@ -301,7 +329,7 @@ export function VisualStudioScreen({
     } | null;
 
     const veo = metadata?.veoPrompt;
-    const shotCharacters = metadata?.characters ?? [];
+    const shotCharacters = extractCharacters(shot);
 
     let md = `# Shot ${shot.sceneNumber}.${shot.shotNumber}\n\n`;
     md += `**Duration:** ${shot.duration} seconds\n\n`;
@@ -466,6 +494,7 @@ export function VisualStudioScreen({
         shot: number;
         duration: number;
         filename: string;
+        characters: string[];
       }> = [];
 
       for (const [sceneNum, sceneShots] of sortedScenes) {
@@ -505,6 +534,7 @@ export function VisualStudioScreen({
                 shot: Number(shot.shotNumber),
                 duration: Number(shot.duration),
                 filename: videoFilename,
+                characters: extractCharacters(shot),
               });
             }
           }
@@ -546,43 +576,38 @@ export function VisualStudioScreen({
             };
           } | null;
 
-          // Add character images - try metadata.referenceImages first, then fall back to project assets
-          if (
-            metadata?.referenceImages?.characters &&
-            metadata.referenceImages.characters.length > 0
-          ) {
-            // Use reference images from metadata
-            for (const img of metadata.referenceImages.characters) {
-              const filename = `character-${sanitizeName(img.name)}.png`;
-              let blob = fetchedAssets.get(img.url);
+          // Add character images - specifically for characters in this shot
+          const shotCharacters = extractCharacters(shot);
+          for (const charName of shotCharacters) {
+            let imgUrl: string | undefined;
+            
+            // 1. Try to find in metadata.referenceImages
+            if (metadata?.referenceImages?.characters) {
+              const refImg = metadata.referenceImages.characters.find(
+                (c) => c.name.toLowerCase() === charName.toLowerCase()
+              );
+              if (refImg) imgUrl = refImg.url;
+            }
+            
+            // 2. Fallback to project assets
+            if (!imgUrl) {
+              const asset = projectCharacters.find(
+                (c) => c.name.toLowerCase() === charName.toLowerCase()
+              );
+              if (asset?.fileUrl) imgUrl = asset.fileUrl;
+            }
+
+            if (imgUrl) {
+              const filename = `character-${sanitizeName(charName)}.png`;
+              let blob = fetchedAssets.get(imgUrl);
               if (!blob) {
-                blob = (await fetchImageAsBlob(img.url)) ?? undefined;
+                blob = (await fetchImageAsBlob(imgUrl)) ?? undefined;
                 if (blob) {
-                  fetchedAssets.set(img.url, blob);
+                  fetchedAssets.set(imgUrl, blob);
                 }
               }
               if (blob) {
                 shotFolder.file(filename, blob);
-              }
-            }
-          } else if (metadata?.characters && metadata.characters.length > 0) {
-            // Fall back to looking up characters from project assets
-            for (const charName of metadata.characters) {
-              const asset = projectCharacters.find(
-                (c) => c.name.toLowerCase() === charName.toLowerCase(),
-              );
-              if (asset?.fileUrl) {
-                const filename = `character-${sanitizeName(charName)}.png`;
-                let blob = fetchedAssets.get(asset.fileUrl);
-                if (!blob) {
-                  blob = (await fetchImageAsBlob(asset.fileUrl)) ?? undefined;
-                  if (blob) {
-                    fetchedAssets.set(asset.fileUrl, blob);
-                  }
-                }
-                if (blob) {
-                  shotFolder.file(filename, blob);
-                }
               }
             }
           }
