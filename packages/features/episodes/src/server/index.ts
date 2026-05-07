@@ -51,6 +51,9 @@ export * from './news-actions';
 // Fact Management (Phase 11: FILM-1121)
 export * from './fact-actions';
 
+// OpenClaw Shot Intelligence (Transition Analysis & Frame Chain)
+export * from './transition-analyzer';
+
 // NOTE: Server-only canon functions (buildMemoryContext, runRolePipeline) must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
 // import { runRolePipeline } from '@kit/episodes/lib/canon/llm-role-orchestrator';

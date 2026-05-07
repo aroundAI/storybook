@@ -84,7 +84,24 @@ export const getEpisodeShotsAction = enhanceAction(
         generationJobId: shot.generation_job_id as string | null,
         metadata: shot.generation_metadata as Record<string, unknown>,
         shortsCandidate: (shot.shorts_candidate as boolean | null) ?? false,
-        shortsMetadata: (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
+        shortsMetadata:
+          (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
+        // OpenClaw Shot Intelligence fields
+        transitionType: (shot.transition_type as string | null) ?? null,
+        continuationFromShotId:
+          (shot.continuation_from_shot_id as string | null) ?? null,
+        inheritLastFrame: (shot.inherit_last_frame as boolean | null) ?? false,
+        firstFrameDescription:
+          (shot.first_frame_description as string | null) ?? null,
+        lastFrameDescription:
+          (shot.last_frame_description as string | null) ?? null,
+        firstFrameSource: (shot.first_frame_source as string | null) ?? null,
+        locationArea: (shot.location_area as string | null) ?? null,
+        locationEnvironmentDescription:
+          (shot.location_environment_description as string | null) ?? null,
+        primarySubject:
+          (shot.primary_subject as Record<string, unknown> | null) ?? null,
+        frameStrategy: (shot.frame_strategy as string | null) ?? null,
         createdAt: shot.created_at as string,
         updatedAt: shot.updated_at as string,
         deletedAt: shot.deleted_at as string | null,

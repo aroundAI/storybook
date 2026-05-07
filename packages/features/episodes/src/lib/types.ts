@@ -1,3 +1,5 @@
+import type { Asset } from '@kit/assets';
+
 import type { ContentStyle } from './duration-scaling';
 
 /**
@@ -59,6 +61,41 @@ export type EpisodeStatus =
   | 'published';
 
 export type ShotStatus = 'pending' | 'generating' | 'completed' | 'failed';
+
+/**
+ * How a shot transitions from the previous shot.
+ * Used by OpenClaw to decide first-frame inheritance.
+ */
+export type TransitionType =
+  | 'continuation'
+  | 'cut'
+  | 'match_cut'
+  | 'j_cut'
+  | 'l_cut';
+
+/**
+ * How to compose the first frame for image generation.
+ * Determined by shotType × character count.
+ */
+export type FrameStrategy =
+  | 'character_focus'
+  | 'environment_focus'
+  | 'two_shot'
+  | 'group'
+  | 'detail_insert';
+
+/**
+ * What the camera primarily focuses on in a shot.
+ */
+export interface PrimarySubject {
+  type: 'character' | 'location' | 'object';
+  name: string;
+}
+
+/**
+ * How the first frame was obtained.
+ */
+export type FirstFrameSource = 'generated' | 'inherited' | 'manual';
 
 export type CameraAngle =
   | 'wide'
@@ -163,14 +200,14 @@ export interface ScreenplayScene {
   heading: string;
   location: string;
   timeOfDay:
-  | 'dawn'
-  | 'morning'
-  | 'midday'
-  | 'afternoon'
-  | 'golden-hour'
-  | 'dusk'
-  | 'night'
-  | 'day';
+    | 'dawn'
+    | 'morning'
+    | 'midday'
+    | 'afternoon'
+    | 'golden-hour'
+    | 'dusk'
+    | 'night'
+    | 'day';
   description: string;
   dialogue: ScreenplayDialogueLine[];
   estimatedDuration: number;
@@ -348,8 +385,6 @@ export interface Episode {
   masterVideoAssetId?: string | null;
 }
 
-import type { Asset } from '@kit/assets';
-
 /**
  * Episode with related shots, season info, and assets
  */
@@ -382,6 +417,12 @@ export interface ShotMetadata {
   music?: string;
   lighting?: string;
   mood?: string;
+  // OpenClaw: VEO prompt data (existing)
+  veoPrompt?: VeoPromptData;
+  referenceImages?: {
+    characters: Array<{ name: string; url: string }>;
+    locations: Array<{ name: string; url: string }>;
+  };
 }
 
 export interface ShotGenerationSettings {
@@ -445,16 +486,16 @@ export interface ShortsMetadata {
   viralScore: number;
   /** Primary hook type for the scene */
   hookType?:
-  | 'question'
-  | 'reveal'
-  | 'conflict'
-  | 'visual'
-  | 'humor'
-  | 'cliffhanger'
-  | 'character'
-  | 'action'
-  | 'reaction'
-  | 'punchline';
+    | 'question'
+    | 'reveal'
+    | 'conflict'
+    | 'visual'
+    | 'humor'
+    | 'cliffhanger'
+    | 'character'
+    | 'action'
+    | 'reaction'
+    | 'punchline';
   /** Brief context so the reel makes sense standalone */
   standaloneSummary?: string;
   /** Number of shots in this scene (inherited by all shots in scene) */
@@ -513,6 +554,28 @@ export interface Shot {
   sourceDuration?: number | null;
   /** Timeline start time in seconds */
   timelineStartSeconds?: number | null;
+
+  // OpenClaw Shot Intelligence fields
+  /** How this shot connects to the previous shot */
+  transitionType?: TransitionType | null;
+  /** FK to previous shot when transition is continuation */
+  continuationFromShotId?: string | null;
+  /** If true, first frame = previous shot's last frame */
+  inheritLastFrame?: boolean;
+  /** Text prompt for generating the first frame image */
+  firstFrameDescription?: string | null;
+  /** Text prompt for generating the last frame image */
+  lastFrameDescription?: string | null;
+  /** How the first frame was obtained */
+  firstFrameSource?: FirstFrameSource | null;
+  /** Specific area within the location */
+  locationArea?: string | null;
+  /** Full prose environment description for frame generation */
+  locationEnvironmentDescription?: string | null;
+  /** What the camera primarily focuses on */
+  primarySubject?: PrimarySubject | null;
+  /** How to compose the first frame */
+  frameStrategy?: FrameStrategy | null;
 
   createdAt: string;
   updatedAt: string;

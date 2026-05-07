@@ -17,12 +17,16 @@ import {
   X,
 } from 'lucide-react';
 
-
 import { useAssets } from '@kit/assets/hooks';
-import type { EpisodeViralQuality, EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
+import { buildOpenClawManifest } from '@kit/episodes/lib/openclaw-manifest';
+import type {
+  EpisodeViralQuality,
+  EpisodeWithShots,
+  Shot,
+  ShotStatus,
+} from '@kit/episodes/types';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-
 import { useLlmJob } from '@kit/ui/hooks';
 import { Input } from '@kit/ui/input';
 import {
@@ -100,8 +104,10 @@ export function VisualStudioScreen({
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
   const [showShortsOnly, setShowShortsOnly] = useState(false);
   const [viralScorecardExpanded, setViralScorecardExpanded] = useState(false);
-  const viralQuality = episode.viralQuality as EpisodeViralQuality | undefined | null;
-
+  const viralQuality = episode.viralQuality as
+    | EpisodeViralQuality
+    | undefined
+    | null;
 
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
   const {
@@ -184,7 +190,10 @@ export function VisualStudioScreen({
         viralScore: sceneShots[0]?.shortsMetadata?.viralScore ?? 0,
         estimatedDurationSeconds:
           sceneShots[0]?.shortsMetadata?.estimatedDurationSeconds ??
-          sceneShots.reduce((s, sh) => s + (sh.durationSeconds ?? sh.duration ?? 8), 0),
+          sceneShots.reduce(
+            (s, sh) => s + (sh.durationSeconds ?? sh.duration ?? 8),
+            0,
+          ),
         hookType: sceneShots[0]?.shortsMetadata?.hookType,
         standaloneSummary: sceneShots[0]?.shortsMetadata?.standaloneSummary,
       }))
@@ -582,19 +591,19 @@ export function VisualStudioScreen({
           const shotCharacters = extractCharacters(shot);
           for (const charName of shotCharacters) {
             let imgUrl: string | undefined;
-            
+
             // 1. Try to find in metadata.referenceImages
             if (metadata?.referenceImages?.characters) {
               const refImg = metadata.referenceImages.characters.find(
-                (c) => c.name.toLowerCase() === charName.toLowerCase()
+                (c) => c.name.toLowerCase() === charName.toLowerCase(),
               );
               if (refImg) imgUrl = refImg.url;
             }
-            
+
             // 2. Fallback to project assets
             if (!imgUrl) {
               const asset = projectCharacters.find(
-                (c) => c.name.toLowerCase() === charName.toLowerCase()
+                (c) => c.name.toLowerCase() === charName.toLowerCase(),
               );
               if (asset?.fileUrl) imgUrl = asset.fileUrl;
             }
@@ -683,6 +692,52 @@ export function VisualStudioScreen({
     }
   };
 
+  /**
+   * Export OpenClaw manifest — a single JSON file with all shot intelligence,
+   * transition decisions, frame descriptions, and ingredient URLs.
+   * OpenClaw reads this to autonomously generate all videos on Google Flow.
+   */
+  const [isExportingOpenClaw, setIsExportingOpenClaw] = useState(false);
+
+  const handleExportOpenClaw = async () => {
+    if (shots.length === 0) {
+      toast.warning('No shots to export');
+      return;
+    }
+
+    setIsExportingOpenClaw(true);
+    toast.info('Building OpenClaw manifest...');
+
+    try {
+      const manifest = buildOpenClawManifest(
+        episode,
+        projectCharacters ?? [],
+        projectLocations ?? [],
+      );
+
+      const json = JSON.stringify(manifest, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `openclaw-manifest-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        `OpenClaw manifest exported: ${manifest.summary.cutsCount} cuts, ${manifest.summary.continuationsCount} continuations, ${manifest.summary.totalGenerationTasks} generation tasks`,
+      );
+    } catch (error) {
+      console.error('OpenClaw export failed:', error);
+      toast.error('Failed to export OpenClaw manifest');
+    } finally {
+      setIsExportingOpenClaw(false);
+    }
+  };
+
   return (
     <div className="relative h-full">
       {/* Ambient Glow Background Effects */}
@@ -698,9 +753,7 @@ export function VisualStudioScreen({
               Visual Studio
             </h2>
             <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span>
-                {stats.total} shots
-              </span>
+              <span>{stats.total} shots</span>
               <span>•</span>
               <span>~{Math.round(stats.totalDuration / 60)} min</span>
               {stats.shortsCandidates > 0 && (
@@ -708,7 +761,8 @@ export function VisualStudioScreen({
                   <span>•</span>
                   <span className="flex items-center gap-1 font-medium text-orange-500">
                     <Flame className="h-3.5 w-3.5" />
-                    {stats.shortsCandidates} reel{stats.shortsCandidates === 1 ? '' : 's'}
+                    {stats.shortsCandidates} reel
+                    {stats.shortsCandidates === 1 ? '' : 's'}
                   </span>
                 </>
               )}
@@ -747,6 +801,20 @@ export function VisualStudioScreen({
                 <Download className="h-4 w-4" />
               )}
               {isExporting ? 'Exporting...' : 'Export VEO'}
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleExportOpenClaw}
+              disabled={stats.total === 0 || isExportingOpenClaw}
+              className="gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
+            >
+              {isExportingOpenClaw ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Sparkles className="h-4 w-4" />
+              )}
+              {isExportingOpenClaw ? 'Building...' : 'Export OpenClaw'}
             </Button>
 
             <Button
@@ -813,12 +881,17 @@ export function VisualStudioScreen({
               </div>
               <button
                 onClick={() => setViralScorecardExpanded((v) => !v)}
-                className="text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 flex items-center gap-1"
+                className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
               >
                 {viralScorecardExpanded ? (
-                  <><ChevronUp className="h-3.5 w-3.5" /> Collapse</>
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" /> Collapse
+                  </>
                 ) : (
-                  <><ChevronDown className="h-3.5 w-3.5" /> Expand<Info className="h-3 w-3 ml-0.5" /></>
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" /> Expand
+                    <Info className="ml-0.5 h-3 w-3" />
+                  </>
                 )}
               </button>
             </div>
@@ -857,75 +930,88 @@ export function VisualStudioScreen({
                       7-Dimension Breakdown
                     </p>
                     <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                      {Object.entries(viralQuality.dimensionScores).map(([dim, score]) => (
-                        <div key={dim}>
-                          <div className="mb-0.5 flex items-center justify-between">
-                            <span className="text-xs capitalize text-gray-500 dark:text-gray-400">
-                              {dim.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              {Math.round((score as number) * 100)}
-                            </span>
+                      {Object.entries(viralQuality.dimensionScores).map(
+                        ([dim, score]) => (
+                          <div key={dim}>
+                            <div className="mb-0.5 flex items-center justify-between">
+                              <span className="text-xs text-gray-500 capitalize dark:text-gray-400">
+                                {dim.replace(/([A-Z])/g, ' $1').trim()}
+                              </span>
+                              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                {Math.round((score as number) * 100)}
+                              </span>
+                            </div>
+                            <div className="h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                              <div
+                                className={cn(
+                                  'h-full rounded-full',
+                                  (score as number) >= 0.7
+                                    ? 'bg-green-500'
+                                    : (score as number) >= 0.5
+                                      ? 'bg-amber-500'
+                                      : 'bg-red-500',
+                                )}
+                                style={{ width: `${(score as number) * 100}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                            <div
-                              className={cn(
-                                'h-full rounded-full',
-                                (score as number) >= 0.7
-                                  ? 'bg-green-500'
-                                  : (score as number) >= 0.5
-                                    ? 'bg-amber-500'
-                                    : 'bg-red-500',
-                              )}
-                              style={{ width: `${(score as number) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
 
                 {/* Top Reel Candidates */}
-                {viralQuality.reelCandidates && viralQuality.reelCandidates.length > 0 && (
-                  <div className="col-span-2">
-                    <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400">
-                      🎬 Top Reel Candidates
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {viralQuality.reelCandidates
-                        .sort((a, b) => b.viralScore - a.viralScore)
-                        .slice(0, 4)
-                        .map((c) => (
-                          <div
-                            key={c.sceneNumber}
-                            className="flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
-                          >
-                            <Flame className="h-3 w-3" />
-                            <span>Scene {c.sceneNumber}</span>
-                            {c.hookType && (
-                              <span className="opacity-70 capitalize">· {c.hookType}</span>
-                            )}
-                            <span className="font-bold">{c.viralScore.toFixed(1)}</span>
-                          </div>
-                        ))}
+                {viralQuality.reelCandidates &&
+                  viralQuality.reelCandidates.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                        🎬 Top Reel Candidates
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {viralQuality.reelCandidates
+                          .sort((a, b) => b.viralScore - a.viralScore)
+                          .slice(0, 4)
+                          .map((c) => (
+                            <div
+                              key={c.sceneNumber}
+                              className="flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
+                            >
+                              <Flame className="h-3 w-3" />
+                              <span>Scene {c.sceneNumber}</span>
+                              {c.hookType && (
+                                <span className="capitalize opacity-70">
+                                  · {c.hookType}
+                                </span>
+                              )}
+                              <span className="font-bold">
+                                {c.viralScore.toFixed(1)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Revisions applied */}
-                {viralQuality.revisionsApplied && viralQuality.revisionsApplied.length > 0 && (
-                  <div className="col-span-2">
-                    <p className="mb-1 text-xs font-medium text-blue-600 dark:text-blue-400">
-                      🔄 Orchestrator revisions applied
-                    </p>
-                    <ul className="space-y-0.5">
-                      {viralQuality.revisionsApplied.map((r, i) => (
-                        <li key={i} className="text-xs text-gray-500 dark:text-gray-400">• {r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {viralQuality.revisionsApplied &&
+                  viralQuality.revisionsApplied.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="mb-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                        🔄 Orchestrator revisions applied
+                      </p>
+                      <ul className="space-y-0.5">
+                        {viralQuality.revisionsApplied.map((r, i) => (
+                          <li
+                            key={i}
+                            className="text-xs text-gray-500 dark:text-gray-400"
+                          >
+                            • {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -1032,7 +1118,8 @@ export function VisualStudioScreen({
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-orange-400" />
                 <span className="text-sm font-semibold text-orange-300">
-                  {shortsCandidateScenes.length} Reel{shortsCandidateScenes.length === 1 ? '' : 's'}
+                  {shortsCandidateScenes.length} Reel
+                  {shortsCandidateScenes.length === 1 ? '' : 's'}
                 </span>
                 <span className="text-xs text-gray-500">
                   — complete scenes flagged by AI as standalone reels (30-60s)
@@ -1051,7 +1138,9 @@ export function VisualStudioScreen({
                             : scene.sceneNumber,
                       }))
                     }
-                    title={scene.standaloneSummary ?? `Scene ${scene.sceneNumber}`}
+                    title={
+                      scene.standaloneSummary ?? `Scene ${scene.sceneNumber}`
+                    }
                     className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-900/30 px-2.5 py-1 text-xs font-medium text-orange-300 transition-all hover:bg-orange-900/50"
                   >
                     <Flame className="h-3 w-3" />

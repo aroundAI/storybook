@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { notFound } from 'next/navigation';
 
+import { AssetRow, mapRowToAsset } from '@kit/assets';
 import type {
   EpisodeMetadata,
   EpisodeStatus,
@@ -12,7 +13,6 @@ import type {
   ShotListData,
   StoryData,
 } from '@kit/episodes/types';
-import { AssetRow, mapRowToAsset } from '@kit/assets';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -153,6 +153,10 @@ async function EpisodeWorkspaceLayout({
       prompt, camera_direction, status, video_url, thumbnail_url,
       first_frame_url, last_frame_url, generation_job_id, generation_metadata,
       shorts_candidate, shorts_metadata,
+      transition_type, continuation_from_shot_id, inherit_last_frame,
+      first_frame_description, last_frame_description, first_frame_source,
+      location_area, location_environment_description,
+      primary_subject, frame_strategy,
       created_at, updated_at, deleted_at
     `,
     )
@@ -192,7 +196,8 @@ async function EpisodeWorkspaceLayout({
     createdAt: episodeData.created_at,
     updatedAt: episodeData.updated_at,
     deletedAt: episodeData.deleted_at,
-    masterVideoAssetId: (episodeData as EpisodeDataWithRelations).master_video_asset_id,
+    masterVideoAssetId: (episodeData as EpisodeDataWithRelations)
+      .master_video_asset_id,
     masterVideoAsset: (episodeData as EpisodeDataWithRelations).master_video
       ? mapRowToAsset((episodeData as EpisodeDataWithRelations).master_video!)
       : null,
@@ -230,21 +235,49 @@ async function EpisodeWorkspaceLayout({
         generationStartedAt: null,
         generationCompletedAt: null,
         shortsCandidate:
-          ((shot as { shorts_candidate?: boolean | null }).shorts_candidate) ??
+          (shot as { shorts_candidate?: boolean | null }).shorts_candidate ??
           false,
         shortsMetadata:
-          ((shot as { shorts_metadata?: ShortsMetadata | null })
-            .shorts_metadata) ?? null,
+          (shot as { shorts_metadata?: ShortsMetadata | null })
+            .shorts_metadata ?? null,
+        // OpenClaw Shot Intelligence fields
+        transitionType:
+          (shot as { transition_type?: string | null }).transition_type ?? null,
+        continuationFromShotId:
+          (shot as { continuation_from_shot_id?: string | null })
+            .continuation_from_shot_id ?? null,
+        inheritLastFrame:
+          (shot as { inherit_last_frame?: boolean | null })
+            .inherit_last_frame ?? false,
+        firstFrameDescription:
+          (shot as { first_frame_description?: string | null })
+            .first_frame_description ?? null,
+        lastFrameDescription:
+          (shot as { last_frame_description?: string | null })
+            .last_frame_description ?? null,
+        firstFrameSource:
+          (shot as { first_frame_source?: string | null }).first_frame_source ??
+          null,
+        locationArea:
+          (shot as { location_area?: string | null }).location_area ?? null,
+        locationEnvironmentDescription:
+          (shot as { location_environment_description?: string | null })
+            .location_environment_description ?? null,
+        primarySubject:
+          (shot as { primary_subject?: Record<string, unknown> | null })
+            .primary_subject ?? null,
+        frameStrategy:
+          (shot as { frame_strategy?: string | null }).frame_strategy ?? null,
         createdAt: shot.created_at,
         updatedAt: shot.updated_at,
         deletedAt: shot.deleted_at,
       })) ?? [],
     season: seasonData
       ? {
-        id: seasonData.id,
-        name: seasonData.name ?? '',
-        number: seasonData.number,
-      }
+          id: seasonData.id,
+          name: seasonData.name ?? '',
+          number: seasonData.number,
+        }
       : null,
     // Include project metadata for shot prompts (projectAestheticStyle, videoStyle, etc.)
     projectMetadata: (project.metadata as Record<string, unknown>) ?? {},

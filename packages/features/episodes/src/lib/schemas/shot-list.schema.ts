@@ -288,6 +288,31 @@ export const SceneShotOutputSchema = z.object({
       standaloneSummary: z.string().nullish(),
     })
     .nullish(),
+  // OpenClaw Shot Intelligence fields
+  transitionType: z
+    .enum(['continuation', 'cut', 'match_cut', 'j_cut', 'l_cut'])
+    .optional()
+    .default('cut'),
+  frameStrategy: z
+    .enum([
+      'character_focus',
+      'environment_focus',
+      'two_shot',
+      'group',
+      'detail_insert',
+    ])
+    .optional()
+    .default('environment_focus'),
+  primarySubject: z
+    .object({
+      type: z.enum(['character', 'location', 'object']),
+      name: z.string(),
+    })
+    .optional(),
+  firstFrameDescription: z.string().nullish(),
+  lastFrameDescription: z.string().nullish(),
+  locationArea: z.string().nullish(),
+  locationEnvironmentDescription: z.string().nullish(),
 });
 
 export type SceneShotOutput = z.infer<typeof SceneShotOutputSchema>;
