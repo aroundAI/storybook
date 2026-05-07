@@ -32,9 +32,8 @@ yarn-error.log*
 # local env files
 .env*.local
 
-# deployment configs (keep .env.example files)
-deployment/config/*.env
-!deployment/config/*.env.example
+# deployment/config is a git submodule (aroundAI/storybook-deployment-config)
+# Its contents are managed by the submodule's own .git — no ignore rules needed here.
 
 # vercel
 .vercel
