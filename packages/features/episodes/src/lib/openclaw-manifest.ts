@@ -21,7 +21,6 @@ import type {
   EpisodeWithShots,
   FrameStrategy,
   PrimarySubject,
-  Shot,
   TransitionType,
 } from './types';
 
