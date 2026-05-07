@@ -305,13 +305,9 @@ echo ""
 # 5b. Apply ClickHouse Migrations
 ###############################################################################
 
-echo -e "${YELLOW}📊 Applying ClickHouse migrations...${NC}"
+if [ "${CLICKHOUSE_ENABLED}" = "true" ] && [ -n "$CLICKHOUSE_HOST" ]; then
+    echo -e "${YELLOW}📊 Applying ClickHouse migrations...${NC}"
 
-if [ -z "$CLICKHOUSE_HOST" ]; then
-    echo -e "${YELLOW}⚠️  CLICKHOUSE_HOST not set. Skipping ClickHouse migrations.${NC}"
-    echo -e "  To enable, add CLICKHOUSE_HOST, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD, CLICKHOUSE_DB"
-    echo -e "  to deployment/config/${STAGE}.env"
-else
     MIGRATIONS_DIR="packages/clickhouse/src/migrations"
 
     if [ ! -d "$MIGRATIONS_DIR" ]; then
@@ -349,13 +345,16 @@ else
             done
 
             if [ "$MIGRATION_FAILED" = true ]; then
-                echo -e "${RED}❌ ClickHouse migrations failed. Aborting deployment.${NC}"
-                exit 1
+                echo -e "${YELLOW}⚠️  ClickHouse migrations failed. Continuing deployment without ClickHouse.${NC}"
+                echo -e "  Analytics features may not work until ClickHouse is reachable."
+            else
+                echo -e "${GREEN}✓ All ClickHouse migrations applied successfully${NC}"
             fi
-
-            echo -e "${GREEN}✓ All ClickHouse migrations applied successfully${NC}"
         fi
     fi
+else
+    echo -e "${YELLOW}📊 ClickHouse migrations skipped (CLICKHOUSE_ENABLED != true)${NC}"
+    echo -e "  To enable, set CLICKHOUSE_ENABLED=true and configure CLICKHOUSE_HOST in deployment/config/${STAGE}.env"
 fi
 
 
