@@ -19,6 +19,7 @@
     "./server/season-generation": "./src/lib/server/mutations/season-generation-actions.ts",
     "./lib": "./src/lib/index.ts",
     "./schemas": "./src/lib/schemas.ts",
+    "./schemas/shot-list": "./src/lib/schemas/shot-list.schema.ts",
     "./types": "./src/lib/types.ts",
     "./hooks": "./src/hooks/index.ts",
     "./skills": "./src/agent/skills/index.ts",

@@ -14,6 +14,12 @@ import type {
   Shot,
   TransitionType,
 } from '../lib/types';
+import { ShotMetadataSchema } from '../lib/schemas/shot-list.schema';
+
+// Helper: safely parse shot metadata JSONB at the boundary
+function parseMetadata(shot: Shot) {
+  return ShotMetadataSchema.nullish().parse(shot.metadata);
+}
 
 // ============================================================================
 // Types
@@ -122,19 +128,10 @@ export function determineFrameStrategy(
  * This replaces your judgment of "who/what am I focusing on?"
  */
 export function determinePrimarySubject(shot: Shot): PrimarySubject {
-  const metadata = shot.metadata as {
-    characters?: string[];
-    locations?: string[];
-    veoPrompt?: {
-      timeline?: Array<{ character?: string | null; type?: string }>;
-    };
-  } | null;
+  const metadata = parseMetadata(shot);
 
   const characters = metadata?.characters ?? [];
-  const shotType =
-    (shot.metadata as { shotType?: string } | null)?.shotType ??
-    shot.cameraDirection ??
-    '';
+  const shotType = metadata?.shotType ?? shot.cameraDirection ?? '';
 
   // Character-focused shot types → primary subject is first character
   if (CHARACTER_FOCUS_SHOT_TYPES.has(shotType) && characters.length >= 1) {
@@ -153,8 +150,7 @@ export function determinePrimarySubject(shot: Shot): PrimarySubject {
 
   // Environment shots → location
   if (ENVIRONMENT_SHOT_TYPES.has(shotType)) {
-    const location =
-      (shot.metadata as { location?: string } | null)?.location ?? 'scene';
+    const location = parseMetadata(shot)?.location ?? 'scene';
     return { type: 'location', name: location };
   }
 
@@ -164,8 +160,7 @@ export function determinePrimarySubject(shot: Shot): PrimarySubject {
   }
 
   // No characters → location
-  const location =
-    (shot.metadata as { location?: string } | null)?.location ?? 'scene';
+  const location = parseMetadata(shot)?.location ?? 'scene';
   return { type: 'location', name: location };
 }
 
@@ -190,16 +185,8 @@ export function analyzeTransition(
     return 'cut';
   }
 
-  const prevMeta = previousShot.metadata as {
-    characters?: string[];
-    shotType?: string;
-    veoPrompt?: { shotLine?: string };
-  } | null;
-  const currMeta = currentShot.metadata as {
-    characters?: string[];
-    shotType?: string;
-    veoPrompt?: { shotLine?: string };
-  } | null;
+  const prevMeta = parseMetadata(previousShot);
+  const currMeta = parseMetadata(currentShot);
 
   const prevCharacters = new Set(
     (prevMeta?.characters ?? []).map((c) => c.toLowerCase()),
@@ -282,10 +269,9 @@ export function analyzeAllTransitions(shots: Shot[]): TransitionAnalysis[] {
   );
 
   return sorted.map((shot, index) => {
-    const characters =
-      (shot.metadata as { characters?: string[] } | null)?.characters ?? [];
-    const shotType =
-      (shot.metadata as { shotType?: string } | null)?.shotType ?? '';
+    const parsedMeta = parseMetadata(shot);
+    const characters = parsedMeta?.characters ?? [];
+    const shotType = parsedMeta?.shotType ?? '';
 
     const frameStrategy = determineFrameStrategy(shotType, characters.length);
     const primarySubject = determinePrimarySubject(shot);
@@ -385,10 +371,7 @@ export function buildFrameGenerationTasks(
     const shot = shots.find((s) => s.id === entry.shotId);
     if (!shot) continue;
 
-    const metadata = shot.metadata as {
-      characters?: string[];
-      location?: string;
-    } | null;
+    const metadata = parseMetadata(shot);
 
     const characters = (metadata?.characters ?? [])
       .map((name) => ({

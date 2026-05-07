@@ -6,7 +6,14 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { GetEpisodeShotsSchema } from '../../schemas/shot.schema';
-import type { GetEpisodeShotsResponse, ShotWithJobStatus } from '../../types';
+import { PrimarySubjectSchema } from '../../schemas/shot-list.schema';
+import type {
+  FirstFrameSource,
+  FrameStrategy,
+  GetEpisodeShotsResponse,
+  ShotWithJobStatus,
+  TransitionType,
+} from '../../types';
 
 /**
  * Fetches all shots for an episode with optional filtering
@@ -87,21 +94,21 @@ export const getEpisodeShotsAction = enhanceAction(
         shortsMetadata:
           (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
         // OpenClaw Shot Intelligence fields
-        transitionType: (shot.transition_type as string | null) ?? null,
-        continuationFromShotId:
-          (shot.continuation_from_shot_id as string | null) ?? null,
-        inheritLastFrame: (shot.inherit_last_frame as boolean | null) ?? false,
-        firstFrameDescription:
-          (shot.first_frame_description as string | null) ?? null,
-        lastFrameDescription:
-          (shot.last_frame_description as string | null) ?? null,
-        firstFrameSource: (shot.first_frame_source as string | null) ?? null,
-        locationArea: (shot.location_area as string | null) ?? null,
+        transitionType:
+          (shot.transition_type as TransitionType | null) ?? null,
+        continuationFromShotId: shot.continuation_from_shot_id ?? null,
+        inheritLastFrame: shot.inherit_last_frame ?? false,
+        firstFrameDescription: shot.first_frame_description ?? null,
+        lastFrameDescription: shot.last_frame_description ?? null,
+        firstFrameSource:
+          (shot.first_frame_source as FirstFrameSource | null) ?? null,
+        locationArea: shot.location_area ?? null,
         locationEnvironmentDescription:
-          (shot.location_environment_description as string | null) ?? null,
+          shot.location_environment_description ?? null,
         primarySubject:
-          (shot.primary_subject as Record<string, unknown> | null) ?? null,
-        frameStrategy: (shot.frame_strategy as string | null) ?? null,
+          PrimarySubjectSchema.nullish().parse(shot.primary_subject) ?? null,
+        frameStrategy:
+          (shot.frame_strategy as FrameStrategy | null) ?? null,
         createdAt: shot.created_at as string,
         updatedAt: shot.updated_at as string,
         deletedAt: shot.deleted_at as string | null,

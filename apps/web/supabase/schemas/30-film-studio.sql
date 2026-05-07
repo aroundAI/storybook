@@ -375,7 +375,7 @@ comment on column public.shots.last_frame_url is 'URL for last frame storyboard 
 comment on column public.shots.generation_metadata is 'Provider-specific metadata (provider, cost, parameters)';
 comment on column public.shots.deleted_at is 'Soft delete timestamp';
 comment on column public.shots.transition_type is 'How this shot connects to previous: continuation, cut, match_cut, j_cut, l_cut';
-comment on column public.shots.continuation_from_shot_id is 'FK to previous shot when transition is continuation';
+comment on column public.shots.continuation_from_shot_id is 'FK to previous shot when transition_type is continuation — first frame inherited from that shot''s last frame';
 comment on column public.shots.inherit_last_frame is 'If true, first frame = previous shot last frame';
 comment on column public.shots.first_frame_description is 'Text prompt for first frame image generation on Flow';
 comment on column public.shots.last_frame_description is 'Text prompt for last frame image generation on Flow';

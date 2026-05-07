@@ -16,6 +16,7 @@ import {
   analyzeAllTransitions,
   resolveFrameChain,
 } from '../server/transition-analyzer';
+import { ShotMetadataSchema } from './schemas/shot-list.schema';
 import type {
   EpisodeWithShots,
   FrameStrategy,
@@ -163,11 +164,7 @@ export function buildOpenClawManifest(
   const manifestShots: OpenClawShotEntry[] = shots.map((shot) => {
     const transition = transitionMap.get(shot.id);
     const frame = frameChainMap.get(shot.id);
-    const metadata = shot.metadata as {
-      characters?: string[];
-      location?: string;
-      veoPrompt?: { fullPrompt?: string };
-    } | null;
+    const metadata = ShotMetadataSchema.nullish().parse(shot.metadata);
 
     const characters = metadata?.characters ?? [];
     const locationName = metadata?.location ?? null;

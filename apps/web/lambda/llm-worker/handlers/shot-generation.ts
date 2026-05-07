@@ -302,9 +302,7 @@ export async function processShotGeneration(
             }
           : null;
 
-      // Extract OpenClaw intelligence fields from orchestrator output
-      const shotAny = shot as Record<string, unknown>;
-
+      // OpenClaw Shot Intelligence (typed via SceneShotOutputSchema)
       allShots.push({
         episode_id: data.episodeId,
         scene_number: shot.sceneNumber,
@@ -326,18 +324,14 @@ export async function processShotGeneration(
           veoPrompt: shot.veoPrompt,
           isReelCandidate: sceneIsCandidate,
         },
-        // OpenClaw Shot Intelligence
-        transition_type: (shotAny.transitionType as string) ?? null,
-        frame_strategy: (shotAny.frameStrategy as string) ?? null,
-        primary_subject:
-          (shotAny.primarySubject as Record<string, unknown>) ?? null,
-        first_frame_description:
-          (shotAny.firstFrameDescription as string) ?? null,
-        last_frame_description:
-          (shotAny.lastFrameDescription as string) ?? null,
-        location_area: (shotAny.locationArea as string) ?? null,
+        transition_type: shot.transitionType ?? null,
+        frame_strategy: shot.frameStrategy ?? null,
+        primary_subject: shot.primarySubject ?? null,
+        first_frame_description: shot.firstFrameDescription ?? null,
+        last_frame_description: shot.lastFrameDescription ?? null,
+        location_area: shot.locationArea ?? null,
         location_environment_description:
-          (shotAny.locationEnvironmentDescription as string) ?? null,
+          shot.locationEnvironmentDescription ?? null,
       });
 
       if (shot.shotType === 'wide') shotTypes.wide++;
