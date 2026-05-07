@@ -101,8 +101,8 @@ elif [ -f "apps/web/.env.${STAGE}" ]; then
     set +a
 else
     echo -e "${YELLOW}⚠️  No deployment config found at deployment/config/${STAGE}.env${NC}"
-    echo -e "  Copy deployment/config/${STAGE}.env.example to deployment/config/${STAGE}.env"
-    echo -e "  and fill in your credentials."
+    echo -e "  Initialize config submodule: git submodule update --init --recursive deployment/config"
+    echo -e "  Then create deployment/config/${STAGE}.env in the storybook-deployment-config repo."
 fi
 
 # Set defaults

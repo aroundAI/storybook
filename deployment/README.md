@@ -82,24 +82,23 @@ aws sts get-caller-identity
 pnpm install
 ```
 
-### 2. Create Deployment Config
+### 2. Initialize Deployment Config
 
-Copy the example configuration for your stage:
+`deployment/config` is a git submodule that points to `aroundAI/storybook-deployment-config`.
 
 ```bash
-# For staging
-cp deployment/config/staging.env.example deployment/config/staging.env
+git submodule update --init --recursive deployment/config
+```
 
-# For production
-cp deployment/config/production.env.example deployment/config/production.env
+To pull the latest config changes from that repo:
 
-# For custom domain (e.g., tailorist.dev)
-cp deployment/config/tailorist.env.example deployment/config/tailorist.env
+```bash
+git submodule update --remote --merge deployment/config
 ```
 
 ### 3. Edit Configuration
 
-Edit `deployment/config/[stage].env` and fill in your credentials:
+Edit `deployment/config/[stage].env` and fill in your credentials (these files are owned by the `storybook-deployment-config` repo):
 
 ```bash
 # Required
@@ -189,10 +188,32 @@ REALTIME_PROVIDER=websocket
 
 | File | Purpose |
 |------|---------|
-| `deployment/config/staging.env` | Staging environment |
-| `deployment/config/production.env` | Production environment |
-| `deployment/config/[custom].env` | Custom deployment |
+| `deployment/config/*.env` | Stage-specific deployment variables (from submodule) |
 | `sst.config.ts` | SST infrastructure configuration |
+
+### Config Repository Sync Workflow
+
+`deployment/config` is its own repository tracked by the parent repo as a submodule.
+
+Pull latest config updates from `aroundAI/storybook-deployment-config`:
+
+```bash
+git submodule update --remote --merge deployment/config
+git add deployment/config
+git commit -m "chore: bump deployment config submodule"
+```
+
+Push config edits to the config repo:
+
+```bash
+cd deployment/config
+git add .
+git commit -m "chore: update production env"
+git push origin main
+cd ../..
+git add deployment/config
+git commit -m "chore: bump deployment config submodule"
+```
 
 ## Deployment Commands
 
@@ -214,6 +235,8 @@ pnpm sst console --stage staging
 pnpm sst logs --stage staging
 pnpm sst remove --stage staging
 ```
+
+Use `pnpm deploy:staging` / `pnpm deploy:production` for normal deployments because the deploy script loads `deployment/config/[stage].env` automatically. If running `pnpm sst deploy --stage ...` directly, export env vars first in your shell.
 
 ### Using Deploy Script Directly
 
