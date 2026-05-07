@@ -29,6 +29,13 @@ import { generateSfxAction } from './sfx-actions';
  * and trigger generation for SFX/ambient, display prompts for music.
  */
 
+/**
+ * Audio Cue Actions
+ *
+ * Process audioCues from screenplay scenes into audio_cues table
+ * and trigger generation for SFX/ambient, display prompts for music.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================
@@ -230,12 +237,20 @@ export const processAudioCuesAction = enhanceAction(
 export const generateAudioForCueAction = enhanceAction(
   async (
     data,
-  ): Promise<{ success: boolean; status: 'queued' | 'failed'; error?: string }> => {
+  ): Promise<{
+    success: boolean;
+    status: 'queued' | 'failed';
+    error?: string;
+  }> => {
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
-      return { success: false, status: 'failed', error: 'Authentication required' };
+      return {
+        success: false,
+        status: 'failed',
+        error: 'Authentication required',
+      };
     }
 
     // Get cue details
@@ -253,14 +268,22 @@ export const generateAudioForCueAction = enhanceAction(
       .single();
 
     if (cueError || !cue) {
-      return { success: false, status: 'failed', error: cueError?.message ?? 'Cue not found' };
+      return {
+        success: false,
+        status: 'failed',
+        error: cueError?.message ?? 'Cue not found',
+      };
     }
 
     // Extract project_id from the nested join
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const projectId = (cue.episodes as any)?.seasons?.project_id;
     if (!projectId) {
-      return { success: false, status: 'failed', error: 'Could not determine project ID' };
+      return {
+        success: false,
+        status: 'failed',
+        error: 'Could not determine project ID',
+      };
     }
 
     try {
@@ -299,7 +322,8 @@ export const generateAudioForCueAction = enhanceAction(
       return {
         success: false,
         status: 'failed',
-        error: error instanceof Error ? error.message : 'Failed to queue generation',
+        error:
+          error instanceof Error ? error.message : 'Failed to queue generation',
       };
     }
   },

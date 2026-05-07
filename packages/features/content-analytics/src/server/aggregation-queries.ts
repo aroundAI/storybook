@@ -171,9 +171,9 @@ export async function getEpisodeAnalytics(
   const publishIds = publishes.map((p) => p.id);
   const dateFilters = dateRange
     ? {
-      startDate: dateRange.start.toISOString().split('T')[0],
-      endDate: dateRange.end.toISOString().split('T')[0],
-    }
+        startDate: dateRange.start.toISOString().split('T')[0],
+        endDate: dateRange.end.toISOString().split('T')[0],
+      }
     : {};
 
   // Query ClickHouse — per-publish totals
@@ -190,7 +190,13 @@ export async function getEpisodeAnalytics(
 
   const platformMap = new Map<
     string,
-    { views: number; likes: number; comments: number; shares: number; saves: number }
+    {
+      views: number;
+      likes: number;
+      comments: number;
+      shares: number;
+      saves: number;
+    }
   >();
 
   for (const publish of publishes) {
@@ -354,12 +360,15 @@ export async function getSeasonAnalytics(
   const dateFilters =
     options?.startDate && options?.endDate
       ? {
-        startDate: options.startDate.toISOString().split('T')[0],
-        endDate: options.endDate.toISOString().split('T')[0],
-      }
+          startDate: options.startDate.toISOString().split('T')[0],
+          endDate: options.endDate.toISOString().split('T')[0],
+        }
       : {};
 
-  const perVideoTotals = await queryTotalsByVideoIds(allPublishIds, dateFilters);
+  const perVideoTotals = await queryTotalsByVideoIds(
+    allPublishIds,
+    dateFilters,
+  );
 
   // Aggregate per episode
   const episodeAnalytics: SeasonAnalytics['episodes'] = [];
@@ -415,18 +424,18 @@ export async function getSeasonAnalytics(
   const sortedByViews = [...episodeAnalytics].sort((a, b) => b.views - a.views);
   const topEpisode = sortedByViews[0]
     ? {
-      episodeId: sortedByViews[0].episodeId,
-      title: sortedByViews[0].title,
-      views: sortedByViews[0].views,
-    }
+        episodeId: sortedByViews[0].episodeId,
+        title: sortedByViews[0].title,
+        views: sortedByViews[0].views,
+      }
     : null;
   const lowestEpisode =
     sortedByViews.length > 0
       ? {
-        episodeId: sortedByViews[sortedByViews.length - 1]!.episodeId,
-        title: sortedByViews[sortedByViews.length - 1]!.title,
-        views: sortedByViews[sortedByViews.length - 1]!.views,
-      }
+          episodeId: sortedByViews[sortedByViews.length - 1]!.episodeId,
+          title: sortedByViews[sortedByViews.length - 1]!.title,
+          views: sortedByViews[sortedByViews.length - 1]!.views,
+        }
       : null;
 
   return {
@@ -687,10 +696,10 @@ export async function getProjectAudienceData(
     demographics:
       Object.keys(ageGroups).length > 0 || Object.keys(genders).length > 0
         ? {
-          ageGroups:
-            Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
-          genders: Object.keys(genders).length > 0 ? genders : undefined,
-        }
+            ageGroups:
+              Object.keys(ageGroups).length > 0 ? ageGroups : undefined,
+            genders: Object.keys(genders).length > 0 ? genders : undefined,
+          }
         : undefined,
     geography: Object.keys(geography).length > 0 ? geography : undefined,
   };

@@ -69,6 +69,12 @@ import type { CharacterFormData } from '../../../lib/schemas/character.schema';
  * Form fields for character personality traits.
  */
 
+/**
+ * Character Personality Section (FILM-205)
+ *
+ * Form fields for character personality traits.
+ */
+
 interface CharacterPersonalityProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

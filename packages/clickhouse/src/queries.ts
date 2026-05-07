@@ -4,17 +4,16 @@
  * Typed query functions for inserting and querying analytics data.
  * All queries target the video_metrics / video_daily_stats tables.
  */
-
 import { getClickHouseClient, isClickHouseEnabled } from './client';
 import type {
-    AggregatedTotals,
-    DailyDataPoint,
-    DailyPlatformBreakdown,
-    DailyPlatformMetricsRow,
-    DailyStats,
-    PlatformBreakdown,
-    QueryFilters,
-    VideoMetric,
+  AggregatedTotals,
+  DailyDataPoint,
+  DailyPlatformBreakdown,
+  DailyPlatformMetricsRow,
+  DailyStats,
+  PlatformBreakdown,
+  QueryFilters,
+  VideoMetric,
 } from './types';
 
 // ==========================================
@@ -26,17 +25,17 @@ import type {
  * Used by the analytics sync cron to dual-write during migration.
  */
 export async function insertVideoMetrics(
-    metrics: VideoMetric[],
+  metrics: VideoMetric[],
 ): Promise<void> {
-    if (metrics.length === 0 || !isClickHouseEnabled()) return;
+  if (metrics.length === 0 || !isClickHouseEnabled()) return;
 
-    const client = getClickHouseClient();
+  const client = getClickHouseClient();
 
-    await client.insert({
-        table: 'video_metrics',
-        values: metrics,
-        format: 'JSONEachRow',
-    });
+  await client.insert({
+    table: 'video_metrics',
+    values: metrics,
+    format: 'JSONEachRow',
+  });
 }
 
 // ==========================================
@@ -48,11 +47,14 @@ export async function insertVideoMetrics(
  * accidental full-table scans.
  */
 function assertScopedFilters(filters: QueryFilters): void {
-    if (!filters.projectId && (!filters.videoIds || filters.videoIds.length === 0)) {
-        throw new Error(
-            'ClickHouse query requires at least projectId or videoIds to prevent full table scans',
-        );
-    }
+  if (
+    !filters.projectId &&
+    (!filters.videoIds || filters.videoIds.length === 0)
+  ) {
+    throw new Error(
+      'ClickHouse query requires at least projectId or videoIds to prevent full table scans',
+    );
+  }
 }
 
 /**
@@ -60,46 +62,43 @@ function assertScopedFilters(filters: QueryFilters): void {
  * Returns the clause string (including the WHERE keyword) and parameter values.
  */
 function buildWhereClause(filters: QueryFilters): {
-    clause: string;
-    params: Record<string, unknown>;
+  clause: string;
+  params: Record<string, unknown>;
 } {
-    const conditions: string[] = [];
-    const params: Record<string, unknown> = {};
+  const conditions: string[] = [];
+  const params: Record<string, unknown> = {};
 
-    if (filters.projectId) {
-        conditions.push('project_id = {projectId: UUID}');
-        params.projectId = filters.projectId;
-    }
+  if (filters.projectId) {
+    conditions.push('project_id = {projectId: UUID}');
+    params.projectId = filters.projectId;
+  }
 
-    if (filters.videoIds && filters.videoIds.length > 0) {
-        conditions.push('video_id IN {videoIds: Array(String)}');
-        params.videoIds = filters.videoIds;
-    }
+  if (filters.videoIds && filters.videoIds.length > 0) {
+    conditions.push('video_id IN {videoIds: Array(String)}');
+    params.videoIds = filters.videoIds;
+  }
 
-    if (filters.platforms && filters.platforms.length > 0) {
-        conditions.push(
-            `platform IN {platforms: Array(Enum('youtube', 'tiktok', 'instagram'))}`,
-        );
-        params.platforms = filters.platforms;
-    }
+  if (filters.platforms && filters.platforms.length > 0) {
+    conditions.push(
+      `platform IN {platforms: Array(Enum('youtube', 'tiktok', 'instagram'))}`,
+    );
+    params.platforms = filters.platforms;
+  }
 
-    if (filters.startDate) {
-        conditions.push('metric_date >= {startDate: Date}');
-        params.startDate = filters.startDate;
-    }
+  if (filters.startDate) {
+    conditions.push('metric_date >= {startDate: Date}');
+    params.startDate = filters.startDate;
+  }
 
-    if (filters.endDate) {
-        conditions.push('metric_date <= {endDate: Date}');
-        params.endDate = filters.endDate;
-    }
+  if (filters.endDate) {
+    conditions.push('metric_date <= {endDate: Date}');
+    params.endDate = filters.endDate;
+  }
 
-    return {
-        clause:
-            conditions.length > 0
-                ? `WHERE ${conditions.join(' AND ')}`
-                : '',
-        params,
-    };
+  return {
+    clause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
+    params,
+  };
 }
 
 /**
@@ -107,14 +106,26 @@ function buildWhereClause(filters: QueryFilters): {
  * Returns summed views, likes, comments, shares, etc.
  */
 export async function queryTotals(
-    filters: QueryFilters & { projectId: string } | QueryFilters & { videoIds: string[] },
+  filters:
+    | (QueryFilters & { projectId: string })
+    | (QueryFilters & { videoIds: string[] }),
 ): Promise<AggregatedTotals> {
-    if (!isClickHouseEnabled()) return { views: 0, likes: 0, comments: 0, shares: 0, saves: 0, watch_time_seconds: 0, revenue_cents: 0, subscribers_gained: 0 };
-    const client = getClickHouseClient();
-    assertScopedFilters(filters);
-    const { clause, params } = buildWhereClause(filters);
+  if (!isClickHouseEnabled())
+    return {
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+      watch_time_seconds: 0,
+      revenue_cents: 0,
+      subscribers_gained: 0,
+    };
+  const client = getClickHouseClient();
+  assertScopedFilters(filters);
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT
       sum(views) as views,
       sum(likes) as likes,
@@ -128,40 +139,40 @@ export async function queryTotals(
     ${clause}
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
-    });
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
 
-    const rows = await result.json<AggregatedTotals>();
+  const rows = await result.json<AggregatedTotals>();
 
-    if (rows.length === 0) {
-        return {
-            views: 0,
-            likes: 0,
-            comments: 0,
-            shares: 0,
-            saves: 0,
-            watch_time_seconds: 0,
-            revenue_cents: 0,
-            subscribers_gained: 0,
-        };
-    }
-
-    // ClickHouse returns numbers as strings, ensure they're numeric
-    const row = rows[0]!;
-
+  if (rows.length === 0) {
     return {
-        views: Number(row.views),
-        likes: Number(row.likes),
-        comments: Number(row.comments),
-        shares: Number(row.shares),
-        saves: Number(row.saves),
-        watch_time_seconds: Number(row.watch_time_seconds),
-        revenue_cents: Number(row.revenue_cents),
-        subscribers_gained: Number(row.subscribers_gained),
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      saves: 0,
+      watch_time_seconds: 0,
+      revenue_cents: 0,
+      subscribers_gained: 0,
     };
+  }
+
+  // ClickHouse returns numbers as strings, ensure they're numeric
+  const row = rows[0]!;
+
+  return {
+    views: Number(row.views),
+    likes: Number(row.likes),
+    comments: Number(row.comments),
+    shares: Number(row.shares),
+    saves: Number(row.saves),
+    watch_time_seconds: Number(row.watch_time_seconds),
+    revenue_cents: Number(row.revenue_cents),
+    subscribers_gained: Number(row.subscribers_gained),
+  };
 }
 
 /**
@@ -169,14 +180,14 @@ export async function queryTotals(
  * Groups by date and returns sorted daily data points.
  */
 export async function queryDailyTimeSeries(
-    filters: QueryFilters,
+  filters: QueryFilters,
 ): Promise<DailyDataPoint[]> {
-    if (!isClickHouseEnabled()) return [];
-    assertScopedFilters(filters);
-    const client = getClickHouseClient();
-    const { clause, params } = buildWhereClause(filters);
+  if (!isClickHouseEnabled()) return [];
+  assertScopedFilters(filters);
+  const client = getClickHouseClient();
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT
       toString(metric_date) as date,
       sum(views) as views,
@@ -192,24 +203,24 @@ export async function queryDailyTimeSeries(
     ORDER BY metric_date ASC
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
-    });
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
 
-    const rows = await result.json<DailyDataPoint>();
+  const rows = await result.json<DailyDataPoint>();
 
-    return rows.map((row) => ({
-        date: row.date,
-        views: Number(row.views),
-        likes: Number(row.likes),
-        comments: Number(row.comments),
-        shares: Number(row.shares),
-        saves: Number(row.saves),
-        watch_time_seconds: Number(row.watch_time_seconds),
-        revenue_cents: Number(row.revenue_cents),
-    }));
+  return rows.map((row) => ({
+    date: row.date,
+    views: Number(row.views),
+    likes: Number(row.likes),
+    comments: Number(row.comments),
+    shares: Number(row.shares),
+    saves: Number(row.saves),
+    watch_time_seconds: Number(row.watch_time_seconds),
+    revenue_cents: Number(row.revenue_cents),
+  }));
 }
 
 /**
@@ -217,14 +228,14 @@ export async function queryDailyTimeSeries(
  * Groups metrics by platform.
  */
 export async function queryPlatformBreakdown(
-    filters: QueryFilters,
+  filters: QueryFilters,
 ): Promise<PlatformBreakdown[]> {
-    if (!isClickHouseEnabled()) return [];
-    assertScopedFilters(filters);
-    const client = getClickHouseClient();
-    const { clause, params } = buildWhereClause(filters);
+  if (!isClickHouseEnabled()) return [];
+  assertScopedFilters(filters);
+  const client = getClickHouseClient();
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT
       platform,
       sum(views) as views,
@@ -239,23 +250,23 @@ export async function queryPlatformBreakdown(
     ORDER BY views DESC
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
-    });
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
 
-    const rows = await result.json<PlatformBreakdown>();
+  const rows = await result.json<PlatformBreakdown>();
 
-    return rows.map((row) => ({
-        platform: row.platform,
-        views: Number(row.views),
-        likes: Number(row.likes),
-        comments: Number(row.comments),
-        shares: Number(row.shares),
-        saves: Number(row.saves),
-        revenue_cents: Number(row.revenue_cents),
-    }));
+  return rows.map((row) => ({
+    platform: row.platform,
+    views: Number(row.views),
+    likes: Number(row.likes),
+    comments: Number(row.comments),
+    shares: Number(row.shares),
+    saves: Number(row.saves),
+    revenue_cents: Number(row.revenue_cents),
+  }));
 }
 
 /**
@@ -263,14 +274,14 @@ export async function queryPlatformBreakdown(
  * Returns totals grouped by video_id for a set of video IDs.
  */
 export async function queryPerVideoTotals(
-    filters: QueryFilters & { videoIds: string[] },
+  filters: QueryFilters & { videoIds: string[] },
 ): Promise<Map<string, AggregatedTotals>> {
-    if (!isClickHouseEnabled()) return new Map();
-    assertScopedFilters(filters);
-    const client = getClickHouseClient();
-    const { clause, params } = buildWhereClause(filters);
+  if (!isClickHouseEnabled()) return new Map();
+  assertScopedFilters(filters);
+  const client = getClickHouseClient();
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT
       video_id,
       sum(views) as views,
@@ -286,29 +297,29 @@ export async function queryPerVideoTotals(
     GROUP BY video_id
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
+
+  const rows = await result.json<AggregatedTotals & { video_id: string }>();
+  const map = new Map<string, AggregatedTotals>();
+
+  for (const row of rows) {
+    map.set(row.video_id, {
+      views: Number(row.views),
+      likes: Number(row.likes),
+      comments: Number(row.comments),
+      shares: Number(row.shares),
+      saves: Number(row.saves),
+      watch_time_seconds: Number(row.watch_time_seconds),
+      revenue_cents: Number(row.revenue_cents),
+      subscribers_gained: Number(row.subscribers_gained),
     });
+  }
 
-    const rows = await result.json<AggregatedTotals & { video_id: string }>();
-    const map = new Map<string, AggregatedTotals>();
-
-    for (const row of rows) {
-        map.set(row.video_id, {
-            views: Number(row.views),
-            likes: Number(row.likes),
-            comments: Number(row.comments),
-            shares: Number(row.shares),
-            saves: Number(row.saves),
-            watch_time_seconds: Number(row.watch_time_seconds),
-            revenue_cents: Number(row.revenue_cents),
-            subscribers_gained: Number(row.subscribers_gained),
-        });
-    }
-
-    return map;
+  return map;
 }
 
 /**
@@ -316,14 +327,14 @@ export async function queryPerVideoTotals(
  * Useful for detailed per-video per-day data.
  */
 export async function queryDailyStats(
-    filters: QueryFilters,
+  filters: QueryFilters,
 ): Promise<DailyStats[]> {
-    if (!isClickHouseEnabled()) return [];
-    const client = getClickHouseClient();
-    assertScopedFilters(filters);
-    const { clause, params } = buildWhereClause(filters);
+  if (!isClickHouseEnabled()) return [];
+  const client = getClickHouseClient();
+  assertScopedFilters(filters);
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT
       project_id,
       video_id,
@@ -343,28 +354,28 @@ export async function queryDailyStats(
     ORDER BY metric_date DESC
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
-    });
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
 
-    const rows = await result.json<DailyStats>();
+  const rows = await result.json<DailyStats>();
 
-    return rows.map((row) => ({
-        project_id: row.project_id,
-        video_id: row.video_id,
-        platform: row.platform,
-        metric_date: row.metric_date,
-        views: Number(row.views),
-        likes: Number(row.likes),
-        comments: Number(row.comments),
-        shares: Number(row.shares),
-        saves: Number(row.saves),
-        watch_time_seconds: Number(row.watch_time_seconds),
-        revenue_cents: Number(row.revenue_cents),
-        subscribers_gained: Number(row.subscribers_gained),
-    }));
+  return rows.map((row) => ({
+    project_id: row.project_id,
+    video_id: row.video_id,
+    platform: row.platform,
+    metric_date: row.metric_date,
+    views: Number(row.views),
+    likes: Number(row.likes),
+    comments: Number(row.comments),
+    shares: Number(row.shares),
+    saves: Number(row.saves),
+    watch_time_seconds: Number(row.watch_time_seconds),
+    revenue_cents: Number(row.revenue_cents),
+    subscribers_gained: Number(row.subscribers_gained),
+  }));
 }
 
 /**
@@ -372,31 +383,31 @@ export async function queryDailyStats(
  * Used for RPM calculations in revenue actions.
  */
 export async function queryViewsForVideos(
-    projectId: string,
-    videoIds: string[],
+  projectId: string,
+  videoIds: string[],
 ): Promise<number> {
-    if (videoIds.length === 0 || !isClickHouseEnabled()) return 0;
+  if (videoIds.length === 0 || !isClickHouseEnabled()) return 0;
 
-    const client = getClickHouseClient();
-    const filters: QueryFilters = { projectId, videoIds };
-    assertScopedFilters(filters);
-    const { clause, params } = buildWhereClause(filters);
+  const client = getClickHouseClient();
+  const filters: QueryFilters = { projectId, videoIds };
+  assertScopedFilters(filters);
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT sum(views) as total_views
     FROM video_daily_stats
     ${clause}
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
-    });
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
 
-    const rows = await result.json<{ total_views: number }>();
+  const rows = await result.json<{ total_views: number }>();
 
-    return rows.length > 0 ? Number(rows[0]!.total_views) : 0;
+  return rows.length > 0 ? Number(rows[0]!.total_views) : 0;
 }
 
 /**
@@ -404,14 +415,14 @@ export async function queryViewsForVideos(
  * Returns both aggregate daily totals and per-platform splits.
  */
 export async function queryDailyTimeSeriesByPlatform(
-    filters: QueryFilters,
+  filters: QueryFilters,
 ): Promise<DailyPlatformBreakdown[]> {
-    if (!isClickHouseEnabled()) return [];
-    const client = getClickHouseClient();
-    assertScopedFilters(filters);
-    const { clause, params } = buildWhereClause(filters);
+  if (!isClickHouseEnabled()) return [];
+  const client = getClickHouseClient();
+  assertScopedFilters(filters);
+  const { clause, params } = buildWhereClause(filters);
 
-    const query = `
+  const query = `
     SELECT
       toString(metric_date) as date,
       platform,
@@ -425,48 +436,48 @@ export async function queryDailyTimeSeriesByPlatform(
     ORDER BY metric_date ASC, platform ASC
   `;
 
-    const result = await client.query({
-        query,
-        query_params: params,
-        format: 'JSONEachRow',
-    });
+  const result = await client.query({
+    query,
+    query_params: params,
+    format: 'JSONEachRow',
+  });
 
-    const rows = await result.json<DailyPlatformMetricsRow>();
+  const rows = await result.json<DailyPlatformMetricsRow>();
 
-    // Group by date, aggregate totals and platform splits
-    const dateMap = new Map<string, Omit<DailyPlatformBreakdown, 'date'>>();
+  // Group by date, aggregate totals and platform splits
+  const dateMap = new Map<string, Omit<DailyPlatformBreakdown, 'date'>>();
 
-    for (const row of rows) {
-        const existing = dateMap.get(row.date) || {
-            views: 0,
-            likes: 0,
-            comments: 0,
-            shares: 0,
-            byPlatform: {},
-        };
+  for (const row of rows) {
+    const existing = dateMap.get(row.date) || {
+      views: 0,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      byPlatform: {},
+    };
 
-        const v = Number(row.views);
-        const l = Number(row.likes);
-        const c = Number(row.comments);
-        const s = Number(row.shares);
+    const v = Number(row.views);
+    const l = Number(row.likes);
+    const c = Number(row.comments);
+    const s = Number(row.shares);
 
-        existing.views += v;
-        existing.likes += l;
-        existing.comments += c;
-        existing.shares += s;
-        existing.byPlatform[row.platform] = {
-            views: v,
-            likes: l,
-            comments: c,
-            shares: s,
-        };
+    existing.views += v;
+    existing.likes += l;
+    existing.comments += c;
+    existing.shares += s;
+    existing.byPlatform[row.platform] = {
+      views: v,
+      likes: l,
+      comments: c,
+      shares: s,
+    };
 
-        dateMap.set(row.date, existing);
-    }
+    dateMap.set(row.date, existing);
+  }
 
-    return Array.from(dateMap.entries())
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([date, data]) => ({ date, ...data }));
+  return Array.from(dateMap.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, data]) => ({ date, ...data }));
 }
 
 /**
@@ -474,16 +485,16 @@ export async function queryDailyTimeSeriesByPlatform(
  * Useful for episode-level queries where project ID isn't available.
  */
 export async function queryTotalsByVideoIds(
-    videoIds: string[],
-    options?: { startDate?: string; endDate?: string },
+  videoIds: string[],
+  options?: { startDate?: string; endDate?: string },
 ): Promise<Map<string, AggregatedTotals>> {
-    if (videoIds.length === 0 || !isClickHouseEnabled()) return new Map();
+  if (videoIds.length === 0 || !isClickHouseEnabled()) return new Map();
 
-    const filters: QueryFilters & { videoIds: string[] } = {
-        videoIds,
-        startDate: options?.startDate,
-        endDate: options?.endDate,
-    };
+  const filters: QueryFilters & { videoIds: string[] } = {
+    videoIds,
+    startDate: options?.startDate,
+    endDate: options?.endDate,
+  };
 
-    return queryPerVideoTotals(filters);
+  return queryPerVideoTotals(filters);
 }

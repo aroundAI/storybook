@@ -13,7 +13,10 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { deleteEpisodeAction, resetEpisodeAction } from '@kit/episodes/server/actions';
+import {
+  deleteEpisodeAction,
+  resetEpisodeAction,
+} from '@kit/episodes/server/actions';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -82,7 +85,10 @@ export function QuickActionsMenu({
   async function handleReset() {
     setState((s) => ({ ...s, isResetting: true }));
     try {
-      const result = await resetEpisodeAction({ episodeId, version: episodeVersion });
+      const result = await resetEpisodeAction({
+        episodeId,
+        version: episodeVersion,
+      });
 
       if (result.success) {
         toast.success('Episode reset to Draft — all content has been cleared');
@@ -147,7 +153,9 @@ export function QuickActionsMenu({
       {/* Reset to Draft confirmation */}
       <AlertDialog
         open={state.showResetDialog}
-        onOpenChange={(open) => setState((s) => ({ ...s, showResetDialog: open }))}
+        onOpenChange={(open) =>
+          setState((s) => ({ ...s, showResetDialog: open }))
+        }
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -171,13 +179,17 @@ export function QuickActionsMenu({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={state.isResetting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={state.isResetting}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleReset}
               disabled={state.isResetting}
               className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-700"
             >
-              {state.isResetting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {state.isResetting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Reset to Draft
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -187,7 +199,9 @@ export function QuickActionsMenu({
       {/* Delete confirmation */}
       <AlertDialog
         open={state.showDeleteDialog}
-        onOpenChange={(open) => setState((s) => ({ ...s, showDeleteDialog: open }))}
+        onOpenChange={(open) =>
+          setState((s) => ({ ...s, showDeleteDialog: open }))
+        }
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -198,13 +212,17 @@ export function QuickActionsMenu({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={state.isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={state.isDeleting}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={state.isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {state.isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {state.isDeleting && (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              )}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

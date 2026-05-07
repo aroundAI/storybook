@@ -6,34 +6,34 @@
  */
 
 export {
-    closeClickHouseClient,
-    getClickHouseClient,
-    isClickHouseEnabled,
-    pingClickHouse,
+  closeClickHouseClient,
+  getClickHouseClient,
+  isClickHouseEnabled,
+  pingClickHouse,
 } from '../client';
 
 export {
-    insertVideoMetrics,
-    queryDailyStats,
-    queryDailyTimeSeries,
-    queryDailyTimeSeriesByPlatform,
-    queryPerVideoTotals,
-    queryPlatformBreakdown,
-    queryTotals,
-    queryTotalsByVideoIds,
-    queryViewsForVideos,
+  insertVideoMetrics,
+  queryDailyStats,
+  queryDailyTimeSeries,
+  queryDailyTimeSeriesByPlatform,
+  queryPerVideoTotals,
+  queryPlatformBreakdown,
+  queryTotals,
+  queryTotalsByVideoIds,
+  queryViewsForVideos,
 } from '../queries';
 
 export type {
-    AggregatedTotals,
-    AnalyticsPlatform,
-    DailyDataPoint,
-    DailyPlatformBreakdown,
-    DailyStats,
-    PlatformBreakdown,
-    PlatformEngagement,
-    QueryFilters,
-    VideoMetric,
+  AggregatedTotals,
+  AnalyticsPlatform,
+  DailyDataPoint,
+  DailyPlatformBreakdown,
+  DailyStats,
+  PlatformBreakdown,
+  PlatformEngagement,
+  QueryFilters,
+  VideoMetric,
 } from '../types';
 
 export { formatDateStr } from '../utils';

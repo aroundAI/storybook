@@ -335,8 +335,8 @@ export const getRevenueProjectionAction = enhanceAction(
     const trendImpact =
       firstHalfRevenue > 0
         ? Math.round(
-          ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
-        )
+            ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue) * 50,
+          )
         : 0;
 
     return {

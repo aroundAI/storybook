@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 
 import { generateShotListAction } from '@kit/episodes/server';
-import { useEpisodeContext } from '../../_components/episode-context-provider';
 import type {
   EpisodeWithShots,
   ScreenplayData,
@@ -23,6 +22,7 @@ import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
+import { useEpisodeContext } from '../../_components/episode-context-provider';
 import { SceneIndexSidebar } from './scene-index-sidebar';
 import { ScreenplayPaper } from './screenplay-paper';
 
@@ -85,7 +85,14 @@ export function ScreenplayScreen({
       setIsGenerating(false); // Reset on error
       toast.error(llmError || 'Failed to generate shot list');
     }
-  }, [llmStatus, llmResult, llmError, refetchEpisode, onShotListComplete, setIsGenerating]);
+  }, [
+    llmStatus,
+    llmResult,
+    llmError,
+    refetchEpisode,
+    onShotListComplete,
+    setIsGenerating,
+  ]);
 
   // Handle screenplay-conversion result (refresh to show generated screenplay)
   useEffect(() => {

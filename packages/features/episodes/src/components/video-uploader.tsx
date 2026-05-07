@@ -36,6 +36,13 @@ import {
  * Supports drag-and-drop, click-to-upload, and progress tracking.
  */
 
+/**
+ * VideoUploader Component
+ *
+ * Dropzone component for uploading videos to shots.
+ * Supports drag-and-drop, click-to-upload, and progress tracking.
+ */
+
 interface VideoUploaderProps {
   projectId: string;
   shotId: string;

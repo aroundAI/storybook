@@ -2,10 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
+import Link from 'next/link';
+import { useParams } from 'next/navigation';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  BookOpen,
   Check,
   ChevronDown,
   ChevronRight,
@@ -18,25 +23,24 @@ import {
   MessageCircle,
   Pencil,
   Plus,
+  RefreshCw,
   Sparkles,
   Timer,
   Users,
-  AlertTriangle,
-  BookOpen,
-  RefreshCw,
 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import ReactMarkdown from 'react-markdown';
-import Link from 'next/link';
-import { useParams } from 'next/navigation';
 
 import { useAssets } from '@kit/assets/hooks';
 import { AnalyzeSeasonSchema } from '@kit/episodes/schemas';
 import {
+  getResearchCountsAction,
+  getVerifiedFactsAction,
+} from '@kit/episodes/server';
+import {
   analyzeSeasonRoadmapAction,
   generateSeasonEpisodesAction,
 } from '@kit/episodes/server/season-generation';
-import { getResearchCountsAction, getVerifiedFactsAction } from '@kit/episodes/server';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import {
@@ -112,7 +116,7 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
               className={cn(
                 'flex items-center gap-2 rounded-md px-4 py-1.5 text-xs font-medium transition-all',
                 isCurrent &&
-                'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
+                  'bg-white text-zinc-900 shadow-sm dark:bg-zinc-700 dark:text-white',
                 !isCurrent && 'text-zinc-500 dark:text-zinc-400',
               )}
             >
@@ -121,10 +125,10 @@ function StepIndicator({ currentStep }: { currentStep: Step }) {
                   'flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-bold',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                  'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
+                    'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900',
                   !isCompleted &&
-                  !isCurrent &&
-                  'border border-zinc-300 dark:border-zinc-600',
+                    !isCurrent &&
+                    'border border-zinc-300 dark:border-zinc-600',
                 )}
               >
                 {isCompleted ? <Check className="h-2.5 w-2.5" /> : step.number}
@@ -166,10 +170,10 @@ function ProgressStepper({ currentStep }: { currentStep: Step }) {
                   'z-10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-transform',
                   isCompleted && 'bg-green-500 text-white',
                   isCurrent &&
-                  'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
+                    'scale-110 bg-zinc-900 text-white shadow-md ring-4 ring-zinc-900/20 dark:bg-white dark:text-zinc-900 dark:ring-white/20',
                   !isCompleted &&
-                  !isCurrent &&
-                  'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
+                    !isCurrent &&
+                    'bg-zinc-200 text-zinc-500 dark:bg-zinc-700',
                 )}
               >
                 {isCompleted ? <Check className="h-3.5 w-3.5" /> : idx + 1}
@@ -262,10 +266,20 @@ export function SeasonGeneratorDialog({
 
   // FILM-1143: Fetch project metadata for content-type awareness
   const [contentType, _setContentType] = useState<string | null>(null);
-  const [researchCounts, setResearchCounts] = useState({ sources: 0, facts: 0, apiSources: 0 });
+  const [researchCounts, setResearchCounts] = useState({
+    sources: 0,
+    facts: 0,
+    apiSources: 0,
+  });
 
   // Track verified facts for passing to analysis
-  const [verifiedFacts, setVerifiedFacts] = useState<Array<{ claim: string; source_citation: string | null; category: string | null }>>([]);
+  const [verifiedFacts, setVerifiedFacts] = useState<
+    Array<{
+      claim: string;
+      source_citation: string | null;
+      category: string | null;
+    }>
+  >([]);
   const [isRefreshingResearch, setIsRefreshingResearch] = useState(false);
 
   // Get route params for building the Research Hub link
@@ -278,27 +292,43 @@ export function SeasonGeneratorDialog({
       getVerifiedFactsAction({ projectId, limit: 50 }),
     ]);
     if (counts && typeof counts === 'object' && 'sources' in counts) {
-      const c = counts as { sources: number; facts: number; apiSources: number };
+      const c = counts as {
+        sources: number;
+        facts: number;
+        apiSources: number;
+      };
       setResearchCounts(c);
     }
     if (Array.isArray(facts)) {
-      setVerifiedFacts(facts.map((f: { claim?: string; source_citation?: string | null; category?: string | null }) => ({
-        claim: f.claim ?? '',
-        source_citation: f.source_citation ?? null,
-        category: f.category ?? null,
-      })));
+      setVerifiedFacts(
+        facts.map(
+          (f: {
+            claim?: string;
+            source_citation?: string | null;
+            category?: string | null;
+          }) => ({
+            claim: f.claim ?? '',
+            source_citation: f.source_citation ?? null,
+            category: f.category ?? null,
+          }),
+        ),
+      );
     }
   }, [projectId]);
 
   useEffect(() => {
     if (!open) return;
-    fetchResearchData().catch(() => { /* Non-critical */ });
+    fetchResearchData().catch(() => {
+      /* Non-critical */
+    });
   }, [open, projectId, fetchResearchData]);
 
-  const _isFactualContent = contentType === 'documentary' ||
+  const _isFactualContent =
+    contentType === 'documentary' ||
     contentType === 'educational' ||
     contentType === 'news';
-  const hasResearchSources = researchCounts.sources > 0 || researchCounts.facts > 0;
+  const hasResearchSources =
+    researchCounts.sources > 0 || researchCounts.facts > 0;
 
   // Process analysis result (reusable for both sync and async)
   const processAnalysisResult = useCallback(
@@ -684,10 +714,12 @@ export function SeasonGeneratorDialog({
                     {hasResearchSources && (
                       <>
                         <Badge variant="outline" className="text-xs">
-                          {researchCounts.sources} source{researchCounts.sources !== 1 ? 's' : ''}
+                          {researchCounts.sources} source
+                          {researchCounts.sources !== 1 ? 's' : ''}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
-                          {researchCounts.facts} fact{researchCounts.facts !== 1 ? 's' : ''}
+                          {researchCounts.facts} fact
+                          {researchCounts.facts !== 1 ? 's' : ''}
                         </Badge>
                       </>
                     )}
@@ -708,7 +740,12 @@ export function SeasonGeneratorDialog({
                         }
                       }}
                     >
-                      <RefreshCw className={cn('h-3.5 w-3.5', isRefreshingResearch && 'animate-spin')} />
+                      <RefreshCw
+                        className={cn(
+                          'h-3.5 w-3.5',
+                          isRefreshingResearch && 'animate-spin',
+                        )}
+                      />
                     </Button>
                   </div>
                 </div>
@@ -716,12 +753,19 @@ export function SeasonGeneratorDialog({
                 {/* News API connection status */}
                 {contentType === 'news' && (
                   <div className="mt-2 flex items-center gap-2 text-xs">
-                    <div className={cn(
-                      'h-2 w-2 rounded-full',
-                      researchCounts.apiSources > 0 ? 'bg-green-500' : 'bg-zinc-300 dark:bg-zinc-600'
-                    )} />
+                    <div
+                      className={cn(
+                        'h-2 w-2 rounded-full',
+                        researchCounts.apiSources > 0
+                          ? 'bg-green-500'
+                          : 'bg-zinc-300 dark:bg-zinc-600',
+                      )}
+                    />
                     <span className="text-muted-foreground">
-                      API Sources: {researchCounts.apiSources > 0 ? `${researchCounts.apiSources} connected` : 'Not configured'}
+                      API Sources:{' '}
+                      {researchCounts.apiSources > 0
+                        ? `${researchCounts.apiSources} connected`
+                        : 'Not configured'}
                     </span>
                   </div>
                 )}
@@ -734,8 +778,8 @@ export function SeasonGeneratorDialog({
                         No research sources linked
                       </p>
                       <p className="mt-0.5 text-xs text-amber-700/80 dark:text-amber-400/80">
-                        Add external sources and verified facts in the Research Hub to
-                        improve factual accuracy of generated content.
+                        Add external sources and verified facts in the Research
+                        Hub to improve factual accuracy of generated content.
                       </p>
                       {params?.account && params?.projectSlug && (
                         <Link
@@ -750,7 +794,8 @@ export function SeasonGeneratorDialog({
                   </div>
                 ) : (
                   <p className="text-muted-foreground mt-2 text-xs">
-                    Verified facts from your research will be considered during generation.
+                    Verified facts from your research will be considered during
+                    generation.
                   </p>
                 )}
               </section>

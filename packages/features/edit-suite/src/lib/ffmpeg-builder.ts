@@ -13,48 +13,59 @@
  * Speed: setpts (video) / atempo (audio) per clip
  * Multi-track audio mixing (dialogue + music + sfx → single output)
  */
-
-import type { EditClip, EditTrack, EditTransition, EditKeyframe, EditProject } from './types';
 import { getKeyframesForProperty } from './keyframe-engine';
+import type {
+  EditClip,
+  EditKeyframe,
+  EditProject,
+  EditTrack,
+  EditTransition,
+} from './types';
 
 // ──────────────────────────────────────────
 // Types
 // ──────────────────────────────────────────
 
 interface FFmpegInput {
-    index: number;
-    url: string;
-    clipId: string;
+  index: number;
+  url: string;
+  clipId: string;
 }
 
 interface FFmpegResult {
-    /** Full FFmpeg command string */
-    command: string;
-    /** The filter_complex graph string */
-    filterComplex: string;
-    /** Input arguments (-i flags) */
-    inputs: string[];
-    /** Output arguments */
-    outputArgs: string[];
-    /** Number of filter stages in the filter_complex graph */
-    filterStageCount: number;
+  /** Full FFmpeg command string */
+  command: string;
+  /** The filter_complex graph string */
+  filterComplex: string;
+  /** Input arguments (-i flags) */
+  inputs: string[];
+  /** Output arguments */
+  outputArgs: string[];
+  /** Number of filter stages in the filter_complex graph */
+  filterStageCount: number;
 }
 
 // ──────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────
 
-const AUDIO_TRACK_TYPES = new Set(['dialogue', 'music', 'sfx', 'ambient', 'upload']);
+const AUDIO_TRACK_TYPES = new Set([
+  'dialogue',
+  'music',
+  'sfx',
+  'ambient',
+  'upload',
+]);
 const VIDEO_TRACK_TYPES = new Set(['video']);
 
 /** Map transition types to FFmpeg xfade transition names */
 const XFADE_MAP: Record<string, string> = {
-    crossfade: 'fade',
-    fade_black: 'fadeblack',
-    fade_white: 'fadewhite',
-    dissolve: 'dissolve',
-    wipe_left: 'wipeleft',
-    wipe_right: 'wiperight',
+  crossfade: 'fade',
+  fade_black: 'fadeblack',
+  fade_white: 'fadewhite',
+  dissolve: 'dissolve',
+  wipe_left: 'wipeleft',
+  wipe_right: 'wiperight',
 };
 
 /**
@@ -62,14 +73,14 @@ const XFADE_MAP: Record<string, string> = {
  * Wraps in single quotes and escapes embedded single quotes.
  */
 function escapeShellArg(arg: string): string {
-    return "'" + arg.replace(/'/g, "'\\''") + "'";
+  return "'" + arg.replace(/'/g, "'\\''") + "'";
 }
 
 /**
  * Sanitize an output path — allow only safe characters.
  */
 function sanitizeOutputPath(path: string): string {
-    return path.replace(/[^a-zA-Z0-9._\-/]/g, '_');
+  return path.replace(/[^a-zA-Z0-9._\-/]/g, '_');
 }
 
 // ──────────────────────────────────────────
@@ -88,98 +99,116 @@ function sanitizeOutputPath(path: string): string {
  * @returns FFmpegResult with command, filterComplex, inputs, outputArgs
  */
 export function buildFFmpegCommand(
-    project: EditProject,
-    tracks: EditTrack[],
-    clips: EditClip[],
-    transitions: EditTransition[],
-    keyframes: EditKeyframe[],
-    outputPath = 'output.mp4',
+  project: EditProject,
+  tracks: EditTrack[],
+  clips: EditClip[],
+  transitions: EditTransition[],
+  keyframes: EditKeyframe[],
+  outputPath = 'output.mp4',
 ): FFmpegResult {
-    // Only include active clips with media
-    const activeClips = clips
-        .filter((c) => c.isActive && c.mediaUrl)
-        .sort((a, b) => a.startMs - b.startMs);
+  // Only include active clips with media
+  const activeClips = clips
+    .filter((c) => c.isActive && c.mediaUrl)
+    .sort((a, b) => a.startMs - b.startMs);
 
-    if (activeClips.length === 0) {
-        return {
-            command: '# No active clips to export',
-            filterComplex: '',
-            inputs: [],
-            outputArgs: [],
-            filterStageCount: 0,
-        };
+  if (activeClips.length === 0) {
+    return {
+      command: '# No active clips to export',
+      filterComplex: '',
+      inputs: [],
+      outputArgs: [],
+      filterStageCount: 0,
+    };
+  }
+
+  // Build input list (unique media URLs → input indices)
+  const urlToIndex = new Map<string, number>();
+  const inputs: FFmpegInput[] = [];
+
+  for (const clip of activeClips) {
+    if (!clip.mediaUrl) continue;
+    if (!urlToIndex.has(clip.mediaUrl)) {
+      const idx = inputs.length;
+      urlToIndex.set(clip.mediaUrl, idx);
+      inputs.push({ index: idx, url: clip.mediaUrl, clipId: clip.id });
     }
+  }
 
-    // Build input list (unique media URLs → input indices)
-    const urlToIndex = new Map<string, number>();
-    const inputs: FFmpegInput[] = [];
+  const inputArgs = inputs.map((inp) => `-i ${escapeShellArg(inp.url)}`);
 
-    for (const clip of activeClips) {
-        if (!clip.mediaUrl) continue;
-        if (!urlToIndex.has(clip.mediaUrl)) {
-            const idx = inputs.length;
-            urlToIndex.set(clip.mediaUrl, idx);
-            inputs.push({ index: idx, url: clip.mediaUrl, clipId: clip.id });
-        }
-    }
+  // Separate clips by track type
+  const videoClips = activeClips.filter((c) =>
+    VIDEO_TRACK_TYPES.has(tracks.find((t) => t.id === c.trackId)?.type ?? ''),
+  );
+  const audioClips = activeClips.filter((c) =>
+    AUDIO_TRACK_TYPES.has(tracks.find((t) => t.id === c.trackId)?.type ?? ''),
+  );
 
-    const inputArgs = inputs.map((inp) => `-i ${escapeShellArg(inp.url)}`);
+  const filterLines: string[] = [];
+  let videoOutLabel = '';
+  let audioOutLabel = '';
 
-    // Separate clips by track type
-    const videoClips = activeClips.filter((c) =>
-        VIDEO_TRACK_TYPES.has(tracks.find((t) => t.id === c.trackId)?.type ?? ''),
+  // ── Video filter chain ──
+  if (videoClips.length > 0) {
+    videoOutLabel = buildVideoFilters(
+      videoClips,
+      transitions,
+      urlToIndex,
+      filterLines,
+      project,
     );
-    const audioClips = activeClips.filter((c) =>
-        AUDIO_TRACK_TYPES.has(tracks.find((t) => t.id === c.trackId)?.type ?? ''),
+  }
+
+  // ── Audio filter chain ──
+  if (audioClips.length > 0) {
+    audioOutLabel = buildAudioFilters(
+      audioClips,
+      keyframes,
+      urlToIndex,
+      filterLines,
+      clips,
     );
+  }
 
-    const filterLines: string[] = [];
-    let videoOutLabel = '';
-    let audioOutLabel = '';
+  const filterComplex = filterLines.join(';\n');
 
-    // ── Video filter chain ──
-    if (videoClips.length > 0) {
-        videoOutLabel = buildVideoFilters(videoClips, transitions, urlToIndex, filterLines, project);
-    }
+  // ── Output options ──
+  const outputArgs: string[] = [];
 
-    // ── Audio filter chain ──
-    if (audioClips.length > 0) {
-        audioOutLabel = buildAudioFilters(audioClips, keyframes, urlToIndex, filterLines, clips);
-    }
+  if (videoOutLabel) {
+    outputArgs.push(`-map "${videoOutLabel}"`);
+  }
+  if (audioOutLabel) {
+    outputArgs.push(`-map "${audioOutLabel}"`);
+  }
 
-    const filterComplex = filterLines.join(';\n');
+  outputArgs.push(
+    `-c:v libx264 -preset medium -crf 18`,
+    `-c:a aac -b:a 192k`,
+    `-r ${project.fps}`,
+    `-s ${project.width}x${project.height}`,
+    `-y ${escapeShellArg(sanitizeOutputPath(outputPath))}`,
+  );
 
-    // ── Output options ──
-    const outputArgs: string[] = [];
+  const filterStageCount = filterLines.length;
 
-    if (videoOutLabel) {
-        outputArgs.push(`-map "${videoOutLabel}"`);
-    }
-    if (audioOutLabel) {
-        outputArgs.push(`-map "${audioOutLabel}"`);
-    }
+  // ── Assemble full command ──
+  const command = [
+    'ffmpeg',
+    ...inputArgs,
+    `-filter_complex "`,
+    filterComplex,
+    `"`,
+    ...outputArgs,
+  ].join(' \\\n  ');
 
-    outputArgs.push(
-        `-c:v libx264 -preset medium -crf 18`,
-        `-c:a aac -b:a 192k`,
-        `-r ${project.fps}`,
-        `-s ${project.width}x${project.height}`,
-        `-y ${escapeShellArg(sanitizeOutputPath(outputPath))}`,
-    );
-
-    const filterStageCount = filterLines.length;
-
-    // ── Assemble full command ──
-    const command = [
-        'ffmpeg',
-        ...inputArgs,
-        `-filter_complex "`,
-        filterComplex,
-        `"`,
-        ...outputArgs,
-    ].join(' \\\n  ');
-
-    return { command, filterComplex, inputs: inputArgs, outputArgs, filterStageCount };
+  return {
+    command,
+    filterComplex,
+    inputs: inputArgs,
+    outputArgs,
+    filterStageCount,
+  };
 }
 
 // ──────────────────────────────────────────
@@ -187,76 +216,80 @@ export function buildFFmpegCommand(
 // ──────────────────────────────────────────
 
 function buildVideoFilters(
-    videoClips: EditClip[],
-    transitions: EditTransition[],
-    urlToIndex: Map<string, number>,
-    filterLines: string[],
-    project: EditProject,
+  videoClips: EditClip[],
+  transitions: EditTransition[],
+  urlToIndex: Map<string, number>,
+  filterLines: string[],
+  project: EditProject,
 ): string {
-    const trimmedLabels: string[] = [];
+  const trimmedLabels: string[] = [];
 
-    // Trim and speed-adjust each video clip
-    for (let i = 0; i < videoClips.length; i++) {
-        const clip = videoClips[i]!;
-        const inputIdx = urlToIndex.get(clip.mediaUrl!) ?? 0;
-        const label = `v${i}`;
+  // Trim and speed-adjust each video clip
+  for (let i = 0; i < videoClips.length; i++) {
+    const clip = videoClips[i]!;
+    const inputIdx = urlToIndex.get(clip.mediaUrl!) ?? 0;
+    const label = `v${i}`;
 
-        const startSec = (clip.inPointMs / 1000).toFixed(3);
-        const endSec = (clip.outPointMs / 1000).toFixed(3);
+    const startSec = (clip.inPointMs / 1000).toFixed(3);
+    const endSec = (clip.outPointMs / 1000).toFixed(3);
 
-        let filters = `[${inputIdx}:v]trim=start=${startSec}:end=${endSec},setpts=PTS-STARTPTS`;
+    let filters = `[${inputIdx}:v]trim=start=${startSec}:end=${endSec},setpts=PTS-STARTPTS`;
 
-        // Apply speed adjustment
-        if (clip.speed !== 1) {
-            filters += `,setpts=${(1 / clip.speed).toFixed(3)}*PTS`;
-        }
-
-        // Scale to project dimensions
-        filters += `,scale=${project.width}:${project.height}:force_original_aspect_ratio=decrease,pad=${project.width}:${project.height}:(ow-iw)/2:(oh-ih)/2`;
-
-        filterLines.push(`${filters}[${label}]`);
-        trimmedLabels.push(label);
+    // Apply speed adjustment
+    if (clip.speed !== 1) {
+      filters += `,setpts=${(1 / clip.speed).toFixed(3)}*PTS`;
     }
 
-    // Apply xfade transitions between consecutive clips
-    if (trimmedLabels.length === 1) {
-        return `[${trimmedLabels[0]}]`;
+    // Scale to project dimensions
+    filters += `,scale=${project.width}:${project.height}:force_original_aspect_ratio=decrease,pad=${project.width}:${project.height}:(ow-iw)/2:(oh-ih)/2`;
+
+    filterLines.push(`${filters}[${label}]`);
+    trimmedLabels.push(label);
+  }
+
+  // Apply xfade transitions between consecutive clips
+  if (trimmedLabels.length === 1) {
+    return `[${trimmedLabels[0]}]`;
+  }
+
+  let currentLabel = trimmedLabels[0]!;
+  for (let i = 0; i < trimmedLabels.length - 1; i++) {
+    const nextLabel = trimmedLabels[i + 1]!;
+    const outLabel = `vx${i}`;
+
+    // Find transition between these clips
+    const clip = videoClips[i]!;
+    const nextClip = videoClips[i + 1]!;
+    const transition = transitions.find(
+      (t) => t.fromClipId === clip.id && t.toClipId === nextClip.id,
+    );
+
+    if (transition && transition.type !== 'cut') {
+      const durationSec = (transition.durationMs / 1000).toFixed(3);
+      const xfadeType = XFADE_MAP[transition.type] ?? 'fade';
+
+      // Calculate offset (where in the timeline the transition starts)
+      const clipDurationMs =
+        (clip.outPointMs - clip.inPointMs) / (clip.speed || 1);
+      const offsetSec = Math.max(
+        0,
+        (clipDurationMs - transition.durationMs) / 1000,
+      ).toFixed(3);
+
+      filterLines.push(
+        `[${currentLabel}][${nextLabel}]xfade=transition=${xfadeType}:duration=${durationSec}:offset=${offsetSec}[${outLabel}]`,
+      );
+    } else {
+      // Simple concat (cut)
+      filterLines.push(
+        `[${currentLabel}][${nextLabel}]concat=n=2:v=1:a=0[${outLabel}]`,
+      );
     }
 
-    let currentLabel = trimmedLabels[0]!;
-    for (let i = 0; i < trimmedLabels.length - 1; i++) {
-        const nextLabel = trimmedLabels[i + 1]!;
-        const outLabel = `vx${i}`;
+    currentLabel = outLabel;
+  }
 
-        // Find transition between these clips
-        const clip = videoClips[i]!;
-        const nextClip = videoClips[i + 1]!;
-        const transition = transitions.find(
-            (t) => t.fromClipId === clip.id && t.toClipId === nextClip.id,
-        );
-
-        if (transition && transition.type !== 'cut') {
-            const durationSec = (transition.durationMs / 1000).toFixed(3);
-            const xfadeType = XFADE_MAP[transition.type] ?? 'fade';
-
-            // Calculate offset (where in the timeline the transition starts)
-            const clipDurationMs = (clip.outPointMs - clip.inPointMs) / (clip.speed || 1);
-            const offsetSec = Math.max(0, (clipDurationMs - transition.durationMs) / 1000).toFixed(3);
-
-            filterLines.push(
-                `[${currentLabel}][${nextLabel}]xfade=transition=${xfadeType}:duration=${durationSec}:offset=${offsetSec}[${outLabel}]`,
-            );
-        } else {
-            // Simple concat (cut)
-            filterLines.push(
-                `[${currentLabel}][${nextLabel}]concat=n=2:v=1:a=0[${outLabel}]`,
-            );
-        }
-
-        currentLabel = outLabel;
-    }
-
-    return `[${currentLabel}]`;
+  return `[${currentLabel}]`;
 }
 
 // ──────────────────────────────────────────
@@ -264,64 +297,64 @@ function buildVideoFilters(
 // ──────────────────────────────────────────
 
 function buildAudioFilters(
-    audioClips: EditClip[],
-    keyframes: EditKeyframe[],
-    urlToIndex: Map<string, number>,
-    filterLines: string[],
-    _allClips: EditClip[],
+  audioClips: EditClip[],
+  keyframes: EditKeyframe[],
+  urlToIndex: Map<string, number>,
+  filterLines: string[],
+  _allClips: EditClip[],
 ): string {
-    const trimmedLabels: string[] = [];
+  const trimmedLabels: string[] = [];
 
-    for (let i = 0; i < audioClips.length; i++) {
-        const clip = audioClips[i]!;
-        const inputIdx = urlToIndex.get(clip.mediaUrl!) ?? 0;
-        const label = `a${i}`;
+  for (let i = 0; i < audioClips.length; i++) {
+    const clip = audioClips[i]!;
+    const inputIdx = urlToIndex.get(clip.mediaUrl!) ?? 0;
+    const label = `a${i}`;
 
-        const startSec = (clip.inPointMs / 1000).toFixed(3);
-        const endSec = (clip.outPointMs / 1000).toFixed(3);
+    const startSec = (clip.inPointMs / 1000).toFixed(3);
+    const endSec = (clip.outPointMs / 1000).toFixed(3);
 
-        let filters = `[${inputIdx}:a]atrim=start=${startSec}:end=${endSec},asetpts=PTS-STARTPTS`;
+    let filters = `[${inputIdx}:a]atrim=start=${startSec}:end=${endSec},asetpts=PTS-STARTPTS`;
 
-        // Apply speed adjustment via atempo (supports 0.5–2.0 range, chain for wider)
-        if (clip.speed !== 1) {
-            const atempoFilters = buildAtempoChain(clip.speed);
-            filters += `,${atempoFilters}`;
-        }
-
-        // Apply base volume
-        if (clip.volume !== 1) {
-            filters += `,volume=${clip.volume.toFixed(3)}`;
-        }
-
-        // Apply volume keyframes as volume filter expressions
-        const volumeKfs = getKeyframesForProperty(keyframes, clip.id, 'volume');
-        if (volumeKfs.length > 0) {
-            const volumeExpr = buildVolumeKeyframeExpression(volumeKfs);
-            filters += `,volume='${volumeExpr}':eval=frame`;
-        }
-
-        // Add delay to position clip at correct timeline offset
-        const delayMs = Math.round(clip.startMs);
-        if (delayMs > 0) {
-            filters += `,adelay=${delayMs}|${delayMs}`;
-        }
-
-        filterLines.push(`${filters}[${label}]`);
-        trimmedLabels.push(label);
+    // Apply speed adjustment via atempo (supports 0.5–2.0 range, chain for wider)
+    if (clip.speed !== 1) {
+      const atempoFilters = buildAtempoChain(clip.speed);
+      filters += `,${atempoFilters}`;
     }
 
-    // Mix all audio tracks together
-    if (trimmedLabels.length === 1) {
-        return `[${trimmedLabels[0]}]`;
+    // Apply base volume
+    if (clip.volume !== 1) {
+      filters += `,volume=${clip.volume.toFixed(3)}`;
     }
 
-    const mixInputs = trimmedLabels.map((l) => `[${l}]`).join('');
-    const outLabel = 'aout';
-    filterLines.push(
-        `${mixInputs}amix=inputs=${trimmedLabels.length}:duration=longest:dropout_transition=0[${outLabel}]`,
-    );
+    // Apply volume keyframes as volume filter expressions
+    const volumeKfs = getKeyframesForProperty(keyframes, clip.id, 'volume');
+    if (volumeKfs.length > 0) {
+      const volumeExpr = buildVolumeKeyframeExpression(volumeKfs);
+      filters += `,volume='${volumeExpr}':eval=frame`;
+    }
 
-    return `[${outLabel}]`;
+    // Add delay to position clip at correct timeline offset
+    const delayMs = Math.round(clip.startMs);
+    if (delayMs > 0) {
+      filters += `,adelay=${delayMs}|${delayMs}`;
+    }
+
+    filterLines.push(`${filters}[${label}]`);
+    trimmedLabels.push(label);
+  }
+
+  // Mix all audio tracks together
+  if (trimmedLabels.length === 1) {
+    return `[${trimmedLabels[0]}]`;
+  }
+
+  const mixInputs = trimmedLabels.map((l) => `[${l}]`).join('');
+  const outLabel = 'aout';
+  filterLines.push(
+    `${mixInputs}amix=inputs=${trimmedLabels.length}:duration=longest:dropout_transition=0[${outLabel}]`,
+  );
+
+  return `[${outLabel}]`;
 }
 
 // ──────────────────────────────────────────
@@ -334,20 +367,20 @@ function buildAudioFilters(
  * we chain multiple atempo filters.
  */
 function buildAtempoChain(speed: number): string {
-    const filters: string[] = [];
-    let remaining = speed;
+  const filters: string[] = [];
+  let remaining = speed;
 
-    while (remaining < 0.5) {
-        filters.push('atempo=0.5');
-        remaining /= 0.5;
-    }
-    while (remaining > 2.0) {
-        filters.push('atempo=2.0');
-        remaining /= 2.0;
-    }
+  while (remaining < 0.5) {
+    filters.push('atempo=0.5');
+    remaining /= 0.5;
+  }
+  while (remaining > 2.0) {
+    filters.push('atempo=2.0');
+    remaining /= 2.0;
+  }
 
-    filters.push(`atempo=${remaining.toFixed(3)}`);
-    return filters.join(',');
+  filters.push(`atempo=${remaining.toFixed(3)}`);
+  return filters.join(',');
 }
 
 /**
@@ -360,45 +393,43 @@ function buildAtempoChain(speed: number): string {
  * // Two keyframes: 0s→1.0, 2s→0.5
  * // Result: "if(between(t,0,2), 1.0+(0.5-1.0)*(t-0)/(2-0), 0.5)"
  */
-function buildVolumeKeyframeExpression(
-    volumeKfs: EditKeyframe[],
-): string {
-    if (volumeKfs.length === 0) return '1';
-    if (volumeKfs.length === 1) return volumeKfs[0]!.value.toFixed(3);
+function buildVolumeKeyframeExpression(volumeKfs: EditKeyframe[]): string {
+  if (volumeKfs.length === 0) return '1';
+  if (volumeKfs.length === 1) return volumeKfs[0]!.value.toFixed(3);
 
-    const sorted = [...volumeKfs].sort((a, b) => a.offsetMs - b.offsetMs);
-    const parts: string[] = [];
+  const sorted = [...volumeKfs].sort((a, b) => a.offsetMs - b.offsetMs);
+  const parts: string[] = [];
 
-    // Before first keyframe: hold first value
-    const firstKf = sorted[0]!;
-    parts.push(`if(lt(t,${(firstKf.offsetMs / 1000).toFixed(3)}),${firstKf.value.toFixed(3)}`);
+  // Before first keyframe: hold first value
+  const firstKf = sorted[0]!;
+  parts.push(
+    `if(lt(t,${(firstKf.offsetMs / 1000).toFixed(3)}),${firstKf.value.toFixed(3)}`,
+  );
 
-    // Between keyframes: linear interpolation
-    for (let i = 0; i < sorted.length - 1; i++) {
-        const curr = sorted[i]!;
-        const next = sorted[i + 1]!;
-        const tStart = (curr.offsetMs / 1000).toFixed(3);
-        const tEnd = (next.offsetMs / 1000).toFixed(3);
-        const vStart = curr.value.toFixed(3);
-        const vEnd = next.value.toFixed(3);
+  // Between keyframes: linear interpolation
+  for (let i = 0; i < sorted.length - 1; i++) {
+    const curr = sorted[i]!;
+    const next = sorted[i + 1]!;
+    const tStart = (curr.offsetMs / 1000).toFixed(3);
+    const tEnd = (next.offsetMs / 1000).toFixed(3);
+    const vStart = curr.value.toFixed(3);
+    const vEnd = next.value.toFixed(3);
 
-        if (curr.easing === 'hold') {
-            parts.push(
-                `if(between(t,${tStart},${tEnd}),${vStart}`,
-            );
-        } else {
-            // Linear interpolation: vStart + (vEnd - vStart) * (t - tStart) / (tEnd - tStart)
-            parts.push(
-                `if(between(t,${tStart},${tEnd}),${vStart}+(${vEnd}-${vStart})*(t-${tStart})/(${tEnd}-${tStart})`,
-            );
-        }
+    if (curr.easing === 'hold') {
+      parts.push(`if(between(t,${tStart},${tEnd}),${vStart}`);
+    } else {
+      // Linear interpolation: vStart + (vEnd - vStart) * (t - tStart) / (tEnd - tStart)
+      parts.push(
+        `if(between(t,${tStart},${tEnd}),${vStart}+(${vEnd}-${vStart})*(t-${tStart})/(${tEnd}-${tStart})`,
+      );
     }
+  }
 
-    // After last keyframe: hold last value
-    const lastKf = sorted[sorted.length - 1]!;
-    parts.push(lastKf.value.toFixed(3));
+  // After last keyframe: hold last value
+  const lastKf = sorted[sorted.length - 1]!;
+  parts.push(lastKf.value.toFixed(3));
 
-    // Close all if() brackets
-    const closingParens = ')'.repeat(parts.length - 1);
-    return parts.join(',') + closingParens;
+  // Close all if() brackets
+  const closingParens = ')'.repeat(parts.length - 1);
+  return parts.join(',') + closingParens;
 }

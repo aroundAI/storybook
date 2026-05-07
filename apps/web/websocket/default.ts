@@ -304,9 +304,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -392,9 +392,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -486,7 +486,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         const senderId = await getSenderUserId(connectionId);
         if (!senderId || !channel) break;
 
-        console.log(`[Collab] Edit operation on channel ${channel} from ${senderId.substring(0, 8)}...`);
+        console.log(
+          `[Collab] Edit operation on channel ${channel} from ${senderId.substring(0, 8)}...`,
+        );
 
         // TODO: Replace ScanCommand with GSI-based query for channel subscribers
         // A GSI on 'channels' or a separate subscriptions table would avoid full table scans.
@@ -519,9 +521,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -588,9 +590,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 

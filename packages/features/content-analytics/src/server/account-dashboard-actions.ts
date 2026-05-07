@@ -60,8 +60,7 @@ export async function getAccountDashboardData(
   // Default to last 30 days
   const endDate = options?.endDate || new Date();
   const startDate =
-    options?.startDate ||
-    new Date(endDate.getTime() - THIRTY_DAYS_MS);
+    options?.startDate || new Date(endDate.getTime() - THIRTY_DAYS_MS);
 
   // Previous period for comparison
   const periodDays =

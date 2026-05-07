@@ -14,10 +14,7 @@ import { GeneratingState } from '../_components/generating-state';
 import { VisualStudioScreen } from './_components/visual-studio-screen';
 
 export default function VisualStudioPage() {
-  const {
-    episode,
-    refetchEpisode,
-  } = useEpisodeContext();
+  const { episode, refetchEpisode } = useEpisodeContext();
 
   // Check if visual studio already has data
   const hasShots = episode.shots.length > 0 || Boolean(episode.shotList);

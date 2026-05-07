@@ -240,18 +240,18 @@ async function StudioProjectPage({ params }: StudioProjectPageProps) {
   // Build lightweight analytics object for UI
   const analytics = analyticsSnapshot
     ? {
-      totalViews: analyticsSnapshot.totalViews,
-      totalLikes: analyticsSnapshot.totalLikes,
-      totalComments: analyticsSnapshot.totalComments,
-      avgEngagementRate:
-        analyticsSnapshot.totalViews > 0
-          ? ((analyticsSnapshot.totalLikes +
-            analyticsSnapshot.totalComments) /
-            analyticsSnapshot.totalViews) *
-          100
-          : 0,
-      contentCount: publishedCount ?? 0,
-    }
+        totalViews: analyticsSnapshot.totalViews,
+        totalLikes: analyticsSnapshot.totalLikes,
+        totalComments: analyticsSnapshot.totalComments,
+        avgEngagementRate:
+          analyticsSnapshot.totalViews > 0
+            ? ((analyticsSnapshot.totalLikes +
+                analyticsSnapshot.totalComments) /
+                analyticsSnapshot.totalViews) *
+              100
+            : 0,
+        contentCount: publishedCount ?? 0,
+      }
     : null;
 
   // Map recent episodes to include stage info (derived from status field)

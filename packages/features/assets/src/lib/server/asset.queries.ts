@@ -219,7 +219,9 @@ export async function checkAssetHashQuery(
 
   const { data, error } = await client
     .from('assets')
-    .select('id, name, type, file_url, file_hash, file_size_bytes, content_type, created_at')
+    .select(
+      'id, name, type, file_url, file_hash, file_size_bytes, content_type, created_at',
+    )
     .eq('project_id', projectId)
     .eq('file_hash', fileHash)
     .eq('type', type)

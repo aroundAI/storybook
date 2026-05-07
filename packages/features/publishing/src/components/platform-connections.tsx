@@ -351,7 +351,7 @@ function ConnectionRow({
             </div>
             <p className="text-muted-foreground text-xs">
               {connection.createdAt &&
-                !isNaN(new Date(connection.createdAt).getTime()) ? (
+              !isNaN(new Date(connection.createdAt).getTime()) ? (
                 <Trans
                   i18nKey="platforms:connectedTimeAgo"
                   defaults="Connected {time}"

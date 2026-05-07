@@ -303,7 +303,6 @@ export function ShotDetailsSidebar({
       return [...charSet];
     }
     return chars;
-     
   }, [metadata?.characters, veoPrompt]);
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
@@ -462,7 +461,7 @@ export function ShotDetailsSidebar({
             {shot.shortsMetadata.hookType && (
               <Badge
                 variant="secondary"
-                className="bg-purple-100 text-xs capitalize text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                className="bg-purple-100 text-xs text-purple-700 capitalize dark:bg-purple-900/50 dark:text-purple-300"
               >
                 {shot.shortsMetadata.hookType}
               </Badge>
@@ -553,7 +552,7 @@ export function ShotDetailsSidebar({
                         </p>
                       )}
                       {shot.shortsMetadata.improvementSuggestion && (
-                        <p className="italic text-gray-400 dark:text-gray-500">
+                        <p className="text-gray-400 italic dark:text-gray-500">
                           Tip: {shot.shortsMetadata.improvementSuggestion}
                         </p>
                       )}

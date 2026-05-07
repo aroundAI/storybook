@@ -28,6 +28,13 @@ import { getProjectElevenLabsApiKey } from './project-audio-settings';
  * Includes asset library integration for reuse.
  */
 
+/**
+ * ElevenLabs Music Generation Actions
+ *
+ * Server actions for generating music using ElevenLabs Eleven Music.
+ * Includes asset library integration for reuse.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================

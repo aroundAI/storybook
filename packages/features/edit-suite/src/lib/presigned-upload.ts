@@ -12,19 +12,19 @@
 // ──────────────────────────────────────────
 
 export interface PresignedUploadResult {
-    publicUrl: string;
-    uploadedAt: string;
+  publicUrl: string;
+  uploadedAt: string;
 }
 
 export interface PresignedUploadOptions {
-    /** R2 bucket name */
-    bucket: string;
-    /** R2 object path (e.g., "projects/{id}/renders/export.mp4") */
-    path: string;
-    /** MIME type of the blob */
-    contentType: string;
-    /** Progress callback (0-100) */
-    onProgress?: (percent: number) => void;
+  /** R2 bucket name */
+  bucket: string;
+  /** R2 object path (e.g., "projects/{id}/renders/export.mp4") */
+  path: string;
+  /** MIME type of the blob */
+  contentType: string;
+  /** Progress callback (0-100) */
+  onProgress?: (percent: number) => void;
 }
 
 // ──────────────────────────────────────────
@@ -32,25 +32,25 @@ export interface PresignedUploadOptions {
 // ──────────────────────────────────────────
 
 async function getPresignedUrl(
-    bucket: string,
-    path: string,
-    contentType: string,
+  bucket: string,
+  path: string,
+  contentType: string,
 ): Promise<{ uploadUrl: string; publicUrl: string }> {
-    const response = await fetch('/api/storage/presign', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bucket, path, contentType }),
-    });
+  const response = await fetch('/api/storage/presign', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bucket, path, contentType }),
+  });
 
-    if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(
-            (error as { error?: string }).error ??
-            `Presign request failed with status ${response.status}`,
-        );
-    }
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(
+      (error as { error?: string }).error ??
+        `Presign request failed with status ${response.status}`,
+    );
+  }
 
-    return response.json() as Promise<{ uploadUrl: string; publicUrl: string }>;
+  return response.json() as Promise<{ uploadUrl: string; publicUrl: string }>;
 }
 
 // ──────────────────────────────────────────
@@ -58,35 +58,37 @@ async function getPresignedUrl(
 // ──────────────────────────────────────────
 
 function uploadWithProgress(
-    url: string,
-    blob: Blob,
-    contentType: string,
-    onProgress?: (percent: number) => void,
+  url: string,
+  blob: Blob,
+  contentType: string,
+  onProgress?: (percent: number) => void,
 ): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
 
-        xhr.upload.addEventListener('progress', (event) => {
-            if (event.lengthComputable && onProgress) {
-                onProgress(Math.round((event.loaded / event.total) * 100));
-            }
-        });
-
-        xhr.addEventListener('load', () => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-                resolve();
-            } else {
-                reject(new Error(`Upload failed with status ${xhr.status}`));
-            }
-        });
-
-        xhr.addEventListener('error', () => reject(new Error('Upload network error')));
-        xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
-
-        xhr.open('PUT', url, true);
-        xhr.setRequestHeader('Content-Type', contentType);
-        xhr.send(blob);
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
     });
+
+    xhr.addEventListener('load', () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error(`Upload failed with status ${xhr.status}`));
+      }
+    });
+
+    xhr.addEventListener('error', () =>
+      reject(new Error('Upload network error')),
+    );
+    xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+    xhr.open('PUT', url, true);
+    xhr.setRequestHeader('Content-Type', contentType);
+    xhr.send(blob);
+  });
 }
 
 // ──────────────────────────────────────────
@@ -108,19 +110,23 @@ function uploadWithProgress(
  * ```
  */
 export async function uploadToR2Presigned(
-    blob: Blob,
-    options: PresignedUploadOptions,
+  blob: Blob,
+  options: PresignedUploadOptions,
 ): Promise<PresignedUploadResult> {
-    const { bucket, path, contentType, onProgress } = options;
+  const { bucket, path, contentType, onProgress } = options;
 
-    // 1. Get presigned URL from our API (handles auth + path validation)
-    const { uploadUrl, publicUrl } = await getPresignedUrl(bucket, path, contentType);
+  // 1. Get presigned URL from our API (handles auth + path validation)
+  const { uploadUrl, publicUrl } = await getPresignedUrl(
+    bucket,
+    path,
+    contentType,
+  );
 
-    // 2. Upload directly to R2
-    await uploadWithProgress(uploadUrl, blob, contentType, onProgress);
+  // 2. Upload directly to R2
+  await uploadWithProgress(uploadUrl, blob, contentType, onProgress);
 
-    return {
-        publicUrl,
-        uploadedAt: new Date().toISOString(),
-    };
+  return {
+    publicUrl,
+    uploadedAt: new Date().toISOString(),
+  };
 }

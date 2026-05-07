@@ -11,8 +11,7 @@
  * Uses a buffer zone (BUFFER_PX) on each side to prevent
  * popping during fast scrolling.
  */
-
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { EditClip } from '../lib/types';
 
@@ -20,83 +19,85 @@ import type { EditClip } from '../lib/types';
 const BUFFER_PX = 200;
 
 interface UseVisibleClipsOptions {
-    clips: EditClip[];
-    zoom: number; // px per second
-    scrollContainerRef: React.RefObject<HTMLDivElement | null>;
+  clips: EditClip[];
+  zoom: number; // px per second
+  scrollContainerRef: React.RefObject<HTMLDivElement | null>;
 }
 
 interface VisibleRange {
-    startMs: number;
-    endMs: number;
+  startMs: number;
+  endMs: number;
 }
 
 /**
  * Returns only clips that fall within the visible viewport + buffer.
  */
 export function useVisibleClips({
-    clips,
-    zoom,
-    scrollContainerRef,
+  clips,
+  zoom,
+  scrollContainerRef,
 }: UseVisibleClipsOptions): {
-    visibleClips: EditClip[];
-    visibleRange: VisibleRange;
+  visibleClips: EditClip[];
+  visibleRange: VisibleRange;
 } {
-    const [scrollLeft, setScrollLeft] = useState(0);
-    const [containerWidth, setContainerWidth] = useState(0);
-    const rafRef = useRef<number>(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const rafRef = useRef<number>(0);
 
-    // Listen to scroll events with requestAnimationFrame throttling
-    const handleScroll = useCallback(() => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        rafRef.current = requestAnimationFrame(() => {
-            const container = scrollContainerRef.current;
-            if (container) {
-                setScrollLeft(container.scrollLeft);
-                setContainerWidth(container.clientWidth);
-            }
-        });
-    }, [scrollContainerRef]);
-
-    // Observe resize changes
-    useEffect(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-
-        // Set initial values
+  // Listen to scroll events with requestAnimationFrame throttling
+  const handleScroll = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (container) {
         setScrollLeft(container.scrollLeft);
         setContainerWidth(container.clientWidth);
+      }
+    });
+  }, [scrollContainerRef]);
 
-        container.addEventListener('scroll', handleScroll, { passive: true });
+  // Observe resize changes
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-        const resizeObserver = new ResizeObserver(() => {
-            setContainerWidth(container.clientWidth);
-        });
-        resizeObserver.observe(container);
+    // Set initial values
+    setScrollLeft(container.scrollLeft);
+    setContainerWidth(container.clientWidth);
 
-        return () => {
-            container.removeEventListener('scroll', handleScroll);
-            resizeObserver.disconnect();
-            if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        };
-    }, [scrollContainerRef, handleScroll]);
+    container.addEventListener('scroll', handleScroll, { passive: true });
 
-    // Calculate visible time range from scroll position
-    const visibleRange = useMemo((): VisibleRange => {
-        const leftPx = Math.max(0, scrollLeft - BUFFER_PX);
-        const rightPx = scrollLeft + containerWidth + BUFFER_PX;
+    const resizeObserver = new ResizeObserver(() => {
+      setContainerWidth(container.clientWidth);
+    });
+    resizeObserver.observe(container);
 
-        return {
-            startMs: (leftPx / zoom) * 1000,
-            endMs: (rightPx / zoom) * 1000,
-        };
-    }, [scrollLeft, containerWidth, zoom]);
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      resizeObserver.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [scrollContainerRef, handleScroll]);
 
-    // Filter clips to only those overlapping the visible range
-    const visibleClips = useMemo(() => {
-        return clips.filter(
-            (clip) => clip.endMs >= visibleRange.startMs && clip.startMs <= visibleRange.endMs,
-        );
-    }, [clips, visibleRange]);
+  // Calculate visible time range from scroll position
+  const visibleRange = useMemo((): VisibleRange => {
+    const leftPx = Math.max(0, scrollLeft - BUFFER_PX);
+    const rightPx = scrollLeft + containerWidth + BUFFER_PX;
 
-    return { visibleClips, visibleRange };
+    return {
+      startMs: (leftPx / zoom) * 1000,
+      endMs: (rightPx / zoom) * 1000,
+    };
+  }, [scrollLeft, containerWidth, zoom]);
+
+  // Filter clips to only those overlapping the visible range
+  const visibleClips = useMemo(() => {
+    return clips.filter(
+      (clip) =>
+        clip.endMs >= visibleRange.startMs &&
+        clip.startMs <= visibleRange.endMs,
+    );
+  }, [clips, visibleRange]);
+
+  return { visibleClips, visibleRange };
 }

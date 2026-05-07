@@ -5,15 +5,14 @@
  * Validates narrative continuity against canon data.
  * Implements 9 validation rules (CANON_001-009).
  */
-
 import type {
-    ContinuityValidationResult,
-    ContinuityViolation,
-    MemoryContext,
-    PlotSkeleton,
-    ValidationCheckpoint,
-    ViolationCode,
-    ViolationSeverity,
+  ContinuityValidationResult,
+  ContinuityViolation,
+  MemoryContext,
+  PlotSkeleton,
+  ValidationCheckpoint,
+  ViolationCode,
+  ViolationSeverity,
 } from './types';
 
 // =============================================================================
@@ -21,67 +20,67 @@ import type {
 // =============================================================================
 
 interface ValidationRule {
-    code: ViolationCode;
-    name: string;
-    severity: ViolationSeverity;
-    checkpoints: ValidationCheckpoint[];
+  code: ViolationCode;
+  name: string;
+  severity: ViolationSeverity;
+  checkpoints: ValidationCheckpoint[];
 }
 
 const VALIDATION_RULES: ValidationRule[] = [
-    {
-        code: 'CANON_001',
-        name: 'Resurrection Failure',
-        severity: 'error',
-        checkpoints: ['STORY', 'SCREENPLAY'],
-    },
-    {
-        code: 'CANON_002',
-        name: 'State Reversal',
-        severity: 'error',
-        checkpoints: ['STORY', 'SCREENPLAY'],
-    },
-    {
-        code: 'CANON_003',
-        name: 'Knowledge Violation',
-        severity: 'warning',
-        checkpoints: ['STORY', 'SCREENPLAY'],
-    },
-    {
-        code: 'CANON_004',
-        name: 'Authorization Missing',
-        severity: 'warning',
-        checkpoints: ['STORY', 'SCREENPLAY', 'PUBLISH'],
-    },
-    {
-        code: 'CANON_005',
-        name: 'World Contradiction',
-        severity: 'error',
-        checkpoints: ['STORY', 'SCREENPLAY'],
-    },
-    {
-        code: 'CANON_006',
-        name: 'Reference Violation',
-        severity: 'warning',
-        checkpoints: ['STORY', 'SCREENPLAY'],
-    },
-    {
-        code: 'CANON_007',
-        name: 'Connectivity Failure',
-        severity: 'info',
-        checkpoints: ['SCREENPLAY', 'PUBLISH'],
-    },
-    {
-        code: 'CANON_008',
-        name: 'Escalation Overflow',
-        severity: 'warning',
-        checkpoints: ['STORY'],
-    },
-    {
-        code: 'CANON_009',
-        name: 'Tone Drift',
-        severity: 'info',
-        checkpoints: ['STORY', 'SCREENPLAY'],
-    },
+  {
+    code: 'CANON_001',
+    name: 'Resurrection Failure',
+    severity: 'error',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
+  {
+    code: 'CANON_002',
+    name: 'State Reversal',
+    severity: 'error',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
+  {
+    code: 'CANON_003',
+    name: 'Knowledge Violation',
+    severity: 'warning',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
+  {
+    code: 'CANON_004',
+    name: 'Authorization Missing',
+    severity: 'warning',
+    checkpoints: ['STORY', 'SCREENPLAY', 'PUBLISH'],
+  },
+  {
+    code: 'CANON_005',
+    name: 'World Contradiction',
+    severity: 'error',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
+  {
+    code: 'CANON_006',
+    name: 'Reference Violation',
+    severity: 'warning',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
+  {
+    code: 'CANON_007',
+    name: 'Connectivity Failure',
+    severity: 'info',
+    checkpoints: ['SCREENPLAY', 'PUBLISH'],
+  },
+  {
+    code: 'CANON_008',
+    name: 'Escalation Overflow',
+    severity: 'warning',
+    checkpoints: ['STORY'],
+  },
+  {
+    code: 'CANON_009',
+    name: 'Tone Drift',
+    severity: 'info',
+    checkpoints: ['STORY', 'SCREENPLAY'],
+  },
 ];
 
 // =============================================================================
@@ -93,81 +92,81 @@ const VALIDATION_RULES: ValidationRule[] = [
  * Keys conflict if they refer to same entity in contradictory states.
  */
 function _keysConflict(key1: string, key2: string): boolean {
-    const parts1 = key1.split(':');
-    const parts2 = key2.split(':');
+  const parts1 = key1.split(':');
+  const parts2 = key2.split(':');
 
-    // Must have same entity type and ID
-    if (parts1[0] !== parts2[0] || parts1[1] !== parts2[1]) {
-        return false;
-    }
-
-    // Check for state conflicts
-    const state1 = parts1[2];
-    const state2 = parts2[2];
-
-    // Dead vs alive is a conflict
-    if (
-        (state1 === 'dead' && state2 === 'alive') ||
-        (state1 === 'alive' && state2 === 'dead')
-    ) {
-        return true;
-    }
-
-    // Destroyed vs exists is a conflict
-    if (
-        (state1 === 'destroyed' && state2 === 'exists') ||
-        (state1 === 'exists' && state2 === 'destroyed')
-    ) {
-        return true;
-    }
-
+  // Must have same entity type and ID
+  if (parts1[0] !== parts2[0] || parts1[1] !== parts2[1]) {
     return false;
+  }
+
+  // Check for state conflicts
+  const state1 = parts1[2];
+  const state2 = parts2[2];
+
+  // Dead vs alive is a conflict
+  if (
+    (state1 === 'dead' && state2 === 'alive') ||
+    (state1 === 'alive' && state2 === 'dead')
+  ) {
+    return true;
+  }
+
+  // Destroyed vs exists is a conflict
+  if (
+    (state1 === 'destroyed' && state2 === 'exists') ||
+    (state1 === 'exists' && state2 === 'destroyed')
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
  * Generates an event key from text content.
  * Format: "{entity}:{id}:{state}"
  */
-function _extractEventKey(text: string, characterNames: string[]): string | null {
-    const lowerText = text.toLowerCase();
+function _extractEventKey(
+  text: string,
+  characterNames: string[],
+): string | null {
+  const lowerText = text.toLowerCase();
 
-    // Check for character mentions with death indicators
-    for (const name of characterNames) {
-        const lowerName = name.toLowerCase();
-        // Escape special regex characters in name to prevent errors
-        const escapedName = lowerName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-        const nameRegex = new RegExp(`\\b${escapedName}\\b`);
+  // Check for character mentions with death indicators
+  for (const name of characterNames) {
+    const lowerName = name.toLowerCase();
+    // Escape special regex characters in name to prevent errors
+    const escapedName = lowerName.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const nameRegex = new RegExp(`\\b${escapedName}\\b`);
 
-        if (nameRegex.test(lowerText)) {
-            // Check for alive/present indicators using word boundaries
-            if (/\b(appears|walks|speaks|enters)\b/.test(lowerText)) {
-                return `character:${lowerName}:alive`;
-            }
-        }
+    if (nameRegex.test(lowerText)) {
+      // Check for alive/present indicators using word boundaries
+      if (/\b(appears|walks|speaks|enters)\b/.test(lowerText)) {
+        return `character:${lowerName}:alive`;
+      }
     }
+  }
 
-    return null;
+  return null;
 }
 
 /**
  * Suggests an alternative for a violation.
  */
-function suggestAlternative(
-    violationType: string,
-    _content: string
-): string {
-    switch (violationType) {
-        case 'resurrection':
-            return 'Use flashback, memory, dream sequence, or a different character.';
-        case 'state_reversal':
-            return 'Show gradual change with proper trigger event, or acknowledge the contradiction in dialogue.';
-        case 'knowledge':
-            return 'Have another character share the information first, or use dramatic irony.';
-        case 'world':
-            return 'Establish an exception or update the world rules with explanation.';
-        default:
-            return 'Review the canon constraints and adjust the content accordingly.';
-    }
+function suggestAlternative(violationType: string, _content: string): string {
+  switch (violationType) {
+    case 'resurrection':
+      return 'Use flashback, memory, dream sequence, or a different character.';
+    case 'state_reversal':
+      return 'Show gradual change with proper trigger event, or acknowledge the contradiction in dialogue.';
+    case 'knowledge':
+      return 'Have another character share the information first, or use dramatic irony.';
+    case 'world':
+      return 'Establish an exception or update the world rules with explanation.';
+    default:
+      return 'Review the canon constraints and adjust the content accordingly.';
+  }
 }
 
 // =============================================================================
@@ -179,48 +178,48 @@ function suggestAlternative(
  * Checks if dead characters appear alive.
  */
 function checkResurrectionFailure(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Find death events in immutable canon
-    const deathEvents = context.immutableEvents.filter(
-        (e) => e.eventType === 'death'
-    );
+  // Find death events in immutable canon
+  const deathEvents = context.immutableEvents.filter(
+    (e) => e.eventType === 'death',
+  );
 
-    if (deathEvents.length === 0) return violations;
+  if (deathEvents.length === 0) return violations;
 
-    // Check each scene for dead characters appearing
-    for (const scene of skeleton.scenes) {
-        for (const charId of scene.charactersPresent) {
-            const charName = skeleton.characters.find(
-                (c) => c.characterId === charId
-            )?.name;
-            if (!charName) continue;
+  // Check each scene for dead characters appearing
+  for (const scene of skeleton.scenes) {
+    for (const charId of scene.charactersPresent) {
+      const charName = skeleton.characters.find(
+        (c) => c.characterId === charId,
+      )?.name;
+      if (!charName) continue;
 
-            // Check if this character is dead
-            const deathEvent = deathEvents.find((e) =>
-                e.eventKey.toLowerCase().includes(charName.toLowerCase())
-            );
+      // Check if this character is dead
+      const deathEvent = deathEvents.find((e) =>
+        e.eventKey.toLowerCase().includes(charName.toLowerCase()),
+      );
 
-            if (deathEvent) {
-                violations.push({
-                    code: 'CANON_001',
-                    severity: 'error',
-                    message: `Cannot show ${charName} alive in scene ${scene.sceneNumber}. ${deathEvent.description}`,
-                    location: {
-                        sceneNumber: scene.sceneNumber,
-                        characterId: charId,
-                    },
-                    suggestion: suggestAlternative('resurrection', charName),
-                    relatedEvents: [deathEvent.id],
-                });
-            }
-        }
+      if (deathEvent) {
+        violations.push({
+          code: 'CANON_001',
+          severity: 'error',
+          message: `Cannot show ${charName} alive in scene ${scene.sceneNumber}. ${deathEvent.description}`,
+          location: {
+            sceneNumber: scene.sceneNumber,
+            characterId: charId,
+          },
+          suggestion: suggestAlternative('resurrection', charName),
+          relatedEvents: [deathEvent.id],
+        });
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -228,46 +227,47 @@ function checkResurrectionFailure(
  * Checks if character states regress without authorization.
  */
 function checkStateReversal(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    for (const charContext of context.characterStates) {
-        const latestEmotional = charContext.currentStates.find(
-            (s) => s.stateType === 'emotional'
-        );
+  for (const charContext of context.characterStates) {
+    const latestEmotional = charContext.currentStates.find(
+      (s) => s.stateType === 'emotional',
+    );
 
-        if (!latestEmotional) continue;
+    if (!latestEmotional) continue;
 
-        const currentState = (latestEmotional.stateValue as Record<string, unknown>).state as string | undefined;
-        const constraints = charContext.constraints;
+    const currentState = (latestEmotional.stateValue as Record<string, unknown>)
+      .state as string | undefined;
+    const constraints = charContext.constraints;
 
-        // Check if proposed arc contradicts constraints
-        const plotChar = skeleton.characters.find(
-            (c) => c.characterId === charContext.characterId
-        );
+    // Check if proposed arc contradicts constraints
+    const plotChar = skeleton.characters.find(
+      (c) => c.characterId === charContext.characterId,
+    );
 
-        if (plotChar?.emotionalArc) {
-            const proposedArc = plotChar.emotionalArc.toLowerCase();
+    if (plotChar?.emotionalArc) {
+      const proposedArc = plotChar.emotionalArc.toLowerCase();
 
-            for (const constraint of constraints) {
-                if (proposedArc.includes(constraint.replace('cannot be ', ''))) {
-                    violations.push({
-                        code: 'CANON_002',
-                        severity: 'error',
-                        message: `${plotChar.name} cannot revert to "${proposedArc}". Current state: "${currentState}". Constraint: "${constraint}"`,
-                        location: {
-                            characterId: charContext.characterId,
-                        },
-                        suggestion: suggestAlternative('state_reversal', proposedArc),
-                    });
-                }
-            }
+      for (const constraint of constraints) {
+        if (proposedArc.includes(constraint.replace('cannot be ', ''))) {
+          violations.push({
+            code: 'CANON_002',
+            severity: 'error',
+            message: `${plotChar.name} cannot revert to "${proposedArc}". Current state: "${currentState}". Constraint: "${constraint}"`,
+            location: {
+              characterId: charContext.characterId,
+            },
+            suggestion: suggestAlternative('state_reversal', proposedArc),
+          });
         }
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -275,69 +275,69 @@ function checkStateReversal(
  * Checks if characters know information they shouldn't.
  */
 function checkKnowledgeViolation(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Build knowledge map from character states
-    const knowledgeMap = new Map<string, Set<string>>();
+  // Build knowledge map from character states
+  const knowledgeMap = new Map<string, Set<string>>();
 
-    for (const charContext of context.characterStates) {
-        const knowledgeStates = charContext.currentStates.filter(
-            (s) => s.stateType === 'knowledge'
-        );
+  for (const charContext of context.characterStates) {
+    const knowledgeStates = charContext.currentStates.filter(
+      (s) => s.stateType === 'knowledge',
+    );
 
-        const facts = new Set<string>();
-        for (const state of knowledgeStates) {
-            const fact = (state.stateValue as Record<string, unknown>).fact;
-            if (typeof fact === 'string') {
-                facts.add(fact.toLowerCase());
-            }
-        }
-
-        knowledgeMap.set(charContext.characterId, facts);
+    const facts = new Set<string>();
+    for (const state of knowledgeStates) {
+      const fact = (state.stateValue as Record<string, unknown>).fact;
+      if (typeof fact === 'string') {
+        facts.add(fact.toLowerCase());
+      }
     }
 
-    // Check scenes for knowledge usage
-    for (const scene of skeleton.scenes) {
-        const keyEvents = scene.keyEvents ?? [];
+    knowledgeMap.set(charContext.characterId, facts);
+  }
 
-        for (const event of keyEvents) {
-            const lowerEvent = event.toLowerCase();
+  // Check scenes for knowledge usage
+  for (const scene of skeleton.scenes) {
+    const keyEvents = scene.keyEvents ?? [];
 
-            // Check if any character references knowledge they don't have
-            for (const charId of scene.charactersPresent) {
-                const charKnowledge = knowledgeMap.get(charId) ?? new Set();
-                const charName =
-                    skeleton.characters.find((c) => c.characterId === charId)?.name ?? '';
+    for (const event of keyEvents) {
+      const lowerEvent = event.toLowerCase();
 
-                // Look for "reveals", "knows", "mentions" patterns
-                if (
-                    lowerEvent.includes('reveals') ||
-                    lowerEvent.includes('knows') ||
-                    lowerEvent.includes('mentions')
-                ) {
-                    // This is a heuristic - real implementation would use NLP
-                    // For now, flag if character has no established knowledge
-                    if (charKnowledge.size === 0) {
-                        violations.push({
-                            code: 'CANON_003',
-                            severity: 'warning',
-                            message: `${charName} references knowledge in scene ${scene.sceneNumber} but has no established knowledge base.`,
-                            location: {
-                                sceneNumber: scene.sceneNumber,
-                                characterId: charId,
-                            },
-                            suggestion: suggestAlternative('knowledge', event),
-                        });
-                    }
-                }
-            }
+      // Check if any character references knowledge they don't have
+      for (const charId of scene.charactersPresent) {
+        const charKnowledge = knowledgeMap.get(charId) ?? new Set();
+        const charName =
+          skeleton.characters.find((c) => c.characterId === charId)?.name ?? '';
+
+        // Look for "reveals", "knows", "mentions" patterns
+        if (
+          lowerEvent.includes('reveals') ||
+          lowerEvent.includes('knows') ||
+          lowerEvent.includes('mentions')
+        ) {
+          // This is a heuristic - real implementation would use NLP
+          // For now, flag if character has no established knowledge
+          if (charKnowledge.size === 0) {
+            violations.push({
+              code: 'CANON_003',
+              severity: 'warning',
+              message: `${charName} references knowledge in scene ${scene.sceneNumber} but has no established knowledge base.`,
+              location: {
+                sceneNumber: scene.sceneNumber,
+                characterId: charId,
+              },
+              suggestion: suggestAlternative('knowledge', event),
+            });
+          }
         }
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -345,43 +345,43 @@ function checkKnowledgeViolation(
  * Checks if state changes have proper trigger/cost/constraint triplet.
  */
 function checkAuthorizationMissing(
-    skeleton: PlotSkeleton,
-    _context: MemoryContext
+  skeleton: PlotSkeleton,
+  _context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Check each character's proposed arc for authorization
-    for (const char of skeleton.characters) {
-        if (char.emotionalArc) {
-            // Major emotional changes need authorization
-            const majorChanges = [
-                'transforms',
-                'becomes',
-                'changes',
-                'evolves',
-                'shifts',
-            ];
+  // Check each character's proposed arc for authorization
+  for (const char of skeleton.characters) {
+    if (char.emotionalArc) {
+      // Major emotional changes need authorization
+      const majorChanges = [
+        'transforms',
+        'becomes',
+        'changes',
+        'evolves',
+        'shifts',
+      ];
 
-            const hassMajorChange = majorChanges.some((change) =>
-                char.emotionalArc?.toLowerCase().includes(change)
-            );
+      const hassMajorChange = majorChanges.some((change) =>
+        char.emotionalArc?.toLowerCase().includes(change),
+      );
 
-            if (hassMajorChange) {
-                violations.push({
-                    code: 'CANON_004',
-                    severity: 'warning',
-                    message: `${char.name}'s arc "${char.emotionalArc}" requires an authorization triplet (trigger, cost, constraint).`,
-                    location: {
-                        characterId: char.characterId,
-                    },
-                    suggestion:
-                        'Add explicit trigger event, what the character sacrifices, and new constraints.',
-                });
-            }
-        }
+      if (hassMajorChange) {
+        violations.push({
+          code: 'CANON_004',
+          severity: 'warning',
+          message: `${char.name}'s arc "${char.emotionalArc}" requires an authorization triplet (trigger, cost, constraint).`,
+          location: {
+            characterId: char.characterId,
+          },
+          suggestion:
+            'Add explicit trigger event, what the character sacrifices, and new constraints.',
+        });
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -389,50 +389,53 @@ function checkAuthorizationMissing(
  * Checks if content contradicts established world facts.
  */
 function checkWorldContradiction(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Get world facts from immutable events
-    const worldFacts = context.immutableEvents.filter(
-        (e) => e.eventType === 'world_fact'
-    );
+  // Get world facts from immutable events
+  const worldFacts = context.immutableEvents.filter(
+    (e) => e.eventType === 'world_fact',
+  );
 
-    for (const scene of skeleton.scenes) {
-        const summary = scene.summary.toLowerCase();
+  for (const scene of skeleton.scenes) {
+    const summary = scene.summary.toLowerCase();
 
-        for (const fact of worldFacts) {
-            // Check for contradictions (simplified heuristic)
-            const factKey = fact.eventKey.split(':')[1] ?? '';
+    for (const fact of worldFacts) {
+      // Check for contradictions (simplified heuristic)
+      const factKey = fact.eventKey.split(':')[1] ?? '';
 
-            // e.g., if world has "no_magic" and scene mentions "casts spell"
-            if (factKey === 'no_magic' && summary.includes('magic')) {
-                violations.push({
-                    code: 'CANON_005',
-                    severity: 'error',
-                    message: `Scene ${scene.sceneNumber} contradicts world fact: ${fact.description}`,
-                    location: { sceneNumber: scene.sceneNumber },
-                    suggestion: suggestAlternative('world', summary),
-                    relatedEvents: [fact.id],
-                });
-            }
+      // e.g., if world has "no_magic" and scene mentions "casts spell"
+      if (factKey === 'no_magic' && summary.includes('magic')) {
+        violations.push({
+          code: 'CANON_005',
+          severity: 'error',
+          message: `Scene ${scene.sceneNumber} contradicts world fact: ${fact.description}`,
+          location: { sceneNumber: scene.sceneNumber },
+          suggestion: suggestAlternative('world', summary),
+          relatedEvents: [fact.id],
+        });
+      }
 
-            // e.g., using destroyed location
-            if (factKey.includes('destroyed') && summary.includes(factKey.replace('_destroyed', ''))) {
-                violations.push({
-                    code: 'CANON_005',
-                    severity: 'error',
-                    message: `Scene ${scene.sceneNumber} uses location that was destroyed: ${fact.description}`,
-                    location: { sceneNumber: scene.sceneNumber },
-                    suggestion: 'Use a different location or show the ruins.',
-                    relatedEvents: [fact.id],
-                });
-            }
-        }
+      // e.g., using destroyed location
+      if (
+        factKey.includes('destroyed') &&
+        summary.includes(factKey.replace('_destroyed', ''))
+      ) {
+        violations.push({
+          code: 'CANON_005',
+          severity: 'error',
+          message: `Scene ${scene.sceneNumber} uses location that was destroyed: ${fact.description}`,
+          location: { sceneNumber: scene.sceneNumber },
+          suggestion: 'Use a different location or show the ruins.',
+          relatedEvents: [fact.id],
+        });
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -440,42 +443,43 @@ function checkWorldContradiction(
  * Checks for references to non-existent events or characters.
  */
 function checkReferenceViolation(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Get all known character IDs
-    const knownCharIds = new Set([
-        ...context.characterStates.map((c) => c.characterId),
-        ...context.immutableEvents
-            .filter((e) => e.metadata?.character_id)
-            .map((e) => e.metadata?.character_id as string),
-    ]);
+  // Get all known character IDs
+  const knownCharIds = new Set([
+    ...context.characterStates.map((c) => c.characterId),
+    ...context.immutableEvents
+      .filter((e) => e.metadata?.character_id)
+      .map((e) => e.metadata?.character_id as string),
+  ]);
 
-    // Check for references to unknown characters
-    for (const scene of skeleton.scenes) {
-        for (const charId of scene.charactersPresent) {
-            if (!knownCharIds.has(charId)) {
-                const charName =
-                    skeleton.characters.find((c) => c.characterId === charId)?.name ??
-                    charId;
+  // Check for references to unknown characters
+  for (const scene of skeleton.scenes) {
+    for (const charId of scene.charactersPresent) {
+      if (!knownCharIds.has(charId)) {
+        const charName =
+          skeleton.characters.find((c) => c.characterId === charId)?.name ??
+          charId;
 
-                violations.push({
-                    code: 'CANON_006',
-                    severity: 'warning',
-                    message: `Scene ${scene.sceneNumber} references unknown character: ${charName}`,
-                    location: {
-                        sceneNumber: scene.sceneNumber,
-                        characterId: charId,
-                    },
-                    suggestion: 'Introduce the character first or use an established character.',
-                });
-            }
-        }
+        violations.push({
+          code: 'CANON_006',
+          severity: 'warning',
+          message: `Scene ${scene.sceneNumber} references unknown character: ${charName}`,
+          location: {
+            sceneNumber: scene.sceneNumber,
+            characterId: charId,
+          },
+          suggestion:
+            'Introduce the character first or use an established character.',
+        });
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -483,34 +487,34 @@ function checkReferenceViolation(
  * Checks if narrative threads are connected (callbacks).
  */
 function checkConnectivityFailure(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Check for orphaned threads (open with unfulfilled promises)
-    for (const thread of context.activeThreads) {
-        const promises = thread.promises ?? [];
-        const payoffs = thread.payoffs ?? [];
+  // Check for orphaned threads (open with unfulfilled promises)
+  for (const thread of context.activeThreads) {
+    const promises = thread.promises ?? [];
+    const payoffs = thread.payoffs ?? [];
 
-        // Thread has promises but no payoffs and hasn't been touched recently
-        if (promises.length > 0 && payoffs.length === 0) {
-            const episodesTouched = thread.episodesTouched ?? [];
-            const touchedCount = episodesTouched.length;
+    // Thread has promises but no payoffs and hasn't been touched recently
+    if (promises.length > 0 && payoffs.length === 0) {
+      const episodesTouched = thread.episodesTouched ?? [];
+      const touchedCount = episodesTouched.length;
 
-            // If thread hasn't progressed in several episodes
-            if (touchedCount < 2) {
-                violations.push({
-                    code: 'CANON_007',
-                    severity: 'info',
-                    message: `Narrative thread "${thread.threadName}" has ${promises.length} unfulfilled promise(s).`,
-                    suggestion: `Consider touching this thread in the current episode: ${promises.join(', ')}`,
-                });
-            }
-        }
+      // If thread hasn't progressed in several episodes
+      if (touchedCount < 2) {
+        violations.push({
+          code: 'CANON_007',
+          severity: 'info',
+          message: `Narrative thread "${thread.threadName}" has ${promises.length} unfulfilled promise(s).`,
+          suggestion: `Consider touching this thread in the current episode: ${promises.join(', ')}`,
+        });
+      }
     }
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -518,57 +522,58 @@ function checkConnectivityFailure(
  * Checks if stakes escalate beyond sustainable levels.
  */
 function checkEscalationOverflow(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Count high-stakes events in recent summaries
-    const highStakesKeywords = [
-        'death',
-        'betrayal',
-        'war',
-        'catastrophe',
-        'apocalypse',
-        'destruction',
-        'massacre',
-    ];
+  // Count high-stakes events in recent summaries
+  const highStakesKeywords = [
+    'death',
+    'betrayal',
+    'war',
+    'catastrophe',
+    'apocalypse',
+    'destruction',
+    'massacre',
+  ];
 
-    let recentHighStakesCount = 0;
-    for (const summary of context.recentSummaries) {
-        const lowerSummary = summary.plotSummary.toLowerCase();
-        for (const keyword of highStakesKeywords) {
-            if (lowerSummary.includes(keyword)) {
-                recentHighStakesCount++;
-                break;
-            }
-        }
+  let recentHighStakesCount = 0;
+  for (const summary of context.recentSummaries) {
+    const lowerSummary = summary.plotSummary.toLowerCase();
+    for (const keyword of highStakesKeywords) {
+      if (lowerSummary.includes(keyword)) {
+        recentHighStakesCount++;
+        break;
+      }
     }
+  }
 
-    // Check current episode for high stakes
-    let currentHighStakes = 0;
-    for (const scene of skeleton.scenes) {
-        const lowerSummary = scene.summary.toLowerCase();
-        for (const keyword of highStakesKeywords) {
-            if (lowerSummary.includes(keyword)) {
-                currentHighStakes++;
-                break;
-            }
-        }
+  // Check current episode for high stakes
+  let currentHighStakes = 0;
+  for (const scene of skeleton.scenes) {
+    const lowerSummary = scene.summary.toLowerCase();
+    for (const keyword of highStakesKeywords) {
+      if (lowerSummary.includes(keyword)) {
+        currentHighStakes++;
+        break;
+      }
     }
+  }
 
-    // If too many high-stakes events (more than 50% of scenes)
-    const highStakeRatio = currentHighStakes / skeleton.scenes.length;
-    if (highStakeRatio > 0.5 && recentHighStakesCount > 3) {
-        violations.push({
-            code: 'CANON_008',
-            severity: 'warning',
-            message: `Escalation overflow: ${Math.round(highStakeRatio * 100)}% of scenes have high stakes, and ${recentHighStakesCount} recent episodes also had high stakes.`,
-            suggestion: 'Add breathing room with lower-stakes scenes for better pacing.',
-        });
-    }
+  // If too many high-stakes events (more than 50% of scenes)
+  const highStakeRatio = currentHighStakes / skeleton.scenes.length;
+  if (highStakeRatio > 0.5 && recentHighStakesCount > 3) {
+    violations.push({
+      code: 'CANON_008',
+      severity: 'warning',
+      message: `Escalation overflow: ${Math.round(highStakeRatio * 100)}% of scenes have high stakes, and ${recentHighStakesCount} recent episodes also had high stakes.`,
+      suggestion:
+        'Add breathing room with lower-stakes scenes for better pacing.',
+    });
+  }
 
-    return violations;
+  return violations;
 }
 
 /**
@@ -576,52 +581,52 @@ function checkEscalationOverflow(
  * Checks for genre/tone inconsistency.
  */
 function checkToneDrift(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityViolation[] {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Calculate average sentiment from recent episodes
-    const sentiments = context.recentSummaries
-        .filter((s) => s.sentimentScore !== undefined)
-        .map((s) => s.sentimentScore!);
+  // Calculate average sentiment from recent episodes
+  const sentiments = context.recentSummaries
+    .filter((s) => s.sentimentScore !== undefined)
+    .map((s) => s.sentimentScore!);
 
-    if (sentiments.length < 3) return violations; // Not enough data
+  if (sentiments.length < 3) return violations; // Not enough data
 
-    const avgSentiment =
-        sentiments.reduce((a, b) => a + b, 0) / sentiments.length;
+  const avgSentiment =
+    sentiments.reduce((a, b) => a + b, 0) / sentiments.length;
 
-    // Analyze current episode tone (simplified)
-    const darkKeywords = ['death', 'tragedy', 'grief', 'betrayal', 'violence'];
-    const lightKeywords = ['hope', 'joy', 'celebration', 'victory', 'love'];
+  // Analyze current episode tone (simplified)
+  const darkKeywords = ['death', 'tragedy', 'grief', 'betrayal', 'violence'];
+  const lightKeywords = ['hope', 'joy', 'celebration', 'victory', 'love'];
 
-    let darkScore = 0;
-    let lightScore = 0;
+  let darkScore = 0;
+  let lightScore = 0;
 
-    for (const scene of skeleton.scenes) {
-        const lowerSummary = scene.summary.toLowerCase();
-        for (const keyword of darkKeywords) {
-            if (lowerSummary.includes(keyword)) darkScore++;
-        }
-        for (const keyword of lightKeywords) {
-            if (lowerSummary.includes(keyword)) lightScore++;
-        }
+  for (const scene of skeleton.scenes) {
+    const lowerSummary = scene.summary.toLowerCase();
+    for (const keyword of darkKeywords) {
+      if (lowerSummary.includes(keyword)) darkScore++;
     }
-
-    const currentSentiment = lightScore / (darkScore + lightScore + 1);
-
-    // Check for significant drift (more than 0.3 difference)
-    if (Math.abs(currentSentiment - avgSentiment) > 0.3) {
-        violations.push({
-            code: 'CANON_009',
-            severity: 'info',
-            message: `Tone drift detected. Recent average: ${(avgSentiment * 100).toFixed(0)}% positive. Current episode: ${(currentSentiment * 100).toFixed(0)}% positive.`,
-            suggestion:
-                'Ensure tonal shift is intentional and properly set up in the narrative.',
-        });
+    for (const keyword of lightKeywords) {
+      if (lowerSummary.includes(keyword)) lightScore++;
     }
+  }
 
-    return violations;
+  const currentSentiment = lightScore / (darkScore + lightScore + 1);
+
+  // Check for significant drift (more than 0.3 difference)
+  if (Math.abs(currentSentiment - avgSentiment) > 0.3) {
+    violations.push({
+      code: 'CANON_009',
+      severity: 'info',
+      message: `Tone drift detected. Recent average: ${(avgSentiment * 100).toFixed(0)}% positive. Current episode: ${(currentSentiment * 100).toFixed(0)}% positive.`,
+      suggestion:
+        'Ensure tonal shift is intentional and properly set up in the narrative.',
+    });
+  }
+
+  return violations;
 }
 
 // =============================================================================
@@ -633,42 +638,42 @@ function checkToneDrift(
  * Used at STORY checkpoint.
  */
 export function validatePlotSkeleton(
-    skeleton: PlotSkeleton,
-    context: MemoryContext
+  skeleton: PlotSkeleton,
+  context: MemoryContext,
 ): ContinuityValidationResult {
-    const violations: ContinuityViolation[] = [];
+  const violations: ContinuityViolation[] = [];
 
-    // Run all applicable rules
-    violations.push(...checkResurrectionFailure(skeleton, context));
-    violations.push(...checkStateReversal(skeleton, context));
-    violations.push(...checkKnowledgeViolation(skeleton, context));
-    violations.push(...checkAuthorizationMissing(skeleton, context));
-    violations.push(...checkWorldContradiction(skeleton, context));
-    violations.push(...checkReferenceViolation(skeleton, context));
-    violations.push(...checkConnectivityFailure(skeleton, context));
-    violations.push(...checkEscalationOverflow(skeleton, context));
-    violations.push(...checkToneDrift(skeleton, context));
+  // Run all applicable rules
+  violations.push(...checkResurrectionFailure(skeleton, context));
+  violations.push(...checkStateReversal(skeleton, context));
+  violations.push(...checkKnowledgeViolation(skeleton, context));
+  violations.push(...checkAuthorizationMissing(skeleton, context));
+  violations.push(...checkWorldContradiction(skeleton, context));
+  violations.push(...checkReferenceViolation(skeleton, context));
+  violations.push(...checkConnectivityFailure(skeleton, context));
+  violations.push(...checkEscalationOverflow(skeleton, context));
+  violations.push(...checkToneDrift(skeleton, context));
 
-    // Determine passed rules
-    const violatedCodes = new Set(violations.map((v) => v.code));
-    const passedRules = VALIDATION_RULES.filter(
-        (r) => !violatedCodes.has(r.code)
-    ).map((r) => r.code);
+  // Determine passed rules
+  const violatedCodes = new Set(violations.map((v) => v.code));
+  const passedRules = VALIDATION_RULES.filter(
+    (r) => !violatedCodes.has(r.code),
+  ).map((r) => r.code);
 
-    // Count by severity
-    const summary = {
-        errors: violations.filter((v) => v.severity === 'error').length,
-        warnings: violations.filter((v) => v.severity === 'warning').length,
-        infos: violations.filter((v) => v.severity === 'info').length,
-    };
+  // Count by severity
+  const summary = {
+    errors: violations.filter((v) => v.severity === 'error').length,
+    warnings: violations.filter((v) => v.severity === 'warning').length,
+    infos: violations.filter((v) => v.severity === 'info').length,
+  };
 
-    return {
-        valid: summary.errors === 0,
-        violations,
-        passedRules,
-        summary,
-        validatedAt: new Date().toISOString(),
-    };
+  return {
+    valid: summary.errors === 0,
+    violations,
+    passedRules,
+    summary,
+    validatedAt: new Date().toISOString(),
+  };
 }
 
 /**
@@ -676,53 +681,52 @@ export function validatePlotSkeleton(
  * Used at SCREENPLAY checkpoint.
  */
 export function validateSceneBlocks(
-    scenes: Array<{ sceneNumber: number; content: string }>,
-    context: MemoryContext
+  scenes: Array<{ sceneNumber: number; content: string }>,
+  context: MemoryContext,
 ): ContinuityValidationResult {
-    // Convert to PlotSkeleton format for reuse
-    const skeleton: PlotSkeleton = {
-        premise: '',
-        episodeNumber: context.episodeNumber,
-        scenes: scenes.map((s) => ({
-            sceneNumber: s.sceneNumber,
-            summary: s.content,
-            charactersPresent: [],
-        })),
-        characters: [],
-    };
+  // Convert to PlotSkeleton format for reuse
+  const skeleton: PlotSkeleton = {
+    premise: '',
+    episodeNumber: context.episodeNumber,
+    scenes: scenes.map((s) => ({
+      sceneNumber: s.sceneNumber,
+      summary: s.content,
+      charactersPresent: [],
+    })),
+    characters: [],
+  };
 
-    // Run subset of rules applicable to screenplay
-    const violations: ContinuityViolation[] = [];
-    violations.push(...checkResurrectionFailure(skeleton, context));
-    violations.push(...checkWorldContradiction(skeleton, context));
-    violations.push(...checkToneDrift(skeleton, context));
+  // Run subset of rules applicable to screenplay
+  const violations: ContinuityViolation[] = [];
+  violations.push(...checkResurrectionFailure(skeleton, context));
+  violations.push(...checkWorldContradiction(skeleton, context));
+  violations.push(...checkToneDrift(skeleton, context));
 
-    const violatedCodes = new Set(violations.map((v) => v.code));
-    const passedRules = VALIDATION_RULES.filter(
-        (r) =>
-            !violatedCodes.has(r.code) && r.checkpoints.includes('SCREENPLAY')
-    ).map((r) => r.code);
+  const violatedCodes = new Set(violations.map((v) => v.code));
+  const passedRules = VALIDATION_RULES.filter(
+    (r) => !violatedCodes.has(r.code) && r.checkpoints.includes('SCREENPLAY'),
+  ).map((r) => r.code);
 
-    const summary = {
-        errors: violations.filter((v) => v.severity === 'error').length,
-        warnings: violations.filter((v) => v.severity === 'warning').length,
-        infos: violations.filter((v) => v.severity === 'info').length,
-    };
+  const summary = {
+    errors: violations.filter((v) => v.severity === 'error').length,
+    warnings: violations.filter((v) => v.severity === 'warning').length,
+    infos: violations.filter((v) => v.severity === 'info').length,
+  };
 
-    return {
-        valid: summary.errors === 0,
-        violations,
-        passedRules,
-        summary,
-        validatedAt: new Date().toISOString(),
-    };
+  return {
+    valid: summary.errors === 0,
+    violations,
+    passedRules,
+    summary,
+    validatedAt: new Date().toISOString(),
+  };
 }
 
 /**
  * Gets rules applicable to a specific checkpoint.
  */
 export function getRulesForCheckpoint(
-    checkpoint: ValidationCheckpoint
+  checkpoint: ValidationCheckpoint,
 ): ValidationRule[] {
-    return VALIDATION_RULES.filter((r) => r.checkpoints.includes(checkpoint));
+  return VALIDATION_RULES.filter((r) => r.checkpoints.includes(checkpoint));
 }

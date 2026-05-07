@@ -11,26 +11,26 @@
 // =============================================================================
 
 export type SourceType =
-    | 'research_paper'
-    | 'book'
-    | 'news_article'
-    | 'official_document'
-    | 'documentary'
-    | 'expert_interview'
-    | 'dataset'
-    | 'website'
-    | 'encyclopedia'
-    | 'court_document'
-    | 'historical_record'
-    | 'textbook'
-    | 'other';
+  | 'research_paper'
+  | 'book'
+  | 'news_article'
+  | 'official_document'
+  | 'documentary'
+  | 'expert_interview'
+  | 'dataset'
+  | 'website'
+  | 'encyclopedia'
+  | 'court_document'
+  | 'historical_record'
+  | 'textbook'
+  | 'other';
 
 export type VerificationStatus =
-    | 'unverified'
-    | 'pending_review'
-    | 'verified'
-    | 'disputed'
-    | 'retracted';
+  | 'unverified'
+  | 'pending_review'
+  | 'verified'
+  | 'disputed'
+  | 'retracted';
 
 // =============================================================================
 // CORE INTERFACES
@@ -38,71 +38,71 @@ export type VerificationStatus =
 
 /** A verified fact with citation */
 export interface VerifiedFact {
-    id: string;
-    projectId: string;
+  id: string;
+  projectId: string;
 
-    // The claim
-    claim: string;
-    simplifiedClaim?: string;
+  // The claim
+  claim: string;
+  simplifiedClaim?: string;
 
-    // Categorization
-    category?: string;
-    subcategory?: string;
-    tags: string[];
+  // Categorization
+  category?: string;
+  subcategory?: string;
+  tags: string[];
 
-    // Source
-    sourceType: SourceType;
-    sourceUrl?: string;
-    sourceCitation?: string;
-    sourceTitle?: string;
-    sourceAuthors?: string[];
-    sourcePublicationDate?: string;
-    sourceDoi?: string;
-    sourceMetadata?: Record<string, unknown>;
+  // Source
+  sourceType: SourceType;
+  sourceUrl?: string;
+  sourceCitation?: string;
+  sourceTitle?: string;
+  sourceAuthors?: string[];
+  sourcePublicationDate?: string;
+  sourceDoi?: string;
+  sourceMetadata?: Record<string, unknown>;
 
-    // Verification
-    verificationStatus: VerificationStatus;
-    verifiedBy?: string;
-    verifiedAt?: string;
-    verificationNotes?: string;
+  // Verification
+  verificationStatus: VerificationStatus;
+  verifiedBy?: string;
+  verifiedAt?: string;
+  verificationNotes?: string;
 
-    // Confidence
-    confidenceScore?: number;
+  // Confidence
+  confidenceScore?: number;
 
-    // Usage
-    timesUsed: number;
-    lastUsedAt?: string;
-    episodesUsedIn: string[];
+  // Usage
+  timesUsed: number;
+  lastUsedAt?: string;
+  episodesUsedIn: string[];
 
-    // Audit
-    createdAt: string;
-    createdBy?: string;
-    updatedAt: string;
-    updatedBy?: string;
+  // Audit
+  createdAt: string;
+  createdBy?: string;
+  updatedAt: string;
+  updatedBy?: string;
 }
 
 /** Input for creating a verified fact */
 export interface CreateVerifiedFactInput {
-    projectId: string;
-    claim: string;
-    category?: string;
-    subcategory?: string;
-    tags?: string[];
-    sourceType: SourceType;
-    sourceUrl?: string;
-    sourceCitation: string;
-    sourceTitle?: string;
-    sourceAuthors?: string[];
-    sourcePublicationDate?: string;
-    sourceDoi?: string;
-    confidenceScore?: number;
+  projectId: string;
+  claim: string;
+  category?: string;
+  subcategory?: string;
+  tags?: string[];
+  sourceType: SourceType;
+  sourceUrl?: string;
+  sourceCitation: string;
+  sourceTitle?: string;
+  sourceAuthors?: string[];
+  sourcePublicationDate?: string;
+  sourceDoi?: string;
+  confidenceScore?: number;
 }
 
 /** Search result for facts */
 export interface FactSearchResult {
-    fact: VerifiedFact;
-    relevanceScore: number;
-    matchedTerms: string[];
+  fact: VerifiedFact;
+  relevanceScore: number;
+  matchedTerms: string[];
 }
 
 // =============================================================================
@@ -124,23 +124,23 @@ export interface FactSearchResult {
  * // => "Smith, J., Doe, A. (2023). The Science of Everything. Nature. https://doi.org/10.1234/nature.12345"
  */
 export function generateAPACitation(
-    authors: string[],
-    year: number,
-    title: string,
-    source: string,
-    url?: string,
-    doi?: string,
+  authors: string[],
+  year: number,
+  title: string,
+  source: string,
+  url?: string,
+  doi?: string,
 ): string {
-    const formattedAuthors =
-        authors.length > 0 ? authors.join(', ') : 'Unknown Author';
+  const formattedAuthors =
+    authors.length > 0 ? authors.join(', ') : 'Unknown Author';
 
-    let citation = `${formattedAuthors} (${year}). ${title}. ${source}.`;
+  let citation = `${formattedAuthors} (${year}). ${title}. ${source}.`;
 
-    if (doi) {
-        citation += ` https://doi.org/${doi}`;
-    } else if (url) {
-        citation += ` Retrieved from ${url}`;
-    }
+  if (doi) {
+    citation += ` https://doi.org/${doi}`;
+  } else if (url) {
+    citation += ` Retrieved from ${url}`;
+  }
 
-    return citation;
+  return citation;
 }

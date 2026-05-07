@@ -10,8 +10,8 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { validateUpload } from '@kit/assets/upload-validation';
-import { PROJECT_ASSETS_BUCKET } from '../../lib/constants';
 
+import { PROJECT_ASSETS_BUCKET } from '../../lib/constants';
 import type {
   ImageInfo,
   UploadError,
@@ -20,6 +20,13 @@ import type {
   UseImageUploadOptions,
   UseImageUploadReturn,
 } from './types';
+
+/**
+ * useImageUpload Hook (FILM-207)
+ *
+ * Custom hook for handling image uploads with progress tracking.
+ * Uses XMLHttpRequest for upload progress events.
+ */
 
 /**
  * Hook for uploading images with progress tracking
@@ -179,8 +186,12 @@ export function useImageUpload(
             }
           });
 
-          xhr.addEventListener('error', () => reject(new Error('Network error during upload')));
-          xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+          xhr.addEventListener('error', () =>
+            reject(new Error('Network error during upload')),
+          );
+          xhr.addEventListener('abort', () =>
+            reject(new Error('Upload aborted')),
+          );
 
           xhr.open('PUT', uploadUrl);
           xhr.setRequestHeader('Content-Type', file.type);
@@ -190,7 +201,7 @@ export function useImageUpload(
         // 4. Handle Success
         setState('success');
 
-        // Since we bypassed server generation, we use the main URL as thumbnail 
+        // Since we bypassed server generation, we use the main URL as thumbnail
         // or rely on frontend to load the main image.
         const resultInfo: ImageInfo = {
           url: publicUrl,
@@ -204,14 +215,13 @@ export function useImageUpload(
 
         setImageInfo(resultInfo);
         onUploadComplete?.(publicUrl, publicUrl);
-
       } catch (err) {
         setState('error');
         const message = err instanceof Error ? err.message : 'Upload failed';
         setError({
           code: 'UPLOAD_FAILED',
           message,
-          details: { error: err }
+          details: { error: err },
         });
       }
     },

@@ -6,10 +6,8 @@
  * movies, inheriting their canon (immutable events, character states,
  * resolved narrative threads) for generation context.
  */
-
-import { getSupabaseServerClient } from '@kit/supabase/server-client';
-
 import type { Json } from '@kit/supabase/database';
+import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { sanitizeForPrompt } from '../sanitize-for-prompt';
 
@@ -26,7 +24,7 @@ import { sanitizeForPrompt } from '../sanitize-for-prompt';
  * as Json` across the codebase.
  */
 function toJsonb<T>(value: T): Json {
-    return value as unknown as Json;
+  return value as unknown as Json;
 }
 
 // =============================================================================
@@ -35,52 +33,52 @@ function toJsonb<T>(value: T): Json {
 
 /** Cached parent canon for a sequel */
 export interface ParentContext {
-    parentProjectId: string;
-    parentProjectName: string;
-    parentSummary: string;
-    immutableEvents: ParentImmutableEvent[];
-    finalCharacterStates: ParentCharacterState[];
-    resolvedThreads: ParentResolvedThread[];
-    worldFacts: ParentWorldFact[];
-    characterVisualRegistry: Record<string, CharacterVisualRef>;
-    locationRegistry: LocationRef[];
+  parentProjectId: string;
+  parentProjectName: string;
+  parentSummary: string;
+  immutableEvents: ParentImmutableEvent[];
+  finalCharacterStates: ParentCharacterState[];
+  resolvedThreads: ParentResolvedThread[];
+  worldFacts: ParentWorldFact[];
+  characterVisualRegistry: Record<string, CharacterVisualRef>;
+  locationRegistry: LocationRef[];
 }
 
 export interface ParentImmutableEvent {
-    eventKey: string;
-    eventType: string;
-    description: string;
+  eventKey: string;
+  eventType: string;
+  description: string;
 }
 
 export interface ParentCharacterState {
-    characterId: string;
-    characterName: string;
-    isAlive: boolean;
-    finalEmotionalState: string;
-    finalLocation: string;
-    knownFacts: string[];
+  characterId: string;
+  characterName: string;
+  isAlive: boolean;
+  finalEmotionalState: string;
+  finalLocation: string;
+  knownFacts: string[];
 }
 
 export interface ParentResolvedThread {
-    threadName: string;
-    resolution: string;
+  threadName: string;
+  resolution: string;
 }
 
 export interface ParentWorldFact {
-    factKey: string;
-    description: string;
+  factKey: string;
+  description: string;
 }
 
 export interface CharacterVisualRef {
-    characterName: string;
-    /** 15+ attribute VEO-compatible description */
-    visualDescription: string;
-    assetId: string;
+  characterName: string;
+  /** 15+ attribute VEO-compatible description */
+  visualDescription: string;
+  assetId: string;
 }
 
 export interface LocationRef {
-    locationName: string;
-    visualDescription: string;
+  locationName: string;
+  visualDescription: string;
 }
 
 // =============================================================================
@@ -93,81 +91,81 @@ export interface LocationRef {
  * builds + caches the parent context.
  */
 export async function linkAsSequel(
-    sequelProjectId: string,
-    parentProjectId: string,
+  sequelProjectId: string,
+  parentProjectId: string,
 ): Promise<ParentContext> {
-    const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient();
 
-    // Validate both projects exist
-    const { data: sequelProject } = await supabase
-        .from('projects')
-        .select('id, name, metadata')
-        .eq('id', sequelProjectId)
-        .single();
+  // Validate both projects exist
+  const { data: sequelProject } = await supabase
+    .from('projects')
+    .select('id, name, metadata')
+    .eq('id', sequelProjectId)
+    .single();
 
-    const { data: parentProject } = await supabase
-        .from('projects')
-        .select('id, name, metadata')
-        .eq('id', parentProjectId)
-        .single();
+  const { data: parentProject } = await supabase
+    .from('projects')
+    .select('id, name, metadata')
+    .eq('id', parentProjectId)
+    .single();
 
-    if (!sequelProject || !parentProject) {
-        throw new Error('Project not found');
-    }
+  if (!sequelProject || !parentProject) {
+    throw new Error('Project not found');
+  }
 
-    // Read sequel_of from project (column added by migration 20260210041000)
-    const { data: sequelRow } = await supabase
-        .from('projects')
-        .select('sequel_of')
-        .eq('id', sequelProjectId)
-        .single();
+  // Read sequel_of from project (column added by migration 20260210041000)
+  const { data: sequelRow } = await supabase
+    .from('projects')
+    .select('sequel_of')
+    .eq('id', sequelProjectId)
+    .single();
 
-    const { data: parentRow } = await supabase
-        .from('projects')
-        .select('sequel_of')
-        .eq('id', parentProjectId)
-        .single();
+  const { data: parentRow } = await supabase
+    .from('projects')
+    .select('sequel_of')
+    .eq('id', parentProjectId)
+    .single();
 
-    // Validate not circular (parent is not already a sequel of this project)
-    const parentSequelOf = (parentRow?.sequel_of as string[]) ?? [];
-    if (parentSequelOf.includes(sequelProjectId)) {
-        throw new Error('Circular sequel reference detected');
-    }
+  // Validate not circular (parent is not already a sequel of this project)
+  const parentSequelOf = (parentRow?.sequel_of as string[]) ?? [];
+  if (parentSequelOf.includes(sequelProjectId)) {
+    throw new Error('Circular sequel reference detected');
+  }
 
-    // Update sequel_of array on the sequel project
-    const currentSequelOf = (sequelRow?.sequel_of as string[]) ?? [];
-    if (!currentSequelOf.includes(parentProjectId)) {
-        await supabase
-            .from('projects')
-            .update({
-                sequel_of: [...currentSequelOf, parentProjectId],
-            })
-            .eq('id', sequelProjectId);
-    }
+  // Update sequel_of array on the sequel project
+  const currentSequelOf = (sequelRow?.sequel_of as string[]) ?? [];
+  if (!currentSequelOf.includes(parentProjectId)) {
+    await supabase
+      .from('projects')
+      .update({
+        sequel_of: [...currentSequelOf, parentProjectId],
+      })
+      .eq('id', sequelProjectId);
+  }
 
-    // Build and cache parent context
-    const parentContext = await buildParentContext(
-        parentProjectId,
-        parentProject.name,
-    );
+  // Build and cache parent context
+  const parentContext = await buildParentContext(
+    parentProjectId,
+    parentProject.name,
+  );
 
-    // Upsert the cached context
-    await supabase.from('sequel_parent_contexts').upsert({
-        sequel_project_id: sequelProjectId,
-        parent_project_id: parentProjectId,
-        parent_project_name: parentProject.name,
-        parent_summary: parentContext.parentSummary,
-        parent_immutable_events: toJsonb(parentContext.immutableEvents),
-        parent_final_character_states: toJsonb(parentContext.finalCharacterStates),
-        parent_resolved_threads: toJsonb(parentContext.resolvedThreads),
-        parent_world_facts: toJsonb(parentContext.worldFacts),
-        character_visual_registry: toJsonb(parentContext.characterVisualRegistry),
-        location_registry: toJsonb(parentContext.locationRegistry),
-        cached_at: new Date().toISOString(),
-        is_stale: false,
-    });
+  // Upsert the cached context
+  await supabase.from('sequel_parent_contexts').upsert({
+    sequel_project_id: sequelProjectId,
+    parent_project_id: parentProjectId,
+    parent_project_name: parentProject.name,
+    parent_summary: parentContext.parentSummary,
+    parent_immutable_events: toJsonb(parentContext.immutableEvents),
+    parent_final_character_states: toJsonb(parentContext.finalCharacterStates),
+    parent_resolved_threads: toJsonb(parentContext.resolvedThreads),
+    parent_world_facts: toJsonb(parentContext.worldFacts),
+    character_visual_registry: toJsonb(parentContext.characterVisualRegistry),
+    location_registry: toJsonb(parentContext.locationRegistry),
+    cached_at: new Date().toISOString(),
+    is_stale: false,
+  });
 
-    return parentContext;
+  return parentContext;
 }
 
 // =============================================================================
@@ -175,37 +173,37 @@ export async function linkAsSequel(
 // =============================================================================
 
 interface ImmutableEventRow {
-    event_key: string;
-    event_type: string;
-    description: string;
+  event_key: string;
+  event_type: string;
+  description: string;
 }
 
 interface ResolvedThreadRow {
-    thread_name: string;
-    description: string | null;
+  thread_name: string;
+  description: string | null;
 }
 
 interface WorldStateRow {
-    location: string;
-    environment_data: Record<string, unknown> | null;
+  location: string;
+  environment_data: Record<string, unknown> | null;
 }
 
 interface CharacterStateRow {
-    character_id: string;
-    state_value: Record<string, unknown>;
-    state_type: string;
-    created_at: string;
-    episode_id: string;
+  character_id: string;
+  state_value: Record<string, unknown>;
+  state_type: string;
+  created_at: string;
+  episode_id: string;
 }
 
 interface AssetRow {
-    id: string;
-    name: string;
-    metadata: Record<string, unknown> | null;
+  id: string;
+  name: string;
+  metadata: Record<string, unknown> | null;
 }
 
 interface EpisodeSummaryRow {
-    plot_summary: string;
+  plot_summary: string;
 }
 
 /**
@@ -214,160 +212,151 @@ interface EpisodeSummaryRow {
  * and world states from the parent.
  */
 export async function buildParentContext(
-    parentProjectId: string,
-    parentProjectName: string,
+  parentProjectId: string,
+  parentProjectName: string,
 ): Promise<ParentContext> {
-    const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient();
 
-    // Fetch immutable events
-    const { data: rawImmutableEvents } = await supabase
-        .from('immutable_events')
-        .select('event_key, event_type, description')
-        .eq('project_id', parentProjectId);
-    const immutableEvents = (rawImmutableEvents ?? []) as ImmutableEventRow[];
+  // Fetch immutable events
+  const { data: rawImmutableEvents } = await supabase
+    .from('immutable_events')
+    .select('event_key, event_type, description')
+    .eq('project_id', parentProjectId);
+  const immutableEvents = (rawImmutableEvents ?? []) as ImmutableEventRow[];
 
-    // Fetch resolved narrative threads
-    const { data: rawResolvedThreads } = await supabase
-        .from('narrative_threads')
-        .select('thread_name, description')
-        .eq('project_id', parentProjectId)
-        .eq('status', 'resolved');
-    const resolvedThreads = (rawResolvedThreads ?? []) as ResolvedThreadRow[];
+  // Fetch resolved narrative threads
+  const { data: rawResolvedThreads } = await supabase
+    .from('narrative_threads')
+    .select('thread_name, description')
+    .eq('project_id', parentProjectId)
+    .eq('status', 'resolved');
+  const resolvedThreads = (rawResolvedThreads ?? []) as ResolvedThreadRow[];
 
-    // Fetch world states (latest per location)
-    const { data: rawWorldStates } = await supabase
-        .from('world_states')
-        .select('location, environment_data')
-        .eq('project_id', parentProjectId)
-        .order('created_at', { ascending: false });
-    const worldStates = (rawWorldStates ?? []) as WorldStateRow[];
+  // Fetch world states (latest per location)
+  const { data: rawWorldStates } = await supabase
+    .from('world_states')
+    .select('location, environment_data')
+    .eq('project_id', parentProjectId)
+    .order('created_at', { ascending: false });
+  const worldStates = (rawWorldStates ?? []) as WorldStateRow[];
 
-    // Fetch episode IDs for parent
-    const { data: episodes } = await supabase
-        .from('episodes')
-        .select('id')
-        .eq('project_id', parentProjectId);
-    const episodeIds = (episodes ?? []).map((e) => e.id);
+  // Fetch episode IDs for parent
+  const { data: episodes } = await supabase
+    .from('episodes')
+    .select('id')
+    .eq('project_id', parentProjectId);
+  const episodeIds = (episodes ?? []).map((e) => e.id);
 
-    // Fetch character states for characters in these episodes
-    let characterStates: CharacterStateRow[] = [];
-    if (episodeIds.length > 0) {
-        const { data: rawCharStates } = await supabase
-            .from('character_states')
-            .select(
-                'character_id, state_value, state_type, created_at, episode_id',
-            )
-            .in('episode_id', episodeIds)
-            .order('created_at', { ascending: false });
-        characterStates = (rawCharStates ?? []) as CharacterStateRow[];
-    }
+  // Fetch character states for characters in these episodes
+  let characterStates: CharacterStateRow[] = [];
+  if (episodeIds.length > 0) {
+    const { data: rawCharStates } = await supabase
+      .from('character_states')
+      .select('character_id, state_value, state_type, created_at, episode_id')
+      .in('episode_id', episodeIds)
+      .order('created_at', { ascending: false });
+    characterStates = (rawCharStates ?? []) as CharacterStateRow[];
+  }
 
-    // Deduplicate character states — keep the latest per character
-    const latestCharacterStates =
-        deduplicateCharacterStates(characterStates);
+  // Deduplicate character states — keep the latest per character
+  const latestCharacterStates = deduplicateCharacterStates(characterStates);
 
-    // Fetch character assets for name/visual info
-    const characterIds = latestCharacterStates.map((cs) => cs.character_id);
-    let characterAssets: AssetRow[] = [];
-    if (characterIds.length > 0) {
-        const { data: rawAssets } = await supabase
-            .from('assets')
-            .select('id, name, metadata')
-            .in('id', characterIds);
-        characterAssets = (rawAssets ?? []) as AssetRow[];
-    }
+  // Fetch character assets for name/visual info
+  const characterIds = latestCharacterStates.map((cs) => cs.character_id);
+  let characterAssets: AssetRow[] = [];
+  if (characterIds.length > 0) {
+    const { data: rawAssets } = await supabase
+      .from('assets')
+      .select('id, name, metadata')
+      .in('id', characterIds);
+    characterAssets = (rawAssets ?? []) as AssetRow[];
+  }
 
-    const characterMap = new Map(
-        characterAssets.map((a) => [a.id, a]),
-    );
+  const characterMap = new Map(characterAssets.map((a) => [a.id, a]));
 
-    // Build character visual registry
-    const characterVisualRegistry: Record<string, CharacterVisualRef> = {};
-    for (const asset of characterAssets) {
-        characterVisualRegistry[asset.id] = {
-            characterName: asset.name,
-            visualDescription:
-                (asset.metadata?.visualDescription as string) ?? asset.name,
-            assetId: asset.id,
-        };
-    }
-
-    // Build location registry from world states
-    const locationRegistry: LocationRef[] = [];
-    const seenLocations = new Set<string>();
-    for (const ws of worldStates) {
-        if (!seenLocations.has(ws.location)) {
-            seenLocations.add(ws.location);
-            locationRegistry.push({
-                locationName: ws.location,
-                visualDescription:
-                    (ws.environment_data?.visualDescription as string) ??
-                    ws.location,
-            });
-        }
-    }
-
-    // Build final character states
-    // Use immutable_events as source of truth for character deaths (PR #177 review)
-    const finalCharStates: ParentCharacterState[] = latestCharacterStates.map(
-        (cs) => {
-            const asset = characterMap.get(cs.character_id);
-            const isDead = immutableEvents.some(
-                (e) =>
-                    e.event_type === 'death' &&
-                    e.event_key.includes(cs.character_id),
-            );
-
-            return {
-                characterId: cs.character_id,
-                characterName: asset?.name ?? 'Unknown',
-                isAlive: !isDead,
-                finalEmotionalState:
-                    (cs.state_value?.emotionalState as string) ?? 'neutral',
-                finalLocation:
-                    (cs.state_value?.location as string) ?? 'unknown',
-                knownFacts:
-                    (cs.state_value?.knownFacts as string[]) ?? [],
-            };
-        },
-    );
-
-    // Build episode summary from episode_summaries table
-    let summaryRows: EpisodeSummaryRow[] = [];
-    if (episodeIds.length > 0) {
-        const { data: rawSummaries } = await supabase
-            .from('episode_summaries')
-            .select('plot_summary')
-            .in('episode_id', episodeIds)
-            .order('created_at', { ascending: true });
-        summaryRows = (rawSummaries ?? []) as EpisodeSummaryRow[];
-    }
-
-    const parentSummary = summaryRows.map((s) => s.plot_summary).join(' ');
-
-    return {
-        parentProjectId,
-        parentProjectName,
-        parentSummary: parentSummary || 'No summary available',
-        immutableEvents: immutableEvents.map((e) => ({
-            eventKey: e.event_key,
-            eventType: e.event_type,
-            description: e.description,
-        })),
-        finalCharacterStates: finalCharStates,
-        resolvedThreads: resolvedThreads.map((t) => ({
-            threadName: t.thread_name,
-            resolution: t.description ?? '',
-        })),
-        worldFacts: immutableEvents
-            .filter((e) => e.event_type === 'world_fact')
-            .map((e) => ({
-                factKey: e.event_key,
-                description: e.description,
-            })),
-        characterVisualRegistry,
-        locationRegistry,
+  // Build character visual registry
+  const characterVisualRegistry: Record<string, CharacterVisualRef> = {};
+  for (const asset of characterAssets) {
+    characterVisualRegistry[asset.id] = {
+      characterName: asset.name,
+      visualDescription:
+        (asset.metadata?.visualDescription as string) ?? asset.name,
+      assetId: asset.id,
     };
+  }
+
+  // Build location registry from world states
+  const locationRegistry: LocationRef[] = [];
+  const seenLocations = new Set<string>();
+  for (const ws of worldStates) {
+    if (!seenLocations.has(ws.location)) {
+      seenLocations.add(ws.location);
+      locationRegistry.push({
+        locationName: ws.location,
+        visualDescription:
+          (ws.environment_data?.visualDescription as string) ?? ws.location,
+      });
+    }
+  }
+
+  // Build final character states
+  // Use immutable_events as source of truth for character deaths (PR #177 review)
+  const finalCharStates: ParentCharacterState[] = latestCharacterStates.map(
+    (cs) => {
+      const asset = characterMap.get(cs.character_id);
+      const isDead = immutableEvents.some(
+        (e) =>
+          e.event_type === 'death' && e.event_key.includes(cs.character_id),
+      );
+
+      return {
+        characterId: cs.character_id,
+        characterName: asset?.name ?? 'Unknown',
+        isAlive: !isDead,
+        finalEmotionalState:
+          (cs.state_value?.emotionalState as string) ?? 'neutral',
+        finalLocation: (cs.state_value?.location as string) ?? 'unknown',
+        knownFacts: (cs.state_value?.knownFacts as string[]) ?? [],
+      };
+    },
+  );
+
+  // Build episode summary from episode_summaries table
+  let summaryRows: EpisodeSummaryRow[] = [];
+  if (episodeIds.length > 0) {
+    const { data: rawSummaries } = await supabase
+      .from('episode_summaries')
+      .select('plot_summary')
+      .in('episode_id', episodeIds)
+      .order('created_at', { ascending: true });
+    summaryRows = (rawSummaries ?? []) as EpisodeSummaryRow[];
+  }
+
+  const parentSummary = summaryRows.map((s) => s.plot_summary).join(' ');
+
+  return {
+    parentProjectId,
+    parentProjectName,
+    parentSummary: parentSummary || 'No summary available',
+    immutableEvents: immutableEvents.map((e) => ({
+      eventKey: e.event_key,
+      eventType: e.event_type,
+      description: e.description,
+    })),
+    finalCharacterStates: finalCharStates,
+    resolvedThreads: resolvedThreads.map((t) => ({
+      threadName: t.thread_name,
+      resolution: t.description ?? '',
+    })),
+    worldFacts: immutableEvents
+      .filter((e) => e.event_type === 'world_fact')
+      .map((e) => ({
+        factKey: e.event_key,
+        description: e.description,
+      })),
+    characterVisualRegistry,
+    locationRegistry,
+  };
 }
 
 // =============================================================================
@@ -375,15 +364,15 @@ export async function buildParentContext(
 // =============================================================================
 
 interface SequelParentRow {
-    parent_project_id: string;
-    parent_project_name: string;
-    parent_summary: string;
-    parent_immutable_events: ParentImmutableEvent[];
-    parent_final_character_states: ParentCharacterState[];
-    parent_resolved_threads: ParentResolvedThread[];
-    parent_world_facts: ParentWorldFact[];
-    character_visual_registry: Record<string, CharacterVisualRef>;
-    location_registry: LocationRef[];
+  parent_project_id: string;
+  parent_project_name: string;
+  parent_summary: string;
+  parent_immutable_events: ParentImmutableEvent[];
+  parent_final_character_states: ParentCharacterState[];
+  parent_resolved_threads: ParentResolvedThread[];
+  parent_world_facts: ParentWorldFact[];
+  character_visual_registry: Record<string, CharacterVisualRef>;
+  location_registry: LocationRef[];
 }
 
 /**
@@ -391,33 +380,33 @@ interface SequelParentRow {
  * Returns empty array for non-sequels.
  */
 export async function getSequelParentContexts(
-    sequelProjectId: string,
+  sequelProjectId: string,
 ): Promise<ParentContext[]> {
-    const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient();
 
-    // Fetch cached parent contexts
-    const { data } = await supabase
-        .from('sequel_parent_contexts')
-        .select('*')
-        .eq('sequel_project_id', sequelProjectId)
-        .eq('is_stale', false);
+  // Fetch cached parent contexts
+  const { data } = await supabase
+    .from('sequel_parent_contexts')
+    .select('*')
+    .eq('sequel_project_id', sequelProjectId)
+    .eq('is_stale', false);
 
-    if (!data || data.length === 0) return [];
+  if (!data || data.length === 0) return [];
 
-    return (data as unknown as SequelParentRow[]).map(
-        (row) =>
-            ({
-                parentProjectId: row.parent_project_id,
-                parentProjectName: row.parent_project_name ?? '',
-                parentSummary: row.parent_summary,
-                immutableEvents: row.parent_immutable_events,
-                finalCharacterStates: row.parent_final_character_states,
-                resolvedThreads: row.parent_resolved_threads,
-                worldFacts: row.parent_world_facts,
-                characterVisualRegistry: row.character_visual_registry,
-                locationRegistry: row.location_registry,
-            }) satisfies ParentContext,
-    );
+  return (data as unknown as SequelParentRow[]).map(
+    (row) =>
+      ({
+        parentProjectId: row.parent_project_id,
+        parentProjectName: row.parent_project_name ?? '',
+        parentSummary: row.parent_summary,
+        immutableEvents: row.parent_immutable_events,
+        finalCharacterStates: row.parent_final_character_states,
+        resolvedThreads: row.parent_resolved_threads,
+        worldFacts: row.parent_world_facts,
+        characterVisualRegistry: row.character_visual_registry,
+        locationRegistry: row.location_registry,
+      }) satisfies ParentContext,
+  );
 }
 
 // =============================================================================
@@ -431,71 +420,71 @@ export async function getSequelParentContexts(
  */
 
 export function formatParentContextsForPrompt(
-    contexts: ParentContext[],
+  contexts: ParentContext[],
 ): string {
-    if (contexts.length === 0) return '';
+  if (contexts.length === 0) return '';
 
-    const sections: string[] = [];
+  const sections: string[] = [];
 
-    sections.push('# INHERITED CANON FROM PARENT MOVIE(S)');
+  sections.push('# INHERITED CANON FROM PARENT MOVIE(S)');
 
-    for (const ctx of contexts) {
-        const header = ctx.parentProjectName
-            ? `## FROM: "${sanitizeForPrompt(ctx.parentProjectName)}"`
-            : '## FROM PARENT MOVIE';
-        sections.push(header);
-        sections.push('');
+  for (const ctx of contexts) {
+    const header = ctx.parentProjectName
+      ? `## FROM: "${sanitizeForPrompt(ctx.parentProjectName)}"`
+      : '## FROM PARENT MOVIE';
+    sections.push(header);
+    sections.push('');
 
-        if (ctx.parentSummary) {
-            sections.push(`### Summary`);
-            sections.push(sanitizeForPrompt(ctx.parentSummary));
-            sections.push('');
-        }
-
-        // Deceased characters — absolute constraint
-        const deceased = ctx.finalCharacterStates.filter((c) => !c.isAlive);
-        if (deceased.length > 0) {
-            sections.push(
-                '### DECEASED CHARACTERS (MUST NOT APPEAR AS ALIVE)',
-            );
-            for (const c of deceased) {
-                sections.push(`• ${sanitizeForPrompt(c.characterName)} - DEAD`);
-            }
-            sections.push('');
-        }
-
-        // Returning characters
-        const alive = ctx.finalCharacterStates.filter((c) => c.isAlive);
-        if (alive.length > 0) {
-            sections.push('### RETURNING CHARACTERS (Available for sequel)');
-            for (const c of alive) {
-                sections.push(
-                    `• ${sanitizeForPrompt(c.characterName)}: ${sanitizeForPrompt(c.finalEmotionalState)} (last seen at ${sanitizeForPrompt(c.finalLocation)})`,
-                );
-            }
-            sections.push('');
-        }
-
-        // World rules
-        if (ctx.worldFacts.length > 0) {
-            sections.push('### ESTABLISHED WORLD RULES');
-            for (const f of ctx.worldFacts) {
-                sections.push(`• ${sanitizeForPrompt(f.description)}`);
-            }
-            sections.push('');
-        }
-
-        // Resolved threads
-        if (ctx.resolvedThreads.length > 0) {
-            sections.push('### RESOLVED THREADS (DO NOT REOPEN)');
-            for (const t of ctx.resolvedThreads) {
-                sections.push(`• ${sanitizeForPrompt(t.threadName)}: ${sanitizeForPrompt(t.resolution)}`);
-            }
-            sections.push('');
-        }
+    if (ctx.parentSummary) {
+      sections.push(`### Summary`);
+      sections.push(sanitizeForPrompt(ctx.parentSummary));
+      sections.push('');
     }
 
-    return sections.join('\n');
+    // Deceased characters — absolute constraint
+    const deceased = ctx.finalCharacterStates.filter((c) => !c.isAlive);
+    if (deceased.length > 0) {
+      sections.push('### DECEASED CHARACTERS (MUST NOT APPEAR AS ALIVE)');
+      for (const c of deceased) {
+        sections.push(`• ${sanitizeForPrompt(c.characterName)} - DEAD`);
+      }
+      sections.push('');
+    }
+
+    // Returning characters
+    const alive = ctx.finalCharacterStates.filter((c) => c.isAlive);
+    if (alive.length > 0) {
+      sections.push('### RETURNING CHARACTERS (Available for sequel)');
+      for (const c of alive) {
+        sections.push(
+          `• ${sanitizeForPrompt(c.characterName)}: ${sanitizeForPrompt(c.finalEmotionalState)} (last seen at ${sanitizeForPrompt(c.finalLocation)})`,
+        );
+      }
+      sections.push('');
+    }
+
+    // World rules
+    if (ctx.worldFacts.length > 0) {
+      sections.push('### ESTABLISHED WORLD RULES');
+      for (const f of ctx.worldFacts) {
+        sections.push(`• ${sanitizeForPrompt(f.description)}`);
+      }
+      sections.push('');
+    }
+
+    // Resolved threads
+    if (ctx.resolvedThreads.length > 0) {
+      sections.push('### RESOLVED THREADS (DO NOT REOPEN)');
+      for (const t of ctx.resolvedThreads) {
+        sections.push(
+          `• ${sanitizeForPrompt(t.threadName)}: ${sanitizeForPrompt(t.resolution)}`,
+        );
+      }
+      sections.push('');
+    }
+  }
+
+  return sections.join('\n');
 }
 
 // =============================================================================
@@ -507,17 +496,17 @@ export function formatParentContextsForPrompt(
  * Assumes rows are already ordered by created_at DESC.
  */
 function deduplicateCharacterStates(
-    rows: CharacterStateRow[],
+  rows: CharacterStateRow[],
 ): CharacterStateRow[] {
-    const seen = new Set<string>();
-    const result: CharacterStateRow[] = [];
+  const seen = new Set<string>();
+  const result: CharacterStateRow[] = [];
 
-    for (const row of rows) {
-        if (!seen.has(row.character_id)) {
-            seen.add(row.character_id);
-            result.push(row);
-        }
+  for (const row of rows) {
+    if (!seen.has(row.character_id)) {
+      seen.add(row.character_id);
+      result.push(row);
     }
+  }
 
-    return result;
+  return result;
 }

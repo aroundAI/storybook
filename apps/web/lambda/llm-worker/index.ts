@@ -129,9 +129,9 @@ async function sendToUser(
     } catch (error: unknown) {
       const statusCode =
         error &&
-          typeof error === 'object' &&
-          'statusCode' in error &&
-          typeof error.statusCode === 'number'
+        typeof error === 'object' &&
+        'statusCode' in error &&
+        typeof error.statusCode === 'number'
           ? error.statusCode
           : null;
 
@@ -242,7 +242,6 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
     }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
-
   }
 }
 

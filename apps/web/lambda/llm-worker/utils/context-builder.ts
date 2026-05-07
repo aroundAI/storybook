@@ -577,12 +577,15 @@ export function formatRecurringElementForPrompt(
   const placement = (recurringElement.placement ?? 'end').toLowerCase();
 
   const placementInstruction: Record<string, string> = {
-    beginning:  'at the START of the episode — before the main story begins',
-    middle:     'at a natural midpoint of the episode',
-    end:        'as the FINAL moment of the episode — nothing follows it',
-    throughout: 'at multiple natural points distributed across the entire episode',
+    beginning: 'at the START of the episode — before the main story begins',
+    middle: 'at a natural midpoint of the episode',
+    end: 'as the FINAL moment of the episode — nothing follows it',
+    throughout:
+      'at multiple natural points distributed across the entire episode',
   };
-  const when = placementInstruction[placement] ?? `at the ${recurringElement.placement} of the episode`;
+  const when =
+    placementInstruction[placement] ??
+    `at the ${recurringElement.placement} of the episode`;
 
   const lines: string[] = [
     '---',
@@ -607,7 +610,9 @@ export function formatRecurringElementForPrompt(
   }
 
   if (recurringElement.dialogueHints) {
-    lines.push('**Dialogue templates** (adapt to this episode\'s events — do not copy verbatim):');
+    lines.push(
+      "**Dialogue templates** (adapt to this episode's events — do not copy verbatim):",
+    );
     lines.push(recurringElement.dialogueHints);
     lines.push('');
   }

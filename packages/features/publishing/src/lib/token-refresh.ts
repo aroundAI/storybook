@@ -22,11 +22,11 @@ export interface TokenValidationResult {
   valid: boolean;
   accessToken?: string;
   error?:
-  | 'EXPIRED'
-  | 'REFRESH_FAILED'
-  | 'CONNECTION_INACTIVE'
-  | 'NOT_FOUND'
-  | 'NO_REFRESH_TOKEN';
+    | 'EXPIRED'
+    | 'REFRESH_FAILED'
+    | 'CONNECTION_INACTIVE'
+    | 'NOT_FOUND'
+    | 'NO_REFRESH_TOKEN';
   requiresReauth?: boolean;
 }
 
@@ -263,9 +263,9 @@ async function markConnectionInactive(connectionId: string): Promise<void> {
     .select('metadata')
     .eq('id', connectionId)
     .single()) as {
-      data: { metadata: Record<string, unknown> } | null;
-      error: unknown;
-    };
+    data: { metadata: Record<string, unknown> } | null;
+    error: unknown;
+  };
 
   const metadata = current?.metadata || {};
   const cleanMetadata = { ...metadata };
@@ -428,7 +428,9 @@ async function refreshMetaToken(
   }
 
   // Step 1: Refresh the User Access Token
-  const refreshUrl = new URL('https://graph.facebook.com/v18.0/oauth/access_token');
+  const refreshUrl = new URL(
+    'https://graph.facebook.com/v18.0/oauth/access_token',
+  );
   refreshUrl.searchParams.set('grant_type', 'fb_exchange_token');
   refreshUrl.searchParams.set('client_id', oauthApp.clientId);
   refreshUrl.searchParams.set('client_secret', oauthApp.clientSecret);
@@ -438,17 +440,23 @@ async function refreshMetaToken(
   const refreshData = await refreshResponse.json();
 
   if (refreshData.error || !refreshData.access_token) {
-    throw new Error(`Meta user token refresh failed: ${refreshData.error?.message || 'Unknown error'}`);
+    throw new Error(
+      `Meta user token refresh failed: ${refreshData.error?.message || 'Unknown error'}`,
+    );
   }
 
   const newUserToken = refreshData.access_token;
-  const expiresAt = new Date(Date.now() + (refreshData.expires_in ?? 5184000) * 1000);
+  const expiresAt = new Date(
+    Date.now() + (refreshData.expires_in ?? 5184000) * 1000,
+  );
 
   // Step 2: Fetch fresh Page Access Token using the refreshed User token
   // For Instagram, use linked_page_id from metadata; for Facebook, use platformAccountId
-  const pageId = platform === 'instagram'
-    ? (context?.metadata?.linked_page_id as string) || context?.platformAccountId
-    : context?.platformAccountId;
+  const pageId =
+    platform === 'instagram'
+      ? (context?.metadata?.linked_page_id as string) ||
+        context?.platformAccountId
+      : context?.platformAccountId;
 
   if (!pageId) {
     // Fallback: If no page ID, return user token (will likely fail on publish)
@@ -476,10 +484,14 @@ async function refreshMetaToken(
   }
 
   const pages = pagesData.data || [];
-  const page = pages.find((p: { id: string; access_token: string }) => p.id === pageId);
+  const page = pages.find(
+    (p: { id: string; access_token: string }) => p.id === pageId,
+  );
 
   if (!page?.access_token) {
-    throw new Error(`Page ${pageId} not found or no access token. User may need to re-authorize.`);
+    throw new Error(
+      `Page ${pageId} not found or no access token. User may need to re-authorize.`,
+    );
   }
 
   // Return Page Access Token (for API calls) and new User Token (for next refresh)

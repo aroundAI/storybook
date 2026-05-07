@@ -24,6 +24,13 @@ import { generateSfxAction } from './sfx-actions';
  * Integrates with screenplay and shot-list data to extract audio requirements.
  */
 
+/**
+ * Episode Audio Generation Actions
+ *
+ * Generates music and SFX for an episode based on shot/scene data.
+ * Integrates with screenplay and shot-list data to extract audio requirements.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================

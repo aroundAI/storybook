@@ -427,7 +427,11 @@ export const generateDialogueVoiceAction = enhanceAction(
 export const generateDialogueVoiceAsyncAction = enhanceAction(
   async (
     data: GenerateDialogueVoiceSchemaType,
-  ): Promise<{ success: boolean; status: 'queued' | 'failed'; error?: string }> => {
+  ): Promise<{
+    success: boolean;
+    status: 'queued' | 'failed';
+    error?: string;
+  }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'voice.generateDialogueAsync',
@@ -440,7 +444,11 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
-      return { success: false, status: 'failed', error: 'Authentication required' };
+      return {
+        success: false,
+        status: 'failed',
+        error: 'Authentication required',
+      };
     }
 
     // 1. Fetch dialogue line with episode and account context
@@ -469,7 +477,11 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
       .single();
 
     if (fetchError || !dialogueLine) {
-      return { success: false, status: 'failed', error: 'Dialogue line not found' };
+      return {
+        success: false,
+        status: 'failed',
+        error: 'Dialogue line not found',
+      };
     }
 
     const dialogueData = dialogueLine as DialogueLineResponse;
@@ -478,13 +490,21 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
     const episodeId = dialogueData.episode_id;
 
     if (!accountId || !projectId) {
-      return { success: false, status: 'failed', error: 'Could not determine account for dialogue line' };
+      return {
+        success: false,
+        status: 'failed',
+        error: 'Could not determine account for dialogue line',
+      };
     }
 
     // Validate text is not empty
     const dialogueText = dialogueData.text?.trim();
     if (!dialogueText) {
-      return { success: false, status: 'failed', error: 'Dialogue text is empty' };
+      return {
+        success: false,
+        status: 'failed',
+        error: 'Dialogue text is empty',
+      };
     }
 
     // 2. Get voice ID from params or character's voice profile
@@ -496,7 +516,8 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
       return {
         success: false,
         status: 'failed',
-        error: 'No voice ID provided and character has no voice profile configured',
+        error:
+          'No voice ID provided and character has no voice profile configured',
       };
     }
 
@@ -546,7 +567,10 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
       return { success: true, status: 'queued' };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      logger.error({ ...ctx, error }, 'Failed to queue dialogue voice generation');
+      logger.error(
+        { ...ctx, error },
+        'Failed to queue dialogue voice generation',
+      );
 
       // Revert status to pending
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -562,7 +586,6 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
     schema: GenerateDialogueVoiceSchema,
   },
 );
-
 
 /**
  * Generate voice audio from raw text (for previews)

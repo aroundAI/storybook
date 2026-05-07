@@ -186,7 +186,6 @@ export async function processScreenplayConversion(
     const costCents = 0; // Agent orchestrator tracks cost internally
     const generatedAt = new Date().toISOString();
 
-
     // 4. FILM-1104: Run SCREENPLAY validation checkpoint
     try {
       const { runValidationCheckpoint } = await import(
@@ -304,9 +303,9 @@ export async function processScreenplayConversion(
         provider: 'multi-agent',
         costCents,
       },
-      totalDialogueLines: orchestratorResult.scenes
-        .flatMap((s) => s.dialogue || [])
-        .length,
+      totalDialogueLines: orchestratorResult.scenes.flatMap(
+        (s) => s.dialogue || [],
+      ).length,
       estimatedDuration: totalEstimatedDuration,
       approvedAt: null,
       // Full metadata for episode header display

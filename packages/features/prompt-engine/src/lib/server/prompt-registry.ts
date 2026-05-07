@@ -17,11 +17,11 @@ import languageInsights from '../../prompts/analytics/language-insights.json';
 // =============================================================================
 import dialogueTranslation from '../../prompts/audio-generation/dialogue-translation.json';
 import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-refinement.json';
+import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
 // =============================================================================
 // Publishing Prompts
 // =============================================================================
 import magicClips from '../../prompts/publishing/magic-clips.json';
-import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
 // =============================================================================
 // Quality Evaluation Prompts
 // =============================================================================
@@ -66,12 +66,14 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'scene-audio-refinement': sceneAudioRefinement as unknown as PromptTemplate,
 
   // Publishing
-  'batch-translate-metadata': batchTranslateMetadata as unknown as PromptTemplate,
+  'batch-translate-metadata':
+    batchTranslateMetadata as unknown as PromptTemplate,
   'magic-clips': magicClips as unknown as PromptTemplate,
 
   // Quality Evaluation (used by agent skills: Viral Analyst, Reel Scout)
   'quality-evaluation/reel-scout': reelScout as unknown as PromptTemplate,
-  'quality-evaluation/screenplay-quality': screenplayQuality as unknown as PromptTemplate,
+  'quality-evaluation/screenplay-quality':
+    screenplayQuality as unknown as PromptTemplate,
   'quality-evaluation/shot-quality': shotQuality as unknown as PromptTemplate,
   'quality-evaluation/story-quality': storyQuality as unknown as PromptTemplate,
 };

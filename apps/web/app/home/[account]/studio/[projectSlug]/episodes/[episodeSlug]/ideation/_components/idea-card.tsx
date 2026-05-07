@@ -19,7 +19,7 @@ export function IdeaCard({ idea, index, isSelected, onSelect }: IdeaCardProps) {
       className={cn(
         'group relative cursor-pointer rounded-xl border p-6 backdrop-blur-sm transition-all duration-200',
         isSelected
-          ? 'border-[#3B82F6]/50 bg-[#3B82F6]/10 ring-2 ring-[#3B82F6]/50 shadow-[0_0_20px_rgba(59,130,246,0.15)]'
+          ? 'border-[#3B82F6]/50 bg-[#3B82F6]/10 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-2 ring-[#3B82F6]/50'
           : 'border-white/[0.08] bg-[#1A1A1A] hover:border-[#3B82F6]/30 hover:bg-[#1A1A1A] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]',
       )}
     >

@@ -12,28 +12,28 @@
 // =============================================================================
 
 export interface FactCheckIssue {
-    severity: 'critical' | 'warning' | 'minor' | 'info';
-    claimInContent: string;
-    issueType:
+  severity: 'critical' | 'warning' | 'minor' | 'info';
+  claimInContent: string;
+  issueType:
     | 'inaccurate'
     | 'unsourced'
     | 'misrepresented'
     | 'citation_error'
     | 'missing_claim';
-    explanation: string;
-    verifiedFact?: string;
-    suggestion: string;
+  explanation: string;
+  verifiedFact?: string;
+  suggestion: string;
 }
 
 export interface FactCheckResult {
-    overallVerdict: 'pass' | 'fail' | 'warnings';
-    accuracyScore: number;
-    totalClaimsFound: number;
-    verifiedClaims: number;
-    issues: FactCheckIssue[];
-    missingRequiredClaims: string[];
-    citationsValid: boolean;
-    summary: string;
+  overallVerdict: 'pass' | 'fail' | 'warnings';
+  accuracyScore: number;
+  totalClaimsFound: number;
+  verifiedClaims: number;
+  issues: FactCheckIssue[];
+  missingRequiredClaims: string[];
+  citationsValid: boolean;
+  summary: string;
 }
 
 // =============================================================================
@@ -49,26 +49,26 @@ export interface FactCheckResult {
  * - Accuracy score below 0.8
  */
 export function shouldBlockContent(result: FactCheckResult): boolean {
-    const WARNING_THRESHOLD = 3;
-    const MINIMUM_ACCURACY_SCORE = 0.8;
+  const WARNING_THRESHOLD = 3;
+  const MINIMUM_ACCURACY_SCORE = 0.8;
 
-    // Block on any critical issues
-    if (result.issues.some((i) => i.severity === 'critical')) {
-        return true;
-    }
+  // Block on any critical issues
+  if (result.issues.some((i) => i.severity === 'critical')) {
+    return true;
+  }
 
-    // Block if too many warnings
-    const warningCount = result.issues.filter(
-        (i) => i.severity === 'warning',
-    ).length;
-    if (warningCount >= WARNING_THRESHOLD) {
-        return true;
-    }
+  // Block if too many warnings
+  const warningCount = result.issues.filter(
+    (i) => i.severity === 'warning',
+  ).length;
+  if (warningCount >= WARNING_THRESHOLD) {
+    return true;
+  }
 
-    // Block if accuracy too low
-    if (result.accuracyScore < MINIMUM_ACCURACY_SCORE) {
-        return true;
-    }
+  // Block if accuracy too low
+  if (result.accuracyScore < MINIMUM_ACCURACY_SCORE) {
+    return true;
+  }
 
-    return false;
+  return false;
 }

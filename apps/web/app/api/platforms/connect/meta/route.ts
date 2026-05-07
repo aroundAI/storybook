@@ -69,8 +69,7 @@ export async function GET(request: NextRequest) {
     logger.error(ctx, 'Meta OAuth credentials not configured globally');
     return NextResponse.json(
       {
-        error:
-          'Meta OAuth not configured. Please contact your administrator.',
+        error: 'Meta OAuth not configured. Please contact your administrator.',
       },
       { status: 400 },
     );

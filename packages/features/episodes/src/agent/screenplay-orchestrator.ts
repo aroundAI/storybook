@@ -14,64 +14,63 @@
  *   - dialogue_lines inserted
  *   - episode status → 'storyboard'
  */
-
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
 
 import { screenplayDirectorSkill } from './skills/screenplay-director-skill';
 
 export interface ScreenplayOrchestratorInput {
-    episodeId: string;
-    episodeTitle: string;
-    episodeNumber: number;
-    genre: string;
-    targetAudience: string;
-    targetDurationSeconds: number;
-    contentStyle?: 'dialogue-heavy' | 'balanced' | 'action-heavy';
-    accountId: string;
-    // Story content to convert
-    storyText: string;
-    // Pre-formatted context blocks
-    charactersContext: string;
-    characterNames: string;
-    locationNames: string;
-    // Scaling parameters
-    sceneCountMin: number;
-    sceneCountMax: number;
-    dialogueLinesPerSceneMin: number;
-    dialogueLinesPerSceneMax: number;
+  episodeId: string;
+  episodeTitle: string;
+  episodeNumber: number;
+  genre: string;
+  targetAudience: string;
+  targetDurationSeconds: number;
+  contentStyle?: 'dialogue-heavy' | 'balanced' | 'action-heavy';
+  accountId: string;
+  // Story content to convert
+  storyText: string;
+  // Pre-formatted context blocks
+  charactersContext: string;
+  characterNames: string;
+  locationNames: string;
+  // Scaling parameters
+  sceneCountMin: number;
+  sceneCountMax: number;
+  dialogueLinesPerSceneMin: number;
+  dialogueLinesPerSceneMax: number;
 }
 
 export interface ScreenplayScene {
-    number: number;
-    heading: string;
-    location: string;
-    timeOfDay: string;
-    description: string;
-    action: string[];
-    dialogue: Array<{
-        character: string;
-        text: string;
-        parenthetical?: string;
-    }>;
-    estimatedDuration?: number;
-    transitions?: string;
+  number: number;
+  heading: string;
+  location: string;
+  timeOfDay: string;
+  description: string;
+  action: string[];
+  dialogue: Array<{
+    character: string;
+    text: string;
+    parenthetical?: string;
+  }>;
+  estimatedDuration?: number;
+  transitions?: string;
 }
 
 export interface ScreenplayOrchestratorResult {
-    success: boolean;
-    scenes: ScreenplayScene[];
-    title: string;
-    totalDialogueLines: number;
-    estimatedDuration: number;
-    orchestratorSteps: number;
-    error?: string;
+  success: boolean;
+  scenes: ScreenplayScene[];
+  title: string;
+  totalDialogueLines: number;
+  estimatedDuration: number;
+  orchestratorSteps: number;
+  error?: string;
 }
 
 interface ScreenplayOrchestratorOutput {
-    screenplayTitle?: string;
-    sceneCount?: number;
-    qualityNote?: string;
+  screenplayTitle?: string;
+  sceneCount?: number;
+  qualityNote?: string;
 }
 
 /**
@@ -80,74 +79,83 @@ interface ScreenplayOrchestratorOutput {
  * Optionally revises if scene count is out of expected range.
  */
 export async function runScreenplayOrchestrator(
-    input: ScreenplayOrchestratorInput,
+  input: ScreenplayOrchestratorInput,
 ): Promise<ScreenplayOrchestratorResult> {
-    console.log(`[Screenplay Orchestrator] Starting for episode ${input.episodeId}`);
+  console.log(
+    `[Screenplay Orchestrator] Starting for episode ${input.episodeId}`,
+  );
 
-    const result: AgentRunResult<ScreenplayOrchestratorOutput> = await runAgent<ScreenplayOrchestratorOutput>(
-        {
-            name: 'screenplay-orchestrator',
-            systemPrompt: SCREENPLAY_SYSTEM_PROMPT,
-            tools: [],
-            skills: [screenplayDirectorSkill],
-            maxSteps: 4,
-            budgetLimits: {
-                maxTotalTokens: 150_000,
-                maxCostUSD: 1.50,
-                maxLatencyMs: 180_000,
-            },
+  const result: AgentRunResult<ScreenplayOrchestratorOutput> =
+    await runAgent<ScreenplayOrchestratorOutput>(
+      {
+        name: 'screenplay-orchestrator',
+        systemPrompt: SCREENPLAY_SYSTEM_PROMPT,
+        tools: [],
+        skills: [screenplayDirectorSkill],
+        maxSteps: 4,
+        budgetLimits: {
+          maxTotalTokens: 150_000,
+          maxCostUSD: 1.5,
+          maxLatencyMs: 180_000,
         },
-        {
-            userPrompt: buildScreenplayPrompt(input),
-        },
-        { accountId: input.accountId },
+      },
+      {
+        userPrompt: buildScreenplayPrompt(input),
+      },
+      { accountId: input.accountId },
     );
 
-    if (!result.success || !result.data) {
-        console.warn(`[Screenplay Orchestrator] Failed: ${result.error}`);
-        return {
-            success: false,
-            scenes: [],
-            title: input.episodeTitle,
-            totalDialogueLines: 0,
-            estimatedDuration: input.targetDurationSeconds,
-            orchestratorSteps: result.steps.length,
-            error: result.error,
-        };
-    }
-
-    // Extract screenplay from tool steps (most reliable source — LLM final synthesis may truncate)
-    type GenerateScreenplayResult = {
-        title?: string;
-        scenes?: ScreenplayScene[];
-        totalDialogueLines?: number;
-        estimatedDuration?: number;
-    };
-
-    const screenplaySteps = result.steps.filter(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateScreenplay' && s.toolResult?.success,
-    );
-    const lastScreenplayStep = screenplaySteps.at(-1);
-    const screenplayData = lastScreenplayStep?.toolResult?.data as GenerateScreenplayResult | undefined;
-
-    const scenes = (screenplayData?.scenes ?? []) as ScreenplayScene[];
-    const title = screenplayData?.title ?? input.episodeTitle;
-    const totalDialogueLines = screenplayData?.totalDialogueLines ?? 0;
-    const estimatedDuration = screenplayData?.estimatedDuration ?? input.targetDurationSeconds;
-
-    console.log(
-        `[Screenplay Orchestrator] Complete. Steps: ${result.steps.length}, ` +
-        `Scenes: ${scenes.length}, Dialogue lines: ${totalDialogueLines}`,
-    );
-
+  if (!result.success || !result.data) {
+    console.warn(`[Screenplay Orchestrator] Failed: ${result.error}`);
     return {
-        success: true,
-        scenes,
-        title,
-        totalDialogueLines,
-        estimatedDuration,
-        orchestratorSteps: result.steps.length,
+      success: false,
+      scenes: [],
+      title: input.episodeTitle,
+      totalDialogueLines: 0,
+      estimatedDuration: input.targetDurationSeconds,
+      orchestratorSteps: result.steps.length,
+      error: result.error,
     };
+  }
+
+  // Extract screenplay from tool steps (most reliable source — LLM final synthesis may truncate)
+  type GenerateScreenplayResult = {
+    title?: string;
+    scenes?: ScreenplayScene[];
+    totalDialogueLines?: number;
+    estimatedDuration?: number;
+  };
+
+  const screenplaySteps = result.steps.filter(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateScreenplay' &&
+      s.toolResult?.success,
+  );
+  const lastScreenplayStep = screenplaySteps.at(-1);
+  const screenplayData = lastScreenplayStep?.toolResult?.data as
+    | GenerateScreenplayResult
+    | undefined;
+
+  const scenes = (screenplayData?.scenes ?? []) as ScreenplayScene[];
+  const title = screenplayData?.title ?? input.episodeTitle;
+  const totalDialogueLines = screenplayData?.totalDialogueLines ?? 0;
+  const estimatedDuration =
+    screenplayData?.estimatedDuration ?? input.targetDurationSeconds;
+
+  console.log(
+    `[Screenplay Orchestrator] Complete. Steps: ${result.steps.length}, ` +
+      `Scenes: ${scenes.length}, Dialogue lines: ${totalDialogueLines}`,
+  );
+
+  return {
+    success: true,
+    scenes,
+    title,
+    totalDialogueLines,
+    estimatedDuration,
+    orchestratorSteps: result.steps.length,
+  };
 }
 
 const SCREENPLAY_SYSTEM_PROMPT = `You are the Screenplay Pipeline Director.
@@ -174,8 +182,8 @@ Return a JSON object with:
 - qualityNote: one sentence noting any adjustments made`;
 
 function buildScreenplayPrompt(input: ScreenplayOrchestratorInput): string {
-    const minutesDuration = Math.round(input.targetDurationSeconds / 60);
-    return `Convert this story into a structured screenplay.
+  const minutesDuration = Math.round(input.targetDurationSeconds / 60);
+  return `Convert this story into a structured screenplay.
 
 **Episode**: "${input.episodeTitle}" (#${input.episodeNumber})
 **Genre**: ${input.genre}

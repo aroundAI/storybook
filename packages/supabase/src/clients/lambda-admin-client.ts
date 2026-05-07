@@ -8,7 +8,6 @@
  * Authentication is by-passed using the service role key — use only for
  * background jobs, analytics logging, and server-side mutations.
  */
-
 import { createClient } from '@supabase/supabase-js';
 
 import { Database } from '../database.types';

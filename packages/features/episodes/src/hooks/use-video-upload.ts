@@ -21,6 +21,14 @@ import { sanitizeFilename } from '@kit/assets/upload-validation';
  * Uses XMLHttpRequest for upload progress events.
  */
 
+/**
+ * useVideoUpload Hook
+ *
+ * Custom hook for handling video uploads with progress tracking.
+ * Extracts first frame as thumbnail using browser-side canvas.
+ * Uses XMLHttpRequest for upload progress events.
+ */
+
 // Video constraints
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500MB
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
@@ -341,7 +349,14 @@ export function useVideoUpload(
               path: videoPath,
               contentType: file.type,
             }),
-          }).then((r) => r.json() as Promise<{ uploadUrl: string; publicUrl: string; error?: string }>),
+          }).then(
+            (r) =>
+              r.json() as Promise<{
+                uploadUrl: string;
+                publicUrl: string;
+                error?: string;
+              }>,
+          ),
           fetch('/api/storage/presign', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -350,11 +365,22 @@ export function useVideoUpload(
               path: thumbnailPath,
               contentType: 'image/webp',
             }),
-          }).then((r) => r.json() as Promise<{ uploadUrl: string; publicUrl: string; error?: string }>),
+          }).then(
+            (r) =>
+              r.json() as Promise<{
+                uploadUrl: string;
+                publicUrl: string;
+                error?: string;
+              }>,
+          ),
         ]);
 
         if (videoPresign.error || thumbnailPresign.error) {
-          throw new Error(videoPresign.error || thumbnailPresign.error || 'Failed to get presigned URLs');
+          throw new Error(
+            videoPresign.error ||
+              thumbnailPresign.error ||
+              'Failed to get presigned URLs',
+          );
         }
 
         // 3b. Upload video directly to storage with progress tracking
@@ -377,12 +403,18 @@ export function useVideoUpload(
             if (xhr.status >= 200 && xhr.status < 300) {
               resolve();
             } else {
-              reject(new Error(`Video upload failed with status ${xhr.status}`));
+              reject(
+                new Error(`Video upload failed with status ${xhr.status}`),
+              );
             }
           });
 
-          xhr.addEventListener('error', () => reject(new Error('Video upload network error')));
-          xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
+          xhr.addEventListener('error', () =>
+            reject(new Error('Video upload network error')),
+          );
+          xhr.addEventListener('abort', () =>
+            reject(new Error('Upload cancelled')),
+          );
 
           xhr.open('PUT', videoPresign.uploadUrl, true);
           xhr.setRequestHeader('Content-Type', file.type);
@@ -401,7 +433,9 @@ export function useVideoUpload(
         });
 
         if (!thumbResponse.ok) {
-          throw new Error(`Thumbnail upload failed with status ${thumbResponse.status}`);
+          throw new Error(
+            `Thumbnail upload failed with status ${thumbResponse.status}`,
+          );
         }
 
         thumbnailUrl = thumbnailPresign.publicUrl;
@@ -444,9 +478,12 @@ export function useVideoUpload(
         );
 
         if (!metadataResponse.ok) {
-          const errorBody = await metadataResponse.json().catch(() => ({})) as Record<string, unknown>;
+          const errorBody = (await metadataResponse
+            .json()
+            .catch(() => ({}))) as Record<string, unknown>;
           throw new Error(
-            (errorBody.error as string) || `Metadata update failed with status ${metadataResponse.status}`,
+            (errorBody.error as string) ||
+              `Metadata update failed with status ${metadataResponse.status}`,
           );
         }
 
@@ -472,7 +509,8 @@ export function useVideoUpload(
       } catch (err) {
         const metadataError: VideoUploadError = {
           code: 'METADATA_UPDATE_FAILED',
-          message: err instanceof Error ? err.message : 'Failed to update shot record',
+          message:
+            err instanceof Error ? err.message : 'Failed to update shot record',
         };
         setState('error');
         setError(metadataError);

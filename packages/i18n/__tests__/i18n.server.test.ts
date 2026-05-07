@@ -257,9 +257,9 @@ describe('i18n Server', () => {
   describe('initializeServerI18n', () => {
     beforeEach(() => {
       // Suppress console warnings during tests
-      vi.spyOn(console, 'log').mockImplementation(() => { });
-      vi.spyOn(console, 'warn').mockImplementation(() => { });
-      vi.spyOn(console, 'error').mockImplementation(() => { });
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      vi.spyOn(console, 'warn').mockImplementation(() => {});
+      vi.spyOn(console, 'error').mockImplementation(() => {});
     });
 
     afterEach(() => {

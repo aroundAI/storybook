@@ -102,8 +102,8 @@ import {
   uploadWithPresignedUrl,
 } from '~/lib/presigned-upload';
 
-import { MasterAssetManager } from './master-asset-manager';
 import { EpisodeSummaryGenerator } from './episode-summary-generator';
+import { MasterAssetManager } from './master-asset-manager';
 
 interface PublishScreenProps {
   episode: EpisodeWithShots;
@@ -306,11 +306,8 @@ export function PublishScreen({
   // Ref for debouncing toast notifications
   const unpublishToastRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-
   // WebSocket subscription for publish/delete updates
   const { subscribe } = useLlmWebSocket();
-
-
 
   // Sorting state for published content (default: asc = lowest to greatest)
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -341,7 +338,6 @@ export function PublishScreen({
   }>('batch-translate-metadata');
 
   // Handle batch translation results from WebSocket
-
 
   // Handler for ScheduleReleasePanel translation requests - SINGLE batch call
   const handleScheduleTranslate = async (languages: string[]) => {
@@ -630,7 +626,11 @@ export function PublishScreen({
   useEffect(() => {
     const isPublishTranslating = publishStage === 'translating';
 
-    if (llmStatus === 'success' && llmResult && (isScheduleTranslating || isPublishTranslating)) {
+    if (
+      llmStatus === 'success' &&
+      llmResult &&
+      (isScheduleTranslating || isPublishTranslating)
+    ) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = (llmResult as any)?.data || llmResult;
       const items = resultData?.items || [];
@@ -671,7 +671,7 @@ export function PublishScreen({
               title: item.translatedTitle,
               description: item.translatedDescription,
               status: 'success',
-              groupId: item.groupId
+              groupId: item.groupId,
             });
           }
         }
@@ -684,20 +684,24 @@ export function PublishScreen({
         // If this was the "Publish Now" flow, proceed to confirmation
         if (isPublishTranslating) {
           const baseTitle = metadata.title || episode.title;
-          const baseDescription = metadata.description || episode.description || '';
+          const baseDescription =
+            metadata.description || episode.description || '';
           const conns = (connections ?? []) as PlatformConnection[];
 
           buildPlatformConfigsAndConfirm(
             translationResults,
             conns,
             baseTitle,
-            baseDescription
+            baseDescription,
           );
         }
       }
 
       setIsScheduleTranslating(false);
-    } else if (llmStatus === 'error' && (isScheduleTranslating || isPublishTranslating)) {
+    } else if (
+      llmStatus === 'error' &&
+      (isScheduleTranslating || isPublishTranslating)
+    ) {
       toast.error(llmError || 'Translation failed');
       setIsScheduleTranslating(false);
       if (isPublishTranslating) {
@@ -705,7 +709,16 @@ export function PublishScreen({
         setPublishStage('error');
       }
     }
-  }, [llmStatus, llmResult, llmError, isScheduleTranslating, publishStage, metadata, episode, connections]);
+  }, [
+    llmStatus,
+    llmResult,
+    llmError,
+    isScheduleTranslating,
+    publishStage,
+    metadata,
+    episode,
+    connections,
+  ]);
 
   // Fetch published content
   const {
@@ -933,9 +946,9 @@ export function PublishScreen({
             const updatedGroups = shortsGroups.map((g) =>
               g.id === selectedGroupId
                 ? {
-                  ...g,
-                  videos: { ...g.videos, [selectedLanguage]: result.url },
-                }
+                    ...g,
+                    videos: { ...g.videos, [selectedLanguage]: result.url },
+                  }
                 : g,
             );
             const updateResult = await updateShortsGroupsAction({
@@ -1260,9 +1273,9 @@ export function PublishScreen({
           description: langMeta.description,
           tags: metadata.tags
             ? metadata.tags
-              .split(',')
-              .map((t) => t.trim())
-              .filter(Boolean)
+                .split(',')
+                .map((t) => t.trim())
+                .filter(Boolean)
             : [],
           thumbnailUrl: getThumbnailForLanguage(lang as SupportedLanguage),
           language: lang,
@@ -1303,9 +1316,9 @@ export function PublishScreen({
                 ? group.tags
                 : metadata.tags
                   ? metadata.tags
-                    .split(',')
-                    .map((t) => t.trim())
-                    .filter(Boolean)
+                      .split(',')
+                      .map((t) => t.trim())
+                      .filter(Boolean)
                   : [],
             thumbnailUrl: getThumbnailForLanguage(lang),
             language: lang,
@@ -1390,10 +1403,10 @@ export function PublishScreen({
             prev.map((s, idx) =>
               idx === i
                 ? {
-                  ...s,
-                  status: 'error' as const,
-                  error: result?.error || 'Unknown error',
-                }
+                    ...s,
+                    status: 'error' as const,
+                    error: result?.error || 'Unknown error',
+                  }
                 : s,
             ),
           );
@@ -1562,8 +1575,8 @@ export function PublishScreen({
       type === 'full'
         ? channels.filter((c) => ['youtube', 'facebook'].includes(c.platform))
         : channels.filter((c) =>
-          ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
-        );
+            ['youtube', 'instagram', 'facebook', 'tiktok'].includes(c.platform),
+          );
 
     const thumbnailUrl = getThumbnailForLanguage(lang);
     const thumbnailInputId = `thumbnail-input-${type}-${lang}`;
@@ -1711,68 +1724,68 @@ export function PublishScreen({
             {/* Translation Stage */}
             {(publishStage === 'translating' ||
               publishStage === 'confirm-translation') && (
-                <div className="space-y-3">
-                  <p className="text-sm text-gray-500">
-                    {publishStage === 'translating'
-                      ? 'Translating titles and descriptions for each language...'
-                      : 'Review the translated metadata before publishing:'}
-                  </p>
-                  <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
-                    {translationResults.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
-                      >
-                        <span className="text-xl">
-                          {LANG_INFO[t.language as SupportedLanguage]?.flag ||
-                            '🌐'}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">
-                              {t.contentName}
-                            </span>
-                            <Badge variant="outline" className="text-[10px]">
-                              {LANG_INFO[t.language as SupportedLanguage]?.name ||
-                                t.language}
+              <div className="space-y-3">
+                <p className="text-sm text-gray-500">
+                  {publishStage === 'translating'
+                    ? 'Translating titles and descriptions for each language...'
+                    : 'Review the translated metadata before publishing:'}
+                </p>
+                <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-gray-200 p-3 dark:border-gray-700">
+                  {translationResults.map((t) => (
+                    <div
+                      key={t.id}
+                      className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
+                    >
+                      <span className="text-xl">
+                        {LANG_INFO[t.language as SupportedLanguage]?.flag ||
+                          '🌐'}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium">
+                            {t.contentName}
+                          </span>
+                          <Badge variant="outline" className="text-[10px]">
+                            {LANG_INFO[t.language as SupportedLanguage]?.name ||
+                              t.language}
+                          </Badge>
+                          {t.contentType === 'shorts-group' && (
+                            <Badge variant="secondary" className="text-[10px]">
+                              <Smartphone className="mr-0.5 h-2.5 w-2.5" />
+                              Short
                             </Badge>
-                            {t.contentType === 'shorts-group' && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                <Smartphone className="mr-0.5 h-2.5 w-2.5" />
-                                Short
-                              </Badge>
-                            )}
-                            {t.status === 'pending' && (
-                              <span className="text-xs text-gray-400">
-                                Pending
-                              </span>
-                            )}
-                            {t.status === 'translating' && (
-                              <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
-                            )}
-                            {t.status === 'success' && (
-                              <Check className="h-3 w-3 text-green-500" />
-                            )}
-                            {t.status === 'error' && (
-                              <X className="h-3 w-3 text-red-500" />
-                            )}
-                          </div>
-                          {t.status === 'success' && t.title && (
-                            <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
-                              {t.title}
-                            </p>
                           )}
-                          {t.error && (
-                            <p className="mt-0.5 text-xs text-red-500">
-                              {t.error}
-                            </p>
+                          {t.status === 'pending' && (
+                            <span className="text-xs text-gray-400">
+                              Pending
+                            </span>
+                          )}
+                          {t.status === 'translating' && (
+                            <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
+                          )}
+                          {t.status === 'success' && (
+                            <Check className="h-3 w-3 text-green-500" />
+                          )}
+                          {t.status === 'error' && (
+                            <X className="h-3 w-3 text-red-500" />
                           )}
                         </div>
+                        {t.status === 'success' && t.title && (
+                          <p className="mt-0.5 truncate text-xs text-gray-600 dark:text-gray-400">
+                            {t.title}
+                          </p>
+                        )}
+                        {t.error && (
+                          <p className="mt-0.5 text-xs text-red-500">
+                            {t.error}
+                          </p>
+                        )}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
+            )}
 
             {/* Uploading Stage */}
             {(publishStage === 'uploading' || publishStage === 'complete') && (
@@ -1875,11 +1888,11 @@ export function PublishScreen({
               )}
               {(publishStage === 'translating' ||
                 publishStage === 'uploading') && (
-                  <Button variant="outline" disabled>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Please wait...
-                  </Button>
-                )}
+                <Button variant="outline" disabled>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Please wait...
+                </Button>
+              )}
             </div>
           </div>
         </DialogContent>
@@ -2158,7 +2171,7 @@ export function PublishScreen({
                 {uploadedFullLanguages.length === 0 ? (
                   <button
                     onClick={() => handleOpenUploadDialog('full')}
-                    className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50"
+                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50"
                   >
                     <Upload className="h-8 w-8" />
                     <span className="font-medium">
@@ -2179,7 +2192,7 @@ export function PublishScreen({
                     {getAvailableLanguages().length > 0 && (
                       <button
                         onClick={() => handleOpenUploadDialog('full')}
-                        className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-gray-700/50 dark:hover:text-indigo-400"
+                        className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-gray-700/50 dark:hover:text-indigo-400"
                       >
                         <Plus className="h-6 w-6" />
                         <span className="text-sm font-medium">
@@ -2221,7 +2234,7 @@ export function PublishScreen({
                 {shortsGroups.length === 0 ? (
                   <button
                     onClick={addShortsGroup}
-                    className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50"
+                    className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50"
                   >
                     <Upload className="h-8 w-8" />
                     <span className="font-medium">
@@ -2346,7 +2359,7 @@ export function PublishScreen({
                             onClick={() =>
                               handleOpenUploadDialog('shorts', group.id)
                             }
-                            className="flex aspect-[9/16] w-full flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 cursor-pointer dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-pink-500 dark:hover:bg-gray-700/50 dark:hover:text-pink-400"
+                            className="flex aspect-[9/16] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-pink-500 dark:hover:bg-gray-700/50 dark:hover:text-pink-400"
                           >
                             <Plus className="h-6 w-6" />
                             <span className="text-sm font-medium">
@@ -2741,28 +2754,28 @@ export function PublishScreen({
                       uploadType === 'full'
                         ? ['youtube', 'facebook'].includes(c.platform)
                         : [
-                          'youtube',
-                          'instagram',
-                          'facebook',
-                          'tiktok',
-                        ].includes(c.platform),
+                            'youtube',
+                            'instagram',
+                            'facebook',
+                            'tiktok',
+                          ].includes(c.platform),
                     )
                     .map((conn) => (
                       <ChannelBadge key={conn.id} conn={conn} size="md" />
                     ))}
                   {(channelsByLanguage[selectedLanguage] ?? []).length ===
                     0 && (
-                      <p className="text-sm text-amber-600">
-                        No channels connected for{' '}
-                        {LANG_INFO[selectedLanguage].name}.
-                        <a
-                          href={`/home/${accountSlug}/settings/platforms`}
-                          className="ml-1 underline"
-                        >
-                          Connect channels
-                        </a>
-                      </p>
-                    )}
+                    <p className="text-sm text-amber-600">
+                      No channels connected for{' '}
+                      {LANG_INFO[selectedLanguage].name}.
+                      <a
+                        href={`/home/${accountSlug}/settings/platforms`}
+                        className="ml-1 underline"
+                      >
+                        Connect channels
+                      </a>
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -2770,10 +2783,11 @@ export function PublishScreen({
                 <Label>Video File</Label>
                 <div
                   {...getRootProps()}
-                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${isDragActive
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
-                    : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
-                    }`}
+                  className={`mt-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+                    isDragActive
+                      ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                      : 'border-gray-300 hover:border-indigo-400 dark:border-gray-600'
+                  }`}
                 >
                   <input {...getInputProps()} />
                   {selectedFile ? (

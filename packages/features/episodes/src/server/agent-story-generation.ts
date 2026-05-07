@@ -11,11 +11,11 @@
  *
  * This adds an agentic self-correction loop on top of the existing linear pipeline.
  */
+import { z } from 'zod';
 
-import { runAgent, createTool, toolError, toolSuccess } from '@kit/agent';
+import { createTool, runAgent, toolError, toolSuccess } from '@kit/agent';
 import { continuitySkill } from '@kit/episodes/skills';
 import { getLogger } from '@kit/shared/logger';
-import { z } from 'zod';
 
 // =============================================================================
 // TOOLS
@@ -88,7 +88,6 @@ const generateStoryTool = createTool({
       return toolError(`Story generation failed: ${(error as Error).message}`);
     }
   },
-
 });
 
 // =============================================================================

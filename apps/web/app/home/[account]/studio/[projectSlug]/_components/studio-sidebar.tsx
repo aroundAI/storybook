@@ -476,7 +476,7 @@ export function StudioSidebar({
                 icon={<BookOpen className="h-4 w-4" />}
                 label="Research Hub"
                 count={
-                  ((counts.researchSources ?? 0) + (counts.researchFacts ?? 0)) ||
+                  (counts.researchSources ?? 0) + (counts.researchFacts ?? 0) ||
                   undefined
                 }
                 isActive={isActive(`${basePath}/research`)}

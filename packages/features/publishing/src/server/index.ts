@@ -47,4 +47,3 @@ export {
   deleteGlobalOAuthAppAction,
   type GlobalOAuthApp,
 } from './global-oauth-actions';
-

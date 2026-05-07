@@ -1,3 +1,7 @@
+import {
+  ApiGatewayManagementApiClient,
+  PostToConnectionCommand,
+} from '@aws-sdk/client-apigatewaymanagementapi';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DeleteCommand,
@@ -5,10 +9,6 @@ import {
   GetCommand,
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
-import {
-  ApiGatewayManagementApiClient,
-  PostToConnectionCommand,
-} from '@aws-sdk/client-apigatewaymanagementapi';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
 
 const client = new DynamoDBClient({});
@@ -82,9 +82,7 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
           } catch (err: unknown) {
             const error = err as { statusCode?: number };
             if (error.statusCode === 410) {
-              console.log(
-                `Peer ${peerId} already disconnected, skipping`,
-              );
+              console.log(`Peer ${peerId} already disconnected, skipping`);
             }
           }
         },

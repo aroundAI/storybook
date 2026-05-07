@@ -2,14 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 
+import type { AssetRow } from '@kit/assets';
+import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import type { AssetRow } from '@kit/assets';
-import { mapRowToAsset } from '@kit/assets';
 
 import {
   CreateEpisodeSchema,
@@ -237,14 +237,19 @@ export const getEpisodeWithShotsAction = enhanceAction(
       .order('created_at', { ascending: false });
 
     if (titleCardsError) {
-      logger.error({ ...ctx, error: titleCardsError }, 'Failed to fetch title cards');
+      logger.error(
+        { ...ctx, error: titleCardsError },
+        'Failed to fetch title cards',
+      );
       // Non-critical, continue without title cards
     }
 
     logger.info(ctx, 'Episode fetched with shots');
 
     // Map titleCards with runtime safety check
-    const mappedTitleCards = (Array.isArray(titleCards) ? titleCards as AssetRow[] : []).map(mapRowToAsset);
+    const mappedTitleCards = (
+      Array.isArray(titleCards) ? (titleCards as AssetRow[]) : []
+    ).map(mapRowToAsset);
 
     // Transform snake_case database fields to camelCase TypeScript properties
     const transformedEpisode: EpisodeWithShots = {
@@ -787,7 +792,10 @@ export const resetEpisodeAction = enhanceAction(
       .eq('episode_id', data.episodeId);
 
     if (shotsError) {
-      logger.error({ ...ctx, error: shotsError }, 'Failed to delete shots during reset');
+      logger.error(
+        { ...ctx, error: shotsError },
+        'Failed to delete shots during reset',
+      );
       throw new Error('Failed to delete shots');
     }
 
@@ -841,7 +849,10 @@ export const resetEpisodeAction = enhanceAction(
     }
 
     logger.info(ctx, 'Episode reset to draft');
-    revalidatePath('/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]', 'layout');
+    revalidatePath(
+      '/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]',
+      'layout',
+    );
 
     return { success: true };
   },

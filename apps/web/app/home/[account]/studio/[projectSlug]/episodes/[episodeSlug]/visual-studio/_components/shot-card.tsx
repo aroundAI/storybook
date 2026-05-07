@@ -19,7 +19,6 @@ import {
 } from '@kit/ui/tooltip';
 import { cn } from '@kit/ui/utils';
 
-
 interface ShotCardProps {
   shot: Shot;
   isSelected: boolean;
@@ -149,13 +148,13 @@ export function ShotCard({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div
-                  className="absolute top-3 left-3 flex cursor-help items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-xs font-bold text-white shadow-lg"
-                >
+                <div className="absolute top-3 left-3 flex cursor-help items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-2 py-1 text-xs font-bold text-white shadow-lg">
                   <Flame className="h-3 w-3" />
                   <span>Shorts</span>
                   {shot.shortsMetadata?.viralScore !== undefined && (
-                    <span className="ml-0.5 opacity-80">{shot.shortsMetadata.viralScore.toFixed(1)}</span>
+                    <span className="ml-0.5 opacity-80">
+                      {shot.shortsMetadata.viralScore.toFixed(1)}
+                    </span>
                   )}
                 </div>
               </TooltipTrigger>
@@ -166,7 +165,9 @@ export function ShotCard({
               >
                 {shot.shortsMetadata?.whyThisWorksAsReel && (
                   <div>
-                    <span className="font-semibold text-green-400">✓ Why it works as a Reel</span>
+                    <span className="font-semibold text-green-400">
+                      ✓ Why it works as a Reel
+                    </span>
                     <p className="mt-0.5 leading-snug text-gray-200">
                       {shot.shortsMetadata.whyThisWorksAsReel}
                     </p>
@@ -174,20 +175,28 @@ export function ShotCard({
                 )}
                 {shot.shortsMetadata?.keyMoment && (
                   <div>
-                    <span className="font-semibold text-amber-400">⚡ Key moment</span>
-                    <p className="mt-0.5 leading-snug text-gray-200">{shot.shortsMetadata.keyMoment}</p>
+                    <span className="font-semibold text-amber-400">
+                      ⚡ Key moment
+                    </span>
+                    <p className="mt-0.5 leading-snug text-gray-200">
+                      {shot.shortsMetadata.keyMoment}
+                    </p>
                   </div>
                 )}
                 {shot.shortsMetadata?.sceneEmotionalArc && (
                   <div>
-                    <span className="font-semibold text-blue-400">🎭 Emotional arc</span>
-                    <p className="mt-0.5 text-gray-200">{shot.shortsMetadata.sceneEmotionalArc}</p>
+                    <span className="font-semibold text-blue-400">
+                      🎭 Emotional arc
+                    </span>
+                    <p className="mt-0.5 text-gray-200">
+                      {shot.shortsMetadata.sceneEmotionalArc}
+                    </p>
                   </div>
                 )}
                 {shot.shortsMetadata?.hookType && (
                   <div className="flex items-center gap-1">
                     <span className="font-semibold text-purple-400">Hook:</span>
-                    <span className="rounded bg-purple-900/50 px-1.5 py-0.5 capitalize text-purple-200">
+                    <span className="rounded bg-purple-900/50 px-1.5 py-0.5 text-purple-200 capitalize">
                       {shot.shortsMetadata.hookType}
                     </span>
                   </div>
@@ -201,7 +210,6 @@ export function ShotCard({
             </Tooltip>
           </TooltipProvider>
         )}
-
 
         {/* Shot Number - bottom left */}
         <div className="absolute bottom-3 left-3 rounded-lg bg-black/60 px-2 py-1 text-xs font-medium text-white">

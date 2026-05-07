@@ -238,8 +238,8 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               projectId={project.id}
               currentCoverUrl={
                 (project.metadata as Record<string, unknown>)?.coverImageUrl as
-                | string
-                | undefined
+                  | string
+                  | undefined
               }
             />
           </If>
@@ -290,12 +290,12 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
                 recurringElement: (project.metadata as Record<string, unknown>)
                   ?.recurringElement as
                   | {
-                    enabled?: boolean;
-                    location?: string;
-                    purpose?: string;
-                    placement?: 'beginning' | 'middle' | 'end' | 'throughout';
-                    dialogueHints?: string;
-                  }
+                      enabled?: boolean;
+                      location?: string;
+                      purpose?: string;
+                      placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+                      dialogueHints?: string;
+                    }
                   | undefined,
               }}
             />
@@ -324,7 +324,8 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
             <CanonSettingsForm
               projectId={project.id}
               currentSettings={
-                (project.metadata as { canon?: CanonSettings } | null)?.canon ?? null
+                (project.metadata as { canon?: CanonSettings } | null)?.canon ??
+                null
               }
             />
           </If>
@@ -335,7 +336,8 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
               <CardHeader>
                 <CardTitle>Fact Library</CardTitle>
                 <CardDescription>
-                  Manage verified facts and sources for your documentary content.
+                  Manage verified facts and sources for your documentary
+                  content.
                 </CardDescription>
               </CardHeader>
               <CardContent>

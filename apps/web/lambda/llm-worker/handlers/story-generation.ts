@@ -13,6 +13,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { commitStoryCanon } from '../utils/commit-story-canon';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
@@ -29,7 +30,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-import { commitStoryCanon } from '../utils/commit-story-canon';
 
 interface StoryGenerationPayload {
   episodeId: string;
@@ -83,7 +83,9 @@ export async function processStoryGeneration(
 ): Promise<StoryGenerationResult> {
   const data = payload as StoryGenerationPayload;
 
-  console.log(`[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`);
+  console.log(
+    `[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`,
+  );
 
   // Mark job as processing
   await markJobProcessing(supabase, data.episodeId, 'story');
@@ -92,14 +94,17 @@ export async function processStoryGeneration(
     // 1. Build rich context using shared context-builder
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
 
-    const contentStyle = (data.contentStyle ?? 'dialogue-heavy') as ContentStyle;
+    const contentStyle = (data.contentStyle ??
+      'dialogue-heavy') as ContentStyle;
     const scaling = calculateContentScaling({
       targetDurationSeconds: data.targetDuration,
       contentStyle,
     });
 
     // 2. Pre-format Stage 1 context blocks (story/viral/continuity only)
-    const charactersContext = formatCharactersForPrompt(episodeContext.characters);
+    const charactersContext = formatCharactersForPrompt(
+      episodeContext.characters,
+    );
     const locationsContext = formatLocationsForPrompt(episodeContext.locations);
     const previousEpisodesContext = formatPreviousEpisodesForPrompt(
       episodeContext.previousEpisodes,
@@ -114,7 +119,7 @@ export async function processStoryGeneration(
 
     console.log(
       `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
-      (recurringElementContext ? ', recurring element: yes' : ''),
+        (recurringElementContext ? ', recurring element: yes' : ''),
     );
 
     // 3. Run the Stage 1 Story Orchestrator
@@ -202,19 +207,20 @@ export async function processStoryGeneration(
       .select()
       .single();
 
-
     if (updateError) {
       throw new Error(`Failed to update episode: ${updateError.message}`);
     }
 
     if (!updatedEpisode) {
-      throw new Error('Episode was modified by another user (optimistic lock failed)');
+      throw new Error(
+        'Episode was modified by another user (optimistic lock failed)',
+      );
     }
 
     console.log(
       `[Story Generation] Stage 1 complete. Status: story. ` +
-      `Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
-      `Stage 2 (Screenplay) will run on user action.`,
+        `Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
+        `Stage 2 (Screenplay) will run on user action.`,
     );
 
     // Mark job as completed
@@ -239,7 +245,10 @@ export async function processStoryGeneration(
         supabase,
       });
     } catch (canonError) {
-      console.warn('[Story Generation] Canon commit failed (non-fatal):', canonError);
+      console.warn(
+        '[Story Generation] Canon commit failed (non-fatal):',
+        canonError,
+      );
     }
 
     // Synthesize a StoryOutput for the return value

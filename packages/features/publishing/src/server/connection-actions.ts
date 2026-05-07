@@ -40,9 +40,9 @@ export const getConnectionsAction = enhanceAction(
       )
       .eq('account_id', data.accountId)
       .order('created_at', { ascending: false })) as {
-        data: DBPlatformConnection[] | null;
-        error: unknown;
-      };
+      data: DBPlatformConnection[] | null;
+      error: unknown;
+    };
 
     if (error) {
       throw new Error('Failed to fetch connections');
@@ -55,8 +55,8 @@ export const getConnectionsAction = enhanceAction(
         const profileImageUrl =
           conn.metadata && typeof conn.metadata === 'object'
             ? ((conn.metadata as Record<string, unknown>).profile_image_url as
-              | string
-              | undefined)
+                | string
+                | undefined)
             : undefined;
 
         return {
@@ -69,8 +69,8 @@ export const getConnectionsAction = enhanceAction(
           errorMessage:
             conn.metadata && typeof conn.metadata === 'object'
               ? ((conn.metadata as Record<string, unknown>).last_error as
-                | string
-                | undefined)
+                  | string
+                  | undefined)
               : undefined,
           scopes: conn.scopes ?? [],
           tokenExpiresAt: conn.token_expires_at,
@@ -85,8 +85,8 @@ export const getConnectionsAction = enhanceAction(
           followerCount:
             conn.metadata && typeof conn.metadata === 'object'
               ? ((conn.metadata as Record<string, unknown>).follower_count as
-                | number
-                | undefined)
+                  | number
+                  | undefined)
               : 0,
         };
       }) ?? []

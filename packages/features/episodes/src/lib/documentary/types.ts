@@ -7,8 +7,8 @@
 
 /** Row shape returned from the verified_facts Supabase table. */
 export interface VerifiedFactRow {
-    id: string;
-    claim: string;
-    source_citation: string;
-    category: string | null;
+  id: string;
+  claim: string;
+  source_citation: string;
+  category: string | null;
 }

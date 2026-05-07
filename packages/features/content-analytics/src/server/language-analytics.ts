@@ -112,11 +112,7 @@ async function resolveProjectPublishes(
 
   // Build language map from platform connections
   const connectionIds = [
-    ...new Set(
-      publishes
-        .map((p) => p.platform_connection_id)
-        .filter(Boolean),
-    ),
+    ...new Set(publishes.map((p) => p.platform_connection_id).filter(Boolean)),
   ];
   const languageByConnection = new Map<string, string>();
 
@@ -135,9 +131,7 @@ async function resolveProjectPublishes(
   const publishLanguageMap = new Map<string, string>();
   for (const p of publishes) {
     const connId = p.platform_connection_id;
-    const language = connId
-      ? languageByConnection.get(connId) || 'en'
-      : 'en';
+    const language = connId ? languageByConnection.get(connId) || 'en' : 'en';
     publishLanguageMap.set(p.id, language);
   }
 
@@ -446,8 +440,8 @@ export async function getContentTypeComparison(
       engagement:
         longForm.views > 0
           ? ((longForm.likes + longForm.comments + longForm.shares) /
-            longForm.views) *
-          100
+              longForm.views) *
+            100
           : 0,
     },
     shorts: {
@@ -455,7 +449,7 @@ export async function getContentTypeComparison(
       engagement:
         shorts.views > 0
           ? ((shorts.likes + shorts.comments + shorts.shares) / shorts.views) *
-          100
+            100
           : 0,
     },
   };

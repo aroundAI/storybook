@@ -5,54 +5,54 @@ import { z } from 'zod';
 // ──────────────────────────────────────────
 
 export const TrackTypeSchema = z.enum([
-    'video',
-    'dialogue',
-    'music',
-    'sfx',
-    'ambient',
-    'title',
-    'upload',
+  'video',
+  'dialogue',
+  'music',
+  'sfx',
+  'ambient',
+  'title',
+  'upload',
 ]);
 /** Alias for use in row-validation schemas */
 export const TrackTypeEnum = TrackTypeSchema;
 
 export const RenderStatusSchema = z.enum([
-    'none',
-    'queued',
-    'rendering',
-    'completed',
-    'failed',
+  'none',
+  'queued',
+  'rendering',
+  'completed',
+  'failed',
 ]);
 export const RenderStatusEnum = RenderStatusSchema;
 
 export const TransitionTypeSchema = z.enum([
-    'cut',
-    'crossfade',
-    'fade_black',
-    'fade_white',
-    'wipe_left',
-    'wipe_right',
-    'dissolve',
+  'cut',
+  'crossfade',
+  'fade_black',
+  'fade_white',
+  'wipe_left',
+  'wipe_right',
+  'dissolve',
 ]);
 export const TransitionTypeEnum = TransitionTypeSchema;
 
 export const KeyframePropertySchema = z.enum([
-    'volume',
-    'position_x',
-    'position_y',
-    'scale',
-    'rotation',
-    'opacity',
+  'volume',
+  'position_x',
+  'position_y',
+  'scale',
+  'rotation',
+  'opacity',
 ]);
 export const KeyframePropertyEnum = KeyframePropertySchema;
 
 export const KeyframeEasingSchema = z.enum([
-    'linear',
-    'ease_in',
-    'ease_out',
-    'ease_in_out',
-    'hold',
-    'bezier',
+  'linear',
+  'ease_in',
+  'ease_out',
+  'ease_in_out',
+  'hold',
+  'bezier',
 ]);
 export const KeyframeEasingEnum = KeyframeEasingSchema;
 
@@ -61,30 +61,30 @@ export const KeyframeEasingEnum = KeyframeEasingSchema;
 // ──────────────────────────────────────────
 
 export const CreateEditProjectSchema = z.object({
-    episodeId: z.string().uuid(),
-    width: z.number().int().positive().default(1920),
-    height: z.number().int().positive().default(1080),
-    fps: z.number().int().positive().max(120).default(30),
-    activeLanguage: z.string().max(10).default('en'),
+  episodeId: z.string().uuid(),
+  width: z.number().int().positive().default(1920),
+  height: z.number().int().positive().default(1080),
+  fps: z.number().int().positive().max(120).default(30),
+  activeLanguage: z.string().max(10).default('en'),
 });
 
 export const GetEditProjectSchema = z.object({
-    editProjectId: z.string().uuid(),
+  editProjectId: z.string().uuid(),
 });
 
 export const FindEditProjectByEpisodeSchema = z.object({
-    episodeId: z.string().uuid(),
+  episodeId: z.string().uuid(),
 });
 
 export const UpdateEditProjectSchema = z.object({
-    editProjectId: z.string().uuid(),
-    width: z.number().int().positive().optional(),
-    height: z.number().int().positive().optional(),
-    fps: z.number().int().positive().max(120).optional(),
-    activeLanguage: z.string().max(10).optional(),
-    renderStatus: RenderStatusSchema.optional(),
-    renderUrl: z.string().url().nullish(),
-    renderError: z.string().nullish(),
+  editProjectId: z.string().uuid(),
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  fps: z.number().int().positive().max(120).optional(),
+  activeLanguage: z.string().max(10).optional(),
+  renderStatus: RenderStatusSchema.optional(),
+  renderUrl: z.string().url().nullish(),
+  renderError: z.string().nullish(),
 });
 
 // ──────────────────────────────────────────
@@ -92,26 +92,26 @@ export const UpdateEditProjectSchema = z.object({
 // ──────────────────────────────────────────
 
 export const CreateTrackSchema = z.object({
-    editProjectId: z.string().uuid(),
-    type: TrackTypeSchema,
-    name: z.string().min(1).max(255),
-    sortOrder: z.number().int().min(0).default(0),
-    volume: z.number().min(0).max(2).default(1.0),
+  editProjectId: z.string().uuid(),
+  type: TrackTypeSchema,
+  name: z.string().min(1).max(255),
+  sortOrder: z.number().int().min(0).default(0),
+  volume: z.number().min(0).max(2).default(1.0),
 });
 
 export const UpdateTrackSchema = z.object({
-    trackId: z.string().uuid(),
-    name: z.string().min(1).max(255).optional(),
-    sortOrder: z.number().int().min(0).optional(),
-    volume: z.number().min(0).max(2).optional(),
-    isMuted: z.boolean().optional(),
-    isSolo: z.boolean().optional(),
-    isLocked: z.boolean().optional(),
-    height: z.number().int().positive().optional(),
+  trackId: z.string().uuid(),
+  name: z.string().min(1).max(255).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  volume: z.number().min(0).max(2).optional(),
+  isMuted: z.boolean().optional(),
+  isSolo: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
+  height: z.number().int().positive().optional(),
 });
 
 export const DeleteTrackSchema = z.object({
-    trackId: z.string().uuid(),
+  trackId: z.string().uuid(),
 });
 
 // ──────────────────────────────────────────
@@ -119,49 +119,49 @@ export const DeleteTrackSchema = z.object({
 // ──────────────────────────────────────────
 
 export const CreateClipSchema = z.object({
-    trackId: z.string().uuid(),
-    sourceShotId: z.string().uuid().nullish(),
-    sourceDialogueId: z.string().uuid().nullish(),
-    sourceDubbedDialogueId: z.string().uuid().nullish(),
-    sourceAudioTrackId: z.string().uuid().nullish(),
-    sourceUploadUrl: z.string().nullish(),
-    mediaUrl: z.string().nullish(),
-    thumbnailUrl: z.string().nullish(),
-    startMs: z.number().int().min(0),
-    endMs: z.number().int().positive(),
-    inPointMs: z.number().int().min(0).default(0),
-    outPointMs: z.number().int().positive(),
-    volume: z.number().min(0).max(2).default(1.0),
-    speed: z.number().min(0.25).max(4).default(1.0),
-    fadeInMs: z.number().int().min(0).default(0),
-    fadeOutMs: z.number().int().min(0).default(0),
-    sortOrder: z.number().int().min(0).default(0),
-    syncGroupId: z.string().uuid().nullish(),
-    language: z.string().max(10).nullish(),
-    isActive: z.boolean().default(true),
+  trackId: z.string().uuid(),
+  sourceShotId: z.string().uuid().nullish(),
+  sourceDialogueId: z.string().uuid().nullish(),
+  sourceDubbedDialogueId: z.string().uuid().nullish(),
+  sourceAudioTrackId: z.string().uuid().nullish(),
+  sourceUploadUrl: z.string().nullish(),
+  mediaUrl: z.string().nullish(),
+  thumbnailUrl: z.string().nullish(),
+  startMs: z.number().int().min(0),
+  endMs: z.number().int().positive(),
+  inPointMs: z.number().int().min(0).default(0),
+  outPointMs: z.number().int().positive(),
+  volume: z.number().min(0).max(2).default(1.0),
+  speed: z.number().min(0.25).max(4).default(1.0),
+  fadeInMs: z.number().int().min(0).default(0),
+  fadeOutMs: z.number().int().min(0).default(0),
+  sortOrder: z.number().int().min(0).default(0),
+  syncGroupId: z.string().uuid().nullish(),
+  language: z.string().max(10).nullish(),
+  isActive: z.boolean().default(true),
 });
 
 export const UpdateClipSchema = z.object({
-    clipId: z.string().uuid(),
-    startMs: z.number().int().min(0).optional(),
-    endMs: z.number().int().positive().optional(),
-    inPointMs: z.number().int().min(0).optional(),
-    outPointMs: z.number().int().positive().optional(),
-    volume: z.number().min(0).max(2).optional(),
-    speed: z.number().min(0.25).max(4).optional(),
-    fadeInMs: z.number().int().min(0).optional(),
-    fadeOutMs: z.number().int().min(0).optional(),
-    sortOrder: z.number().int().min(0).optional(),
-    isActive: z.boolean().optional(),
+  clipId: z.string().uuid(),
+  startMs: z.number().int().min(0).optional(),
+  endMs: z.number().int().positive().optional(),
+  inPointMs: z.number().int().min(0).optional(),
+  outPointMs: z.number().int().positive().optional(),
+  volume: z.number().min(0).max(2).optional(),
+  speed: z.number().min(0.25).max(4).optional(),
+  fadeInMs: z.number().int().min(0).optional(),
+  fadeOutMs: z.number().int().min(0).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export const DeleteClipSchema = z.object({
-    clipId: z.string().uuid(),
+  clipId: z.string().uuid(),
 });
 
 export const SplitClipSchema = z.object({
-    clipId: z.string().uuid(),
-    splitAtMs: z.number().int().positive(),
+  clipId: z.string().uuid(),
+  splitAtMs: z.number().int().positive(),
 });
 
 // ──────────────────────────────────────────
@@ -171,69 +171,79 @@ export const SplitClipSchema = z.object({
 /** Typed transition params per transition type (discriminated union) */
 const CutParams = z.object({}).default({});
 
-const CrossfadeParams = z.object({
+const CrossfadeParams = z
+  .object({
     curve: z.enum(['linear', 'ease_in', 'ease_out']).default('linear'),
-}).default({});
+  })
+  .default({});
 
-const FadeParams = z.object({
+const FadeParams = z
+  .object({
     curve: z.enum(['linear', 'ease_in', 'ease_out']).default('linear'),
-}).default({});
+  })
+  .default({});
 
-const WipeParams = z.object({
+const WipeParams = z
+  .object({
     angle: z.number().min(0).max(360).default(0),
     softness: z.number().min(0).max(1).default(0.1),
-}).default({});
+  })
+  .default({});
 
-const DissolveParams = z.object({
+const DissolveParams = z
+  .object({
     curve: z.enum(['linear', 'ease_in', 'ease_out']).default('linear'),
-}).default({});
+  })
+  .default({});
 
 /**
  * Map from transition type → typed params schema.
  * Used for validation at the action boundary; stored as JSONB in the DB.
  */
 const TransitionParamsMap = {
-    cut: CutParams,
-    crossfade: CrossfadeParams,
-    fade_black: FadeParams,
-    fade_white: FadeParams,
-    wipe_left: WipeParams,
-    wipe_right: WipeParams,
-    dissolve: DissolveParams,
+  cut: CutParams,
+  crossfade: CrossfadeParams,
+  fade_black: FadeParams,
+  fade_white: FadeParams,
+  wipe_left: WipeParams,
+  wipe_right: WipeParams,
+  dissolve: DissolveParams,
 } as const;
 
-export const CreateTransitionSchema = z.object({
+export const CreateTransitionSchema = z
+  .object({
     fromClipId: z.string().uuid(),
     toClipId: z.string().uuid(),
     type: TransitionTypeSchema.default('cut'),
     durationMs: z.number().int().min(0).max(5000).default(500),
     params: z.record(z.unknown()).default({}),
-}).superRefine((val, ctx) => {
+  })
+  .superRefine((val, ctx) => {
     const paramsSchema = TransitionParamsMap[val.type];
 
     if (paramsSchema) {
-        const result = paramsSchema.safeParse(val.params);
+      const result = paramsSchema.safeParse(val.params);
 
-        if (!result.success) {
-            result.error.issues.forEach((issue) => {
-                ctx.addIssue({
-                    ...issue,
-                    path: ['params', ...issue.path],
-                });
-            });
-        }
+      if (!result.success) {
+        result.error.issues.forEach((issue) => {
+          ctx.addIssue({
+            ...issue,
+            path: ['params', ...issue.path],
+          });
+        });
+      }
     }
-});
+  });
 
 export const UpdateTransitionSchema = z.object({
-    transitionId: z.string().uuid(),
-    type: TransitionTypeSchema.optional(),
-    durationMs: z.number().int().min(0).max(5000).optional(),
-    params: z.record(z.unknown()).optional(),
+  transitionId: z.string().uuid(),
+  type: TransitionTypeSchema.optional(),
+  durationMs: z.number().int().min(0).max(5000).optional(),
+  params: z.record(z.unknown()).optional(),
 });
 
 export const DeleteTransitionSchema = z.object({
-    transitionId: z.string().uuid(),
+  transitionId: z.string().uuid(),
 });
 
 // ──────────────────────────────────────────
@@ -241,30 +251,30 @@ export const DeleteTransitionSchema = z.object({
 // ──────────────────────────────────────────
 
 export const CreateKeyframeSchema = z.object({
-    clipId: z.string().uuid(),
-    property: KeyframePropertySchema,
-    offsetMs: z.number().int().min(0),
-    value: z.number(),
-    easing: KeyframeEasingSchema.default('linear'),
-    bezierCp1X: z.number().min(0).max(1).nullish(),
-    bezierCp1Y: z.number().min(0).max(1).nullish(),
-    bezierCp2X: z.number().min(0).max(1).nullish(),
-    bezierCp2Y: z.number().min(0).max(1).nullish(),
+  clipId: z.string().uuid(),
+  property: KeyframePropertySchema,
+  offsetMs: z.number().int().min(0),
+  value: z.number(),
+  easing: KeyframeEasingSchema.default('linear'),
+  bezierCp1X: z.number().min(0).max(1).nullish(),
+  bezierCp1Y: z.number().min(0).max(1).nullish(),
+  bezierCp2X: z.number().min(0).max(1).nullish(),
+  bezierCp2Y: z.number().min(0).max(1).nullish(),
 });
 
 export const UpdateKeyframeSchema = z.object({
-    keyframeId: z.string().uuid(),
-    offsetMs: z.number().int().min(0).optional(),
-    value: z.number().optional(),
-    easing: KeyframeEasingSchema.optional(),
-    bezierCp1X: z.number().min(0).max(1).nullish(),
-    bezierCp1Y: z.number().min(0).max(1).nullish(),
-    bezierCp2X: z.number().min(0).max(1).nullish(),
-    bezierCp2Y: z.number().min(0).max(1).nullish(),
+  keyframeId: z.string().uuid(),
+  offsetMs: z.number().int().min(0).optional(),
+  value: z.number().optional(),
+  easing: KeyframeEasingSchema.optional(),
+  bezierCp1X: z.number().min(0).max(1).nullish(),
+  bezierCp1Y: z.number().min(0).max(1).nullish(),
+  bezierCp2X: z.number().min(0).max(1).nullish(),
+  bezierCp2Y: z.number().min(0).max(1).nullish(),
 });
 
 export const DeleteKeyframeSchema = z.object({
-    keyframeId: z.string().uuid(),
+  keyframeId: z.string().uuid(),
 });
 
 // ──────────────────────────────────────────
@@ -272,9 +282,9 @@ export const DeleteKeyframeSchema = z.object({
 // ──────────────────────────────────────────
 
 export const CreateSyncGroupSchema = z.object({
-    editProjectId: z.string().uuid(),
-    anchorDialogueId: z.string().uuid(),
-    primaryClipId: z.string().uuid().nullish(),
+  editProjectId: z.string().uuid(),
+  anchorDialogueId: z.string().uuid(),
+  primaryClipId: z.string().uuid().nullish(),
 });
 
 // ──────────────────────────────────────────
@@ -282,105 +292,105 @@ export const CreateSyncGroupSchema = z.object({
 // ──────────────────────────────────────────
 
 const BatchTrackSchema = z.object({
-    type: TrackTypeSchema,
-    name: z.string().min(1).max(255),
-    sortOrder: z.number().int().min(0),
-    volume: z.number().min(0).max(2).default(1.0),
+  type: TrackTypeSchema,
+  name: z.string().min(1).max(255),
+  sortOrder: z.number().int().min(0),
+  volume: z.number().min(0).max(2).default(1.0),
 });
 
 const BatchClipSchema = z.object({
-    trackIndex: z.number().int().min(0),
-    sourceShotId: z.string().uuid().nullish(),
-    sourceDialogueId: z.string().uuid().nullish(),
-    sourceDubbedDialogueId: z.string().uuid().nullish(),
-    sourceAudioTrackId: z.string().uuid().nullish(),
-    sourceUploadUrl: z.string().nullish(),
-    mediaUrl: z.string().nullish(),
-    thumbnailUrl: z.string().nullish(),
-    startMs: z.number().int().min(0),
-    endMs: z.number().int().positive(),
-    inPointMs: z.number().int().min(0).default(0),
-    outPointMs: z.number().int().positive(),
-    volume: z.number().min(0).max(2).default(1.0),
-    speed: z.number().min(0.25).max(4).default(1.0),
-    fadeInMs: z.number().int().min(0).default(0),
-    fadeOutMs: z.number().int().min(0).default(0),
-    sortOrder: z.number().int().min(0).default(0),
-    language: z.string().max(10).nullish(),
-    isActive: z.boolean().default(true),
-    syncGroupIndex: z.number().int().min(0).nullish(),
+  trackIndex: z.number().int().min(0),
+  sourceShotId: z.string().uuid().nullish(),
+  sourceDialogueId: z.string().uuid().nullish(),
+  sourceDubbedDialogueId: z.string().uuid().nullish(),
+  sourceAudioTrackId: z.string().uuid().nullish(),
+  sourceUploadUrl: z.string().nullish(),
+  mediaUrl: z.string().nullish(),
+  thumbnailUrl: z.string().nullish(),
+  startMs: z.number().int().min(0),
+  endMs: z.number().int().positive(),
+  inPointMs: z.number().int().min(0).default(0),
+  outPointMs: z.number().int().positive(),
+  volume: z.number().min(0).max(2).default(1.0),
+  speed: z.number().min(0.25).max(4).default(1.0),
+  fadeInMs: z.number().int().min(0).default(0),
+  fadeOutMs: z.number().int().min(0).default(0),
+  sortOrder: z.number().int().min(0).default(0),
+  language: z.string().max(10).nullish(),
+  isActive: z.boolean().default(true),
+  syncGroupIndex: z.number().int().min(0).nullish(),
 });
 
 const BatchKeyframeSchema = z.object({
-    clipIndex: z.number().int().min(0),
-    property: KeyframePropertySchema,
-    offsetMs: z.number().int().min(0),
-    value: z.number(),
-    easing: KeyframeEasingSchema.default('linear'),
+  clipIndex: z.number().int().min(0),
+  property: KeyframePropertySchema,
+  offsetMs: z.number().int().min(0),
+  value: z.number(),
+  easing: KeyframeEasingSchema.default('linear'),
 });
 
 const BatchSyncGroupSchema = z.object({
-    anchorDialogueId: z.string().uuid(),
-    primaryClipIndex: z.number().int().min(0).nullish(),
+  anchorDialogueId: z.string().uuid(),
+  primaryClipIndex: z.number().int().min(0).nullish(),
 });
 
 export const BatchAssembleSchema = z.object({
-    episodeId: z.string().uuid(),
-    width: z.number().int().positive().default(1920),
-    height: z.number().int().positive().default(1080),
-    fps: z.number().int().positive().max(120).default(30),
-    activeLanguage: z.string().max(10).default('en'),
-    tracks: z.array(BatchTrackSchema).min(1).max(50),
-    clips: z.array(BatchClipSchema).max(1000),
-    keyframes: z.array(BatchKeyframeSchema).max(5000),
-    syncGroups: z.array(BatchSyncGroupSchema).max(500),
+  episodeId: z.string().uuid(),
+  width: z.number().int().positive().default(1920),
+  height: z.number().int().positive().default(1080),
+  fps: z.number().int().positive().max(120).default(30),
+  activeLanguage: z.string().max(10).default('en'),
+  tracks: z.array(BatchTrackSchema).min(1).max(50),
+  clips: z.array(BatchClipSchema).max(1000),
+  keyframes: z.array(BatchKeyframeSchema).max(5000),
+  syncGroups: z.array(BatchSyncGroupSchema).max(500),
 });
 
 const DirtyClipSchema = z.object({
-    id: z.string().uuid(),
-    startMs: z.number().int().min(0).optional(),
-    endMs: z.number().int().positive().optional(),
-    inPointMs: z.number().int().min(0).optional(),
-    outPointMs: z.number().int().positive().optional(),
-    volume: z.number().min(0).max(2).optional(),
-    speed: z.number().min(0.25).max(4).optional(),
-    fadeInMs: z.number().int().min(0).optional(),
-    fadeOutMs: z.number().int().min(0).optional(),
-    sortOrder: z.number().int().min(0).optional(),
-    isActive: z.boolean().optional(),
+  id: z.string().uuid(),
+  startMs: z.number().int().min(0).optional(),
+  endMs: z.number().int().positive().optional(),
+  inPointMs: z.number().int().min(0).optional(),
+  outPointMs: z.number().int().positive().optional(),
+  volume: z.number().min(0).max(2).optional(),
+  speed: z.number().min(0.25).max(4).optional(),
+  fadeInMs: z.number().int().min(0).optional(),
+  fadeOutMs: z.number().int().min(0).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  isActive: z.boolean().optional(),
 });
 
 const DirtyTrackSchema = z.object({
-    id: z.string().uuid(),
-    name: z.string().min(1).max(255).optional(),
-    sortOrder: z.number().int().min(0).optional(),
-    volume: z.number().min(0).max(2).optional(),
-    isMuted: z.boolean().optional(),
-    isSolo: z.boolean().optional(),
-    isLocked: z.boolean().optional(),
-    height: z.number().int().positive().optional(),
+  id: z.string().uuid(),
+  name: z.string().min(1).max(255).optional(),
+  sortOrder: z.number().int().min(0).optional(),
+  volume: z.number().min(0).max(2).optional(),
+  isMuted: z.boolean().optional(),
+  isSolo: z.boolean().optional(),
+  isLocked: z.boolean().optional(),
+  height: z.number().int().positive().optional(),
 });
 
 const DirtyKeyframeSchema = z.object({
-    id: z.string().uuid(),
-    offsetMs: z.number().int().min(0).optional(),
-    value: z.number().optional(),
-    easing: KeyframeEasingSchema.optional(),
-    bezierCp1X: z.number().min(0).max(1).nullish(),
-    bezierCp1Y: z.number().min(0).max(1).nullish(),
-    bezierCp2X: z.number().min(0).max(1).nullish(),
-    bezierCp2Y: z.number().min(0).max(1).nullish(),
+  id: z.string().uuid(),
+  offsetMs: z.number().int().min(0).optional(),
+  value: z.number().optional(),
+  easing: KeyframeEasingSchema.optional(),
+  bezierCp1X: z.number().min(0).max(1).nullish(),
+  bezierCp1Y: z.number().min(0).max(1).nullish(),
+  bezierCp2X: z.number().min(0).max(1).nullish(),
+  bezierCp2Y: z.number().min(0).max(1).nullish(),
 });
 
 export const BatchSaveSchema = z.object({
-    editProjectId: z.string().uuid(),
-    dirtyClips: z.array(DirtyClipSchema).max(500).default([]),
-    dirtyTracks: z.array(DirtyTrackSchema).max(50).default([]),
-    dirtyKeyframes: z.array(DirtyKeyframeSchema).max(2000).default([]),
-    deletedClipIds: z.array(z.string().uuid()).max(100).default([]),
-    deletedKeyframeIds: z.array(z.string().uuid()).max(500).default([]),
-    newClips: z.array(CreateClipSchema).max(100).default([]),
-    newKeyframes: z.array(CreateKeyframeSchema).max(1000).default([]),
+  editProjectId: z.string().uuid(),
+  dirtyClips: z.array(DirtyClipSchema).max(500).default([]),
+  dirtyTracks: z.array(DirtyTrackSchema).max(50).default([]),
+  dirtyKeyframes: z.array(DirtyKeyframeSchema).max(2000).default([]),
+  deletedClipIds: z.array(z.string().uuid()).max(100).default([]),
+  deletedKeyframeIds: z.array(z.string().uuid()).max(500).default([]),
+  newClips: z.array(CreateClipSchema).max(100).default([]),
+  newKeyframes: z.array(CreateKeyframeSchema).max(1000).default([]),
 });
 
 // ──────────────────────────────────────────

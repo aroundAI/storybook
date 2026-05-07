@@ -59,7 +59,7 @@ export function QuickStats({
           const Icon = stat.icon;
           const content = (
             <div
-              className={`group flex min-w-[140px] flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/8 dark:bg-[#1A1A1A] dark:shadow-[0_0_20px_rgba(59,130,246,0.03)] ${stat.hoverBorder} dark:hover:border-white/15 dark:hover:shadow-[0_0_25px_rgba(59,130,246,0.08)] cursor-pointer transition-all duration-200`}
+              className={`group flex min-w-[140px] flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-white/8 dark:bg-[#1A1A1A] dark:shadow-[0_0_20px_rgba(59,130,246,0.03)] ${stat.hoverBorder} cursor-pointer transition-all duration-200 dark:hover:border-white/15 dark:hover:shadow-[0_0_25px_rgba(59,130,246,0.08)]`}
             >
               <div className="mb-2 flex items-start justify-between">
                 <span className="text-xs font-medium tracking-wider text-zinc-500 uppercase dark:text-[#A3A3A3]">

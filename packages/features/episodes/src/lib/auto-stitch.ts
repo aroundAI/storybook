@@ -56,11 +56,46 @@ export interface TimelineData {
 
 /** Default track configuration */
 const DEFAULT_TRACKS: Omit<TimelineTrack, 'id' | 'clips'>[] = [
-  { type: 'video', name: 'Video', isMuted: false, isSolo: false, isLocked: false, height: 80 },
-  { type: 'dialogue', name: 'Dialogue', isMuted: false, isSolo: false, isLocked: false, height: 60 },
-  { type: 'music', name: 'Music', isMuted: false, isSolo: false, isLocked: false, height: 60 },
-  { type: 'sfx', name: 'SFX', isMuted: false, isSolo: false, isLocked: false, height: 60 },
-  { type: 'ambient', name: 'Ambient', isMuted: false, isSolo: false, isLocked: false, height: 60 },
+  {
+    type: 'video',
+    name: 'Video',
+    isMuted: false,
+    isSolo: false,
+    isLocked: false,
+    height: 80,
+  },
+  {
+    type: 'dialogue',
+    name: 'Dialogue',
+    isMuted: false,
+    isSolo: false,
+    isLocked: false,
+    height: 60,
+  },
+  {
+    type: 'music',
+    name: 'Music',
+    isMuted: false,
+    isSolo: false,
+    isLocked: false,
+    height: 60,
+  },
+  {
+    type: 'sfx',
+    name: 'SFX',
+    isMuted: false,
+    isSolo: false,
+    isLocked: false,
+    height: 60,
+  },
+  {
+    type: 'ambient',
+    name: 'Ambient',
+    isMuted: false,
+    isSolo: false,
+    isLocked: false,
+    height: 60,
+  },
 ];
 
 // ============================================================================
@@ -81,12 +116,12 @@ export interface ShotInput {
   scene_number: number | null;
   shot_number: number | null;
   status:
-  | 'pending'
-  | 'queued'
-  | 'generating'
-  | 'completed'
-  | 'failed'
-  | 'approved';
+    | 'pending'
+    | 'queued'
+    | 'generating'
+    | 'completed'
+    | 'failed'
+    | 'approved';
 }
 
 /**
@@ -176,11 +211,11 @@ export interface AutoStitchInput {
  */
 export interface AutoStitchWarning {
   type:
-  | 'missing_video'
-  | 'missing_audio'
-  | 'gap'
-  | 'overlap'
-  | 'duration_mismatch';
+    | 'missing_video'
+    | 'missing_audio'
+    | 'gap'
+    | 'overlap'
+    | 'duration_mismatch';
   message: string;
   shotId?: string;
   dialogueLineId?: string;
@@ -459,9 +494,9 @@ function processMusic(
   const videoTrack = findTrack(tracks, 'video');
   const episodeDurationFrames = videoTrack
     ? Math.max(
-      ...videoTrack.clips.map((c) => c.startFrame + c.durationFrames),
-      0,
-    )
+        ...videoTrack.clips.map((c) => c.startFrame + c.durationFrames),
+        0,
+      )
     : 0;
 
   if (episodeDurationFrames === 0) return;
