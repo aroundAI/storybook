@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 import {
   ApiGatewayManagementApiClient,
@@ -26,7 +27,11 @@ const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 // Initialize Supabase client for authorization checks
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  realtime: {
+    transport: ws,
+  },
+});
 
 /**
  * Get sender's userId from connectionId

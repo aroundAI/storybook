@@ -12,6 +12,7 @@
  * - Multi-language render support
  */
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 import {
   ApiGatewayManagementApiClient,
@@ -45,6 +46,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 

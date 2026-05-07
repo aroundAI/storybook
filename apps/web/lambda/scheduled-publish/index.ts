@@ -9,6 +9,7 @@
  * - Publish Worker Lambda: Processes each upload (up to 5 min per video)
  */
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
@@ -34,6 +35,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 

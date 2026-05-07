@@ -601,6 +601,7 @@ export default $config({
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
           '@supabase/supabase-js',
+          'ws',
         ],
       },
     });
@@ -643,7 +644,7 @@ export default $config({
         // AWS region is automatically provided by Lambda
       },
       nodejs: {
-        install: ['@supabase/supabase-js', '@aws-sdk/client-sesv2'],
+        install: ['@supabase/supabase-js', '@aws-sdk/client-sesv2', 'ws'],
       },
     });
 
@@ -730,6 +731,7 @@ export default $config({
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
           '@aws-sdk/client-s3',
+          'ws',
         ],
       },
     });
@@ -781,6 +783,7 @@ export default $config({
           '@aws-sdk/lib-dynamodb',
           '@aws-sdk/client-apigatewaymanagementapi',
           'googleapis',
+          'ws',
         ],
       },
     });
@@ -846,6 +849,7 @@ export default $config({
           '@aws-sdk/client-apigatewaymanagementapi',
           '@aws-sdk/client-s3',
           'ffmpeg-static', // Bundles pre-compiled FFmpeg binary for arm64 Lambda
+          'ws',
         ],
       },
     });
@@ -1223,7 +1227,7 @@ export default $config({
             },
           ],
           nodejs: {
-            install: ['@supabase/supabase-js', '@aws-sdk/client-sqs'],
+            install: ['@supabase/supabase-js', '@aws-sdk/client-sqs', 'ws'],
           },
         },
         schedule: 'rate(5 minutes)',

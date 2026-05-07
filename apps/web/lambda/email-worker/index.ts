@@ -11,6 +11,7 @@
  * - Optional webhook alerts for DLQ-bound messages
  */
 import { createClient } from '@supabase/supabase-js';
+import ws from 'ws';
 
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
 
@@ -35,6 +36,9 @@ const _supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 
