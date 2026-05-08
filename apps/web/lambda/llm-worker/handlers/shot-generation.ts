@@ -363,20 +363,20 @@ export async function processShotGeneration(
       processingMethod: 'shot-orchestrator',
     };
 
-    // 6. Guard: Skip write if episode was reset while Lambda was processing
+    // 6. Guard: Skip write if episode was deleted during processing
     const { data: currentEpisode } = await supabase
       .from('episodes')
-      .select('status')
+      .select('status, deleted_at')
       .eq('id', data.episodeId)
       .single();
 
-    if (!currentEpisode || currentEpisode.status === 'draft') {
+    if (!currentEpisode || currentEpisode.deleted_at) {
       console.warn(
-        '[Shot Generation] Episode was reset to draft during generation. Skipping write.',
+        '[Shot Generation] Episode was deleted during generation. Skipping write.',
       );
       await markJobCompleted(supabase, data.episodeId, 'shot_list', {
         skipped: true,
-        reason: 'episode-reset',
+        reason: 'episode-deleted',
       });
     } else {
       const { error: updateError } = await supabase

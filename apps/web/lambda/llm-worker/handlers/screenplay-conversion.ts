@@ -317,20 +317,20 @@ export async function processScreenplayConversion(
       },
     };
 
-    // 5. Guard: Skip write if episode was reset while Lambda was processing
+    // 5. Guard: Skip write if episode was deleted during processing
     const { data: currentEpisode } = await supabase
       .from('episodes')
-      .select('status')
+      .select('status, deleted_at')
       .eq('id', data.episodeId)
       .single();
 
-    if (!currentEpisode || currentEpisode.status === 'draft') {
+    if (!currentEpisode || currentEpisode.deleted_at) {
       console.warn(
-        '[Screenplay Conversion] Episode was reset to draft during generation. Skipping write.',
+        '[Screenplay Conversion] Episode was deleted during generation. Skipping write.',
       );
       await markJobCompleted(supabase, data.episodeId, 'screenplay', {
         skipped: true,
-        reason: 'episode-reset',
+        reason: 'episode-deleted',
       });
 
       return {
