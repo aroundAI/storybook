@@ -192,22 +192,61 @@ export async function processStoryGeneration(
       viralQuality: orchestratorResult.viralQuality,
     };
 
-    // 5. Guard: Skip write if episode was reset while Lambda was processing
+    // 5. Guard: Skip write if episode was deleted or job was cancelled
     const { data: currentEpisode } = await supabase
       .from('episodes')
-      .select('status')
+      .select('status, deleted_at')
       .eq('id', data.episodeId)
       .single();
 
-    if (!currentEpisode || currentEpisode.status === 'draft') {
+    if (!currentEpisode || currentEpisode.deleted_at) {
       console.warn(
-        '[Story Generation] Episode was reset to draft during generation. Skipping write.',
+        '[Story Generation] Episode was deleted during generation. Skipping write.',
       );
       await markJobCompleted(supabase, data.episodeId, 'story', {
         skipped: true,
-        reason: 'episode-reset',
+        reason: 'episode-deleted',
       });
 
+      return {
+        success: false,
+        data: {
+          story: {
+            fullText: '',
+            title: data.title,
+            actBreakdown: [],
+            characters: [],
+            themes: [],
+            tone: '',
+            estimatedSceneCount: 0,
+          },
+          episode: { id: data.episodeId, status: 'draft', version: 0 },
+          metadata: {
+            provider: 'skipped',
+            model: 'skipped',
+            costCents: 0,
+            tokensUsed: 0,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }
+
+    // Also check if the generation job was explicitly cancelled by the user
+    const { data: activeJob } = await supabase
+      .from('generation_jobs')
+      .select('status')
+      .eq('reference_type', 'episode')
+      .eq('reference_id', data.episodeId)
+      .eq('job_type', 'story')
+      .in('status', ['queued', 'processing'])
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeJob) {
+      console.warn(
+        '[Story Generation] No active generation job found (may have been cancelled). Skipping write.',
+      );
       return {
         success: false,
         data: {
