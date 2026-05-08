@@ -293,7 +293,7 @@ export async function runAgent<T = unknown>(
 
   // Create LLM client
   const provider = (resolved.provider ?? 'gemini') as LLMProvider;
-  const model = resolved.model ?? 'gemini-2.5-flash';
+  const model = resolved.model ?? 'gemini-3-flash-preview';
 
   console.log(
     `[Agent:${config.name}] Starting. Provider: ${provider}, Model: ${model}, ` +

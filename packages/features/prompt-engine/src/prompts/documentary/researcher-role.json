@@ -26,7 +26,7 @@
     },
     "llm": {
         "provider": "gemini",
-        "model": "gemini-2.5-flash",
+        "model": "gemini-3-flash-preview",
         "max_tokens": 2500,
         "temperature": 0.2,
         "response_format": "json_object"
