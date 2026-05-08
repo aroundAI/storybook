@@ -244,6 +244,70 @@ function getApiKeyForProvider(provider: string): string {
 }
 
 // =============================================================================
+// RETRY HELPER
+// =============================================================================
+
+/**
+ * Retryable error patterns — matches the list used by executeLLM in
+ * @kit/prompt-engine for consistency across the pipeline.
+ */
+const RETRYABLE_ERRORS = [
+  'UNAVAILABLE',
+  'high demand',
+  '503',
+  '429',
+  'overloaded',
+  'Resource has been exhausted',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'fetch failed',
+  'socket hang up',
+];
+
+const MAX_LLM_RETRIES = 3;
+const BASE_RETRY_DELAY_MS = 2000;
+
+/**
+ * Retry wrapper for transient LLM errors with exponential backoff.
+ * Delays: 2s → 4s → 8s. Non-retryable errors fail immediately.
+ */
+async function executeWithRetry<T>(
+  fn: () => Promise<T>,
+  agentName: string,
+  stepNumber: number,
+): Promise<T> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= MAX_LLM_RETRIES; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      const errMsg = lastError.message ?? String(error);
+
+      const isRetryable = RETRYABLE_ERRORS.some((code) =>
+        errMsg.includes(code),
+      );
+
+      if (!isRetryable || attempt === MAX_LLM_RETRIES) {
+        throw error;
+      }
+
+      const delay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
+      console.warn(
+        `[Agent:${agentName}] Step ${stepNumber} — Transient LLM error ` +
+          `(attempt ${attempt + 1}/${MAX_LLM_RETRIES + 1}). ` +
+          `Retrying in ${delay}ms: ${errMsg.substring(0, 200)}`,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError!;
+}
+
+// =============================================================================
 // RUNNER
 // =============================================================================
 
@@ -319,49 +383,22 @@ export async function runAgent<T = unknown>(
     );
 
     try {
-      // 1. Call LLM with retry for transient errors (503, 429)
-      const MAX_RETRIES = 3;
-      const BASE_DELAY_MS = 2000;
-      let response;
-
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          response = await llm.createChatCompletion({
+      // 1. Call LLM with retry for transient capacity errors (503, 429)
+      // Matches the retry behavior in executeLLM (prompt-engine) which
+      // successfully handles 503 spikes for skill/tool LLM calls.
+      const response = await executeWithRetry(
+        () =>
+          llm.createChatCompletion({
             messages: [
               { role: 'system', content: systemPrompt },
               ...conversationHistory,
             ],
             temperature: resolved.temperature ?? 0.3,
             maxTokens: resolved.maxTokensPerStep ?? 4000,
-          });
-          break; // Success — exit retry loop
-        } catch (retryError) {
-          const errMsg =
-            retryError instanceof Error ? retryError.message : String(retryError);
-          const isTransient =
-            errMsg.includes('503') ||
-            errMsg.includes('429') ||
-            errMsg.includes('UNAVAILABLE') ||
-            errMsg.includes('high demand') ||
-            errMsg.includes('overloaded');
-
-          if (isTransient && attempt < MAX_RETRIES) {
-            const delay = BASE_DELAY_MS * Math.pow(2, attempt);
-            console.warn(
-              `[Agent:${config.name}] Step ${stepIdx + 1} — Transient LLM error (attempt ${attempt + 1}/${MAX_RETRIES + 1}). ` +
-                `Retrying in ${delay}ms: ${errMsg.substring(0, 200)}`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, delay));
-            continue;
-          }
-
-          throw retryError; // Non-transient or max retries exceeded
-        }
-      }
-
-      if (!response) {
-        throw new Error('LLM call failed after all retry attempts');
-      }
+          }),
+        config.name,
+        stepIdx + 1,
+      );
 
       const stepLatency = Date.now() - stepStartTime;
       const tokens = response.usage.totalTokens;
