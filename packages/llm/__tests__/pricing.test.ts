@@ -13,25 +13,27 @@ import {
 
 describe('LLM Pricing', () => {
   describe('OPENAI_PRICING', () => {
+    it('should have pricing for GPT-4.1 models', () => {
+      expect(OPENAI_PRICING['gpt-4.1']).toBeDefined();
+      expect(OPENAI_PRICING['gpt-4.1-mini']).toBeDefined();
+      expect(OPENAI_PRICING['gpt-4.1-nano']).toBeDefined();
+    });
+
+    it('should have pricing for o-series reasoning models', () => {
+      expect(OPENAI_PRICING['o4-mini']).toBeDefined();
+      expect(OPENAI_PRICING['o3']).toBeDefined();
+      expect(OPENAI_PRICING['o3-mini']).toBeDefined();
+    });
+
     it('should have pricing for GPT-4o models', () => {
       expect(OPENAI_PRICING['gpt-4o']).toBeDefined();
       expect(OPENAI_PRICING['gpt-4o-mini']).toBeDefined();
-      expect(OPENAI_PRICING['gpt-4o-2024-08-06']).toBeDefined();
     });
 
-    it('should have pricing for GPT-4 Turbo models', () => {
+    it('should have pricing for legacy models', () => {
       expect(OPENAI_PRICING['gpt-4-turbo']).toBeDefined();
-      expect(OPENAI_PRICING['gpt-4-turbo-preview']).toBeDefined();
-    });
-
-    it('should have pricing for GPT-4 models', () => {
       expect(OPENAI_PRICING['gpt-4']).toBeDefined();
-      expect(OPENAI_PRICING['gpt-4-32k']).toBeDefined();
-    });
-
-    it('should have pricing for GPT-3.5 Turbo models', () => {
       expect(OPENAI_PRICING['gpt-3.5-turbo']).toBeDefined();
-      expect(OPENAI_PRICING['gpt-3.5-turbo-0125']).toBeDefined();
     });
 
     it('should have correct structure for all models', () => {
@@ -45,10 +47,10 @@ describe('LLM Pricing', () => {
       });
     });
 
-    it('should have gpt-4o-mini as cheapest option', () => {
-      const miniPricing = OPENAI_PRICING['gpt-4o-mini']!;
-      expect(miniPricing.prompt).toBe(0.15);
-      expect(miniPricing.completion).toBe(0.6);
+    it('should have gpt-4.1-nano as cheapest option', () => {
+      const nanoPricing = OPENAI_PRICING['gpt-4.1-nano']!;
+      expect(nanoPricing.prompt).toBe(0.1);
+      expect(nanoPricing.completion).toBe(0.4);
     });
 
     it('should have completion cost higher than prompt cost', () => {
@@ -59,21 +61,21 @@ describe('LLM Pricing', () => {
   });
 
   describe('ANTHROPIC_PRICING', () => {
-    it('should have pricing for Claude 3.5 models', () => {
+    it('should have pricing for Claude 4.x models', () => {
+      expect(ANTHROPIC_PRICING['claude-opus-4-7']).toBeDefined();
+      expect(ANTHROPIC_PRICING['claude-sonnet-4-6']).toBeDefined();
+      expect(ANTHROPIC_PRICING['claude-haiku-4-5']).toBeDefined();
+    });
+
+    it('should have pricing for Claude 4.0 models', () => {
+      expect(ANTHROPIC_PRICING['claude-sonnet-4']).toBeDefined();
+      expect(ANTHROPIC_PRICING['claude-opus-4']).toBeDefined();
+    });
+
+    it('should have pricing for legacy Claude 3.x models', () => {
       expect(ANTHROPIC_PRICING['claude-3-5-sonnet-20241022']).toBeDefined();
-      expect(ANTHROPIC_PRICING['claude-3-5-sonnet-20240620']).toBeDefined();
-    });
-
-    it('should have pricing for Claude 3 models', () => {
       expect(ANTHROPIC_PRICING['claude-3-opus-20240229']).toBeDefined();
-      expect(ANTHROPIC_PRICING['claude-3-sonnet-20240229']).toBeDefined();
       expect(ANTHROPIC_PRICING['claude-3-haiku-20240307']).toBeDefined();
-    });
-
-    it('should have pricing for legacy Claude models', () => {
-      expect(ANTHROPIC_PRICING['claude-2.1']).toBeDefined();
-      expect(ANTHROPIC_PRICING['claude-2.0']).toBeDefined();
-      expect(ANTHROPIC_PRICING['claude-instant-1.2']).toBeDefined();
     });
 
     it('should have correct structure for all models', () => {
@@ -94,7 +96,7 @@ describe('LLM Pricing', () => {
     });
 
     it('should have opus as most expensive option', () => {
-      const opusPricing = ANTHROPIC_PRICING['claude-3-opus-20240229']!;
+      const opusPricing = ANTHROPIC_PRICING['claude-opus-4']!;
       const allPricing = Object.values(ANTHROPIC_PRICING);
       const maxPromptCost = Math.max(...allPricing.map((p) => p.prompt));
       const maxCompletionCost = Math.max(
@@ -106,21 +108,21 @@ describe('LLM Pricing', () => {
   });
 
   describe('GEMINI_PRICING', () => {
-    it('should have pricing for Gemini 1.5 Pro models', () => {
-      expect(GEMINI_PRICING['gemini-1.5-pro']).toBeDefined();
-      expect(GEMINI_PRICING['gemini-1.5-pro-001']).toBeDefined();
-      expect(GEMINI_PRICING['gemini-1.5-pro-002']).toBeDefined();
+    it('should have pricing for Gemini 3.x models', () => {
+      expect(GEMINI_PRICING['gemini-3.1-pro-preview']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-3.1-flash-lite']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-3-flash-preview']).toBeDefined();
     });
 
-    it('should have pricing for Gemini 1.5 Flash models', () => {
-      expect(GEMINI_PRICING['gemini-1.5-flash']).toBeDefined();
-      expect(GEMINI_PRICING['gemini-1.5-flash-001']).toBeDefined();
-      expect(GEMINI_PRICING['gemini-1.5-flash-8b']).toBeDefined();
+    it('should have pricing for Gemini 2.5 models', () => {
+      expect(GEMINI_PRICING['gemini-2.5-flash']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-2.5-flash-lite']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-2.5-pro']).toBeDefined();
     });
 
     it('should have pricing for legacy Gemini models', () => {
-      expect(GEMINI_PRICING['gemini-pro']).toBeDefined();
-      expect(GEMINI_PRICING['gemini-1.0-pro']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-1.5-pro']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-1.5-flash']).toBeDefined();
     });
 
     it('should have correct structure for all models', () => {
@@ -198,7 +200,7 @@ describe('LLM Pricing', () => {
 
       it('should return haiku pricing for unknown model', () => {
         const pricing = getModelPricing('anthropic', 'unknown-model');
-        expect(pricing).toEqual({ prompt: 0.25, completion: 1.25 });
+        expect(pricing).toEqual({ prompt: 1, completion: 5 });
       });
 
       it('should handle all documented Anthropic models', () => {
@@ -218,7 +220,7 @@ describe('LLM Pricing', () => {
 
       it('should return flash pricing for unknown model', () => {
         const pricing = getModelPricing('gemini', 'unknown-model');
-        expect(pricing).toEqual({ prompt: 0.075, completion: 0.3 });
+        expect(pricing).toEqual({ prompt: 0.3, completion: 2.5 });
       });
 
       it('should handle all documented Gemini models', () => {
@@ -256,7 +258,7 @@ describe('LLM Pricing', () => {
         expect(pricing).toEqual({ prompt: 0.14, completion: 0.28 });
       });
 
-      it('should return deepseek-chat pricing for unknown model', () => {
+      it('should return deepseek-v4-flash pricing for unknown model', () => {
         const pricing = getModelPricing('deepseek', 'unknown-model');
         expect(pricing).toEqual({ prompt: 0.14, completion: 0.28 });
       });
