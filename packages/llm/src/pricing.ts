@@ -71,6 +71,11 @@ export const ANTHROPIC_PRICING: Record<string, ModelPricing> = {
  * Source: https://ai.google.dev/pricing
  */
 export const GEMINI_PRICING: Record<string, ModelPricing> = {
+  // Gemini 3.1 (latest — May 2026)
+  'gemini-3.1-pro-preview': { prompt: 1.25, completion: 10 },
+  'gemini-3.1-flash-lite': { prompt: 0.075, completion: 0.3 },
+  'gemini-3.1-flash-lite-preview': { prompt: 0.075, completion: 0.3 },
+
   // Gemini 3 (active preview — frontier class)
   'gemini-3-flash-preview': { prompt: 0.15, completion: 0.6 },
 
@@ -80,15 +85,15 @@ export const GEMINI_PRICING: Record<string, ModelPricing> = {
   'gemini-2.5-flash-lite': { prompt: 0.075, completion: 0.3 },
   'gemini-2.5-pro': { prompt: 1.25, completion: 10 },
 
-  // Gemini 2.0 (deprecated — kept for compat until migration complete)
+  // Gemini 2.0 (deprecated — shut down per Google pricing page May 2026)
   'gemini-2.0-flash': { prompt: 0.1, completion: 0.4 },
 
-  // Gemini 1.5 Pro
+  // Gemini 1.5 Pro (legacy)
   'gemini-1.5-pro': { prompt: 1.25, completion: 5 },
   'gemini-1.5-pro-001': { prompt: 1.25, completion: 5 },
   'gemini-1.5-pro-002': { prompt: 1.25, completion: 5 },
 
-  // Gemini 1.5 Flash
+  // Gemini 1.5 Flash (legacy)
   'gemini-1.5-flash': { prompt: 0.075, completion: 0.3 },
   'gemini-1.5-flash-001': { prompt: 0.075, completion: 0.3 },
   'gemini-1.5-flash-002': { prompt: 0.075, completion: 0.3 },
