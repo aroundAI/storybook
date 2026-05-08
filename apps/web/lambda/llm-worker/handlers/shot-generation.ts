@@ -363,17 +363,38 @@ export async function processShotGeneration(
       processingMethod: 'shot-orchestrator',
     };
 
-    const { error: updateError } = await supabase
+    // 6. Guard: Skip write if episode was reset while Lambda was processing
+    const { data: currentEpisode } = await supabase
       .from('episodes')
-      .update({
-        shot_list: shotListData,
-        updated_at: new Date().toISOString(),
-      })
+      .select('status')
       .eq('id', data.episodeId)
-      .eq('version', data.version);
+      .single();
 
-    if (updateError) {
-      console.error('[Shot Generation] Failed to update episode:', updateError);
+    if (!currentEpisode || currentEpisode.status === 'draft') {
+      console.warn(
+        '[Shot Generation] Episode was reset to draft during generation. Skipping write.',
+      );
+      await markJobCompleted(supabase, data.episodeId, 'shot_list', {
+        skipped: true,
+        reason: 'episode-reset',
+      });
+    } else {
+      const { error: updateError } = await supabase
+        .from('episodes')
+        .update({
+          shot_list: shotListData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', data.episodeId)
+        // NOTE: No .eq('version', ...) — version may drift during orchestrator mid-run writes
+        .is('deleted_at', null);
+
+      if (updateError) {
+        console.error(
+          '[Shot Generation] Failed to update episode:',
+          updateError,
+        );
+      }
     }
 
     console.log(

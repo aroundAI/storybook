@@ -799,6 +799,27 @@ export const resetEpisodeAction = enhanceAction(
       throw new Error('Failed to delete shots');
     }
 
+    // Cancel all active generation jobs for this episode
+    // Prevents ghost Lambda workers from writing stale data after reset
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: jobsError } = await (client as any)
+      .from('generation_jobs')
+      .update({
+        status: 'failed',
+        error_message: 'Cancelled: Episode was reset to draft',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('reference_id', data.episodeId)
+      .eq('reference_type', 'episode')
+      .in('status', ['queued', 'processing']);
+
+    if (jobsError) {
+      logger.warn(
+        { ...ctx, error: jobsError },
+        'Failed to cancel generation jobs during reset (non-fatal)',
+      );
+    }
+
     // Reset episode fields back to draft state, verifying version hasn't changed
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: updatedEpisode, error: updateError } = await (client as any)

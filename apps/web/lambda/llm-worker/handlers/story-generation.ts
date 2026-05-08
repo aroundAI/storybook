@@ -192,7 +192,47 @@ export async function processStoryGeneration(
       viralQuality: orchestratorResult.viralQuality,
     };
 
-    // 5. UPDATE DATABASE: episode.story_data + status → 'story'
+    // 5. Guard: Skip write if episode was reset while Lambda was processing
+    const { data: currentEpisode } = await supabase
+      .from('episodes')
+      .select('status')
+      .eq('id', data.episodeId)
+      .single();
+
+    if (!currentEpisode || currentEpisode.status === 'draft') {
+      console.warn(
+        '[Story Generation] Episode was reset to draft during generation. Skipping write.',
+      );
+      await markJobCompleted(supabase, data.episodeId, 'story', {
+        skipped: true,
+        reason: 'episode-reset',
+      });
+
+      return {
+        success: false,
+        data: {
+          story: {
+            fullText: '',
+            title: data.title,
+            actBreakdown: [],
+            characters: [],
+            themes: [],
+            tone: '',
+            estimatedSceneCount: 0,
+          },
+          episode: { id: data.episodeId, status: 'draft', version: 0 },
+          metadata: {
+            provider: 'skipped',
+            model: 'skipped',
+            costCents: 0,
+            tokensUsed: 0,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }
+
+    // 6. UPDATE DATABASE: episode.story_data + status → 'story'
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
@@ -202,7 +242,8 @@ export async function processStoryGeneration(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      .eq('version', data.version)
+      // NOTE: No .eq('version', ...) — the orchestrator writes viral_quality
+      // mid-run which bumps the version via DB trigger (see: f64c9648)
       .is('deleted_at', null)
       .select()
       .single();
@@ -212,9 +253,7 @@ export async function processStoryGeneration(
     }
 
     if (!updatedEpisode) {
-      throw new Error(
-        'Episode was modified by another user (optimistic lock failed)',
-      );
+      throw new Error('Episode not found or was deleted');
     }
 
     console.log(

@@ -317,7 +317,45 @@ export async function processScreenplayConversion(
       },
     };
 
-    // 5. UPDATE episode with screenplay_data
+    // 5. Guard: Skip write if episode was reset while Lambda was processing
+    const { data: currentEpisode } = await supabase
+      .from('episodes')
+      .select('status')
+      .eq('id', data.episodeId)
+      .single();
+
+    if (!currentEpisode || currentEpisode.status === 'draft') {
+      console.warn(
+        '[Screenplay Conversion] Episode was reset to draft during generation. Skipping write.',
+      );
+      await markJobCompleted(supabase, data.episodeId, 'screenplay', {
+        skipped: true,
+        reason: 'episode-reset',
+      });
+
+      return {
+        success: true,
+        data: {
+          screenplay: {
+            title: episode.title,
+            scenes: [],
+            totalDialogueLines: 0,
+            estimatedDuration: 0,
+          },
+          dialogueLinesCreated: 0,
+          episode: { id: data.episodeId, status: 'draft', version: 0 },
+          metadata: {
+            provider: 'skipped',
+            model: 'skipped',
+            costCents: 0,
+            tokensUsed: 0,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }
+
+    // 5b. UPDATE episode with screenplay_data
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
@@ -326,7 +364,7 @@ export async function processScreenplayConversion(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      .eq('version', data.version)
+      // NOTE: No .eq('version', ...) — version may drift during orchestrator mid-run writes
       .is('deleted_at', null)
       .select()
       .single();
@@ -336,7 +374,7 @@ export async function processScreenplayConversion(
     }
 
     if (!updatedEpisode) {
-      throw new Error('Episode was modified by another user');
+      throw new Error('Episode not found or was deleted');
     }
 
     // 6. Extract and INSERT dialogue lines
