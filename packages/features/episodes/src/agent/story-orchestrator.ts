@@ -98,7 +98,7 @@ export async function runStoryOrchestrator(
         budgetLimits: {
           maxTotalTokens: 200_000,
           maxCostUSD: 2.0,
-          maxLatencyMs: 300_000,
+          maxLatencyMs: 480_000,
         },
       },
       {

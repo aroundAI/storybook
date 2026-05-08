@@ -264,12 +264,14 @@ const RETRYABLE_ERRORS = [
   'socket hang up',
 ];
 
-const MAX_LLM_RETRIES = 3;
-const BASE_RETRY_DELAY_MS = 2000;
+const MAX_LLM_RETRIES = 4;
+const BASE_RETRY_DELAY_MS = 3000;
 
 /**
  * Retry wrapper for transient LLM errors with exponential backoff.
- * Delays: 2s → 4s → 8s. Non-retryable errors fail immediately.
+ * Delays: 3s → 6s → 12s → 24s → 48s (~93s total).
+ * Handles Google 503 capacity spikes which can persist for 30-60s.
+ * Non-retryable errors fail immediately.
  */
 async function executeWithRetry<T>(
   fn: () => Promise<T>,
