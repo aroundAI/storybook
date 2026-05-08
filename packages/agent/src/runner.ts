@@ -319,15 +319,49 @@ export async function runAgent<T = unknown>(
     );
 
     try {
-      // 1. Call LLM with full conversation history
-      const response = await llm.createChatCompletion({
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...conversationHistory,
-        ],
-        temperature: resolved.temperature ?? 0.3,
-        maxTokens: resolved.maxTokensPerStep ?? 4000,
-      });
+      // 1. Call LLM with retry for transient errors (503, 429)
+      const MAX_RETRIES = 3;
+      const BASE_DELAY_MS = 2000;
+      let response;
+
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          response = await llm.createChatCompletion({
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...conversationHistory,
+            ],
+            temperature: resolved.temperature ?? 0.3,
+            maxTokens: resolved.maxTokensPerStep ?? 4000,
+          });
+          break; // Success — exit retry loop
+        } catch (retryError) {
+          const errMsg =
+            retryError instanceof Error ? retryError.message : String(retryError);
+          const isTransient =
+            errMsg.includes('503') ||
+            errMsg.includes('429') ||
+            errMsg.includes('UNAVAILABLE') ||
+            errMsg.includes('high demand') ||
+            errMsg.includes('overloaded');
+
+          if (isTransient && attempt < MAX_RETRIES) {
+            const delay = BASE_DELAY_MS * Math.pow(2, attempt);
+            console.warn(
+              `[Agent:${config.name}] Step ${stepIdx + 1} — Transient LLM error (attempt ${attempt + 1}/${MAX_RETRIES + 1}). ` +
+                `Retrying in ${delay}ms: ${errMsg.substring(0, 200)}`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+            continue;
+          }
+
+          throw retryError; // Non-transient or max retries exceeded
+        }
+      }
+
+      if (!response) {
+        throw new Error('LLM call failed after all retry attempts');
+      }
 
       const stepLatency = Date.now() - stepStartTime;
       const tokens = response.usage.totalTokens;
