@@ -111,11 +111,18 @@ const generateStoryTool = createTool({
         ? `\n\n--- REVISION INSTRUCTIONS ---\n${revisionInstructions}${existingStoryText ? `\n\n--- EXISTING STORY TO REVISE ---\n${existingStoryText}` : ''}`
         : '';
 
+      const { calculateContentScaling } = await import(
+        '../../lib/duration-scaling'
+      );
       const minutesDuration = Math.round(targetDurationSeconds / 60);
-      const wordCountMin = minutesDuration * 120;
-      const wordCountMax = minutesDuration * 180;
-      const sceneCountMin = Math.max(3, Math.floor(minutesDuration / 1.5));
-      const sceneCountMax = Math.max(5, Math.ceil(minutesDuration));
+      const scaling = calculateContentScaling({
+        targetDurationSeconds,
+        contentStyle,
+      });
+      const wordCountMin = scaling.story.wordCountMin;
+      const wordCountMax = scaling.story.wordCountMax;
+      const sceneCountMin = scaling.screenplay.sceneCountMin;
+      const sceneCountMax = scaling.screenplay.sceneCountMax;
 
       const result = await executeLLM<{
         story: {

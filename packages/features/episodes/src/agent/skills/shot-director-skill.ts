@@ -100,6 +100,14 @@ const generateShotsTool = createTool({
           mood?: string;
           lighting?: string;
         };
+        // OpenClaw Shot Intelligence
+        transitionType?: string;
+        frameStrategy?: string;
+        primarySubject?: { type: string; name: string };
+        firstFrameDescription?: string | null;
+        lastFrameDescription?: string | null;
+        locationArea?: string | null;
+        locationEnvironmentDescription?: string | null;
       }> = [];
 
       for (let i = 0; i < scenes.length; i += CONCURRENCY) {
@@ -164,6 +172,14 @@ const generateShotsTool = createTool({
                   mood?: string;
                   lighting?: string;
                 };
+                // OpenClaw Shot Intelligence
+                transitionType?: string;
+                frameStrategy?: string;
+                primarySubject?: { type: string; name: string };
+                firstFrameDescription?: string | null;
+                lastFrameDescription?: string | null;
+                locationArea?: string | null;
+                locationEnvironmentDescription?: string | null;
               }>;
               sceneSummary: string;
             }>({

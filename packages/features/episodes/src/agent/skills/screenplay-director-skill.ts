@@ -75,6 +75,12 @@ const generateScreenplayTool = createTool({
         targetDurationSeconds / ((sceneCountMin + sceneCountMax) / 2),
       );
 
+      console.log(
+        `[Screenplay Director] Scaling targets: ${sceneCountMin}–${sceneCountMax} scenes, ` +
+          `${dialogueLinesPerSceneMin}–${dialogueLinesPerSceneMax} lines/scene, ` +
+          `avg ${avgSceneDuration}s/scene, ${minutesDuration} min target`,
+      );
+
       const result = await executeLLM<{
         screenplay: {
           title: string;

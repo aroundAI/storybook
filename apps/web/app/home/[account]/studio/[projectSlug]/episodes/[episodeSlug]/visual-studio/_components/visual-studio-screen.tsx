@@ -458,6 +458,35 @@ export function VisualStudioScreen({
       md += '\n';
     }
 
+    // Shot Intelligence (OpenClaw fields)
+    if (shot.transitionType || shot.frameStrategy || shot.primarySubject || shot.locationArea) {
+      md += `## Shot Intelligence\n\n`;
+
+      if (shot.transitionType) {
+        md += `**Transition:** ${shot.transitionType.replace(/_/g, ' ')}\n`;
+      }
+      if (shot.frameStrategy) {
+        md += `**Frame Strategy:** ${shot.frameStrategy.replace(/_/g, ' ')}\n`;
+      }
+      if (shot.primarySubject) {
+        md += `**Primary Subject:** ${shot.primarySubject.name} (${shot.primarySubject.type})\n`;
+      }
+      if (shot.locationArea) {
+        md += `**Location Area:** ${shot.locationArea}\n`;
+      }
+      md += '\n';
+
+      if (shot.firstFrameDescription) {
+        md += `### First Frame Description\n${shot.firstFrameDescription}\n\n`;
+      }
+      if (shot.lastFrameDescription) {
+        md += `### Last Frame Description\n${shot.lastFrameDescription}\n\n`;
+      }
+      if (shot.locationEnvironmentDescription) {
+        md += `### Environment Description\n${shot.locationEnvironmentDescription}\n\n`;
+      }
+    }
+
     return md;
   };
 
@@ -506,6 +535,12 @@ export function VisualStudioScreen({
         duration: number;
         filename: string;
         characters: string[];
+        transitionType: string | null;
+        frameStrategy: string | null;
+        primarySubject: { type: string; name: string } | null;
+        locationArea: string | null;
+        firstFrameDescription: string | null;
+        lastFrameDescription: string | null;
       }> = [];
 
       for (const [sceneNum, sceneShots] of sortedScenes) {
@@ -546,6 +581,12 @@ export function VisualStudioScreen({
                 duration: Number(shot.duration),
                 filename: videoFilename,
                 characters: extractCharacters(shot),
+                transitionType: shot.transitionType ?? null,
+                frameStrategy: shot.frameStrategy ?? null,
+                primarySubject: shot.primarySubject ?? null,
+                locationArea: shot.locationArea ?? null,
+                firstFrameDescription: shot.firstFrameDescription ?? null,
+                lastFrameDescription: shot.lastFrameDescription ?? null,
               });
             }
           }
