@@ -411,6 +411,20 @@ export async function processScreenplayConversion(
     }
 
     if (dialogueLines.length > 0) {
+      // Delete existing dialogue lines before inserting new ones
+      // Prevents orphaned lines from previous generations
+      const { error: deleteDialogueError } = await supabase
+        .from('dialogue_lines')
+        .delete()
+        .eq('episode_id', data.episodeId);
+
+      if (deleteDialogueError) {
+        console.warn(
+          '[Screenplay Conversion] Failed to delete old dialogue lines:',
+          deleteDialogueError,
+        );
+      }
+
       const { error: insertError } = await supabase
         .from('dialogue_lines')
         .insert(dialogueLines);

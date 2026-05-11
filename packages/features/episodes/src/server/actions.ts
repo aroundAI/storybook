@@ -799,6 +799,49 @@ export const resetEpisodeAction = enhanceAction(
       throw new Error('Failed to delete shots');
     }
 
+    // Hard-delete all dialogue lines for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: dialogueError } = await (client as any)
+      .from('dialogue_lines')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (dialogueError) {
+      logger.error(
+        { ...ctx, error: dialogueError },
+        'Failed to delete dialogue lines during reset',
+      );
+      throw new Error('Failed to delete dialogue lines');
+    }
+
+    // Hard-delete all audio tracks for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: audioTracksError } = await (client as any)
+      .from('audio_tracks')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (audioTracksError) {
+      logger.warn(
+        { ...ctx, error: audioTracksError },
+        'Failed to delete audio tracks during reset (non-fatal)',
+      );
+    }
+
+    // Hard-delete all audio cues for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: audioCuesError } = await (client as any)
+      .from('audio_cues')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (audioCuesError) {
+      logger.warn(
+        { ...ctx, error: audioCuesError },
+        'Failed to delete audio cues during reset (non-fatal)',
+      );
+    }
+
     // Cancel all active generation jobs for this episode
     // Prevents ghost Lambda workers from writing stale data after reset
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
