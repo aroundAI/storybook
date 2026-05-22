@@ -54,7 +54,7 @@ export async function commitStoryCanon(
     season,
     keyEvents,
     characters,
-    episodeSummary,
+    _episodeSummary,
     themes,
     storyContent,
     createdBy,
