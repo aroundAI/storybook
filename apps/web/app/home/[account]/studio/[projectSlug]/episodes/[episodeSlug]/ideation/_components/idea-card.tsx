@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, Eye, Sparkles } from 'lucide-react';
+import { Edit3, Eye, Sparkles } from 'lucide-react';
 
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { cn } from '@kit/ui/utils';
@@ -8,19 +8,16 @@ import { cn } from '@kit/ui/utils';
 interface IdeaCardProps {
   idea: StoryIdea;
   index: number;
-  isSelected: boolean;
   onSelect: () => void;
 }
 
-export function IdeaCard({ idea, index, isSelected, onSelect }: IdeaCardProps) {
+export function IdeaCard({ idea, index, onSelect }: IdeaCardProps) {
   return (
     <div
       onClick={onSelect}
       className={cn(
         'group relative cursor-pointer rounded-xl border p-6 backdrop-blur-sm transition-all duration-200',
-        isSelected
-          ? 'border-[#3B82F6]/50 bg-[#3B82F6]/10 shadow-[0_0_20px_rgba(59,130,246,0.15)] ring-2 ring-[#3B82F6]/50'
-          : 'border-white/[0.08] bg-[#1A1A1A] hover:border-[#3B82F6]/30 hover:bg-[#1A1A1A] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]',
+        'border-white/[0.08] bg-[#1A1A1A] hover:border-[#3B82F6]/30 hover:bg-[#1A1A1A] hover:shadow-[0_0_20px_rgba(59,130,246,0.08)]',
       )}
     >
       {/* Header */}
@@ -28,12 +25,10 @@ export function IdeaCard({ idea, index, isSelected, onSelect }: IdeaCardProps) {
         <h4 className="text-sm font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400">
           Variation {index + 1}
         </h4>
-        <ArrowRight
-          className={cn(
-            'h-4 w-4 text-gray-400 transition-opacity dark:text-gray-500',
-            isSelected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100',
-          )}
-        />
+        <span className="flex items-center gap-1 text-xs text-slate-500 opacity-0 transition-opacity group-hover:opacity-100">
+          <Edit3 className="h-3 w-3" />
+          Refine & generate
+        </span>
       </div>
 
       {/* Logline */}

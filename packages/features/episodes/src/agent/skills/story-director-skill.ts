@@ -60,6 +60,24 @@ const generateStoryTool = createTool({
       .string()
       .optional()
       .describe('Project visual style from project metadata'),
+    ideationThemes: z
+      .string()
+      .optional()
+      .describe(
+        'Comma-separated themes from ideation that should guide story thematic direction',
+      ),
+    ideationHook: z
+      .string()
+      .optional()
+      .describe(
+        'Narrative hook from ideation — the unique angle that makes this story compelling',
+      ),
+    visualDirection: z
+      .string()
+      .optional()
+      .describe(
+        'Visual storytelling direction from ideation — how this story works visually',
+      ),
     viralGoals: z
       .string()
       .optional()
@@ -98,6 +116,9 @@ const generateStoryTool = createTool({
     seasonContext,
     previousEpisodes,
     visualStyle,
+    ideationThemes,
+    ideationHook,
+    visualDirection,
     viralGoals,
     revisionInstructions,
     existingStoryText,
@@ -171,6 +192,9 @@ const generateStoryTool = createTool({
           recurring_element: recurringElements ?? '',
           canon_context: '',
           plot_beats: '',
+          ideation_themes: ideationThemes ?? '',
+          ideation_hook: ideationHook ?? '',
+          visual_direction: visualDirection ?? '',
           // Inject viral goals if provided
           ...(viralGoals ? { viral_goals: viralGoals } : {}),
         },

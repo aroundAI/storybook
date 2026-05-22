@@ -4,7 +4,6 @@ import { useEffect, useState, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
-  ArrowRight,
   ChevronDown,
   Loader2,
   Maximize2,
@@ -42,16 +41,11 @@ import { Textarea } from '@kit/ui/textarea';
 
 import { useEpisodeContext } from '../../_components/episode-context-provider';
 import { IdeaCard } from './idea-card';
-
-/** Extended story idea with generation settings */
-export interface StoryIdeaWithSettings extends StoryIdea {
-  targetDuration: number;
-  contentStyle: ContentStyle;
-}
+import { RefineIdeaModal, type RefinedStoryIdea } from './refine-idea-modal';
 
 interface IdeationScreenProps {
   episodeId: string;
-  onComplete: (selection: StoryIdeaWithSettings) => void;
+  onComplete: (selection: RefinedStoryIdea) => void;
   initialPremise?: string;
   characterIds?: string[];
   locationIds?: string[];
@@ -71,9 +65,12 @@ export function IdeationScreen({
   const { isGenerating, setIsGenerating } = useEpisodeContext();
   const [isPending, _startTransition] = useTransition();
   const [ideas, setIdeas] = useState<StoryIdea[]>([]);
-  const [selectedIdea, setSelectedIdea] = useState<StoryIdea | null>(null);
   const [_hasGenerated, setHasGenerated] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  // Modal state for refining a selected idea
+  const [refineIdea, setRefineIdea] = useState<StoryIdea | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Duration and content style state
   const [targetDuration, setTargetDuration] = useState(defaultDuration);
@@ -96,7 +93,6 @@ export function IdeationScreen({
       const resultData = (llmResult as any)?.data;
       if (resultData?.ideas) {
         setIdeas(resultData.ideas);
-        setSelectedIdea(null);
         setHasGenerated(true);
         toast.success(`Generated ${resultData.ideas.length} story ideas`);
       }
@@ -124,7 +120,6 @@ export function IdeationScreen({
       // If local dev (synchronous), process immediately
       if (result.success && result.data) {
         setIdeas(result.data.ideas);
-        setSelectedIdea(null);
         setHasGenerated(true);
         toast.success(`Generated ${result.data.ideas.length} story ideas`);
         return { success: true, data: result.data };
@@ -138,15 +133,15 @@ export function IdeationScreen({
     });
   });
 
-  const handleContinue = () => {
-    if (selectedIdea) {
-      setIsGenerating(true);
-      onComplete({
-        ...selectedIdea,
-        targetDuration,
-        contentStyle,
-      });
-    }
+  const handleCardClick = (idea: StoryIdea) => {
+    setRefineIdea(idea);
+    setModalOpen(true);
+  };
+
+  const handleRefineComplete = (refined: RefinedStoryIdea) => {
+    setModalOpen(false);
+    setIsGenerating(true);
+    onComplete(refined);
   };
 
   const handleClear = () => {
@@ -331,25 +326,9 @@ export function IdeationScreen({
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Generated Options
                 </h3>
-                {selectedIdea && (
-                  <Button
-                    onClick={handleContinue}
-                    disabled={isGenerating}
-                    className="gap-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700"
-                  >
-                    {isGenerating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating Story...
-                      </>
-                    ) : (
-                      <>
-                        Continue with Selected
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </Button>
-                )}
+                <p className="text-xs text-slate-500">
+                  Click a variation to refine and generate
+                </p>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
@@ -358,8 +337,7 @@ export function IdeationScreen({
                     key={index}
                     idea={idea}
                     index={index}
-                    isSelected={selectedIdea?.title === idea.title}
-                    onSelect={() => setSelectedIdea(idea)}
+                    onSelect={() => handleCardClick(idea)}
                   />
                 ))}
               </div>
@@ -367,6 +345,19 @@ export function IdeationScreen({
           )}
         </form>
       </Form>
+
+      {/* Refine Idea Modal */}
+      {refineIdea && (
+        <RefineIdeaModal
+          idea={refineIdea}
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          onConfirm={handleRefineComplete}
+          isGenerating={isGenerating}
+          targetDuration={targetDuration}
+          contentStyle={contentStyle}
+        />
+      )}
     </div>
   );
 }

@@ -253,7 +253,7 @@ function IssuePopoverContent({
         <p className="text-xs text-gray-500 dark:text-gray-400">
           {isError
             ? 'Critical: Too many stale narrative threads. These may cause plot holes or confuse the story generation AI.'
-            : 'Some narrative threads have gone stale — they haven\'t been progressed or resolved in several episodes.'}
+            : "Some narrative threads have gone stale — they haven't been progressed or resolved in several episodes."}
         </p>
       </div>
 

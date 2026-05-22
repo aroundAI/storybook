@@ -2,12 +2,7 @@
 
 import { useCallback, useState } from 'react';
 
-import {
-  BookOpen,
-  ChevronDown,
-  ChevronRight,
-  GitBranch,
-} from 'lucide-react';
+import { BookOpen, ChevronDown, ChevronRight, GitBranch } from 'lucide-react';
 
 import type {
   NarrativeThread,
@@ -245,14 +240,15 @@ export function ThreadCandidatesSelector({
                       {/* Action toggle – only when selected */}
                       {isSelected && (
                         <div className="mt-2.5 flex items-center gap-1">
-                          <span className="text-muted-foreground mr-1 text-[10px] uppercase tracking-wider">
+                          <span className="text-muted-foreground mr-1 text-[10px] tracking-wider uppercase">
                             Action:
                           </span>
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (action !== 'progress') toggleAction(thread.id);
+                              if (action !== 'progress')
+                                toggleAction(thread.id);
                             }}
                             className={`rounded-l-md border px-2.5 py-1 text-[11px] font-medium transition-all duration-150 ${
                               action === 'progress'

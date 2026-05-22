@@ -47,6 +47,9 @@ interface StoryGenerationPayload {
     threadName: string;
     action: 'progress' | 'resolve';
   }>;
+  themes?: string[];
+  hook?: string;
+  visualDirection?: string;
 }
 
 interface StoryOutput {
@@ -158,6 +161,9 @@ export async function processStoryGeneration(
         visualStyle: episodeContext.visualStyle,
         recurringElementsContext: recurringElementContext,
         threadCandidatesContext,
+        ideationThemes: data.themes,
+        ideationHook: data.hook,
+        visualDirection: data.visualDirection,
       },
       supabase,
     );

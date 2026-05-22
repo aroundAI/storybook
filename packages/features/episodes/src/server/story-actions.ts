@@ -245,6 +245,9 @@ export const generateFullStoryAction = enhanceAction(
         userId: user.id,
         projectId: episode.project_id,
         threadCandidates: data.threadCandidates,
+        themes: data.themes,
+        hook: data.hook,
+        visualDirection: data.visualDirection,
       },
     });
 

@@ -4,28 +4,22 @@ import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
-import type { ContentStyle } from '@kit/episodes/lib';
 import type { NarrativeThread } from '@kit/episodes';
+import type { ContentStyle } from '@kit/episodes/lib';
 import {
   generateFullStoryAction,
   getActiveThreadsAction,
 } from '@kit/episodes/server';
-import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { IdeationScreen } from './_components/ideation-screen';
+import type { RefinedStoryIdea } from './_components/refine-idea-modal';
 import {
-  ThreadCandidatesSelector,
   type ThreadCandidate,
+  ThreadCandidatesSelector,
 } from './_components/thread-candidates-selector';
-
-/** Extended story idea with generation settings */
-interface StoryIdeaWithSettings extends StoryIdea {
-  targetDuration: number;
-  contentStyle: ContentStyle;
-}
 
 export default function IdeationPage() {
   const router = useRouter();
@@ -104,10 +98,9 @@ export default function IdeationPage() {
     (projectMetadata?.contentStyle as ContentStyle | undefined) ??
     'dialogue-heavy';
 
-  const handleComplete = async (selection: StoryIdeaWithSettings) => {
-    setIsGenerating(true); // Set generating state at start
+  const handleComplete = async (selection: RefinedStoryIdea) => {
+    setIsGenerating(true);
     triggerLlm(async () => {
-      // Generate the full story using the selected idea
       const result = await generateFullStoryAction({
         episodeId: episode.id,
         version: episode.version,
@@ -115,17 +108,19 @@ export default function IdeationPage() {
         logline: selection.logline,
         targetDuration: selection.targetDuration,
         contentStyle: selection.contentStyle,
+        themes: selection.themes.length > 0 ? selection.themes : undefined,
+        hook: selection.hook || undefined,
+        visualDirection: selection.visualPotential || undefined,
         threadCandidates:
           threadCandidates.length > 0 ? threadCandidates : undefined,
       });
 
-      // If queued, return queued flag (WebSocket will deliver result)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
         toast.info('Generating story in background... This may take a minute.');
         return { queued: true };
       }
-      setIsGenerating(false); // Reset on synchronous error
+      setIsGenerating(false);
       throw new Error('Failed to generate story');
     });
   };

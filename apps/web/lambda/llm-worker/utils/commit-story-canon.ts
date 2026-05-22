@@ -244,8 +244,7 @@ async function commitThemesToMetadata({
     .eq('id', episodeId)
     .single();
 
-  const existingMetadata =
-    (episode?.metadata as Record<string, unknown>) ?? {};
+  const existingMetadata = (episode?.metadata as Record<string, unknown>) ?? {};
 
   const { error } = await supabase
     .from('episodes')
