@@ -17,6 +17,10 @@ import languageInsights from '../../prompts/analytics/language-insights.json';
 // =============================================================================
 import dialogueTranslation from '../../prompts/audio-generation/dialogue-translation.json';
 import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-refinement.json';
+// =============================================================================
+// Canon Roles Prompts
+// =============================================================================
+import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
 import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
 // =============================================================================
 // Publishing Prompts
@@ -39,10 +43,6 @@ import shotListGeneration from '../../prompts/story-generation/shot-list-generat
 // =============================================================================
 import storyGeneration from '../../prompts/story-generation/story-generation.json';
 import storyIdeation from '../../prompts/story-generation/story-ideation.json';
-// =============================================================================
-// Canon Roles Prompts
-// =============================================================================
-import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
 import type { PromptTemplate } from '../types';
 
 /**

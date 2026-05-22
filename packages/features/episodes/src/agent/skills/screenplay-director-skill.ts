@@ -203,20 +203,27 @@ const generateScreenplayToolStatic = createTool({
   name: 'generateScreenplay',
   description:
     'Converts a finished story into a structured screenplay with scenes, scene headings, action lines, and dialogue. Call this after the story has passed viral quality evaluation (score ≥ 0.65).',
-  parameters: z.object({
-    storyText: z
-      .string()
-      .describe('The full finalized story text from the Story Director'),
-    characters: z
-      .string()
-      .describe(
-        'Pre-formatted LOCKED IDENTITY character block from formatCharactersForPrompt. Must be passed verbatim — do not summarize.',
-      ),
-  }).merge(metadataParameters),
+  parameters: z
+    .object({
+      storyText: z
+        .string()
+        .describe('The full finalized story text from the Story Director'),
+      characters: z
+        .string()
+        .describe(
+          'Pre-formatted LOCKED IDENTITY character block from formatCharactersForPrompt. Must be passed verbatim — do not summarize.',
+        ),
+    })
+    .merge(metadataParameters),
   execute: async ({ storyText, characters, ...params }) => {
     try {
       return toolSuccess(
-        await executeScreenplayGeneration(storyText, characters, undefined, params),
+        await executeScreenplayGeneration(
+          storyText,
+          characters,
+          undefined,
+          params,
+        ),
       );
     } catch (error) {
       return toolError(

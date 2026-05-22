@@ -59,6 +59,9 @@ export const GenerateFullStorySchema = z.object({
   logline: z.string().min(10).max(500),
   targetDuration: z.number().int().min(60).max(7200), // 1 min to 2 hours in seconds
   contentStyle: ContentStyleSchema.optional(), // Affects dialogue density
+  themes: z.array(z.string().max(50)).max(10).optional(),
+  hook: z.string().max(500).optional(),
+  visualDirection: z.string().max(500).optional(),
   characters: z.array(CharacterInputSchema).optional(),
   worldDetails: z.string().max(1000).optional(),
   style: z.string().optional(),

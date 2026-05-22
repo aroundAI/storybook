@@ -42,6 +42,13 @@ import { DEFAULT_CANON_SETTINGS } from '../lib/canon/types';
  * Server actions for Canon Management System CRUD operations.
  */
 
+/**
+ * Canon Server Actions
+ * Phase 10: FILM-1005
+ *
+ * Server actions for Canon Management System CRUD operations.
+ */
+
 type Json = Database['public']['Tables']['immutable_events']['Row']['metadata'];
 
 // =============================================================================
@@ -945,7 +952,13 @@ interface ExtractedCanonChange {
 interface ExtractedThreadUpdate {
   threadId?: string;
   threadName: string;
-  threadType?: 'plot' | 'character' | 'mystery' | 'romantic' | 'conflict' | 'thematic';
+  threadType?:
+    | 'plot'
+    | 'character'
+    | 'mystery'
+    | 'romantic'
+    | 'conflict'
+    | 'thematic';
   action: 'open' | 'progress' | 'resolve';
   description: string;
   promises?: string[];
@@ -1294,7 +1307,14 @@ export const commitCanonChangesAction = enhanceAction(
             threadId: z.string().optional(),
             threadName: z.string(),
             threadType: z
-              .enum(['plot', 'character', 'mystery', 'romantic', 'conflict', 'thematic'])
+              .enum([
+                'plot',
+                'character',
+                'mystery',
+                'romantic',
+                'conflict',
+                'thematic',
+              ])
               .optional(),
             action: z.enum(['open', 'progress', 'resolve']),
             description: z.string(),

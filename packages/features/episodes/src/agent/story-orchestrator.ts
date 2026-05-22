@@ -46,6 +46,10 @@ export interface StoryOrchestratorInput {
   recurringElementsContext?: string;
   // Narrative threads to progress/resolve in this episode
   threadCandidatesContext?: string;
+  // Ideation refinement fields from Select & Refine
+  ideationThemes?: string[];
+  ideationHook?: string;
+  visualDirection?: string;
 }
 
 export interface StoryOrchestratorResult {
@@ -212,7 +216,7 @@ You coordinate three specialist agents to produce a high-quality story:
 
 ## Your Decision Logic
 
-1. ALWAYS start with Story Director. Pass characters, locations, seasonContext, previousEpisodes, and recurringElements verbatim.
+1. ALWAYS start with Story Director. Pass characters, locations, seasonContext, previousEpisodes, recurringElements, AND ideation refinement fields (ideationThemes, ideationHook, visualDirection) verbatim.
 2. THEN run Viral Analyst (evaluateContent) to score the story.
 3. THEN run Continuity Guardian (buildMemoryContext then checkContinuity).
 4. IF Viral Analyst score < 0.65 AND you haven't revised yet → call Story Director ONCE with revisionInstructions targeting the weakest dimensions. Then re-score with Viral Analyst.
@@ -245,6 +249,25 @@ function buildStoryPrompt(input: StoryOrchestratorInput): string {
 **Duration**: ${input.targetDurationSeconds} seconds
 **Content Style**: ${input.contentStyle ?? 'dialogue-heavy'}
 **Episode Number**: ${input.episodeNumber}
+
+${
+  input.ideationThemes?.length
+    ? `**Thematic Direction**: ${input.ideationThemes.join(', ')}
+These themes should be woven into the story naturally.`
+    : ''
+}
+${
+  input.ideationHook
+    ? `**Narrative Hook**: ${input.ideationHook}
+This hook should drive the story's unique angle.`
+    : ''
+}
+${
+  input.visualDirection
+    ? `**Visual Direction**: ${input.visualDirection}
+Prioritize scenes and imagery aligned with this direction.`
+    : ''
+}
 
 **Character Context (pass verbatim to Story Director):**
 ${input.charactersContext || 'No characters defined.'}

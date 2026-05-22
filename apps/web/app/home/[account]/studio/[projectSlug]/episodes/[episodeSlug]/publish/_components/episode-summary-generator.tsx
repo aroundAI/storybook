@@ -277,9 +277,7 @@ export function EpisodeSummaryGenerator({
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <BookOpen className="h-3.5 w-3.5 text-purple-500" />
-                        <span className="font-medium">
-                          {thread.threadName}
-                        </span>
+                        <span className="font-medium">{thread.threadName}</span>
                         <Badge
                           variant={
                             thread.action === 'open'
@@ -322,7 +320,7 @@ export function EpisodeSummaryGenerator({
                           prev.filter((_, i) => i !== idx),
                         )
                       }
-                      className="ml-2 flex-shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-opacity hover:bg-gray-200 hover:text-gray-600 group-hover:opacity-100 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                      className="ml-2 flex-shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
                       title="Remove this thread update"
                     >
                       <X className="h-3.5 w-3.5" />
