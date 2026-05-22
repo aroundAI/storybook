@@ -85,16 +85,13 @@ export function IdeationScreen({
     trigger: triggerLlm,
   } = useLlmJob<{ ideas: StoryIdea[] }>('story-ideation');
 
-  // Handle async WebSocket result
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
-      // llmResult is already the result object from message.result (contains {success, data})
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultData = (llmResult as any)?.data;
-      if (resultData?.ideas) {
-        setIdeas(resultData.ideas);
+      const resultData = llmResult as { data?: { ideas: StoryIdea[] } };
+      if (resultData.data?.ideas) {
+        setIdeas(resultData.data.ideas);
         setHasGenerated(true);
-        toast.success(`Generated ${resultData.ideas.length} story ideas`);
+        toast.success(`Generated ${resultData.data.ideas.length} story ideas`);
       }
     } else if (llmStatus === 'error') {
       toast.error(llmError || 'Failed to generate story ideas');
@@ -349,6 +346,7 @@ export function IdeationScreen({
       {/* Refine Idea Modal */}
       {refineIdea && (
         <RefineIdeaModal
+          key={refineIdea.title}
           idea={refineIdea}
           open={modalOpen}
           onOpenChange={setModalOpen}

@@ -183,7 +183,7 @@ export function RefineIdeaModal({
   // Themes are managed separately since they're an array (not a simple form field)
   const [themes, setThemes] = useState<string[]>(idea.themes ?? []);
 
-  const form = useForm<RefineIdeaFormData>({
+  const form = useForm({
     resolver: zodResolver(RefineIdeaSchema),
     defaultValues: {
       title: idea.title,
@@ -192,17 +192,6 @@ export function RefineIdeaModal({
       visualPotential: idea.visualPotential ?? '',
     },
   });
-
-  // Reset form when a different idea is selected
-  useEffect(() => {
-    form.reset({
-      title: idea.title,
-      logline: idea.logline,
-      hook: idea.hook ?? '',
-      visualPotential: idea.visualPotential ?? '',
-    });
-    setThemes(idea.themes ?? []);
-  }, [idea, form]);
 
   const handleConfirm = form.handleSubmit((data) => {
     onConfirm({

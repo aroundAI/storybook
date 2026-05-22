@@ -115,8 +115,7 @@ export default function IdeationPage() {
           threadCandidates.length > 0 ? threadCandidates : undefined,
       });
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if ((result as any)?.queued) {
+      if (result && 'queued' in result && result.queued) {
         toast.info('Generating story in background... This may take a minute.');
         return { queued: true };
       }
