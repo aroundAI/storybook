@@ -11,7 +11,7 @@ import {
   buildEpisodeContext,
   formatCharactersForPrompt,
   formatLocationsForPrompt,
-  formatRecurringElementForPrompt,
+  formatRecurringElementsForPrompt,
 } from '../utils/context-builder';
 
 interface StoryIdeationPayload {
@@ -73,8 +73,8 @@ export async function processStoryIdeation(
     target_audience: episodeContext.targetAudience,
     visual_style: episodeContext.visualStyle,
     style: 'balanced',
-    recurring_element: formatRecurringElementForPrompt(
-      episodeContext.recurringElement,
+    recurring_element: formatRecurringElementsForPrompt(
+      episodeContext.recurringElements,
     ),
   };
 

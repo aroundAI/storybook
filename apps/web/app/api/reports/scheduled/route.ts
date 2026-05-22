@@ -165,9 +165,9 @@ async function processScheduledReport(
     report.frequency === 'weekly'
       ? { start: subWeeks(new Date(), 1), end: new Date() }
       : {
-        start: startOfMonth(subMonths(new Date(), 1)),
-        end: endOfMonth(subMonths(new Date(), 1)),
-      };
+          start: startOfMonth(subMonths(new Date(), 1)),
+          end: endOfMonth(subMonths(new Date(), 1)),
+        };
 
   // 1. Fetch publish metadata from Supabase
   const { data: publishes, error: pubError } = await adminClient
@@ -239,7 +239,10 @@ async function processScheduledReport(
     .filter((row): row is AnalyticsDataRow => row !== null);
 
   if (transformedData.length === 0) {
-    logger.info(ctx, 'No analytics data found for scheduled report, skipping email');
+    logger.info(
+      ctx,
+      'No analytics data found for scheduled report, skipping email',
+    );
     return;
   }
 

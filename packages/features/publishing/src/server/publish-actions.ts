@@ -895,12 +895,12 @@ export const getEpisodePublishesAction = enhanceAction(
         createdAt: p.created_at,
         analytics: chTotals
           ? {
-            views: chTotals.views,
-            likes: chTotals.likes,
-            comments: chTotals.comments,
-            shares: chTotals.shares,
-            watchTimeSeconds: chTotals.watch_time_seconds,
-          }
+              views: chTotals.views,
+              likes: chTotals.likes,
+              comments: chTotals.comments,
+              shares: chTotals.shares,
+              watchTimeSeconds: chTotals.watch_time_seconds,
+            }
           : null,
         error: (p.metadata as { error?: string } | null)?.error,
       };

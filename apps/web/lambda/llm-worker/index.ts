@@ -23,6 +23,7 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
+import ws from 'ws';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});
@@ -71,6 +72,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 
@@ -129,9 +133,9 @@ async function sendToUser(
     } catch (error: unknown) {
       const statusCode =
         error &&
-          typeof error === 'object' &&
-          'statusCode' in error &&
-          typeof error.statusCode === 'number'
+        typeof error === 'object' &&
+        'statusCode' in error &&
+        typeof error.statusCode === 'number'
           ? error.statusCode
           : null;
 
@@ -242,7 +246,6 @@ async function processJob(job: LlmJobMessage): Promise<unknown> {
     }
     default:
       throw new Error(`Unknown job type: ${job.jobType}`);
-
   }
 }
 

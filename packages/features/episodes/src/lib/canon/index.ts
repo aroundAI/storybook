@@ -10,20 +10,20 @@
 export * from './types';
 export type * from '../../types/act-context';
 export type {
-    ParentContext,
-    ParentImmutableEvent,
-    ParentCharacterState,
-    ParentResolvedThread,
-    ParentWorldFact,
-    CharacterVisualRef,
-    LocationRef,
+  ParentContext,
+  ParentImmutableEvent,
+  ParentCharacterState,
+  ParentResolvedThread,
+  ParentWorldFact,
+  CharacterVisualRef,
+  LocationRef,
 } from './sequel-system';
 
 // Client-safe validation functions
 export {
-    validatePlotSkeleton,
-    validateSceneBlocks,
-    getRulesForCheckpoint,
+  validatePlotSkeleton,
+  validateSceneBlocks,
+  getRulesForCheckpoint,
 } from './continuity-validator';
 
 // Verified facts types (FILM-1120)
@@ -32,10 +32,10 @@ export { generateAPACitation } from '../../types/verified-facts';
 
 // Documentary module types (FILM-1122, FILM-1123)
 export type {
-    ResearchClaim,
-    ResearchResult,
-    FactCheckIssue,
-    FactCheckResult,
+  ResearchClaim,
+  ResearchResult,
+  FactCheckIssue,
+  FactCheckResult,
 } from '../documentary';
 export { shouldBlockContent } from '../documentary';
 

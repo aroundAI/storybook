@@ -573,7 +573,7 @@ export function MusicTimeline({
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
                         selectedTrack?.id === track.id &&
-                        'ring-2 ring-blue-500 ring-offset-2',
+                          'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{
                         left: `${leftPx}px`,

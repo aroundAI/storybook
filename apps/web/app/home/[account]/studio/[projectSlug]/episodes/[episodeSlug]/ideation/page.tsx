@@ -1,17 +1,25 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useRouter } from 'next/navigation';
 
 import type { ContentStyle } from '@kit/episodes/lib';
-import { generateFullStoryAction } from '@kit/episodes/server';
+import type { NarrativeThread } from '@kit/episodes';
+import {
+  generateFullStoryAction,
+  getActiveThreadsAction,
+} from '@kit/episodes/server';
 import type { StoryIdea } from '@kit/prompt-engine/schemas';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
 import { IdeationScreen } from './_components/ideation-screen';
+import {
+  ThreadCandidatesSelector,
+  type ThreadCandidate,
+} from './_components/thread-candidates-selector';
 
 /** Extended story idea with generation settings */
 interface StoryIdeaWithSettings extends StoryIdea {
@@ -29,6 +37,27 @@ export default function IdeationPage() {
     refetchEpisode,
     setIsGenerating,
   } = useEpisodeContext();
+
+  // Active narrative threads for the thread candidates selector
+  const [activeThreads, setActiveThreads] = useState<NarrativeThread[]>([]);
+  const [threadCandidates, setThreadCandidates] = useState<ThreadCandidate[]>(
+    [],
+  );
+
+  // Fetch active narrative threads on mount
+  useEffect(() => {
+    const fetchThreads = async () => {
+      try {
+        const projectId = episode.projectId;
+        if (!projectId) return;
+        const threads = await getActiveThreadsAction({ projectId });
+        if (threads) setActiveThreads(threads);
+      } catch {
+        // Non-fatal: thread selector just won't show
+      }
+    };
+    void fetchThreads();
+  }, [episode.projectId]);
 
   // WebSocket for async LLM results (uses shared provider from layout)
   const {
@@ -86,6 +115,8 @@ export default function IdeationPage() {
         logline: selection.logline,
         targetDuration: selection.targetDuration,
         contentStyle: selection.contentStyle,
+        threadCandidates:
+          threadCandidates.length > 0 ? threadCandidates : undefined,
       });
 
       // If queued, return queued flag (WebSocket will deliver result)
@@ -118,6 +149,14 @@ export default function IdeationPage() {
         defaultDuration={defaultDuration}
         defaultContentStyle={defaultContentStyle}
       />
+
+      {/* Thread Candidates — below the ideation form */}
+      <div className="mx-auto mt-6 max-w-5xl">
+        <ThreadCandidatesSelector
+          threads={activeThreads}
+          onSelectionChange={setThreadCandidates}
+        />
+      </div>
     </div>
   );
 }

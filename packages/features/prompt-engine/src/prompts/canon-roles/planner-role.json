@@ -4,7 +4,7 @@
     "description": "Planner role for Canon Management System. Creates structural skeleton with plot beats, character arcs, and scene organization. Sets constraints for downstream roles.",
     "model": {
         "provider": "gemini",
-        "model": "gemini-3-flash-preview",
+        "model": "gemini-3.1-flash-lite",
         "temperature": 0.3,
         "max_tokens": 4096
     },

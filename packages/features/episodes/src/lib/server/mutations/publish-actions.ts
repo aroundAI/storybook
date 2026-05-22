@@ -90,8 +90,6 @@ export const updateShortsGroupsAction = enhanceAction(
   { schema: UpdateShortsGroupsSchema },
 );
 
-
-
 /**
  * Item to be translated in a batch
  */
@@ -125,7 +123,9 @@ export const batchTranslateMetadataAction = enhanceAction(
     itemCount: number;
   }> => {
     // Filter out English items (no translation needed)
-    const itemsToTranslate = items.filter((item) => item.targetLanguage !== 'en');
+    const itemsToTranslate = items.filter(
+      (item) => item.targetLanguage !== 'en',
+    );
 
     if (itemsToTranslate.length === 0) {
       return {
@@ -140,7 +140,9 @@ export const batchTranslateMetadataAction = enhanceAction(
 
     // Get actual userId from session for WebSocket delivery
     const client = getSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
+    const {
+      data: { user },
+    } = await client.auth.getUser();
     const userId = user?.id || 'system';
 
     await queueLlmJob({
@@ -157,4 +159,3 @@ export const batchTranslateMetadataAction = enhanceAction(
   },
   { schema: BatchTranslateSchema },
 );
-

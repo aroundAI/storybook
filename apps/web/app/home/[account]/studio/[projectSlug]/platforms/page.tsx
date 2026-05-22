@@ -162,4 +162,3 @@ async function PlatformsPage({ params }: PlatformsPageProps) {
 }
 
 export default withI18n(PlatformsPage);
-

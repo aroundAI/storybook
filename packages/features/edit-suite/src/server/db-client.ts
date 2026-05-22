@@ -26,6 +26,5 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getEditSuiteClient(): any {
-    return getSupabaseServerClient();
+  return getSupabaseServerClient();
 }
-

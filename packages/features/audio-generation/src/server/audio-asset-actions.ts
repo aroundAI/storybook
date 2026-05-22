@@ -24,6 +24,13 @@ import { getProjectElevenLabsApiKey } from './project-audio-settings';
  * Assets are stored in the audio_assets table with prompt hashing for reuse.
  */
 
+/**
+ * Audio Asset Library Actions
+ *
+ * Server actions for managing reusable music/SFX assets with deduplication.
+ * Assets are stored in the audio_assets table with prompt hashing for reuse.
+ */
+
 // =============================================================================
 // Types
 // =============================================================================

@@ -17,12 +17,8 @@ import { ScreenplayScreen } from './_components/screenplay-screen';
 
 export default function ScreenplayPage() {
   const router = useRouter();
-  const {
-    episode,
-    accountSlug,
-    projectSlug,
-    refetchEpisode,
-  } = useEpisodeContext();
+  const { episode, accountSlug, projectSlug, refetchEpisode } =
+    useEpisodeContext();
 
   // Check if screenplay already has data
   const hasScreenplay = Boolean(episode.screenplayData?.scenes?.length);

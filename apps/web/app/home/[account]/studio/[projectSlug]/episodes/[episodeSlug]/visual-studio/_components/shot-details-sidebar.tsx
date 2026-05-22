@@ -7,12 +7,14 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Clapperboard,
   Clock,
   Copy,
   Download,
   ExternalLink,
   Image as ImageIcon,
   Layers,
+  MapPin,
   Maximize2,
   MessageCircle,
   Pause,
@@ -303,7 +305,6 @@ export function ShotDetailsSidebar({
       return [...charSet];
     }
     return chars;
-     
   }, [metadata?.characters, veoPrompt]);
 
   const [editedPrompt, setEditedPrompt] = useState(() => {
@@ -462,7 +463,7 @@ export function ShotDetailsSidebar({
             {shot.shortsMetadata.hookType && (
               <Badge
                 variant="secondary"
-                className="bg-purple-100 text-xs capitalize text-purple-700 dark:bg-purple-900/50 dark:text-purple-300"
+                className="bg-purple-100 text-xs text-purple-700 capitalize dark:bg-purple-900/50 dark:text-purple-300"
               >
                 {shot.shortsMetadata.hookType}
               </Badge>
@@ -553,7 +554,7 @@ export function ShotDetailsSidebar({
                         </p>
                       )}
                       {shot.shortsMetadata.improvementSuggestion && (
-                        <p className="italic text-gray-400 dark:text-gray-500">
+                        <p className="text-gray-400 italic dark:text-gray-500">
                           Tip: {shot.shortsMetadata.improvementSuggestion}
                         </p>
                       )}
@@ -563,6 +564,179 @@ export function ShotDetailsSidebar({
               </CollapsibleContent>
             </Collapsible>
           )}
+
+        {/* Shot Intelligence Accordion (OpenClaw fields) */}
+        {(shot.transitionType ||
+          shot.frameStrategy ||
+          shot.primarySubject ||
+          shot.locationArea) && (
+          <Collapsible>
+            <CollapsibleTrigger asChild>
+              <button className="flex w-full items-center justify-between border-b border-white/20 px-4 py-2.5 text-left transition-colors hover:bg-white/5 dark:border-white/10">
+                <span className="flex items-center gap-2 text-sm font-medium">
+                  <Clapperboard className="h-3.5 w-3.5 text-cyan-500" />
+                  Shot Intelligence
+                </span>
+                <ChevronDown className="h-4 w-4 text-gray-400 transition-transform [[data-state=open]>&]:rotate-180" />
+              </button>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <div className="space-y-3 border-b border-white/20 px-4 py-3 dark:border-white/10">
+                {/* Transition & Frame Strategy row */}
+                <div className="flex flex-wrap items-center gap-2">
+                  {shot.transitionType && (
+                    <Badge
+                      variant="secondary"
+                      className={cn(
+                        'text-xs capitalize',
+                        shot.transitionType === 'continuation'
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                          : shot.transitionType === 'cut'
+                            ? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+                            : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300',
+                      )}
+                    >
+                      {shot.transitionType.replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                  {shot.frameStrategy && (
+                    <Badge
+                      variant="secondary"
+                      className="bg-indigo-100 text-xs text-indigo-700 capitalize dark:bg-indigo-900/50 dark:text-indigo-300"
+                    >
+                      {shot.frameStrategy.replace(/_/g, ' ')}
+                    </Badge>
+                  )}
+                </div>
+
+                {/* Primary Subject */}
+                {shot.primarySubject && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-medium text-gray-500 uppercase dark:text-gray-400">
+                      Focus
+                    </span>
+                    <Badge variant="outline" className="text-xs capitalize">
+                      {shot.primarySubject.type === 'character'
+                        ? '👤'
+                        : shot.primarySubject.type === 'location'
+                          ? '📍'
+                          : '🔍'}{' '}
+                      {shot.primarySubject.name}
+                    </Badge>
+                  </div>
+                )}
+
+                {/* Location Area */}
+                {shot.locationArea && (
+                  <div className="space-y-1">
+                    <span className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase dark:text-gray-400">
+                      <MapPin className="h-3 w-3" />
+                      Location Area
+                    </span>
+                    <p className="text-xs text-gray-700 dark:text-gray-300">
+                      {shot.locationArea}
+                    </p>
+                  </div>
+                )}
+
+                {/* Location Environment Description */}
+                {shot.locationEnvironmentDescription && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 uppercase dark:text-gray-400">
+                        Environment
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          copyToClipboard(
+                            shot.locationEnvironmentDescription!,
+                            'Environment',
+                          )
+                        }
+                        className="h-5 w-5 p-0"
+                      >
+                        {copiedField === 'Environment' ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="rounded-md bg-white/30 p-2 text-xs leading-relaxed text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
+                      {shot.locationEnvironmentDescription}
+                    </p>
+                  </div>
+                )}
+
+                {/* First Frame Description */}
+                {shot.firstFrameDescription && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 uppercase dark:text-gray-400">
+                        First Frame
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          copyToClipboard(
+                            shot.firstFrameDescription!,
+                            'First frame',
+                          )
+                        }
+                        className="h-5 w-5 p-0"
+                      >
+                        {copiedField === 'First frame' ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="rounded-md bg-white/30 p-2 text-xs leading-relaxed text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
+                      {shot.firstFrameDescription}
+                    </p>
+                  </div>
+                )}
+
+                {/* Last Frame Description */}
+                {shot.lastFrameDescription && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-gray-500 uppercase dark:text-gray-400">
+                        Last Frame
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          copyToClipboard(
+                            shot.lastFrameDescription!,
+                            'Last frame',
+                          )
+                        }
+                        className="h-5 w-5 p-0"
+                      >
+                        {copiedField === 'Last frame' ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                    <p className="rounded-md bg-white/30 p-2 text-xs leading-relaxed text-gray-700 backdrop-blur-sm dark:bg-white/5 dark:text-gray-300">
+                      {shot.lastFrameDescription}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
+
         {/* Tab Headers */}
         <div className="flex items-center gap-2 border-b border-white/20 px-4 py-2 dark:border-white/10">
           {hasVeoData && (

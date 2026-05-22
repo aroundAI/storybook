@@ -11,6 +11,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import ws from 'ws';
 
 import type { PublishJobMessage } from '../publish-worker/index';
 
@@ -34,6 +35,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 

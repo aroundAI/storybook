@@ -15,76 +15,76 @@
 // ──────────────────────────────────────────
 
 interface CacheEntry<V> {
-    value: V;
-    createdAt: number;
+  value: V;
+  createdAt: number;
 }
 
 export class LRUCache<V> {
-    private cache = new Map<string, CacheEntry<V>>();
-    private readonly maxSize: number;
-    private readonly ttlMs: number | null;
+  private cache = new Map<string, CacheEntry<V>>();
+  private readonly maxSize: number;
+  private readonly ttlMs: number | null;
 
-    constructor(maxSize = 200, ttlMs: number | null = null) {
-        this.maxSize = maxSize;
-        this.ttlMs = ttlMs;
+  constructor(maxSize = 200, ttlMs: number | null = null) {
+    this.maxSize = maxSize;
+    this.ttlMs = ttlMs;
+  }
+
+  get(key: string): V | undefined {
+    const entry = this.cache.get(key);
+    if (!entry) return undefined;
+
+    // Check TTL
+    if (this.ttlMs && Date.now() - entry.createdAt > this.ttlMs) {
+      this.cache.delete(key);
+      return undefined;
     }
 
-    get(key: string): V | undefined {
-        const entry = this.cache.get(key);
-        if (!entry) return undefined;
+    // Move to end (most recently used) by re-inserting
+    this.cache.delete(key);
+    this.cache.set(key, entry);
+    return entry.value;
+  }
 
-        // Check TTL
-        if (this.ttlMs && Date.now() - entry.createdAt > this.ttlMs) {
-            this.cache.delete(key);
-            return undefined;
-        }
-
-        // Move to end (most recently used) by re-inserting
-        this.cache.delete(key);
-        this.cache.set(key, entry);
-        return entry.value;
+  set(key: string, value: V): void {
+    // Delete if exists (to update position)
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
     }
 
-    set(key: string, value: V): void {
-        // Delete if exists (to update position)
-        if (this.cache.has(key)) {
-            this.cache.delete(key);
-        }
-
-        // Evict LRU entries if at capacity
-        while (this.cache.size >= this.maxSize) {
-            const firstKey = this.cache.keys().next().value;
-            if (firstKey !== undefined) {
-                this.cache.delete(firstKey);
-            }
-        }
-
-        this.cache.set(key, { value, createdAt: Date.now() });
+    // Evict LRU entries if at capacity
+    while (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey !== undefined) {
+        this.cache.delete(firstKey);
+      }
     }
 
-    has(key: string): boolean {
-        const entry = this.cache.get(key);
-        if (!entry) return false;
+    this.cache.set(key, { value, createdAt: Date.now() });
+  }
 
-        if (this.ttlMs && Date.now() - entry.createdAt > this.ttlMs) {
-            this.cache.delete(key);
-            return false;
-        }
+  has(key: string): boolean {
+    const entry = this.cache.get(key);
+    if (!entry) return false;
 
-        return true;
+    if (this.ttlMs && Date.now() - entry.createdAt > this.ttlMs) {
+      this.cache.delete(key);
+      return false;
     }
 
-    delete(key: string): boolean {
-        return this.cache.delete(key);
-    }
+    return true;
+  }
 
-    clear(): void {
-        this.cache.clear();
-    }
+  delete(key: string): boolean {
+    return this.cache.delete(key);
+  }
 
-    get size(): number {
-        return this.cache.size;
-    }
+  clear(): void {
+    this.cache.clear();
+  }
+
+  get size(): number {
+    return this.cache.size;
+  }
 }
 
 // ──────────────────────────────────────────

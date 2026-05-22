@@ -9,12 +9,12 @@ import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import {
-  CreateAssetSchema,
   CheckAssetHashSchema,
+  CreateAssetSchema,
   DeleteAssetSchema,
+  GetAssetSchema,
   GetProjectAssetsSchema,
   UpdateAssetSchema,
-  GetAssetSchema,
 } from '../schemas/asset.schema';
 import type {
   Asset,
@@ -23,7 +23,7 @@ import type {
   GetProjectAssetsResponse,
 } from '../types';
 import { mapRowToAsset } from '../types';
-import { isAssetInUse, checkAssetHashQuery, getAsset } from './asset.queries';
+import { checkAssetHashQuery, getAsset, isAssetInUse } from './asset.queries';
 
 /**
  * Create a new asset for a project
@@ -84,7 +84,10 @@ export const createAssetAction = enhanceAction(
         .single();
 
       if (error) {
-        logger.error({ ...ctx, error, data }, 'Failed to create asset - DB Error');
+        logger.error(
+          { ...ctx, error, data },
+          'Failed to create asset - DB Error',
+        );
         throw new Error(`Failed to create asset: ${error.message}`);
       }
 
@@ -97,7 +100,9 @@ export const createAssetAction = enhanceAction(
       return { success: true, data: mapRowToAsset(asset as AssetRow) };
     } catch (error) {
       logger.error({ ...ctx, error }, 'Failed to create asset - Exception');
-      throw new Error(`Failed to create asset: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to create asset: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   },
   {
@@ -187,7 +192,11 @@ export const checkAssetHashAction = enhanceAction(
     }
 
     try {
-      const existingAsset = await checkAssetHashQuery(data.projectId, data.fileHash, data.type);
+      const existingAsset = await checkAssetHashQuery(
+        data.projectId,
+        data.fileHash,
+        data.type,
+      );
 
       logger.info(
         { ...ctx, found: !!existingAsset },
@@ -201,7 +210,9 @@ export const checkAssetHashAction = enhanceAction(
     } catch (error) {
       logger.error({ ...ctx, error }, 'Failed to check asset hash');
       // Rethrow to let enhanceAction handle it, but now we have a log
-      throw new Error(`Failed to check asset hash: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `Failed to check asset hash: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   },
   {

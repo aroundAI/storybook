@@ -122,9 +122,11 @@ export function DialogueTimeline({
     status: voiceGenStatus,
     result: voiceGenResult,
     error: voiceGenError,
-  } = useLlmJob<{ success: boolean; dialogueLineId?: string; audioUrl?: string }>(
-    'dialogue-voice-generation',
-  );
+  } = useLlmJob<{
+    success: boolean;
+    dialogueLineId?: string;
+    audioUrl?: string;
+  }>('dialogue-voice-generation');
 
   // Handle WebSocket voice generation result
   useEffect(() => {
@@ -440,7 +442,7 @@ export function DialogueTimeline({
                       colors.bg,
                       colors.border,
                       selectedDialogue?.id === dialogue.id &&
-                      'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
+                        'ring-2 ring-blue-500 ring-offset-2 dark:ring-offset-gray-900',
                     )}
                     style={{
                       left: `${leftPx}px`,
@@ -514,13 +516,24 @@ export function DialogueTimeline({
             </button>
             <button
               onClick={handleRegenerate}
-              disabled={selectedDialogue ? generatingIds.has(selectedDialogue.id) : false}
+              disabled={
+                selectedDialogue
+                  ? generatingIds.has(selectedDialogue.id)
+                  : false
+              }
               className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
             >
               <RefreshCw
-                className={cn('h-4 w-4', selectedDialogue && generatingIds.has(selectedDialogue.id) && 'animate-spin')}
+                className={cn(
+                  'h-4 w-4',
+                  selectedDialogue &&
+                    generatingIds.has(selectedDialogue.id) &&
+                    'animate-spin',
+                )}
               />
-              {selectedDialogue && generatingIds.has(selectedDialogue.id) ? 'Generating...' : 'Regenerate'}
+              {selectedDialogue && generatingIds.has(selectedDialogue.id)
+                ? 'Generating...'
+                : 'Regenerate'}
             </button>
           </div>
         </>

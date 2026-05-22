@@ -33,6 +33,12 @@ import { ImageUploader } from '../../image-uploader/ImageUploader';
  * Image upload fields for character reference images.
  */
 
+/**
+ * Character Image Upload Section (FILM-205)
+ *
+ * Image upload fields for character reference images.
+ */
+
 interface CharacterImageUploadProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

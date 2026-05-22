@@ -62,6 +62,15 @@ export const GenerateFullStorySchema = z.object({
   characters: z.array(CharacterInputSchema).optional(),
   worldDetails: z.string().max(1000).optional(),
   style: z.string().optional(),
+  threadCandidates: z
+    .array(
+      z.object({
+        threadId: z.string().uuid(),
+        threadName: z.string(),
+        action: z.enum(['progress', 'resolve']),
+      }),
+    )
+    .optional(),
 });
 
 export type GenerateFullStoryInput = z.infer<typeof GenerateFullStorySchema>;

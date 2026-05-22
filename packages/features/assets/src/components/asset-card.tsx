@@ -2,7 +2,16 @@
 
 import { useState } from 'react';
 
-import { Edit, MapPin, Mic, MoreVertical, Trash2, User, Film, Layout } from 'lucide-react';
+import {
+  Edit,
+  Film,
+  Layout,
+  MapPin,
+  Mic,
+  MoreVertical,
+  Trash2,
+  User,
+} from 'lucide-react';
 
 import {
   AlertDialog,

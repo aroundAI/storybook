@@ -42,6 +42,13 @@ import {
  * Fetches voices directly from the ElevenLabs API.
  */
 
+/**
+ * Character Voice Selector Section
+ *
+ * Dropdown to select an ElevenLabs voice for the character.
+ * Fetches voices directly from the ElevenLabs API.
+ */
+
 interface CharacterVoiceSelectorProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

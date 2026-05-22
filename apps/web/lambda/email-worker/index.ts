@@ -13,6 +13,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
+import ws from 'ws';
 
 // Email job data structure
 interface EmailJob {
@@ -35,6 +36,9 @@ const _supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 

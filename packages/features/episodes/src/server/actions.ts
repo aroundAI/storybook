@@ -2,14 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 
+import type { AssetRow } from '@kit/assets';
+import { mapRowToAsset } from '@kit/assets';
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
-import type { AssetRow } from '@kit/assets';
-import { mapRowToAsset } from '@kit/assets';
 
 import {
   CreateEpisodeSchema,
@@ -237,14 +237,19 @@ export const getEpisodeWithShotsAction = enhanceAction(
       .order('created_at', { ascending: false });
 
     if (titleCardsError) {
-      logger.error({ ...ctx, error: titleCardsError }, 'Failed to fetch title cards');
+      logger.error(
+        { ...ctx, error: titleCardsError },
+        'Failed to fetch title cards',
+      );
       // Non-critical, continue without title cards
     }
 
     logger.info(ctx, 'Episode fetched with shots');
 
     // Map titleCards with runtime safety check
-    const mappedTitleCards = (Array.isArray(titleCards) ? titleCards as AssetRow[] : []).map(mapRowToAsset);
+    const mappedTitleCards = (
+      Array.isArray(titleCards) ? (titleCards as AssetRow[]) : []
+    ).map(mapRowToAsset);
 
     // Transform snake_case database fields to camelCase TypeScript properties
     const transformedEpisode: EpisodeWithShots = {
@@ -787,8 +792,164 @@ export const resetEpisodeAction = enhanceAction(
       .eq('episode_id', data.episodeId);
 
     if (shotsError) {
-      logger.error({ ...ctx, error: shotsError }, 'Failed to delete shots during reset');
+      logger.error(
+        { ...ctx, error: shotsError },
+        'Failed to delete shots during reset',
+      );
       throw new Error('Failed to delete shots');
+    }
+
+    // Hard-delete all dialogue lines for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: dialogueError } = await (client as any)
+      .from('dialogue_lines')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (dialogueError) {
+      logger.error(
+        { ...ctx, error: dialogueError },
+        'Failed to delete dialogue lines during reset',
+      );
+      throw new Error('Failed to delete dialogue lines');
+    }
+
+    // Hard-delete all audio tracks for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: audioTracksError } = await (client as any)
+      .from('audio_tracks')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (audioTracksError) {
+      logger.warn(
+        { ...ctx, error: audioTracksError },
+        'Failed to delete audio tracks during reset (non-fatal)',
+      );
+    }
+
+    // Hard-delete all audio cues for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: audioCuesError } = await (client as any)
+      .from('audio_cues')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (audioCuesError) {
+      logger.warn(
+        { ...ctx, error: audioCuesError },
+        'Failed to delete audio cues during reset (non-fatal)',
+      );
+    }
+
+    // ── Canon cleanup ──────────────────────────────────────────────
+    // Delete narrative threads that were opened during this episode's generation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: threadsError } = await (client as any)
+      .from('narrative_threads')
+      .delete()
+      .eq('opened_at', data.episodeId);
+
+    if (threadsError) {
+      logger.warn(
+        { ...ctx, error: threadsError },
+        'Failed to delete narrative threads during reset (non-fatal)',
+      );
+    }
+
+    // Delete immutable events established in this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: immutableError } = await (client as any)
+      .from('immutable_events')
+      .delete()
+      .eq('established_in', data.episodeId);
+
+    if (immutableError) {
+      logger.warn(
+        { ...ctx, error: immutableError },
+        'Failed to delete immutable events during reset (non-fatal)',
+      );
+    }
+
+    // Delete character states from this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: charStatesError } = await (client as any)
+      .from('character_states')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (charStatesError) {
+      logger.warn(
+        { ...ctx, error: charStatesError },
+        'Failed to delete character states during reset (non-fatal)',
+      );
+    }
+
+    // Delete state deltas (audit trail) from this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deltasError } = await (client as any)
+      .from('state_deltas')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (deltasError) {
+      logger.warn(
+        { ...ctx, error: deltasError },
+        'Failed to delete state deltas during reset (non-fatal)',
+      );
+    }
+
+    // Delete episode summary
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: summaryError } = await (client as any)
+      .from('episode_summaries')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (summaryError) {
+      logger.warn(
+        { ...ctx, error: summaryError },
+        'Failed to delete episode summary during reset (non-fatal)',
+      );
+    }
+
+    // Clean stale episode references from other threads' episodes_touched arrays
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: touchedError } = await (client as any).rpc(
+      'remove_episode_from_threads_touched',
+      {
+        p_episode_id: data.episodeId,
+        p_project_id: episode.project_id,
+      },
+    );
+
+    if (touchedError) {
+      logger.warn(
+        { ...ctx, error: touchedError },
+        'Failed to clean episodes_touched during reset (non-fatal)',
+      );
+    }
+    // ── End canon cleanup ──────────────────────────────────────────
+
+    // Cancel all active generation jobs for this episode
+    // Prevents ghost Lambda workers from writing stale data after reset
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: jobsError } = await (client as any)
+      .from('generation_jobs')
+      .update({
+        status: 'failed',
+        error_message: 'Cancelled: Episode was reset to draft',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('reference_id', data.episodeId)
+      .eq('reference_type', 'episode')
+      .in('status', ['queued', 'processing']);
+
+    if (jobsError) {
+      logger.warn(
+        { ...ctx, error: jobsError },
+        'Failed to cancel generation jobs during reset (non-fatal)',
+      );
     }
 
     // Reset episode fields back to draft state, verifying version hasn't changed
@@ -841,7 +1002,10 @@ export const resetEpisodeAction = enhanceAction(
     }
 
     logger.info(ctx, 'Episode reset to draft');
-    revalidatePath('/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]', 'layout');
+    revalidatePath(
+      '/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]',
+      'layout',
+    );
 
     return { success: true };
   },

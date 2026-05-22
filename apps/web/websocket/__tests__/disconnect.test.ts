@@ -9,15 +9,21 @@ import { handler } from '../disconnect';
 import { createMockDisconnectEvent } from './utils/test-helpers';
 
 // Use vi.hoisted() to ensure mocks are available during hoisting phase
-const { mockDeleteCommand, mockGetCommand, mockScanCommand, mockSend, mockApiGwSend, mockPostToConnectionCommand } =
-  vi.hoisted(() => ({
-    mockDeleteCommand: vi.fn(),
-    mockGetCommand: vi.fn(),
-    mockScanCommand: vi.fn(),
-    mockSend: vi.fn(),
-    mockApiGwSend: vi.fn(),
-    mockPostToConnectionCommand: vi.fn(),
-  }));
+const {
+  mockDeleteCommand,
+  mockGetCommand,
+  mockScanCommand,
+  mockSend,
+  mockApiGwSend,
+  mockPostToConnectionCommand,
+} = vi.hoisted(() => ({
+  mockDeleteCommand: vi.fn(),
+  mockGetCommand: vi.fn(),
+  mockScanCommand: vi.fn(),
+  mockSend: vi.fn(),
+  mockApiGwSend: vi.fn(),
+  mockPostToConnectionCommand: vi.fn(),
+}));
 
 // Mock AWS DynamoDB
 vi.mock('@aws-sdk/client-dynamodb', () => ({
@@ -68,7 +74,9 @@ describe('WebSocket Disconnect Handler', () => {
     // DeleteCommand succeeds
     mockSend.mockImplementation((cmd: { _type: string }) => {
       if (cmd._type === 'GetCommand') {
-        return Promise.resolve({ Item: { connectionId: 'test-conn', channels: [], userId: '' } });
+        return Promise.resolve({
+          Item: { connectionId: 'test-conn', channels: [], userId: '' },
+        });
       }
       if (cmd._type === 'ScanCommand') {
         return Promise.resolve({ Items: [] });
@@ -127,7 +135,8 @@ describe('WebSocket Disconnect Handler', () => {
 
       // Mock: GetCommand returns no item (connection already gone)
       mockSend.mockImplementation((cmd: { _type: string }) => {
-        if (cmd._type === 'GetCommand') return Promise.resolve({ Item: undefined });
+        if (cmd._type === 'GetCommand')
+          return Promise.resolve({ Item: undefined });
         return Promise.resolve({});
       });
 
@@ -157,11 +166,23 @@ describe('WebSocket Disconnect Handler', () => {
           return Promise.resolve({
             Items: [
               // The disconnecting user's own connection (should be skipped)
-              { connectionId: 'user-conn-1', channels: ['edit:project-123'], userId: 'user-abc' },
+              {
+                connectionId: 'user-conn-1',
+                channels: ['edit:project-123'],
+                userId: 'user-abc',
+              },
               // A peer in the same channel (should be notified)
-              { connectionId: 'peer-conn-2', channels: ['edit:project-123'], userId: 'user-def' },
+              {
+                connectionId: 'peer-conn-2',
+                channels: ['edit:project-123'],
+                userId: 'user-def',
+              },
               // A connection in a different channel (should NOT be notified)
-              { connectionId: 'other-conn-3', channels: ['edit:other-project'], userId: 'user-ghi' },
+              {
+                connectionId: 'other-conn-3',
+                channels: ['edit:other-project'],
+                userId: 'user-ghi',
+              },
             ],
           });
         }
@@ -187,7 +208,11 @@ describe('WebSocket Disconnect Handler', () => {
       mockSend.mockImplementation((cmd: { _type: string }) => {
         if (cmd._type === 'GetCommand') {
           return Promise.resolve({
-            Item: { connectionId: 'no-channel-conn', channels: [], userId: 'user-xyz' },
+            Item: {
+              connectionId: 'no-channel-conn',
+              channels: [],
+              userId: 'user-xyz',
+            },
           });
         }
         return Promise.resolve({});
@@ -207,13 +232,21 @@ describe('WebSocket Disconnect Handler', () => {
       mockSend.mockImplementation((cmd: { _type: string }) => {
         if (cmd._type === 'GetCommand') {
           return Promise.resolve({
-            Item: { connectionId: 'user-conn-1', channels: ['ch1'], userId: 'user-a' },
+            Item: {
+              connectionId: 'user-conn-1',
+              channels: ['ch1'],
+              userId: 'user-a',
+            },
           });
         }
         if (cmd._type === 'ScanCommand') {
           return Promise.resolve({
             Items: [
-              { connectionId: 'stale-peer', channels: ['ch1'], userId: 'user-b' },
+              {
+                connectionId: 'stale-peer',
+                channels: ['ch1'],
+                userId: 'user-b',
+              },
             ],
           });
         }
@@ -294,7 +327,8 @@ describe('WebSocket Disconnect Handler', () => {
       // Clear and re-setup mocks
       vi.clearAllMocks();
       mockSend.mockImplementation((cmd: { _type: string }) => {
-        if (cmd._type === 'GetCommand') return Promise.resolve({ Item: undefined });
+        if (cmd._type === 'GetCommand')
+          return Promise.resolve({ Item: undefined });
         return Promise.resolve({});
       });
 

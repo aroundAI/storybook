@@ -30,6 +30,13 @@ import {
  * Focus on: name, description, reference image, and voice selection.
  */
 
+/**
+ * Character Editor Form (FILM-205)
+ *
+ * Simplified form layout for character editing.
+ * Focus on: name, description, reference image, and voice selection.
+ */
+
 interface CharacterEditorFormProps {
   form: UseFormReturn<CharacterFormData>;
   disabled?: boolean;

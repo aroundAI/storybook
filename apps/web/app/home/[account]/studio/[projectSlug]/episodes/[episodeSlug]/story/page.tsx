@@ -18,13 +18,8 @@ import { StoryScreen } from './_components/story-screen';
 
 export default function StoryPage() {
   const router = useRouter();
-  const {
-    episode,
-    accountSlug,
-    projectSlug,
-    projectMetadata,
-    refetchEpisode,
-  } = useEpisodeContext();
+  const { episode, accountSlug, projectSlug, projectMetadata, refetchEpisode } =
+    useEpisodeContext();
 
   // Check if story already has data
   const hasStory = Boolean(episode.storyData?.fullStory);
@@ -97,7 +92,9 @@ export default function StoryPage() {
   }
 
   // Type-safe extraction of canon settings from projectMetadata
-  const isCanonEnabled = (projectMetadata as { canon?: CanonSettings } | null)?.canon?.enabled ?? false;
+  const isCanonEnabled =
+    (projectMetadata as { canon?: CanonSettings } | null)?.canon?.enabled ??
+    false;
 
   return (
     <div className="h-full overflow-y-auto p-8">

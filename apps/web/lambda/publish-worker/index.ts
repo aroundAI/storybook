@@ -23,6 +23,7 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
+import ws from 'ws';
 
 import type {
   DeleteJobMessage,
@@ -50,6 +51,9 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  realtime: {
+    transport: ws,
   },
 });
 

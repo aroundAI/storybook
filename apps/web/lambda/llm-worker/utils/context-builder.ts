@@ -109,14 +109,16 @@ export interface EpisodeContext {
   visualStyle: string;
   aestheticStyle?: string; // Project Aesthetic Style for consistent visual descriptions
 
-  // Recurring story element (signature scene, moral message, etc.)
-  recurringElement?: {
+  // Recurring story elements (signature scenes, moral messages, etc.)
+  recurringElements?: Array<{
+    id: string;
+    name: string;
     enabled: boolean;
     location?: string;
     purpose?: string;
     placement?: 'beginning' | 'middle' | 'end' | 'throughout';
     dialogueHints?: string;
-  };
+  }>;
 }
 
 /**
@@ -203,6 +205,15 @@ export async function buildEpisodeContext(
       genre?: string;
       targetAudience?: string;
       videoStyle?: string;
+      recurringElements?: Array<{
+        id?: string;
+        name?: string;
+        enabled?: boolean;
+        location?: string;
+        purpose?: string;
+        placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+        dialogueHints?: string;
+      }>;
       recurringElement?: {
         enabled?: boolean;
         location?: string;
@@ -295,17 +306,41 @@ export async function buildEpisodeContext(
     visualStyle: projectMetadata.videoStyle ?? 'balanced',
     aestheticStyle: projectMetadata.projectAestheticStyle ?? undefined,
 
-    // Recurring story element
-    recurringElement:
-      projectMetadata.recurringElement?.enabled === true
-        ? {
+    // Recurring story elements (with backward compat for single element)
+    recurringElements: (() => {
+      // New array format
+      if (
+        projectMetadata.recurringElements &&
+        projectMetadata.recurringElements.length > 0
+      ) {
+        return projectMetadata.recurringElements
+          .filter((el) => el.enabled)
+          .map((el) => ({
+            id: el.id ?? crypto.randomUUID(),
+            name: el.name ?? 'Recurring Element',
+            enabled: true,
+            location: el.location,
+            purpose: el.purpose,
+            placement: el.placement,
+            dialogueHints: el.dialogueHints,
+          }));
+      }
+      // Backward compat: old single object format
+      if (projectMetadata.recurringElement?.enabled === true) {
+        return [
+          {
+            id: crypto.randomUUID(),
+            name: 'Recurring Element',
             enabled: true,
             location: projectMetadata.recurringElement.location,
             purpose: projectMetadata.recurringElement.purpose,
             placement: projectMetadata.recurringElement.placement,
             dialogueHints: projectMetadata.recurringElement.dialogueHints,
-          }
-        : undefined,
+          },
+        ];
+      }
+      return undefined;
+    })(),
   };
 }
 
@@ -565,56 +600,91 @@ ${episodes
 }
 
 /**
- * Format recurring element for prompt injection.
+ * Format recurring elements for prompt injection.
  * Fully dynamic — no hardcoded values. Every word comes from project settings.
  * Placement-aware: generates distinct instruction text for beginning/middle/end/throughout.
  */
-export function formatRecurringElementForPrompt(
-  recurringElement: EpisodeContext['recurringElement'],
+export function formatRecurringElementsForPrompt(
+  recurringElements: EpisodeContext['recurringElements'],
 ): string {
-  if (!recurringElement?.enabled) return '';
-
-  const placement = (recurringElement.placement ?? 'end').toLowerCase();
+  if (!recurringElements || recurringElements.length === 0) return '';
 
   const placementInstruction: Record<string, string> = {
-    beginning:  'at the START of the episode — before the main story begins',
-    middle:     'at a natural midpoint of the episode',
-    end:        'as the FINAL moment of the episode — nothing follows it',
-    throughout: 'at multiple natural points distributed across the entire episode',
+    beginning: 'at the START of the episode — before the main story hook',
+    middle: 'at a natural midpoint of the episode',
+    end: 'as the FINAL moment of the episode — nothing follows it',
+    throughout:
+      'at multiple natural points distributed across the entire episode',
   };
-  const when = placementInstruction[placement] ?? `at the ${recurringElement.placement} of the episode`;
 
-  const lines: string[] = [
-    '---',
-    `## RECURRING STORY ELEMENT — REQUIRED (Placement: ${recurringElement.placement ?? 'End'})`,
-    '',
-    `This element MUST appear ${when}.`,
-    '',
-  ];
+  const elementBlocks = recurringElements.map((el, i) => {
+    const placement = (el.placement ?? 'end').toLowerCase();
+    const when =
+      placementInstruction[placement] ??
+      `at the ${el.placement} of the episode`;
 
-  if (recurringElement.location) {
-    lines.push(`**Location / Context**: ${recurringElement.location}`);
-    lines.push(
-      'If the story is already in this location at the placement point, embed the element naturally.',
-      'If not, transition to this location at the appropriate time.',
+    const lines: string[] = [
+      `### Element ${i + 1}: "${el.name}" (Placement: ${el.placement ?? 'End'})`,
       '',
-    );
-  }
+      `This element MUST appear ${when}.`,
+      '',
+    ];
 
-  if (recurringElement.purpose) {
-    lines.push(`**What must happen**: ${recurringElement.purpose}`);
-    lines.push('');
-  }
+    if (el.location) {
+      lines.push(`**Location / Context**: ${el.location}`);
+      lines.push(
+        'If the story is already in this location at the placement point, embed the element naturally.',
+        'If not, transition to this location at the appropriate time.',
+        '',
+      );
+    }
 
-  if (recurringElement.dialogueHints) {
-    lines.push('**Dialogue templates** (adapt to this episode\'s events — do not copy verbatim):');
-    lines.push(recurringElement.dialogueHints);
-    lines.push('');
-  }
+    if (el.purpose) {
+      lines.push(`**What must happen**: ${el.purpose}`);
+      lines.push('');
+    }
 
-  lines.push('---');
-  return lines.join('\n');
+    if (el.dialogueHints) {
+      lines.push(
+        "**Dialogue templates** (adapt to this episode's events — do not copy verbatim):",
+      );
+      lines.push(el.dialogueHints);
+      lines.push('');
+    }
+
+    return lines.join('\n');
+  });
+
+  return [
+    '---',
+    '## RECURRING STORY ELEMENTS — ALL REQUIRED',
+    '',
+    ...elementBlocks,
+    '---',
+  ].join('\n');
 }
+
+/** @deprecated Use formatRecurringElementsForPrompt instead */
+export const formatRecurringElementForPrompt = (
+  recurringElement:
+    | {
+        enabled: boolean;
+        location?: string;
+        purpose?: string;
+        placement?: 'beginning' | 'middle' | 'end' | 'throughout';
+        dialogueHints?: string;
+      }
+    | undefined,
+): string => {
+  if (!recurringElement?.enabled) return '';
+  return formatRecurringElementsForPrompt([
+    {
+      id: 'legacy',
+      name: 'Recurring Element',
+      ...recurringElement,
+    },
+  ]);
+};
 
 /**
  * Format plot beats for prompt injection

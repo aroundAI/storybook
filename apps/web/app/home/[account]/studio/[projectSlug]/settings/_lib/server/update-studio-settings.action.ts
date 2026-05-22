@@ -89,8 +89,10 @@ export const updateStudioSettingsAction = enhanceAction(
     if (data.language !== undefined) {
       updatedMetadata.language = data.language;
     }
-    if (data.recurringElement !== undefined) {
-      updatedMetadata.recurringElement = data.recurringElement;
+    if (data.recurringElements !== undefined) {
+      updatedMetadata.recurringElements = data.recurringElements;
+      // Clean up old singular key if it exists (migration compat)
+      delete updatedMetadata.recurringElement;
     }
     if (data.projectAestheticStyle !== undefined) {
       updatedMetadata.projectAestheticStyle = data.projectAestheticStyle;

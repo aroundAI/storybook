@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Security: Validate path pattern to prevent path traversal
-    // Expected pattern: 
+    // Expected pattern:
     // 1. projects/{projectId}/assets/{type}/{filename}
     // 2. episodes/{episodeId}/{category}/{filename}
 
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     const pathPattern = new RegExp(
       `^(?:projects\\/([a-f0-9-]+)\\/(?:assets|shots\\/[a-f0-9-]+)|episodes\\/([a-f0-9-]+))\\/([a-zA-Z0-9_-]+)\\/[a-zA-Z0-9-.]+$`,
-      'i'
+      'i',
     );
 
     const pathMatch = path.match(pathPattern);

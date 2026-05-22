@@ -17,12 +17,19 @@ import {
   X,
 } from 'lucide-react';
 
-
 import { useAssets } from '@kit/assets/hooks';
-import type { EpisodeViralQuality, EpisodeWithShots, Shot, ShotStatus } from '@kit/episodes/types';
+import {
+  type ShotLocalPaths,
+  buildOpenClawManifest,
+} from '@kit/episodes/lib/openclaw-manifest';
+import type {
+  EpisodeViralQuality,
+  EpisodeWithShots,
+  Shot,
+  ShotStatus,
+} from '@kit/episodes/types';
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-
 import { useLlmJob } from '@kit/ui/hooks';
 import { Input } from '@kit/ui/input';
 import {
@@ -100,8 +107,10 @@ export function VisualStudioScreen({
   const [selectedShot, setSelectedShot] = useState<Shot | null>(null);
   const [showShortsOnly, setShowShortsOnly] = useState(false);
   const [viralScorecardExpanded, setViralScorecardExpanded] = useState(false);
-  const viralQuality = episode.viralQuality as EpisodeViralQuality | undefined | null;
-
+  const viralQuality = episode.viralQuality as
+    | EpisodeViralQuality
+    | undefined
+    | null;
 
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
   const {
@@ -184,7 +193,10 @@ export function VisualStudioScreen({
         viralScore: sceneShots[0]?.shortsMetadata?.viralScore ?? 0,
         estimatedDurationSeconds:
           sceneShots[0]?.shortsMetadata?.estimatedDurationSeconds ??
-          sceneShots.reduce((s, sh) => s + (sh.durationSeconds ?? sh.duration ?? 8), 0),
+          sceneShots.reduce(
+            (s, sh) => s + (sh.durationSeconds ?? sh.duration ?? 8),
+            0,
+          ),
         hookType: sceneShots[0]?.shortsMetadata?.hookType,
         standaloneSummary: sceneShots[0]?.shortsMetadata?.standaloneSummary,
       }))
@@ -449,26 +461,69 @@ export function VisualStudioScreen({
       md += '\n';
     }
 
+    // Shot Intelligence (OpenClaw fields)
+    if (
+      shot.transitionType ||
+      shot.frameStrategy ||
+      shot.primarySubject ||
+      shot.locationArea
+    ) {
+      md += `## Shot Intelligence\n\n`;
+
+      if (shot.transitionType) {
+        md += `**Transition:** ${shot.transitionType.replace(/_/g, ' ')}\n`;
+      }
+      if (shot.frameStrategy) {
+        md += `**Frame Strategy:** ${shot.frameStrategy.replace(/_/g, ' ')}\n`;
+      }
+      if (shot.primarySubject) {
+        md += `**Primary Subject:** ${shot.primarySubject.name} (${shot.primarySubject.type})\n`;
+      }
+      if (shot.locationArea) {
+        md += `**Location Area:** ${shot.locationArea}\n`;
+      }
+      md += '\n';
+
+      if (shot.firstFrameDescription) {
+        md += `### First Frame Description\n${shot.firstFrameDescription}\n\n`;
+      }
+      if (shot.lastFrameDescription) {
+        md += `### Last Frame Description\n${shot.lastFrameDescription}\n\n`;
+      }
+      if (shot.locationEnvironmentDescription) {
+        md += `### Environment Description\n${shot.locationEnvironmentDescription}\n\n`;
+      }
+    }
+
     return md;
   };
 
   /**
-   * Export all shot data for VEO 3.1 as a structured ZIP
-   * Structure: Episode/Scene-X/Shot-X.Y/ with prompt.md and reference images
+   * Unified export: builds a self-contained ZIP with all assets + OpenClaw manifest.
+   * OpenClaw can operate entirely from the extracted ZIP — no network access needed.
+   *
+   * Structure:
+   *   openclaw-manifest.json          ← Full manifest with localPath fields filled
+   *   fcp-import-manifest.json        ← FCP automation metadata
+   *   Scene-X/Shot-X.Y/prompt.md      ← Human-readable VEO prompt
+   *   Scene-X/Shot-X.Y/shot-X-Y.mp4   ← Video (if generated)
+   *   Scene-X/Shot-X.Y/first-frame.png
+   *   Scene-X/Shot-X.Y/last-frame.png
+   *   Scene-X/Shot-X.Y/character-*.png
+   *   Scene-X/Shot-X.Y/location-*.png
    */
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExportVeo = async () => {
+  const handleExportPackage = async () => {
     if (shots.length === 0) {
       toast.warning('No shots to export');
       return;
     }
 
     setIsExporting(true);
-    toast.info('Preparing VEO export...');
+    toast.info('Building export package...');
 
     try {
-      // Dynamic import of JSZip
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
@@ -482,43 +537,60 @@ export function VisualStudioScreen({
         shotsBySceneMap[sceneNum]!.push(shot);
       }
 
-      // Sort scenes
       const sortedScenes = Object.entries(shotsBySceneMap).sort(
         ([a], [b]) => parseInt(a) - parseInt(b),
       );
 
-      // Track fetched images to avoid duplicates or 429s
+      // Track fetched assets to avoid duplicate downloads
       const fetchedAssets = new Map<string, Blob>();
 
-      // Metadata for FCP import
+      // Track local paths for OpenClaw manifest
+      const localPathsMap = new Map<string, ShotLocalPaths>();
+
+      // FCP metadata
       const fcpMetadata: Array<{
         scene: number;
         shot: number;
         duration: number;
         filename: string;
         characters: string[];
+        transitionType: string | null;
+        frameStrategy: string | null;
+        primarySubject: { type: string; name: string } | null;
+        locationArea: string | null;
+        firstFrameDescription: string | null;
+        lastFrameDescription: string | null;
       }> = [];
 
       for (const [sceneNum, sceneShots] of sortedScenes) {
         const sceneFolder = zip.folder(`Scene-${sceneNum}`);
         if (!sceneFolder) continue;
 
-        // Sort shots within scene
         const sortedShots = [...sceneShots].sort(
           (a, b) => a.shotNumber - b.shotNumber,
         );
 
         for (const shot of sortedShots) {
-          const shotFolder = sceneFolder.folder(
-            `Shot-${sceneNum}.${shot.shotNumber}`,
-          );
+          const shotFolderName = `Shot-${sceneNum}.${shot.shotNumber}`;
+          const shotFolder = sceneFolder.folder(shotFolderName);
           if (!shotFolder) continue;
+
+          const shotBasePath = `Scene-${sceneNum}/${shotFolderName}`;
+
+          // Initialize local paths tracker for this shot
+          const shotPaths: ShotLocalPaths = {
+            characterPaths: new Map<string, string>(),
+            locationPath: null,
+            firstFramePath: null,
+            lastFramePath: null,
+            videoPath: null,
+          };
 
           // Add prompt.md
           const promptMd = generatePromptMd(shot);
           shotFolder.file('prompt.md', promptMd);
 
-          // 1. DOWNLOAD VIDEO (Critical for FCP)
+          // 1. DOWNLOAD VIDEO
           if (shot.videoUrl) {
             let blob = fetchedAssets.get(shot.videoUrl);
             if (!blob) {
@@ -530,6 +602,7 @@ export function VisualStudioScreen({
             if (blob) {
               const videoFilename = `shot-${sceneNum}-${shot.shotNumber}.mp4`;
               shotFolder.file(videoFilename, blob);
+              shotPaths.videoPath = `${shotBasePath}/${videoFilename}`;
 
               fcpMetadata.push({
                 scene: Number(sceneNum),
@@ -537,11 +610,17 @@ export function VisualStudioScreen({
                 duration: Number(shot.duration),
                 filename: videoFilename,
                 characters: extractCharacters(shot),
+                transitionType: shot.transitionType ?? null,
+                frameStrategy: shot.frameStrategy ?? null,
+                primarySubject: shot.primarySubject ?? null,
+                locationArea: shot.locationArea ?? null,
+                firstFrameDescription: shot.firstFrameDescription ?? null,
+                lastFrameDescription: shot.lastFrameDescription ?? null,
               });
             }
           }
 
-          // Add storyboard frames (first and last frame images)
+          // 2. FIRST FRAME
           if (shot.firstFrameUrl) {
             let blob = fetchedAssets.get(shot.firstFrameUrl);
             if (!blob) {
@@ -552,9 +631,11 @@ export function VisualStudioScreen({
             }
             if (blob) {
               shotFolder.file('first-frame.png', blob);
+              shotPaths.firstFramePath = `${shotBasePath}/first-frame.png`;
             }
           }
 
+          // 3. LAST FRAME
           if (shot.lastFrameUrl) {
             let blob = fetchedAssets.get(shot.lastFrameUrl);
             if (!blob) {
@@ -565,10 +646,11 @@ export function VisualStudioScreen({
             }
             if (blob) {
               shotFolder.file('last-frame.png', blob);
+              shotPaths.lastFramePath = `${shotBasePath}/last-frame.png`;
             }
           }
 
-          // Get metadata for reference images
+          // 4. CHARACTER REFERENCE IMAGES
           const metadata = shot.metadata as {
             characters?: string[];
             locations?: string[];
@@ -578,23 +660,20 @@ export function VisualStudioScreen({
             };
           } | null;
 
-          // Add character images - specifically for characters in this shot
           const shotCharacters = extractCharacters(shot);
           for (const charName of shotCharacters) {
             let imgUrl: string | undefined;
-            
-            // 1. Try to find in metadata.referenceImages
+
             if (metadata?.referenceImages?.characters) {
               const refImg = metadata.referenceImages.characters.find(
-                (c) => c.name.toLowerCase() === charName.toLowerCase()
+                (c) => c.name.toLowerCase() === charName.toLowerCase(),
               );
               if (refImg) imgUrl = refImg.url;
             }
-            
-            // 2. Fallback to project assets
+
             if (!imgUrl) {
               const asset = projectCharacters.find(
-                (c) => c.name.toLowerCase() === charName.toLowerCase()
+                (c) => c.name.toLowerCase() === charName.toLowerCase(),
               );
               if (asset?.fileUrl) imgUrl = asset.fileUrl;
             }
@@ -610,16 +689,19 @@ export function VisualStudioScreen({
               }
               if (blob) {
                 shotFolder.file(filename, blob);
+                shotPaths.characterPaths.set(
+                  charName.toLowerCase(),
+                  `${shotBasePath}/${filename}`,
+                );
               }
             }
           }
 
-          // Add location images - try metadata.referenceImages first, then fall back to project assets
+          // 5. LOCATION REFERENCE IMAGES
           if (
             metadata?.referenceImages?.locations &&
             metadata.referenceImages.locations.length > 0
           ) {
-            // Use reference images from metadata
             for (const img of metadata.referenceImages.locations) {
               const filename = `location-${sanitizeName(img.name)}.png`;
               let blob = fetchedAssets.get(img.url);
@@ -631,10 +713,10 @@ export function VisualStudioScreen({
               }
               if (blob) {
                 shotFolder.file(filename, blob);
+                shotPaths.locationPath = `${shotBasePath}/${filename}`;
               }
             }
           } else if (metadata?.locations && metadata.locations.length > 0) {
-            // Fall back to looking up locations from project assets
             for (const locName of metadata.locations) {
               const asset = projectLocations.find(
                 (l) => l.name.toLowerCase() === locName.toLowerCase(),
@@ -650,14 +732,30 @@ export function VisualStudioScreen({
                 }
                 if (blob) {
                   shotFolder.file(filename, blob);
+                  shotPaths.locationPath = `${shotBasePath}/${filename}`;
                 }
               }
             }
           }
+
+          // Store paths for this shot
+          localPathsMap.set(shot.id, shotPaths);
         }
       }
 
-      // Add Metadata Manifest for FCP automation
+      // Build OpenClaw manifest with local paths
+      const openClawManifest = buildOpenClawManifest(
+        episode,
+        projectCharacters ?? [],
+        projectLocations ?? [],
+        localPathsMap,
+      );
+      zip.file(
+        'openclaw-manifest.json',
+        JSON.stringify(openClawManifest, null, 2),
+      );
+
+      // Add FCP import manifest
       zip.file(
         'fcp-import-manifest.json',
         JSON.stringify(fcpMetadata, null, 2),
@@ -668,16 +766,18 @@ export function VisualStudioScreen({
       const url = URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `veo-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.zip`;
+      a.download = `episode-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success(`Exported ${shots.length} shots as structured ZIP`);
+      toast.success(
+        `Exported ${shots.length} shots with OpenClaw manifest (${openClawManifest.summary.cutsCount} cuts, ${openClawManifest.summary.continuationsCount} continuations)`,
+      );
     } catch (error) {
       console.error('Export failed:', error);
-      toast.error('Failed to export VEO data');
+      toast.error('Failed to export package');
     } finally {
       setIsExporting(false);
     }
@@ -698,9 +798,7 @@ export function VisualStudioScreen({
               Visual Studio
             </h2>
             <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
-              <span>
-                {stats.total} shots
-              </span>
+              <span>{stats.total} shots</span>
               <span>•</span>
               <span>~{Math.round(stats.totalDuration / 60)} min</span>
               {stats.shortsCandidates > 0 && (
@@ -708,7 +806,8 @@ export function VisualStudioScreen({
                   <span>•</span>
                   <span className="flex items-center gap-1 font-medium text-orange-500">
                     <Flame className="h-3.5 w-3.5" />
-                    {stats.shortsCandidates} reel{stats.shortsCandidates === 1 ? '' : 's'}
+                    {stats.shortsCandidates} reel
+                    {stats.shortsCandidates === 1 ? '' : 's'}
                   </span>
                 </>
               )}
@@ -737,7 +836,7 @@ export function VisualStudioScreen({
 
             <Button
               variant="outline"
-              onClick={handleExportVeo}
+              onClick={handleExportPackage}
               disabled={stats.total === 0 || isExporting}
               className="gap-2"
             >
@@ -746,7 +845,7 @@ export function VisualStudioScreen({
               ) : (
                 <Download className="h-4 w-4" />
               )}
-              {isExporting ? 'Exporting...' : 'Export VEO'}
+              {isExporting ? 'Exporting...' : 'Export Package'}
             </Button>
 
             <Button
@@ -813,12 +912,17 @@ export function VisualStudioScreen({
               </div>
               <button
                 onClick={() => setViralScorecardExpanded((v) => !v)}
-                className="text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300 flex items-center gap-1"
+                className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
               >
                 {viralScorecardExpanded ? (
-                  <><ChevronUp className="h-3.5 w-3.5" /> Collapse</>
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" /> Collapse
+                  </>
                 ) : (
-                  <><ChevronDown className="h-3.5 w-3.5" /> Expand<Info className="h-3 w-3 ml-0.5" /></>
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" /> Expand
+                    <Info className="ml-0.5 h-3 w-3" />
+                  </>
                 )}
               </button>
             </div>
@@ -857,75 +961,88 @@ export function VisualStudioScreen({
                       7-Dimension Breakdown
                     </p>
                     <div className="grid grid-cols-4 gap-x-4 gap-y-2">
-                      {Object.entries(viralQuality.dimensionScores).map(([dim, score]) => (
-                        <div key={dim}>
-                          <div className="mb-0.5 flex items-center justify-between">
-                            <span className="text-xs capitalize text-gray-500 dark:text-gray-400">
-                              {dim.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                            <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                              {Math.round((score as number) * 100)}
-                            </span>
+                      {Object.entries(viralQuality.dimensionScores).map(
+                        ([dim, score]) => (
+                          <div key={dim}>
+                            <div className="mb-0.5 flex items-center justify-between">
+                              <span className="text-xs text-gray-500 capitalize dark:text-gray-400">
+                                {dim.replace(/([A-Z])/g, ' $1').trim()}
+                              </span>
+                              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                {Math.round((score as number) * 100)}
+                              </span>
+                            </div>
+                            <div className="h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                              <div
+                                className={cn(
+                                  'h-full rounded-full',
+                                  (score as number) >= 0.7
+                                    ? 'bg-green-500'
+                                    : (score as number) >= 0.5
+                                      ? 'bg-amber-500'
+                                      : 'bg-red-500',
+                                )}
+                                style={{ width: `${(score as number) * 100}%` }}
+                              />
+                            </div>
                           </div>
-                          <div className="h-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-                            <div
-                              className={cn(
-                                'h-full rounded-full',
-                                (score as number) >= 0.7
-                                  ? 'bg-green-500'
-                                  : (score as number) >= 0.5
-                                    ? 'bg-amber-500'
-                                    : 'bg-red-500',
-                              )}
-                              style={{ width: `${(score as number) * 100}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                        ),
+                      )}
                     </div>
                   </div>
                 )}
 
                 {/* Top Reel Candidates */}
-                {viralQuality.reelCandidates && viralQuality.reelCandidates.length > 0 && (
-                  <div className="col-span-2">
-                    <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400">
-                      🎬 Top Reel Candidates
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {viralQuality.reelCandidates
-                        .sort((a, b) => b.viralScore - a.viralScore)
-                        .slice(0, 4)
-                        .map((c) => (
-                          <div
-                            key={c.sceneNumber}
-                            className="flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
-                          >
-                            <Flame className="h-3 w-3" />
-                            <span>Scene {c.sceneNumber}</span>
-                            {c.hookType && (
-                              <span className="opacity-70 capitalize">· {c.hookType}</span>
-                            )}
-                            <span className="font-bold">{c.viralScore.toFixed(1)}</span>
-                          </div>
-                        ))}
+                {viralQuality.reelCandidates &&
+                  viralQuality.reelCandidates.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="mb-1.5 text-xs font-semibold text-gray-600 dark:text-gray-400">
+                        🎬 Top Reel Candidates
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {viralQuality.reelCandidates
+                          .sort((a, b) => b.viralScore - a.viralScore)
+                          .slice(0, 4)
+                          .map((c) => (
+                            <div
+                              key={c.sceneNumber}
+                              className="flex items-center gap-1.5 rounded-full bg-orange-100 px-3 py-1 text-xs text-orange-800 dark:bg-orange-900/40 dark:text-orange-300"
+                            >
+                              <Flame className="h-3 w-3" />
+                              <span>Scene {c.sceneNumber}</span>
+                              {c.hookType && (
+                                <span className="capitalize opacity-70">
+                                  · {c.hookType}
+                                </span>
+                              )}
+                              <span className="font-bold">
+                                {c.viralScore.toFixed(1)}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Revisions applied */}
-                {viralQuality.revisionsApplied && viralQuality.revisionsApplied.length > 0 && (
-                  <div className="col-span-2">
-                    <p className="mb-1 text-xs font-medium text-blue-600 dark:text-blue-400">
-                      🔄 Orchestrator revisions applied
-                    </p>
-                    <ul className="space-y-0.5">
-                      {viralQuality.revisionsApplied.map((r, i) => (
-                        <li key={i} className="text-xs text-gray-500 dark:text-gray-400">• {r}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {viralQuality.revisionsApplied &&
+                  viralQuality.revisionsApplied.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="mb-1 text-xs font-medium text-blue-600 dark:text-blue-400">
+                        🔄 Orchestrator revisions applied
+                      </p>
+                      <ul className="space-y-0.5">
+                        {viralQuality.revisionsApplied.map((r, i) => (
+                          <li
+                            key={i}
+                            className="text-xs text-gray-500 dark:text-gray-400"
+                          >
+                            • {r}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
               </div>
             )}
           </div>
@@ -1032,7 +1149,8 @@ export function VisualStudioScreen({
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-orange-400" />
                 <span className="text-sm font-semibold text-orange-300">
-                  {shortsCandidateScenes.length} Reel{shortsCandidateScenes.length === 1 ? '' : 's'}
+                  {shortsCandidateScenes.length} Reel
+                  {shortsCandidateScenes.length === 1 ? '' : 's'}
                 </span>
                 <span className="text-xs text-gray-500">
                   — complete scenes flagged by AI as standalone reels (30-60s)
@@ -1051,7 +1169,9 @@ export function VisualStudioScreen({
                             : scene.sceneNumber,
                       }))
                     }
-                    title={scene.standaloneSummary ?? `Scene ${scene.sceneNumber}`}
+                    title={
+                      scene.standaloneSummary ?? `Scene ${scene.sceneNumber}`
+                    }
                     className="flex items-center gap-1.5 rounded-full border border-orange-500/30 bg-orange-900/30 px-2.5 py-1 text-xs font-medium text-orange-300 transition-all hover:bg-orange-900/50"
                   >
                     <Flame className="h-3 w-3" />

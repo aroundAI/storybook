@@ -17,63 +17,64 @@
  *   - viral_quality written to DB
  *   - episode status → 'story'
  */
-
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
 
+import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
 import { continuitySkill } from './skills/continuity-skill';
 import { storyDirectorSkill } from './skills/story-director-skill';
 import { viralAnalystSkill } from './skills/viral-analyst-skill';
-import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
 
 export interface StoryOrchestratorInput {
-    episodeId: string;
-    episodeTitle: string;
-    episodeLogline: string;
-    genre: string;
-    targetAudience: string;
-    targetDurationSeconds: number;
-    contentStyle?: 'dialogue-heavy' | 'balanced' | 'action-heavy';
-    projectId: string;
-    episodeNumber: number;
-    accountId: string;
-    // Pre-formatted context blocks from context-builder
-    charactersContext: string;
-    locationsContext: string;
-    seasonContext?: string;
-    previousEpisodesContext?: string;
-    visualStyle?: string;
-    // Recurring element from project settings (e.g. episode ending pattern)
-    recurringElementContext?: string;
+  episodeId: string;
+  episodeTitle: string;
+  episodeLogline: string;
+  genre: string;
+  targetAudience: string;
+  targetDurationSeconds: number;
+  contentStyle?: 'dialogue-heavy' | 'balanced' | 'action-heavy';
+  projectId: string;
+  episodeNumber: number;
+  accountId: string;
+  // Pre-formatted context blocks from context-builder
+  charactersContext: string;
+  locationsContext: string;
+  seasonContext?: string;
+  previousEpisodesContext?: string;
+  visualStyle?: string;
+  // Recurring elements from project settings (e.g. episode ending pattern)
+  recurringElementsContext?: string;
+  // Narrative threads to progress/resolve in this episode
+  threadCandidatesContext?: string;
 }
 
 export interface StoryOrchestratorResult {
-    success: boolean;
-    viralQuality: EpisodeViralQuality | null;
-    storyText?: string;
-    // Full story metadata for DB write
-    storyTitle?: string;
-    actBreakdown?: { act1: string; act2: string; act3: string };
-    storyCharacters?: Array<{ name: string; role: string; arc: string }>;
-    themes?: string[];
-    tone?: string;
-    estimatedSceneCount?: number;
-    episodeSummary?: string;
-    sentimentScore?: number;
-    keyEvents?: string[];
-    viralStructure?: Record<string, unknown>;
-    orchestratorSteps: number;
-    error?: string;
+  success: boolean;
+  viralQuality: EpisodeViralQuality | null;
+  storyText?: string;
+  // Full story metadata for DB write
+  storyTitle?: string;
+  actBreakdown?: { act1: string; act2: string; act3: string };
+  storyCharacters?: Array<{ name: string; role: string; arc: string }>;
+  themes?: string[];
+  tone?: string;
+  estimatedSceneCount?: number;
+  episodeSummary?: string;
+  sentimentScore?: number;
+  keyEvents?: string[];
+  viralStructure?: Record<string, unknown>;
+  orchestratorSteps: number;
+  error?: string;
 }
 
 interface StoryOrchestratorOutput {
-    overallScore: number;
-    decision: 'pass' | 'revised' | 'flag';
-    whyThisWorks: string;
-    whatToImprove: string;
-    dimensionScores: ViralDimensionScores;
-    revisionsApplied: string[];
-    finalStoryText?: string;
+  overallScore: number;
+  decision: 'pass' | 'revised' | 'flag';
+  whyThisWorks: string;
+  whatToImprove: string;
+  dimensionScores: ViralDimensionScores;
+  revisionsApplied: string[];
+  finalStoryText?: string;
 }
 
 /**
@@ -82,115 +83,123 @@ interface StoryOrchestratorOutput {
  * Stops once story quality is acceptable (score ≥ 0.65 OR 1 revision applied).
  */
 export async function runStoryOrchestrator(
-    input: StoryOrchestratorInput,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: { from: (table: string) => any },
+  input: StoryOrchestratorInput,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
 ): Promise<StoryOrchestratorResult> {
-    console.log(`[Story Orchestrator] Starting for episode ${input.episodeId}`);
+  console.log(`[Story Orchestrator] Starting for episode ${input.episodeId}`);
 
-    const result: AgentRunResult<StoryOrchestratorOutput> = await runAgent<StoryOrchestratorOutput>(
-        {
-            name: 'story-orchestrator',
-            systemPrompt: STORY_SYSTEM_PROMPT,
-            tools: [],
-            skills: [storyDirectorSkill, viralAnalystSkill, continuitySkill],
-            maxSteps: 8,
-            budgetLimits: {
-                maxTotalTokens: 200_000,
-                maxCostUSD: 2.00,
-                maxLatencyMs: 300_000,
-            },
+  const result: AgentRunResult<StoryOrchestratorOutput> =
+    await runAgent<StoryOrchestratorOutput>(
+      {
+        name: 'story-orchestrator',
+        systemPrompt: STORY_SYSTEM_PROMPT,
+        tools: [],
+        skills: [storyDirectorSkill, viralAnalystSkill, continuitySkill],
+        maxSteps: 8,
+        budgetLimits: {
+          maxTotalTokens: 200_000,
+          maxCostUSD: 2.0,
+          maxLatencyMs: 480_000,
         },
-        {
-            userPrompt: buildStoryPrompt(input),
-        },
-        { accountId: input.accountId },
+      },
+      {
+        userPrompt: buildStoryPrompt(input),
+      },
+      { accountId: input.accountId },
     );
 
-    if (!result.success || !result.data) {
-        console.warn(`[Story Orchestrator] Failed: ${result.error}`);
-        return {
-            success: false,
-            viralQuality: null,
-            orchestratorSteps: result.steps.length,
-            error: result.error,
-        };
-    }
-
-    const output = result.data;
-
-    // Extract story data from tool steps (more reliable than LLM synthesis for large text)
-    type GenerateStoryResult = {
-        storyText?: string;
-        title?: string;
-        actBreakdown?: { act1: string; act2: string; act3: string };
-        characters?: Array<{ name: string; role: string; arc: string }>;
-        themes?: string[];
-        tone?: string;
-        estimatedSceneCount?: number;
-        episodeSummary?: string;
-        sentimentScore?: number;
-        keyEvents?: string[];
-        viralStructure?: Record<string, unknown>;
-    };
-    const storyStep = result.steps.findLast(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateStory' && s.toolResult?.success,
-    );
-    const storyStepData = storyStep?.toolResult?.data as GenerateStoryResult | undefined;
-    const storyTextFromSteps = storyStepData?.storyText;
-    const resolvedStoryText = storyTextFromSteps ?? output.finalStoryText;
-
-    console.log(
-        `[Story Orchestrator] Complete. Steps: ${result.steps.length}, ` +
-        `Story: ${resolvedStoryText?.split(/\s+/).length ?? 0} words, ` +
-        `Viral score: ${output.overallScore ?? 'N/A'}`,
-    );
-
-    const viralQuality: EpisodeViralQuality = {
-        overallScore: output.overallScore,
-        decision: output.decision,
-        whyThisWorks: output.whyThisWorks,
-        whatToImprove: output.whatToImprove,
-        dimensionScores: output.dimensionScores,
-        revisionsApplied: output.revisionsApplied,
-        orchestratorSteps: result.steps.length,
-        reelCandidates: [],
-    };
-
-    // Persist viral_quality to the episode
-    try {
-        const { error } = await supabase
-            .from('episodes')
-            .update({ viral_quality: viralQuality })
-            .eq('id', input.episodeId);
-
-        if (error) {
-            console.warn(`[Story Orchestrator] Failed to persist viral_quality: ${(error as { message: string }).message}`);
-        } else {
-            console.log(
-                `[Story Orchestrator] viral_quality persisted. Score: ${viralQuality.overallScore}, Decision: ${viralQuality.decision}`,
-            );
-        }
-    } catch (err) {
-        console.warn('[Story Orchestrator] Persist error (non-fatal):', err);
-    }
-
+  if (!result.success || !result.data) {
+    console.warn(`[Story Orchestrator] Failed: ${result.error}`);
     return {
-        success: true,
-        viralQuality,
-        storyText: resolvedStoryText,
-        storyTitle: storyStepData?.title,
-        actBreakdown: storyStepData?.actBreakdown,
-        storyCharacters: storyStepData?.characters,
-        themes: storyStepData?.themes,
-        tone: storyStepData?.tone,
-        estimatedSceneCount: storyStepData?.estimatedSceneCount,
-        episodeSummary: storyStepData?.episodeSummary,
-        sentimentScore: storyStepData?.sentimentScore,
-        keyEvents: storyStepData?.keyEvents,
-        viralStructure: storyStepData?.viralStructure,
-        orchestratorSteps: result.steps.length,
+      success: false,
+      viralQuality: null,
+      orchestratorSteps: result.steps.length,
+      error: result.error,
     };
+  }
+
+  const output = result.data;
+
+  // Extract story data from tool steps (more reliable than LLM synthesis for large text)
+  type GenerateStoryResult = {
+    storyText?: string;
+    title?: string;
+    actBreakdown?: { act1: string; act2: string; act3: string };
+    characters?: Array<{ name: string; role: string; arc: string }>;
+    themes?: string[];
+    tone?: string;
+    estimatedSceneCount?: number;
+    episodeSummary?: string;
+    sentimentScore?: number;
+    keyEvents?: string[];
+    viralStructure?: Record<string, unknown>;
+  };
+  const storyStep = result.steps.findLast(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateStory' &&
+      s.toolResult?.success,
+  );
+  const storyStepData = storyStep?.toolResult?.data as
+    | GenerateStoryResult
+    | undefined;
+  const storyTextFromSteps = storyStepData?.storyText;
+  const resolvedStoryText = storyTextFromSteps ?? output.finalStoryText;
+
+  console.log(
+    `[Story Orchestrator] Complete. Steps: ${result.steps.length}, ` +
+      `Story: ${resolvedStoryText?.split(/\s+/).length ?? 0} words, ` +
+      `Viral score: ${output.overallScore ?? 'N/A'}`,
+  );
+
+  const viralQuality: EpisodeViralQuality = {
+    overallScore: output.overallScore,
+    decision: output.decision,
+    whyThisWorks: output.whyThisWorks,
+    whatToImprove: output.whatToImprove,
+    dimensionScores: output.dimensionScores,
+    revisionsApplied: output.revisionsApplied,
+    orchestratorSteps: result.steps.length,
+    reelCandidates: [],
+  };
+
+  // Persist viral_quality to the episode
+  try {
+    const { error } = await supabase
+      .from('episodes')
+      .update({ viral_quality: viralQuality })
+      .eq('id', input.episodeId);
+
+    if (error) {
+      console.warn(
+        `[Story Orchestrator] Failed to persist viral_quality: ${(error as { message: string }).message}`,
+      );
+    } else {
+      console.log(
+        `[Story Orchestrator] viral_quality persisted. Score: ${viralQuality.overallScore}, Decision: ${viralQuality.decision}`,
+      );
+    }
+  } catch (err) {
+    console.warn('[Story Orchestrator] Persist error (non-fatal):', err);
+  }
+
+  return {
+    success: true,
+    viralQuality,
+    storyText: resolvedStoryText,
+    storyTitle: storyStepData?.title,
+    actBreakdown: storyStepData?.actBreakdown,
+    storyCharacters: storyStepData?.characters,
+    themes: storyStepData?.themes,
+    tone: storyStepData?.tone,
+    estimatedSceneCount: storyStepData?.estimatedSceneCount,
+    episodeSummary: storyStepData?.episodeSummary,
+    sentimentScore: storyStepData?.sentimentScore,
+    keyEvents: storyStepData?.keyEvents,
+    viralStructure: storyStepData?.viralStructure,
+    orchestratorSteps: result.steps.length,
+  };
 }
 
 const STORY_SYSTEM_PROMPT = `You are the Story Pipeline Director — a focused quality loop for story generation.
@@ -203,7 +212,7 @@ You coordinate three specialist agents to produce a high-quality story:
 
 ## Your Decision Logic
 
-1. ALWAYS start with Story Director. Pass characters, locations, seasonContext, previousEpisodes, and recurringElement verbatim.
+1. ALWAYS start with Story Director. Pass characters, locations, seasonContext, previousEpisodes, and recurringElements verbatim.
 2. THEN run Viral Analyst (evaluateContent) to score the story.
 3. THEN run Continuity Guardian (buildMemoryContext then checkContinuity).
 4. IF Viral Analyst score < 0.65 AND you haven't revised yet → call Story Director ONCE with revisionInstructions targeting the weakest dimensions. Then re-score with Viral Analyst.
@@ -213,7 +222,7 @@ You coordinate three specialist agents to produce a high-quality story:
 ## CRITICAL CONSTRAINTS
 - Do NOT call generateScreenplay, analyzeScenes, or generateShots — those run in separate pipeline stages.
 - Do NOT try to do everything perfectly — one revision loop is the maximum.
-- The recurringElement MUST be passed to generateStory if provided.
+- The recurringElements MUST be passed to generateStory if provided.
 
 ## Your Final Answer
 
@@ -227,7 +236,7 @@ Return a JSON object with:
 - finalStoryText: the final story text after any revisions`;
 
 function buildStoryPrompt(input: StoryOrchestratorInput): string {
-    return `Generate and quality-check a story for this episode.
+  return `Generate and quality-check a story for this episode.
 
 **Episode**: "${input.episodeTitle}"
 **Logline**: ${input.episodeLogline}
@@ -245,10 +254,26 @@ ${input.locationsContext || 'No locations defined.'}
 
 ${input.seasonContext ? `**Season Context:** ${input.seasonContext}` : ''}
 ${input.previousEpisodesContext ? `**Previous Episodes:** ${input.previousEpisodesContext}` : ''}
-${input.recurringElementContext ? `
-**Recurring Episode Element (MANDATORY — pass verbatim to generateStory as recurringElement):**
-${input.recurringElementContext}
-` : ''}
+${
+  input.threadCandidatesContext
+    ? `
+**NARRATIVE THREAD DIRECTIVES (pass verbatim to Story Director):**
+The following threads MUST be addressed in this episode:
+${input.threadCandidatesContext}
+
+For PROGRESS threads: advance the storyline with new developments, but do NOT resolve.
+For RESOLVE threads: bring this arc to a satisfying conclusion in this episode.
+`
+    : ''
+}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Episode Elements (MANDATORY — pass verbatim to generateStory as recurringElements):**
+${input.recurringElementsContext}
+`
+    : ''
+}
 
 Begin with Story Director. Pass all context verbatim. Evaluate with Viral Analyst. Check continuity. Apply one revision if needed. Stop.
 

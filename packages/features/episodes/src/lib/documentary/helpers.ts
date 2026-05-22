@@ -4,7 +4,6 @@
  * Extracted to deduplicate common patterns between researcher.ts,
  * fact-checker.ts, and other documentary services.
  */
-
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 /**
@@ -19,20 +18,22 @@ import { getSupabaseServerClient } from '@kit/supabase/server-client';
  *          (i.e. the current user's session). It is NOT a service-role client.
  */
 export async function getProjectContext(projectId: string) {
-    const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServerClient();
 
-    const { data: project } = await supabase
-        .from('projects')
-        .select('account_id')
-        .eq('id', projectId)
-        .single();
+  const { data: project } = await supabase
+    .from('projects')
+    .select('account_id')
+    .eq('id', projectId)
+    .single();
 
-    if (!project) {
-        throw new Error(`Project not found: ${projectId}`);
-    }
+  if (!project) {
+    throw new Error(`Project not found: ${projectId}`);
+  }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    const userId = user?.id ?? 'anonymous';
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const userId = user?.id ?? 'anonymous';
 
-    return { accountId: project.account_id, userId, supabase };
+  return { accountId: project.account_id, userId, supabase };
 }

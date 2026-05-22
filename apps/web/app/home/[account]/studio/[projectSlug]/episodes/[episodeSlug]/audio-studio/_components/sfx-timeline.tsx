@@ -338,7 +338,7 @@ export function SfxTimeline({
                               ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/30'
                               : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800',
                         selectedCue?.id === cue.id &&
-                        'ring-2 ring-blue-500 ring-offset-2',
+                          'ring-2 ring-blue-500 ring-offset-2',
                       )}
                       style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
                       onClick={(e) => handleCueClick(cue, e)}
@@ -386,13 +386,13 @@ export function SfxTimeline({
             >
               {(selectedCue.status === 'placed' ||
                 selectedCue.status === 'matched') && (
-                  <button
-                    onClick={() => handlePlay(selectedCue)}
-                    className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
-                  >
-                    <Play className="h-4 w-4" /> Play
-                  </button>
-                )}
+                <button
+                  onClick={() => handlePlay(selectedCue)}
+                  className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"
+                >
+                  <Play className="h-4 w-4" /> Play
+                </button>
+              )}
               <button
                 onClick={handleEdit}
                 className="flex w-full items-center gap-2 px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:text-gray-200 dark:hover:bg-gray-700/50"

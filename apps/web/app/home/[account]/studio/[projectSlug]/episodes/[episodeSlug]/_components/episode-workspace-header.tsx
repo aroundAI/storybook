@@ -6,11 +6,10 @@ import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { ArrowLeft, MapPin, Sparkles, User } from 'lucide-react';
 
-import { CanonHealthBadge } from './canon-health-badge';
 import { useEpisodeContext } from './episode-context-provider';
-import { StudioSwitcher } from './studio-switcher';
-
+import { IssueSummaryBadge } from './issue-summary-popover';
 import { QuickActionsMenu } from './quick-actions-menu';
+import { StudioSwitcher } from './studio-switcher';
 
 export function EpisodeWorkspaceHeader() {
   const pathname = usePathname() ?? '';
@@ -114,7 +113,7 @@ export function EpisodeWorkspaceHeader() {
                               ? 'Published'
                               : 'Draft'}
               </span>
-              <CanonHealthBadge projectId={projectId} />
+              <IssueSummaryBadge projectId={projectId} />
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 Ep {episode.number}
                 {episode.season && ` • S${episode.season.number}`}
@@ -137,13 +136,13 @@ export function EpisodeWorkspaceHeader() {
             locationNames.length > 0 ||
             characterIds.length > 0 ||
             locationIds.length > 0) && (
-              <TaggedAssets
-                characterNames={characterNames}
-                locationNames={locationNames}
-                characterCount={characterIds.length}
-                locationCount={locationIds.length}
-              />
-            )}
+            <TaggedAssets
+              characterNames={characterNames}
+              locationNames={locationNames}
+              characterCount={characterIds.length}
+              locationCount={locationIds.length}
+            />
+          )}
         </div>
       )}
     </header>
@@ -171,37 +170,37 @@ function TaggedAssets({
       {/* Show character names if available, otherwise fall back to count */}
       {hasCharacterNames
         ? characterNames.map((name, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
-          >
-            <User className="h-2.5 w-2.5" />
-            {name}
-          </span>
-        ))
+            <span
+              key={i}
+              className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
+            >
+              <User className="h-2.5 w-2.5" />
+              {name}
+            </span>
+          ))
         : characterCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
-            <User className="h-2.5 w-2.5" />
-            {characterCount} character{characterCount !== 1 ? 's' : ''}
-          </span>
-        )}
+            <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
+              <User className="h-2.5 w-2.5" />
+              {characterCount} character{characterCount !== 1 ? 's' : ''}
+            </span>
+          )}
       {/* Show location names if available, otherwise fall back to count */}
       {hasLocationNames
         ? locationNames.map((name, i) => (
-          <span
-            key={i}
-            className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
-          >
-            <MapPin className="h-2.5 w-2.5" />
-            {name}
-          </span>
-        ))
+            <span
+              key={i}
+              className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]"
+            >
+              <MapPin className="h-2.5 w-2.5" />
+              {name}
+            </span>
+          ))
         : locationCount > 0 && (
-          <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
-            <MapPin className="h-2.5 w-2.5" />
-            {locationCount} location{locationCount !== 1 ? 's' : ''}
-          </span>
-        )}
+            <span className="inline-flex items-center gap-0.5 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-gray-600 dark:border-white/10 dark:bg-[#1A1A1A] dark:text-[#A3A3A3]">
+              <MapPin className="h-2.5 w-2.5" />
+              {locationCount} location{locationCount !== 1 ? 's' : ''}
+            </span>
+          )}
     </div>
   );
 }

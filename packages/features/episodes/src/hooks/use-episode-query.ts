@@ -2,9 +2,9 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { AssetRow, mapRowToAsset } from '@kit/assets';
 import { useSupabase } from '@kit/supabase/hooks/use-supabase';
 
-import { AssetRow, mapRowToAsset } from '@kit/assets';
 import type { EpisodeWithShots, Shot } from '../lib/types';
 
 const POLL_INTERVAL = 5000; // 5 seconds during generation
@@ -133,8 +133,12 @@ function transformEpisodeResponse(
       description?: string;
       projectAestheticStyle?: string;
     },
-    titleCards: (episode.title_cards ?? []).filter(card => card.type === 'master_title_card').map(mapRowToAsset),
-    masterVideoAsset: episode.master_video ? mapRowToAsset(episode.master_video) : null,
+    titleCards: (episode.title_cards ?? [])
+      .filter((card) => card.type === 'master_title_card')
+      .map(mapRowToAsset),
+    masterVideoAsset: episode.master_video
+      ? mapRowToAsset(episode.master_video)
+      : null,
   };
 }
 

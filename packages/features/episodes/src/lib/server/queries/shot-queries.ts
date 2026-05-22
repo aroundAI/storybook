@@ -5,8 +5,15 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { PrimarySubjectSchema } from '../../schemas/shot-list.schema';
 import { GetEpisodeShotsSchema } from '../../schemas/shot.schema';
-import type { GetEpisodeShotsResponse, ShotWithJobStatus } from '../../types';
+import type {
+  FirstFrameSource,
+  FrameStrategy,
+  GetEpisodeShotsResponse,
+  ShotWithJobStatus,
+  TransitionType,
+} from '../../types';
 
 /**
  * Fetches all shots for an episode with optional filtering
@@ -84,7 +91,22 @@ export const getEpisodeShotsAction = enhanceAction(
         generationJobId: shot.generation_job_id as string | null,
         metadata: shot.generation_metadata as Record<string, unknown>,
         shortsCandidate: (shot.shorts_candidate as boolean | null) ?? false,
-        shortsMetadata: (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
+        shortsMetadata:
+          (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
+        // OpenClaw Shot Intelligence fields
+        transitionType: (shot.transition_type as TransitionType | null) ?? null,
+        continuationFromShotId: shot.continuation_from_shot_id ?? null,
+        inheritLastFrame: shot.inherit_last_frame ?? false,
+        firstFrameDescription: shot.first_frame_description ?? null,
+        lastFrameDescription: shot.last_frame_description ?? null,
+        firstFrameSource:
+          (shot.first_frame_source as FirstFrameSource | null) ?? null,
+        locationArea: shot.location_area ?? null,
+        locationEnvironmentDescription:
+          shot.location_environment_description ?? null,
+        primarySubject:
+          PrimarySubjectSchema.nullish().parse(shot.primary_subject) ?? null,
+        frameStrategy: (shot.frame_strategy as FrameStrategy | null) ?? null,
         createdAt: shot.created_at as string,
         updatedAt: shot.updated_at as string,
         deletedAt: shot.deleted_at as string | null,

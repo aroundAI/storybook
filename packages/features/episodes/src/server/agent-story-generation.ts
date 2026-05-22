@@ -11,11 +11,11 @@
  *
  * This adds an agentic self-correction loop on top of the existing linear pipeline.
  */
+import { z } from 'zod';
 
-import { runAgent, createTool, toolError, toolSuccess } from '@kit/agent';
+import { createTool, runAgent, toolError, toolSuccess } from '@kit/agent';
 import { continuitySkill } from '@kit/episodes/skills';
 import { getLogger } from '@kit/shared/logger';
-import { z } from 'zod';
 
 // =============================================================================
 // TOOLS
@@ -88,7 +88,6 @@ const generateStoryTool = createTool({
       return toolError(`Story generation failed: ${(error as Error).message}`);
     }
   },
-
 });
 
 // =============================================================================
@@ -136,6 +135,10 @@ export interface AgentStoryResult {
  *   contentStyle: 'dialogue-heavy',
  * });
  * ```
+ */
+/**
+ * @deprecated This standalone agent path does not receive recurringElements from the project.
+ * Use the production pipeline (story-generation handler → story-orchestrator) instead.
  */
 export async function runAgentStoryGeneration(
   input: AgentStoryInput,

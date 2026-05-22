@@ -393,10 +393,11 @@ export function AudioStudioScreen({
             <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-black/40">
               <button
                 onClick={() => setActiveTab('dialogue')}
-                className={`rounded-md px-3 py-1 text-xs font-semibold whitespace-nowrap transition-all ${activeTab === 'dialogue'
+                className={`rounded-md px-3 py-1 text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeTab === 'dialogue'
                     ? 'bg-white text-gray-900 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_10px_rgba(59,130,246,0.25)]'
                     : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
-                  }`}
+                }`}
               >
                 Dialogue{' '}
                 <span className="ml-1 font-normal text-gray-400">
@@ -405,19 +406,21 @@ export function AudioStudioScreen({
               </button>
               <button
                 onClick={() => setActiveTab('music')}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'music'
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                  activeTab === 'music'
                     ? 'bg-white text-gray-900 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_10px_rgba(59,130,246,0.25)]'
                     : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
-                  }`}
+                }`}
               >
                 Music
               </button>
               <button
                 onClick={() => setActiveTab('sfx')}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${activeTab === 'sfx'
+                className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
+                  activeTab === 'sfx'
                     ? 'bg-white text-gray-900 shadow-sm dark:bg-[#3B82F6] dark:text-white dark:shadow-[0_0_10px_rgba(59,130,246,0.25)]'
                     : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
-                  }`}
+                }`}
               >
                 SFX
               </button>

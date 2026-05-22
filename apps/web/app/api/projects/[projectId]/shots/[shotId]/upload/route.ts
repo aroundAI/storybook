@@ -156,10 +156,7 @@ export const POST = enhanceRouteHandler(
       rawBody = await request.json();
     } catch (error) {
       logger.error({ ...ctx, error }, 'Failed to parse JSON body');
-      return NextResponse.json(
-        { error: 'Invalid JSON body' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
     }
 
     const parsed = UploadMetadataSchema.safeParse(rawBody);
@@ -179,8 +176,15 @@ export const POST = enhanceRouteHandler(
       );
     }
 
-    const { videoUrl, thumbnailUrl, duration, width, height, size, contentType } =
-      parsed.data;
+    const {
+      videoUrl,
+      thumbnailUrl,
+      duration,
+      width,
+      height,
+      size,
+      contentType,
+    } = parsed.data;
 
     // 3. Validate URLs belong to allowed storage domains (prevent SSRF/XSS)
     if (!isAllowedStorageUrl(videoUrl)) {

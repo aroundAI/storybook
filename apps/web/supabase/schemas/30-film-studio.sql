@@ -345,6 +345,17 @@ create table if not exists public.shots (
   last_frame_url text,
   generation_job_id uuid,
   generation_metadata jsonb,
+  -- OpenClaw Shot Intelligence columns
+  transition_type text check (transition_type is null or transition_type in ('continuation', 'cut', 'match_cut', 'j_cut', 'l_cut')),
+  continuation_from_shot_id uuid references public.shots(id) on delete set null,
+  inherit_last_frame boolean default false,
+  first_frame_description text,
+  last_frame_description text,
+  first_frame_source text check (first_frame_source is null or first_frame_source in ('generated', 'inherited', 'manual')),
+  location_area text,
+  location_environment_description text,
+  primary_subject jsonb,
+  frame_strategy text check (frame_strategy is null or frame_strategy in ('character_focus', 'environment_focus', 'two_shot', 'group', 'detail_insert')),
   created_at timestamp with time zone default now() not null,
   updated_at timestamp with time zone default now() not null,
   deleted_at timestamp with time zone default null,
@@ -363,6 +374,16 @@ comment on column public.shots.first_frame_url is 'URL for first frame storyboar
 comment on column public.shots.last_frame_url is 'URL for last frame storyboard image';
 comment on column public.shots.generation_metadata is 'Provider-specific metadata (provider, cost, parameters)';
 comment on column public.shots.deleted_at is 'Soft delete timestamp';
+comment on column public.shots.transition_type is 'How this shot connects to previous: continuation, cut, match_cut, j_cut, l_cut';
+comment on column public.shots.continuation_from_shot_id is 'FK to previous shot when transition_type is continuation — first frame inherited from that shot''s last frame';
+comment on column public.shots.inherit_last_frame is 'If true, first frame = previous shot last frame';
+comment on column public.shots.first_frame_description is 'Text prompt for first frame image generation on Flow';
+comment on column public.shots.last_frame_description is 'Text prompt for last frame image generation on Flow';
+comment on column public.shots.first_frame_source is 'How first frame was obtained: generated, inherited, manual';
+comment on column public.shots.location_area is 'Specific area within location (e.g., park bench under oak tree)';
+comment on column public.shots.location_environment_description is 'Full prose environment description for first-frame generation';
+comment on column public.shots.primary_subject is 'Camera focus: { type: character|location|object, name: string }';
+comment on column public.shots.frame_strategy is 'How to compose first frame: character_focus, environment_focus, two_shot, group, detail_insert';
 
 -- Indexes for shots
 create index if not exists idx_shots_episode_sequence on public.shots(episode_id, sequence_number)

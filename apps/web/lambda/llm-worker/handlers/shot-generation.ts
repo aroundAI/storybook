@@ -95,6 +95,7 @@ export async function processShotGeneration(
       buildEpisodeContext,
       formatCharactersForVeoPrompt,
       formatLocationsForVeoPrompt,
+      formatRecurringElementsForPrompt,
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
@@ -110,6 +111,9 @@ export async function processShotGeneration(
       formatCharactersForVeoPrompt(characters) || 'No characters defined.';
     const locationsFormatted =
       formatLocationsForVeoPrompt(locations) || 'No locations defined.';
+    const recurringElementsFormatted = formatRecurringElementsForPrompt(
+      episodeContext.recurringElements,
+    );
 
     // 3. Run the Stage 3 Shot Orchestrator (Reel Scout + Shot Director)
     const { runShotOrchestrator } = await import(
@@ -118,7 +122,7 @@ export async function processShotGeneration(
 
     console.log(
       `[Shot Generation] Starting Shot Orchestrator — ` +
-      `${scenes.length} scenes, ${characters.length} characters, ${locations.length} locations`,
+        `${scenes.length} scenes, ${characters.length} characters, ${locations.length} locations`,
     );
 
     // Diagnostic: inspect raw scene shape from DB so CloudWatch shows data issues immediately
@@ -126,10 +130,12 @@ export async function processShotGeneration(
       `[Shot Generation] Raw scene[0] keys: ${Object.keys(scenes[0] as unknown as Record<string, unknown>).join(', ')}`,
     );
     console.log(
-      `[Shot Generation] Scene action fields: ${scenes.map((s, i) => {
-        const raw = s as unknown as Record<string, unknown>;
-        return `scene${i + 1}=${Array.isArray(raw['action']) ? 'array(' + (raw['action'] as unknown[]).length + ')' : typeof raw['action']}`;
-      }).join(', ')}`,
+      `[Shot Generation] Scene action fields: ${scenes
+        .map((s, i) => {
+          const raw = s as unknown as Record<string, unknown>;
+          return `scene${i + 1}=${Array.isArray(raw['action']) ? 'array(' + (raw['action'] as unknown[]).length + ')' : typeof raw['action']}`;
+        })
+        .join(', ')}`,
     );
 
     const orchestratorResult = await runShotOrchestrator({
@@ -143,15 +149,20 @@ export async function processShotGeneration(
       // not in a separate `action` array. Derive action from description when absent.
       scenes: scenes.map((s, idx) => {
         const raw = s as unknown as Record<string, unknown>;
-        const hasStoredAction = Array.isArray(raw['action']) && (raw['action'] as unknown[]).length > 0;
+        const hasStoredAction =
+          Array.isArray(raw['action']) &&
+          (raw['action'] as unknown[]).length > 0;
         const action = hasStoredAction
           ? (raw['action'] as string[])
-          : (s.description ?? '').split('\n').map((l: string) => l.trim()).filter(Boolean);
+          : (s.description ?? '')
+              .split('\n')
+              .map((l: string) => l.trim())
+              .filter(Boolean);
 
         console.log(
           `[Shot Generation] Scene ${idx + 1}/${scenes.length} — ` +
-          `actionSource=${hasStoredAction ? 'stored-array' : 'description-split'}, ` +
-          `actionLines=${action.length}, dialogueLines=${(s.dialogue ?? []).length}`,
+            `actionSource=${hasStoredAction ? 'stored-array' : 'description-split'}, ` +
+            `actionLines=${action.length}, dialogueLines=${(s.dialogue ?? []).length}`,
         );
 
         return {
@@ -163,22 +174,27 @@ export async function processShotGeneration(
           action,
           dialogue: (s.dialogue ?? []).map((d) => ({
             character: d.character,
-            text: (d as Record<string, unknown>).text as string ?? d.dialogue ?? '',
+            text:
+              ((d as Record<string, unknown>).text as string) ??
+              d.dialogue ??
+              '',
             parenthetical: d.parenthetical,
           })),
-          estimatedDuration: (s as Record<string, unknown>).estimatedDuration as number | undefined,
+          estimatedDuration: (s as Record<string, unknown>)
+            .estimatedDuration as number | undefined,
         };
       }),
       charactersVeoContext: charactersFormatted,
       locationsVeoContext: locationsFormatted,
+      recurringElementsContext: recurringElementsFormatted,
     });
 
     console.log(
       `[Shot Generation] Orchestrator completed — ` +
-      `success: ${orchestratorResult.success}, ` +
-      `shots: ${orchestratorResult.shots.length}, ` +
-      `reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}, ` +
-      `steps: ${orchestratorResult.orchestratorSteps}`,
+        `success: ${orchestratorResult.success}, ` +
+        `shots: ${orchestratorResult.shots.length}, ` +
+        `reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}, ` +
+        `steps: ${orchestratorResult.orchestratorSteps}`,
     );
 
     if (!orchestratorResult.success) {
@@ -190,7 +206,7 @@ export async function processShotGeneration(
     if (orchestratorResult.shots.length === 0) {
       throw new Error(
         'Shot Director returned 0 shots. All scene-shot-generation LLM calls failed. ' +
-        'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
+          'Check CloudWatch for [Shot Director] error logs and verify scene-shot-generation prompt config.',
       );
     }
 
@@ -202,12 +218,17 @@ export async function processShotGeneration(
     );
     console.log(
       `[Shot Generation] sceneAnalysisMap: ${sceneAnalysisMap.size} entries from Reel Scout. ` +
-      `Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
+        `Reel candidates: ${orchestratorResult.reelCandidateScenes.join(', ') || 'none'}`,
     );
     console.log(
-      `[Shot Generation] Per-scene viral scores: ${[...sceneAnalysisMap.entries()].map(
-        ([sceneNum, a]) => `scene${sceneNum}=${a.viralScore}(${a.isReelCandidate ? 'candidate' : 'non-candidate'})`
-      ).join(', ') || 'no data'}`,
+      `[Shot Generation] Per-scene viral scores: ${
+        [...sceneAnalysisMap.entries()]
+          .map(
+            ([sceneNum, a]) =>
+              `scene${sceneNum}=${a.viralScore}(${a.isReelCandidate ? 'candidate' : 'non-candidate'})`,
+          )
+          .join(', ') || 'no data'
+      }`,
     );
 
     // 4. Query existing shots for correct sequence number base
@@ -238,6 +259,14 @@ export async function processShotGeneration(
       shorts_candidate: boolean;
       shorts_metadata: Record<string, unknown> | null;
       generation_metadata: Record<string, unknown>;
+      // OpenClaw Shot Intelligence
+      transition_type: string | null;
+      frame_strategy: string | null;
+      primary_subject: Record<string, unknown> | null;
+      first_frame_description: string | null;
+      last_frame_description: string | null;
+      location_area: string | null;
+      location_environment_description: string | null;
     }> = [];
 
     const shotTypes = { wide: 0, medium: 0, closeUp: 0 };
@@ -250,9 +279,9 @@ export async function processShotGeneration(
       // Log every shot so we can trace the data flow in CloudWatch
       console.log(
         `[Shot Generation] Shot ${shot.sceneNumber}.${shot.shotNumber} — ` +
-        `candidate=${sceneIsCandidate}, ` +
-        `viralScore=${sceneAnalysis?.viralScore ?? 'N/A'}, ` +
-        `hookType=${sceneAnalysis?.hookType ?? shot.metadata.hookType ?? 'none'}`,
+          `candidate=${sceneIsCandidate}, ` +
+          `viralScore=${sceneAnalysis?.viralScore ?? 'N/A'}, ` +
+          `hookType=${sceneAnalysis?.hookType ?? shot.metadata.hookType ?? 'none'}`,
       );
 
       // Build shorts_metadata for ALL shots (not just candidates) so the sidebar
@@ -261,7 +290,8 @@ export async function processShotGeneration(
         ? {
             viralScore: sceneAnalysis.viralScore,
             hookType: sceneAnalysis.hookType ?? shot.metadata.hookType,
-            estimatedDurationSeconds: sceneAnalysis.estimatedDurationSeconds ?? shot.duration,
+            estimatedDurationSeconds:
+              sceneAnalysis.estimatedDurationSeconds ?? shot.duration,
             isReelCandidate: sceneAnalysis.isReelCandidate,
             whyThisWorksAsReel: sceneAnalysis.whyThisWorksAsReel ?? null,
             whyItDoesntWork: sceneAnalysis.whyItDoesntWork ?? null,
@@ -269,10 +299,15 @@ export async function processShotGeneration(
             sceneEmotionalArc: sceneAnalysis.sceneEmotionalArc ?? null,
             improvementSuggestion: sceneAnalysis.improvementSuggestion ?? null,
           }
-        : (sceneIsCandidate
-          ? { hookType: shot.metadata.hookType, estimatedDurationSeconds: shot.duration, isReelCandidate: true }
-          : null);
+        : sceneIsCandidate
+          ? {
+              hookType: shot.metadata.hookType,
+              estimatedDurationSeconds: shot.duration,
+              isReelCandidate: true,
+            }
+          : null;
 
+      // OpenClaw Shot Intelligence (typed via SceneShotOutputSchema)
       allShots.push({
         episode_id: data.episodeId,
         scene_number: shot.sceneNumber,
@@ -294,6 +329,14 @@ export async function processShotGeneration(
           veoPrompt: shot.veoPrompt,
           isReelCandidate: sceneIsCandidate,
         },
+        transition_type: shot.transitionType ?? null,
+        frame_strategy: shot.frameStrategy ?? null,
+        primary_subject: shot.primarySubject ?? null,
+        first_frame_description: shot.firstFrameDescription ?? null,
+        last_frame_description: shot.lastFrameDescription ?? null,
+        location_area: shot.locationArea ?? null,
+        location_environment_description:
+          shot.locationEnvironmentDescription ?? null,
       });
 
       if (shot.shotType === 'wide') shotTypes.wide++;
@@ -325,17 +368,38 @@ export async function processShotGeneration(
       processingMethod: 'shot-orchestrator',
     };
 
-    const { error: updateError } = await supabase
+    // 6. Guard: Skip write if episode was deleted during processing
+    const { data: currentEpisode } = await supabase
       .from('episodes')
-      .update({
-        shot_list: shotListData,
-        updated_at: new Date().toISOString(),
-      })
+      .select('status, deleted_at')
       .eq('id', data.episodeId)
-      .eq('version', data.version);
+      .single();
 
-    if (updateError) {
-      console.error('[Shot Generation] Failed to update episode:', updateError);
+    if (!currentEpisode || currentEpisode.deleted_at) {
+      console.warn(
+        '[Shot Generation] Episode was deleted during generation. Skipping write.',
+      );
+      await markJobCompleted(supabase, data.episodeId, 'shot_list', {
+        skipped: true,
+        reason: 'episode-deleted',
+      });
+    } else {
+      const { error: updateError } = await supabase
+        .from('episodes')
+        .update({
+          shot_list: shotListData,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', data.episodeId)
+        // NOTE: No .eq('version', ...) — version may drift during orchestrator mid-run writes
+        .is('deleted_at', null);
+
+      if (updateError) {
+        console.error(
+          '[Shot Generation] Failed to update episode:',
+          updateError,
+        );
+      }
     }
 
     console.log(

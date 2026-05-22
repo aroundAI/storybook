@@ -12,6 +12,14 @@ import {
 
 import { useRouter } from 'next/navigation';
 
+/**
+ * Hook to consolidate generation state check and safety refetch logic.
+ * Reduces duplication across Story, Screenplay, and Visual Studio pages.
+ */
+import {
+  type GenerationJobType,
+  useActiveGenerationJob,
+} from '@kit/episodes/hooks';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 
 interface EpisodeContextValue {
@@ -97,15 +105,6 @@ export function EpisodeContextProvider({
     </EpisodeContext.Provider>
   );
 }
-
-/**
- * Hook to consolidate generation state check and safety refetch logic.
- * Reduces duplication across Story, Screenplay, and Visual Studio pages.
- */
-import {
-  type GenerationJobType,
-  useActiveGenerationJob,
-} from '@kit/episodes/hooks';
 
 export function useEpisodeGenerationCheck({
   episodeId,

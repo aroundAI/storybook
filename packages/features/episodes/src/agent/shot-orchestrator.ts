@@ -15,7 +15,6 @@
  *   - shots written to shots table
  *   - episode status → 'production'
  */
-
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
 
@@ -23,86 +22,99 @@ import { reelScoutSkill } from './skills/reel-scout-skill';
 import { shotDirectorSkill } from './skills/shot-director-skill';
 
 export interface ShotOrchestratorScene {
-    number: number;
-    heading: string;
-    location: string;
-    timeOfDay: string;
-    description: string;
-    action?: string[] | string;
-    dialogue: Array<{
-        character: string;
-        text: string;
-        parenthetical?: string;
-    }>;
-    estimatedDuration?: number;
+  number: number;
+  heading: string;
+  location: string;
+  timeOfDay: string;
+  description: string;
+  action?: string[] | string;
+  dialogue: Array<{
+    character: string;
+    text: string;
+    parenthetical?: string;
+  }>;
+  estimatedDuration?: number;
 }
 
 export interface ShotOrchestratorInput {
-    episodeId: string;
-    episodeTitle: string;
-    genre: string;
-    targetAudience: string;
-    visualStyle: string;
-    accountId: string;
-    // Screenplay scenes to generate shots for
-    scenes: ShotOrchestratorScene[];
-    // VEO-formatted character/location context
-    charactersVeoContext: string;
-    locationsVeoContext: string;
+  episodeId: string;
+  episodeTitle: string;
+  genre: string;
+  targetAudience: string;
+  visualStyle: string;
+  accountId: string;
+  // Screenplay scenes to generate shots for
+  scenes: ShotOrchestratorScene[];
+  // VEO-formatted character/location context
+  charactersVeoContext: string;
+  locationsVeoContext: string;
+  // Recurring story elements (pre-formatted)
+  recurringElementsContext?: string;
 }
 
 export interface GeneratedShotResult {
-    shotNumber: number;
-    shotType: string;
-    cameraDirection: string;
-    description: string;
-    duration: number;
-    characters: string[];
-    sceneNumber: number;
-    metadata: {
-        location: string;
-        timeOfDay: string;
-        mood?: string;
-        lighting?: string;
-        isReelCandidate?: boolean;
-        hookType?: string;
-    };
-    veoPrompt: {
-        shotLine: string;
-        audio: string;
-        style: string;
-        avoid: string;
-        fullPrompt: string;
-    };
+  shotNumber: number;
+  shotType: string;
+  cameraDirection: string;
+  description: string;
+  duration: number;
+  characters: string[];
+  sceneNumber: number;
+  metadata: {
+    location: string;
+    timeOfDay: string;
+    mood?: string;
+    lighting?: string;
+    isReelCandidate?: boolean;
+    hookType?: string;
+  };
+  veoPrompt: {
+    shotLine: string;
+    audio: string;
+    style: string;
+    avoid: string;
+    fullPrompt: string;
+  };
 }
 
 export interface ReelSceneAnalysis {
-    sceneNumber: number;
-    isReelCandidate: boolean;
-    viralScore: number;
-    hookType?: 'question' | 'reveal' | 'conflict' | 'visual' | 'humor' | 'cliffhanger' | 'character' | 'action' | 'reaction' | 'punchline' | null;
-    estimatedDurationSeconds?: number;
-    keyMoment?: string | null;
-    sceneEmotionalArc: string;
-    whyThisWorksAsReel?: string | null;
-    whyItDoesntWork?: string | null;
-    improvementSuggestion?: string | null;
+  sceneNumber: number;
+  isReelCandidate: boolean;
+  viralScore: number;
+  hookType?:
+    | 'question'
+    | 'reveal'
+    | 'conflict'
+    | 'visual'
+    | 'humor'
+    | 'cliffhanger'
+    | 'character'
+    | 'action'
+    | 'reaction'
+    | 'punchline'
+    | null;
+  estimatedDurationSeconds?: number;
+  keyMoment?: string | null;
+  sceneEmotionalArc: string;
+  whyThisWorksAsReel?: string | null;
+  whyItDoesntWork?: string | null;
+  improvementSuggestion?: string | null;
 }
 
 export interface ShotOrchestratorResult {
-    success: boolean;
-    shots: GeneratedShotResult[];
-    reelCandidateScenes: number[];
-    /** Full per-scene Reel Scout analysis — viralScore, hookType, whyThisWorksAsReel, etc. */
-    sceneAnalyses: ReelSceneAnalysis[];
-    orchestratorSteps: number;
-    error?: string;
+  success: boolean;
+  shots: GeneratedShotResult[];
+  reelCandidateScenes: number[];
+  /** Full per-scene Reel Scout analysis — viralScore, hookType, whyThisWorksAsReel, etc. */
+  sceneAnalyses: ReelSceneAnalysis[];
+  orchestratorSteps: number;
+  error?: string;
 }
 
 interface ShotOrchestratorOutput {
-    totalShotsGenerated?: number;
-    reelCandidates?: number[];
-    completionNote?: string;
+  totalShotsGenerated?: number;
+  reelCandidates?: number[];
+  completionNote?: string;
 }
 
 /**
@@ -115,136 +127,151 @@ interface ShotOrchestratorOutput {
  * must have sufficient output budget to avoid unbalanced-JSON parse failures.
  */
 export async function runShotOrchestrator(
-    input: ShotOrchestratorInput,
+  input: ShotOrchestratorInput,
 ): Promise<ShotOrchestratorResult> {
-    console.log(
-        `[Shot Orchestrator] Starting for episode ${input.episodeId}. ` +
-        `${input.scenes.length} scenes to process.`,
-    );
+  console.log(
+    `[Shot Orchestrator] Starting for episode ${input.episodeId}. ` +
+      `${input.scenes.length} scenes to process.`,
+  );
 
-    const result: AgentRunResult<ShotOrchestratorOutput> = await runAgent<ShotOrchestratorOutput>(
-        {
-            name: 'shot-orchestrator',
-            provider: 'gemini',
-            model: 'gemini-2.5-flash',
-            systemPrompt: SHOT_SYSTEM_PROMPT,
-            tools: [],
-            skills: [reelScoutSkill, shotDirectorSkill],
-            maxSteps: 16,
-            // 32000 output tokens — required because the generateShots tool_call
-            // params include all scene scenes as JSON. At 4000 (default) the
-            // response is truncated mid-JSON → parser fails → generateShots never runs.
-            maxTokensPerStep: 32000,
-            budgetLimits: {
-                maxTotalTokens: 400_000,
-                maxCostUSD: 4.00,
-                maxLatencyMs: 600_000,
-            },
+  const result: AgentRunResult<ShotOrchestratorOutput> =
+    await runAgent<ShotOrchestratorOutput>(
+      {
+        name: 'shot-orchestrator',
+        systemPrompt: SHOT_SYSTEM_PROMPT,
+        tools: [],
+        skills: [reelScoutSkill, shotDirectorSkill],
+        maxSteps: 16,
+        // 32000 output tokens — required because the generateShots tool_call
+        // params include all scene scenes as JSON. At 4000 (default) the
+        // response is truncated mid-JSON → parser fails → generateShots never runs.
+        maxTokensPerStep: 32000,
+        budgetLimits: {
+          maxTotalTokens: 400_000,
+          maxCostUSD: 4.0,
+          maxLatencyMs: 600_000,
         },
-        {
-            userPrompt: buildShotPrompt(input),
-        },
-        { accountId: input.accountId },
+      },
+      {
+        userPrompt: buildShotPrompt(input),
+      },
+      { accountId: input.accountId },
     );
 
-    // Log the full agent result for diagnostics
+  // Log the full agent result for diagnostics
+  console.log(
+    `[Shot Orchestrator] runAgent result — success: ${result.success}, ` +
+      `steps: ${result.steps.length}, error: ${result.error ?? 'none'}, ` +
+      `data: ${result.data ? JSON.stringify(result.data).substring(0, 200) : 'null'}`,
+  );
+
+  // Log each step type for visibility
+  for (const [i, step] of result.steps.entries()) {
     console.log(
-        `[Shot Orchestrator] runAgent result — success: ${result.success}, ` +
-        `steps: ${result.steps.length}, error: ${result.error ?? 'none'}, ` +
-        `data: ${result.data ? JSON.stringify(result.data).substring(0, 200) : 'null'}`,
+      `[Shot Orchestrator] Step ${i + 1}: type=${step.type}, ` +
+        `tool=${step.toolName ?? 'n/a'}, ` +
+        `toolSuccess=${step.toolResult?.success ?? 'n/a'}, ` +
+        `tokens=${step.tokensUsed ?? 0}`,
     );
+  }
 
-    // Log each step type for visibility
-    for (const [i, step] of result.steps.entries()) {
-        console.log(
-            `[Shot Orchestrator] Step ${i + 1}: type=${step.type}, ` +
-            `tool=${step.toolName ?? 'n/a'}, ` +
-            `toolSuccess=${step.toolResult?.success ?? 'n/a'}, ` +
-            `tokens=${step.tokensUsed ?? 0}`,
-        );
-    }
-
-    if (!result.success || !result.data) {
-        console.warn(`[Shot Orchestrator] Failed: ${result.error}`);
-        return {
-            success: false,
-            shots: [],
-            reelCandidateScenes: [],
-            sceneAnalyses: [],
-            orchestratorSteps: result.steps.length,
-            error: result.error,
-        };
-    }
-
-    // Extract shots from tool steps (most reliable)
-    type GenerateShotsResult = { shots?: GeneratedShotResult[] };
-    type AnalyzeScenesResult = {
-        topReelCandidates?: number[];
-        sceneAnalyses?: ReelSceneAnalysis[];
-    };
-
-    const shotsSteps = result.steps.filter(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateShots' && s.toolResult?.success,
-    );
-    const lastShotsStep = shotsSteps.at(-1);
-    const shotsData = lastShotsStep?.toolResult?.data as GenerateShotsResult | undefined;
-    const shots = (shotsData?.shots ?? []) as GeneratedShotResult[];
-
-    const reelStep = result.steps.find(
-        (s) => s.type === 'tool_call' && s.toolName === 'analyzeScenes' && s.toolResult?.success,
-    );
-    const reelData = reelStep?.toolResult?.data as AnalyzeScenesResult | undefined;
-    const reelCandidateScenes = reelData?.topReelCandidates ?? [];
-    const sceneAnalyses = (reelData?.sceneAnalyses ?? []) as ReelSceneAnalysis[];
-
-    // Log full reel intelligence so every scene's viralScore is visible in CloudWatch
-    if (sceneAnalyses.length > 0) {
-        console.log(
-            `[Shot Orchestrator] Reel Scout sceneAnalyses: ${sceneAnalyses.length} scenes — ` +
-            sceneAnalyses.map((a) =>
-                `scene${a.sceneNumber}(score=${a.viralScore},candidate=${a.isReelCandidate},hook=${a.hookType ?? 'none'})`
-            ).join(', '),
-        );
-    } else {
-        console.warn(
-            `[Shot Orchestrator] Reel Scout returned no sceneAnalyses — ` +
-            `reelStep found: ${!!reelStep}, reelData keys: ${reelData ? Object.keys(reelData).join(', ') : 'null'}`,
-        );
-    }
-
-    // Log any failed generateShots steps so the error is visible in CloudWatch
-    const failedShotsSteps = result.steps.filter(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateShots' && !s.toolResult?.success,
-    );
-    for (const step of failedShotsSteps) {
-        console.error(
-            `[Shot Orchestrator] generateShots tool call failed: ${step.toolResult?.error ?? JSON.stringify(step.toolResult)}`,
-        );
-    }
-
-    // Emit a step-by-step trace so every tool call is visible in CloudWatch
-    const toolCalls = result.steps.filter((s) => s.type === 'tool_call');
-    for (const step of toolCalls) {
-        const ok = step.toolResult?.success;
-        console.log(
-            `[Shot Orchestrator] Tool: ${step.toolName} — ${ok ? 'SUCCESS' : 'FAILED'}` +
-            (!ok ? ` — ${step.toolResult?.error ?? 'no error message'}` : ''),
-        );
-    }
-
-    console.log(
-        `[Shot Orchestrator] Complete. Steps: ${result.steps.length}, ` +
-        `ToolCalls: ${toolCalls.length}, Shots: ${shots.length}, ` +
-        `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
-    );
-
+  if (!result.success || !result.data) {
+    console.warn(`[Shot Orchestrator] Failed: ${result.error}`);
     return {
-        success: true,
-        shots,
-        reelCandidateScenes,
-        sceneAnalyses,
-        orchestratorSteps: result.steps.length,
+      success: false,
+      shots: [],
+      reelCandidateScenes: [],
+      sceneAnalyses: [],
+      orchestratorSteps: result.steps.length,
+      error: result.error,
     };
+  }
+
+  // Extract shots from tool steps (most reliable)
+  type GenerateShotsResult = { shots?: GeneratedShotResult[] };
+  type AnalyzeScenesResult = {
+    topReelCandidates?: number[];
+    sceneAnalyses?: ReelSceneAnalysis[];
+  };
+
+  const shotsSteps = result.steps.filter(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateShots' &&
+      s.toolResult?.success,
+  );
+  const lastShotsStep = shotsSteps.at(-1);
+  const shotsData = lastShotsStep?.toolResult?.data as
+    | GenerateShotsResult
+    | undefined;
+  const shots = (shotsData?.shots ?? []) as GeneratedShotResult[];
+
+  const reelStep = result.steps.find(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'analyzeScenes' &&
+      s.toolResult?.success,
+  );
+  const reelData = reelStep?.toolResult?.data as
+    | AnalyzeScenesResult
+    | undefined;
+  const reelCandidateScenes = reelData?.topReelCandidates ?? [];
+  const sceneAnalyses = (reelData?.sceneAnalyses ?? []) as ReelSceneAnalysis[];
+
+  // Log full reel intelligence so every scene's viralScore is visible in CloudWatch
+  if (sceneAnalyses.length > 0) {
+    console.log(
+      `[Shot Orchestrator] Reel Scout sceneAnalyses: ${sceneAnalyses.length} scenes — ` +
+        sceneAnalyses
+          .map(
+            (a) =>
+              `scene${a.sceneNumber}(score=${a.viralScore},candidate=${a.isReelCandidate},hook=${a.hookType ?? 'none'})`,
+          )
+          .join(', '),
+    );
+  } else {
+    console.warn(
+      `[Shot Orchestrator] Reel Scout returned no sceneAnalyses — ` +
+        `reelStep found: ${!!reelStep}, reelData keys: ${reelData ? Object.keys(reelData).join(', ') : 'null'}`,
+    );
+  }
+
+  // Log any failed generateShots steps so the error is visible in CloudWatch
+  const failedShotsSteps = result.steps.filter(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateShots' &&
+      !s.toolResult?.success,
+  );
+  for (const step of failedShotsSteps) {
+    console.error(
+      `[Shot Orchestrator] generateShots tool call failed: ${step.toolResult?.error ?? JSON.stringify(step.toolResult)}`,
+    );
+  }
+
+  // Emit a step-by-step trace so every tool call is visible in CloudWatch
+  const toolCalls = result.steps.filter((s) => s.type === 'tool_call');
+  for (const step of toolCalls) {
+    const ok = step.toolResult?.success;
+    console.log(
+      `[Shot Orchestrator] Tool: ${step.toolName} — ${ok ? 'SUCCESS' : 'FAILED'}` +
+        (!ok ? ` — ${step.toolResult?.error ?? 'no error message'}` : ''),
+    );
+  }
+
+  console.log(
+    `[Shot Orchestrator] Complete. Steps: ${result.steps.length}, ` +
+      `ToolCalls: ${toolCalls.length}, Shots: ${shots.length}, ` +
+      `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
+  );
+
+  return {
+    success: true,
+    shots,
+    reelCandidateScenes,
+    sceneAnalyses,
+    orchestratorSteps: result.steps.length,
+  };
 }
 
 const SHOT_SYSTEM_PROMPT = `You are the Shot Pipeline Director.
@@ -262,6 +289,7 @@ Your job: produce a complete VEO 3.1 optimized shot list for all screenplay scen
 
 ## CRITICAL CONSTRAINTS
 - Pass VEO character context verbatim — character visual identities are non-negotiable.
+- Pass recurringElements context verbatim to generateShots — these define signature visual patterns.
 - Do NOT generate story revisions or screenplay — only shots.
 - Every scene MUST have at least one shot in the output.
 - NEVER skip generateShots — even if analyzeScenes fails.
@@ -274,7 +302,7 @@ Return a JSON object with:
 - completionNote: one sentence confirming completion`;
 
 function buildShotPrompt(input: ShotOrchestratorInput): string {
-    return `Generate a complete VEO 3.1 shot list for this episode.
+  return `Generate a complete VEO 3.1 shot list for this episode.
 
 **Episode**: "${input.episodeTitle}"
 **Genre**: ${input.genre}
@@ -287,6 +315,13 @@ ${input.charactersVeoContext || 'No character context.'}
 
 **VEO Location Context (pass verbatim to generateShots):**
 ${input.locationsVeoContext || 'No location context.'}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Story Elements (pass verbatim to generateShots as recurringElements):**
+${input.recurringElementsContext}`
+    : ''
+}
 
 **Scenes to Process:**
 ${JSON.stringify(input.scenes, null, 2)}

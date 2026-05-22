@@ -14,6 +14,7 @@ import {
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+import ws from 'ws';
 
 import { validateWebSocketMessage } from './schemas/websocket-messages.schema';
 import { isValidUUID } from './utils/validation';
@@ -26,7 +27,11 @@ const TABLE_NAME = process.env.CONNECTIONS_TABLE_NAME || '';
 // Initialize Supabase client for authorization checks
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  realtime: {
+    transport: ws,
+  },
+});
 
 /**
  * Get sender's userId from connectionId
@@ -304,9 +309,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -392,9 +397,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -486,7 +491,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
         const senderId = await getSenderUserId(connectionId);
         if (!senderId || !channel) break;
 
-        console.log(`[Collab] Edit operation on channel ${channel} from ${senderId.substring(0, 8)}...`);
+        console.log(
+          `[Collab] Edit operation on channel ${channel} from ${senderId.substring(0, 8)}...`,
+        );
 
         // TODO: Replace ScanCommand with GSI-based query for channel subscribers
         // A GSI on 'channels' or a separate subscriptions table would avoid full table scans.
@@ -519,9 +526,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 
@@ -588,9 +595,9 @@ export const handler: APIGatewayProxyWebsocketHandlerV2 = async (event) => {
             } catch (error: unknown) {
               const statusCode =
                 error &&
-                  typeof error === 'object' &&
-                  'statusCode' in error &&
-                  typeof error.statusCode === 'number'
+                typeof error === 'object' &&
+                'statusCode' in error &&
+                typeof error.statusCode === 'number'
                   ? error.statusCode
                   : null;
 

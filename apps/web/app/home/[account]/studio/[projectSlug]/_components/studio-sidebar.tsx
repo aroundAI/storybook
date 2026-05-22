@@ -25,6 +25,7 @@ import {
   LayoutDashboard,
   MapPin,
   Music,
+  ScrollText,
   Search,
   Settings,
   Share2,
@@ -433,6 +434,20 @@ export function StudioSidebar({
             </nav>
           </div>
 
+          {/* Story Section */}
+          <div>
+            <SectionHeader isCollapsed={isCollapsed}>Story</SectionHeader>
+            <nav className="space-y-0.5">
+              <NavItem
+                href={`${basePath}/canon`}
+                icon={<ScrollText className="h-4 w-4" />}
+                label="Narrative Arcs"
+                isActive={isActive(`${basePath}/canon`)}
+                isCollapsed={isCollapsed}
+              />
+            </nav>
+          </div>
+
           {/* Assets Section */}
           <div>
             <SectionHeader isCollapsed={isCollapsed}>Assets</SectionHeader>
@@ -476,7 +491,7 @@ export function StudioSidebar({
                 icon={<BookOpen className="h-4 w-4" />}
                 label="Research Hub"
                 count={
-                  ((counts.researchSources ?? 0) + (counts.researchFacts ?? 0)) ||
+                  (counts.researchSources ?? 0) + (counts.researchFacts ?? 0) ||
                   undefined
                 }
                 isActive={isActive(`${basePath}/research`)}

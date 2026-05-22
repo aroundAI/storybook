@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Settings } from 'lucide-react';
 
 import type { CanonSettings } from '@kit/episodes';
 import type { ContentStyle, Genre, VideoStyle } from '@kit/film-studio-schemas';
@@ -17,6 +17,7 @@ import {
   getProjectPublishingConfigs,
 } from '@kit/publishing/server';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
+import { Badge } from '@kit/ui/badge';
 import {
   Card,
   CardContent,
@@ -140,12 +141,12 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
 
   return (
     <>
-      {/* Fixed Header - matching Episodes page pattern */}
-      <header className="bg-card border-b border-gray-200 px-6 py-4">
+      {/* Fixed Header */}
+      <header className="bg-card border-border border-b px-6 py-4">
         <div className="mb-2">
           <Link
             href={`/home/${account}/studio/${project.slug}`}
-            className="inline-flex items-center text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+            className="text-muted-foreground hover:text-foreground inline-flex items-center text-sm transition-colors"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Project
@@ -153,10 +154,15 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Settings className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+            <Settings className="text-muted-foreground h-5 w-5" />
+            <h1 className="text-foreground text-xl font-bold">
               Project Settings
             </h1>
+            {permissions.role && (
+              <Badge variant="secondary" className="capitalize">
+                {permissions.role}
+              </Badge>
+            )}
           </div>
           <div className="flex gap-2">
             <If condition={permissions.canEdit}>
@@ -174,263 +180,348 @@ async function ProjectSettingsPage({ params }: ProjectSettingsPageProps) {
         </div>
       </header>
 
-      {/* Scrollable Content - let parent main handle scrolling */}
+      {/* Scrollable Content */}
       <div className="flex-1">
-        <div className="mx-auto max-w-4xl space-y-6 p-6">
-          {/* User Role Badge */}
-          {permissions.role && (
+        <div className="mx-auto max-w-4xl space-y-8 p-6">
+          {/* ─── Section: Overview (read-only, no save) ─── */}
+          <section className="space-y-6">
             <div>
-              <span className="bg-muted text-muted-foreground rounded-md px-2 py-1 text-sm font-medium capitalize">
-                Your role: {permissions.role}
-              </span>
+              <h2 className="text-lg font-semibold">Overview</h2>
+              <p className="text-muted-foreground text-sm">
+                Basic project information and branding.
+              </p>
             </div>
-          )}
 
-          {/* Project Details Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                <Trans i18nKey={'projects:projectInformation'} />
-              </CardTitle>
-              <CardDescription>
-                <Trans i18nKey={'projects:projectInformationDescription'} />
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <dt className="text-muted-foreground text-sm font-medium">
-                    <Trans i18nKey={'projects:statusLabel'} />
-                  </dt>
-                  <dd className="mt-1 text-sm capitalize">{project.status}</dd>
-                </div>
-                {project.slug && (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  <Trans i18nKey={'projects:projectInformation'} />
+                </CardTitle>
+                <CardDescription>
+                  <Trans i18nKey={'projects:projectInformationDescription'} />
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
                   <div>
-                    <dt className="text-muted-foreground text-sm font-medium">
-                      <Trans i18nKey={'projects:slug'} />
+                    <dt className="text-muted-foreground text-xs font-medium">
+                      <Trans i18nKey={'projects:statusLabel'} />
                     </dt>
-                    <dd className="mt-1 font-mono text-sm">{project.slug}</dd>
+                    <dd className="mt-0.5 text-sm capitalize">
+                      {project.status}
+                    </dd>
                   </div>
-                )}
-                <div>
-                  <dt className="text-muted-foreground text-sm font-medium">
-                    <Trans i18nKey={'common:createdAt'} />
-                  </dt>
-                  <dd className="mt-1 text-sm">
-                    {new Date(project.created_at!).toLocaleDateString()}
-                  </dd>
+                  {project.slug && (
+                    <div>
+                      <dt className="text-muted-foreground text-xs font-medium">
+                        <Trans i18nKey={'projects:slug'} />
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-sm">
+                        {project.slug}
+                      </dd>
+                    </div>
+                  )}
+                  <div>
+                    <dt className="text-muted-foreground text-xs font-medium">
+                      <Trans i18nKey={'common:createdAt'} />
+                    </dt>
+                    <dd className="mt-0.5 text-sm">
+                      {new Date(project.created_at!).toLocaleDateString()}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs font-medium">
+                      <Trans i18nKey={'common:updatedAt'} />
+                    </dt>
+                    <dd className="mt-0.5 text-sm">
+                      {new Date(project.updated_at!).toLocaleDateString()}
+                    </dd>
+                  </div>
                 </div>
-                <div>
-                  <dt className="text-muted-foreground text-sm font-medium">
-                    <Trans i18nKey={'common:updatedAt'} />
-                  </dt>
-                  <dd className="mt-1 text-sm">
-                    {new Date(project.updated_at!).toLocaleDateString()}
-                  </dd>
-                </div>
+              </CardContent>
+            </Card>
+
+            <If condition={permissions.canEdit}>
+              <ProjectCoverSettings
+                projectId={project.id}
+                currentCoverUrl={
+                  (project.metadata as Record<string, unknown>)
+                    ?.coverImageUrl as string | undefined
+                }
+              />
+            </If>
+          </section>
+
+          {/* ─── Section: Content Generation (1 form, 1 save) ─── */}
+          <If condition={permissions.canEdit}>
+            <section className="border-t pt-8">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold">Content Generation</h2>
+                <p className="text-muted-foreground text-sm">
+                  AI story generation, visual style, and recurring story
+                  elements.
+                </p>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Cover Image Settings */}
-          <If condition={permissions.canEdit}>
-            <ProjectCoverSettings
-              projectId={project.id}
-              currentCoverUrl={
-                (project.metadata as Record<string, unknown>)?.coverImageUrl as
-                | string
-                | undefined
-              }
-            />
+              <StudioSettingsForm
+                projectId={project.id}
+                currentSettings={{
+                  description: project.description ?? undefined,
+                  targetAudience: (project.metadata as Record<string, unknown>)
+                    ?.targetAudience as string | undefined,
+                  genre: (project.metadata as Record<string, unknown>)
+                    ?.genre as Genre | undefined,
+                  videoStyle: (project.metadata as Record<string, unknown>)
+                    ?.videoStyle as VideoStyle | undefined,
+                  contentStyle: (project.metadata as Record<string, unknown>)
+                    ?.contentStyle as ContentStyle | undefined,
+                  defaultEpisodeDuration: (
+                    project.metadata as Record<string, unknown>
+                  )?.defaultEpisodeDuration as number | undefined,
+                  contentRating: (project.metadata as Record<string, unknown>)
+                    ?.contentRating as
+                    | 'G'
+                    | 'PG'
+                    | 'PG-13'
+                    | 'R'
+                    | 'NR'
+                    | undefined,
+                  language: (project.metadata as Record<string, unknown>)
+                    ?.language as string | undefined,
+                  projectAestheticStyle: (
+                    project.metadata as Record<string, unknown>
+                  )?.projectAestheticStyle as string | undefined,
+                  recurringElements: (() => {
+                    const meta = project.metadata as Record<string, unknown>;
+                    if (Array.isArray(meta?.recurringElements)) {
+                      return meta.recurringElements as Array<{
+                        id?: string;
+                        name?: string;
+                        enabled?: boolean;
+                        location?: string;
+                        purpose?: string;
+                        placement?:
+                          | 'beginning'
+                          | 'middle'
+                          | 'end'
+                          | 'throughout';
+                        dialogueHints?: string;
+                      }>;
+                    }
+                    const old = meta?.recurringElement as
+                      | {
+                          enabled?: boolean;
+                          location?: string;
+                          purpose?: string;
+                          placement?:
+                            | 'beginning'
+                            | 'middle'
+                            | 'end'
+                            | 'throughout';
+                          dialogueHints?: string;
+                        }
+                      | undefined;
+                    if (old) {
+                      return [
+                        {
+                          id: crypto.randomUUID(),
+                          name: 'Recurring Element',
+                          ...old,
+                        },
+                      ];
+                    }
+                    return undefined;
+                  })(),
+                }}
+              />
+            </section>
           </If>
 
-          {/* Public Sharing & Visibility Settings */}
+          {/* ─── Section: Audio (1 form, 1 save) ─── */}
           <If condition={permissions.canEdit}>
-            <ProjectVisibilitySettings
-              projectId={project.id}
-              projectName={project.name}
-              accountSlug={account}
-              currentVisibility={project.visibility ?? 'private'}
-              currentPublicSlug={project.public_slug ?? null}
-              isAccountPublic={isAccountPublic}
-            />
+            <section className="border-t pt-8">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold">Audio Generation</h2>
+                <p className="text-muted-foreground text-sm">
+                  Voice, sound effects, and music generation settings.
+                </p>
+              </div>
+
+              <AudioSettingsForm
+                projectId={project.id}
+                accountId={project.account_id ?? ''}
+                currentSettings={
+                  (project as Record<string, unknown>).audio_settings as {
+                    elevenlabs?: {
+                      enabled?: boolean;
+                      tts_model?: string;
+                      sfx_model?: string;
+                    };
+                    voice_provider?:
+                      | 'elevenlabs'
+                      | 'playht'
+                      | 'azure'
+                      | 'google';
+                  } | null
+                }
+              />
+            </section>
           </If>
 
-          {/* Studio Content Generation Settings */}
+          {/* ─── Section: Canon (1 form, 1 save) ─── */}
           <If condition={permissions.canEdit}>
-            <StudioSettingsForm
-              projectId={project.id}
-              currentSettings={{
-                description: project.description ?? undefined,
-                targetAudience: (project.metadata as Record<string, unknown>)
-                  ?.targetAudience as string | undefined,
-                genre: (project.metadata as Record<string, unknown>)?.genre as
-                  | Genre
-                  | undefined,
-                videoStyle: (project.metadata as Record<string, unknown>)
-                  ?.videoStyle as VideoStyle | undefined,
-                contentStyle: (project.metadata as Record<string, unknown>)
-                  ?.contentStyle as ContentStyle | undefined,
-                defaultEpisodeDuration: (
-                  project.metadata as Record<string, unknown>
-                )?.defaultEpisodeDuration as number | undefined,
-                contentRating: (project.metadata as Record<string, unknown>)
-                  ?.contentRating as
-                  | 'G'
-                  | 'PG'
-                  | 'PG-13'
-                  | 'R'
-                  | 'NR'
-                  | undefined,
-                language: (project.metadata as Record<string, unknown>)
-                  ?.language as string | undefined,
-                projectAestheticStyle: (
-                  project.metadata as Record<string, unknown>
-                )?.projectAestheticStyle as string | undefined,
-                recurringElement: (project.metadata as Record<string, unknown>)
-                  ?.recurringElement as
-                  | {
-                    enabled?: boolean;
-                    location?: string;
-                    purpose?: string;
-                    placement?: 'beginning' | 'middle' | 'end' | 'throughout';
-                    dialogueHints?: string;
-                  }
-                  | undefined,
-              }}
-            />
-          </If>
+            <section className="border-t pt-8">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold">Story Continuity</h2>
+                <p className="text-muted-foreground text-sm">
+                  Canon management and episode-to-episode consistency.
+                </p>
+              </div>
 
-          {/* Audio Generation Settings */}
-          <If condition={permissions.canEdit}>
-            <AudioSettingsForm
-              projectId={project.id}
-              accountId={project.account_id ?? ''}
-              currentSettings={
-                (project as Record<string, unknown>).audio_settings as {
-                  elevenlabs?: {
-                    enabled?: boolean;
-                    tts_model?: string;
-                    sfx_model?: string;
-                  };
-                  voice_provider?: 'elevenlabs' | 'playht' | 'azure' | 'google';
-                } | null
-              }
-            />
-          </If>
+              <CanonSettingsForm
+                projectId={project.id}
+                currentSettings={
+                  (project.metadata as { canon?: CanonSettings } | null)
+                    ?.canon ?? null
+                }
+              />
 
-          {/* Canon Management Settings */}
-          <If condition={permissions.canEdit}>
-            <CanonSettingsForm
-              projectId={project.id}
-              currentSettings={
-                (project.metadata as { canon?: CanonSettings } | null)?.canon ?? null
-              }
-            />
-          </If>
-
-          {/* Fact Library (FILM-1121) */}
-          <If condition={permissions.canEdit}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Fact Library</CardTitle>
-                <CardDescription>
-                  Manage verified facts and sources for your documentary content.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Link
-                  href={`/home/${account}/studio/${project.slug}/settings/facts`}
-                  className="text-primary text-sm font-medium hover:underline"
-                >
-                  Open Fact Library →
-                </Link>
-              </CardContent>
-            </Card>
-          </If>
-
-          {/* Episode Intro Videos */}
-          <If condition={permissions.canEdit}>
-            <ProjectIntroSettings projectId={project.id} />
-          </If>
-
-          {/* Publishing Destinations Card */}
-          <If condition={permissions.canEdit}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Publishing Destinations</CardTitle>
-                <CardDescription>
-                  Configure default platforms for all episodes in this project.
-                  Episodes will inherit these settings by default.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ProjectPublishingConfigs
-                  projectId={project.id}
-                  configs={publishingConfigs}
-                  availableConnections={platformConnections}
-                  addConnectionUrl={`/home/${account}/settings/platforms`}
-                />
-              </CardContent>
-            </Card>
-          </If>
-
-          {/* Project Members Card */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+              {/* Fact Library link */}
+              <Link
+                href={`/home/${account}/studio/${project.slug}/settings/facts`}
+                className="border-border bg-card hover:bg-accent mt-4 flex items-center justify-between rounded-lg border px-5 py-4 transition-colors"
+              >
                 <div>
-                  <CardTitle>
-                    <Trans i18nKey={'projects:projectMembers'} />
+                  <p className="text-sm font-medium">Fact Library</p>
+                  <p className="text-muted-foreground text-xs">
+                    Manage verified facts and sources for documentary content.
+                  </p>
+                </div>
+                <ArrowRight className="text-muted-foreground h-4 w-4" />
+              </Link>
+            </section>
+          </If>
+
+          {/* ─── Section: Visibility (1 form, 1 save) ─── */}
+          <If condition={permissions.canEdit}>
+            <section className="border-t pt-8">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold">Visibility & Sharing</h2>
+                <p className="text-muted-foreground text-sm">
+                  Control who can access this project.
+                </p>
+              </div>
+
+              <ProjectVisibilitySettings
+                projectId={project.id}
+                projectName={project.name}
+                accountSlug={account}
+                currentVisibility={project.visibility ?? 'private'}
+                currentPublicSlug={project.public_slug ?? null}
+                isAccountPublic={isAccountPublic}
+              />
+            </section>
+          </If>
+
+          {/* ─── Section: Publishing & Branding (no unified form) ─── */}
+          <If condition={permissions.canEdit}>
+            <section className="space-y-6 border-t pt-8">
+              <div>
+                <h2 className="text-lg font-semibold">Publishing & Branding</h2>
+                <p className="text-muted-foreground text-sm">
+                  Intro videos and publishing destinations.
+                </p>
+              </div>
+
+              <ProjectIntroSettings projectId={project.id} />
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    Publishing Destinations
                   </CardTitle>
                   <CardDescription>
-                    <Trans i18nKey={'projects:projectMembersDescription'} />
+                    Configure default platforms for all episodes in this
+                    project. Episodes will inherit these settings by default.
                   </CardDescription>
-                </div>
-                <If condition={permissions.canAddMembers}>
-                  <AddProjectMemberDialog
+                </CardHeader>
+                <CardContent>
+                  <ProjectPublishingConfigs
                     projectId={project.id}
-                    availableMembers={
-                      availableMembers.map((member) => ({
-                        user_id: member.user_id,
-                        user_name: member.name,
-                        user_email: member.email,
-                      })) || []
-                    }
+                    configs={publishingConfigs}
+                    availableConnections={platformConnections}
+                    addConnectionUrl={`/home/${account}/settings/platforms`}
                   />
-                </If>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {members.map((member: ProjectMemberWithUser) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
-                        {member.user.name?.[0]?.toUpperCase() || '?'}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium">
-                          {member.user.name || member.user.email || 'Unknown'}
-                        </div>
-                        {member.user.email && (
-                          <div className="text-muted-foreground text-xs">
-                            {member.user.email}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="bg-muted rounded-md px-2 py-1 text-sm font-medium capitalize">
-                      {member.role}
-                    </div>
+                </CardContent>
+              </Card>
+            </section>
+          </If>
+
+          {/* ─── Section: Team (no form) ─── */}
+          <section className="space-y-6 border-t pt-8">
+            <div>
+              <h2 className="text-lg font-semibold">Team</h2>
+              <p className="text-muted-foreground text-sm">
+                Project members and collaboration.
+              </p>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>
+                      <Trans i18nKey={'projects:projectMembers'} />
+                    </CardTitle>
+                    <CardDescription>
+                      <Trans i18nKey={'projects:projectMembersDescription'} />
+                    </CardDescription>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  <If condition={permissions.canAddMembers}>
+                    <AddProjectMemberDialog
+                      projectId={project.id}
+                      availableMembers={
+                        availableMembers.map((member) => ({
+                          user_id: member.user_id,
+                          user_name: member.name,
+                          user_email: member.email,
+                        })) || []
+                      }
+                    />
+                  </If>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {members.map((member: ProjectMemberWithUser) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="bg-muted flex h-10 w-10 items-center justify-center rounded-full">
+                          {member.user.name?.[0]?.toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium">
+                            {member.user.name || member.user.email || 'Unknown'}
+                          </div>
+                          {member.user.email && (
+                            <div className="text-muted-foreground text-xs">
+                              {member.user.email}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="capitalize">
+                        {member.role}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </section>
         </div>
       </div>
     </>

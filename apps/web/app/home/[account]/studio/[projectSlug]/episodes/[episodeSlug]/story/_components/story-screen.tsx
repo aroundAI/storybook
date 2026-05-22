@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 
 import { convertToScreenplayAction } from '@kit/episodes/server';
-import { useEpisodeContext } from '../../_components/episode-context-provider';
 import type { EpisodeWithShots, StoryCharacterArc } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
+import { useEpisodeContext } from '../../_components/episode-context-provider';
 import { ActDivider } from './act-divider';
 import { CanonDashboard } from './canon-dashboard';
 import { InlineViolationWarning } from './inline-violation-warning';
@@ -84,7 +84,14 @@ export function StoryScreen({
       setIsGenerating(false); // Reset on error
       toast.error(llmError || 'Failed to convert to screenplay');
     }
-  }, [llmStatus, llmResult, llmError, refetchEpisode, onScreenplayComplete, setIsGenerating]);
+  }, [
+    llmStatus,
+    llmResult,
+    llmError,
+    refetchEpisode,
+    onScreenplayComplete,
+    setIsGenerating,
+  ]);
 
   // Handle story-generation result (refresh to show generated story)
   useEffect(() => {
@@ -363,7 +370,7 @@ export function StoryScreen({
                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
                     sidebarTab === 'info'
                       ? 'border-b-2 border-indigo-500 text-indigo-600 dark:text-indigo-400'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
                   )}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -377,7 +384,7 @@ export function StoryScreen({
                     'flex-1 px-4 py-3 text-sm font-medium transition-colors',
                     sidebarTab === 'canon'
                       ? 'border-b-2 border-violet-500 text-violet-600 dark:text-violet-400'
-                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
                   )}
                 >
                   <div className="flex items-center justify-center gap-2">
@@ -522,7 +529,7 @@ export function StoryScreen({
                                   className={cn(
                                     'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
                                     ROLE_COLORS[character.role.toLowerCase()] ??
-                                    'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                                      'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
                                   )}
                                 >
                                   {character.role}

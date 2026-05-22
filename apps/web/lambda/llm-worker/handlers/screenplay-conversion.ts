@@ -112,6 +112,7 @@ export async function processScreenplayConversion(
       buildEpisodeContext,
       formatCharactersForPrompt,
       formatLocationsForPrompt,
+      formatRecurringElementsForPrompt,
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
@@ -120,6 +121,9 @@ export async function processScreenplayConversion(
 
     const charactersFormatted = formatCharactersForPrompt(characters);
     const _locationsFormatted = formatLocationsForPrompt(locations);
+    const recurringElementsFormatted = formatRecurringElementsForPrompt(
+      episodeContext.recurringElements,
+    );
 
     console.log(
       `[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations`,
@@ -171,6 +175,7 @@ export async function processScreenplayConversion(
       charactersContext: charactersFormatted || 'No characters defined.',
       characterNames,
       locationNames,
+      recurringElementsContext: recurringElementsFormatted,
       sceneCountMin: scaling.screenplay.sceneCountMin,
       sceneCountMax: scaling.screenplay.sceneCountMax,
       dialogueLinesPerSceneMin: scaling.screenplay.dialogueLinesPerSceneMin,
@@ -185,7 +190,6 @@ export async function processScreenplayConversion(
 
     const costCents = 0; // Agent orchestrator tracks cost internally
     const generatedAt = new Date().toISOString();
-
 
     // 4. FILM-1104: Run SCREENPLAY validation checkpoint
     try {
@@ -304,9 +308,9 @@ export async function processScreenplayConversion(
         provider: 'multi-agent',
         costCents,
       },
-      totalDialogueLines: orchestratorResult.scenes
-        .flatMap((s) => s.dialogue || [])
-        .length,
+      totalDialogueLines: orchestratorResult.scenes.flatMap(
+        (s) => s.dialogue || [],
+      ).length,
       estimatedDuration: totalEstimatedDuration,
       approvedAt: null,
       // Full metadata for episode header display
@@ -318,7 +322,45 @@ export async function processScreenplayConversion(
       },
     };
 
-    // 5. UPDATE episode with screenplay_data
+    // 5. Guard: Skip write if episode was deleted during processing
+    const { data: currentEpisode } = await supabase
+      .from('episodes')
+      .select('status, deleted_at')
+      .eq('id', data.episodeId)
+      .single();
+
+    if (!currentEpisode || currentEpisode.deleted_at) {
+      console.warn(
+        '[Screenplay Conversion] Episode was deleted during generation. Skipping write.',
+      );
+      await markJobCompleted(supabase, data.episodeId, 'screenplay', {
+        skipped: true,
+        reason: 'episode-deleted',
+      });
+
+      return {
+        success: true,
+        data: {
+          screenplay: {
+            title: episode.title,
+            scenes: [],
+            totalDialogueLines: 0,
+            estimatedDuration: 0,
+          },
+          dialogueLinesCreated: 0,
+          episode: { id: data.episodeId, status: 'draft', version: 0 },
+          metadata: {
+            provider: 'skipped',
+            model: 'skipped',
+            costCents: 0,
+            tokensUsed: 0,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }
+
+    // 5b. UPDATE episode with screenplay_data
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
@@ -327,7 +369,7 @@ export async function processScreenplayConversion(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      .eq('version', data.version)
+      // NOTE: No .eq('version', ...) — version may drift during orchestrator mid-run writes
       .is('deleted_at', null)
       .select()
       .single();
@@ -337,7 +379,7 @@ export async function processScreenplayConversion(
     }
 
     if (!updatedEpisode) {
-      throw new Error('Episode was modified by another user');
+      throw new Error('Episode not found or was deleted');
     }
 
     // 6. Extract and INSERT dialogue lines
@@ -374,6 +416,20 @@ export async function processScreenplayConversion(
     }
 
     if (dialogueLines.length > 0) {
+      // Delete existing dialogue lines before inserting new ones
+      // Prevents orphaned lines from previous generations
+      const { error: deleteDialogueError } = await supabase
+        .from('dialogue_lines')
+        .delete()
+        .eq('episode_id', data.episodeId);
+
+      if (deleteDialogueError) {
+        console.warn(
+          '[Screenplay Conversion] Failed to delete old dialogue lines:',
+          deleteDialogueError,
+        );
+      }
+
       const { error: insertError } = await supabase
         .from('dialogue_lines')
         .insert(dialogueLines);

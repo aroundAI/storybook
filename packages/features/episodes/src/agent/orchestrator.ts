@@ -18,68 +18,69 @@
  *
  * NOT a hardcoded pipeline — the LLM drives the flow based on quality signals.
  */
-
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
 
+import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
 import { continuitySkill } from './skills/continuity-skill';
 import { reelScoutSkill } from './skills/reel-scout-skill';
 import { screenplayDirectorSkill } from './skills/screenplay-director-skill';
 import { shotDirectorSkill } from './skills/shot-director-skill';
 import { storyDirectorSkill } from './skills/story-director-skill';
 import { viralAnalystSkill } from './skills/viral-analyst-skill';
-import type { EpisodeViralQuality, ViralDimensionScores } from '../lib/types';
 
 export interface OrchestratorInput {
-    episodeId: string;
-    episodeTitle: string;
-    episodeLogline: string;
-    genre: string;
-    targetAudience: string;
-    targetDurationSeconds: number;
-    contentStyle?: 'dialogue-heavy' | 'balanced' | 'action-heavy';
-    projectId: string;
-    episodeNumber: number;
-    accountId: string;
-    // Pre-formatted context blocks from context-builder
-    charactersContext: string;
-    locationsContext: string;
-    charactersVeoContext: string;
-    locationsVeoContext: string;
-    seasonContext?: string;
-    previousEpisodesContext?: string;
-    visualStyle?: string;
+  episodeId: string;
+  episodeTitle: string;
+  episodeLogline: string;
+  genre: string;
+  targetAudience: string;
+  targetDurationSeconds: number;
+  contentStyle?: 'dialogue-heavy' | 'balanced' | 'action-heavy';
+  projectId: string;
+  episodeNumber: number;
+  accountId: string;
+  // Pre-formatted context blocks from context-builder
+  charactersContext: string;
+  locationsContext: string;
+  charactersVeoContext: string;
+  locationsVeoContext: string;
+  seasonContext?: string;
+  previousEpisodesContext?: string;
+  visualStyle?: string;
+  // Recurring story elements (pre-formatted)
+  recurringElementsContext?: string;
 }
 
 export interface OrchestratorResult {
-    success: boolean;
-    viralQuality: EpisodeViralQuality | null;
-    storyText?: string;
-    screenplay?: {
-        title: string;
-        scenes: unknown[];
-        totalDialogueLines: number;
-        estimatedDuration: number;
-    };
-    shots?: unknown[];
-    orchestratorSteps: number;
-    error?: string;
+  success: boolean;
+  viralQuality: EpisodeViralQuality | null;
+  storyText?: string;
+  screenplay?: {
+    title: string;
+    scenes: unknown[];
+    totalDialogueLines: number;
+    estimatedDuration: number;
+  };
+  shots?: unknown[];
+  orchestratorSteps: number;
+  error?: string;
 }
 
 interface OrchestratorOutput {
-    overallScore: number;
-    decision: 'pass' | 'revised' | 'flag';
-    whyThisWorks: string;
-    whatToImprove: string;
-    dimensionScores: ViralDimensionScores;
-    revisionsApplied: string[];
-    reelCandidates: EpisodeViralQuality['reelCandidates'];
-    finalStoryText?: string;
-    screenplayTitle?: string;
-    screenplayScenes?: unknown[];
-    screenplayDialogueLines?: number;
-    shots?: unknown[];
-    totalShots?: number;
+  overallScore: number;
+  decision: 'pass' | 'revised' | 'flag';
+  whyThisWorks: string;
+  whatToImprove: string;
+  dimensionScores: ViralDimensionScores;
+  revisionsApplied: string[];
+  reelCandidates: EpisodeViralQuality['reelCandidates'];
+  finalStoryText?: string;
+  screenplayTitle?: string;
+  screenplayScenes?: unknown[];
+  screenplayDialogueLines?: number;
+  shots?: unknown[];
+  totalShots?: number;
 }
 
 /**
@@ -93,175 +94,209 @@ interface OrchestratorOutput {
  * @param supabase Supabase client for persisting results
  */
 export async function runContentOrchestrator(
-    input: OrchestratorInput,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    supabase: { from: (table: string) => any },
+  input: OrchestratorInput,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: { from: (table: string) => any },
 ): Promise<OrchestratorResult> {
-    console.log(`[Orchestrator] Starting full pipeline for episode ${input.episodeId}`);
+  console.log(
+    `[Orchestrator] Starting full pipeline for episode ${input.episodeId}`,
+  );
 
-    const result: AgentRunResult<OrchestratorOutput> = await runAgent<OrchestratorOutput>(
-        {
-            name: 'content-orchestrator',
-            systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
-            tools: [],
-            skills: [
-                storyDirectorSkill,
-                viralAnalystSkill,
-                continuitySkill,
-                reelScoutSkill,
-                screenplayDirectorSkill,
-                shotDirectorSkill,
-            ],
-            maxSteps: 12,
-            budgetLimits: {
-                maxTotalTokens: 400_000,
-                maxCostUSD: 5.00,
-                maxLatencyMs: 600_000,
-            },
+  const result: AgentRunResult<OrchestratorOutput> =
+    await runAgent<OrchestratorOutput>(
+      {
+        name: 'content-orchestrator',
+        systemPrompt: ORCHESTRATOR_SYSTEM_PROMPT,
+        tools: [],
+        skills: [
+          storyDirectorSkill,
+          viralAnalystSkill,
+          continuitySkill,
+          reelScoutSkill,
+          screenplayDirectorSkill,
+          shotDirectorSkill,
+        ],
+        maxSteps: 12,
+        budgetLimits: {
+          maxTotalTokens: 400_000,
+          maxCostUSD: 5.0,
+          maxLatencyMs: 600_000,
         },
-        {
-            userPrompt: buildOrchestratorPrompt(input),
-        },
-        { accountId: input.accountId },
+      },
+      {
+        userPrompt: buildOrchestratorPrompt(input),
+      },
+      { accountId: input.accountId },
     );
 
-    if (!result.success || !result.data) {
-        console.warn(`[Orchestrator] Failed: ${result.error}`);
-        return {
-            success: false,
-            viralQuality: null,
-            orchestratorSteps: result.steps.length,
-            error: result.error,
-        };
-    }
-
-    const output = result.data;
-
-    // Extract data from steps (more reliable than orchestrator LLM reproducing full content
-    // in its final JSON synthesis — the LLM may truncate or omit large fields like storyText).
-    type GenerateStoryResult = { storyText?: string };
-    type GenerateScreenplayResult = { title?: string; scenes?: unknown[]; totalDialogueLines?: number };
-    type GenerateShotsResult = { shots?: unknown[] };
-
-    const storyStep = result.steps.find(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateStory' && s.toolResult?.success,
-    );
-    const storyTextFromSteps = (storyStep?.toolResult?.data as GenerateStoryResult | undefined)?.storyText;
-
-    // Use the LAST successful generateScreenplay step (handles revision runs)
-    const screenplaySteps = result.steps.filter(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateScreenplay' && s.toolResult?.success,
-    );
-    const lastScreenplayStep = screenplaySteps.at(-1);
-    const screenplayDataFromSteps = lastScreenplayStep?.toolResult?.data as GenerateScreenplayResult | undefined;
-
-    const shotsStep = result.steps.find(
-        (s) => s.type === 'tool_call' && s.toolName === 'generateShots' && s.toolResult?.success,
-    );
-    const shotsFromSteps = (shotsStep?.toolResult?.data as GenerateShotsResult | undefined)?.shots;
-
-    console.log(
-        `[Orchestrator] Extracted from steps — story: ${storyTextFromSteps ? storyTextFromSteps.split(/\s+/).length + ' words' : 'missing (will fallback to LLM synthesis)'}, ` +
-        `screenplay: ${screenplayDataFromSteps?.scenes?.length ?? 0} scenes, shots: ${shotsFromSteps?.length ?? 0}`,
-    );
-
-    const viralQuality: EpisodeViralQuality = {
-        overallScore: output.overallScore,
-        decision: output.decision,
-        whyThisWorks: output.whyThisWorks,
-        whatToImprove: output.whatToImprove,
-        dimensionScores: output.dimensionScores,
-        revisionsApplied: output.revisionsApplied,
-        orchestratorSteps: result.steps.length,
-        reelCandidates: output.reelCandidates,
-    };
-
-    // Persist viral_quality to the episode
-    try {
-        const { error } = await supabase
-            .from('episodes')
-            .update({ viral_quality: viralQuality })
-            .eq('id', input.episodeId);
-
-        if (error) {
-            console.warn(`[Orchestrator] Failed to persist viral_quality: ${(error as { message: string }).message}`);
-        } else {
-            console.log(
-                `[Orchestrator] viral_quality persisted. Score: ${viralQuality.overallScore}, Decision: ${viralQuality.decision}`,
-            );
-        }
-    } catch (err) {
-        console.warn('[Orchestrator] Persist error (non-fatal):', err);
-    }
-
-    // Resolve screenplay/shots — prefer steps extraction, fall back to orchestrator LLM synthesis
-    const resolvedScreenplayScenes = screenplayDataFromSteps?.scenes ?? output.screenplayScenes;
-    const resolvedScreenplayTitle = screenplayDataFromSteps?.title ?? output.screenplayTitle;
-    const resolvedScreenplayDialogueLines = screenplayDataFromSteps?.totalDialogueLines ?? output.screenplayDialogueLines;
-    const resolvedShots = shotsFromSteps ?? (output.shots as unknown[] | undefined);
-
-    // Persist screenplay_data if generated
-    if (resolvedScreenplayScenes && resolvedScreenplayScenes.length > 0) {
-        try {
-            const screenplayData = {
-                title: resolvedScreenplayTitle,
-                scenes: resolvedScreenplayScenes,
-                totalDialogueLines: resolvedScreenplayDialogueLines ?? 0,
-                estimatedDuration: input.targetDurationSeconds,
-                generatedAt: new Date().toISOString(),
-                generatedBy: { orchestratorSteps: result.steps.length },
-            };
-            const { error } = await supabase
-                .from('episodes')
-                .update({ screenplay_data: screenplayData, status: 'storyboard' })
-                .eq('id', input.episodeId);
-
-            if (error) {
-                console.warn(`[Orchestrator] Failed to persist screenplay_data: ${(error as { message: string }).message}`);
-            } else {
-                console.log(`[Orchestrator] screenplay_data persisted. ${resolvedScreenplayScenes.length} scenes.`);
-            }
-        } catch (err) {
-            console.warn('[Orchestrator] Screenplay persist error (non-fatal):', err);
-        }
-    }
-
-    // Persist shots if generated
-    if (resolvedShots && resolvedShots.length > 0) {
-        try {
-            const shotsToInsert = resolvedShots.map((shot: unknown) => ({
-                episode_id: input.episodeId,
-                ...(shot as Record<string, unknown>),
-            }));
-
-            const { error } = await supabase.from('shots').insert(shotsToInsert);
-
-            if (error) {
-                console.warn(`[Orchestrator] Failed to persist shots: ${(error as { message: string }).message}`);
-            } else {
-                console.log(`[Orchestrator] ${shotsToInsert.length} shots persisted.`);
-            }
-        } catch (err) {
-            console.warn('[Orchestrator] Shots persist error (non-fatal):', err);
-        }
-    }
-
-
+  if (!result.success || !result.data) {
+    console.warn(`[Orchestrator] Failed: ${result.error}`);
     return {
-        success: true,
-        viralQuality,
-        storyText: storyTextFromSteps ?? output.finalStoryText,
-        screenplay: resolvedScreenplayScenes?.length
-            ? {
-                title: resolvedScreenplayTitle ?? '',
-                scenes: resolvedScreenplayScenes as unknown[],
-                totalDialogueLines: resolvedScreenplayDialogueLines ?? 0,
-                estimatedDuration: input.targetDurationSeconds,
-              }
-            : undefined,
-        shots: resolvedShots,
-        orchestratorSteps: result.steps.length,
+      success: false,
+      viralQuality: null,
+      orchestratorSteps: result.steps.length,
+      error: result.error,
     };
+  }
+
+  const output = result.data;
+
+  // Extract data from steps (more reliable than orchestrator LLM reproducing full content
+  // in its final JSON synthesis — the LLM may truncate or omit large fields like storyText).
+  type GenerateStoryResult = { storyText?: string };
+  type GenerateScreenplayResult = {
+    title?: string;
+    scenes?: unknown[];
+    totalDialogueLines?: number;
+  };
+  type GenerateShotsResult = { shots?: unknown[] };
+
+  const storyStep = result.steps.find(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateStory' &&
+      s.toolResult?.success,
+  );
+  const storyTextFromSteps = (
+    storyStep?.toolResult?.data as GenerateStoryResult | undefined
+  )?.storyText;
+
+  // Use the LAST successful generateScreenplay step (handles revision runs)
+  const screenplaySteps = result.steps.filter(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateScreenplay' &&
+      s.toolResult?.success,
+  );
+  const lastScreenplayStep = screenplaySteps.at(-1);
+  const screenplayDataFromSteps = lastScreenplayStep?.toolResult?.data as
+    | GenerateScreenplayResult
+    | undefined;
+
+  const shotsStep = result.steps.find(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'generateShots' &&
+      s.toolResult?.success,
+  );
+  const shotsFromSteps = (
+    shotsStep?.toolResult?.data as GenerateShotsResult | undefined
+  )?.shots;
+
+  console.log(
+    `[Orchestrator] Extracted from steps — story: ${storyTextFromSteps ? storyTextFromSteps.split(/\s+/).length + ' words' : 'missing (will fallback to LLM synthesis)'}, ` +
+      `screenplay: ${screenplayDataFromSteps?.scenes?.length ?? 0} scenes, shots: ${shotsFromSteps?.length ?? 0}`,
+  );
+
+  const viralQuality: EpisodeViralQuality = {
+    overallScore: output.overallScore,
+    decision: output.decision,
+    whyThisWorks: output.whyThisWorks,
+    whatToImprove: output.whatToImprove,
+    dimensionScores: output.dimensionScores,
+    revisionsApplied: output.revisionsApplied,
+    orchestratorSteps: result.steps.length,
+    reelCandidates: output.reelCandidates,
+  };
+
+  // Persist viral_quality to the episode
+  try {
+    const { error } = await supabase
+      .from('episodes')
+      .update({ viral_quality: viralQuality })
+      .eq('id', input.episodeId);
+
+    if (error) {
+      console.warn(
+        `[Orchestrator] Failed to persist viral_quality: ${(error as { message: string }).message}`,
+      );
+    } else {
+      console.log(
+        `[Orchestrator] viral_quality persisted. Score: ${viralQuality.overallScore}, Decision: ${viralQuality.decision}`,
+      );
+    }
+  } catch (err) {
+    console.warn('[Orchestrator] Persist error (non-fatal):', err);
+  }
+
+  // Resolve screenplay/shots — prefer steps extraction, fall back to orchestrator LLM synthesis
+  const resolvedScreenplayScenes =
+    screenplayDataFromSteps?.scenes ?? output.screenplayScenes;
+  const resolvedScreenplayTitle =
+    screenplayDataFromSteps?.title ?? output.screenplayTitle;
+  const resolvedScreenplayDialogueLines =
+    screenplayDataFromSteps?.totalDialogueLines ??
+    output.screenplayDialogueLines;
+  const resolvedShots =
+    shotsFromSteps ?? (output.shots as unknown[] | undefined);
+
+  // Persist screenplay_data if generated
+  if (resolvedScreenplayScenes && resolvedScreenplayScenes.length > 0) {
+    try {
+      const screenplayData = {
+        title: resolvedScreenplayTitle,
+        scenes: resolvedScreenplayScenes,
+        totalDialogueLines: resolvedScreenplayDialogueLines ?? 0,
+        estimatedDuration: input.targetDurationSeconds,
+        generatedAt: new Date().toISOString(),
+        generatedBy: { orchestratorSteps: result.steps.length },
+      };
+      const { error } = await supabase
+        .from('episodes')
+        .update({ screenplay_data: screenplayData, status: 'storyboard' })
+        .eq('id', input.episodeId);
+
+      if (error) {
+        console.warn(
+          `[Orchestrator] Failed to persist screenplay_data: ${(error as { message: string }).message}`,
+        );
+      } else {
+        console.log(
+          `[Orchestrator] screenplay_data persisted. ${resolvedScreenplayScenes.length} scenes.`,
+        );
+      }
+    } catch (err) {
+      console.warn('[Orchestrator] Screenplay persist error (non-fatal):', err);
+    }
+  }
+
+  // Persist shots if generated
+  if (resolvedShots && resolvedShots.length > 0) {
+    try {
+      const shotsToInsert = resolvedShots.map((shot: unknown) => ({
+        episode_id: input.episodeId,
+        ...(shot as Record<string, unknown>),
+      }));
+
+      const { error } = await supabase.from('shots').insert(shotsToInsert);
+
+      if (error) {
+        console.warn(
+          `[Orchestrator] Failed to persist shots: ${(error as { message: string }).message}`,
+        );
+      } else {
+        console.log(`[Orchestrator] ${shotsToInsert.length} shots persisted.`);
+      }
+    } catch (err) {
+      console.warn('[Orchestrator] Shots persist error (non-fatal):', err);
+    }
+  }
+
+  return {
+    success: true,
+    viralQuality,
+    storyText: storyTextFromSteps ?? output.finalStoryText,
+    screenplay: resolvedScreenplayScenes?.length
+      ? {
+          title: resolvedScreenplayTitle ?? '',
+          scenes: resolvedScreenplayScenes as unknown[],
+          totalDialogueLines: resolvedScreenplayDialogueLines ?? 0,
+          estimatedDuration: input.targetDurationSeconds,
+        }
+      : undefined,
+    shots: resolvedShots,
+    orchestratorSteps: result.steps.length,
+  };
 }
 
 // =============================================================================
@@ -317,7 +352,7 @@ When complete, return a JSON object with:
 - totalShots: total number of shots generated`;
 
 function buildOrchestratorPrompt(input: OrchestratorInput): string {
-    return `Orchestrate FULL content generation for this episode across all 4 stages.
+  return `Orchestrate FULL content generation for this episode across all 4 stages.
 
 **Episode**: "${input.episodeTitle}"
 **Logline**: ${input.episodeLogline}
@@ -342,6 +377,13 @@ ${input.locationsVeoContext}
 
 ${input.seasonContext ? `**Season Context:** ${input.seasonContext}` : ''}
 ${input.previousEpisodesContext ? `**Previous Episodes:** ${input.previousEpisodesContext}` : ''}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Story Elements (pass verbatim to ALL agents that accept it — these are MANDATORY structural anchors):**
+${input.recurringElementsContext}`
+    : ''
+}
 
 Begin with Story Director (pass characters + locations + seasonContext). Then evaluate. Then generate screenplay. Then Reel Scout. Then Shot Director with reel candidate priorities.
 

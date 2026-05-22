@@ -244,6 +244,7 @@ export const generateFullStoryAction = enhanceAction(
         accountId,
         userId: user.id,
         projectId: episode.project_id,
+        threadCandidates: data.threadCandidates,
       },
     });
 

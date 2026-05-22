@@ -1,5 +1,57 @@
 import { z } from 'zod';
 
+// ============================================================================
+// Boundary Validation Schemas (for parsing raw DB JSONB fields)
+// ============================================================================
+
+/**
+ * Schema for parsing primary_subject JSONB column from the database.
+ * Use with `.nullish().parse()` at data boundaries instead of `as` casting.
+ */
+export const PrimarySubjectSchema = z.object({
+  type: z.enum(['character', 'location', 'object']),
+  name: z.string(),
+});
+
+/**
+ * Schema for parsing generation_metadata JSONB column from the database.
+ * Permissive `.passthrough()` to allow extra fields from different LLM providers.
+ */
+export const ShotMetadataSchema = z
+  .object({
+    characters: z.array(z.string()).optional(),
+    locations: z.array(z.string()).optional(),
+    location: z.string().optional(),
+    timeOfDay: z.string().optional(),
+    mood: z.string().optional(),
+    shotType: z.string().optional(),
+    veoPrompt: z
+      .object({
+        fullPrompt: z.string().optional(),
+        shotLine: z.string().optional(),
+        timeline: z
+          .array(
+            z.object({
+              character: z.string().nullish(),
+              type: z.string().optional(),
+            }),
+          )
+          .optional(),
+      })
+      .optional(),
+    referenceImages: z
+      .object({
+        characters: z
+          .array(z.object({ name: z.string(), url: z.string() }))
+          .optional(),
+        locations: z
+          .array(z.object({ name: z.string(), url: z.string() }))
+          .optional(),
+      })
+      .optional(),
+  })
+  .passthrough();
+
 /**
  * Schema for generating a shot list from screenplay/story
  */
@@ -288,6 +340,31 @@ export const SceneShotOutputSchema = z.object({
       standaloneSummary: z.string().nullish(),
     })
     .nullish(),
+  // OpenClaw Shot Intelligence fields
+  transitionType: z
+    .enum(['continuation', 'cut', 'match_cut', 'j_cut', 'l_cut'])
+    .optional()
+    .default('cut'),
+  frameStrategy: z
+    .enum([
+      'character_focus',
+      'environment_focus',
+      'two_shot',
+      'group',
+      'detail_insert',
+    ])
+    .optional()
+    .default('environment_focus'),
+  primarySubject: z
+    .object({
+      type: z.enum(['character', 'location', 'object']),
+      name: z.string(),
+    })
+    .optional(),
+  firstFrameDescription: z.string().nullish(),
+  lastFrameDescription: z.string().nullish(),
+  locationArea: z.string().nullish(),
+  locationEnvironmentDescription: z.string().nullish(),
 });
 
 export type SceneShotOutput = z.infer<typeof SceneShotOutputSchema>;

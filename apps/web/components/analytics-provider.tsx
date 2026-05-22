@@ -16,8 +16,8 @@ import { isBrowser } from '@kit/shared/utils';
 type AnalyticsMapping<
   T extends ConsumerProvidedEventTypes = NonNullable<unknown>,
 > = {
-    [K in AppEventType<T>]?: (event: AppEvent<T, K>) => unknown;
-  };
+  [K in AppEventType<T>]?: (event: AppEvent<T, K>) => unknown;
+};
 
 /**
  * Hook to subscribe to app events and map them to analytics actions

@@ -22,7 +22,12 @@ export { EpisodePreviewDialog } from './batch-episode-creator/episode-preview-di
 export { VideoUploader, type VideoUploaderProps } from './video-uploader';
 
 // Fact Management (Phase 11: FILM-1121)
-export { FactCard, FactLibrary, AddFactForm, FactVerificationDialog } from './facts';
+export {
+  FactCard,
+  FactLibrary,
+  AddFactForm,
+  FactVerificationDialog,
+} from './facts';
 export type { MappedFact } from './facts';
 export {
   STATUS_STYLES,

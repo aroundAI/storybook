@@ -2,7 +2,6 @@ import {
   MultiFactorAuthFactorsList,
   UpdatePasswordFormContainer,
 } from '@kit/accounts/personal-account-settings';
-import { ApiKeysSettings } from './_components/api-keys-settings';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { createTeamAccountsApi } from '@kit/team-accounts/api';
 import { TeamAccountSettingsContainer } from '@kit/team-accounts/components';
@@ -23,6 +22,7 @@ import { createI18nServerInstance } from '~/lib/i18n/i18n.server';
 
 // local imports
 import { TeamAccountLayoutPageHeader } from '../_components/team-account-layout-page-header';
+import { ApiKeysSettings } from './_components/api-keys-settings';
 
 export const generateMetadata = async () => {
   const i18n = await createI18nServerInstance();
@@ -148,4 +148,3 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
 }
 
 export default TeamAccountSettingsPage;
-

@@ -13,12 +13,13 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { commitStoryCanon } from '../utils/commit-story-canon';
 import {
   buildEpisodeContext,
   formatCharactersForPrompt,
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
-  formatRecurringElementForPrompt,
+  formatRecurringElementsForPrompt,
 } from '../utils/context-builder';
 import {
   type ContentStyle,
@@ -29,7 +30,6 @@ import {
   markJobFailed,
   markJobProcessing,
 } from '../utils/job-tracking';
-import { commitStoryCanon } from '../utils/commit-story-canon';
 
 interface StoryGenerationPayload {
   episodeId: string;
@@ -42,6 +42,11 @@ interface StoryGenerationPayload {
   accountId: string;
   userId: string;
   projectId: string;
+  threadCandidates?: Array<{
+    threadId: string;
+    threadName: string;
+    action: 'progress' | 'resolve';
+  }>;
 }
 
 interface StoryOutput {
@@ -83,7 +88,9 @@ export async function processStoryGeneration(
 ): Promise<StoryGenerationResult> {
   const data = payload as StoryGenerationPayload;
 
-  console.log(`[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`);
+  console.log(
+    `[Story Generation] Starting AGENTIC pipeline for episode ${data.episodeId}`,
+  );
 
   // Mark job as processing
   await markJobProcessing(supabase, data.episodeId, 'story');
@@ -92,14 +99,17 @@ export async function processStoryGeneration(
     // 1. Build rich context using shared context-builder
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
 
-    const contentStyle = (data.contentStyle ?? 'dialogue-heavy') as ContentStyle;
+    const contentStyle = (data.contentStyle ??
+      'dialogue-heavy') as ContentStyle;
     const scaling = calculateContentScaling({
       targetDurationSeconds: data.targetDuration,
       contentStyle,
     });
 
     // 2. Pre-format Stage 1 context blocks (story/viral/continuity only)
-    const charactersContext = formatCharactersForPrompt(episodeContext.characters);
+    const charactersContext = formatCharactersForPrompt(
+      episodeContext.characters,
+    );
     const locationsContext = formatLocationsForPrompt(episodeContext.locations);
     const previousEpisodesContext = formatPreviousEpisodesForPrompt(
       episodeContext.previousEpisodes,
@@ -107,20 +117,27 @@ export async function processStoryGeneration(
     const seasonContext = episodeContext.seasonPremise
       ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
       : '';
-    // Recurring element — Bug 1 fix: was never computed or passed
-    const recurringElementContext = episodeContext.recurringElement
-      ? formatRecurringElementForPrompt(episodeContext.recurringElement)
+    // Recurring elements — supports multiple recurring story elements
+    const recurringElementContext = episodeContext.recurringElements
+      ? formatRecurringElementsForPrompt(episodeContext.recurringElements)
       : undefined;
 
     console.log(
       `[Story Generation] Context built: ${episodeContext.characters.length} characters, ${episodeContext.locations.length} locations` +
-      (recurringElementContext ? ', recurring element: yes' : ''),
+        (recurringElementContext ? ', recurring element: yes' : ''),
     );
 
     // 3. Run the Stage 1 Story Orchestrator
     const { runStoryOrchestrator } = await import(
       '@kit/episodes/agent/story-orchestrator'
     );
+
+    // Format thread candidates for the orchestrator
+    const threadCandidatesContext = data.threadCandidates?.length
+      ? data.threadCandidates
+          .map((t) => `- ${t.action.toUpperCase()}: "${t.threadName}"`)
+          .join('\n')
+      : undefined;
 
     const orchestratorResult = await runStoryOrchestrator(
       {
@@ -139,7 +156,8 @@ export async function processStoryGeneration(
         seasonContext,
         previousEpisodesContext,
         visualStyle: episodeContext.visualStyle,
-        recurringElementContext,
+        recurringElementsContext: recurringElementContext,
+        threadCandidatesContext,
       },
       supabase,
     );
@@ -187,7 +205,86 @@ export async function processStoryGeneration(
       viralQuality: orchestratorResult.viralQuality,
     };
 
-    // 5. UPDATE DATABASE: episode.story_data + status → 'story'
+    // 5. Guard: Skip write if episode was deleted or job was cancelled
+    const { data: currentEpisode } = await supabase
+      .from('episodes')
+      .select('status, deleted_at')
+      .eq('id', data.episodeId)
+      .single();
+
+    if (!currentEpisode || currentEpisode.deleted_at) {
+      console.warn(
+        '[Story Generation] Episode was deleted during generation. Skipping write.',
+      );
+      await markJobCompleted(supabase, data.episodeId, 'story', {
+        skipped: true,
+        reason: 'episode-deleted',
+      });
+
+      return {
+        success: false,
+        data: {
+          story: {
+            fullText: '',
+            title: data.title,
+            actBreakdown: [],
+            characters: [],
+            themes: [],
+            tone: '',
+            estimatedSceneCount: 0,
+          },
+          episode: { id: data.episodeId, status: 'draft', version: 0 },
+          metadata: {
+            provider: 'skipped',
+            model: 'skipped',
+            costCents: 0,
+            tokensUsed: 0,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }
+
+    // Also check if the generation job was explicitly cancelled by the user
+    const { data: activeJob } = await supabase
+      .from('generation_jobs')
+      .select('status')
+      .eq('reference_type', 'episode')
+      .eq('reference_id', data.episodeId)
+      .eq('job_type', 'story')
+      .in('status', ['queued', 'processing'])
+      .limit(1)
+      .maybeSingle();
+
+    if (!activeJob) {
+      console.warn(
+        '[Story Generation] No active generation job found (may have been cancelled). Skipping write.',
+      );
+      return {
+        success: false,
+        data: {
+          story: {
+            fullText: '',
+            title: data.title,
+            actBreakdown: [],
+            characters: [],
+            themes: [],
+            tone: '',
+            estimatedSceneCount: 0,
+          },
+          episode: { id: data.episodeId, status: 'draft', version: 0 },
+          metadata: {
+            provider: 'skipped',
+            model: 'skipped',
+            costCents: 0,
+            tokensUsed: 0,
+            generatedAt: new Date().toISOString(),
+          },
+        },
+      };
+    }
+
+    // 6. UPDATE DATABASE: episode.story_data + status → 'story'
     const { data: updatedEpisode, error: updateError } = await supabase
       .from('episodes')
       .update({
@@ -197,24 +294,24 @@ export async function processStoryGeneration(
         updated_at: new Date().toISOString(),
       })
       .eq('id', data.episodeId)
-      .eq('version', data.version)
+      // NOTE: No .eq('version', ...) — the orchestrator writes viral_quality
+      // mid-run which bumps the version via DB trigger (see: f64c9648)
       .is('deleted_at', null)
       .select()
       .single();
-
 
     if (updateError) {
       throw new Error(`Failed to update episode: ${updateError.message}`);
     }
 
     if (!updatedEpisode) {
-      throw new Error('Episode was modified by another user (optimistic lock failed)');
+      throw new Error('Episode not found or was deleted');
     }
 
     console.log(
       `[Story Generation] Stage 1 complete. Status: story. ` +
-      `Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
-      `Stage 2 (Screenplay) will run on user action.`,
+        `Viral score: ${orchestratorResult.viralQuality?.overallScore?.toFixed(2) ?? 'N/A'}. ` +
+        `Stage 2 (Screenplay) will run on user action.`,
     );
 
     // Mark job as completed
@@ -235,11 +332,15 @@ export async function processStoryGeneration(
         characters: orchestratorResult.storyCharacters ?? [],
         episodeSummary: orchestratorResult.episodeSummary,
         themes: orchestratorResult.themes,
+        storyContent: storyText,
         createdBy: data.userId,
         supabase,
       });
     } catch (canonError) {
-      console.warn('[Story Generation] Canon commit failed (non-fatal):', canonError);
+      console.warn(
+        '[Story Generation] Canon commit failed (non-fatal):',
+        canonError,
+      );
     }
 
     // Synthesize a StoryOutput for the return value

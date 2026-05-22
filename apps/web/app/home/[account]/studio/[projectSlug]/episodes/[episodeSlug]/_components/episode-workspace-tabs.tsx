@@ -174,7 +174,7 @@ export function EpisodeWorkspaceTabs() {
     <div className="sticky top-[88px] z-10 px-6 py-2">
       <div className="flex items-center gap-4">
         {/* Story Studio Tabs */}
-        <div className="flex flex-1 items-center rounded-xl bg-gray-100/80 p-1 dark:bg-[#111111] dark:border dark:border-white/5">
+        <div className="flex flex-1 items-center rounded-xl bg-gray-100/80 p-1 dark:border dark:border-white/5 dark:bg-[#111111]">
           {STORY_TABS.map(renderTab)}
         </div>
 
@@ -182,7 +182,7 @@ export function EpisodeWorkspaceTabs() {
         <div className="h-8 w-px bg-gray-300 dark:bg-white/10" />
 
         {/* Post-Production Tabs */}
-        <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:bg-[#111111] dark:border dark:border-white/5">
+        <div className="flex items-center rounded-xl bg-gray-100/80 p-1 dark:border dark:border-white/5 dark:bg-[#111111]">
           {POST_TABS.map(renderTab)}
         </div>
       </div>

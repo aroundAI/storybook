@@ -262,7 +262,7 @@ export function ProjectVisibilitySettings({
 
             <div className="flex justify-end">
               <Button type="submit" disabled={isPending}>
-                {isPending ? 'Saving...' : 'Save Visibility'}
+                {isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </form>

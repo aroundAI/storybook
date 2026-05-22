@@ -115,7 +115,9 @@ export default async function StudioProjectLayout({
           </div>
 
           {/* Main Content */}
-          <main className="flex-1 overflow-y-auto bg-[#F5F5F7] dark:bg-[#0A0A0A]">{children}</main>
+          <main className="flex-1 overflow-y-auto bg-[#F5F5F7] dark:bg-[#0A0A0A]">
+            {children}
+          </main>
         </div>
       </div>
     </StudioModeProvider>

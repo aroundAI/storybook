@@ -12,6 +12,12 @@ import insightsGeneration from '../../../../packages/features/prompt-engine/src/
 import languageInsights from '../../../../packages/features/prompt-engine/src/prompts/analytics/language-insights.json';
 // Audio Generation Prompts (correct file name)
 import dialogueTranslation from '../../../../packages/features/prompt-engine/src/prompts/audio-generation/dialogue-translation.json';
+// Canon Role Prompts (FILM-1101)
+import canonExtraction from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json';
+import editorRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/editor-role.json';
+import plannerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/planner-role.json';
+import stylistRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/stylist-role.json';
+import writerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/writer-role.json';
 // Publishing Prompts
 import batchTranslateMetadata from '../../../../packages/features/prompt-engine/src/prompts/publishing/batch-translate-metadata.json';
 import sceneShot from '../../../../packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json';
@@ -21,12 +27,6 @@ import seasonOutline from '../../../../packages/features/prompt-engine/src/promp
 import shotList from '../../../../packages/features/prompt-engine/src/prompts/story-generation/shot-list-generation.json';
 import storyGen from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-generation.json';
 import storyIdeation from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-ideation.json';
-// Canon Role Prompts (FILM-1101)
-import canonExtraction from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json';
-import editorRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/editor-role.json';
-import plannerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/planner-role.json';
-import stylistRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/stylist-role.json';
-import writerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/writer-role.json';
 
 export interface PromptTemplate {
   slug?: string;
@@ -96,7 +96,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'analytics/language-insights': languageInsights as PromptTemplate,
   // Publishing
   'batch-translate-metadata': batchTranslateMetadata as PromptTemplate,
-  'publishing/batch-translate-metadata': batchTranslateMetadata as PromptTemplate,
+  'publishing/batch-translate-metadata':
+    batchTranslateMetadata as PromptTemplate,
   // Audio Generation
   'dialogue-translation': dialogueTranslation as PromptTemplate,
   'translate-dialogue': dialogueTranslation as PromptTemplate, // alias
