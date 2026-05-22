@@ -60,6 +60,12 @@ const generateShotsTool = createTool({
         'Scene numbers identified by Reel Scout as Reel candidates. Shot Director will prioritize hook/visual storytelling in these scenes.',
       ),
     tone: z.string().default('balanced').describe('Narrative tone'),
+    recurringElements: z
+      .string()
+      .optional()
+      .describe(
+        'Pre-formatted recurring story elements block. Shots for recurring scenes should use consistent framing and composition.',
+      ),
   }),
   execute: async ({
     episodeTitle,
@@ -71,6 +77,7 @@ const generateShotsTool = createTool({
     scenes,
     reelCandidateScenes,
     tone,
+    recurringElements,
   }) => {
     console.log(
       `[Shot Director] Starting shot generation for "${episodeTitle}". ` +
@@ -193,6 +200,7 @@ const generateShotsTool = createTool({
                 locations,
                 previous_scene_summary: '',
                 reel_note: reelNote,
+                recurring_element: recurringElements ?? '',
               },
               context: {
                 name: 'agent.shotDirector.generateShots',

@@ -18,7 +18,10 @@ import {
 } from 'lucide-react';
 
 import { useAssets } from '@kit/assets/hooks';
-import { buildOpenClawManifest } from '@kit/episodes/lib/openclaw-manifest';
+import {
+  type ShotLocalPaths,
+  buildOpenClawManifest,
+} from '@kit/episodes/lib/openclaw-manifest';
 import type {
   EpisodeViralQuality,
   EpisodeWithShots,
@@ -459,7 +462,12 @@ export function VisualStudioScreen({
     }
 
     // Shot Intelligence (OpenClaw fields)
-    if (shot.transitionType || shot.frameStrategy || shot.primarySubject || shot.locationArea) {
+    if (
+      shot.transitionType ||
+      shot.frameStrategy ||
+      shot.primarySubject ||
+      shot.locationArea
+    ) {
       md += `## Shot Intelligence\n\n`;
 
       if (shot.transitionType) {
@@ -491,22 +499,31 @@ export function VisualStudioScreen({
   };
 
   /**
-   * Export all shot data for VEO 3.1 as a structured ZIP
-   * Structure: Episode/Scene-X/Shot-X.Y/ with prompt.md and reference images
+   * Unified export: builds a self-contained ZIP with all assets + OpenClaw manifest.
+   * OpenClaw can operate entirely from the extracted ZIP — no network access needed.
+   *
+   * Structure:
+   *   openclaw-manifest.json          ← Full manifest with localPath fields filled
+   *   fcp-import-manifest.json        ← FCP automation metadata
+   *   Scene-X/Shot-X.Y/prompt.md      ← Human-readable VEO prompt
+   *   Scene-X/Shot-X.Y/shot-X-Y.mp4   ← Video (if generated)
+   *   Scene-X/Shot-X.Y/first-frame.png
+   *   Scene-X/Shot-X.Y/last-frame.png
+   *   Scene-X/Shot-X.Y/character-*.png
+   *   Scene-X/Shot-X.Y/location-*.png
    */
   const [isExporting, setIsExporting] = useState(false);
 
-  const handleExportVeo = async () => {
+  const handleExportPackage = async () => {
     if (shots.length === 0) {
       toast.warning('No shots to export');
       return;
     }
 
     setIsExporting(true);
-    toast.info('Preparing VEO export...');
+    toast.info('Building export package...');
 
     try {
-      // Dynamic import of JSZip
       const JSZip = (await import('jszip')).default;
       const zip = new JSZip();
 
@@ -520,15 +537,17 @@ export function VisualStudioScreen({
         shotsBySceneMap[sceneNum]!.push(shot);
       }
 
-      // Sort scenes
       const sortedScenes = Object.entries(shotsBySceneMap).sort(
         ([a], [b]) => parseInt(a) - parseInt(b),
       );
 
-      // Track fetched images to avoid duplicates or 429s
+      // Track fetched assets to avoid duplicate downloads
       const fetchedAssets = new Map<string, Blob>();
 
-      // Metadata for FCP import
+      // Track local paths for OpenClaw manifest
+      const localPathsMap = new Map<string, ShotLocalPaths>();
+
+      // FCP metadata
       const fcpMetadata: Array<{
         scene: number;
         shot: number;
@@ -547,22 +566,31 @@ export function VisualStudioScreen({
         const sceneFolder = zip.folder(`Scene-${sceneNum}`);
         if (!sceneFolder) continue;
 
-        // Sort shots within scene
         const sortedShots = [...sceneShots].sort(
           (a, b) => a.shotNumber - b.shotNumber,
         );
 
         for (const shot of sortedShots) {
-          const shotFolder = sceneFolder.folder(
-            `Shot-${sceneNum}.${shot.shotNumber}`,
-          );
+          const shotFolderName = `Shot-${sceneNum}.${shot.shotNumber}`;
+          const shotFolder = sceneFolder.folder(shotFolderName);
           if (!shotFolder) continue;
+
+          const shotBasePath = `Scene-${sceneNum}/${shotFolderName}`;
+
+          // Initialize local paths tracker for this shot
+          const shotPaths: ShotLocalPaths = {
+            characterPaths: new Map<string, string>(),
+            locationPath: null,
+            firstFramePath: null,
+            lastFramePath: null,
+            videoPath: null,
+          };
 
           // Add prompt.md
           const promptMd = generatePromptMd(shot);
           shotFolder.file('prompt.md', promptMd);
 
-          // 1. DOWNLOAD VIDEO (Critical for FCP)
+          // 1. DOWNLOAD VIDEO
           if (shot.videoUrl) {
             let blob = fetchedAssets.get(shot.videoUrl);
             if (!blob) {
@@ -574,6 +602,7 @@ export function VisualStudioScreen({
             if (blob) {
               const videoFilename = `shot-${sceneNum}-${shot.shotNumber}.mp4`;
               shotFolder.file(videoFilename, blob);
+              shotPaths.videoPath = `${shotBasePath}/${videoFilename}`;
 
               fcpMetadata.push({
                 scene: Number(sceneNum),
@@ -591,7 +620,7 @@ export function VisualStudioScreen({
             }
           }
 
-          // Add storyboard frames (first and last frame images)
+          // 2. FIRST FRAME
           if (shot.firstFrameUrl) {
             let blob = fetchedAssets.get(shot.firstFrameUrl);
             if (!blob) {
@@ -602,9 +631,11 @@ export function VisualStudioScreen({
             }
             if (blob) {
               shotFolder.file('first-frame.png', blob);
+              shotPaths.firstFramePath = `${shotBasePath}/first-frame.png`;
             }
           }
 
+          // 3. LAST FRAME
           if (shot.lastFrameUrl) {
             let blob = fetchedAssets.get(shot.lastFrameUrl);
             if (!blob) {
@@ -615,10 +646,11 @@ export function VisualStudioScreen({
             }
             if (blob) {
               shotFolder.file('last-frame.png', blob);
+              shotPaths.lastFramePath = `${shotBasePath}/last-frame.png`;
             }
           }
 
-          // Get metadata for reference images
+          // 4. CHARACTER REFERENCE IMAGES
           const metadata = shot.metadata as {
             characters?: string[];
             locations?: string[];
@@ -628,12 +660,10 @@ export function VisualStudioScreen({
             };
           } | null;
 
-          // Add character images - specifically for characters in this shot
           const shotCharacters = extractCharacters(shot);
           for (const charName of shotCharacters) {
             let imgUrl: string | undefined;
 
-            // 1. Try to find in metadata.referenceImages
             if (metadata?.referenceImages?.characters) {
               const refImg = metadata.referenceImages.characters.find(
                 (c) => c.name.toLowerCase() === charName.toLowerCase(),
@@ -641,7 +671,6 @@ export function VisualStudioScreen({
               if (refImg) imgUrl = refImg.url;
             }
 
-            // 2. Fallback to project assets
             if (!imgUrl) {
               const asset = projectCharacters.find(
                 (c) => c.name.toLowerCase() === charName.toLowerCase(),
@@ -660,16 +689,19 @@ export function VisualStudioScreen({
               }
               if (blob) {
                 shotFolder.file(filename, blob);
+                shotPaths.characterPaths.set(
+                  charName.toLowerCase(),
+                  `${shotBasePath}/${filename}`,
+                );
               }
             }
           }
 
-          // Add location images - try metadata.referenceImages first, then fall back to project assets
+          // 5. LOCATION REFERENCE IMAGES
           if (
             metadata?.referenceImages?.locations &&
             metadata.referenceImages.locations.length > 0
           ) {
-            // Use reference images from metadata
             for (const img of metadata.referenceImages.locations) {
               const filename = `location-${sanitizeName(img.name)}.png`;
               let blob = fetchedAssets.get(img.url);
@@ -681,10 +713,10 @@ export function VisualStudioScreen({
               }
               if (blob) {
                 shotFolder.file(filename, blob);
+                shotPaths.locationPath = `${shotBasePath}/${filename}`;
               }
             }
           } else if (metadata?.locations && metadata.locations.length > 0) {
-            // Fall back to looking up locations from project assets
             for (const locName of metadata.locations) {
               const asset = projectLocations.find(
                 (l) => l.name.toLowerCase() === locName.toLowerCase(),
@@ -700,14 +732,30 @@ export function VisualStudioScreen({
                 }
                 if (blob) {
                   shotFolder.file(filename, blob);
+                  shotPaths.locationPath = `${shotBasePath}/${filename}`;
                 }
               }
             }
           }
+
+          // Store paths for this shot
+          localPathsMap.set(shot.id, shotPaths);
         }
       }
 
-      // Add Metadata Manifest for FCP automation
+      // Build OpenClaw manifest with local paths
+      const openClawManifest = buildOpenClawManifest(
+        episode,
+        projectCharacters ?? [],
+        projectLocations ?? [],
+        localPathsMap,
+      );
+      zip.file(
+        'openclaw-manifest.json',
+        JSON.stringify(openClawManifest, null, 2),
+      );
+
+      // Add FCP import manifest
       zip.file(
         'fcp-import-manifest.json',
         JSON.stringify(fcpMetadata, null, 2),
@@ -718,64 +766,20 @@ export function VisualStudioScreen({
       const url = URL.createObjectURL(content);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `veo-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-      toast.success(`Exported ${shots.length} shots as structured ZIP`);
-    } catch (error) {
-      console.error('Export failed:', error);
-      toast.error('Failed to export VEO data');
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  /**
-   * Export OpenClaw manifest — a single JSON file with all shot intelligence,
-   * transition decisions, frame descriptions, and ingredient URLs.
-   * OpenClaw reads this to autonomously generate all videos on Google Flow.
-   */
-  const [isExportingOpenClaw, setIsExportingOpenClaw] = useState(false);
-
-  const handleExportOpenClaw = async () => {
-    if (shots.length === 0) {
-      toast.warning('No shots to export');
-      return;
-    }
-
-    setIsExportingOpenClaw(true);
-    toast.info('Building OpenClaw manifest...');
-
-    try {
-      const manifest = buildOpenClawManifest(
-        episode,
-        projectCharacters ?? [],
-        projectLocations ?? [],
-      );
-
-      const json = JSON.stringify(manifest, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `openclaw-manifest-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.json`;
+      a.download = `episode-export-${episode.title.replace(/\s+/g, '-').toLowerCase()}-${new Date().toISOString().split('T')[0]}.zip`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
       toast.success(
-        `OpenClaw manifest exported: ${manifest.summary.cutsCount} cuts, ${manifest.summary.continuationsCount} continuations, ${manifest.summary.totalGenerationTasks} generation tasks`,
+        `Exported ${shots.length} shots with OpenClaw manifest (${openClawManifest.summary.cutsCount} cuts, ${openClawManifest.summary.continuationsCount} continuations)`,
       );
     } catch (error) {
-      console.error('OpenClaw export failed:', error);
-      toast.error('Failed to export OpenClaw manifest');
+      console.error('Export failed:', error);
+      toast.error('Failed to export package');
     } finally {
-      setIsExportingOpenClaw(false);
+      setIsExporting(false);
     }
   };
 
@@ -832,7 +836,7 @@ export function VisualStudioScreen({
 
             <Button
               variant="outline"
-              onClick={handleExportVeo}
+              onClick={handleExportPackage}
               disabled={stats.total === 0 || isExporting}
               className="gap-2"
             >
@@ -841,21 +845,7 @@ export function VisualStudioScreen({
               ) : (
                 <Download className="h-4 w-4" />
               )}
-              {isExporting ? 'Exporting...' : 'Export VEO'}
-            </Button>
-
-            <Button
-              variant="outline"
-              onClick={handleExportOpenClaw}
-              disabled={stats.total === 0 || isExportingOpenClaw}
-              className="gap-2 border-emerald-500/30 text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950/30"
-            >
-              {isExportingOpenClaw ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Sparkles className="h-4 w-4" />
-              )}
-              {isExportingOpenClaw ? 'Building...' : 'Export OpenClaw'}
+              {isExporting ? 'Exporting...' : 'Export Package'}
             </Button>
 
             <Button

@@ -42,8 +42,10 @@ export interface StoryOrchestratorInput {
   seasonContext?: string;
   previousEpisodesContext?: string;
   visualStyle?: string;
-  // Recurring element from project settings (e.g. episode ending pattern)
-  recurringElementContext?: string;
+  // Recurring elements from project settings (e.g. episode ending pattern)
+  recurringElementsContext?: string;
+  // Narrative threads to progress/resolve in this episode
+  threadCandidatesContext?: string;
 }
 
 export interface StoryOrchestratorResult {
@@ -210,7 +212,7 @@ You coordinate three specialist agents to produce a high-quality story:
 
 ## Your Decision Logic
 
-1. ALWAYS start with Story Director. Pass characters, locations, seasonContext, previousEpisodes, and recurringElement verbatim.
+1. ALWAYS start with Story Director. Pass characters, locations, seasonContext, previousEpisodes, and recurringElements verbatim.
 2. THEN run Viral Analyst (evaluateContent) to score the story.
 3. THEN run Continuity Guardian (buildMemoryContext then checkContinuity).
 4. IF Viral Analyst score < 0.65 AND you haven't revised yet → call Story Director ONCE with revisionInstructions targeting the weakest dimensions. Then re-score with Viral Analyst.
@@ -220,7 +222,7 @@ You coordinate three specialist agents to produce a high-quality story:
 ## CRITICAL CONSTRAINTS
 - Do NOT call generateScreenplay, analyzeScenes, or generateShots — those run in separate pipeline stages.
 - Do NOT try to do everything perfectly — one revision loop is the maximum.
-- The recurringElement MUST be passed to generateStory if provided.
+- The recurringElements MUST be passed to generateStory if provided.
 
 ## Your Final Answer
 
@@ -253,10 +255,22 @@ ${input.locationsContext || 'No locations defined.'}
 ${input.seasonContext ? `**Season Context:** ${input.seasonContext}` : ''}
 ${input.previousEpisodesContext ? `**Previous Episodes:** ${input.previousEpisodesContext}` : ''}
 ${
-  input.recurringElementContext
+  input.threadCandidatesContext
     ? `
-**Recurring Episode Element (MANDATORY — pass verbatim to generateStory as recurringElement):**
-${input.recurringElementContext}
+**NARRATIVE THREAD DIRECTIVES (pass verbatim to Story Director):**
+The following threads MUST be addressed in this episode:
+${input.threadCandidatesContext}
+
+For PROGRESS threads: advance the storyline with new developments, but do NOT resolve.
+For RESOLVE threads: bring this arc to a satisfying conclusion in this episode.
+`
+    : ''
+}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Episode Elements (MANDATORY — pass verbatim to generateStory as recurringElements):**
+${input.recurringElementsContext}
 `
     : ''
 }

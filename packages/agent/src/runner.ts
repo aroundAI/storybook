@@ -129,9 +129,12 @@ function parseAgentResponse(content: string | null): ParsedAgentResponse {
     throw new AgentParseError('Empty response from LLM');
   }
 
-  // Strip markdown code fences if present
+  // Strip markdown code fences if present.
+  // IMPORTANT: Anchored with ^ and $ so we only match when the ENTIRE response
+  // is wrapped in fences. Without anchors, backticks inside JSON string values
+  // (e.g. user-entered dialogue hints) would cause incorrect extraction.
   let cleaned = content.trim();
-  const jsonMatch = cleaned.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  const jsonMatch = cleaned.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```\s*$/);
   if (jsonMatch?.[1]) {
     cleaned = jsonMatch[1].trim();
   }

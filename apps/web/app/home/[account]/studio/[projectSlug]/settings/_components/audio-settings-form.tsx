@@ -328,7 +328,7 @@ export function AudioSettingsForm({
         </div>
 
         {/* Save Button */}
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end">
           <Button
             onClick={() => updateMutation.mutate()}
             disabled={!isConnected || updateMutation.isPending}
@@ -339,7 +339,7 @@ export function AudioSettingsForm({
                 Saving...
               </>
             ) : (
-              'Save Audio Settings'
+              'Save Changes'
             )}
           </Button>
         </div>

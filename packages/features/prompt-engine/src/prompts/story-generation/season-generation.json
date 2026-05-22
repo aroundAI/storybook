@@ -33,7 +33,7 @@
         "recurring_element": {
             "type": "text",
             "required": false,
-            "description": "Recurring story element that must appear in every episode"
+            "description": "All recurring story elements that MUST appear in every episode. Each element has a designated placement and purpose that ties the episode structure together."
         }
     },
     "output": {

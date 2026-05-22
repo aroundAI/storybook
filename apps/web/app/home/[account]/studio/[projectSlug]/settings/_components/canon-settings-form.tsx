@@ -3,7 +3,7 @@
 import { useCallback, useTransition } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { BookOpen, Info, Loader2, Save, Shield } from 'lucide-react';
+import { BookOpen, Info, Loader2, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -105,22 +105,14 @@ export function CanonSettingsForm({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-900/30">
-            <BookOpen className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <CardTitle>Canon Management</CardTitle>
-              <Badge variant="outline" className="text-xs">
-                Beta
-              </Badge>
-            </div>
-            <CardDescription>
-              Maintain story continuity and consistency across episodes
-            </CardDescription>
-          </div>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5" />
+          Canon Management
+          <Badge variant="outline">Beta</Badge>
+        </CardTitle>
+        <CardDescription>
+          Maintain story continuity and consistency across episodes
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -294,11 +286,7 @@ export function CanonSettingsForm({
                 type="submit"
                 disabled={isPending || !form.formState.isDirty}
               >
-                {isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
+                {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Changes
               </Button>
             </div>

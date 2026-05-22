@@ -86,6 +86,12 @@ export interface WorldState {
  * Narrative thread for plot tracking.
  * Tracks setups and payoffs to prevent orphaned threads.
  */
+export interface EpisodeRef {
+  id: string;
+  title: string;
+  number: number;
+}
+
 export interface NarrativeThread {
   id: string;
   projectId: string;
@@ -100,6 +106,8 @@ export interface NarrativeThread {
   description?: string;
   createdAt: string;
   updatedAt: string;
+  openedEpisode?: EpisodeRef;
+  resolvedEpisode?: EpisodeRef;
 }
 
 export type NarrativeThreadType =

@@ -61,6 +61,16 @@ export async function processSeasonOutline(
 
   const projectMetadata = (project?.metadata as Record<string, unknown>) || {};
 
+  // Extract recurring elements from project metadata
+  const recurringElements = Array.isArray(projectMetadata.recurringElements)
+    ? projectMetadata.recurringElements
+    : [];
+  const { formatRecurringElementsForPrompt } = await import(
+    '../utils/context-builder'
+  );
+  const recurringElementFormatted =
+    formatRecurringElementsForPrompt(recurringElements);
+
   // Fetch existing characters and locations
   const [charactersResult, locationsResult] = await Promise.all([
     supabase
@@ -99,6 +109,7 @@ export async function processSeasonOutline(
       locations.length > 0
         ? locations.map((l) => `- ${l.name}: ${l.description || ''}`).join('\n')
         : 'No locations defined yet.',
+    recurring_element: recurringElementFormatted,
   };
 
   // Execute LLM

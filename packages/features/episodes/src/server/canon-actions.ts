@@ -35,6 +35,13 @@ import { DEFAULT_CANON_SETTINGS } from '../lib/canon/types';
  * Server actions for Canon Management System CRUD operations.
  */
 
+/**
+ * Canon Server Actions
+ * Phase 10: FILM-1005
+ *
+ * Server actions for Canon Management System CRUD operations.
+ */
+
 type Json = Database['public']['Tables']['immutable_events']['Row']['metadata'];
 
 // =============================================================================
@@ -122,6 +129,12 @@ type ImmutableEventRow = {
   created_by: string | null;
 };
 
+type EpisodeJoinRow = {
+  id: string;
+  title: string;
+  number: number;
+} | null;
+
 type NarrativeThreadRow = {
   id: string;
   project_id: string;
@@ -136,6 +149,8 @@ type NarrativeThreadRow = {
   description: string | null;
   created_at: string | null;
   updated_at: string | null;
+  opened_episode?: EpisodeJoinRow;
+  resolved_episode?: EpisodeJoinRow;
 };
 
 function mapImmutableEvent(row: ImmutableEventRow): ImmutableEvent {
@@ -169,6 +184,8 @@ function mapNarrativeThread(row: NarrativeThreadRow): NarrativeThread {
     description: row.description ?? undefined,
     createdAt: row.created_at ?? new Date().toISOString(),
     updatedAt: row.updated_at ?? new Date().toISOString(),
+    openedEpisode: row.opened_episode ?? undefined,
+    resolvedEpisode: row.resolved_episode ?? undefined,
   };
 }
 
@@ -577,7 +594,9 @@ export const getActiveThreadsAction = enhanceAction(
 
     const { data: threads, error } = await client
       .from('narrative_threads')
-      .select('*')
+      .select(
+        '*, opened_episode:episodes!narrative_threads_opened_at_fkey(id, title, number), resolved_episode:episodes!narrative_threads_resolved_at_fkey(id, title, number)',
+      )
       .eq('project_id', data.projectId)
       .in('status', ['open', 'progressed'])
       .order('updated_at', { ascending: false });
@@ -661,21 +680,45 @@ export const getCanonHealthAction = enhanceAction(
       new Promise<{ count: number | null }>((resolve) => resolve({ count: 0 })),
     ]);
 
-    // Get orphaned threads (open with old promises)
-    const { data: orphanedThreads } = await client
+    // Get all active threads (both 'open' and 'progressed')
+    const { data: allActiveThreads } = await client
       .from('narrative_threads')
-      .select('*')
+      .select(
+        '*, opened_episode:episodes!narrative_threads_opened_at_fkey(id, title, number), resolved_episode:episodes!narrative_threads_resolved_at_fkey(id, title, number)',
+      )
       .eq('project_id', data.projectId)
-      .eq('status', 'open')
-      .order('created_at', { ascending: true })
-      .limit(5);
+      .in('status', ['open', 'progressed'])
+      .order('created_at', { ascending: true });
 
-    // Calculate health status
-    const orphanCount = orphanedThreads?.length ?? 0;
+    // Filter to stale threads only — threads untouched for memoryHorizon episodes
+    const currentEpisodeNumber = episodesResult.data?.number ?? 0;
+    const staleThreshold = canonSettings.memoryHorizon;
+
+    const staleThreads = (allActiveThreads ?? []).filter((thread) => {
+      const openedEpNumber =
+        (
+          thread.opened_episode as
+            | { id: string; title: string; number: number }
+            | undefined
+        )?.number ?? 0;
+      const touchedEps = (thread.episodes_touched as string[]) ?? [];
+
+      // Estimate last-touched episode: opened + number of times touched
+      const lastTouchedEp =
+        touchedEps.length > 0
+          ? openedEpNumber + touchedEps.length
+          : openedEpNumber;
+
+      const episodesSinceLastTouch = currentEpisodeNumber - lastTouchedEp;
+      return episodesSinceLastTouch >= staleThreshold;
+    });
+
+    // Calculate health status based on stale count
+    const staleCount = staleThreads.length;
     let healthStatus: 'ok' | 'warning' | 'error' = 'ok';
-    if (orphanCount > 5) {
+    if (staleCount > 5) {
       healthStatus = 'error';
-    } else if (orphanCount > 2) {
+    } else if (staleCount > 2) {
       healthStatus = 'warning';
     }
 
@@ -683,12 +726,12 @@ export const getCanonHealthAction = enhanceAction(
       immutableEvents: immutableResult.count ?? 0,
       activeThreads: threadsResult.count ?? 0,
       characterArcs: characterArcsResult.count ?? 0,
-      lastEpisode: episodesResult.data?.number ?? 0,
+      lastEpisode: currentEpisodeNumber,
     };
 
     const health: CanonHealthStatus = {
       status: healthStatus,
-      issueCount: orphanCount,
+      issueCount: staleCount,
       lastValidation: new Date().toISOString(),
     };
 
@@ -696,7 +739,7 @@ export const getCanonHealthAction = enhanceAction(
       health,
       stats,
       config: canonSettings,
-      orphanedThreads: orphanedThreads?.map((t) =>
+      orphanedThreads: staleThreads.map((t) =>
         mapNarrativeThread(t as NarrativeThreadRow),
       ),
     };
@@ -902,8 +945,10 @@ interface ExtractedCanonChange {
 interface ExtractedThreadUpdate {
   threadId?: string;
   threadName: string;
+  threadType?: 'plot' | 'character' | 'mystery' | 'romantic' | 'conflict' | 'thematic';
   action: 'open' | 'progress' | 'resolve';
   description: string;
+  promises?: string[];
 }
 
 interface ExtractedStateChange {
@@ -957,6 +1002,44 @@ export const extractCanonChangesAction = enhanceAction(
         .substring(0, 50_000)
         .trim();
 
+      // Fetch active threads for LLM context
+      const client = getSupabaseServerClient();
+
+      const { data: activeThreads } = await client
+        .from('narrative_threads')
+        .select('thread_name, thread_type, status, description, promises')
+        .eq('project_id', data.projectId)
+        .in('status', ['open', 'progressed']);
+
+      const threadsContext = activeThreads?.length
+        ? activeThreads
+            .map(
+              (t: {
+                thread_name: string;
+                thread_type: string | null;
+                status: string | null;
+                description: string | null;
+                promises: string[] | null;
+              }) =>
+                `- "${t.thread_name}" (${t.thread_type ?? 'plot'}, ${t.status ?? 'open'}): ${t.description ?? ''}. Promises: ${(t.promises ?? []).join(', ') || 'none'}`,
+            )
+            .join('\n')
+        : 'No active threads';
+
+      // Fetch project characters for LLM context
+      const { data: projectCharacters } = await client
+        .from('assets')
+        .select('name, type')
+        .eq('project_id', data.projectId)
+        .eq('type', 'character')
+        .limit(30);
+
+      const charsContext = projectCharacters?.length
+        ? projectCharacters
+            .map((c: { name: string }) => `- ${c.name}`)
+            .join('\n')
+        : 'No characters defined';
+
       const result = await executeLLM<{
         extraction: {
           immutableEvents: ExtractedCanonChange[];
@@ -976,8 +1059,8 @@ export const extractCanonChangesAction = enhanceAction(
         templateSlug: 'canon-extraction',
         variables: {
           story_content: sanitizedContent,
-          existing_characters: '', // TODO: inject from project assets
-          existing_threads: '', // TODO: inject from active threads
+          existing_characters: charsContext,
+          existing_threads: threadsContext,
         },
         context: {
           name: 'canon-extraction',
@@ -997,8 +1080,10 @@ export const extractCanonChangesAction = enhanceAction(
         })),
         threadUpdates: (extraction.threadUpdates ?? []).map((t) => ({
           threadName: t.threadName,
+          threadType: t.threadType,
           action: t.action,
           description: t.description,
+          promises: t.promises,
         })),
         stateChanges: (extraction.characterStateChanges ?? []).map((s) => ({
           characterName: s.characterName,
@@ -1084,11 +1169,99 @@ export const commitCanonChangesAction = enhanceAction(
       throw new Error(`Failed to commit canon changes: ${error.message}`);
     }
 
+    // Commit thread updates
+    let threadsUpdated = 0;
+
+    for (const update of data.changes.threadUpdates) {
+      try {
+        if (update.action === 'open') {
+          const { error } = await client.from('narrative_threads').insert({
+            project_id: data.projectId,
+            thread_name: update.threadName,
+            thread_type: update.threadType ?? 'plot',
+            opened_at: data.episodeId,
+            description: update.description,
+            promises: update.promises ?? [],
+            episodes_touched: [data.episodeId],
+            status: 'open',
+          });
+          if (!error) threadsUpdated++;
+        } else if (update.action === 'progress') {
+          const { data: existing } = await client
+            .from('narrative_threads')
+            .select('id, episodes_touched, version')
+            .eq('project_id', data.projectId)
+            .eq('thread_name', update.threadName)
+            .in('status', ['open', 'progressed'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (existing) {
+            const touched = [
+              ...new Set([
+                ...((existing.episodes_touched as string[]) ?? []),
+                data.episodeId,
+              ]),
+            ];
+            const { error } = await client
+              .from('narrative_threads')
+              .update({
+                status: 'progressed',
+                episodes_touched: touched,
+                description: update.description,
+                version: ((existing.version as number) ?? 1) + 1,
+              })
+              .eq('id', existing.id);
+            if (!error) threadsUpdated++;
+          }
+        } else if (update.action === 'resolve') {
+          const { data: existing } = await client
+            .from('narrative_threads')
+            .select('id, episodes_touched, payoffs, version')
+            .eq('project_id', data.projectId)
+            .eq('thread_name', update.threadName)
+            .in('status', ['open', 'progressed'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (existing) {
+            const touched = [
+              ...new Set([
+                ...((existing.episodes_touched as string[]) ?? []),
+                data.episodeId,
+              ]),
+            ];
+            const { error } = await client
+              .from('narrative_threads')
+              .update({
+                status: 'resolved',
+                resolved_at: data.episodeId,
+                payoffs: [
+                  ...((existing.payoffs as string[]) ?? []),
+                  update.description,
+                ],
+                episodes_touched: touched,
+                version: ((existing.version as number) ?? 1) + 1,
+              })
+              .eq('id', existing.id);
+            if (!error) threadsUpdated++;
+          }
+        }
+      } catch (threadError) {
+        console.warn(
+          `[commitCanonChanges] Thread update failed for '${update.threadName}':`,
+          threadError,
+        );
+      }
+    }
+
     return {
       eventsCreated:
         (result as { eventsCreated: number; summaryStored: boolean })
           ?.eventsCreated ?? 0,
-      threadsUpdated: 0, // Thread updates not yet implemented in RPC
+      threadsUpdated,
       summaryStored:
         (result as { eventsCreated: number; summaryStored: boolean })
           ?.summaryStored ?? false,
@@ -1120,13 +1293,61 @@ export const commitCanonChangesAction = enhanceAction(
           z.object({
             threadId: z.string().optional(),
             threadName: z.string(),
+            threadType: z
+              .enum(['plot', 'character', 'mystery', 'romantic', 'conflict', 'thematic'])
+              .optional(),
             action: z.enum(['open', 'progress', 'resolve']),
             description: z.string(),
+            promises: z.array(z.string()).optional(),
           }),
         ),
         episodeSummary: z.string(),
         sentimentScore: z.number().min(0).max(1),
       }),
+    }),
+  },
+);
+
+// =============================================================================
+// ALL THREADS QUERY (Canon Dashboard)
+// =============================================================================
+
+/**
+ * Gets all narrative threads for a project with optional status filter.
+ * Used by the Canon dashboard page.
+ */
+export const getAllThreadsAction = enhanceAction(
+  async (data: { projectId: string; status?: string }) => {
+    const client = getSupabaseServerClient();
+
+    let query = client
+      .from('narrative_threads')
+      .select(
+        '*, opened_episode:episodes!narrative_threads_opened_at_fkey(id, title, number), resolved_episode:episodes!narrative_threads_resolved_at_fkey(id, title, number)',
+      )
+      .eq('project_id', data.projectId)
+      .order('created_at', { ascending: false });
+
+    if (data.status) {
+      query = query.eq('status', data.status);
+    }
+
+    const { data: threads, error } = await query;
+
+    if (error) {
+      throw new Error(`Failed to get threads: ${error.message}`);
+    }
+
+    return (threads ?? []).map((row: unknown) =>
+      mapNarrativeThread(row as NarrativeThreadRow),
+    );
+  },
+  {
+    schema: z.object({
+      projectId: z.string().uuid(),
+      status: z
+        .enum(['open', 'progressed', 'resolved', 'abandoned'])
+        .optional(),
     }),
   },
 );

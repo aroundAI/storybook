@@ -5,8 +5,8 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-import { GetEpisodeShotsSchema } from '../../schemas/shot.schema';
 import { PrimarySubjectSchema } from '../../schemas/shot-list.schema';
+import { GetEpisodeShotsSchema } from '../../schemas/shot.schema';
 import type {
   FirstFrameSource,
   FrameStrategy,
@@ -94,8 +94,7 @@ export const getEpisodeShotsAction = enhanceAction(
         shortsMetadata:
           (shot.shorts_metadata as Record<string, unknown> | null) ?? null,
         // OpenClaw Shot Intelligence fields
-        transitionType:
-          (shot.transition_type as TransitionType | null) ?? null,
+        transitionType: (shot.transition_type as TransitionType | null) ?? null,
         continuationFromShotId: shot.continuation_from_shot_id ?? null,
         inheritLastFrame: shot.inherit_last_frame ?? false,
         firstFrameDescription: shot.first_frame_description ?? null,
@@ -107,8 +106,7 @@ export const getEpisodeShotsAction = enhanceAction(
           shot.location_environment_description ?? null,
         primarySubject:
           PrimarySubjectSchema.nullish().parse(shot.primary_subject) ?? null,
-        frameStrategy:
-          (shot.frame_strategy as FrameStrategy | null) ?? null,
+        frameStrategy: (shot.frame_strategy as FrameStrategy | null) ?? null,
         createdAt: shot.created_at as string,
         updatedAt: shot.updated_at as string,
         deletedAt: shot.deleted_at as string | null,

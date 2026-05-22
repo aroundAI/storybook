@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 
-import { Loader2, Plus, Trash2, Upload, Video } from 'lucide-react';
+import { Loader2, PlayCircle, Plus, Trash2, Upload, Video } from 'lucide-react';
 
 import {
   type ProjectIntro,
@@ -88,7 +88,10 @@ export function ProjectIntroSettings({ projectId }: ProjectIntroSettingsProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Episode Intros</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <PlayCircle className="h-5 w-5" />
+            Episode Intros
+          </CardTitle>
           <CardDescription>Loading intro videos...</CardDescription>
         </CardHeader>
         <CardContent className="flex items-center justify-center py-8">
@@ -103,7 +106,10 @@ export function ProjectIntroSettings({ projectId }: ProjectIntroSettingsProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Episode Intros</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <PlayCircle className="h-5 w-5" />
+              Episode Intros
+            </CardTitle>
             <CardDescription>
               Add intro videos that will be stitched to the beginning of each
               episode during rendering. Upload different intros for each

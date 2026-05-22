@@ -136,6 +136,10 @@ export interface AgentStoryResult {
  * });
  * ```
  */
+/**
+ * @deprecated This standalone agent path does not receive recurringElements from the project.
+ * Use the production pipeline (story-generation handler → story-orchestrator) instead.
+ */
 export async function runAgentStoryGeneration(
   input: AgentStoryInput,
 ): Promise<AgentStoryResult> {

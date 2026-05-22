@@ -39,6 +39,10 @@ import shotListGeneration from '../../prompts/story-generation/shot-list-generat
 // =============================================================================
 import storyGeneration from '../../prompts/story-generation/story-generation.json';
 import storyIdeation from '../../prompts/story-generation/story-ideation.json';
+// =============================================================================
+// Canon Roles Prompts
+// =============================================================================
+import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
 import type { PromptTemplate } from '../types';
 
 /**
@@ -76,6 +80,9 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
     screenplayQuality as unknown as PromptTemplate,
   'quality-evaluation/shot-quality': shotQuality as unknown as PromptTemplate,
   'quality-evaluation/story-quality': storyQuality as unknown as PromptTemplate,
+
+  // Canon Roles
+  'canon-extraction': canonExtraction as unknown as PromptTemplate,
 };
 
 /**

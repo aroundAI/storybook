@@ -28,7 +28,7 @@ export const OPENAI_PRICING: Record<string, ModelPricing> = {
 
   // o-series reasoning models
   'o4-mini': { prompt: 1.1, completion: 4.4 },
-  'o3': { prompt: 2, completion: 8 },
+  o3: { prompt: 2, completion: 8 },
   'o3-mini': { prompt: 1.1, completion: 4.4 },
 
   // GPT-4o models (legacy — still available)
@@ -144,15 +144,11 @@ export function getModelPricing(
     case 'openai':
       return OPENAI_PRICING[model] ?? OPENAI_PRICING['gpt-4o-mini']!;
     case 'anthropic':
-      return (
-        ANTHROPIC_PRICING[model] ?? ANTHROPIC_PRICING['claude-haiku-4-5']!
-      );
+      return ANTHROPIC_PRICING[model] ?? ANTHROPIC_PRICING['claude-haiku-4-5']!;
     case 'gemini':
       return GEMINI_PRICING[model] ?? GEMINI_PRICING['gemini-2.5-flash']!;
     case 'deepseek':
-      return (
-        DEEPSEEK_PRICING[model] ?? DEEPSEEK_PRICING['deepseek-v4-flash']!
-      );
+      return DEEPSEEK_PRICING[model] ?? DEEPSEEK_PRICING['deepseek-v4-flash']!;
     case 'local':
       return LOCAL_PRICING[model] ?? LOCAL_PRICING['claude-sonnet-4-5']!;
     default:

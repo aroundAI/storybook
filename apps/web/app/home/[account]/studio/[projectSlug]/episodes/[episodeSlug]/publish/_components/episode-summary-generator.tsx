@@ -2,7 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { AlertTriangle, Loader2, Save, Sparkles } from 'lucide-react';
+import {
+  AlertTriangle,
+  BookOpen,
+  GitBranch,
+  Loader2,
+  Save,
+  Sparkles,
+  X,
+} from 'lucide-react';
 
 import {
   commitCanonChangesAction,
@@ -43,6 +51,20 @@ interface ExtractedChange {
   confidence: 'high' | 'medium' | 'low';
 }
 
+interface ExtractedThreadUpdate {
+  threadName: string;
+  threadType?:
+    | 'plot'
+    | 'character'
+    | 'mystery'
+    | 'romantic'
+    | 'conflict'
+    | 'thematic';
+  action: 'open' | 'progress' | 'resolve';
+  description: string;
+  promises?: string[];
+}
+
 /**
  * Episode Summary Generator - Review canon changes before publish
  * FILM-1007 Component (Step 6)
@@ -60,6 +82,9 @@ export function EpisodeSummaryGenerator({
   const [summary, setSummary] = useState('');
   const [sentimentScore, setSentimentScore] = useState(0.5);
   const [extractedEvents, setExtractedEvents] = useState<ExtractedChange[]>([]);
+  const [extractedThreads, setExtractedThreads] = useState<
+    ExtractedThreadUpdate[]
+  >([]);
   const [hasExtracted, setHasExtracted] = useState(false);
 
   // Use ref for callback to avoid re-renders if parent provides unstable function
@@ -89,6 +114,9 @@ export function EpisodeSummaryGenerator({
           ...event,
         }));
         setExtractedEvents(eventsWithIds);
+        if (result.threadUpdates?.length) {
+          setExtractedThreads(result.threadUpdates);
+        }
         setHasExtracted(true);
         onSummaryGeneratedRef.current?.(result.episodeSummary);
       }
@@ -117,7 +145,7 @@ export function EpisodeSummaryGenerator({
         episodeNumber,
         changes: {
           immutableEvents: extractedEvents,
-          threadUpdates: [],
+          threadUpdates: extractedThreads,
           episodeSummary: summary,
           sentimentScore,
         },
@@ -125,7 +153,7 @@ export function EpisodeSummaryGenerator({
 
       if (result) {
         toast.success(
-          `Canon updated: ${result.eventsCreated} events, summary ${result.summaryStored ? 'saved' : 'skipped'}`,
+          `Canon updated: ${result.eventsCreated} events, ${result.threadsUpdated ?? 0} threads, summary ${result.summaryStored ? 'saved' : 'skipped'}`,
         );
       }
     } catch (error) {
@@ -226,6 +254,80 @@ export function EpisodeSummaryGenerator({
                   >
                     {event.confidence}
                   </Badge>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Extracted Thread Updates */}
+        {extractedThreads.length > 0 && (
+          <div>
+            <h4 className="mb-2 flex items-center gap-2 text-sm font-medium">
+              <GitBranch className="h-4 w-4 text-purple-500" />
+              Narrative Thread Updates ({extractedThreads.length})
+            </h4>
+            <ul className="space-y-2">
+              {extractedThreads.map((thread, idx) => (
+                <li
+                  key={`${thread.threadName}-${idx}`}
+                  className="bg-muted group relative rounded p-3 text-sm"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="h-3.5 w-3.5 text-purple-500" />
+                        <span className="font-medium">
+                          {thread.threadName}
+                        </span>
+                        <Badge
+                          variant={
+                            thread.action === 'open'
+                              ? 'default'
+                              : thread.action === 'resolve'
+                                ? 'secondary'
+                                : 'outline'
+                          }
+                          className="text-[10px]"
+                        >
+                          {thread.action}
+                        </Badge>
+                        {thread.threadType && (
+                          <Badge variant="outline" className="text-[10px]">
+                            {thread.threadType}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-muted-foreground mt-1 text-xs">
+                        {thread.description}
+                      </p>
+                      {thread.promises && thread.promises.length > 0 && (
+                        <div className="mt-1.5 flex flex-wrap gap-1">
+                          {thread.promises.map((promise, pIdx) => (
+                            <Badge
+                              key={pIdx}
+                              variant="outline"
+                              className="text-[10px] font-normal"
+                            >
+                              {promise}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExtractedThreads((prev) =>
+                          prev.filter((_, i) => i !== idx),
+                        )
+                      }
+                      className="ml-2 flex-shrink-0 rounded-md p-1 text-gray-400 opacity-0 transition-opacity hover:bg-gray-200 hover:text-gray-600 group-hover:opacity-100 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                      title="Remove this thread update"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </li>
               ))}
             </ul>

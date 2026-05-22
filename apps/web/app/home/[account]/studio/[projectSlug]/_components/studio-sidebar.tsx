@@ -25,6 +25,7 @@ import {
   LayoutDashboard,
   MapPin,
   Music,
+  ScrollText,
   Search,
   Settings,
   Share2,
@@ -428,6 +429,20 @@ export function StudioSidebar({
                 label="Episodes"
                 count={counts.episodes}
                 isActive={isActive(`${basePath}/episodes`)}
+                isCollapsed={isCollapsed}
+              />
+            </nav>
+          </div>
+
+          {/* Story Section */}
+          <div>
+            <SectionHeader isCollapsed={isCollapsed}>Story</SectionHeader>
+            <nav className="space-y-0.5">
+              <NavItem
+                href={`${basePath}/canon`}
+                icon={<ScrollText className="h-4 w-4" />}
+                label="Narrative Arcs"
+                isActive={isActive(`${basePath}/canon`)}
                 isCollapsed={isCollapsed}
               />
             </nav>

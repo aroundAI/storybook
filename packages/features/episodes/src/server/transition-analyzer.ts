@@ -8,13 +8,13 @@
  * Also resolves the frame chain — walking all shots in sequence order
  * and computing which shots inherit frames from their predecessor.
  */
+import { ShotMetadataSchema } from '../lib/schemas/shot-list.schema';
 import type {
   FrameStrategy,
   PrimarySubject,
   Shot,
   TransitionType,
 } from '../lib/types';
-import { ShotMetadataSchema } from '../lib/schemas/shot-list.schema';
 
 // Helper: safely parse shot metadata JSONB at the boundary
 function parseMetadata(shot: Shot) {

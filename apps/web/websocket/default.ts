@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 
 import {
   ApiGatewayManagementApiClient,
@@ -15,6 +14,7 @@ import {
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { APIGatewayProxyWebsocketHandlerV2 } from 'aws-lambda';
+import ws from 'ws';
 
 import { validateWebSocketMessage } from './schemas/websocket-messages.schema';
 import { isValidUUID } from './utils/validation';

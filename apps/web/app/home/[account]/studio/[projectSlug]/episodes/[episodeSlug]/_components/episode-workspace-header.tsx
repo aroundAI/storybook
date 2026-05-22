@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import { format } from 'date-fns';
 import { ArrowLeft, MapPin, Sparkles, User } from 'lucide-react';
 
-import { CanonHealthBadge } from './canon-health-badge';
 import { useEpisodeContext } from './episode-context-provider';
+import { IssueSummaryBadge } from './issue-summary-popover';
 import { QuickActionsMenu } from './quick-actions-menu';
 import { StudioSwitcher } from './studio-switcher';
 
@@ -113,7 +113,7 @@ export function EpisodeWorkspaceHeader() {
                               ? 'Published'
                               : 'Draft'}
               </span>
-              <CanonHealthBadge projectId={projectId} />
+              <IssueSummaryBadge projectId={projectId} />
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 Ep {episode.number}
                 {episode.season && ` • S${episode.season.number}`}

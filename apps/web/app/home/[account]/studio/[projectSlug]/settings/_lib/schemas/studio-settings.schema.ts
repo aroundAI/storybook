@@ -18,9 +18,11 @@ const RecurringElementPlacementSchema = z.enum([
 
 /**
  * Recurring element configuration
- * E.g., a signature scene, moral message, or recurring location
+ * E.g., a signature scene, opening establishing shot, or episode-ending pattern
  */
 const RecurringElementSchema = z.object({
+  id: z.string(),
+  name: z.string().max(100),
   enabled: z.boolean().default(false),
   location: z.string().max(200).optional(),
   purpose: z.string().max(500).optional(),
@@ -34,7 +36,7 @@ const RecurringElementSchema = z.object({
  */
 export const UpdateStudioSettingsSchema = z.object({
   projectId: z.string().uuid(),
-  description: z.string().max(1000).optional(), // Project description
+  description: z.string().max(1000).optional(),
   targetAudience: z.string().max(200).optional(),
   genre: GenreSchema.optional(),
   videoStyle: VideoStyleSchema.optional(),
@@ -42,7 +44,7 @@ export const UpdateStudioSettingsSchema = z.object({
   defaultEpisodeDuration: z.number().int().min(60).max(7200).optional(),
   contentRating: z.enum(['G', 'PG', 'PG-13', 'R', 'NR']).optional(),
   language: z.string().max(10).optional(),
-  recurringElement: RecurringElementSchema.optional(),
+  recurringElements: z.array(RecurringElementSchema).max(5).optional(),
   /**
    * Project-level aesthetic style that gets injected into all VEO shot prompts.
    * Used to ensure visual consistency across all generated content.
@@ -54,6 +56,8 @@ export const UpdateStudioSettingsSchema = z.object({
 export type UpdateStudioSettingsInput = z.infer<
   typeof UpdateStudioSettingsSchema
 >;
+
+export type RecurringElement = z.infer<typeof RecurringElementSchema>;
 
 export type RecurringElementPlacement = z.infer<
   typeof RecurringElementPlacementSchema

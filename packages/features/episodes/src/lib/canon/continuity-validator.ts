@@ -484,33 +484,43 @@ function checkReferenceViolation(
 
 /**
  * CANON_007: Connectivity Failure
- * Checks if narrative threads are connected (callbacks).
+ * Checks if narrative threads are stale (untouched for many episodes).
+ * Open threads are NORMAL — only flag threads that haven't been progressed
+ * in 5+ episodes, as they may be genuinely forgotten.
  */
 function checkConnectivityFailure(
   skeleton: PlotSkeleton,
   context: MemoryContext,
 ): ContinuityViolation[] {
   const violations: ContinuityViolation[] = [];
+  const currentEpisode = skeleton.episodeNumber ?? context.episodeNumber;
+  const staleThreshold = 5;
 
-  // Check for orphaned threads (open with unfulfilled promises)
   for (const thread of context.activeThreads) {
     const promises = thread.promises ?? [];
+    if (promises.length === 0) continue;
+
     const payoffs = thread.payoffs ?? [];
+    const episodesTouched = thread.episodesTouched ?? [];
 
-    // Thread has promises but no payoffs and hasn't been touched recently
-    if (promises.length > 0 && payoffs.length === 0) {
-      const episodesTouched = thread.episodesTouched ?? [];
-      const touchedCount = episodesTouched.length;
+    // Estimate last-touched episode number from the opened episode + touched count
+    const openedEpNumber =
+      (thread as unknown as { openedEpisodeNumber?: number })
+        .openedEpisodeNumber ?? 0;
+    const lastTouchedEp =
+      episodesTouched.length > 0
+        ? openedEpNumber + episodesTouched.length
+        : openedEpNumber;
+    const episodesSinceTouch = currentEpisode - lastTouchedEp;
 
-      // If thread hasn't progressed in several episodes
-      if (touchedCount < 2) {
-        violations.push({
-          code: 'CANON_007',
-          severity: 'info',
-          message: `Narrative thread "${thread.threadName}" has ${promises.length} unfulfilled promise(s).`,
-          suggestion: `Consider touching this thread in the current episode: ${promises.join(', ')}`,
-        });
-      }
+    // Only flag if thread is stale AND has no payoffs
+    if (payoffs.length === 0 && episodesSinceTouch >= staleThreshold) {
+      violations.push({
+        code: 'CANON_007',
+        severity: 'info',
+        message: `Thread "${thread.threadName}" has ${promises.length} unfulfilled promise(s), untouched for ${episodesSinceTouch} episodes.`,
+        suggestion: `Consider progressing or resolving: ${promises.slice(0, 2).join(', ')}`,
+      });
     }
   }
 

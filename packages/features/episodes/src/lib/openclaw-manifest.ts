@@ -117,19 +117,33 @@ export interface OpenClawManifest {
 }
 
 // ============================================================================
+// Local Path Mapping (for bundled ZIP exports)
+// ============================================================================
+
+export interface ShotLocalPaths {
+  characterPaths: Map<string, string>;
+  locationPath: string | null;
+  firstFramePath: string | null;
+  lastFramePath: string | null;
+  videoPath: string | null;
+}
+
+// ============================================================================
 // Builder
 // ============================================================================
 
 /**
  * Builds the complete OpenClaw manifest from episode data.
  *
- * This is the single source of truth OpenClaw reads to execute
- * the entire video generation pipeline.
+ * When `localPathsMap` is provided (from the unified ZIP export),
+ * the manifest's `localPath` and `output` fields are pre-populated
+ * with ZIP-relative paths so OpenClaw can work entirely offline.
  */
 export function buildOpenClawManifest(
   episode: EpisodeWithShots,
   projectCharacters: Asset[],
   projectLocations: Asset[],
+  localPathsMap?: Map<string, ShotLocalPaths>,
 ): OpenClawManifest {
   const shots = [...episode.shots].sort(
     (a, b) => (a.sequenceNumber ?? 0) - (b.sequenceNumber ?? 0),
@@ -175,12 +189,15 @@ export function buildOpenClawManifest(
       previousShotLastFrameUrl = prevShot?.lastFrameUrl ?? null;
     }
 
+    // Resolve local paths for this shot (if ZIP export)
+    const shotPaths = localPathsMap?.get(shot.id);
+
     // Build character ingredients
     const characterIngredients: OpenClawIngredient[] = characters
       .map((name) => ({
         name,
         imageUrl: characterImageMap.get(name.toLowerCase()) ?? '',
-        localPath: null,
+        localPath: shotPaths?.characterPaths.get(name.toLowerCase()) ?? null,
       }))
       .filter((c) => c.imageUrl);
 
@@ -192,7 +209,7 @@ export function buildOpenClawManifest(
         locationIngredient = {
           name: locationName,
           imageUrl: url,
-          localPath: null,
+          localPath: shotPaths?.locationPath ?? null,
         };
       }
     }
@@ -242,9 +259,9 @@ export function buildOpenClawManifest(
       status: 'pending',
 
       output: {
-        firstFrameLocalPath: null,
-        lastFrameLocalPath: null,
-        videoLocalPath: null,
+        firstFrameLocalPath: shotPaths?.firstFramePath ?? null,
+        lastFrameLocalPath: shotPaths?.lastFramePath ?? null,
+        videoLocalPath: shotPaths?.videoPath ?? null,
       },
     };
   });

@@ -11,9 +11,9 @@
  * - Optional webhook alerts for DLQ-bound messages
  */
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 
 import type { SQSEvent, SQSRecord } from 'aws-lambda';
+import ws from 'ws';
 
 // Email job data structure
 interface EmailJob {

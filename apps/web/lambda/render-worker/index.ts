@@ -12,7 +12,6 @@
  * - Multi-language render support
  */
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 
 import {
   ApiGatewayManagementApiClient,
@@ -25,6 +24,7 @@ import {
   QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 import type { SQSBatchResponse, SQSEvent } from 'aws-lambda';
+import ws from 'ws';
 
 // Initialize DynamoDB client
 const ddbClient = new DynamoDBClient({});

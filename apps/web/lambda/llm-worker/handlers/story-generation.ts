@@ -19,7 +19,7 @@ import {
   formatCharactersForPrompt,
   formatLocationsForPrompt,
   formatPreviousEpisodesForPrompt,
-  formatRecurringElementForPrompt,
+  formatRecurringElementsForPrompt,
 } from '../utils/context-builder';
 import {
   type ContentStyle,
@@ -42,6 +42,11 @@ interface StoryGenerationPayload {
   accountId: string;
   userId: string;
   projectId: string;
+  threadCandidates?: Array<{
+    threadId: string;
+    threadName: string;
+    action: 'progress' | 'resolve';
+  }>;
 }
 
 interface StoryOutput {
@@ -112,9 +117,9 @@ export async function processStoryGeneration(
     const seasonContext = episodeContext.seasonPremise
       ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
       : '';
-    // Recurring element — Bug 1 fix: was never computed or passed
-    const recurringElementContext = episodeContext.recurringElement
-      ? formatRecurringElementForPrompt(episodeContext.recurringElement)
+    // Recurring elements — supports multiple recurring story elements
+    const recurringElementContext = episodeContext.recurringElements
+      ? formatRecurringElementsForPrompt(episodeContext.recurringElements)
       : undefined;
 
     console.log(
@@ -126,6 +131,13 @@ export async function processStoryGeneration(
     const { runStoryOrchestrator } = await import(
       '@kit/episodes/agent/story-orchestrator'
     );
+
+    // Format thread candidates for the orchestrator
+    const threadCandidatesContext = data.threadCandidates?.length
+      ? data.threadCandidates
+          .map((t) => `- ${t.action.toUpperCase()}: "${t.threadName}"`)
+          .join('\n')
+      : undefined;
 
     const orchestratorResult = await runStoryOrchestrator(
       {
@@ -144,7 +156,8 @@ export async function processStoryGeneration(
         seasonContext,
         previousEpisodesContext,
         visualStyle: episodeContext.visualStyle,
-        recurringElementContext,
+        recurringElementsContext: recurringElementContext,
+        threadCandidatesContext,
       },
       supabase,
     );
@@ -319,6 +332,7 @@ export async function processStoryGeneration(
         characters: orchestratorResult.storyCharacters ?? [],
         episodeSummary: orchestratorResult.episodeSummary,
         themes: orchestratorResult.themes,
+        storyContent: storyText,
         createdBy: data.userId,
         supabase,
       });

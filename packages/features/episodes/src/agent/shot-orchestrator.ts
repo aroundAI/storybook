@@ -48,6 +48,8 @@ export interface ShotOrchestratorInput {
   // VEO-formatted character/location context
   charactersVeoContext: string;
   locationsVeoContext: string;
+  // Recurring story elements (pre-formatted)
+  recurringElementsContext?: string;
 }
 
 export interface GeneratedShotResult {
@@ -80,17 +82,17 @@ export interface ReelSceneAnalysis {
   isReelCandidate: boolean;
   viralScore: number;
   hookType?:
-  | 'question'
-  | 'reveal'
-  | 'conflict'
-  | 'visual'
-  | 'humor'
-  | 'cliffhanger'
-  | 'character'
-  | 'action'
-  | 'reaction'
-  | 'punchline'
-  | null;
+    | 'question'
+    | 'reveal'
+    | 'conflict'
+    | 'visual'
+    | 'humor'
+    | 'cliffhanger'
+    | 'character'
+    | 'action'
+    | 'reaction'
+    | 'punchline'
+    | null;
   estimatedDurationSeconds?: number;
   keyMoment?: string | null;
   sceneEmotionalArc: string;
@@ -129,7 +131,7 @@ export async function runShotOrchestrator(
 ): Promise<ShotOrchestratorResult> {
   console.log(
     `[Shot Orchestrator] Starting for episode ${input.episodeId}. ` +
-    `${input.scenes.length} scenes to process.`,
+      `${input.scenes.length} scenes to process.`,
   );
 
   const result: AgentRunResult<ShotOrchestratorOutput> =
@@ -159,17 +161,17 @@ export async function runShotOrchestrator(
   // Log the full agent result for diagnostics
   console.log(
     `[Shot Orchestrator] runAgent result — success: ${result.success}, ` +
-    `steps: ${result.steps.length}, error: ${result.error ?? 'none'}, ` +
-    `data: ${result.data ? JSON.stringify(result.data).substring(0, 200) : 'null'}`,
+      `steps: ${result.steps.length}, error: ${result.error ?? 'none'}, ` +
+      `data: ${result.data ? JSON.stringify(result.data).substring(0, 200) : 'null'}`,
   );
 
   // Log each step type for visibility
   for (const [i, step] of result.steps.entries()) {
     console.log(
       `[Shot Orchestrator] Step ${i + 1}: type=${step.type}, ` +
-      `tool=${step.toolName ?? 'n/a'}, ` +
-      `toolSuccess=${step.toolResult?.success ?? 'n/a'}, ` +
-      `tokens=${step.tokensUsed ?? 0}`,
+        `tool=${step.toolName ?? 'n/a'}, ` +
+        `toolSuccess=${step.toolResult?.success ?? 'n/a'}, ` +
+        `tokens=${step.tokensUsed ?? 0}`,
     );
   }
 
@@ -220,17 +222,17 @@ export async function runShotOrchestrator(
   if (sceneAnalyses.length > 0) {
     console.log(
       `[Shot Orchestrator] Reel Scout sceneAnalyses: ${sceneAnalyses.length} scenes — ` +
-      sceneAnalyses
-        .map(
-          (a) =>
-            `scene${a.sceneNumber}(score=${a.viralScore},candidate=${a.isReelCandidate},hook=${a.hookType ?? 'none'})`,
-        )
-        .join(', '),
+        sceneAnalyses
+          .map(
+            (a) =>
+              `scene${a.sceneNumber}(score=${a.viralScore},candidate=${a.isReelCandidate},hook=${a.hookType ?? 'none'})`,
+          )
+          .join(', '),
     );
   } else {
     console.warn(
       `[Shot Orchestrator] Reel Scout returned no sceneAnalyses — ` +
-      `reelStep found: ${!!reelStep}, reelData keys: ${reelData ? Object.keys(reelData).join(', ') : 'null'}`,
+        `reelStep found: ${!!reelStep}, reelData keys: ${reelData ? Object.keys(reelData).join(', ') : 'null'}`,
     );
   }
 
@@ -253,14 +255,14 @@ export async function runShotOrchestrator(
     const ok = step.toolResult?.success;
     console.log(
       `[Shot Orchestrator] Tool: ${step.toolName} — ${ok ? 'SUCCESS' : 'FAILED'}` +
-      (!ok ? ` — ${step.toolResult?.error ?? 'no error message'}` : ''),
+        (!ok ? ` — ${step.toolResult?.error ?? 'no error message'}` : ''),
     );
   }
 
   console.log(
     `[Shot Orchestrator] Complete. Steps: ${result.steps.length}, ` +
-    `ToolCalls: ${toolCalls.length}, Shots: ${shots.length}, ` +
-    `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
+      `ToolCalls: ${toolCalls.length}, Shots: ${shots.length}, ` +
+      `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
   );
 
   return {
@@ -287,6 +289,7 @@ Your job: produce a complete VEO 3.1 optimized shot list for all screenplay scen
 
 ## CRITICAL CONSTRAINTS
 - Pass VEO character context verbatim — character visual identities are non-negotiable.
+- Pass recurringElements context verbatim to generateShots — these define signature visual patterns.
 - Do NOT generate story revisions or screenplay — only shots.
 - Every scene MUST have at least one shot in the output.
 - NEVER skip generateShots — even if analyzeScenes fails.
@@ -312,6 +315,13 @@ ${input.charactersVeoContext || 'No character context.'}
 
 **VEO Location Context (pass verbatim to generateShots):**
 ${input.locationsVeoContext || 'No location context.'}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Story Elements (pass verbatim to generateShots as recurringElements):**
+${input.recurringElementsContext}`
+    : ''
+}
 
 **Scenes to Process:**
 ${JSON.stringify(input.scenes, null, 2)}

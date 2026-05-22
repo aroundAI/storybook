@@ -170,6 +170,7 @@ export function QuickActionsMenu({
                   <li>Story &amp; narrative</li>
                   <li>Screenplay &amp; all scenes</li>
                   <li>Shot list &amp; all individual shots</li>
+                  <li>Canon data (narrative arcs, character states, events)</li>
                 </ul>
                 <p className="font-medium text-amber-600 dark:text-amber-500">
                   This cannot be undone. The episode will return to Draft status

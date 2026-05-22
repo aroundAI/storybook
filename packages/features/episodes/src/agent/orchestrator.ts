@@ -48,6 +48,8 @@ export interface OrchestratorInput {
   seasonContext?: string;
   previousEpisodesContext?: string;
   visualStyle?: string;
+  // Recurring story elements (pre-formatted)
+  recurringElementsContext?: string;
 }
 
 export interface OrchestratorResult {
@@ -375,6 +377,13 @@ ${input.locationsVeoContext}
 
 ${input.seasonContext ? `**Season Context:** ${input.seasonContext}` : ''}
 ${input.previousEpisodesContext ? `**Previous Episodes:** ${input.previousEpisodesContext}` : ''}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Story Elements (pass verbatim to ALL agents that accept it — these are MANDATORY structural anchors):**
+${input.recurringElementsContext}`
+    : ''
+}
 
 Begin with Story Director (pass characters + locations + seasonContext). Then evaluate. Then generate screenplay. Then Reel Scout. Then Shot Director with reel candidate priorities.
 

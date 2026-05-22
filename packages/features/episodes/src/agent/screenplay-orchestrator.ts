@@ -17,7 +17,7 @@
 import { runAgent } from '@kit/agent';
 import type { AgentRunResult } from '@kit/agent';
 
-import { screenplayDirectorSkill } from './skills/screenplay-director-skill';
+import { createScreenplayDirectorSkill } from './skills/screenplay-director-skill';
 
 export interface ScreenplayOrchestratorInput {
   episodeId: string;
@@ -39,6 +39,8 @@ export interface ScreenplayOrchestratorInput {
   sceneCountMax: number;
   dialogueLinesPerSceneMin: number;
   dialogueLinesPerSceneMax: number;
+  // Recurring story elements (pre-formatted)
+  recurringElementsContext?: string;
 }
 
 export interface ScreenplayScene {
@@ -85,14 +87,21 @@ export async function runScreenplayOrchestrator(
     `[Screenplay Orchestrator] Starting for episode ${input.episodeId}`,
   );
 
+  const screenplaySkill = createScreenplayDirectorSkill({
+    storyText: input.storyText,
+    characters: input.charactersContext,
+    recurringElements: input.recurringElementsContext,
+  });
+
   const result: AgentRunResult<ScreenplayOrchestratorOutput> =
     await runAgent<ScreenplayOrchestratorOutput>(
       {
         name: 'screenplay-orchestrator',
         systemPrompt: SCREENPLAY_SYSTEM_PROMPT,
         tools: [],
-        skills: [screenplayDirectorSkill],
+        skills: [screenplaySkill],
         maxSteps: 4,
+        maxTokensPerStep: 16_000,
         budgetLimits: {
           maxTotalTokens: 150_000,
           maxCostUSD: 1.5,
@@ -164,13 +173,14 @@ Your sole responsibility: convert a finalized story into a structured screenplay
 
 ## Your Steps
 
-1. Call generateScreenplay with the story text and all context provided.
-2. Check that the returned scene count is within the expected range (sceneCountMin–sceneCountMax).
-3. If the scene count is significantly outside the range (by more than 2), call generateScreenplay ONCE more with adjusted sceneCountMin/sceneCountMax to correct it.
-4. Stop after at most 2 generateScreenplay calls.
+1. Call generateScreenplay with the metadata parameters (genre, sceneCount, duration, etc.).
+2. The story text and characters are already pre-loaded into the tool — do NOT pass them as parameters.
+3. Check that the returned scene count is within the expected range (sceneCountMin–sceneCountMax).
+4. If the scene count is significantly outside the range (by more than 2), call generateScreenplay ONCE more with adjusted sceneCountMin/sceneCountMax to correct it.
+5. Stop after at most 2 generateScreenplay calls.
 
 ## CRITICAL CONSTRAINTS
-- Pass the characters context block EXACTLY as received — do not summarize.
+- The story text, character context, and recurring elements are pre-bound — focus on passing metadata parameters only.
 - Do NOT generate shots, reel analysis, or story revisions — those are other pipeline stages.
 - The screenplay must use character names that EXACTLY match the provided character list.
 
@@ -197,11 +207,18 @@ function buildScreenplayPrompt(input: ScreenplayOrchestratorInput): string {
 **Story to Convert:**
 ${input.storyText}
 
-**Character Context (pass verbatim to generateScreenplay):**
+**Character Context:**
 ${input.charactersContext || 'No characters defined.'}
 
 **Character Names**: ${input.characterNames}
 **Location Names**: ${input.locationNames}
+${
+  input.recurringElementsContext
+    ? `
+**Recurring Story Elements:**
+${input.recurringElementsContext}`
+    : ''
+}
 
 Call generateScreenplay now. Verify scene count is ${input.sceneCountMin}–${input.sceneCountMax}. Revise once if significantly out of range.`;
 }

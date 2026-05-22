@@ -842,6 +842,95 @@ export const resetEpisodeAction = enhanceAction(
       );
     }
 
+    // ── Canon cleanup ──────────────────────────────────────────────
+    // Delete narrative threads that were opened during this episode's generation
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: threadsError } = await (client as any)
+      .from('narrative_threads')
+      .delete()
+      .eq('opened_at', data.episodeId);
+
+    if (threadsError) {
+      logger.warn(
+        { ...ctx, error: threadsError },
+        'Failed to delete narrative threads during reset (non-fatal)',
+      );
+    }
+
+    // Delete immutable events established in this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: immutableError } = await (client as any)
+      .from('immutable_events')
+      .delete()
+      .eq('established_in', data.episodeId);
+
+    if (immutableError) {
+      logger.warn(
+        { ...ctx, error: immutableError },
+        'Failed to delete immutable events during reset (non-fatal)',
+      );
+    }
+
+    // Delete character states from this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: charStatesError } = await (client as any)
+      .from('character_states')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (charStatesError) {
+      logger.warn(
+        { ...ctx, error: charStatesError },
+        'Failed to delete character states during reset (non-fatal)',
+      );
+    }
+
+    // Delete state deltas (audit trail) from this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: deltasError } = await (client as any)
+      .from('state_deltas')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (deltasError) {
+      logger.warn(
+        { ...ctx, error: deltasError },
+        'Failed to delete state deltas during reset (non-fatal)',
+      );
+    }
+
+    // Delete episode summary
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: summaryError } = await (client as any)
+      .from('episode_summaries')
+      .delete()
+      .eq('episode_id', data.episodeId);
+
+    if (summaryError) {
+      logger.warn(
+        { ...ctx, error: summaryError },
+        'Failed to delete episode summary during reset (non-fatal)',
+      );
+    }
+
+    // Clean stale episode references from other threads' episodes_touched arrays
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: touchedError } = await (client as any).rpc(
+      'remove_episode_from_threads_touched',
+      {
+        p_episode_id: data.episodeId,
+        p_project_id: episode.project_id,
+      },
+    );
+
+    if (touchedError) {
+      logger.warn(
+        { ...ctx, error: touchedError },
+        'Failed to clean episodes_touched during reset (non-fatal)',
+      );
+    }
+    // ── End canon cleanup ──────────────────────────────────────────
+
     // Cancel all active generation jobs for this episode
     // Prevents ghost Lambda workers from writing stale data after reset
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

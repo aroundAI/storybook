@@ -78,11 +78,11 @@ const generateStoryTool = createTool({
       .describe(
         'Existing story text to revise. If provided, the director revises rather than generating from scratch.',
       ),
-    recurringElement: z
+    recurringElements: z
       .string()
       .optional()
       .describe(
-        'Recurring episode element from project settings (e.g. ending pattern: "Each episode ends with Dante writing a note in his detective journal"). Pass verbatim — the story MUST honour this pattern.',
+        'Recurring episode elements from project settings (e.g. ending pattern: "Each episode ends with Dante writing a note in his detective journal"). Pass verbatim — the story MUST honour these patterns.',
       ),
   }),
 
@@ -101,7 +101,7 @@ const generateStoryTool = createTool({
     viralGoals,
     revisionInstructions,
     existingStoryText,
-    recurringElement,
+    recurringElements,
   }) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
@@ -168,7 +168,7 @@ const generateStoryTool = createTool({
           previous_episodes: previousEpisodes ?? '',
           visual_style: visualStyle ?? '',
           style: 'balanced',
-          recurring_element: recurringElement ?? '',
+          recurring_element: recurringElements ?? '',
           canon_context: '',
           plot_beats: '',
           // Inject viral goals if provided
@@ -211,7 +211,7 @@ export const storyDirectorSkill: Skill = {
   contextPrompt: `You are the Story Director — an expert screenwriter who thinks in hooks, emotional arcs, and compelling genre narratives.
 
 Your stories always:
-- Open mid-conflict or with a jarring anomaly (never with backstory)
+- Open according to the project's recurring elements. If a beginning element exists, honor it before the hook. Otherwise, open mid-conflict or with a jarring anomaly.
 - Have a specific, urgent withheld fact driving the viewer to the finale  
 - Move through 3 distinct emotional phases: intrigue → tension → catharsis
 - Plant a detail in Act 1 that pays off unexpectedly in Act 3

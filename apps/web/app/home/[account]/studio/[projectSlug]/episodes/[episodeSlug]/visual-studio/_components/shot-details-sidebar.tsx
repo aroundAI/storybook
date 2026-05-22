@@ -566,7 +566,10 @@ export function ShotDetailsSidebar({
           )}
 
         {/* Shot Intelligence Accordion (OpenClaw fields) */}
-        {(shot.transitionType || shot.frameStrategy || shot.primarySubject || shot.locationArea) && (
+        {(shot.transitionType ||
+          shot.frameStrategy ||
+          shot.primarySubject ||
+          shot.locationArea) && (
           <Collapsible>
             <CollapsibleTrigger asChild>
               <button className="flex w-full items-center justify-between border-b border-white/20 px-4 py-2.5 text-left transition-colors hover:bg-white/5 dark:border-white/10">
@@ -613,10 +616,7 @@ export function ShotDetailsSidebar({
                     <span className="text-xs font-medium text-gray-500 uppercase dark:text-gray-400">
                       Focus
                     </span>
-                    <Badge
-                      variant="outline"
-                      className="text-xs capitalize"
-                    >
+                    <Badge variant="outline" className="text-xs capitalize">
                       {shot.primarySubject.type === 'character'
                         ? '👤'
                         : shot.primarySubject.type === 'location'

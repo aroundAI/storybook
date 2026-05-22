@@ -9,9 +9,9 @@
  * - Publish Worker Lambda: Processes each upload (up to 5 min per video)
  */
 import { createClient } from '@supabase/supabase-js';
-import ws from 'ws';
 
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import ws from 'ws';
 
 import type { PublishJobMessage } from '../publish-worker/index';
 

@@ -112,6 +112,7 @@ export async function processScreenplayConversion(
       buildEpisodeContext,
       formatCharactersForPrompt,
       formatLocationsForPrompt,
+      formatRecurringElementsForPrompt,
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
@@ -120,6 +121,9 @@ export async function processScreenplayConversion(
 
     const charactersFormatted = formatCharactersForPrompt(characters);
     const _locationsFormatted = formatLocationsForPrompt(locations);
+    const recurringElementsFormatted = formatRecurringElementsForPrompt(
+      episodeContext.recurringElements,
+    );
 
     console.log(
       `[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations`,
@@ -171,6 +175,7 @@ export async function processScreenplayConversion(
       charactersContext: charactersFormatted || 'No characters defined.',
       characterNames,
       locationNames,
+      recurringElementsContext: recurringElementsFormatted,
       sceneCountMin: scaling.screenplay.sceneCountMin,
       sceneCountMax: scaling.screenplay.sceneCountMax,
       dialogueLinesPerSceneMin: scaling.screenplay.dialogueLinesPerSceneMin,

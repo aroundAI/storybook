@@ -8,7 +8,10 @@
  *  0. CLEANUP — delete stale canon established by this episode
  *  1. immutable_events  — key events extracted from the story
  *  2. character_states  — character arcs for characters found in project assets
- *  3. narrative_threads — a thread for the episode's main story arc
+ *  3. episode metadata  — themes stored for analytics/categorization
+ *
+ * Narrative threads are created via LLM extraction (Phase 5) or manually,
+ * NOT by this function.
  *
  * All writes are non-fatal: failures are logged but don't break generation.
  */
@@ -23,6 +26,7 @@ export interface CommitStoryCanonInput {
   characters: Array<{ name: string; role: string; arc: string }>;
   episodeSummary?: string;
   themes?: string[];
+  storyContent?: string;
   createdBy: string;
   supabase: SupabaseClient;
 }
@@ -52,6 +56,7 @@ export async function commitStoryCanon(
     characters,
     episodeSummary,
     themes,
+    storyContent,
     createdBy,
     supabase,
   } = input;
@@ -71,13 +76,7 @@ export async function commitStoryCanon(
       supabase,
     }),
     commitCharacterStates({ projectId, episodeId, characters, supabase }),
-    commitNarrativeThread({
-      projectId,
-      episodeId,
-      episodeSummary,
-      themes,
-      supabase,
-    }),
+    commitThemesToMetadata({ episodeId, themes, supabase }),
   ]);
 
   for (const result of results) {
@@ -85,6 +84,14 @@ export async function commitStoryCanon(
       console.warn('[commitStoryCanon] Non-fatal failure:', result.reason);
     }
   }
+
+  // Step 4: Extract and commit narrative threads via LLM (non-fatal)
+  await commitNarrativeThreadsViaLLM({
+    projectId,
+    episodeId,
+    storyContent,
+    supabase,
+  });
 }
 
 // ─── Step 0: Cleanup ─────────────────────────────────────────────────────────
@@ -213,36 +220,246 @@ async function commitCharacterStates({
   );
 }
 
-// ─── Step 3: Narrative Thread ─────────────────────────────────────────────────
+// ─── Step 3: Themes Metadata ──────────────────────────────────────────────────
 
-async function commitNarrativeThread({
+/**
+ * Stores episode themes (morals, lessons) in episode metadata.
+ * These are categorization data for analytics — NOT narrative promises.
+ */
+async function commitThemesToMetadata({
+  episodeId,
+  themes,
+  supabase,
+}: {
+  episodeId: string;
+  themes?: string[];
+  supabase: SupabaseClient;
+}) {
+  if (!themes?.length) return;
+
+  // Fetch current metadata and merge themes
+  const { data: episode } = await supabase
+    .from('episodes')
+    .select('metadata')
+    .eq('id', episodeId)
+    .single();
+
+  const existingMetadata =
+    (episode?.metadata as Record<string, unknown>) ?? {};
+
+  const { error } = await supabase
+    .from('episodes')
+    .update({
+      metadata: { ...existingMetadata, themes },
+    })
+    .eq('id', episodeId);
+
+  if (error) {
+    throw new Error(`themes metadata update failed: ${error.message}`);
+  }
+  console.log(
+    `[commitStoryCanon] Stored ${themes.length} themes in episode metadata`,
+  );
+}
+
+// ─── Step 4: LLM-Based Narrative Thread Extraction ────────────────────────────
+
+interface LLMThreadUpdate {
+  threadName: string;
+  threadType?:
+    | 'plot'
+    | 'character'
+    | 'mystery'
+    | 'romantic'
+    | 'conflict'
+    | 'thematic';
+  action: 'open' | 'progress' | 'resolve';
+  description: string;
+  promises?: string[];
+}
+
+/**
+ * Runs LLM canon extraction to identify real narrative threads from the story,
+ * then writes them directly to the database.
+ *
+ * This replaces the old hardcoded "Episode arc" thread creation.
+ * Uses the same `canon-extraction` prompt template as the publish page.
+ * Non-fatal: failures are logged but don't break story generation.
+ */
+async function commitNarrativeThreadsViaLLM({
   projectId,
   episodeId,
-  episodeSummary,
-  themes,
+  storyContent,
   supabase,
 }: {
   projectId: string;
   episodeId: string;
-  episodeSummary?: string;
-  themes?: string[];
+  storyContent?: string;
   supabase: SupabaseClient;
 }) {
-  if (!episodeSummary) return;
+  if (!storyContent || storyContent.length < 100) return;
 
-  // Note: no created_by column in narrative_threads
-  const { error } = await supabase.from('narrative_threads').insert({
-    project_id: projectId,
-    thread_name: 'Episode arc',
-    thread_type: 'plot',
-    opened_at: episodeId,
-    description: episodeSummary,
-    promises: themes ?? [],
-    status: 'open',
-  });
+  try {
+    const { executeLLM } = await import('@kit/prompt-engine/server');
 
-  if (error) {
-    throw new Error(`narrative_threads insert failed: ${error.message}`);
+    // Fetch active threads for LLM context
+    const { data: activeThreads } = await supabase
+      .from('narrative_threads')
+      .select('thread_name, thread_type, status, description, promises')
+      .eq('project_id', projectId)
+      .in('status', ['open', 'progressed']);
+
+    const threadsContext = activeThreads?.length
+      ? activeThreads
+          .map(
+            (t) =>
+              `- "${t.thread_name}" (${t.thread_type}, ${t.status}): ${t.description ?? ''}. Promises: ${((t.promises as string[]) ?? []).join(', ') || 'none'}`,
+          )
+          .join('\n')
+      : 'No active threads';
+
+    // Fetch project characters
+    const { data: projectCharacters } = await supabase
+      .from('assets')
+      .select('name, type')
+      .eq('project_id', projectId)
+      .eq('type', 'character')
+      .limit(30);
+
+    const charsContext = projectCharacters?.length
+      ? projectCharacters.map((c) => `- ${c.name}`).join('\n')
+      : 'No characters defined';
+
+    // Sanitize content
+    const sanitizedContent = storyContent
+      .replace(/\b(system|assistant)\s*:\s*/gi, '')
+      .replace(
+        /\bignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|prompts?|rules?)\b/gi,
+        '',
+      )
+      .substring(0, 50_000)
+      .trim();
+
+    const result = await executeLLM<{
+      extraction: {
+        threadUpdates: LLMThreadUpdate[];
+        episodeSummary: string;
+        sentimentScore: number;
+      };
+    }>({
+      templateSlug: 'canon-extraction',
+      variables: {
+        story_content: sanitizedContent,
+        existing_characters: charsContext,
+        existing_threads: threadsContext,
+      },
+      context: {
+        name: 'canon-extraction-auto',
+        accountId: projectId,
+      },
+    });
+
+    const threadUpdates = result.data.extraction?.threadUpdates ?? [];
+    if (threadUpdates.length === 0) {
+      console.log(
+        '[commitStoryCanon] LLM found no narrative threads to commit',
+      );
+      return;
+    }
+
+    let threadsCreated = 0;
+    for (const update of threadUpdates) {
+      try {
+        if (update.action === 'open') {
+          const { error } = await supabase.from('narrative_threads').insert({
+            project_id: projectId,
+            thread_name: update.threadName,
+            thread_type: update.threadType ?? 'plot',
+            opened_at: episodeId,
+            description: update.description,
+            promises: update.promises ?? [],
+            episodes_touched: [episodeId],
+            status: 'open',
+          });
+          if (!error) threadsCreated++;
+        } else if (update.action === 'progress') {
+          const { data: existing } = await supabase
+            .from('narrative_threads')
+            .select('id, episodes_touched, version')
+            .eq('project_id', projectId)
+            .eq('thread_name', update.threadName)
+            .in('status', ['open', 'progressed'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (existing) {
+            const touched = [
+              ...new Set([
+                ...((existing.episodes_touched as string[]) ?? []),
+                episodeId,
+              ]),
+            ];
+            await supabase
+              .from('narrative_threads')
+              .update({
+                status: 'progressed',
+                episodes_touched: touched,
+                description: update.description,
+                version: ((existing.version as number) ?? 1) + 1,
+              })
+              .eq('id', existing.id);
+            threadsCreated++;
+          }
+        } else if (update.action === 'resolve') {
+          const { data: existing } = await supabase
+            .from('narrative_threads')
+            .select('id, episodes_touched, payoffs, version')
+            .eq('project_id', projectId)
+            .eq('thread_name', update.threadName)
+            .in('status', ['open', 'progressed'])
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (existing) {
+            const touched = [
+              ...new Set([
+                ...((existing.episodes_touched as string[]) ?? []),
+                episodeId,
+              ]),
+            ];
+            await supabase
+              .from('narrative_threads')
+              .update({
+                status: 'resolved',
+                resolved_at: episodeId,
+                payoffs: [
+                  ...((existing.payoffs as string[]) ?? []),
+                  update.description,
+                ],
+                episodes_touched: touched,
+                version: ((existing.version as number) ?? 1) + 1,
+              })
+              .eq('id', existing.id);
+            threadsCreated++;
+          }
+        }
+      } catch (threadErr) {
+        console.warn(
+          `[commitStoryCanon] Thread '${update.threadName}' failed:`,
+          threadErr,
+        );
+      }
+    }
+
+    console.log(
+      `[commitStoryCanon] LLM thread extraction: ${threadsCreated}/${threadUpdates.length} threads committed`,
+    );
+  } catch (err) {
+    console.warn(
+      '[commitStoryCanon] LLM thread extraction failed (non-fatal):',
+      err,
+    );
   }
-  console.log('[commitStoryCanon] Committed narrative thread for episode');
 }

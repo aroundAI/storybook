@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { AssetRow, mapRowToAsset } from '@kit/assets';
+import { PrimarySubjectSchema } from '@kit/episodes/schemas/shot-list';
 import type {
   EpisodeMetadata,
   EpisodeStatus,
@@ -16,7 +17,6 @@ import type {
   StoryData,
   TransitionType,
 } from '@kit/episodes/types';
-import { PrimarySubjectSchema } from '@kit/episodes/schemas/shot-list';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import { withI18n } from '~/lib/i18n/with-i18n';
@@ -237,11 +237,9 @@ async function EpisodeWorkspaceLayout({
         generationStartedAt: null,
         generationCompletedAt: null,
         shortsCandidate: shot.shorts_candidate ?? false,
-        shortsMetadata:
-          (shot.shorts_metadata as ShortsMetadata | null) ?? null,
+        shortsMetadata: (shot.shorts_metadata as ShortsMetadata | null) ?? null,
         // OpenClaw Shot Intelligence fields
-        transitionType:
-          (shot.transition_type as TransitionType | null) ?? null,
+        transitionType: (shot.transition_type as TransitionType | null) ?? null,
         continuationFromShotId: shot.continuation_from_shot_id ?? null,
         inheritLastFrame: shot.inherit_last_frame ?? false,
         firstFrameDescription: shot.first_frame_description ?? null,
@@ -253,8 +251,7 @@ async function EpisodeWorkspaceLayout({
           shot.location_environment_description ?? null,
         primarySubject:
           PrimarySubjectSchema.nullish().parse(shot.primary_subject) ?? null,
-        frameStrategy:
-          (shot.frame_strategy as FrameStrategy | null) ?? null,
+        frameStrategy: (shot.frame_strategy as FrameStrategy | null) ?? null,
         createdAt: shot.created_at,
         updatedAt: shot.updated_at,
         deletedAt: shot.deleted_at,

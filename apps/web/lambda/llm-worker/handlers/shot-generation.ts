@@ -95,6 +95,7 @@ export async function processShotGeneration(
       buildEpisodeContext,
       formatCharactersForVeoPrompt,
       formatLocationsForVeoPrompt,
+      formatRecurringElementsForPrompt,
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
@@ -110,6 +111,9 @@ export async function processShotGeneration(
       formatCharactersForVeoPrompt(characters) || 'No characters defined.';
     const locationsFormatted =
       formatLocationsForVeoPrompt(locations) || 'No locations defined.';
+    const recurringElementsFormatted = formatRecurringElementsForPrompt(
+      episodeContext.recurringElements,
+    );
 
     // 3. Run the Stage 3 Shot Orchestrator (Reel Scout + Shot Director)
     const { runShotOrchestrator } = await import(
@@ -182,6 +186,7 @@ export async function processShotGeneration(
       }),
       charactersVeoContext: charactersFormatted,
       locationsVeoContext: locationsFormatted,
+      recurringElementsContext: recurringElementsFormatted,
     });
 
     console.log(
