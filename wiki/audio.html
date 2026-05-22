@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio Studio — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / <a href="pipeline-overview.html">Pipeline</a> / Audio</div>
+          <h1 class="page-title">🔊 Audio Studio</h1>
+          <p class="page-subtitle">
+            TTS, music generation, voice cloning, and the audio timeline.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            After creating the video shots, we need voices and music! The Audio Studio turns written dialogue into spoken words using AI voices, adds background music, and mixes in sound effects like footsteps or birds chirping.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: TTS (Text-to-Speech) ═══ -->
+        <h2>TTS (Text-to-Speech)</h2>
+        <p>Text-to-Speech is the backbone of the Audio Studio. Every line of dialogue written in the Screenplay stage gets converted into a spoken audio clip using ElevenLabs' API. The system supports per-character voice assignment and emotion control.</p>
+
+        <h3>ElevenLabs Integration</h3>
+        <p>The platform uses the ElevenLabs Multilingual v2 model for natural-sounding speech synthesis. Each API call sends a single dialogue line and receives a high-quality audio clip in return.</p>
+
+<pre><code><span class="cm">// TTS request structure</span>
+{
+  <span class="json-key">text</span>: <span class="type">string</span>;            <span class="cm">// The dialogue line to synthesize</span>
+  <span class="json-key">voice_id</span>: <span class="type">string</span>;        <span class="cm">// Character's assigned ElevenLabs voice</span>
+  <span class="json-key">model_id</span>: <span class="type">string</span>;        <span class="cm">// "eleven_multilingual_v2"</span>
+  <span class="json-key">voice_settings</span>: {
+    <span class="json-key">stability</span>: <span class="type">number</span>;     <span class="cm">// 0.0–1.0, lower = more expressive</span>
+    <span class="json-key">similarity_boost</span>: <span class="type">number</span>; <span class="cm">// 0.0–1.0, higher = closer to reference</span>
+    <span class="json-key">style</span>: <span class="type">number</span>;         <span class="cm">// 0.0–1.0, emphasis on style transfer</span>
+  }
+}</code></pre>
+
+        <h3>Emotion Tags</h3>
+        <p>The Screenplay stage embeds emotion tags directly into dialogue lines. These tags modify TTS parameters at synthesis time to produce emotionally appropriate speech:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">😆</div>
+              <div>
+                <div class="card-title">[excited]</div>
+                <div class="card-subtitle">Higher pitch, faster pace</div>
+              </div>
+            </div>
+            <p>Maps to <code>stability: 0.3</code>, <code>style: 0.8</code>. Used for moments of discovery, celebration, or surprise. The voice becomes more animated and energetic.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">😰</div>
+              <div>
+                <div class="card-title">[nervous]</div>
+                <div class="card-subtitle">Slight tremor, halting delivery</div>
+              </div>
+            </div>
+            <p>Maps to <code>stability: 0.4</code>, <code>style: 0.6</code>. Used for tense moments, uncertainty, or fear. The voice wavers slightly and pacing becomes irregular.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🤫</div>
+              <div>
+                <div class="card-title">[whisper]</div>
+                <div class="card-subtitle">Soft, breathy delivery</div>
+              </div>
+            </div>
+            <p>Maps to <code>stability: 0.7</code>, <code>style: 0.3</code>. Used for secrets, suspenseful reveals, or quiet observations. Volume is reduced and breathiness is increased.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">😠</div>
+              <div>
+                <div class="card-title">[angry]</div>
+                <div class="card-subtitle">Forceful, clipped speech</div>
+              </div>
+            </div>
+            <p>Maps to <code>stability: 0.5</code>, <code>style: 0.9</code>. Used for confrontation or frustration. The voice becomes more intense with sharper consonants.</p>
+          </div>
+        </div>
+
+        <h3>Per-Character Voice Assignment</h3>
+        <p>Each character in the project's character registry can be assigned a unique ElevenLabs voice. This mapping is stored in the <code>character_voices</code> table:</p>
+
+<pre><code><span class="cm">// character_voices table structure</span>
+{
+  <span class="json-key">character_id</span>: <span class="type">uuid</span>;        <span class="cm">// FK → project_characters.id</span>
+  <span class="json-key">voice_id</span>: <span class="type">string</span>;          <span class="cm">// ElevenLabs voice identifier</span>
+  <span class="json-key">voice_name</span>: <span class="type">string</span>;        <span class="cm">// Human-readable label (e.g., "Young Boy - Curious")</span>
+  <span class="json-key">is_cloned</span>: <span class="type">boolean</span>;        <span class="cm">// true if using a custom-cloned voice</span>
+  <span class="json-key">stability</span>: <span class="type">number</span>;         <span class="cm">// Default stability for this character</span>
+  <span class="json-key">similarity_boost</span>: <span class="type">number</span>;  <span class="cm">// Default similarity for this character</span>
+}</code></pre>
+
+        <p>When the TTS engine processes a dialogue line, it looks up the speaking character's voice settings and applies them automatically. Emotion tags then further modify these defaults.</p>
+
+        <!-- ═══ Section 3: Music Generation ═══ -->
+        <h2>Music Generation</h2>
+        <p>Background music is generated using Suno AI's API. The system creates music tracks that match the emotional tone of each scene, with careful attention to BPM (beats per minute) and musical key.</p>
+
+        <div class="card animate-in">
+          <div class="card-header">
+            <div class="card-icon green">🎵</div>
+            <div>
+              <div class="card-title">Suno AI Integration</div>
+              <div class="card-subtitle">AI-powered music composition</div>
+            </div>
+          </div>
+          <p>Each scene in the screenplay includes mood metadata that feeds into the music generation prompt. The system generates background tracks that match the scene's emotional arc — upbeat for chase sequences, gentle for tender moments, suspenseful for mystery reveals.</p>
+        </div>
+
+        <h3>BPM &amp; Key Matching</h3>
+        <p>Music tracks are generated with specific BPM and key constraints to ensure consistency across an episode:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Scene Mood</th>
+              <th>Target BPM</th>
+              <th>Suggested Keys</th>
+              <th>Style</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Adventure / Chase</strong></td>
+              <td><code>140–160</code></td>
+              <td>D major, E major</td>
+              <td>Orchestral, energetic</td>
+            </tr>
+            <tr>
+              <td><strong>Mystery / Suspense</strong></td>
+              <td><code>80–100</code></td>
+              <td>D minor, B minor</td>
+              <td>Ambient, tension-building</td>
+            </tr>
+            <tr>
+              <td><strong>Emotional / Tender</strong></td>
+              <td><code>60–80</code></td>
+              <td>C major, F major</td>
+              <td>Piano-led, gentle strings</td>
+            </tr>
+            <tr>
+              <td><strong>Comedy / Playful</strong></td>
+              <td><code>120–140</code></td>
+              <td>G major, A major</td>
+              <td>Bouncy, pizzicato, woodwinds</td>
+            </tr>
+            <tr>
+              <td><strong>Triumph / Resolution</strong></td>
+              <td><code>100–120</code></td>
+              <td>C major, D major</td>
+              <td>Full orchestra, brass swells</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Key Consistency</div>
+          <p>When multiple scenes share a sequence (e.g., a chase that spans 3 scenes), the system locks the musical key across all of them to prevent jarring transitions. The BPM can vary slightly for dramatic effect, but the key stays anchored.</p>
+        </div>
+
+        <!-- ═══ Section 4: Sound Effects ═══ -->
+        <h2>Sound Effects</h2>
+        <p>Sound effects (SFX) are derived from the audio cues embedded in each screenplay scene. During the Screenplay stage, the AI generates structured audio cue metadata alongside dialogue:</p>
+
+<pre><code><span class="cm">// Audio cues from a screenplay scene</span>
+{
+  <span class="json-key">audioCues</span>: [
+    { <span class="json-key">type</span>: <span class="json-string">"ambient"</span>, <span class="json-key">description</span>: <span class="json-string">"Busy zoo atmosphere — distant animal calls, children laughing"</span> },
+    { <span class="json-key">type</span>: <span class="json-string">"sfx"</span>, <span class="json-key">description</span>: <span class="json-string">"Macaw squawk — loud, close, startling"</span>, <span class="json-key">timestamp</span>: <span class="json-string">"00:02:15"</span> },
+    { <span class="json-key">type</span>: <span class="json-string">"sfx"</span>, <span class="json-key">description</span>: <span class="json-string">"Footsteps on gravel — quick, running"</span>, <span class="json-key">timestamp</span>: <span class="json-string">"00:02:18"</span> },
+    { <span class="json-key">type</span>: <span class="json-string">"ambient"</span>, <span class="json-key">description</span>: <span class="json-string">"Wind rustling through tropical plants"</span> }
+  ]
+}</code></pre>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🌿</div>
+              <div>
+                <div class="card-title">Ambient Sounds</div>
+                <div class="card-subtitle">Continuous background audio</div>
+              </div>
+            </div>
+            <p>Ambient sounds run for the duration of a scene. They set the atmosphere — a busy schoolyard, a quiet forest, rain on a window. These are placed as full-length tracks on the timeline.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">💥</div>
+              <div>
+                <div class="card-title">Point Effects (SFX)</div>
+                <div class="card-subtitle">Timestamped one-shot sounds</div>
+              </div>
+            </div>
+            <p>SFX are short, precise sounds tied to specific moments — a door slam, a gasp, a clue discovery "ding." They're placed at exact timestamps on the timeline.</p>
+          </div>
+        </div>
+
+        <p>SFX can be sourced from an AI generation service or from a curated library of pre-made sound effects. The system prefers AI-generated SFX for unique sounds and library clips for common ones (footsteps, doors, etc.).</p>
+
+        <!-- ═══ Section 5: Audio Timeline ═══ -->
+        <h2>Audio Timeline</h2>
+        <p>The Audio Timeline is the mixing board of the Audio Studio. It positions every audio element — dialogue, music, and SFX — on a multi-track timeline synchronized to the episode's video shots.</p>
+
+        <!-- SVG Diagram: Audio Timeline -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="dialogueGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.4)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.15)"/>
+              </linearGradient>
+              <linearGradient id="musicGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.4)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.15)"/>
+              </linearGradient>
+              <linearGradient id="sfxGrad" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.4)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.15)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Time ruler -->
+            <rect x="30" y="20" width="640" height="25" rx="4" fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+            <text x="50" y="37" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="9">00:00</text>
+            <text x="180" y="37" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="9">00:30</text>
+            <text x="310" y="37" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="9">01:00</text>
+            <text x="440" y="37" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="9">01:30</text>
+            <text x="570" y="37" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="9">02:00</text>
+
+            <!-- Track Labels -->
+            <text x="30" y="72" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="11">DIALOGUE</text>
+            <text x="30" y="142" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="11">MUSIC</text>
+            <text x="30" y="212" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="11">SFX</text>
+
+            <!-- Dialogue track clips -->
+            <rect x="120" y="58" width="100" height="24" rx="6" fill="url(#dialogueGrad)" stroke="rgba(139,92,246,0.3)" stroke-width="1"/>
+            <text x="135" y="74" fill="#c4b5fd" font-family="Inter, sans-serif" font-size="9">Dante: "Look!"</text>
+
+            <rect x="250" y="58" width="120" height="24" rx="6" fill="url(#dialogueGrad)" stroke="rgba(139,92,246,0.3)" stroke-width="1"/>
+            <text x="262" y="74" fill="#c4b5fd" font-family="Inter, sans-serif" font-size="9">Luna: "What is it?"</text>
+
+            <rect x="420" y="58" width="150" height="24" rx="6" fill="url(#dialogueGrad)" stroke="rgba(139,92,246,0.3)" stroke-width="1"/>
+            <text x="435" y="74" fill="#c4b5fd" font-family="Inter, sans-serif" font-size="9">Dante: "A feather trail!"</text>
+
+            <!-- Music track -->
+            <rect x="120" y="128" width="540" height="24" rx="6" fill="url(#musicGrad)" stroke="rgba(59,130,246,0.3)" stroke-width="1"/>
+            <text x="300" y="144" fill="#93c5fd" font-family="Inter, sans-serif" font-size="9">🎵 Mystery Theme — D minor, 90 BPM</text>
+
+            <!-- SFX clips -->
+            <rect x="140" y="198" width="60" height="24" rx="6" fill="url(#sfxGrad)" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+            <text x="145" y="214" fill="#67e8f9" font-family="Inter, sans-serif" font-size="8">🦜 Squawk</text>
+
+            <rect x="380" y="198" width="50" height="24" rx="6" fill="url(#sfxGrad)" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+            <text x="385" y="214" fill="#67e8f9" font-family="Inter, sans-serif" font-size="8">👣 Steps</text>
+
+            <rect x="530" y="198" width="70" height="24" rx="6" fill="url(#sfxGrad)" stroke="rgba(6,182,212,0.3)" stroke-width="1"/>
+            <text x="535" y="214" fill="#67e8f9" font-family="Inter, sans-serif" font-size="8">🔔 Discovery</text>
+
+            <!-- Legend -->
+            <rect x="30" y="250" width="640" height="35" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <circle cx="60" cy="268" r="5" fill="rgba(139,92,246,0.5)"/>
+            <text x="72" y="272" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Dialogue clips</text>
+            <circle cx="200" cy="268" r="5" fill="rgba(59,130,246,0.5)"/>
+            <text x="212" y="272" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Music tracks</text>
+            <circle cx="340" cy="268" r="5" fill="rgba(6,182,212,0.5)"/>
+            <text x="352" y="272" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Sound effects</text>
+          </svg>
+        </div>
+
+        <p>The timeline is divided into three parallel tracks:</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🗣️</div>
+              <div><div class="card-title">Dialogue Track</div></div>
+            </div>
+            <p>Contains all TTS-generated voice clips. Each clip is positioned based on the dialogue line's sequence number in the screenplay. Gaps between clips are calculated from estimated shot durations.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🎶</div>
+              <div><div class="card-title">Music Track</div></div>
+            </div>
+            <p>Background music runs continuously beneath dialogue. Volume is automatically ducked (reduced) when dialogue is playing and restored during non-dialogue segments.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🔉</div>
+              <div><div class="card-title">SFX Track</div></div>
+            </div>
+            <p>Point effects and ambient sounds. Ambient clips span entire scenes. Point SFX are placed at precise timestamps derived from screenplay audio cues.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 6: Voice Cloning ═══ -->
+        <h2>Voice Cloning</h2>
+        <p>For projects requiring unique character voices that don't exist in ElevenLabs' stock library, the platform supports custom voice cloning. This creates a synthetic voice model from reference audio samples.</p>
+
+        <div class="card animate-in">
+          <div class="card-header">
+            <div class="card-icon rose">🎤</div>
+            <div>
+              <div class="card-title">Custom Voice Profiles</div>
+              <div class="card-subtitle">Per-character cloned voices</div>
+            </div>
+          </div>
+          <p>Users upload 1–5 minutes of reference audio for a character. ElevenLabs' Instant Voice Cloning API creates a custom voice model that captures the speaker's unique timbre, cadence, and accent. This cloned voice is then assigned to the character and used for all their dialogue.</p>
+        </div>
+
+        <h3>Cloning Workflow</h3>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">🎙️</div>
+            <div class="flow-step-title">Upload Audio</div>
+            <div class="flow-step-desc">1–5 min reference clip</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">🧬</div>
+            <div class="flow-step-title">Clone Voice</div>
+            <div class="flow-step-desc">ElevenLabs API creates model</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔗</div>
+            <div class="flow-step-title">Assign</div>
+            <div class="flow-step-desc">Link to character profile</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🗣️</div>
+            <div class="flow-step-title">Synthesize</div>
+            <div class="flow-step-desc">All dialogue uses cloned voice</div>
+          </div>
+        </div>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ Voice Cloning Safeguards</div>
+          <ul>
+            <li><strong>Consent verification required.</strong> Users must confirm they have legal rights to clone the voice before the API call is made.</li>
+            <li><strong>Project-scoped only.</strong> Cloned voices are isolated to the project that created them. They cannot be shared across projects or accounts.</li>
+            <li><strong>Rate-limited.</strong> Each project is limited to 10 cloned voices to prevent API abuse.</li>
+          </ul>
+        </div>
+
+        <!-- ═══ Section 7: Database Connection ═══ -->
+        <h2>Data Flow: dialogue_lines → TTS</h2>
+        <p>The <code>dialogue_lines</code> table is the bridge between the Screenplay stage and Audio generation. Every line of character dialogue is stored here with rich metadata that feeds directly into the TTS engine:</p>
+
+<pre><code><span class="cm">// dialogue_lines table</span>
+{
+  <span class="json-key">id</span>: <span class="type">uuid</span>;
+  <span class="json-key">episode_id</span>: <span class="type">uuid</span>;          <span class="cm">// FK → episodes.id</span>
+  <span class="json-key">scene_number</span>: <span class="type">number</span>;      <span class="cm">// Which scene this line belongs to</span>
+  <span class="json-key">sequence_order</span>: <span class="type">number</span>;    <span class="cm">// Order within the scene</span>
+  <span class="json-key">character_id</span>: <span class="type">uuid</span>;        <span class="cm">// FK → project_characters.id</span>
+  <span class="json-key">character_name</span>: <span class="type">string</span>;    <span class="cm">// Denormalized for display</span>
+  <span class="json-key">dialogue_text</span>: <span class="type">string</span>;     <span class="cm">// The actual spoken text</span>
+  <span class="json-key">emotion</span>: <span class="type">string</span>;           <span class="cm">// "excited" | "nervous" | "whisper" | …</span>
+  <span class="json-key">audio_url</span>: <span class="type">string | null</span>;  <span class="cm">// S3 URL after TTS generation</span>
+  <span class="json-key">duration_ms</span>: <span class="type">number | null</span>; <span class="cm">// Audio clip duration after synthesis</span>
+}</code></pre>
+
+        <div class="data-example">
+          <p>A single dialogue line flows through the system like this:</p>
+<pre><code><span class="cm">// 1. Screenplay outputs:</span>
+<span class="str">"Dante"</span>: <span class="str">"[excited] Look at this feather — it's from the missing macaw!"</span>
+
+<span class="cm">// 2. Stored in dialogue_lines as:</span>
+{
+  <span class="json-key">character_name</span>: <span class="json-string">"Dante"</span>,
+  <span class="json-key">dialogue_text</span>: <span class="json-string">"Look at this feather — it's from the missing macaw!"</span>,
+  <span class="json-key">emotion</span>: <span class="json-string">"excited"</span>
+}
+
+<span class="cm">// 3. TTS engine reads this, applies Dante's voice + excited settings</span>
+<span class="cm">// 4. Resulting audio clip uploaded to S3, URL saved back to dialogue_lines</span></code></pre>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="shots.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Shot Generation</span>
+          </a>
+          <a href="memory.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Memory &amp; Continuity</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

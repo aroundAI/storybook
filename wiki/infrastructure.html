@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AWS &amp; Supabase Infrastructure — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Infrastructure</div>
+          <h1 class="page-title">☁️ AWS &amp; Supabase Infrastructure</h1>
+          <p class="page-subtitle">
+            Why we use both AWS and Supabase, all Lambda functions, SQS queues, and the vendor-agnostic deployment strategy.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            Think of it like a <strong>restaurant</strong>. Supabase is the <strong>recipe book</strong> (database) and the <strong>front door</strong> (authentication). AWS is the <strong>kitchen</strong> (Lambda workers doing heavy cooking), the <strong>delivery trucks</strong> (SQS queues), the <strong>storage room</strong> (S3), and the <strong>menu board outside</strong> (CloudFront CDN).
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: Why Both? ═══ -->
+        <h2>Why Both?</h2>
+        <p>Each platform excels at different things. Instead of forcing one to do everything, we let each do what it does best.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">⚡</div>
+              <div>
+                <div class="card-title">Supabase</div>
+                <div class="card-subtitle">Developer experience &amp; auth</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>PostgreSQL with RLS</strong> — Row-level security for multi-tenant data isolation</li>
+              <li><strong>Connection pooling</strong> — Built-in PgBouncer, no infra to manage</li>
+              <li><strong>OAuth / MFA / Magic Links</strong> — Auth out of the box</li>
+              <li><strong>Free unlimited users</strong> — No per-seat costs on auth</li>
+            </ul>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🏗️</div>
+              <div>
+                <div class="card-title">AWS</div>
+                <div class="card-subtitle">Heavy lifting &amp; scale</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>Background jobs</strong> — SQS + Lambda for async processing</li>
+              <li><strong>WebSocket tracking</strong> — DynamoDB for connection management</li>
+              <li><strong>Video rendering</strong> — FFmpeg on Lambda with 2 GB RAM</li>
+              <li><strong>CDN / DNS</strong> — CloudFront + Route53</li>
+              <li><strong>Email at scale</strong> — SES for production volume</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ═══ Section 3: Complete AWS Services ═══ -->
+        <h2>Complete AWS Services</h2>
+        <p>13 AWS services are defined in <code>sst.config.ts</code>. Here's every one and what it does:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>What It Does</th>
+              <th>Key Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Lambda</strong></td>
+              <td>Serverless compute</td>
+              <td>7 worker functions + Next.js app via OpenNext</td>
+            </tr>
+            <tr>
+              <td><strong>SQS</strong></td>
+              <td>Message queues</td>
+              <td>4 queues + 4 dead-letter queues (DLQs)</td>
+            </tr>
+            <tr>
+              <td><strong>DynamoDB</strong></td>
+              <td>WebSocket connections</td>
+              <td>Stores active connection IDs for real-time push</td>
+            </tr>
+            <tr>
+              <td><strong>S3</strong></td>
+              <td>File storage</td>
+              <td>Uploaded assets, rendered videos, prompt templates</td>
+            </tr>
+            <tr>
+              <td><strong>CloudFront</strong></td>
+              <td>CDN</td>
+              <td>Edge-cached static assets &amp; Next.js ISR pages</td>
+            </tr>
+            <tr>
+              <td><strong>SES</strong></td>
+              <td>Email delivery</td>
+              <td>Transactional emails, verified domain sending</td>
+            </tr>
+            <tr>
+              <td><strong>KMS</strong></td>
+              <td>Encryption</td>
+              <td>Encrypts OAuth tokens, API keys at rest</td>
+            </tr>
+            <tr>
+              <td><strong>SSM</strong></td>
+              <td>Secrets management</td>
+              <td>Parameter Store for env vars &amp; secrets</td>
+            </tr>
+            <tr>
+              <td><strong>API Gateway WebSocket</strong></td>
+              <td>Real-time comms</td>
+              <td>Pushes LLM results &amp; job status to clients</td>
+            </tr>
+            <tr>
+              <td><strong>CloudWatch</strong></td>
+              <td>Monitoring</td>
+              <td>Logs, metrics, 4 alarms (billing, Lambda, DLQ, S3)</td>
+            </tr>
+            <tr>
+              <td><strong>EventBridge</strong></td>
+              <td>Scheduled tasks</td>
+              <td>3 cron jobs (analytics, token refresh, publishing)</td>
+            </tr>
+            <tr>
+              <td><strong>Route53</strong></td>
+              <td>DNS</td>
+              <td>Domain routing &amp; health checks</td>
+            </tr>
+            <tr>
+              <td><strong>ElastiCache</strong></td>
+              <td>Optional Redis</td>
+              <td>Can use Upstash instead for serverless Redis</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ═══ Section 4: Lambda Functions Detail ═══ -->
+        <h2>Lambda Functions</h2>
+        <p>7 dedicated worker functions handle all background processing. Each is tuned for its specific workload.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">📧</div>
+              <div>
+                <div class="card-title">Email Worker</div>
+                <div class="card-subtitle">SQS → SES / Resend</div>
+              </div>
+            </div>
+            <table>
+              <tbody>
+                <tr><td><strong>Timeout</strong></td><td>60 seconds</td></tr>
+                <tr><td><strong>Memory</strong></td><td>512 MB</td></tr>
+                <tr><td><strong>Provider</strong></td><td>SES or Resend (env-switchable)</td></tr>
+                <tr><td><strong>Failure mode</strong></td><td>Partial batch failure reporting</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🧠</div>
+              <div>
+                <div class="card-title">LLM Worker</div>
+                <div class="card-subtitle">SQS → Gemini / OpenAI / Anthropic</div>
+              </div>
+            </div>
+            <table>
+              <tbody>
+                <tr><td><strong>Timeout</strong></td><td>15 minutes</td></tr>
+                <tr><td><strong>Memory</strong></td><td>2 GB</td></tr>
+                <tr><td><strong>Job types</strong></td><td>13 (ideation, story, screenplay, shots…)</td></tr>
+                <tr><td><strong>Results</strong></td><td>Pushed via WebSocket to client</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📡</div>
+              <div>
+                <div class="card-title">Publish Worker</div>
+                <div class="card-subtitle">SQS → YouTube / TikTok / Instagram…</div>
+              </div>
+            </div>
+            <table>
+              <tbody>
+                <tr><td><strong>Timeout</strong></td><td>5 minutes</td></tr>
+                <tr><td><strong>Memory</strong></td><td>512 MB</td></tr>
+                <tr><td><strong>Platforms</strong></td><td>6 (YouTube, TikTok, Instagram, X, Facebook, Snapchat)</td></tr>
+                <tr><td><strong>Security</strong></td><td>OAuth tokens encrypted via KMS</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🎬</div>
+              <div>
+                <div class="card-title">Render Worker</div>
+                <div class="card-subtitle">SQS → FFmpeg → R2/S3</div>
+              </div>
+            </div>
+            <table>
+              <tbody>
+                <tr><td><strong>Timeout</strong></td><td>15 minutes</td></tr>
+                <tr><td><strong>Memory</strong></td><td>2 GB</td></tr>
+                <tr><td><strong>FFmpeg</strong></td><td>Bundled in Lambda layer</td></tr>
+                <tr><td><strong>Features</strong></td><td>Multi-language, R2 upload, SHA-256 dedup</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">📊</div>
+              <div>
+                <div class="card-title">Analytics Sync</div>
+                <div class="card-subtitle">EventBridge → hourly aggregation</div>
+              </div>
+            </div>
+            <p>Runs every hour via EventBridge cron. Aggregates platform analytics (views, engagement, revenue) from connected social media APIs into the <code>content_analytics</code> table.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🔑</div>
+              <div>
+                <div class="card-title">Token Refresh</div>
+                <div class="card-subtitle">EventBridge → every 30 minutes</div>
+              </div>
+            </div>
+            <p>Runs every 30 minutes. Refreshes OAuth tokens for connected social media accounts before they expire. Prevents publish failures due to stale credentials.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">📅</div>
+              <div>
+                <div class="card-title">Scheduled Publish</div>
+                <div class="card-subtitle">EventBridge → every 5 minutes</div>
+              </div>
+            </div>
+            <p>Runs every 5 minutes. Checks for episodes with a <code>scheduled_publish_at</code> timestamp in the past and dispatches them to the publish queue. Processes up to <strong>50 publishes per batch</strong>.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 5: SQS Queue Architecture ═══ -->
+        <h2>SQS Queue Architecture</h2>
+        <p>Every queue has a matching dead-letter queue (DLQ) for failed messages. All DLQs retain messages for <strong>14 days</strong> for debugging.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Queue</th>
+              <th>Visibility Timeout</th>
+              <th>Max Retries</th>
+              <th>DLQ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>email-queue</strong></td>
+              <td>120 seconds</td>
+              <td>3</td>
+              <td>email-dlq</td>
+            </tr>
+            <tr>
+              <td><strong>llm-queue</strong></td>
+              <td>900 seconds (15 min)</td>
+              <td>2</td>
+              <td>llm-dlq</td>
+            </tr>
+            <tr>
+              <td><strong>publish-queue</strong></td>
+              <td>300 seconds (5 min)</td>
+              <td>3</td>
+              <td>publish-dlq</td>
+            </tr>
+            <tr>
+              <td><strong>render-queue</strong></td>
+              <td>900 seconds (15 min)</td>
+              <td>2</td>
+              <td>render-dlq</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why Visibility Timeout Matters</div>
+          <p>The visibility timeout must be ≥ the Lambda timeout. If a Lambda takes 15 minutes to process a message but the queue's visibility timeout is only 5 minutes, SQS thinks the message failed and retries it — causing duplicate work. That's why <code>llm-queue</code> and <code>render-queue</code> both use 900-second timeouts.</p>
+        </div>
+
+        <!-- ═══ Section 6: Deployment Strategy ═══ -->
+        <h2>Deployment Strategy</h2>
+        <p>Infrastructure is managed by <strong>SST</strong> (Serverless Stack) with <strong>OpenNext 3.8.0</strong> for Next.js compatibility. The entire infrastructure is defined in a single file: <code>sst.config.ts</code> (1,776 lines).</p>
+
+        <h3>Three Deployment Options</h3>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🚀</div>
+              <div>
+                <div class="card-title">Vercel + Supabase</div>
+                <div class="card-subtitle">Fastest to deploy</div>
+              </div>
+            </div>
+            <div class="stats-row" style="margin: 12px 0 8px;">
+              <div class="stat-card">
+                <div class="stat-value" style="font-size: 22px;">~$35</div>
+                <div class="stat-label">per month</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" style="font-size: 22px;">10m</div>
+                <div class="stat-label">to deploy</div>
+              </div>
+            </div>
+            <p>Best for MVPs and rapid iteration. Zero infrastructure management.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🏗️</div>
+              <div>
+                <div class="card-title">Full AWS (SST)</div>
+                <div class="card-subtitle">Maximum control</div>
+              </div>
+            </div>
+            <div class="stats-row" style="margin: 12px 0 8px;">
+              <div class="stat-card">
+                <div class="stat-value" style="font-size: 22px;">~$95</div>
+                <div class="stat-label">per month</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" style="font-size: 22px;">2-4h</div>
+                <div class="stat-label">to deploy</div>
+              </div>
+            </div>
+            <p>Best for scale, compliance, and full control. Entire stack on AWS.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">⚡</div>
+              <div>
+                <div class="card-title">Hybrid</div>
+                <div class="card-subtitle">Best value</div>
+              </div>
+            </div>
+            <div class="stats-row" style="margin: 12px 0 8px;">
+              <div class="stat-card">
+                <div class="stat-value" style="font-size: 22px;">~$37</div>
+                <div class="stat-label">per month</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-value" style="font-size: 22px;">1h</div>
+                <div class="stat-label">to deploy</div>
+              </div>
+            </div>
+            <p>Supabase for DB + Auth, AWS for everything else. <strong>Recommended.</strong></p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 7: Vendor Agnosticism ═══ -->
+        <h2>Vendor Agnosticism</h2>
+        <p>The platform uses <strong>provider abstraction packages</strong> so you can switch vendors by changing environment variables — zero code changes required.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Package</th>
+              <th>Supported Providers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>@kit/providers-database</code></td>
+              <td>Supabase, PostgreSQL, MySQL</td>
+            </tr>
+            <tr>
+              <td><code>@kit/providers-storage</code></td>
+              <td>Supabase Storage, S3, GCS, Azure Blob</td>
+            </tr>
+            <tr>
+              <td><code>@kit/providers-email</code></td>
+              <td>Resend, SES, SendGrid, Nodemailer</td>
+            </tr>
+            <tr>
+              <td><code>@kit/providers-queue</code></td>
+              <td>SQS, BullMQ</td>
+            </tr>
+            <tr>
+              <td><code>@kit/providers-cache</code></td>
+              <td>Redis (Upstash, ElastiCache), Memory</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Switching Providers</h3>
+        <p>To switch from Supabase to a full AWS stack, just update your <code>.env</code>:</p>
+
+<pre><code><span class="cm"># Before: Supabase stack</span>
+<span class="kw">DATABASE_PROVIDER</span><span class="op">=</span><span class="str">supabase</span>
+<span class="kw">AUTH_PROVIDER</span><span class="op">=</span><span class="str">supabase</span>
+<span class="kw">STORAGE_PROVIDER</span><span class="op">=</span><span class="str">supabase</span>
+<span class="kw">EMAIL_PROVIDER</span><span class="op">=</span><span class="str">resend</span>
+
+<span class="cm"># After: Full AWS stack</span>
+<span class="kw">DATABASE_PROVIDER</span><span class="op">=</span><span class="str">postgresql</span>
+<span class="kw">AUTH_PROVIDER</span><span class="op">=</span><span class="str">cognito</span>
+<span class="kw">STORAGE_PROVIDER</span><span class="op">=</span><span class="str">s3</span>
+<span class="kw">EMAIL_PROVIDER</span><span class="op">=</span><span class="str">ses</span>
+<span class="kw">QUEUE_PROVIDER</span><span class="op">=</span><span class="str">sqs</span>
+<span class="kw">CACHE_PROVIDER</span><span class="op">=</span><span class="str">redis</span>
+<span class="kw">REDIS_URL</span><span class="op">=</span><span class="str">redis://upstash-or-elasticache...</span></code></pre>
+
+        <div class="callout success">
+          <div class="callout-title">✅ No Vendor Lock-In</div>
+          <p>Every provider abstraction follows the same interface pattern. Application code imports from <code>@kit/providers-*</code> and never touches vendor-specific SDKs directly. See <code>SUPABASE_VENDOR_LOCKIN_REPORT.md</code> for detailed migration strategies.</p>
+        </div>
+
+        <!-- ═══ Section 8: Cost Breakdown ═══ -->
+        <h2>Cost Breakdown at 10K MAU</h2>
+        <p>Estimated monthly costs for a hybrid deployment serving 10,000 monthly active users:</p>
+
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value">$31</div>
+            <div class="stat-label">Lambda</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">$61</div>
+            <div class="stat-label">Database</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">$63</div>
+            <div class="stat-label">CDN</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">$3.56</div>
+            <div class="stat-label">Queues</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">$5</div>
+            <div class="stat-label">Email</div>
+          </div>
+        </div>
+
+        <div class="callout warning">
+          <div class="callout-title">⚠️ LLM Costs Not Included</div>
+          <p>The figures above cover infrastructure only. LLM API costs (Gemini, OpenAI, Anthropic) depend on usage volume and model tier. See the <a href="llm.html">LLM Integration</a> page for per-token pricing breakdowns.</p>
+        </div>
+
+        <!-- ═══ Section 9: Monitoring ═══ -->
+        <h2>Monitoring &amp; Alarms</h2>
+        <p>4 CloudWatch alarms provide automated alerting for cost and operational anomalies:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Alarm</th>
+              <th>Threshold</th>
+              <th>What It Catches</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Billing Alarm</strong></td>
+              <td>&gt; $250 / month</td>
+              <td>Runaway costs from misconfigured resources or traffic spikes</td>
+            </tr>
+            <tr>
+              <td><strong>Lambda Invocations</strong></td>
+              <td>&gt; 100K / hour</td>
+              <td>Infinite retry loops, DDoS, or misconfigured triggers</td>
+            </tr>
+            <tr>
+              <td><strong>DLQ Messages</strong></td>
+              <td>&gt; 10 messages</td>
+              <td>Persistent worker failures — jobs failing all retries</td>
+            </tr>
+            <tr>
+              <td><strong>S3 Storage</strong></td>
+              <td>&gt; 100 GB</td>
+              <td>Storage growth anomaly — leaked temp files or upload spam</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Alarm Actions</div>
+          <p>All alarms send notifications to an SNS topic. In production, this connects to PagerDuty or Slack for on-call alerting. During development, alarms are email-only to the team lead.</p>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="llm.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">LLM Integration</span>
+          </a>
+          <a href="database.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Database Schema</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

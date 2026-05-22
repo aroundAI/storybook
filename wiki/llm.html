@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LLM Integration — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / LLM Integration</div>
+          <h1 class="page-title">🤖 LLM Integration</h1>
+          <p class="page-subtitle">
+            Provider abstraction, model configurations, structured output, and the generateObject pattern.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            The app talks to AI brains (Gemini, ChatGPT, Claude). Instead of being locked to one, it can switch like changing TV channels. The <strong>LLM layer</strong> is a universal remote.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: Provider Abstraction ═══ -->
+        <h2>Provider Abstraction</h2>
+        <p>The <code>@kit/llm</code> package wraps the <strong>Vercel AI SDK</strong>, providing a unified interface to multiple LLM providers. A factory-pattern singleton ensures only one client instance exists per process.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">💎</div>
+              <div>
+                <div class="card-title">Gemini (Primary)</div>
+                <div class="card-subtitle">Google DeepMind</div>
+              </div>
+            </div>
+            <p>Default provider. Models: <code>gemini-2.5-flash</code>, <code>gemini-3.1-flash-lite</code>. Best cost/quality ratio for structured output and creative generation.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🔵</div>
+              <div>
+                <div class="card-title">OpenAI</div>
+                <div class="card-subtitle">GPT-4o / GPT-4o-mini</div>
+              </div>
+            </div>
+            <p>Fallback provider. Strong at instruction-following and JSON mode. Used when Gemini quotas are exceeded or for specific task types.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🟠</div>
+              <div>
+                <div class="card-title">Anthropic</div>
+                <div class="card-subtitle">Claude 3.5 Sonnet</div>
+              </div>
+            </div>
+            <p>Tertiary provider. Excels at nuanced creative writing and long-context tasks. Higher cost but superior narrative quality.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🐋</div>
+              <div>
+                <div class="card-title">DeepSeek</div>
+                <div class="card-subtitle">DeepSeek-V3</div>
+              </div>
+            </div>
+            <p>Budget option for high-volume, low-complexity tasks. Competitive with GPT-4o-mini at a fraction of the cost.</p>
+          </div>
+        </div>
+
+        <h3>Switching Providers</h3>
+        <p>Provider switching requires <strong>zero code changes</strong> — just update the environment variable:</p>
+<pre><code><span class="cm">// .env</span>
+<span class="kw">LLM_PROVIDER</span>=<span class="str">"gemini"</span>        <span class="cm">// or "openai", "anthropic", "deepseek"</span>
+
+<span class="cm">// Each provider needs its own API key</span>
+<span class="kw">GOOGLE_GENERATIVE_AI_API_KEY</span>=<span class="str">"AIza..."</span>
+<span class="kw">OPENAI_API_KEY</span>=<span class="str">"sk-..."</span>
+<span class="kw">ANTHROPIC_API_KEY</span>=<span class="str">"sk-ant-..."</span>
+<span class="kw">DEEPSEEK_API_KEY</span>=<span class="str">"dsk-..."</span></code></pre>
+
+        <h3>Factory Pattern Singleton</h3>
+        <p>The LLM client is created once and reused across all server actions. This prevents connection churn and ensures consistent configuration:</p>
+<pre><code><span class="cm">// packages/llm/src/llm-client-factory.ts (simplified)</span>
+<span class="kw">let</span> cachedClient: LLMClient | <span class="type">null</span> = <span class="type">null</span>;
+
+<span class="kw">export function</span> <span class="fn">getLLMClient</span>(): <span class="type">LLMClient</span> {
+  <span class="kw">if</span> (cachedClient) <span class="kw">return</span> cachedClient;
+
+  <span class="kw">const</span> provider = process.env.<span class="kw">LLM_PROVIDER</span> ?? <span class="str">"gemini"</span>;
+  cachedClient = <span class="fn">createClient</span>(provider);
+  <span class="kw">return</span> cachedClient;
+}</code></pre>
+
+        <!-- ═══ Section 3: Model Config per Template ═══ -->
+        <h2>Model Configuration per Template</h2>
+        <p>Different pipeline stages require different creativity vs. precision tradeoffs. Each prompt template specifies its own model configuration in its JSON definition:</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🎨</div>
+              <div><div class="card-title">Creative</div></div>
+            </div>
+            <p>Temperature: <code>0.8</code></p>
+            <p>Used for: Ideation, story brainstorming. Maximizes diversity and surprise in outputs.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">⚖️</div>
+              <div><div class="card-title">Balanced</div></div>
+            </div>
+            <p>Temperature: <code>0.65–0.7</code></p>
+            <p>Used for: Story generation, screenplay. Balances creative expression with structural adherence.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🎯</div>
+              <div><div class="card-title">Precise</div></div>
+            </div>
+            <p>Temperature: <code>0.4–0.6</code></p>
+            <p>Used for: Shot generation, VEO prompts. Strict format compliance and deterministic output.</p>
+          </div>
+        </div>
+
+        <p>The configuration lives inside each prompt template's JSON file under the <code>modelConfig</code> key:</p>
+<pre><code><span class="cm">// prompts/story-generation/ideation.json (excerpt)</span>
+{
+  <span class="json-key">"modelConfig"</span>: {
+    <span class="json-key">"model"</span>: <span class="json-string">"gemini-3.1-flash-lite"</span>,
+    <span class="json-key">"temperature"</span>: <span class="json-number">0.8</span>,
+    <span class="json-key">"maxTokens"</span>: <span class="json-number">8000</span>
+  }
+}</code></pre>
+
+        <!-- ═══ Section 4: Structured Output ═══ -->
+        <h2>Structured Output</h2>
+        <p>Every LLM call in the pipeline uses <code>generateObject()</code> from the Vercel AI SDK. This guarantees the response matches a Zod schema — no manual JSON parsing, no regex extraction, no prayer.</p>
+
+        <h3>The generateObject() Pattern</h3>
+<pre><code><span class="kw">import</span> { <span class="fn">generateObject</span> } <span class="kw">from</span> <span class="str">'ai'</span>;
+<span class="kw">import</span> { z } <span class="kw">from</span> <span class="str">'zod'</span>;
+
+<span class="kw">const</span> IdeaSchema = z.<span class="fn">object</span>({
+  ideas: z.<span class="fn">array</span>(z.<span class="fn">object</span>({
+    title:          z.<span class="fn">string</span>(),
+    logline:        z.<span class="fn">string</span>(),
+    themes:         z.<span class="fn">array</span>(z.<span class="fn">string</span>()),
+    hook:           z.<span class="fn">string</span>(),
+    visualPotential: z.<span class="fn">string</span>(),
+    viralPotential: z.<span class="fn">object</span>({
+      score:          z.<span class="fn">number</span>().<span class="fn">min</span>(<span class="num">1</span>).<span class="fn">max</span>(<span class="num">10</span>),
+      curiosityGap:   z.<span class="fn">string</span>(),
+      emotionalAnchor: z.<span class="fn">string</span>(),
+      shareability:   z.<span class="fn">string</span>(),
+    }),
+  })),
+});
+
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">generateObject</span>({
+  model:       <span class="fn">getLLMClient</span>(),
+  schema:      IdeaSchema,
+  system:      systemPrompt,
+  prompt:      userPrompt,
+  temperature: <span class="num">0.8</span>,
+});</code></pre>
+
+        <h3>Fallback: extractJSON()</h3>
+        <p>Some models (especially older or smaller ones) occasionally wrap JSON in markdown fences, <code>&lt;think&gt;</code> blocks, or produce truncated output. The <code>extractJSON()</code> utility handles these edge cases:</p>
+
+        <div class="callout info">
+          <div class="callout-title">🛡️ What extractJSON() Handles</div>
+          <ul>
+            <li><strong>Markdown fences:</strong> Strips <code>```json ... ```</code> wrappers</li>
+            <li><strong>Think blocks:</strong> Removes <code>&lt;think&gt;...&lt;/think&gt;</code> preambles</li>
+            <li><strong>Truncated JSON:</strong> Attempts bracket-matching repair for cut-off responses</li>
+            <li><strong>Leading text:</strong> Scans for the first <code>{</code> or <code>[</code> character</li>
+          </ul>
+        </div>
+
+<pre><code><span class="cm">// packages/llm/src/extract-json.ts (simplified)</span>
+<span class="kw">export function</span> <span class="fn">extractJSON</span>&lt;<span class="type">T</span>&gt;(raw: <span class="type">string</span>): <span class="type">T</span> {
+  <span class="kw">let</span> cleaned = raw
+    .<span class="fn">replace</span>(<span class="str">/```json\n?/g</span>, <span class="str">''</span>)
+    .<span class="fn">replace</span>(<span class="str">/```\n?/g</span>, <span class="str">''</span>)
+    .<span class="fn">replace</span>(<span class="str">/&lt;think&gt;[\s\S]*?&lt;\/think&gt;/g</span>, <span class="str">''</span>)
+    .<span class="fn">trim</span>();
+
+  <span class="kw">const</span> start = cleaned.<span class="fn">search</span>(<span class="str">/[{\[]/</span>);
+  <span class="kw">if</span> (start &gt; <span class="num">0</span>) cleaned = cleaned.<span class="fn">slice</span>(start);
+
+  <span class="kw">return</span> JSON.<span class="fn">parse</span>(cleaned);
+}</code></pre>
+
+        <!-- ═══ Section 5: Cost Tracking ═══ -->
+        <h2>Cost Tracking</h2>
+        <p>Every LLM call is logged to the <code>llm_usage</code> table for cost monitoring, debugging, and quota management.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><span class="type">uuid</span></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>account_id</code></td>
+              <td><span class="type">uuid</span></td>
+              <td>FK to accounts — for per-team billing</td>
+            </tr>
+            <tr>
+              <td><code>episode_id</code></td>
+              <td><span class="type">uuid</span></td>
+              <td>FK to episodes — associates cost with content</td>
+            </tr>
+            <tr>
+              <td><code>provider</code></td>
+              <td><span class="type">text</span></td>
+              <td><code>gemini</code>, <code>openai</code>, <code>anthropic</code>, <code>deepseek</code></td>
+            </tr>
+            <tr>
+              <td><code>model</code></td>
+              <td><span class="type">text</span></td>
+              <td>Exact model string (e.g., <code>gemini-2.5-flash</code>)</td>
+            </tr>
+            <tr>
+              <td><code>prompt_tokens</code></td>
+              <td><span class="type">integer</span></td>
+              <td>Input token count</td>
+            </tr>
+            <tr>
+              <td><code>completion_tokens</code></td>
+              <td><span class="type">integer</span></td>
+              <td>Output token count</td>
+            </tr>
+            <tr>
+              <td><code>total_cost_usd</code></td>
+              <td><span class="type">numeric</span></td>
+              <td>Calculated cost based on provider pricing</td>
+            </tr>
+            <tr>
+              <td><code>pipeline_stage</code></td>
+              <td><span class="type">text</span></td>
+              <td><code>ideation</code>, <code>story</code>, <code>screenplay</code>, <code>shots</code>, etc.</td>
+            </tr>
+            <tr>
+              <td><code>created_at</code></td>
+              <td><span class="type">timestamptz</span></td>
+              <td>When the call was made</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">💰 Cost Estimation Example</div>
+          <p>A full 5-minute episode through the complete pipeline (Ideation → Story → Screenplay → Shots → Audio) costs roughly <strong>$0.03–$0.08</strong> with Gemini Flash models. The <code>llm_usage</code> table enables per-episode cost breakdowns visible in the admin dashboard.</p>
+        </div>
+
+        <!-- ═══ Section 6: Error Handling ═══ -->
+        <h2>Error Handling</h2>
+        <p>LLM calls are inherently unreliable — rate limits, network timeouts, malformed responses. The platform uses a three-layer defense strategy:</p>
+
+        <!-- SVG Diagram: Retry Flow -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="retryGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="retryGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(251,146,60,0.15)"/>
+                <stop offset="100%" stop-color="rgba(251,146,60,0.05)"/>
+              </linearGradient>
+              <linearGradient id="retryGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(239,68,68,0.15)"/>
+                <stop offset="100%" stop-color="rgba(239,68,68,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Layer 1: Retry -->
+            <rect x="30" y="20" width="640" height="70" rx="12" fill="url(#retryGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="48" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 1 — EXPONENTIAL BACKOFF</text>
+            <text x="60" y="72" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Wait 1s → 2s → 4s between retries. Jitter added to prevent thundering herd.</text>
+
+            <!-- Layer 2: Retry count -->
+            <rect x="30" y="110" width="640" height="70" rx="12" fill="url(#retryGrad2)" stroke="rgba(251,146,60,0.3)" stroke-width="1.5"/>
+            <text x="60" y="138" fill="#fdba74" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 2 — MAX 3 RETRIES</text>
+            <text x="60" y="162" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">After 3 failed attempts, the job is marked as failed. No infinite loops.</text>
+
+            <!-- Layer 3: DLQ -->
+            <rect x="30" y="200" width="640" height="70" rx="12" fill="url(#retryGrad3)" stroke="rgba(239,68,68,0.3)" stroke-width="1.5"/>
+            <text x="60" y="228" fill="#fca5a5" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 3 — DEAD LETTER QUEUE (DLQ)</text>
+            <text x="60" y="252" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Permanently failed jobs go to the DLQ for manual review. Includes full request payload.</text>
+
+            <!-- Connecting arrows -->
+            <path d="M350 90 L350 110" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 180 L350 200" stroke="rgba(251,146,60,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+          </svg>
+        </div>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🔄</div>
+              <div><div class="card-title">Exponential Backoff</div></div>
+            </div>
+            <p>Each retry waits exponentially longer: 1s → 2s → 4s. Random jitter (±500ms) prevents all clients from retrying simultaneously.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">3️⃣</div>
+              <div><div class="card-title">3 Max Retries</div></div>
+            </div>
+            <p>Hard cap at 3 attempts. Covers transient failures (rate limits, network blips) without burning budget on permanently broken requests.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">📬</div>
+              <div><div class="card-title">Dead Letter Queue</div></div>
+            </div>
+            <p>After 3 failures, the request goes to a DLQ (SQS) with the full payload. Admins can inspect, fix, and replay from the dashboard.</p>
+          </div>
+        </div>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ Errors That Skip Retries</div>
+          <ul>
+            <li><strong>Schema validation failure:</strong> If <code>generateObject()</code> returns data that doesn't match the Zod schema, this is a prompt issue — retrying won't help.</li>
+            <li><strong>Authentication errors (401/403):</strong> Bad API key. Fails immediately, logs alert.</li>
+            <li><strong>Content policy violations:</strong> Provider refused the request. Logged for review, not retried.</li>
+          </ul>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="prompts.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Prompt Engine</span>
+          </a>
+          <a href="infrastructure.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Infrastructure</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

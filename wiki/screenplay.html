@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Screenplay Conversion — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / <a href="pipeline-overview.html">Pipeline</a> / Screenplay</div>
+          <h1 class="page-title">🎬 Screenplay Conversion</h1>
+          <p class="page-subtitle">
+            Transforming prose stories into professional screenplays with scenes, dialogue, ElevenLabs audio tags, and viral dialogue engineering.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            The story is like a book — but to make a video, you need to know <strong>WHERE</strong> each part happens, who <strong>SAYS</strong> what, and what <strong>SOUNDS</strong> you hear. The screenplay stage turns the story into a movie script with scene headings, character dialogue, and even instructions for sound effects!
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: Input Schema ═══ -->
+        <h2>What Goes In</h2>
+        <p>The screenplay stage takes a completed story and converts it into a structured screenplay format. The input is minimal because all the creative content already exists in the story.</p>
+
+        <h3>Explicit Input</h3>
+<pre><code><span class="cm">// ScreenplayInput schema</span>
+{
+  <span class="json-key">episodeId</span>: <span class="type">string</span>;            <span class="cm">// The episode to convert</span>
+  <span class="json-key">targetSceneCount</span>?: <span class="type">number</span>;    <span class="cm">// 2–200, optional override</span>
+  <span class="json-key">dialogueStyle</span>?: <span class="type">'natural' | 'stylized' | 'minimal'</span>;
+  <span class="json-key">contentStyle</span>?: <span class="type">'dialogue-heavy' | 'action-heavy' | 'balanced'</span>;
+}</code></pre>
+
+        <div class="callout info">
+          <div class="callout-title">✅ Validation Gate</div>
+          <p>Before the LLM call fires, the system checks two hard prerequisites:</p>
+          <ul>
+            <li>The episode must be in <code>story</code> status (ideation and story stages completed)</li>
+            <li>The <code>story_data.fullStory</code> field must exist and contain the prose narrative</li>
+          </ul>
+          <p>If either check fails, the action returns an error immediately — no tokens wasted.</p>
+        </div>
+
+        <!-- ═══ Section 3: The 5-Layer Screenplay Prompt ═══ -->
+        <h2>The 5-Layer Screenplay Prompt</h2>
+        <p>Unlike ideation's 3-layer prompt, the screenplay stage uses a more complex <strong>5-layer architecture</strong> to handle the additional demands of dialogue engineering, audio design, and format compliance.</p>
+
+        <!-- SVG Diagram: 5-Layer Prompt -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 620" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="spLayerGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="spLayerGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="spLayerGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.15)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.05)"/>
+              </linearGradient>
+              <linearGradient id="spLayerGrad4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(245,158,11,0.15)"/>
+                <stop offset="100%" stop-color="rgba(245,158,11,0.05)"/>
+              </linearGradient>
+              <linearGradient id="spLayerGrad5" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(16,185,129,0.15)"/>
+                <stop offset="100%" stop-color="rgba(16,185,129,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Layer 1: Role -->
+            <rect x="30" y="20" width="640" height="80" rx="12" fill="url(#spLayerGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="50" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 1 — ROLE DEFINITION</text>
+            <text x="60" y="73" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">"You are an expert screenwriter specializing in short-form video content."</text>
+
+            <!-- Layer 2: ElevenLabs Audio Tags -->
+            <rect x="30" y="120" width="640" height="100" rx="12" fill="url(#spLayerGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="150" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 2 — ELEVENLABS AUDIO TAGS</text>
+            <text x="60" y="175" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Embed emotional delivery cues directly in dialogue text:</text>
+            <text x="80" y="200" fill="#c792ea" font-family="JetBrains Mono, monospace" font-size="11">[excited]  [nervous]  [sigh]  [laughs]  [pauses]  [whispering]</text>
+
+            <!-- Layer 3: Viral Dialogue Rules -->
+            <rect x="30" y="240" width="640" height="120" rx="12" fill="url(#spLayerGrad3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="60" y="270" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 3 — VIRAL DIALOGUE RULES</text>
+            <text x="80" y="295" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">SUBTEXT</text>
+            <text x="165" y="295" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Never say feelings directly</text>
+            <text x="80" y="314" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">PUNCHLINE</text>
+            <text x="179" y="314" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Best line always last in exchange</text>
+            <text x="80" y="333" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">CONFLICT</text>
+            <text x="168" y="333" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Every exchange has tension</text>
+            <text x="370" y="295" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">HOOK OUT</text>
+            <text x="460" y="295" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Scene-end question</text>
+            <text x="370" y="314" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">REVELATION</text>
+            <text x="472" y="314" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Micro-reveal per scene</text>
+            <text x="370" y="333" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">ECONOMY</text>
+            <text x="455" y="333" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Max impact, min words</text>
+
+            <!-- Layer 4: Audio Cues -->
+            <rect x="30" y="380" width="640" height="100" rx="12" fill="url(#spLayerGrad4)" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/>
+            <text x="60" y="410" fill="#fcd34d" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 4 — AUDIO CUE DESIGN</text>
+            <text x="80" y="435" fill="#c792ea" font-family="JetBrains Mono, monospace" font-size="11">SFX</text>
+            <text x="120" y="435" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">0.1–30s, specific sound events (door slam, glass clink)</text>
+            <text x="80" y="454" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">AMBIENT</text>
+            <text x="155" y="454" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">10–30s loopable background layers (forest wind, café murmur)</text>
+            <text x="80" y="473" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">MUSIC</text>
+            <text x="130" y="473" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">30–300s with BPM + key signature for generation</text>
+
+            <!-- Layer 5: Output Format -->
+            <rect x="30" y="500" width="640" height="80" rx="12" fill="url(#spLayerGrad5)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="60" y="530" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 5 — JSON OUTPUT FORMAT</text>
+            <text x="60" y="555" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Respond with valid JSON matching the SceneOutput[] schema. Uses generateObject().</text>
+
+            <!-- Connecting arrows -->
+            <path d="M350 100 L350 120" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 220 L350 240" stroke="rgba(59,130,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 360 L350 380" stroke="rgba(6,182,212,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 480 L350 500" stroke="rgba(245,158,11,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+          </svg>
+        </div>
+
+        <h3>Layer 1 — Role Definition</h3>
+        <p>Sets the AI persona as an expert screenwriter for short-form video:</p>
+<pre><code><span class="str">"You are an expert screenwriter specializing in short-form video
+content. You transform prose narratives into professional screenplays
+with cinematic scene headings, natural dialogue with emotional
+delivery cues, and detailed audio design."</span></code></pre>
+        <p>The screenwriter persona ensures the model thinks in terms of <em>scenes</em>, <em>cuts</em>, and <em>visual storytelling</em> — not prose paragraphs.</p>
+
+        <h3>Layer 2 — ElevenLabs Audio Tags</h3>
+        <p>This layer defines the emotional delivery tags that get embedded directly into dialogue text. These tags are consumed by ElevenLabs TTS downstream to control how lines are spoken:</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">😆</div>
+              <div><div class="card-title">[excited]</div></div>
+            </div>
+            <p>High energy, wide-eyed delivery. Used for discoveries and eureka moments.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">😰</div>
+              <div><div class="card-title">[nervous]</div></div>
+            </div>
+            <p>Shaky, uncertain tone. Used for tension and suspense beats.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">😮‍💨</div>
+              <div><div class="card-title">[sigh]</div></div>
+            </div>
+            <p>Exhale before speaking. Conveys resignation, relief, or frustration.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">😂</div>
+              <div><div class="card-title">[laughs]</div></div>
+            </div>
+            <p>Laughter mid-dialogue. Breaks tension and signals joy or disbelief.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">⏸️</div>
+              <div><div class="card-title">[pauses]</div></div>
+            </div>
+            <p>Deliberate beat of silence. Creates dramatic weight before a revelation.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🤫</div>
+              <div><div class="card-title">[whispering]</div></div>
+            </div>
+            <p>Low, secretive tone. Used for shared secrets and conspiratorial moments.</p>
+          </div>
+        </div>
+
+        <div class="data-example">
+          <p>Example dialogue with embedded tags:</p>
+<pre><code><span class="json-key">DANTE</span>: <span class="str">[excited] Look at this! [laughs] The footprints are backwards!</span>
+<span class="json-key">LUNA</span>:  <span class="str">[curious] Backwards? [pauses] That means they weren't leaving...</span>
+<span class="json-key">DANTE</span>: <span class="str">[whispering] They were coming IN. Someone was inside the whole time.</span></code></pre>
+        </div>
+
+        <h3>Layer 3 — Viral Dialogue Rules</h3>
+        <p>Six rules that transform generic dialogue into scroll-stopping exchanges. Each rule targets a specific engagement mechanism:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🎭</div>
+              <div>
+                <div class="card-title">SUBTEXT</div>
+                <div class="card-subtitle">Never say feelings directly</div>
+              </div>
+            </div>
+            <p>Characters <strong>show</strong> emotions through actions and word choice — never state them. <code>"I'm scared"</code> becomes <code>"[nervous] Did you hear that? Maybe we should... [pauses] never mind."</code></p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">💥</div>
+              <div>
+                <div class="card-title">PUNCHLINE PLACEMENT</div>
+                <div class="card-subtitle">Best line always last</div>
+              </div>
+            </div>
+            <p>The most impactful, memorable, or funny line in any dialogue exchange is positioned as the <strong>final line</strong>. This is where attention peaks — make it count.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">⚔️</div>
+              <div>
+                <div class="card-title">CONFLICT IN EVERY EXCHANGE</div>
+                <div class="card-subtitle">Tension drives engagement</div>
+              </div>
+            </div>
+            <p>Every dialogue exchange must have characters who <strong>want different things</strong>. Agreement is boring. Even allies disagree on <em>how</em> to solve the problem.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">❓</div>
+              <div>
+                <div class="card-title">SCENE-END QUESTION</div>
+                <div class="card-subtitle">Hook into the next scene</div>
+              </div>
+            </div>
+            <p>Every scene ends with an unanswered question — the <code>hookOut</code> field. This creates a micro-cliffhanger that compels the viewer to keep watching.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">💎</div>
+              <div>
+                <div class="card-title">MICRO-REVELATION</div>
+                <div class="card-subtitle">One reveal per scene</div>
+              </div>
+            </div>
+            <p>Each scene must contain at least one small revelation — a new clue, a character's hidden motive, or an unexpected connection. This is the <code>emotionalPeak</code>.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">✂️</div>
+              <div>
+                <div class="card-title">DIALOGUE ECONOMY</div>
+                <div class="card-subtitle">Maximum impact, minimum words</div>
+              </div>
+            </div>
+            <p>Every word must earn its place. Cut filler, pleasantries, and exposition dumps. If a line doesn't advance plot, reveal character, or create tension — it's deleted.</p>
+          </div>
+        </div>
+
+        <h3>Layer 4 — Audio Cue Design</h3>
+        <p>Each scene includes audio cues that feed directly into the Audio Studio for generation. Three types of cues are supported:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Duration</th>
+              <th>Characteristics</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>sfx</code></td>
+              <td>0.1–30s</td>
+              <td>One-shot sound events, non-loopable</td>
+              <td>"Magnifying glass clinking on wooden table"</td>
+            </tr>
+            <tr>
+              <td><code>ambient</code></td>
+              <td>10–30s</td>
+              <td>Loopable background layers</td>
+              <td>"Quiet treehouse with wind rustling leaves and distant birds"</td>
+            </tr>
+            <tr>
+              <td><code>music</code></td>
+              <td>30–300s</td>
+              <td>Scored with BPM + key signature</td>
+              <td>"Playful investigation theme, 120 BPM, C major, pizzicato strings"</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Layer 5 — JSON Output Format</h3>
+        <p>The final layer constrains the LLM to produce a strict JSON schema. Like ideation, this uses <code>generateObject()</code> from the Vercel AI SDK for guaranteed schema compliance.</p>
+
+        <!-- ═══ Section 4: Output Structure ═══ -->
+        <h2>What Comes Out</h2>
+        <p>Each scene is output as a structured JSON object. Here's a complete example showing all fields:</p>
+
+        <div class="json-viewer">
+{
+  <span class="json-key">"number"</span>: <span class="json-number">1</span>,
+  <span class="json-key">"heading"</span>: <span class="json-string">"INT. DANTE'S TREEHOUSE LAB - AFTERNOON"</span>,
+  <span class="json-key">"location"</span>: <span class="json-string">"treehouse lab"</span>,
+  <span class="json-key">"timeOfDay"</span>: <span class="json-string">"afternoon"</span>,
+  <span class="json-key">"description"</span>: <span class="json-string">"DANTE (7) peers through a magnifying glass at a muddy footprint on a piece of cardboard. His treehouse lab is cluttered with specimen jars, a hand-drawn map, and a cork board covered in string connections."</span>,
+  <span class="json-key">"dialogue"</span>: [
+    {
+      <span class="json-key">"character"</span>: <span class="json-string">"DANTE"</span>,
+      <span class="json-key">"text"</span>: <span class="json-string">"[excited] Look at this! [laughs] The footprints are backwards!"</span>
+    },
+    {
+      <span class="json-key">"character"</span>: <span class="json-string">"LUNA"</span>,
+      <span class="json-key">"text"</span>: <span class="json-string">"[curious] Backwards? [pauses] That means they weren't leaving..."</span>
+    },
+    {
+      <span class="json-key">"character"</span>: <span class="json-string">"DANTE"</span>,
+      <span class="json-key">"text"</span>: <span class="json-string">"[whispering] They were coming IN. Someone was inside the whole time."</span>
+    }
+  ],
+  <span class="json-key">"audioCues"</span>: [
+    {
+      <span class="json-key">"type"</span>: <span class="json-string">"ambient"</span>,
+      <span class="json-key">"prompt"</span>: <span class="json-string">"Quiet treehouse with wind rustling leaves and distant birds chirping"</span>,
+      <span class="json-key">"duration"</span>: <span class="json-number">30</span>
+    },
+    {
+      <span class="json-key">"type"</span>: <span class="json-string">"sfx"</span>,
+      <span class="json-key">"prompt"</span>: <span class="json-string">"Magnifying glass clinking against wooden table"</span>,
+      <span class="json-key">"duration"</span>: <span class="json-number">1</span>
+    },
+    {
+      <span class="json-key">"type"</span>: <span class="json-string">"music"</span>,
+      <span class="json-key">"prompt"</span>: <span class="json-string">"Playful investigation theme, 120 BPM, C major, light pizzicato strings with glockenspiel accents"</span>,
+      <span class="json-key">"duration"</span>: <span class="json-number">45</span>
+    }
+  ],
+  <span class="json-key">"emotionalPeak"</span>: <span class="json-string">"Dante realizes the footprints are backwards — someone entered, not left"</span>,
+  <span class="json-key">"hookOut"</span>: <span class="json-string">"Who taught them that trick?"</span>,
+  <span class="json-key">"estimatedDuration"</span>: <span class="json-number">45</span>
+}
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">📐 Scene Heading Format</div>
+          <p>Scene headings follow the industry-standard format: <code>INT./EXT. LOCATION - TIME OF DAY</code>. The AI generates these from the story's narrative, mapping prose descriptions to the project's registered locations. If a story mentions "the treehouse," it becomes <code>INT. DANTE'S TREEHOUSE LAB</code>.</p>
+        </div>
+
+        <!-- ═══ Section 5: Dialogue Timeline Extraction ═══ -->
+        <h2>Dialogue Timeline Extraction</h2>
+        <p>After the screenplay is generated, a second pass extracts each dialogue line into the <code>dialogue_lines</code> table with precise timing information. This enables the Audio Studio to generate TTS audio that aligns perfectly with the visual timeline.</p>
+
+        <div class="deep-dive">
+          <h4>⏱️ Timing Algorithm</h4>
+          <p>Each dialogue line is assigned a <code>timeline_start_seconds</code> based on a simple but effective formula:</p>
+<pre><code><span class="cm">// Dialogue timing calculation</span>
+<span class="kw">const</span> WORDS_PER_SECOND = <span class="num">2.5</span>;    <span class="cm">// Average speaking rate</span>
+<span class="kw">const</span> GAP_SECONDS = <span class="num">0.5</span>;         <span class="cm">// Pause between lines</span>
+
+<span class="kw">for</span> (<span class="kw">const</span> line <span class="kw">of</span> scene.dialogue) {
+  <span class="kw">const</span> wordCount = line.text
+    .<span class="fn">replace</span>(<span class="str">/\[.*?\]/g</span>, <span class="str">''</span>)   <span class="cm">// Strip audio tags</span>
+    .<span class="fn">split</span>(<span class="str">/\s+/</span>).length;
+
+  <span class="kw">const</span> duration = wordCount / WORDS_PER_SECOND;
+  line.timeline_start = currentTime;
+  line.timeline_end = currentTime + duration;
+
+  currentTime += duration + GAP_SECONDS;
+}</code></pre>
+          <p>Audio tags like <code>[laughs]</code> and <code>[pauses]</code> are <strong>stripped</strong> from the word count — they affect TTS delivery, not duration calculation. The 0.5s gap provides natural breathing room between speakers.</p>
+        </div>
+
+        <h3>dialogue_lines Table Schema</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>episode_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → episodes</td>
+            </tr>
+            <tr>
+              <td><code>scene_number</code></td>
+              <td><code>integer</code></td>
+              <td>Which scene this line belongs to</td>
+            </tr>
+            <tr>
+              <td><code>character_name</code></td>
+              <td><code>text</code></td>
+              <td>Character speaking (e.g., "DANTE")</td>
+            </tr>
+            <tr>
+              <td><code>character_asset_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → project_characters, used for voice assignment</td>
+            </tr>
+            <tr>
+              <td><code>dialogue_text</code></td>
+              <td><code>text</code></td>
+              <td>Full text with ElevenLabs audio tags</td>
+            </tr>
+            <tr>
+              <td><code>timeline_start_seconds</code></td>
+              <td><code>float</code></td>
+              <td>When this line starts in the scene timeline</td>
+            </tr>
+            <tr>
+              <td><code>timeline_end_seconds</code></td>
+              <td><code>float</code></td>
+              <td>When this line ends</td>
+            </tr>
+            <tr>
+              <td><code>sequence_order</code></td>
+              <td><code>integer</code></td>
+              <td>Global ordering across all scenes</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">🔗 Character Linking</div>
+          <p>The <code>character_asset_id</code> is resolved by matching the dialogue's <code>character</code> field against the project's character registry (<code>project_characters</code> table). This link is critical — it connects each line to a specific voice profile in ElevenLabs for TTS generation in the Audio Studio.</p>
+        </div>
+
+        <!-- ═══ Section 6: Per-Scene Viral Fields ═══ -->
+        <h2>Per-Scene Viral Fields</h2>
+        <p>Each scene contains two fields specifically designed to maximize viewer retention — the <code>emotionalPeak</code> and the <code>hookOut</code>. Together, they ensure every scene has a reason to keep watching.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🔥</div>
+              <div>
+                <div class="card-title">emotionalPeak</div>
+                <div class="card-subtitle">The scene's climactic moment</div>
+              </div>
+            </div>
+            <p>A one-sentence description of the most emotionally charged moment in the scene. This is the beat where the viewer <strong>feels something</strong> — surprise, joy, fear, or wonder.</p>
+            <div class="data-example">
+              <p><strong>Example:</strong> <em>"Dante realizes the footprints are backwards — someone entered, not left"</em></p>
+            </div>
+            <p>The emotional peak is used by the Visual Studio to identify which moment deserves the most cinematic camera work and by the Audio Studio to time music swells.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🪝</div>
+              <div>
+                <div class="card-title">hookOut</div>
+                <div class="card-subtitle">The unanswered question</div>
+              </div>
+            </div>
+            <p>An unanswered question that creates a <strong>micro-cliffhanger</strong> at the scene boundary. This is the mechanism that prevents viewers from scrolling away between scenes.</p>
+            <div class="data-example">
+              <p><strong>Example:</strong> <em>"Who taught them that trick?"</em></p>
+            </div>
+            <p>The hookOut is rendered as the last visual beat of a scene — often as a close-up on a character's face processing the question. It bridges directly into the next scene's opening.</p>
+          </div>
+        </div>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ Both Fields Are Mandatory</div>
+          <p>Scenes without an <code>emotionalPeak</code> or <code>hookOut</code> are flagged as incomplete. The Zod schema enforces these as required strings — the LLM <strong>cannot</strong> skip them. This is non-negotiable: flat scenes with no peak and no hook produce content that loses viewers.</p>
+        </div>
+
+        <!-- ═══ Section 7: LLM Configuration ═══ -->
+        <h2>LLM Configuration</h2>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon purple">🤖</div>
+            <div>
+              <div class="card-title">Model Configuration</div>
+              <div class="card-subtitle">Optimized for structured screenplay output</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Model</strong></td>
+                <td><code>gemini-3-flash-preview</code></td>
+                <td>Balances creativity with format compliance — screenplays need both natural dialogue and strict JSON structure</td>
+              </tr>
+              <tr>
+                <td><strong>Temperature</strong></td>
+                <td><code>0.6</code></td>
+                <td>Moderate creativity — lower than ideation (0.8) because the story content is fixed; we need creative <em>expression</em> not creative <em>invention</em></td>
+              </tr>
+              <tr>
+                <td><strong>Max Tokens</strong></td>
+                <td><code>16000</code></td>
+                <td>Double the ideation budget — screenplays with 5–15 scenes, dialogue, and audio cues require significantly more output tokens</td>
+              </tr>
+              <tr>
+                <td><strong>Output Mode</strong></td>
+                <td><code>generateObject()</code></td>
+                <td>Guarantees valid JSON output matching the Zod schema — no parsing needed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>The screenplay stage uses a <strong>more capable model</strong> than ideation (<code>gemini-3-flash-preview</code> vs <code>gemini-3.1-flash-lite</code>) because it must juggle multiple complex requirements simultaneously: natural dialogue, audio tag placement, format compliance, and viral dialogue rules. The lower temperature (0.6 vs 0.8) reflects that the creative direction is already set — the model should be expressive, not inventive.</p>
+
+        <!-- Flow: Pipeline Position -->
+        <h3>Where Does the Screenplay Go?</h3>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">💡</div>
+            <div class="flow-step-title">Ideation</div>
+            <div class="flow-step-desc">Concepts &amp; scoring</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📖</div>
+            <div class="flow-step-title">Story Gen</div>
+            <div class="flow-step-desc">Full narrative</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">🎬</div>
+            <div class="flow-step-title">Screenplay</div>
+            <div class="flow-step-desc">Scenes &amp; dialogue</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📸</div>
+            <div class="flow-step-title">Visual Studio</div>
+            <div class="flow-step-desc">VEO 3.1 shots</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔊</div>
+            <div class="flow-step-title">Audio Studio</div>
+            <div class="flow-step-desc">TTS, music &amp; SFX</div>
+          </div>
+        </div>
+
+        <p>The screenplay's scenes feed two downstream consumers simultaneously: the <a href="shots.html">Visual Studio</a> uses scene descriptions and headings to generate VEO 3.1 shot prompts, while the <a href="audio-studio.html">Audio Studio</a> uses dialogue lines and audio cues to generate TTS audio, sound effects, and music tracks.</p>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="story.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Story Generation</span>
+          </a>
+          <a href="shots.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Shot Generation</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

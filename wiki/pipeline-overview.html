@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipeline Overview — Storybook Wiki</title>
+  <meta name="description" content="The complete 5-stage content generation pipeline: Ideation, Story, Screenplay, Visual Studio, and Audio Studio. Data flow, duration scaling, and job processing patterns.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- ═══ Page Header ═══ -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Pipeline Overview</div>
+          <h1 class="page-title">Content Generation Pipeline</h1>
+          <p class="page-subtitle">
+            How a single sentence becomes a fully produced video — the 5-stage pipeline that orchestrates AI generation, 
+            background processing, and real-time delivery from ideation through to final audio.
+          </p>
+        </header>
+
+        <!-- ═══ 1. ELI10 Box ═══ -->
+        <div class="eli10">
+          <p>
+            <strong>Imagine you're making a cartoon.</strong> First, you think of an idea — like "a dog who solves mysteries." 
+            Then you write the whole story with a beginning, middle, and end. Next, you write out who says what, like a movie script. 
+            After that, you draw each camera shot — close-ups, wide angles, action scenes. And finally, you add voices and music 
+            so everything sounds real. That's exactly what this pipeline does, except the AI does all the hard work — 
+            you just type one sentence and it creates <em>everything</em> for you!
+          </p>
+        </div>
+
+        <!-- ═══ 2. The 5-Stage Pipeline ═══ -->
+        <h2>The 5-Stage Pipeline</h2>
+        <p>Every piece of content flows through five sequential stages. Each stage takes the output of the previous one, enriches it with AI generation, and passes a richer data structure to the next:</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">💡</div>
+            <div class="flow-step-title">Ideation</div>
+            <div class="flow-step-desc">Generate story concepts from a premise with viral scoring</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">📖</div>
+            <div class="flow-step-title">Story</div>
+            <div class="flow-step-desc">Full narrative with 3-act structure, characters &amp; arcs</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">🎬</div>
+            <div class="flow-step-title">Screenplay</div>
+            <div class="flow-step-desc">Scene-by-scene dialogue, audio cues &amp; emotional beats</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">📸</div>
+            <div class="flow-step-title">Visual Studio</div>
+            <div class="flow-step-desc">VEO 3.1 optimized shot prompts with 7-component structure</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">🔊</div>
+            <div class="flow-step-title">Audio Studio</div>
+            <div class="flow-step-desc">TTS dialogue, music tracks, sound effects &amp; timeline</div>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Each stage is independently re-runnable</div>
+          <p>Users can go back to any stage and regenerate without losing downstream work. The system tracks which stages have been completed and which need refresh via the episode status field.</p>
+        </div>
+
+        <!-- ═══ 3. Data Flow Table ═══ -->
+        <h2>Data Flow: What Goes In &amp; Out</h2>
+        <p>Each pipeline stage transforms specific inputs into structured outputs, stored in dedicated database locations:</p>
+
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Stage</th>
+                <th>Input</th>
+                <th>Output</th>
+                <th>Database</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>💡 Ideation</strong></td>
+                <td>Premise (string), episode context, series history</td>
+                <td>Array of idea objects — title, logline, themes, hook, viral scoring</td>
+                <td><code>generation_jobs</code></td>
+              </tr>
+              <tr>
+                <td><strong>📖 Story</strong></td>
+                <td>Title, logline, duration (60–7200s), contentStyle, characters, threadCandidates</td>
+                <td>Full narrative (<code>fullStory</code>), 3-act breakdown, SCORE data, character arcs</td>
+                <td><code>episodes.story_data</code> (JSONB)</td>
+              </tr>
+              <tr>
+                <td><strong>🎬 Screenplay</strong></td>
+                <td>Story text, target duration, dialogue style</td>
+                <td>Scenes array with dialogue, audio cues, emotionalPeak, hookOut</td>
+                <td><code>episodes.screenplay_data</code> (JSONB), <code>dialogue_lines</code></td>
+              </tr>
+              <tr>
+                <td><strong>📸 Shot List</strong></td>
+                <td>Screenplay scenes, shot duration, video provider config</td>
+                <td>VEO 3.1 prompts per shot — subject, action, scene, style, dialogue, sounds, negative</td>
+                <td><code>shots</code> table</td>
+              </tr>
+              <tr>
+                <td><strong>🔊 Audio</strong></td>
+                <td>Dialogue lines, screenplay audio cues, voice profiles</td>
+                <td>TTS audio files, music tracks, sound effects, complete timeline</td>
+                <td><code>audio_*</code> tables</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="data-example">
+          <p>For a 5-minute episode of <strong>"Little Detective Dante"</strong>, the pipeline produces roughly: <strong>750 words</strong> of story, <strong>7 scenes</strong> in the screenplay, <strong>~41 dialogue lines</strong>, and <strong>~43 camera shots</strong> — each with a full VEO 3.1 prompt containing subject descriptions, camera movements, lighting, and sound design.</p>
+        </div>
+
+        <!-- ═══ 4. Episode Status Workflow ═══ -->
+        <h2>Episode Status Workflow</h2>
+        <p>Each episode has a <code>status</code> field that tracks its progress through the pipeline. The status determines which studio tabs are available and what actions the user can take:</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step animate-in" style="border-color: var(--accent-amber); border-width: 2px;">
+            <div class="flow-step-icon">📝</div>
+            <div class="flow-step-title">draft</div>
+            <div class="flow-step-desc">Initial state, no content yet</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in" style="border-color: var(--accent-blue); border-width: 2px;">
+            <div class="flow-step-icon">📖</div>
+            <div class="flow-step-title">story</div>
+            <div class="flow-step-desc">Story has been generated</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in" style="border-color: var(--accent-purple); border-width: 2px;">
+            <div class="flow-step-icon">🎬</div>
+            <div class="flow-step-title">storyboard</div>
+            <div class="flow-step-desc">Screenplay is complete</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in" style="border-color: var(--accent-cyan); border-width: 2px;">
+            <div class="flow-step-icon">⏳</div>
+            <div class="flow-step-title">generating</div>
+            <div class="flow-step-desc">AI is processing shots/audio</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in" style="border-color: var(--accent-orange); border-width: 2px;">
+            <div class="flow-step-icon">✂️</div>
+            <div class="flow-step-title">editing</div>
+            <div class="flow-step-desc">User is reviewing &amp; tweaking</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in" style="border-color: var(--accent-green); border-width: 2px;">
+            <div class="flow-step-icon">✅</div>
+            <div class="flow-step-title">ready</div>
+            <div class="flow-step-desc">Approved, awaiting publish</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in" style="border-color: var(--accent-green); border-width: 2px; box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);">
+            <div class="flow-step-icon">🚀</div>
+            <div class="flow-step-title">published</div>
+            <div class="flow-step-desc">Live and viewable</div>
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="callout info">
+            <div class="callout-title">↩️ Back Transitions</div>
+            <p>Users can move <strong>back to adjacent stages</strong> at any time. For example, from <code>storyboard</code> you can go back to <code>story</code> to revise the narrative. Going back does <em>not</em> automatically delete downstream data — the user can choose to keep or regenerate it.</p>
+          </div>
+          <div class="callout warning">
+            <div class="callout-title">🔒 Optimistic Locking</div>
+            <p>Every status transition is protected by <strong>optimistic locking</strong> via a <code>version</code> column. This prevents two users (or two tabs) from making conflicting edits simultaneously. See the section below for details.</p>
+          </div>
+        </div>
+
+        <!-- ═══ 5. Duration-Based Scaling ═══ -->
+        <h2>Duration-Based Scaling</h2>
+        <p>Content requirements scale automatically based on the target episode duration. The system uses a scaling function that calculates word count, scene count, dialogue lines, and shot count proportionally:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Duration</th>
+              <th>Words</th>
+              <th>Scenes</th>
+              <th>Dialogue Lines</th>
+              <th>Shots</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1 min</strong></td>
+              <td>~150</td>
+              <td>2</td>
+              <td>~8</td>
+              <td>~9</td>
+            </tr>
+            <tr>
+              <td><strong>5 min</strong></td>
+              <td>~750</td>
+              <td>~7</td>
+              <td>~41</td>
+              <td>~43</td>
+            </tr>
+            <tr>
+              <td><strong>30 min</strong></td>
+              <td>~4,500</td>
+              <td>~45</td>
+              <td>~248</td>
+              <td>~257</td>
+            </tr>
+            <tr>
+              <td><strong>2 hrs</strong></td>
+              <td>~18,000</td>
+              <td>~180</td>
+              <td>~660</td>
+              <td>~1,028</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Content Styles</h3>
+        <p>The scaling function accepts a <code>contentStyle</code> parameter that adjusts the dialogue-to-action ratio:</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">💬</div>
+              <div>
+                <div class="card-title">Dialogue-Heavy</div>
+                <div class="card-subtitle">×1.5 dialogue multiplier</div>
+              </div>
+            </div>
+            <p>More talking, character interactions, emotional beats. Ideal for drama, comedy, and interview-style content. Results in ~60 dialogue lines for a 5-min episode.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-icon blue">⚖️</div>
+            <div>
+              <div class="card-title">Balanced</div>
+              <div class="card-subtitle">×1.0 base multiplier</div>
+            </div>
+            <p>Equal mix of dialogue and visual storytelling. The default mode for most series. Good for adventure, mystery, and educational content.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-icon rose">💥</div>
+            <div>
+              <div class="card-title">Action-Heavy</div>
+              <div class="card-subtitle">×0.5 dialogue multiplier</div>
+            </div>
+            <p>More visual sequences, chase scenes, physical comedy. Fewer words, more shots. Results in ~20 dialogue lines for a 5-min episode.</p>
+          </div>
+        </div>
+
+        <pre><code><span class="cm">// Usage example</span>
+<span class="kw">import</span> { calculateContentScaling } <span class="kw">from</span> <span class="str">'@kit/episodes'</span>;
+
+<span class="kw">const</span> <span class="fn">scaling</span> = <span class="fn">calculateContentScaling</span>({
+  <span class="fn">targetDurationSeconds</span>: <span class="num">300</span>,   <span class="cm">// 5 minutes</span>
+  <span class="fn">contentStyle</span>: <span class="str">'dialogue-heavy'</span>, <span class="cm">// or 'balanced', 'action-heavy'</span>
+});
+
+<span class="cm">// Returns:</span>
+<span class="cm">// {</span>
+<span class="cm">//   wordCount: ~750,</span>
+<span class="cm">//   sceneCount: ~7,</span>
+<span class="cm">//   dialogueLines: ~60,   (×1.5 for dialogue-heavy)</span>
+<span class="cm">//   shotCount: ~43,</span>
+<span class="cm">//   actsBreakdown: { act1: 2, act2: 3, act3: 2 }</span>
+<span class="cm">// }</span></code></pre>
+
+        <!-- ═══ 6. Generation Job Pattern ═══ -->
+        <h2>Generation Job Pattern</h2>
+        <p>Every AI generation in the pipeline follows the same asynchronous processing pattern. This ensures reliability, scalability, and real-time user feedback:</p>
+
+        <div class="deep-dive">
+          <h4>How Every Generation Works</h4>
+          <p>The platform never calls an LLM synchronously from a user request. Instead, every generation follows this pattern:</p>
+
+          <!-- SVG Pipeline Diagram -->
+          <div class="svg-diagram">
+            <svg viewBox="0 0 780 320" xmlns="http://www.w3.org/2000/svg" style="max-width: 780px;">
+              <!-- Background -->
+              <rect width="780" height="320" fill="transparent"/>
+
+              <!-- Step 1: User Action -->
+              <rect x="10" y="20" width="140" height="70" rx="10" fill="rgba(139, 92, 246, 0.15)" stroke="rgba(139, 92, 246, 0.4)" stroke-width="1.5"/>
+              <text x="80" y="48" text-anchor="middle" fill="#c4b5fd" font-family="Outfit, sans-serif" font-size="12" font-weight="600">① User Action</text>
+              <text x="80" y="68" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Click "Generate"</text>
+
+              <!-- Arrow 1→2 -->
+              <line x1="150" y1="55" x2="180" y2="55" stroke="#8b5cf6" stroke-width="1.5" marker-end="url(#arrowPurple)"/>
+
+              <!-- Step 2: Server Action -->
+              <rect x="180" y="20" width="140" height="70" rx="10" fill="rgba(59, 130, 246, 0.15)" stroke="rgba(59, 130, 246, 0.4)" stroke-width="1.5"/>
+              <text x="250" y="48" text-anchor="middle" fill="#93c5fd" font-family="Outfit, sans-serif" font-size="12" font-weight="600">② Server Action</text>
+              <text x="250" y="68" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Create gen_job row</text>
+
+              <!-- Arrow 2→3 -->
+              <line x1="320" y1="55" x2="350" y2="55" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+              <!-- Step 3: SQS Queue -->
+              <rect x="350" y="20" width="140" height="70" rx="10" fill="rgba(245, 158, 11, 0.15)" stroke="rgba(245, 158, 11, 0.4)" stroke-width="1.5"/>
+              <text x="420" y="48" text-anchor="middle" fill="#fcd34d" font-family="Outfit, sans-serif" font-size="12" font-weight="600">③ SQS Queue</text>
+              <text x="420" y="68" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">queueLlmJob()</text>
+
+              <!-- Arrow 3→4 -->
+              <line x1="490" y1="55" x2="520" y2="55" stroke="#f59e0b" stroke-width="1.5" marker-end="url(#arrowAmber)"/>
+
+              <!-- Step 4: Lambda Worker -->
+              <rect x="520" y="20" width="140" height="70" rx="10" fill="rgba(6, 182, 212, 0.15)" stroke="rgba(6, 182, 212, 0.4)" stroke-width="1.5"/>
+              <text x="590" y="48" text-anchor="middle" fill="#67e8f9" font-family="Outfit, sans-serif" font-size="12" font-weight="600">④ Lambda Worker</text>
+              <text x="590" y="68" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Process LLM call</text>
+
+              <!-- Arrow 4→5 (down then right) -->
+              <path d="M 590 90 L 590 140 L 590 160" stroke="#06b6d4" stroke-width="1.5" fill="none" marker-end="url(#arrowCyan)"/>
+
+              <!-- Step 5: Result Storage -->
+              <rect x="520" y="160" width="140" height="70" rx="10" fill="rgba(16, 185, 129, 0.15)" stroke="rgba(16, 185, 129, 0.4)" stroke-width="1.5"/>
+              <text x="590" y="188" text-anchor="middle" fill="#6ee7b7" font-family="Outfit, sans-serif" font-size="12" font-weight="600">⑤ Store Results</text>
+              <text x="590" y="208" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Update DB tables</text>
+
+              <!-- Arrow 5→6 -->
+              <path d="M 520 195 L 490 195" stroke="#10b981" stroke-width="1.5" fill="none" marker-end="url(#arrowGreen)"/>
+
+              <!-- Step 6: WebSocket -->
+              <rect x="350" y="160" width="140" height="70" rx="10" fill="rgba(139, 92, 246, 0.15)" stroke="rgba(139, 92, 246, 0.4)" stroke-width="1.5"/>
+              <text x="420" y="188" text-anchor="middle" fill="#c4b5fd" font-family="Outfit, sans-serif" font-size="12" font-weight="600">⑥ WebSocket</text>
+              <text x="420" y="208" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">Push to user's UI</text>
+
+              <!-- Arrow 6→User -->
+              <path d="M 350 195 L 170 195 L 80 195 L 80 100" stroke="#8b5cf6" stroke-width="1.5" fill="none" stroke-dasharray="6,3" marker-end="url(#arrowPurple)"/>
+              <text x="200" y="188" text-anchor="middle" fill="#6b6880" font-family="Inter, sans-serif" font-size="9">Real-time update</text>
+
+              <!-- User receives result -->
+              <rect x="10" y="100" width="140" height="50" rx="10" fill="rgba(16, 185, 129, 0.1)" stroke="rgba(16, 185, 129, 0.3)" stroke-width="1" stroke-dasharray="4,3"/>
+              <text x="80" y="128" text-anchor="middle" fill="#6ee7b7" font-family="Inter, sans-serif" font-size="10">UI updates instantly ✨</text>
+
+              <!-- Failure path from Lambda -->
+              <path d="M 660 55 L 700 55 L 700 260 L 420 260" stroke="#f43f5e" stroke-width="1.5" fill="none" stroke-dasharray="4,3" marker-end="url(#arrowRose)"/>
+
+              <!-- Failure box -->
+              <rect x="350" y="248" width="140" height="55" rx="10" fill="rgba(244, 63, 94, 0.12)" stroke="rgba(244, 63, 94, 0.35)" stroke-width="1.5"/>
+              <text x="420" y="270" text-anchor="middle" fill="#fca5a5" font-family="Outfit, sans-serif" font-size="11" font-weight="600">⚠️ Retry (×3)</text>
+              <text x="420" y="288" text-anchor="middle" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Then → Dead Letter Queue</text>
+
+              <!-- Retry label -->
+              <text x="710" y="155" text-anchor="middle" fill="#f87171" font-family="Inter, sans-serif" font-size="9" transform="rotate(90, 710, 155)">On failure</text>
+
+              <!-- Arrow markers -->
+              <defs>
+                <marker id="arrowPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#8b5cf6"/>
+                </marker>
+                <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#3b82f6"/>
+                </marker>
+                <marker id="arrowAmber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#f59e0b"/>
+                </marker>
+                <marker id="arrowCyan" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#06b6d4"/>
+                </marker>
+                <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#10b981"/>
+                </marker>
+                <marker id="arrowRose" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                  <polygon points="0 0, 8 3, 0 6" fill="#f43f5e"/>
+                </marker>
+              </defs>
+            </svg>
+          </div>
+
+          <h4>The 6-Step Flow</h4>
+          <ol>
+            <li><strong>User clicks "Generate"</strong> — triggers a Next.js Server Action</li>
+            <li><strong>Server Action creates a <code>generation_jobs</code> row</strong> — with status <code>'pending'</code>, the job type (e.g., <code>'story'</code>, <code>'screenplay'</code>), and all input parameters as JSONB</li>
+            <li><strong><code>queueLlmJob()</code> sends the job to AWS SQS</strong> — the response returns immediately to the user with the job ID</li>
+            <li><strong>Lambda worker picks up the job</strong> — loads the prompt template from <code>@kit/prompt-engine</code>, injects variables, calls the LLM via <code>@kit/llm</code></li>
+            <li><strong>Results are stored in the database</strong> — the appropriate table is updated (e.g., <code>episodes.story_data</code>, <code>shots</code> table)</li>
+            <li><strong>WebSocket pushes the result to the user</strong> — the UI updates in real-time without polling</li>
+          </ol>
+
+          <h4>Failure Handling</h4>
+          <ul>
+            <li>If the Lambda worker fails, SQS automatically <strong>retries up to 3 times</strong> with exponential backoff</li>
+            <li>After 3 failures, the message is moved to a <strong>Dead Letter Queue (DLQ)</strong></li>
+            <li>The <code>generation_jobs</code> row is updated with status <code>'failed'</code> and an <code>error_message</code></li>
+            <li>The user sees a failure notification via WebSocket and can retry manually</li>
+          </ul>
+        </div>
+
+        <pre><code><span class="cm">// Simplified generation job flow</span>
+<span class="kw">async function</span> <span class="fn">generateStoryAction</span>(<span class="fn">episodeId</span>: <span class="type">string</span>, <span class="fn">params</span>: <span class="type">StoryParams</span>) {
+  <span class="cm">// 1. Create job record</span>
+  <span class="kw">const</span> <span class="fn">job</span> = <span class="kw">await</span> <span class="fn">createGenerationJob</span>({
+    <span class="fn">type</span>: <span class="str">'story-generation'</span>,
+    <span class="fn">episodeId</span>,
+    <span class="fn">params</span>,
+    <span class="fn">status</span>: <span class="str">'pending'</span>,
+  });
+
+  <span class="cm">// 2. Queue to SQS (returns immediately)</span>
+  <span class="kw">await</span> <span class="fn">queueLlmJob</span>({
+    <span class="fn">jobId</span>: job.<span class="fn">id</span>,
+    <span class="fn">queue</span>: <span class="str">'llm-generation'</span>,
+  });
+
+  <span class="cm">// 3. User sees "generating..." state via WebSocket</span>
+  <span class="kw">return</span> { <span class="fn">jobId</span>: job.<span class="fn">id</span>, <span class="fn">status</span>: <span class="str">'queued'</span> };
+}</code></pre>
+
+        <!-- ═══ 7. Optimistic Locking ═══ -->
+        <h2>Optimistic Locking</h2>
+        <p>In a collaborative editing environment — or even when a single user has multiple tabs open — concurrent writes can cause data corruption. The platform uses <strong>optimistic locking</strong> to prevent this:</p>
+
+        <div class="callout warning">
+          <div class="callout-title">🔒 How Optimistic Locking Works</div>
+          <p>Every <code>episodes</code> row has a <code>version</code> integer column, auto-incremented by a database trigger on every update. When the UI loads an episode, it captures the current <code>version</code>. Before saving any changes, the mutation checks:</p>
+        </div>
+
+        <pre><code><span class="cm">-- Database trigger: auto-increment version on every update</span>
+<span class="kw">CREATE FUNCTION</span> <span class="fn">increment_version</span>() <span class="kw">RETURNS TRIGGER AS</span> $$
+<span class="kw">BEGIN</span>
+  NEW.<span class="fn">version</span> <span class="op">:=</span> OLD.<span class="fn">version</span> <span class="op">+</span> <span class="num">1</span>;
+  <span class="kw">RETURN</span> NEW;
+<span class="kw">END</span>;
+$$ <span class="kw">LANGUAGE</span> plpgsql;
+
+<span class="cm">-- Applied to the episodes table</span>
+<span class="kw">CREATE TRIGGER</span> <span class="fn">episodes_version_trigger</span>
+  <span class="kw">BEFORE UPDATE ON</span> episodes
+  <span class="kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="fn">increment_version</span>();</code></pre>
+
+        <pre><code><span class="cm">// Every mutation checks version before saving</span>
+<span class="kw">async function</span> <span class="fn">updateEpisodeStory</span>(<span class="fn">episodeId</span>: <span class="type">string</span>, <span class="fn">data</span>: <span class="type">StoryData</span>, <span class="fn">expectedVersion</span>: <span class="type">number</span>) {
+  <span class="kw">const</span> { <span class="fn">data</span>: result, <span class="fn">error</span> } = <span class="kw">await</span> supabase
+    .<span class="fn">from</span>(<span class="str">'episodes'</span>)
+    .<span class="fn">update</span>({ <span class="fn">story_data</span>: data })
+    .<span class="fn">eq</span>(<span class="str">'id'</span>, episodeId)
+    .<span class="fn">eq</span>(<span class="str">'version'</span>, expectedVersion)  <span class="cm">// ← KEY: only update if version matches</span>
+    .<span class="fn">select</span>();
+
+  <span class="kw">if</span> (!result?.length) {
+    <span class="kw">throw new</span> <span class="type">Error</span>(<span class="str">'Episode was modified by another session. Please refresh and try again.'</span>);
+  }
+}</code></pre>
+
+        <div class="grid-2">
+          <div class="callout success">
+            <div class="callout-title">✅ When It Works</div>
+            <p>User A loads episode (version 5), edits story, saves → version becomes 6. Clean update, no conflict.</p>
+          </div>
+          <div class="callout danger">
+            <div class="callout-title">❌ When It Catches Conflicts</div>
+            <p>User A and B both load version 5. A saves first (→ version 6). B tries to save with version 5 → <strong>rejected</strong>. B must refresh and retry.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Bottom Navigation ═══ -->
+        <div class="page-nav">
+          <a href="architecture.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">System Architecture</span>
+          </a>
+          <a href="ideation.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Ideation Stage</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Story Generation — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / <a href="pipeline-overview.html">Pipeline</a> / Story</div>
+          <h1 class="page-title">📖 Story Generation</h1>
+          <p class="page-subtitle">
+            Turning a chosen idea into a full narrative with characters, arcs, and the SCORE framework for episode continuity.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            After you pick your favorite idea, the app writes the whole story — like a bedtime story but for a video. It knows how long the video should be (1 minute? 5 minutes? 2 hours?) and writes just the right amount. It also remembers what happened in past episodes so it doesn't tell the same story twice!
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: Input Schema ═══ -->
+        <h2>Input Schema</h2>
+        <p>The story generation stage receives a rich input object from the ideation stage's chosen idea, combined with episode metadata and optional user overrides:</p>
+
+<pre><code><span class="cm">// StoryGenerationInput schema</span>
+{
+  <span class="json-key">episodeId</span>: <span class="type">string</span>;
+  <span class="json-key">version</span>: <span class="type">number</span>;              <span class="cm">// Optimistic locking</span>
+  <span class="json-key">title</span>: <span class="type">string</span>;                <span class="cm">// 1-255 chars</span>
+  <span class="json-key">logline</span>: <span class="type">string</span>;              <span class="cm">// 10-500 chars</span>
+  <span class="json-key">targetDuration</span>: <span class="type">number</span>;       <span class="cm">// 60-7200 seconds</span>
+  <span class="json-key">contentStyle</span>?: <span class="str">'dialogue-heavy'</span> | <span class="str">'action-heavy'</span> | <span class="str">'balanced'</span>;
+  <span class="json-key">themes</span>?: <span class="type">string</span>[];
+  <span class="json-key">hook</span>?: <span class="type">string</span>;
+  <span class="json-key">visualDirection</span>?: <span class="type">string</span>;
+  <span class="json-key">characters</span>?: { <span class="json-key">name</span>: <span class="type">string</span>; <span class="json-key">description</span>: <span class="type">string</span> }[];
+  <span class="json-key">worldDetails</span>?: <span class="type">string</span>;
+  <span class="json-key">style</span>?: <span class="type">string</span>;
+  <span class="json-key">threadCandidates</span>?: { <span class="json-key">threadId</span>: <span class="type">string</span>; <span class="json-key">threadName</span>: <span class="type">string</span>; <span class="json-key">action</span>: <span class="str">'progress'</span> | <span class="str">'resolve'</span> }[];
+}</code></pre>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Optimistic Locking</div>
+          <p>The <code>version</code> field prevents concurrent edits from clobbering each other. The server rejects mutations where the submitted version doesn't match the stored version, forcing a refresh before retry.</p>
+        </div>
+
+        <!-- ═══ Section 3: The 5-Layer Story Prompt ═══ -->
+        <h2>The 5-Layer Story Prompt</h2>
+        <p>The story generation prompt is the most sophisticated in the pipeline. It uses five distinct layers to transform a short logline into a full, production-ready narrative:</p>
+
+        <!-- SVG Diagram: 5-Layer Prompt -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 580" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="sg1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="sg2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="sg3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.15)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.05)"/>
+              </linearGradient>
+              <linearGradient id="sg4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(16,185,129,0.15)"/>
+                <stop offset="100%" stop-color="rgba(16,185,129,0.05)"/>
+              </linearGradient>
+              <linearGradient id="sg5" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(245,158,11,0.15)"/>
+                <stop offset="100%" stop-color="rgba(245,158,11,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Layer 1: Role -->
+            <rect x="30" y="20" width="640" height="80" rx="12" fill="url(#sg1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="50" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 1 — ROLE DEFINITION</text>
+            <text x="60" y="72" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">"You are an expert storyteller and narrative designer for visual media."</text>
+
+            <!-- Layer 2: Story Craft -->
+            <rect x="30" y="120" width="640" height="100" rx="12" fill="url(#sg2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="150" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 2 — STORY CRAFT</text>
+            <text x="60" y="173" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Opening hooks (95% of viewers leave within 3 seconds),</text>
+            <text x="60" y="191" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">3-act pacing structure, scene-level curiosity gaps</text>
+
+            <!-- Layer 3: Viral Engineering -->
+            <rect x="30" y="240" width="640" height="100" rx="12" fill="url(#sg3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="60" y="270" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 3 — VIRAL ENGINEERING</text>
+            <text x="80" y="293" fill="#c792ea" font-family="JetBrains Mono, monospace" font-size="11">CURIOSITY GAPS</text>
+            <text x="240" y="293" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Narrative tension at every scene boundary</text>
+            <text x="80" y="313" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">EMOTIONAL ANCHORS</text>
+            <text x="266" y="313" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Universal feelings that drive sharing</text>
+
+            <!-- Layer 4: Change Authorization -->
+            <rect x="30" y="360" width="640" height="100" rx="12" fill="url(#sg4)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="60" y="390" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 4 — CHANGE AUTHORIZATION</text>
+            <text x="80" y="413" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Every character change must be:</text>
+            <text x="80" y="433" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">(a) caused by prior events  (b) cost something  (c) alter future constraints</text>
+
+            <!-- Layer 5: Format -->
+            <rect x="30" y="480" width="640" height="80" rx="12" fill="url(#sg5)" stroke="rgba(245,158,11,0.3)" stroke-width="1.5"/>
+            <text x="60" y="510" fill="#fbbf24" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 5 — OUTPUT FORMAT</text>
+            <text x="60" y="535" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Respond with valid JSON matching the StoryData schema. Uses generateObject().</text>
+
+            <!-- Connecting arrows -->
+            <path d="M350 100 L350 120" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 220 L350 240" stroke="rgba(59,130,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 340 L350 360" stroke="rgba(6,182,212,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 460 L350 480" stroke="rgba(16,185,129,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+          </svg>
+        </div>
+
+        <h3>Layer 1 — Role Definition</h3>
+        <p>Sets the AI persona as an <strong>expert storyteller and narrative designer</strong> for visual media. This framing primes the model for structured, cinematic storytelling rather than generic prose.</p>
+
+        <h3>Layer 2 — Story Craft</h3>
+        <p>Encodes proven screenwriting techniques directly into the prompt:</p>
+        <ul>
+          <li><strong>Opening hooks:</strong> 95% of viewers leave within 3 seconds — the story must open with something visually or emotionally arresting.</li>
+          <li><strong>3-act pacing:</strong> Classic structure (setup → confrontation → resolution) with duration-aware scene counts.</li>
+          <li><strong>Scene-level curiosity gaps:</strong> Each scene must end with something that compels the viewer to watch the next.</li>
+        </ul>
+
+        <h3>Layer 3 — Viral Engineering</h3>
+        <p>Carries forward the viral framework from <a href="ideation.html">Ideation</a>, but applied at the narrative level:</p>
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🎯</div>
+              <div><div class="card-title">Curiosity Gaps</div></div>
+            </div>
+            <p>Not just at the concept level — now embedded in the narrative structure. Every scene boundary creates a micro-gap that keeps viewers watching.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">❤️</div>
+              <div><div class="card-title">Emotional Anchors</div></div>
+            </div>
+            <p>The story must ground its themes in universal feelings — not abstract morals, but visceral emotions that make viewers care enough to share.</p>
+          </div>
+        </div>
+
+        <h3>Layer 4 — Change Authorization</h3>
+        <p>The most unique layer. It enforces narrative integrity by requiring every character change to pass three tests:</p>
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🔗</div>
+              <div><div class="card-title">Caused</div></div>
+            </div>
+            <p>The change must be caused by prior events in the story. No deus ex machina.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">💰</div>
+              <div><div class="card-title">Costly</div></div>
+            </div>
+            <p>The change must cost the character something — comfort, safety, a relationship. Free growth isn't growth.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🔀</div>
+              <div><div class="card-title">Constraining</div></div>
+            </div>
+            <p>The change must alter future constraints. If a character learns something, it must close some doors and open others.</p>
+          </div>
+        </div>
+
+        <h3>Layer 5 — Output Format</h3>
+        <p>Constrains the model to emit valid JSON matching the <code>StoryData</code> schema. Like Ideation, this uses <code>generateObject()</code> from the Vercel AI SDK for guaranteed schema compliance.</p>
+
+        <!-- ═══ Section 4: The SCORE Framework ═══ -->
+        <h2>The SCORE Framework</h2>
+        <p>Every generated story produces SCORE metadata — a compact summary that enables <strong>episode continuity</strong> across a series. This is what prevents the AI from telling the same story twice.</p>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon purple">🏆</div>
+            <div>
+              <div class="card-title">SCORE — Series Continuity &amp; Orchestration Record</div>
+              <div class="card-subtitle">Injected into future episode prompts as memory context</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>episodeSummary</code></td>
+                <td><span class="tag purple">string</span></td>
+                <td>2–3 sentence plot summary — what happened, who was involved, how it ended. Enough for the AI to avoid repeating this plot.</td>
+              </tr>
+              <tr>
+                <td><code>sentimentScore</code></td>
+                <td><span class="tag blue">number (0–1)</span></td>
+                <td>Emotional tone of the episode. <code>0</code> = dark/tense, <code>0.5</code> = balanced, <code>1</code> = joyful/light. Used to vary emotional arcs across a season.</td>
+              </tr>
+              <tr>
+                <td><code>keyEvents</code></td>
+                <td><span class="tag cyan">string[]</span></td>
+                <td>Major plot points that affect future episodes — character revelations, relationship shifts, world-state changes.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why SCORE Matters</div>
+          <p>Without SCORE, an AI generating episode 10 has no memory of episodes 1–9. It would accidentally repeat plots, forget character growth, and create continuity errors. SCORE acts as <strong>compressed episodic memory</strong> — giving the model just enough context to maintain series coherence without overwhelming the context window.</p>
+        </div>
+
+        <!-- ═══ Section 5: Duration-Based Scaling ═══ -->
+        <h2>Duration-Based Scaling</h2>
+        <p>Content requirements scale automatically based on the target duration. The <code>calculateContentScaling()</code> function determines how much story to generate:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Duration</th>
+              <th>Words</th>
+              <th>Scenes</th>
+              <th>Dialogue Lines</th>
+              <th>Shots</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1 min</strong></td>
+              <td>~150</td>
+              <td>2</td>
+              <td>~8</td>
+              <td>~9</td>
+            </tr>
+            <tr>
+              <td><strong>5 min</strong></td>
+              <td>~750</td>
+              <td>~7</td>
+              <td>~41</td>
+              <td>~43</td>
+            </tr>
+            <tr>
+              <td><strong>30 min</strong></td>
+              <td>~4,500</td>
+              <td>~45</td>
+              <td>~248</td>
+              <td>~257</td>
+            </tr>
+            <tr>
+              <td><strong>2 hrs</strong></td>
+              <td>~18,000</td>
+              <td>~180</td>
+              <td>~660</td>
+              <td>~1,028</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="deep-dive">
+          <p>The scaling isn't linear — it follows a curve calibrated against real screenwriting data. A 5-minute episode isn't 5× a 1-minute episode; it has proportionally more dialogue and fewer rapid cuts. The <code>contentStyle</code> parameter further adjusts the ratio:</p>
+          <ul>
+            <li><strong>dialogue-heavy:</strong> More dialogue lines, longer scenes, fewer shots per scene</li>
+            <li><strong>action-heavy:</strong> Fewer dialogue lines, shorter scenes, more shots (rapid visual cuts)</li>
+            <li><strong>balanced:</strong> Default middle-ground calibration</li>
+          </ul>
+<pre><code><span class="kw">import</span> { calculateContentScaling } <span class="kw">from</span> <span class="str">'@kit/episodes'</span>;
+
+<span class="kw">const</span> scaling = <span class="fn">calculateContentScaling</span>({
+  <span class="json-key">targetDurationSeconds</span>: <span class="num">300</span>,    <span class="cm">// 5 minutes</span>
+  <span class="json-key">contentStyle</span>: <span class="str">'dialogue-heavy'</span>, <span class="cm">// or 'balanced', 'action-heavy'</span>
+});
+<span class="cm">// Returns: ~750 words, ~7 scenes, ~40 dialogue lines, ~43 shots</span></code></pre>
+        </div>
+
+        <!-- ═══ Section 6: Canon Context Injection ═══ -->
+        <h2>Canon Context Injection</h2>
+        <p>Before the LLM is called, the system builds a rich context payload from the project's canon database. This is what makes the AI "know" the show's world.</p>
+
+        <div class="deep-dive">
+          <p>The context injection pipeline loads and formats four categories of data:</p>
+
+          <h4>1. <code>buildCanonContext()</code></h4>
+          <p>The primary loader function. It queries the project's metadata tables and assembles:</p>
+          <ul>
+            <li><strong>Character Registry:</strong> Full character profiles — names, roles, physical descriptions, personality traits, relationships</li>
+            <li><strong>Location Registry:</strong> All available settings with descriptions and visual details</li>
+            <li><strong>Recurring Elements:</strong> Signature moments (e.g., "The Clue Board") with placement rules</li>
+            <li><strong>Visual Style:</strong> The project's aesthetic direction (e.g., "3D Pixar/DreamWorks cartoon")</li>
+          </ul>
+
+          <h4>2. <code>formatRecurringElementsForPrompt()</code></h4>
+          <p>Transforms recurring element data into prompt-ready text with placement annotations:</p>
+<pre><code><span class="cm">// Raw database row</span>
+{ <span class="json-key">name</span>: <span class="str">"The Clue Board"</span>, <span class="json-key">placement</span>: <span class="str">"throughout"</span>, <span class="json-key">description</span>: <span class="str">"..."</span> }
+
+<span class="cm">// Formatted for prompt</span>
+<span class="str">"- The Clue Board (placement: throughout): Dante pins clues to a corkboard,
+   connecting them with colored string as the mystery unfolds."</span></code></pre>
+
+          <h4>3. Previous Episode Titles</h4>
+          <p>Loaded from the <code>episodes</code> table with their SCORE summaries. Injected as a numbered list so the AI can see what stories have already been told and avoid repetition.</p>
+
+          <h4>4. Memory Context (Canon Memory)</h4>
+          <p>The most sophisticated injection. Loads three types of persistent narrative state:</p>
+          <ul>
+            <li><strong>Immutable events:</strong> Things that happened and can't be undone (e.g., "Dante's treehouse was upgraded in Ep 3")</li>
+            <li><strong>Active threads:</strong> Ongoing plot lines the user selected as <code>threadCandidates</code> to progress or resolve</li>
+            <li><strong>Character states:</strong> Current emotional/relational state of characters based on accumulated episode history</li>
+          </ul>
+        </div>
+
+        <!-- ═══ Section 7: Output Structure ═══ -->
+        <h2>Output Structure</h2>
+        <p>The LLM produces a structured <code>StoryData</code> object that feeds directly into the <a href="screenplay.html">Screenplay Conversion</a> stage:</p>
+
+<pre><code><span class="kw">interface</span> <span class="type">StoryData</span> {
+  <span class="json-key">title</span>?: <span class="type">string</span>;
+  <span class="json-key">logline</span>?: <span class="type">string</span>;
+  <span class="json-key">fullStory</span>?: <span class="type">string</span>;
+  <span class="json-key">actBreakdown</span>?: { <span class="json-key">act1</span>: <span class="type">string</span>; <span class="json-key">act2</span>: <span class="type">string</span>; <span class="json-key">act3</span>: <span class="type">string</span> };
+  <span class="json-key">characters</span>?: <span class="type">StoryCharacterArc</span>[];
+  <span class="json-key">themes</span>?: <span class="type">string</span>[];
+  <span class="json-key">tone</span>?: <span class="type">string</span>;
+  <span class="json-key">estimatedSceneCount</span>?: <span class="type">number</span>;
+  <span class="json-key">targetDuration</span>?: <span class="type">number</span>;
+  <span class="json-key">contentStyle</span>?: <span class="type">ContentStyle</span>;
+  <span class="json-key">episodeSummary</span>?: <span class="type">string</span>;       <span class="cm">// SCORE: plot summary</span>
+  <span class="json-key">sentimentScore</span>?: <span class="type">number</span>;       <span class="cm">// SCORE: 0-1 emotional tone</span>
+  <span class="json-key">keyEvents</span>?: <span class="type">string</span>[];           <span class="cm">// SCORE: major plot points</span>
+}</code></pre>
+
+        <p>Key design decisions in the output structure:</p>
+        <ul>
+          <li><strong><code>fullStory</code></strong> is the prose narrative — a readable story that the user can review and edit before passing to screenplay.</li>
+          <li><strong><code>actBreakdown</code></strong> provides explicit 3-act structure summaries, making it easy for the Screenplay stage to map scenes to acts.</li>
+          <li><strong><code>characters</code></strong> tracks character arcs — who changed and how — feeding back into Canon Memory for future episodes.</li>
+          <li><strong>SCORE fields</strong> (<code>episodeSummary</code>, <code>sentimentScore</code>, <code>keyEvents</code>) are generated alongside the story and stored for series continuity.</li>
+        </ul>
+
+        <!-- ═══ Section 8: Thread Candidates ═══ -->
+        <h2>Thread Candidates</h2>
+        <p>Before generating a story, users can select existing <strong>narrative threads</strong> from Canon to weave into the episode. This gives the creator direct control over series-level plot progression.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">▶️</div>
+              <div>
+                <div class="card-title">Progress a Thread</div>
+                <div class="card-subtitle">action: 'progress'</div>
+              </div>
+            </div>
+            <p>Advance an ongoing plot line — reveal a new clue, deepen a mystery, or escalate the stakes. The thread remains active for future episodes.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">✅</div>
+              <div>
+                <div class="card-title">Resolve a Thread</div>
+                <div class="card-subtitle">action: 'resolve'</div>
+              </div>
+            </div>
+            <p>Bring a plot line to its conclusion — answer the question, complete the arc, pay off the setup. The thread is marked complete in Canon after generation.</p>
+          </div>
+        </div>
+
+        <div class="data-example">
+          <p>For <strong>"Little Detective Dante"</strong>, the user might select:</p>
+<pre><code><span class="json-key">"threadCandidates"</span>: [
+  {
+    <span class="json-key">"threadId"</span>: <span class="json-string">"thread_missing_locket"</span>,
+    <span class="json-key">"threadName"</span>: <span class="json-string">"The Missing Locket Mystery"</span>,
+    <span class="json-key">"action"</span>: <span class="json-string">"progress"</span>
+  },
+  {
+    <span class="json-key">"threadId"</span>: <span class="json-string">"thread_luna_art_show"</span>,
+    <span class="json-key">"threadName"</span>: <span class="json-string">"Luna's Big Art Show"</span>,
+    <span class="json-key">"action"</span>: <span class="json-string">"resolve"</span>
+  }
+]</code></pre>
+          <p>The AI will weave these threads into the story — dropping another locket clue and bringing Luna's art show to a satisfying conclusion.</p>
+        </div>
+
+        <!-- ═══ Section 9: LLM Configuration ═══ -->
+        <h2>LLM Configuration</h2>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon purple">🤖</div>
+            <div>
+              <div class="card-title">Model Configuration</div>
+              <div class="card-subtitle">Optimized for narrative generation</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Model</strong></td>
+                <td><code>gemini-3-flash-preview</code></td>
+                <td>Balances creativity with coherence — story generation needs more capability than ideation but not full-precision models</td>
+              </tr>
+              <tr>
+                <td><strong>Temperature</strong></td>
+                <td><code>0.65</code></td>
+                <td>Slightly lower than ideation (0.8) — we want creative prose but with consistent narrative structure and character voices</td>
+              </tr>
+              <tr>
+                <td><strong>Max Tokens</strong></td>
+                <td><code>16000</code></td>
+                <td>Generous budget for full stories — a 30-minute episode can produce ~4,500 words of narrative plus act breakdowns and SCORE metadata</td>
+              </tr>
+              <tr>
+                <td><strong>Output Mode</strong></td>
+                <td><code>generateObject()</code></td>
+                <td>Guarantees valid JSON output matching the StoryData Zod schema — no parsing needed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Compared to ideation's <code>gemini-3.1-flash-lite</code>, the story stage uses a more capable model because it must produce <strong>coherent, long-form prose</strong> with consistent character voices, thematic depth, and precise act structure — tasks where lighter models tend to lose coherence.</p>
+
+        <!-- Flow: Where does this go next? -->
+        <h3>Where Does the Story Go?</h3>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">💡</div>
+            <div class="flow-step-title">Ideation</div>
+            <div class="flow-step-desc">User picks an idea</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">📖</div>
+            <div class="flow-step-title">Story Gen</div>
+            <div class="flow-step-desc">Logline → full narrative</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🎬</div>
+            <div class="flow-step-title">Screenplay</div>
+            <div class="flow-step-desc">Narrative → scenes &amp; dialogue</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📸</div>
+            <div class="flow-step-title">Visual Studio</div>
+            <div class="flow-step-desc">Scenes → VEO 3.1 shots</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔊</div>
+            <div class="flow-step-title">Audio Studio</div>
+            <div class="flow-step-desc">TTS, music &amp; SFX</div>
+          </div>
+        </div>
+
+        <p>The generated <code>StoryData</code> — along with its act breakdown, character arcs, and SCORE metadata — flows into the <a href="screenplay.html">Screenplay Conversion</a> stage, where it's decomposed into individual scenes with dialogue, action lines, and staging directions.</p>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="ideation.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Ideation Stage</span>
+          </a>
+          <a href="screenplay.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Screenplay Conversion</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>
