@@ -19,6 +19,8 @@ import type { ChatMessage, LLMProvider } from '@kit/llm';
 export interface AgentRunContext {
   accountId: string;
   userId?: string;
+  /** Allows passing arbitrary extra data to tools (e.g. _scenesContext) */
+  [key: string]: unknown;
 }
 
 /**

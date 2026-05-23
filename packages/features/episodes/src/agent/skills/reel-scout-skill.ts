@@ -48,22 +48,33 @@ const analyzeScenesTool = createTool({
       .array(
         z.object({
           number: z.number(),
-          heading: z.string(),
-          description: z.string(),
-          dialogue: z.array(
-            z.object({
-              character: z.string(),
-              text: z.string(),
-            }),
-          ),
+          heading: z.string().optional(),
+          description: z.string().optional(),
+          dialogue: z
+            .array(
+              z.object({
+                character: z.string(),
+                text: z.string(),
+              }),
+            )
+            .optional(),
           estimatedDuration: z.number().optional(),
         }),
       )
       .describe('Array of screenplay scenes to evaluate'),
   }),
-  execute: async ({ episodeTitle, genre, scenes }) => {
+  execute: async ({ episodeTitle, genre, scenes }, context) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
+
+      // Merge LLM-provided sparse scenes with full context data
+      const fullScenes = context?._scenesContext ?? scenes;
+      const mergedScenes = scenes.map((s) => {
+        const full = (fullScenes as typeof scenes).find(
+          (f) => f.number === s.number,
+        );
+        return full ?? s;
+      });
 
       const result = await executeLLM<{
         sceneAnalyses: ReelSceneAnalysis[];
@@ -74,8 +85,8 @@ const analyzeScenesTool = createTool({
         variables: {
           episode_title: episodeTitle,
           genre,
-          total_scene_count: scenes.length,
-          scenes_json: JSON.stringify(scenes),
+          total_scene_count: mergedScenes.length,
+          scenes_json: JSON.stringify(mergedScenes),
         },
         context: { name: 'agent.reelScout.analyzeScenes', accountId: '' },
       });

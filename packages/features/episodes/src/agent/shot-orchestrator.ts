@@ -161,7 +161,7 @@ export async function runShotOrchestrator(
       {
         userPrompt: buildShotPrompt(input),
       },
-      { accountId: input.accountId },
+      { accountId: input.accountId, _scenesContext: input.scenes },
     );
 
   // Log the full agent result for diagnostics
