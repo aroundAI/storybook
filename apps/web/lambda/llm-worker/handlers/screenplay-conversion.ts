@@ -113,6 +113,7 @@ export async function processScreenplayConversion(
       formatCharactersForPrompt,
       formatLocationsForPrompt,
       formatRecurringElementsForPrompt,
+      mergeCharacterArcs,
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
@@ -125,8 +126,41 @@ export async function processScreenplayConversion(
       episodeContext.recurringElements,
     );
 
+    // Extract structured story metadata for screenplay context enrichment
+    // These fields are always present for new episodes; legacy fallback for pre-existing episodes
+    const actBreakdown = (storyData.actBreakdown as {
+      act1: string;
+      act2: string;
+      act3: string;
+    }) ?? { act1: '', act2: '', act3: '' };
+
+    const tone = (storyData.tone as string) ?? '';
+    const themes = (storyData.themes as string[]) ?? [];
+    const storyCharacters =
+      (storyData.characters as Array<{
+        name: string;
+        role: string;
+        arc: string;
+      }>) ?? [];
+    const keyEvents = (storyData.keyEvents as string[]) ?? [];
+
+    if (!storyData.tone || !storyData.actBreakdown) {
+      console.warn(
+        `[Screenplay Conversion] Legacy episode missing enrichment fields ` +
+          `(tone: ${!!storyData.tone}, actBreakdown: ${!!storyData.actBreakdown}). ` +
+          `Proceeding with available data.`,
+      );
+    }
+
+    // Merge story-specific character arcs into asset-based character context
+    const enrichedCharactersFormatted = mergeCharacterArcs(
+      charactersFormatted,
+      storyCharacters,
+    );
+
     console.log(
-      `[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations`,
+      `[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations, ` +
+        `enrichment: tone=${!!tone}, acts=${!!actBreakdown.act1}, themes=${themes.length}, keyEvents=${keyEvents.length}`,
     );
 
     const projectMetadata =
@@ -172,7 +206,8 @@ export async function processScreenplayConversion(
       contentStyle,
       accountId: data.accountId,
       storyText: storyData.fullStory as string,
-      charactersContext: charactersFormatted || 'No characters defined.',
+      charactersContext:
+        enrichedCharactersFormatted || 'No characters defined.',
       characterNames,
       locationNames,
       recurringElementsContext: recurringElementsFormatted,
@@ -180,6 +215,11 @@ export async function processScreenplayConversion(
       sceneCountMax: scaling.screenplay.sceneCountMax,
       dialogueLinesPerSceneMin: scaling.screenplay.dialogueLinesPerSceneMin,
       dialogueLinesPerSceneMax: scaling.screenplay.dialogueLinesPerSceneMax,
+      // Story metadata enrichment
+      actBreakdown,
+      tone,
+      themes,
+      keyEvents,
     });
 
     if (!orchestratorResult.success || orchestratorResult.scenes.length === 0) {
