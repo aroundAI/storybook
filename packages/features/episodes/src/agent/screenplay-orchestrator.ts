@@ -41,6 +41,11 @@ export interface ScreenplayOrchestratorInput {
   dialogueLinesPerSceneMax: number;
   // Recurring story elements (pre-formatted)
   recurringElementsContext?: string;
+  // Story metadata enrichment — always present for new episodes
+  actBreakdown: { act1: string; act2: string; act3: string };
+  tone: string;
+  themes: string[];
+  keyEvents: string[];
 }
 
 export interface ScreenplayScene {
@@ -91,6 +96,11 @@ export async function runScreenplayOrchestrator(
     storyText: input.storyText,
     characters: input.charactersContext,
     recurringElements: input.recurringElementsContext,
+    // Enrichment for Layer 2 (generator LLM)
+    actBreakdown: input.actBreakdown,
+    tone: input.tone,
+    themes: input.themes,
+    keyEvents: input.keyEvents,
   });
 
   const result: AgentRunResult<ScreenplayOrchestratorOutput> =
@@ -193,6 +203,37 @@ Return a JSON object with:
 
 function buildScreenplayPrompt(input: ScreenplayOrchestratorInput): string {
   const minutesDuration = Math.round(input.targetDurationSeconds / 60);
+
+  // Pre-compose enrichment sections for the orchestrator agent (Layer 1)
+  const enrichmentParts: string[] = [];
+
+  if (input.tone) {
+    enrichmentParts.push(`**Tone**: ${input.tone}`);
+  }
+
+  if (input.actBreakdown.act1) {
+    enrichmentParts.push(
+      `**Three-Act Structure**:\n` +
+        `- Act 1 (Setup, ~25% of scenes): ${input.actBreakdown.act1}\n` +
+        `- Act 2 (Confrontation, ~50% of scenes): ${input.actBreakdown.act2}\n` +
+        `- Act 3 (Resolution, ~25% of scenes): ${input.actBreakdown.act3}`,
+    );
+  }
+
+  if (input.themes.length > 0) {
+    enrichmentParts.push(`**Themes**: ${input.themes.join(', ')}`);
+  }
+
+  if (input.keyEvents.length > 0) {
+    enrichmentParts.push(
+      `**Mandatory Plot Beats**:\n` +
+        input.keyEvents.map((e) => `- ${e}`).join('\n'),
+    );
+  }
+
+  const enrichmentBlock =
+    enrichmentParts.length > 0 ? `\n${enrichmentParts.join('\n\n')}\n` : '';
+
   return `Convert this story into a structured screenplay.
 
 **Episode**: "${input.episodeTitle}" (#${input.episodeNumber})
@@ -200,7 +241,7 @@ function buildScreenplayPrompt(input: ScreenplayOrchestratorInput): string {
 **Target Audience**: ${input.targetAudience}
 **Duration**: ${minutesDuration} minutes (${input.targetDurationSeconds}s)
 **Content Style**: ${input.contentStyle ?? 'dialogue-heavy'}
-
+${enrichmentBlock}
 **Expected Scene Range**: ${input.sceneCountMin}–${input.sceneCountMax} scenes
 **Dialogue Lines Per Scene**: ${input.dialogueLinesPerSceneMin}–${input.dialogueLinesPerSceneMax}
 

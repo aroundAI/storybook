@@ -66,11 +66,19 @@ const metadataParameters = z.object({
     .describe('Maximum dialogue lines per scene'),
 });
 
+interface EnrichmentContext {
+  actBreakdown: { act1: string; act2: string; act3: string };
+  tone: string;
+  themes: string[];
+  keyEvents: string[];
+}
+
 async function executeScreenplayGeneration(
   storyText: string,
   characters: string,
   recurringElements: string | undefined,
   params: z.infer<typeof metadataParameters>,
+  enrichment: EnrichmentContext,
 ) {
   const {
     characterNames,
@@ -98,6 +106,32 @@ async function executeScreenplayGeneration(
       `avg ${avgSceneDuration}s/scene, ${minutesDuration} min target`,
   );
 
+  // Pre-compose enrichment blocks (prompt engine uses simple {{var}} replacement, no conditionals)
+  const toneBlock = enrichment.tone
+    ? `**Tone & Emotional Register**: ${enrichment.tone}\nAll dialogue, parentheticals, and audio cues must reflect this tone. The tone is the emotional contract with the audience — not optional.`
+    : '';
+
+  const actBlock = enrichment.actBreakdown.act1
+    ? `**Three-Act Structure** (distribute scenes proportionally):\n` +
+      `- Act 1 — Setup (~25% of scenes): ${enrichment.actBreakdown.act1}\n` +
+      `- Act 2 — Confrontation (~50% of scenes): ${enrichment.actBreakdown.act2}\n` +
+      `- Act 3 — Resolution (~25% of scenes): ${enrichment.actBreakdown.act3}\n\n` +
+      `Scene breaks MUST align with act transitions. The shift from Act 1→2 should be a clear inciting incident. The shift from Act 2→3 should be the climax or turning point.`
+    : '';
+
+  const themesBlock =
+    enrichment.themes.length > 0
+      ? `**Thematic Emphasis**: ${enrichment.themes.join(', ')}\n` +
+        `Reinforce these themes through dialogue subtext (characters talk AROUND the theme, not ABOUT it), visual action choices, and scene-level metaphor.`
+      : '';
+
+  const keyEventsBlock =
+    enrichment.keyEvents.length > 0
+      ? `**Mandatory Plot Beats** (these events MUST appear as scenes or within scenes):\n` +
+        enrichment.keyEvents.map((e) => `- ${e}`).join('\n') +
+        `\nDo not omit or significantly alter these events. They are structural anchors.`
+      : '';
+
   const result = await executeLLM<ScreenplayResult>({
     templateSlug: 'screenplay-conversion',
     variables: {
@@ -119,6 +153,11 @@ async function executeScreenplayGeneration(
       genre: genre,
       target_audience: targetAudience,
       recurring_element: recurringElements ?? '',
+      // Enrichment variables (pre-composed text blocks)
+      tone: toneBlock,
+      act_breakdown: actBlock,
+      themes: themesBlock,
+      key_events: keyEventsBlock,
     },
     context: {
       name: 'agent.screenplayDirector.generateScreenplay',
@@ -147,6 +186,11 @@ interface ScreenplayDirectorContext {
   storyText: string;
   characters: string;
   recurringElements?: string;
+  // Enrichment fields — always present for new episodes
+  actBreakdown: { act1: string; act2: string; act3: string };
+  tone: string;
+  themes: string[];
+  keyEvents: string[];
 }
 
 export function createScreenplayDirectorSkill(
@@ -165,6 +209,12 @@ export function createScreenplayDirectorSkill(
             context.characters,
             context.recurringElements,
             params,
+            {
+              actBreakdown: context.actBreakdown,
+              tone: context.tone,
+              themes: context.themes,
+              keyEvents: context.keyEvents,
+            },
           ),
         );
       } catch (error) {
@@ -227,16 +277,63 @@ const generateScreenplayToolStatic = createTool({
         .describe(
           'Pre-formatted LOCKED IDENTITY character block from formatCharactersForPrompt. Must be passed verbatim — do not summarize.',
         ),
+      recurringElements: z
+        .string()
+        .optional()
+        .describe('Pre-formatted recurring story elements'),
+      toneText: z
+        .string()
+        .optional()
+        .describe('Story tone from story generation'),
+      actBreakdownText: z
+        .string()
+        .optional()
+        .describe('Pre-formatted act breakdown text'),
+      themesText: z
+        .string()
+        .optional()
+        .describe('Comma-separated thematic keywords'),
+      keyEventsText: z
+        .string()
+        .optional()
+        .describe('Pre-formatted mandatory plot beats'),
     })
     .merge(metadataParameters),
-  execute: async ({ storyText, characters, ...params }) => {
+  execute: async ({
+    storyText,
+    characters,
+    recurringElements,
+    toneText,
+    actBreakdownText,
+    themesText,
+    keyEventsText,
+    ...params
+  }) => {
     try {
       return toolSuccess(
         await executeScreenplayGeneration(
           storyText,
           characters,
-          undefined,
+          recurringElements,
           params,
+          {
+            actBreakdown: actBreakdownText
+              ? { act1: actBreakdownText, act2: '', act3: '' }
+              : { act1: '', act2: '', act3: '' },
+            tone: toneText ?? '',
+            themes: themesText
+              ? themesText
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : [],
+            keyEvents: keyEventsText
+              ? keyEventsText
+                  .split('\n')
+                  .map((s) => s.replace(/^[-\s*]+/, '').trim())
+                  .filter(Boolean)
+              : [],
+          },
         ),
       );
     } catch (error) {

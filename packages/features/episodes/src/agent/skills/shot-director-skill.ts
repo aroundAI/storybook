@@ -69,18 +69,21 @@ const generateShotsTool = createTool({
         'Pre-formatted recurring story elements block. Shots for recurring scenes should use consistent framing and composition.',
       ),
   }),
-  execute: async ({
-    episodeTitle,
-    genre,
-    targetAudience,
-    visualStyle,
-    characters,
-    locations,
-    scenes,
-    reelCandidateScenes,
-    tone,
-    recurringElements,
-  }, context) => {
+  execute: async (
+    {
+      episodeTitle,
+      genre,
+      targetAudience,
+      visualStyle,
+      characters,
+      locations,
+      scenes,
+      reelCandidateScenes,
+      tone,
+      recurringElements,
+    },
+    context,
+  ) => {
     console.log(
       `[Shot Director] Starting shot generation for "${episodeTitle}". ` +
         `Scenes: ${scenes.length}, Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,

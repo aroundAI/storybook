@@ -113,6 +113,7 @@ export async function processScreenplayConversion(
       formatCharactersForPrompt,
       formatLocationsForPrompt,
       formatRecurringElementsForPrompt,
+      mergeCharacterArcs,
     } = await import('../utils/context-builder');
 
     const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
@@ -125,8 +126,45 @@ export async function processScreenplayConversion(
       episodeContext.recurringElements,
     );
 
+    // Validate and extract structured story metadata using Zod for runtime safety.
+    // storyData is a JSONB column — treat it as untrusted data at this boundary.
+    const { z } = await import('zod');
+
+    const actBreakdownSchema = z
+      .object({ act1: z.string(), act2: z.string(), act3: z.string() })
+      .catch({ act1: '', act2: '', act3: '' });
+
+    const storyCharacterSchema = z.array(
+      z.object({
+        name: z.string(),
+        role: z.string(),
+        arc: z.string(),
+      }),
+    ).catch([]);
+
+    const actBreakdown = actBreakdownSchema.parse(storyData.actBreakdown);
+    const tone = z.string().catch('').parse(storyData.tone);
+    const themes = z.array(z.string()).catch([]).parse(storyData.themes);
+    const storyCharacters = storyCharacterSchema.parse(storyData.characters);
+    const keyEvents = z.array(z.string()).catch([]).parse(storyData.keyEvents);
+
+    if (!storyData.tone || !storyData.actBreakdown) {
+      console.warn(
+        `[Screenplay Conversion] Legacy episode missing enrichment fields ` +
+          `(tone: ${!!storyData.tone}, actBreakdown: ${!!storyData.actBreakdown}). ` +
+          `Proceeding with available data.`,
+      );
+    }
+
+    // Merge story-specific character arcs into asset-based character context
+    const enrichedCharactersFormatted = mergeCharacterArcs(
+      charactersFormatted,
+      storyCharacters,
+    );
+
     console.log(
-      `[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations`,
+      `[Screenplay Conversion] Episode context: ${characters.length} characters, ${locations.length} locations, ` +
+        `enrichment: tone=${!!tone}, acts=${!!actBreakdown.act1}, themes=${themes.length}, keyEvents=${keyEvents.length}`,
     );
 
     const projectMetadata =
@@ -172,7 +210,8 @@ export async function processScreenplayConversion(
       contentStyle,
       accountId: data.accountId,
       storyText: storyData.fullStory as string,
-      charactersContext: charactersFormatted || 'No characters defined.',
+      charactersContext:
+        enrichedCharactersFormatted || 'No characters defined.',
       characterNames,
       locationNames,
       recurringElementsContext: recurringElementsFormatted,
@@ -180,6 +219,11 @@ export async function processScreenplayConversion(
       sceneCountMax: scaling.screenplay.sceneCountMax,
       dialogueLinesPerSceneMin: scaling.screenplay.dialogueLinesPerSceneMin,
       dialogueLinesPerSceneMax: scaling.screenplay.dialogueLinesPerSceneMax,
+      // Story metadata enrichment
+      actBreakdown,
+      tone,
+      themes,
+      keyEvents,
     });
 
     if (!orchestratorResult.success || orchestratorResult.scenes.length === 0) {
