@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Product Decisions — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Product Decisions</div>
+          <h1 class="page-title">⚖️ Product Decisions</h1>
+          <p class="page-subtitle">The reasoning behind every major architectural, infrastructure, and product choice — so future developers understand <em>why</em>, not just <em>what</em>.</p>
+        </header>
+
+        <!-- ELI10 -->
+        <div class="eli10">
+          <p><strong>Every app has hundreds of choices:</strong> Which database? Which AI? How should episodes work? This page explains WHY each choice was made — like a diary of decisions so future developers understand the reasoning behind the code.</p>
+        </div>
+
+        <!-- Decision 1: Hybrid Infrastructure -->
+        <h2>1. Why Supabase + AWS Hybrid?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Use Supabase for database + auth, and AWS for compute, queues, storage, CDN, and background processing.
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon green">🗄️</div>
+              <div>
+                <div class="card-title">Supabase Does Best</div>
+                <div class="card-subtitle">Database & Authentication</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>PostgreSQL</strong> with Row-Level Security built in</li>
+              <li><strong>Connection pooling</strong> — handles thousands of concurrent connections</li>
+              <li><strong>Auth</strong> — OAuth, MFA, magic links, all free for unlimited users</li>
+              <li><strong>Excellent DX</strong> — TypeScript types auto-generated from schema</li>
+              <li><strong>Migrations</strong> — SQL-based, version controlled</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon purple">⚡</div>
+              <div>
+                <div class="card-title">AWS Does Best</div>
+                <div class="card-subtitle">Compute & Background Jobs</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>SQS + Lambda</strong> — reliable async job processing (Supabase has no queue system)</li>
+              <li><strong>DynamoDB</strong> — WebSocket connection tracking at scale</li>
+              <li><strong>Lambda + FFmpeg</strong> — server-side video rendering</li>
+              <li><strong>CloudFront / Route53</strong> — CDN and DNS management</li>
+              <li><strong>SES</strong> — email at production scale</li>
+            </ul>
+          </div>
+        </div>
+        <div class="callout success">
+          <strong>Result:</strong> Hybrid costs <strong>$37/month</strong> vs $95/month for full AWS. Best of both worlds.
+        </div>
+
+        <!-- Decision 2: JSON Prompt Templates -->
+        <h2>2. Why JSON Prompt Templates?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Store all LLM prompts as JSON files with layered system prompts, not as hardcoded strings in TypeScript.
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon cyan">✅</div>
+              <div>
+                <div class="card-title">JSON Templates</div>
+                <div class="card-subtitle">What We Chose</div>
+              </div>
+            </div>
+            <ul>
+              <li>Editable without code deploys</li>
+              <li>Version tracked per template</li>
+              <li>LLM config (model, temperature) co-located with prompt</li>
+              <li>Layered system prompts are composable</li>
+              <li>Output schemas defined alongside prompts</li>
+              <li>Non-developers can modify prompts</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon">❌</div>
+              <div>
+                <div class="card-title">Hardcoded Strings</div>
+                <div class="card-subtitle">The Alternative</div>
+              </div>
+            </div>
+            <ul>
+              <li>Requires code changes for prompt edits</li>
+              <li>No version tracking</li>
+              <li>Model config scattered across codebase</li>
+              <li>Can't compose layers</li>
+              <li>Difficult to A/B test prompts</li>
+              <li>Only developers can modify</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Decision 3: JSONB -->
+        <h2>3. Why JSONB for Story & Screenplay Data?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Store <code>story_data</code> and <code>screenplay_data</code> as JSONB columns in the <code>episodes</code> table, not as separate relational tables.
+        </div>
+        <div class="deep-dive">
+          <h3>🔬 The Trade-off</h3>
+          <table>
+            <thead>
+              <tr><th>Factor</th><th>JSONB (✅ Chosen)</th><th>Separate Tables</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Schema Evolution</strong></td><td>Add fields without migrations</td><td>Requires migration for every change</td></tr>
+              <tr><td><strong>Read Performance</strong></td><td>One query gets all data (atomic)</td><td>Multiple JOINs needed</td></tr>
+              <tr><td><strong>Write Pattern</strong></td><td>Replace entire document</td><td>Granular updates possible</td></tr>
+              <tr><td><strong>Querying</strong></td><td>PostgreSQL JSONB operators</td><td>Standard SQL</td></tr>
+              <tr><td><strong>Flexibility</strong></td><td>Nested structures, arrays, evolving schemas</td><td>Fixed column types</td></tr>
+            </tbody>
+          </table>
+          <p><strong>Why it works here:</strong> Story and screenplay data is always read/written as a whole unit. The schema evolves frequently as new fields are added (e.g., SCORE framework fields, viral scoring). JSONB avoids migration churn while maintaining query capability via PostgreSQL's excellent JSONB operators.</p>
+        </div>
+
+        <!-- Decision 4: Scene-by-Scene Shot Generation -->
+        <h2>4. Why Scene-by-Scene Shot Generation?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Generate shots scene-by-scene with filtered context, not monolithically for the whole screenplay.
+        </div>
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-value">50-80%</div>
+            <div class="stat-label">Token Savings</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">Parallel</div>
+            <div class="stat-label">Processing</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-value">Higher</div>
+            <div class="stat-label">Quality</div>
+          </div>
+        </div>
+        <div class="data-example">
+          <h3>How It Works</h3>
+          <ol>
+            <li><strong>Build global context once</strong> — Character registry (15+ attributes per character) + location registry</li>
+            <li><strong>For each scene</strong> — <code>filterContextForScene()</code> extracts ONLY the characters and locations that appear in that scene</li>
+            <li><strong>Generate shots</strong> — LLM receives focused, relevant context instead of the entire screenplay</li>
+            <li><strong>Aggregate</strong> — Assign global sequence numbers across all scenes</li>
+          </ol>
+          <p><strong>Why monolithic fails:</strong> A 30-minute video has ~45 scenes. Sending ALL character descriptions and ALL location descriptions for every scene wastes 50-80% of the token budget on irrelevant context. Scene-by-scene gives the LLM exactly what it needs.</p>
+        </div>
+
+        <!-- Decision 5: Canon System -->
+        <h2>5. Why the Canon System?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Build a full Canon Management System with immutable events, character state tracking, narrative threads, and continuity validation — not just "pass the previous episode summary."
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon green">✅</div>
+              <div>
+                <div class="card-title">Canon System</div>
+                <div class="card-subtitle">What We Built</div>
+              </div>
+            </div>
+            <ul>
+              <li>Immutable events prevent contradictions (dead characters stay dead)</li>
+              <li>Token-budgeted context fits any LLM window (6,000 tokens = 15%)</li>
+              <li>9 validation rules catch errors before they reach users</li>
+              <li>Content-type strategies (series vs movie vs ad vs documentary)</li>
+              <li>Sequel inheritance across movies</li>
+              <li>Change authorization (trigger + cost + constraint triplet)</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon">❌</div>
+              <div>
+                <div class="card-title">"Previous Summary" Approach</div>
+                <div class="card-subtitle">The Naive Alternative</div>
+              </div>
+            </div>
+            <ul>
+              <li>Summary grows unbounded — exceeds token limits</li>
+              <li>No structured knowledge — can't check for contradictions</li>
+              <li>No death tracking — characters can be "resurrected" by accident</li>
+              <li>No thread tracking — plot lines get abandoned</li>
+              <li>One-size-fits-all — can't adapt to content types</li>
+              <li>No validation — errors only caught by humans</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Decision 6: Viral Scoring -->
+        <h2>6. Why Viral Scoring at Every Stage?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Bake viral potential scoring into ideation, story, screenplay, and shots — not just generate "good stories."
+        </div>
+        <div class="deep-dive">
+          <h3>🔬 The Viral Engineering Framework</h3>
+          <p>Every piece of content is designed for social media distribution from day one:</p>
+          <table>
+            <thead>
+              <tr><th>Component</th><th>Purpose</th><th>Where Applied</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Curiosity Gap</strong></td><td>Creates "I need to know what happens" tension</td><td>Ideation, Story, Screenplay (hookOut)</td></tr>
+              <tr><td><strong>Emotional Anchor</strong></td><td>Drives sharing ("this made me feel something")</td><td>Ideation, Story (emotionalPeak)</td></tr>
+              <tr><td><strong>Shareability</strong></td><td>Makes content worth forwarding</td><td>Ideation, Screenplay</td></tr>
+              <tr><td><strong>Shorts Candidate</strong></td><td>Identifies scenes viable as TikTok/Reels</td><td>Shots (sceneViralScore 1-10)</td></tr>
+              <tr><td><strong>Hook Strength</strong></td><td>95% of viewers leave in 3 seconds — hook must grab</td><td>Story (opening), Shots (hookMoment)</td></tr>
+            </tbody>
+          </table>
+          <p><strong>Why it matters:</strong> Content that doesn't spread is content that fails. By engineering virality into every pipeline stage, even AI-generated content has a fighting chance on social platforms.</p>
+        </div>
+
+        <!-- Decision 7: VEO 3.1 Prompts -->
+        <h2>7. Why 7-Component VEO 3.1 Prompts?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Structure every shot prompt with 7 distinct components (Subject, Action, Scene, Style, Dialogue, Sounds, Negative) rather than freeform descriptions.
+        </div>
+        <div class="data-example">
+          <h3>Why Each Component Exists</h3>
+          <table>
+            <thead>
+              <tr><th>Component</th><th>Why Not Optional</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Subject</strong></td><td>15+ attributes ensure character consistency across shots. Without it, the same character looks different in every clip.</td></tr>
+              <tr><td><strong>Action</strong></td><td>Micro-expressions and timing create believable animation. "Smiles" vs "corner of mouth twitches upward" — huge quality difference.</td></tr>
+              <tr><td><strong>Scene</strong></td><td>Props, lighting, weather establish mood. Without it, shots feel disconnected.</td></tr>
+              <tr><td><strong>Style</strong></td><td>Camera lens (24mm vs 100mm), angle, movement map to emotions. A dolly-in creates intimacy; a wide shot creates isolation.</td></tr>
+              <tr><td><strong>Dialogue</strong></td><td>Colon syntax (<code>Dante: 'text'</code>) prevents VEO from rendering subtitles on screen.</td></tr>
+              <tr><td><strong>Sounds</strong></td><td>Specifying ambient + SFX prevents audio hallucinations (random noises VEO might add).</td></tr>
+              <tr><td><strong>Negative</strong></td><td>"No subtitles, no captions, no watermarks" — explicit exclusion is essential for clean output.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Decision 8: Server Actions -->
+        <h2>8. Why Server Actions over API Routes?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Use Next.js Server Actions for all mutations instead of traditional REST API routes.
+        </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon green">✅</div>
+              <div>
+                <div class="card-title">Server Actions</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>Type-safe</strong> — Input/output types shared between client and server</li>
+              <li><strong>Collocated</strong> — Action logic lives near the UI that calls it</li>
+              <li><strong>No boilerplate</strong> — No route files, no fetch calls, no URL management</li>
+              <li><strong>Zod validation</strong> — Built-in via <code>enhanceAction()</code> wrapper</li>
+              <li><strong>Progressive enhancement</strong> — Works without JavaScript</li>
+            </ul>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-icon">❌</div>
+              <div>
+                <div class="card-title">REST API Routes</div>
+              </div>
+            </div>
+            <ul>
+              <li>Separate route files for every endpoint</li>
+              <li>Manual fetch calls with URL strings</li>
+              <li>Type safety requires extra tooling (tRPC, etc.)</li>
+              <li>Validation logic separated from handler</li>
+              <li>More files, more indirection</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Decision 9: Monorepo -->
+        <h2>9. Why Turborepo Monorepo?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Use Turborepo with pnpm workspaces for a monorepo containing 20+ packages.
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon blue">📦</div>
+            <div>
+              <div class="card-title">Monorepo Benefits</div>
+            </div>
+          </div>
+          <ul>
+            <li><strong>Parallel builds</strong> — Turborepo builds independent packages simultaneously</li>
+            <li><strong>Shared configs</strong> — TypeScript, ESLint, Prettier configs defined once in <code>tooling/</code></li>
+            <li><strong>Single lockfile</strong> — One <code>pnpm-lock.yaml</code> for all packages</li>
+            <li><strong>Feature isolation</strong> — <code>@kit/episodes</code>, <code>@kit/billing</code>, <code>@kit/auth</code> etc. are independent packages</li>
+            <li><strong>Atomic changes</strong> — Cross-package changes in a single commit</li>
+            <li><strong>Disk efficient</strong> — pnpm's content-addressable storage deduplicates node_modules</li>
+          </ul>
+        </div>
+
+        <!-- Decision 10: Vendor Agnosticism -->
+        <h2>10. Why Vendor-Agnostic Provider Abstraction?</h2>
+        <div class="callout info">
+          <strong>Decision:</strong> Wrap every external service in a <code>@kit/providers-*</code> package so switching providers requires zero code changes.
+        </div>
+        <div class="data-example">
+          <h3>Switch Providers via Environment Variables</h3>
+          <pre><code># Switch from Supabase to full AWS stack
+DATABASE_PROVIDER=postgresql  # Was: supabase
+AUTH_PROVIDER=cognito          # Was: supabase
+STORAGE_PROVIDER=s3            # Was: supabase
+EMAIL_PROVIDER=ses             # Was: resend
+QUEUE_PROVIDER=sqs
+CACHE_PROVIDER=redis</code></pre>
+          <p><strong>Provider packages:</strong></p>
+          <ul>
+            <li><code>@kit/providers-database</code> — Supabase, PostgreSQL, MySQL</li>
+            <li><code>@kit/providers-storage</code> — Supabase Storage, S3, GCS, Azure Blob</li>
+            <li><code>@kit/providers-email</code> — Resend, SES, SendGrid, Nodemailer</li>
+            <li><code>@kit/providers-queue</code> — SQS, BullMQ</li>
+            <li><code>@kit/providers-cache</code> — Redis (Upstash, ElastiCache), Memory</li>
+          </ul>
+        </div>
+        <div class="callout success">
+          <strong>Why it matters:</strong> Vendor lock-in is a business risk. If Supabase raises prices or goes down, we can migrate to AWS Cognito + RDS without changing application code. If AWS becomes too expensive, we can move to Vercel. The abstraction layer makes this a configuration change, not a rewrite.
+        </div>
+
+        <!-- Page Nav -->
+        <div class="page-nav">
+          <a href="user-flows.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">User Flows & UI</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜</p>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

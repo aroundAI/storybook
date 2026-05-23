@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Database Schema — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Database Schema</div>
+          <h1 class="page-title">🗄️ Database Schema</h1>
+          <p class="page-subtitle">
+            All tables, relationships, RLS policies, multi-tenancy, and the episode pipeline data model.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            The database is a huge filing cabinet with labeled drawers. Each drawer has rules about who can open it — that's <strong>Row-Level Security (RLS)</strong>. You can only see the files that belong to your team.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: Core Tables ═══ -->
+        <h2>Core Tables</h2>
+        <p>These are the primary tables that power the content creation pipeline. Every piece of content flows through this schema.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👤</div>
+              <div>
+                <div class="card-title">accounts</div>
+                <div class="card-subtitle">User &amp; team identity</div>
+              </div>
+            </div>
+            <p>Central identity table. Personal accounts mirror <code>auth.users.id</code>. Team accounts have their own IDs. All data hangs off <code>account_id</code> foreign keys.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">📁</div>
+              <div>
+                <div class="card-title">projects</div>
+                <div class="card-subtitle">Show / series container</div>
+              </div>
+            </div>
+            <p>A project represents a show (e.g., "Little Detective Dante"). Contains <code>metadata</code> JSONB with characters, locations, genre, visual style, and recurring elements.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📺</div>
+              <div>
+                <div class="card-title">episodes</div>
+                <div class="card-subtitle">Individual content unit</div>
+              </div>
+            </div>
+            <p>One episode per video. Contains <code>story_data</code> and <code>screenplay_data</code> as JSONB columns. Tracks pipeline status through each stage (ideation → audio).</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">📸</div>
+              <div>
+                <div class="card-title">shots</div>
+                <div class="card-subtitle">VEO 3.1 visual prompts</div>
+              </div>
+            </div>
+            <p>Each row is a single shot with its 7-component VEO prompt (subject, action, scene, style, dialogue, sounds, negative). Ordered by <code>sequence_number</code>.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">💬</div>
+              <div>
+                <div class="card-title">dialogue_lines</div>
+                <div class="card-subtitle">Character speech timeline</div>
+              </div>
+            </div>
+            <p>Individual lines of dialogue with character attribution, emotion tags, timing data, and TTS voice mapping. Linked to shots via <code>shot_id</code>.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🗂️</div>
+              <div>
+                <div class="card-title">assets</div>
+                <div class="card-subtitle">Generated media files</div>
+              </div>
+            </div>
+            <p>References to generated videos, audio clips, images, and music tracks. Stores S3 URLs, file metadata, and generation status.</p>
+          </div>
+        </div>
+
+        <h3>Entity Relationship Overview</h3>
+<pre><code><span class="cm">-- Core relationship chain</span>
+<span class="kw">accounts</span>  <span class="cm">1───∞</span>  <span class="kw">projects</span>  <span class="cm">1───∞</span>  <span class="kw">episodes</span>  <span class="cm">1───∞</span>  <span class="kw">shots</span>
+                                                  <span class="cm">1───∞</span>  <span class="kw">dialogue_lines</span>
+                                                  <span class="cm">1───∞</span>  <span class="kw">assets</span>
+
+<span class="cm">-- Every table has account_id for RLS</span>
+<span class="cm">-- Episodes contain JSONB: story_data, screenplay_data</span>
+<span class="cm">-- Projects contain JSONB: metadata (characters, locations, etc.)</span></code></pre>
+
+        <!-- ═══ Section 3: Canon Tables ═══ -->
+        <h2>Canon Tables</h2>
+        <p>The <strong>Continuity Canon System</strong> maintains narrative consistency across episodes. These tables are the "memory" of the series — immutable records of what happened and how the world changed.</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">📜</div>
+              <div>
+                <div class="card-title">immutable_events</div>
+                <div class="card-subtitle">Permanent plot points</div>
+              </div>
+            </div>
+            <p>Events that cannot be retconned — character introductions, major reveals, relationship changes. Once written, these are <strong>append-only</strong>.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🧬</div>
+              <div>
+                <div class="card-title">character_states</div>
+                <div class="card-subtitle">Character evolution tracking</div>
+              </div>
+            </div>
+            <p>Snapshot of each character's state at the end of an episode — emotional state, knowledge gained, relationships changed. Powers continuity injection.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🧵</div>
+              <div>
+                <div class="card-title">narrative_threads</div>
+                <div class="card-subtitle">Running storylines</div>
+              </div>
+            </div>
+            <p>Multi-episode story arcs with status tracking (open, progressed, resolved). Ensures long-running mysteries and character arcs are maintained.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🌍</div>
+              <div>
+                <div class="card-title">world_states</div>
+                <div class="card-subtitle">Universe consistency</div>
+              </div>
+            </div>
+            <p>Tracks the "state of the world" — new locations unlocked, objects discovered, rules established. Prevents contradictions across episodes.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">📋</div>
+              <div>
+                <div class="card-title">episode_summaries</div>
+                <div class="card-subtitle">SCORE framework data</div>
+              </div>
+            </div>
+            <p>Compact summaries using the SCORE framework — <code>episodeSummary</code>, <code>sentimentScore</code>, <code>keyEvents</code>. Injected into future prompts for continuity.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">📊</div>
+              <div>
+                <div class="card-title">state_deltas</div>
+                <div class="card-subtitle">Change log per episode</div>
+              </div>
+            </div>
+            <p>Diff-style records of what changed in each episode — new knowledge, relationship shifts, world modifications. Enables "what changed?" queries.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 4: Infrastructure Tables ═══ -->
+        <h2>Infrastructure Tables</h2>
+        <p>Supporting tables for job management, cost tracking, and content organization.</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">⚙️</div>
+              <div><div class="card-title">generation_jobs</div></div>
+            </div>
+            <p>Tracks async generation tasks — video rendering, TTS generation, music composition. Status: <code>pending</code> → <code>processing</code> → <code>completed</code> / <code>failed</code>.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">💰</div>
+              <div><div class="card-title">llm_usage</div></div>
+            </div>
+            <p>Every LLM call is logged with provider, model, token counts, cost, and pipeline stage. Powers the cost dashboard and quota management.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📅</div>
+              <div><div class="card-title">seasons</div></div>
+            </div>
+            <p>Groups episodes into seasons. Contains season-level metadata like arc descriptions, target episode count, and release schedule.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 5: Multi-tenancy & RLS ═══ -->
+        <h2>Multi-Tenancy &amp; Row-Level Security</h2>
+        <p>Every data table includes an <code>account_id</code> column. PostgreSQL Row-Level Security (RLS) ensures users can <strong>only</strong> access data belonging to their personal or team accounts.</p>
+
+        <h3>How RLS Works</h3>
+<pre><code><span class="cm">-- Example RLS policy on projects table</span>
+<span class="kw">ALTER TABLE</span> projects <span class="kw">ENABLE ROW LEVEL SECURITY</span>;
+
+<span class="kw">CREATE POLICY</span> <span class="str">"Users can view own projects"</span>
+  <span class="kw">ON</span> projects
+  <span class="kw">FOR SELECT</span>
+  <span class="kw">USING</span> (
+    account_id <span class="kw">IN</span> (
+      <span class="cm">-- Personal account</span>
+      <span class="fn">auth.uid</span>()
+      <span class="kw">UNION</span>
+      <span class="cm">-- Team accounts the user belongs to</span>
+      <span class="kw">SELECT</span> account_id <span class="kw">FROM</span> accounts_memberships
+      <span class="kw">WHERE</span> user_id = <span class="fn">auth.uid</span>()
+    )
+  );</code></pre>
+
+        <h3>Personal vs. Team Accounts</h3>
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👤</div>
+              <div>
+                <div class="card-title">Personal Accounts</div>
+                <div class="card-subtitle">auth.users.id = accounts.id</div>
+              </div>
+            </div>
+            <p>Created automatically on signup. The account ID <strong>is</strong> the user's auth ID. Solo creators use this for personal projects.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">👥</div>
+              <div>
+                <div class="card-title">Team Accounts</div>
+                <div class="card-subtitle">Separate ID, multiple members</div>
+              </div>
+            </div>
+            <p>Created explicitly by users. Members join via invitation with roles (<code>owner</code>, <code>admin</code>, <code>member</code>). All team data uses the team's <code>account_id</code>.</p>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">🔒 RLS Is Always On</div>
+          <p>RLS policies are enforced at the <strong>database level</strong>, not the application level. Even if application code has a bug that forgets to filter by <code>account_id</code>, PostgreSQL will silently exclude rows the user shouldn't see. This is defense-in-depth.</p>
+        </div>
+
+        <!-- ═══ Section 6: JSONB Design Decision ═══ -->
+        <h2>JSONB Design Decision</h2>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why story_data &amp; screenplay_data are JSONB, Not Relational</div>
+          <p>The <code>episodes</code> table stores <code>story_data</code> and <code>screenplay_data</code> as JSONB columns instead of breaking them into normalized relational tables. This was a deliberate architectural choice:</p>
+        </div>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">✅</div>
+              <div><div class="card-title">Why JSONB Works Here</div></div>
+            </div>
+            <ul>
+              <li><strong>Atomic writes:</strong> An entire story or screenplay is generated in one LLM call. Writing it as a single JSONB value is one INSERT — no multi-table transactions needed.</li>
+              <li><strong>Schema flexibility:</strong> Story structures evolve frequently as prompts improve. JSONB avoids constant migrations.</li>
+              <li><strong>Read pattern:</strong> Stories and screenplays are always read in full — never queried by individual scene. No need for per-row indexing.</li>
+              <li><strong>Versioning:</strong> Easy to snapshot the entire document by copying the JSONB value. No need to version 15 related tables.</li>
+            </ul>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">⚠️</div>
+              <div><div class="card-title">Why Shots Are Relational</div></div>
+            </div>
+            <ul>
+              <li><strong>Individual operations:</strong> Shots are reordered, edited, regenerated, and deleted individually. Relational rows support this naturally.</li>
+              <li><strong>Foreign keys:</strong> Dialogue lines and assets link to specific shots via <code>shot_id</code>. JSONB would require array index references — fragile.</li>
+              <li><strong>Status tracking:</strong> Each shot has its own generation status (<code>pending</code>, <code>generating</code>, <code>completed</code>). Per-row status columns are cleaner than JSONB field updates.</li>
+              <li><strong>RLS granularity:</strong> Row-level policies can be applied per-shot. JSONB arrays can't be partially restricted.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="deep-dive">
+          <h4>📐 The Rule of Thumb</h4>
+          <p>Use <strong>JSONB</strong> when data is:</p>
+          <ul>
+            <li>Written atomically (one big write)</li>
+            <li>Read in full (never queried by sub-field)</li>
+            <li>Schema is unstable or evolving</li>
+            <li>No foreign keys point into the structure</li>
+          </ul>
+          <p>Use <strong>relational tables</strong> when data is:</p>
+          <ul>
+            <li>Individually created, updated, or deleted</li>
+            <li>Referenced by other tables (FK targets)</li>
+            <li>Queried or filtered by specific fields</li>
+            <li>Needs per-row RLS or status tracking</li>
+          </ul>
+        </div>
+
+        <!-- Full Schema Summary Table -->
+        <h2>Full Schema Summary</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Table</th>
+              <th>Category</th>
+              <th>Key Columns</th>
+              <th>RLS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>accounts</code></td>
+              <td>Core</td>
+              <td><code>id</code>, <code>name</code>, <code>is_personal_account</code>, <code>slug</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>projects</code></td>
+              <td>Core</td>
+              <td><code>id</code>, <code>account_id</code>, <code>name</code>, <code>metadata</code> (JSONB)</td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>episodes</code></td>
+              <td>Core</td>
+              <td><code>id</code>, <code>project_id</code>, <code>story_data</code> (JSONB), <code>screenplay_data</code> (JSONB)</td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>shots</code></td>
+              <td>Core</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>sequence_number</code>, <code>veo_prompt</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>dialogue_lines</code></td>
+              <td>Core</td>
+              <td><code>id</code>, <code>shot_id</code>, <code>character</code>, <code>text</code>, <code>emotion</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>assets</code></td>
+              <td>Core</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>type</code>, <code>storage_url</code>, <code>status</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>immutable_events</code></td>
+              <td>Canon</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>event_type</code>, <code>description</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>character_states</code></td>
+              <td>Canon</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>character_id</code>, <code>state</code> (JSONB)</td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>narrative_threads</code></td>
+              <td>Canon</td>
+              <td><code>id</code>, <code>project_id</code>, <code>status</code>, <code>description</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>world_states</code></td>
+              <td>Canon</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>state</code> (JSONB)</td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>episode_summaries</code></td>
+              <td>Canon</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>summary</code>, <code>sentiment_score</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>state_deltas</code></td>
+              <td>Canon</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>delta_type</code>, <code>change</code> (JSONB)</td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>generation_jobs</code></td>
+              <td>Infra</td>
+              <td><code>id</code>, <code>episode_id</code>, <code>type</code>, <code>status</code>, <code>payload</code> (JSONB)</td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>llm_usage</code></td>
+              <td>Infra</td>
+              <td><code>id</code>, <code>account_id</code>, <code>provider</code>, <code>model</code>, <code>total_cost_usd</code></td>
+              <td>✅</td>
+            </tr>
+            <tr>
+              <td><code>seasons</code></td>
+              <td>Infra</td>
+              <td><code>id</code>, <code>project_id</code>, <code>number</code>, <code>title</code>, <code>description</code></td>
+              <td>✅</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="infrastructure.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Infrastructure</span>
+          </a>
+          <a href="realtime.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Real-time &amp; WebSocket</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

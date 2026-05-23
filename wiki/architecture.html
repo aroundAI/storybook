@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Architecture — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Architecture</div>
+          <h1 class="page-title">🏗️ System Architecture</h1>
+          <p class="page-subtitle">
+            The complete monorepo structure, package relationships, multi-tenant architecture, and how all pieces work together.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            The Storybook app is like a big LEGO castle. It's made of many smaller LEGO boxes (packages) that each do one thing really well. There's a box for stories, one for billing, one for emails, one for the database, and they all click together!
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: Monorepo Structure ═══ -->
+        <h2>Monorepo Structure</h2>
+        <p>The entire platform lives in a single Turborepo monorepo. Every app, package, and tooling config is versioned together — a single <code>pnpm install</code> and <code>pnpm dev</code> boots the whole system.</p>
+
+<pre><code>storybook/
+├─ apps/
+│  ├─ <span class="fn">web/</span>              <span class="cm">(Next.js SaaS app)</span>
+│  │  ├─ <span class="fn">app/</span>           <span class="cm">(App Router)</span>
+│  │  │  ├─ <span class="fn">(marketing)/</span> <span class="cm">(Public pages)</span>
+│  │  │  ├─ <span class="fn">admin/</span>      <span class="cm">(Super admin)</span>
+│  │  │  ├─ <span class="fn">auth/</span>       <span class="cm">(Auth pages)</span>
+│  │  │  └─ <span class="fn">home/</span>       <span class="cm">(User/Team routes)</span>
+│  │  ├─ <span class="fn">supabase/</span>     <span class="cm">(Schemas &amp; migrations)</span>
+│  │  ├─ <span class="fn">lambda/</span>       <span class="cm">(7 AWS Lambda functions)</span>
+│  │  └─ <span class="fn">websocket/</span>    <span class="cm">(3 WebSocket handlers)</span>
+│  ├─ <span class="fn">dev-tool/</span>        <span class="cm">(Dev utilities)</span>
+│  └─ <span class="fn">e2e/</span>             <span class="cm">(Playwright tests)</span>
+├─ packages/
+│  ├─ <span class="fn">features/</span>        <span class="cm">(episodes, projects, auth, etc.)</span>
+│  ├─ <span class="fn">billing/</span>         <span class="cm">(Stripe)</span>
+│  ├─ <span class="fn">llm/</span>             <span class="cm">(LLM abstraction)</span>
+│  ├─ <span class="fn">supabase/</span>        <span class="cm">(Client &amp; types)</span>
+│  ├─ <span class="fn">ui/</span>              <span class="cm">(Shadcn components)</span>
+│  └─ <span class="fn">…20+ more</span>
+├─ tooling/            <span class="cm">(Build configs)</span>
+└─ <span class="fn">sst.config.ts</span>       <span class="cm">(ALL AWS infrastructure)</span></code></pre>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why a Monorepo?</div>
+          <p>Atomic commits across packages, shared TypeScript config, single CI pipeline, and Turborepo's remote caching make this the right call for a platform with 20+ interdependent packages.</p>
+        </div>
+
+        <!-- ═══ Section 3: Package Dependencies ═══ -->
+        <h2>Package Dependencies</h2>
+        <p>Packages follow a strict dependency hierarchy. Lower-level packages never import higher-level ones. Here are the key chains:</p>
+
+        <!-- SVG Diagram: Package Dependency Graph -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 720 340" xmlns="http://www.w3.org/2000/svg" style="max-width: 700px;">
+            <defs>
+              <linearGradient id="depGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.2)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="depGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.2)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="depGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.2)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.05)"/>
+              </linearGradient>
+              <linearGradient id="depGrad4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(16,185,129,0.2)"/>
+                <stop offset="100%" stop-color="rgba(16,185,129,0.05)"/>
+              </linearGradient>
+              <marker id="arrowPurple" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(139,92,246,0.6)"/>
+              </marker>
+              <marker id="arrowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(59,130,246,0.6)"/>
+              </marker>
+              <marker id="arrowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(16,185,129,0.6)"/>
+              </marker>
+            </defs>
+
+            <!-- Content Pipeline Chain -->
+            <text x="20" y="30" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="12">CONTENT PIPELINE CHAIN</text>
+
+            <rect x="20" y="42" width="140" height="42" rx="8" fill="url(#depGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="90" y="67" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/episodes</text>
+
+            <line x1="160" y1="63" x2="195" y2="63" stroke="rgba(139,92,246,0.5)" stroke-width="1.5" marker-end="url(#arrowPurple)"/>
+
+            <rect x="200" y="42" width="170" height="42" rx="8" fill="url(#depGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="285" y="67" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/prompt-engine</text>
+
+            <line x1="370" y1="63" x2="405" y2="63" stroke="rgba(139,92,246,0.5)" stroke-width="1.5" marker-end="url(#arrowPurple)"/>
+
+            <rect x="410" y="42" width="110" height="42" rx="8" fill="url(#depGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="465" y="67" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/llm</text>
+
+            <line x1="520" y1="63" x2="555" y2="63" stroke="rgba(59,130,246,0.5)" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+            <rect x="560" y="42" width="140" height="42" rx="8" fill="url(#depGrad3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="630" y="67" fill="#67e8f9" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">Vercel AI SDK</text>
+
+            <!-- Auth / Billing Chain -->
+            <text x="20" y="120" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="12">AUTH &amp; BILLING CHAIN</text>
+
+            <rect x="20" y="132" width="140" height="42" rx="8" fill="url(#depGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="90" y="157" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/auth</text>
+
+            <line x1="160" y1="153" x2="195" y2="153" stroke="rgba(59,130,246,0.5)" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+            <rect x="200" y="132" width="170" height="42" rx="8" fill="url(#depGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="285" y="157" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/team-accounts</text>
+
+            <line x1="370" y1="153" x2="405" y2="153" stroke="rgba(59,130,246,0.5)" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+            <rect x="410" y="132" width="110" height="42" rx="8" fill="url(#depGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="465" y="157" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/billing</text>
+
+            <line x1="520" y1="153" x2="555" y2="153" stroke="rgba(59,130,246,0.5)" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
+
+            <rect x="560" y="132" width="140" height="42" rx="8" fill="url(#depGrad3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="630" y="157" fill="#67e8f9" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">Stripe SDK</text>
+
+            <!-- Shared Foundation -->
+            <text x="20" y="210" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="12">SHARED FOUNDATION (everything depends on these)</text>
+
+            <rect x="20" y="222" width="140" height="42" rx="8" fill="url(#depGrad4)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="90" y="247" fill="#6ee7b7" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/supabase</text>
+
+            <rect x="180" y="222" width="110" height="42" rx="8" fill="url(#depGrad4)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="235" y="247" fill="#6ee7b7" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/shared</text>
+
+            <rect x="310" y="222" width="100" height="42" rx="8" fill="url(#depGrad4)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="360" y="247" fill="#6ee7b7" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/next</text>
+
+            <rect x="430" y="222" width="90" height="42" rx="8" fill="url(#depGrad4)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="475" y="247" fill="#6ee7b7" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/ui</text>
+
+            <rect x="540" y="222" width="100" height="42" rx="8" fill="url(#depGrad4)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="590" y="247" fill="#6ee7b7" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="middle">@kit/i18n</text>
+
+            <!-- Dashed lines from chains down to foundation -->
+            <line x1="90" y1="84" x2="90" y2="222" stroke="rgba(16,185,129,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="285" y1="174" x2="235" y2="222" stroke="rgba(16,185,129,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+            <line x1="465" y1="174" x2="360" y2="222" stroke="rgba(16,185,129,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+
+            <!-- Rule note -->
+            <text x="20" y="300" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">📐 Rule: Lower packages never import higher ones. features/ → packages/ ✓   packages/ → features/ ✗</text>
+          </svg>
+        </div>
+
+        <!-- ═══ Section 4: Multi-Tenant Architecture ═══ -->
+        <h2>Multi-Tenant Architecture</h2>
+        <p>Storybook supports two account types. Every row in the database is scoped to an account via foreign keys — this is the foundation for Row Level Security (RLS).</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👤</div>
+              <div>
+                <div class="card-title">Personal Accounts</div>
+                <div class="card-subtitle">auth.users.id = accounts.id</div>
+              </div>
+            </div>
+            <p>Created automatically when a user signs up. The account ID <em>is</em> the user's auth ID — a 1:1 mapping. Personal accounts own projects, episodes, and billing subscriptions directly.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">👥</div>
+              <div>
+                <div class="card-title">Team Accounts</div>
+                <div class="card-subtitle">Shared workspaces with members</div>
+              </div>
+            </div>
+            <p>Created explicitly by a user. Team accounts have a <code>memberships</code> table linking users → teams with roles: <strong>owner</strong>, <strong>admin</strong>, or <strong>member</strong>. All data within the team is shared.</p>
+          </div>
+        </div>
+
+        <!-- SVG Diagram: Data Ownership Model -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="ownerGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.18)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.04)"/>
+              </linearGradient>
+              <linearGradient id="ownerGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.18)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.04)"/>
+              </linearGradient>
+              <linearGradient id="ownerGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.18)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.04)"/>
+              </linearGradient>
+              <marker id="arrowOwner" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(139,92,246,0.5)"/>
+              </marker>
+            </defs>
+
+            <!-- Account -->
+            <rect x="260" y="15" width="180" height="50" rx="10" fill="url(#ownerGrad1)" stroke="rgba(139,92,246,0.4)" stroke-width="1.5"/>
+            <text x="350" y="36" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="13" text-anchor="middle">Account</text>
+            <text x="350" y="53" fill="#6b6880" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Personal OR Team</text>
+
+            <!-- Projects -->
+            <line x1="350" y1="65" x2="350" y2="95" stroke="rgba(139,92,246,0.4)" stroke-width="1.5" marker-end="url(#arrowOwner)"/>
+            <rect x="260" y="100" width="180" height="45" rx="10" fill="url(#ownerGrad2)" stroke="rgba(59,130,246,0.4)" stroke-width="1.5"/>
+            <text x="350" y="121" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="13" text-anchor="middle">Projects</text>
+            <text x="350" y="137" fill="#6b6880" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">account_id FK → RLS</text>
+
+            <!-- Episodes -->
+            <line x1="350" y1="145" x2="350" y2="175" stroke="rgba(59,130,246,0.4)" stroke-width="1.5" marker-end="url(#arrowOwner)"/>
+            <rect x="260" y="180" width="180" height="45" rx="10" fill="url(#ownerGrad3)" stroke="rgba(6,182,212,0.4)" stroke-width="1.5"/>
+            <text x="350" y="201" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="13" text-anchor="middle">Episodes</text>
+            <text x="350" y="217" fill="#6b6880" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">project_id FK</text>
+
+            <!-- Characters & Locations -->
+            <line x1="260" y1="122" x2="130" y2="122" stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+            <rect x="10" y="100" width="120" height="45" rx="8" fill="url(#ownerGrad2)" stroke="rgba(59,130,246,0.25)" stroke-width="1"/>
+            <text x="70" y="121" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">Characters</text>
+            <text x="70" y="137" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">project_id FK</text>
+
+            <line x1="260" y1="130" x2="130" y2="180" stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+            <rect x="10" y="160" width="120" height="45" rx="8" fill="url(#ownerGrad2)" stroke="rgba(59,130,246,0.25)" stroke-width="1"/>
+            <text x="70" y="181" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">Locations</text>
+            <text x="70" y="197" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">project_id FK</text>
+
+            <!-- Shots & Dialogue -->
+            <line x1="440" y1="202" x2="550" y2="142" stroke="rgba(6,182,212,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+            <rect x="550" y="100" width="130" height="45" rx="8" fill="url(#ownerGrad3)" stroke="rgba(6,182,212,0.25)" stroke-width="1"/>
+            <text x="615" y="121" fill="#67e8f9" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">Shots</text>
+            <text x="615" y="137" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">episode_id FK</text>
+
+            <line x1="440" y1="210" x2="550" y2="200" stroke="rgba(6,182,212,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+            <rect x="550" y="160" width="130" height="45" rx="8" fill="url(#ownerGrad3)" stroke="rgba(6,182,212,0.25)" stroke-width="1"/>
+            <text x="615" y="181" fill="#67e8f9" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">Dialogue</text>
+            <text x="615" y="197" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">episode_id FK</text>
+
+            <!-- Memberships label -->
+            <rect x="500" y="15" width="180" height="50" rx="10" fill="url(#ownerGrad1)" stroke="rgba(139,92,246,0.25)" stroke-width="1"/>
+            <text x="590" y="36" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">Memberships</text>
+            <text x="590" y="53" fill="#6b6880" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">user ↔ team + role</text>
+            <line x1="440" y1="40" x2="500" y2="40" stroke="rgba(139,92,246,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+          </svg>
+        </div>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ RLS Is Non-Negotiable</div>
+          <p>Every table with user data uses Supabase Row Level Security. Policies check <code>auth.uid()</code> against the ownership chain: User → Account → Project → Episode → Shots. If you skip RLS, any authenticated user can read any data.</p>
+        </div>
+
+        <!-- ═══ Section 5: Request Flow ═══ -->
+        <h2>Request Flow</h2>
+        <p>Here's how a typical request flows through the system — from the user clicking "Generate Story" in their browser to receiving the result back via WebSocket:</p>
+
+        <!-- SVG Diagram: Request Flow -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 720 300" xmlns="http://www.w3.org/2000/svg" style="max-width: 700px;">
+            <defs>
+              <linearGradient id="flowGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.18)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.04)"/>
+              </linearGradient>
+              <linearGradient id="flowGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.18)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.04)"/>
+              </linearGradient>
+              <linearGradient id="flowGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.18)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.04)"/>
+              </linearGradient>
+              <linearGradient id="flowGrad4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(245,158,11,0.18)"/>
+                <stop offset="100%" stop-color="rgba(245,158,11,0.04)"/>
+              </linearGradient>
+              <linearGradient id="flowGrad5" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(16,185,129,0.18)"/>
+                <stop offset="100%" stop-color="rgba(16,185,129,0.04)"/>
+              </linearGradient>
+              <marker id="arrowFlow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(139,92,246,0.5)"/>
+              </marker>
+              <marker id="arrowFlowBlue" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(59,130,246,0.5)"/>
+              </marker>
+              <marker id="arrowFlowAmber" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(245,158,11,0.5)"/>
+              </marker>
+              <marker id="arrowFlowGreen" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                <polygon points="0 0, 8 3, 0 6" fill="rgba(16,185,129,0.5)"/>
+              </marker>
+            </defs>
+
+            <!-- Row 1: Synchronous path -->
+            <text x="20" y="25" fill="#9a97b0" font-family="Outfit, sans-serif" font-weight="600" font-size="11">SYNCHRONOUS PATH</text>
+
+            <!-- Browser -->
+            <rect x="20" y="38" width="100" height="50" rx="10" fill="url(#flowGrad1)" stroke="rgba(139,92,246,0.4)" stroke-width="1.5"/>
+            <text x="70" y="58" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">🌐 Browser</text>
+            <text x="70" y="76" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">React Client</text>
+
+            <line x1="120" y1="63" x2="155" y2="63" stroke="rgba(139,92,246,0.5)" stroke-width="1.5" marker-end="url(#arrowFlow)"/>
+
+            <!-- Next.js Server -->
+            <rect x="160" y="38" width="130" height="50" rx="10" fill="url(#flowGrad2)" stroke="rgba(59,130,246,0.4)" stroke-width="1.5"/>
+            <text x="225" y="58" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">⚡ Next.js</text>
+            <text x="225" y="76" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Server Action</text>
+
+            <line x1="290" y1="63" x2="325" y2="63" stroke="rgba(59,130,246,0.5)" stroke-width="1.5" marker-end="url(#arrowFlowBlue)"/>
+
+            <!-- Supabase -->
+            <rect x="330" y="38" width="120" height="50" rx="10" fill="url(#flowGrad5)" stroke="rgba(16,185,129,0.4)" stroke-width="1.5"/>
+            <text x="390" y="58" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">🗄️ Supabase</text>
+            <text x="390" y="76" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">PostgreSQL + RLS</text>
+
+            <!-- Row 2: Async path -->
+            <text x="20" y="130" fill="#9a97b0" font-family="Outfit, sans-serif" font-weight="600" font-size="11">ASYNC PATH (long-running AI tasks)</text>
+
+            <!-- Server Action enqueues -->
+            <rect x="160" y="143" width="130" height="50" rx="10" fill="url(#flowGrad2)" stroke="rgba(59,130,246,0.4)" stroke-width="1.5"/>
+            <text x="225" y="163" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">📤 Enqueue</text>
+            <text x="225" y="181" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">SQS Message</text>
+
+            <line x1="225" y1="88" x2="225" y2="143" stroke="rgba(59,130,246,0.3)" stroke-width="1" stroke-dasharray="4,4"/>
+
+            <line x1="290" y1="168" x2="325" y2="168" stroke="rgba(245,158,11,0.5)" stroke-width="1.5" marker-end="url(#arrowFlowAmber)"/>
+
+            <!-- SQS Queue -->
+            <rect x="330" y="143" width="120" height="50" rx="10" fill="url(#flowGrad4)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+            <text x="390" y="163" fill="#fbbf24" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">📬 SQS</text>
+            <text x="390" y="181" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Job Queue</text>
+
+            <line x1="450" y1="168" x2="485" y2="168" stroke="rgba(245,158,11,0.5)" stroke-width="1.5" marker-end="url(#arrowFlowAmber)"/>
+
+            <!-- Lambda -->
+            <rect x="490" y="143" width="100" height="50" rx="10" fill="url(#flowGrad4)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+            <text x="540" y="163" fill="#fbbf24" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">λ Lambda</text>
+            <text x="540" y="181" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Worker</text>
+
+            <line x1="590" y1="168" x2="615" y2="168" stroke="rgba(245,158,11,0.5)" stroke-width="1.5" marker-end="url(#arrowFlowAmber)"/>
+
+            <!-- LLM -->
+            <rect x="620" y="143" width="80" height="50" rx="10" fill="url(#flowGrad3)" stroke="rgba(6,182,212,0.4)" stroke-width="1.5"/>
+            <text x="660" y="163" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">🤖 LLM</text>
+            <text x="660" y="181" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">Gemini</text>
+
+            <!-- Return path via WebSocket -->
+            <text x="20" y="235" fill="#9a97b0" font-family="Outfit, sans-serif" font-weight="600" font-size="11">RETURN PATH</text>
+
+            <rect x="490" y="220" width="100" height="50" rx="10" fill="url(#flowGrad5)" stroke="rgba(16,185,129,0.4)" stroke-width="1.5"/>
+            <text x="540" y="240" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="12" text-anchor="middle">🔌 WS</text>
+            <text x="540" y="258" fill="#6b6880" font-family="Inter, sans-serif" font-size="9" text-anchor="middle">WebSocket</text>
+
+            <line x1="540" y1="193" x2="540" y2="220" stroke="rgba(16,185,129,0.4)" stroke-width="1.5" marker-end="url(#arrowFlowGreen)"/>
+
+            <line x1="490" y1="245" x2="125" y2="245" stroke="rgba(16,185,129,0.4)" stroke-width="1.5" stroke-dasharray="6,3"/>
+            <line x1="125" y1="245" x2="70" y2="88" stroke="rgba(16,185,129,0.4)" stroke-width="1.5" marker-end="url(#arrowFlowGreen)"/>
+
+            <text x="300" y="275" fill="#6b6880" font-family="Inter, sans-serif" font-size="10" text-anchor="middle">Result pushed back to browser in real-time</text>
+          </svg>
+        </div>
+
+        <p>Short operations (CRUD, data fetches) use the synchronous path. Long-running AI tasks (story generation, shot lists) use the async path — the browser gets instant feedback via WebSocket while the Lambda crunches tokens in the background.</p>
+
+        <!-- ═══ Section 6: Key Design Decisions ═══ -->
+        <h2>Key Design Decisions</h2>
+        <p>Major architectural choices and why they were made:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">📦</div>
+              <div>
+                <div class="card-title">Turborepo Monorepo</div>
+                <div class="card-subtitle">Build system</div>
+              </div>
+            </div>
+            <p>Parallel builds, shared TypeScript configs, and Turborepo's remote caching give near-instant CI for unchanged packages. One <code>pnpm dev</code> boots the entire system.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">⚡</div>
+              <div>
+                <div class="card-title">Server Actions over API Routes</div>
+                <div class="card-subtitle">Data mutations</div>
+              </div>
+            </div>
+            <p>Type-safe end-to-end with Zod validation. Collocated with the UI that calls them. No manual <code>fetch()</code> boilerplate. Built-in CSRF protection from Next.js.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🗃️</div>
+              <div>
+                <div class="card-title">JSONB over Normalized Tables</div>
+                <div class="card-subtitle">story_data, screenplay_data</div>
+              </div>
+            </div>
+            <p>Story structures evolve faster than SQL schemas. Using JSONB columns for <code>story_data</code> and <code>screenplay_data</code> means new fields ship without migrations. Zod validates the shape in code.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🔌</div>
+              <div>
+                <div class="card-title">Provider Abstraction</div>
+                <div class="card-subtitle">@kit/providers-* packages</div>
+              </div>
+            </div>
+            <p>Every external service (DB, storage, email, queue, cache) is wrapped in an abstract interface. Switch from Supabase Storage to S3 by changing one env var — zero code changes.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">📝</div>
+              <div>
+                <div class="card-title">JSON Prompt Templates</div>
+                <div class="card-subtitle">Editable without deploys</div>
+              </div>
+            </div>
+            <p>LLM prompts live in <code>.json</code> files with variable placeholders. Product teams can tweak prompt wording, scoring rubrics, and constraints without touching TypeScript or triggering a deploy.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🏗️</div>
+              <div>
+                <div class="card-title">SST for Infrastructure</div>
+                <div class="card-subtitle">sst.config.ts</div>
+              </div>
+            </div>
+            <p>All AWS resources (Lambda, SQS, S3, CloudFront, WebSocket API) defined in a single TypeScript file. Type-safe infrastructure that deploys with <code>npx sst deploy</code>.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 7: Technology Choices ═══ -->
+        <h2>Technology Choices</h2>
+        <p>The full technology stack, from framework to infrastructure:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Layer</th>
+              <th>Technology</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Framework</strong></td>
+              <td><code>Next.js 15</code> (App Router)</td>
+              <td>Server Components, Server Actions, streaming, RSC — the full modern React stack</td>
+            </tr>
+            <tr>
+              <td><strong>Language</strong></td>
+              <td><code>TypeScript</code> (strict)</td>
+              <td>End-to-end type safety from database types to React props</td>
+            </tr>
+            <tr>
+              <td><strong>Styling</strong></td>
+              <td><code>Tailwind CSS 4</code> + Shadcn UI</td>
+              <td>Utility-first CSS with pre-built accessible components. Design system consistency.</td>
+            </tr>
+            <tr>
+              <td><strong>Database</strong></td>
+              <td><code>Supabase PostgreSQL</code></td>
+              <td>Managed Postgres with built-in RLS, real-time subscriptions, and connection pooling</td>
+            </tr>
+            <tr>
+              <td><strong>Auth</strong></td>
+              <td><code>Supabase Auth</code></td>
+              <td>OAuth, MFA, magic links — all built-in. JWT tokens integrate with RLS policies.</td>
+            </tr>
+            <tr>
+              <td><strong>Hosting</strong></td>
+              <td><code>AWS Lambda</code> via SST</td>
+              <td>Pay-per-invocation, auto-scaling, OpenNext adapter for full Next.js compatibility</td>
+            </tr>
+            <tr>
+              <td><strong>AI</strong></td>
+              <td><code>Vercel AI SDK</code> + Gemini</td>
+              <td>Unified interface for multiple LLM providers. <code>generateObject()</code> for structured output.</td>
+            </tr>
+            <tr>
+              <td><strong>Monorepo</strong></td>
+              <td><code>Turborepo</code> + <code>pnpm</code></td>
+              <td>Parallel task execution, remote caching, workspace protocol for internal packages</td>
+            </tr>
+            <tr>
+              <td><strong>Queue</strong></td>
+              <td><code>AWS SQS</code></td>
+              <td>Serverless message queue. ~$1/month for typical usage. Decouples AI tasks from request lifecycle.</td>
+            </tr>
+            <tr>
+              <td><strong>Cache</strong></td>
+              <td><code>Upstash Redis</code></td>
+              <td>Serverless Redis with HTTP API. 10K commands/day free tier. Used for rate limiting and session data.</td>
+            </tr>
+            <tr>
+              <td><strong>Email</strong></td>
+              <td><code>Resend</code></td>
+              <td>React Email templates + Resend delivery. 3K emails/month free. Scales to SES for production.</td>
+            </tr>
+            <tr>
+              <td><strong>Testing</strong></td>
+              <td><code>Vitest</code> + <code>Playwright</code></td>
+              <td>Vitest for unit/integration (fast, Vite-native). Playwright for E2E browser tests.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="index.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Home</span>
+          </a>
+          <a href="pipeline-overview.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Pipeline Overview</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

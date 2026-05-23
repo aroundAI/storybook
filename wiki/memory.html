@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Memory &amp; Continuity System — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Memory &amp; Continuity</div>
+          <h1 class="page-title">🧠 Memory &amp; Continuity System</h1>
+          <p class="page-subtitle">
+            How the app remembers everything across episodes: the Canon Management System, memory context builder, and continuity validator.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            Imagine you're telling a bedtime story every night. You need to remember who's alive, who's friends, what secrets were revealed, and what's still a mystery. If you forget and bring back a character who died, the story breaks! This system is like a <strong>"memory notebook"</strong> that keeps track of everything — and tells the AI what it absolutely cannot contradict.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: The 3 Layers of Canon ═══ -->
+        <h2>The 3 Layers of Canon</h2>
+        <p>Not all facts are created equal. The Canon Management System classifies every piece of narrative truth into one of three layers, each with different persistence and enforcement rules.</p>
+
+        <!-- SVG Diagram: 3-Layer Canon -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 400" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="canonGradA" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(239,68,68,0.2)"/>
+                <stop offset="100%" stop-color="rgba(239,68,68,0.05)"/>
+              </linearGradient>
+              <linearGradient id="canonGradB" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(245,158,11,0.2)"/>
+                <stop offset="100%" stop-color="rgba(245,158,11,0.05)"/>
+              </linearGradient>
+              <linearGradient id="canonGradC" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(107,114,128,0.15)"/>
+                <stop offset="100%" stop-color="rgba(107,114,128,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Layer A -->
+            <rect x="30" y="20" width="640" height="100" rx="12" fill="url(#canonGradA)" stroke="rgba(239,68,68,0.4)" stroke-width="2"/>
+            <text x="60" y="48" fill="#fca5a5" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER A — IMMUTABLE CANON 🔒</text>
+            <text x="60" y="70" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">Deaths, public revelations, relationship breakpoints, world rule changes.</text>
+            <text x="60" y="88" fill="#ef4444" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">NEVER violated. Enforced by continuity validator as hard errors.</text>
+            <text x="60" y="106" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">✅ Injected every generation</text>
+
+            <!-- Layer B -->
+            <rect x="30" y="140" width="640" height="100" rx="12" fill="url(#canonGradB)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+            <text x="60" y="168" fill="#fcd34d" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER B — SOFT CANON ⚡</text>
+            <text x="60" y="190" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">Motivations, trust levels, long-term goals, emotional scars.</text>
+            <text x="60" y="208" fill="#f59e0b" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">Can evolve forward, NEVER reverse. Must follow Change Authorization.</text>
+            <text x="60" y="226" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">✅ Injected every generation</text>
+
+            <!-- Layer C -->
+            <rect x="30" y="260" width="640" height="100" rx="12" fill="url(#canonGradC)" stroke="rgba(107,114,128,0.3)" stroke-width="1"/>
+            <text x="60" y="288" fill="#9ca3af" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER C — EPHEMERAL DETAILS 💨</text>
+            <text x="60" y="310" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">Minor dialogue, one-off locations, trivial props, throwaway jokes.</text>
+            <text x="60" y="328" fill="#6b7280" font-family="JetBrains Mono, monospace" font-size="11" font-weight="600">Rarely referenced. Natural decay over episodes.</text>
+            <text x="60" y="346" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">❌ NOT injected — saves token budget for what matters</text>
+
+            <!-- Bracket: "Injected" -->
+            <line x1="685" y1="30" x2="695" y2="30" stroke="rgba(139,92,246,0.5)" stroke-width="2"/>
+            <line x1="695" y1="30" x2="695" y2="230" stroke="rgba(139,92,246,0.5)" stroke-width="2"/>
+            <line x1="685" y1="230" x2="695" y2="230" stroke="rgba(139,92,246,0.5)" stroke-width="2"/>
+            <text x="690" y="375" fill="#a78bfa" font-family="Outfit, sans-serif" font-weight="600" font-size="10" text-anchor="middle" transform="rotate(-90, 700, 135)">A + B INJECTED</text>
+          </svg>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why Only A + B?</div>
+          <p>Token budgets are finite (6,000 tokens for memory). Layer C details like "Dante sneezed in Episode 3" would waste precious context that should be spent on facts the AI <em>cannot</em> get wrong. The system aggressively prioritizes high-impact canon over flavor text.</p>
+        </div>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🔒</div>
+              <div>
+                <div class="card-title">Layer A Examples</div>
+                <div class="card-subtitle">Immutable — hard errors if violated</div>
+              </div>
+            </div>
+            <ul>
+              <li>Professor Whiskers died in Ep 12</li>
+              <li>Dante learned Luna's secret identity</li>
+              <li>The Treehouse Lab was destroyed</li>
+              <li>Time travel is impossible in this world</li>
+            </ul>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">⚡</div>
+              <div>
+                <div class="card-title">Layer B Examples</div>
+                <div class="card-subtitle">Evolves forward, never reverses</div>
+              </div>
+            </div>
+            <ul>
+              <li>Dante's trust in adults: <code>low → medium</code></li>
+              <li>Luna's goal: "find her missing brother"</li>
+              <li>Emotional scar: betrayal by best friend</li>
+              <li>Motivation: prove he's not "just a kid"</li>
+            </ul>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">💨</div>
+              <div>
+                <div class="card-title">Layer C Examples</div>
+                <div class="card-subtitle">Ephemeral — not tracked</div>
+              </div>
+            </div>
+            <ul>
+              <li>"Dante's favorite lunch is PB&J"</li>
+              <li>Background character at the park</li>
+              <li>Specific joke from Episode 3</li>
+              <li>Color of a one-time prop</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ═══ Section 3: Database Tables ═══ -->
+        <h2>Database Tables</h2>
+        <p>The canon management system is backed by 6 specialized Postgres tables. Together they form a complete audit trail of every narrative fact, character state change, and world event across the entire series.</p>
+
+        <h3>1. <code>immutable_events</code></h3>
+        <p>Layer A canon. Once written, these rows are <strong>never updated or deleted</strong>. The continuity validator checks every generation against this table.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>project_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → projects</td>
+            </tr>
+            <tr>
+              <td><code>event_type</code></td>
+              <td><code>enum</code></td>
+              <td><code>death</code> | <code>world_fact</code> | <code>relationship</code> | <code>timeline</code> | <code>ability_loss</code></td>
+            </tr>
+            <tr>
+              <td><code>event_key</code></td>
+              <td><code>text</code></td>
+              <td>Unique identifier e.g. <code>"character:whiskers:death"</code></td>
+            </tr>
+            <tr>
+              <td><code>description</code></td>
+              <td><code>text</code></td>
+              <td>Human-readable description of the event</td>
+            </tr>
+            <tr>
+              <td><code>season</code></td>
+              <td><code>integer</code></td>
+              <td>Season number when event occurred</td>
+            </tr>
+            <tr>
+              <td><code>episode_number</code></td>
+              <td><code>integer</code></td>
+              <td>Episode number when event occurred</td>
+            </tr>
+            <tr>
+              <td><code>created_at</code></td>
+              <td><code>timestamptz</code></td>
+              <td>When the event was recorded</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>2. <code>character_states</code></h3>
+        <p>Layer B canon. <strong>Append-only</strong> — new rows are added for each state transition, linked via <code>previous_state_id</code> to form a chain. This creates a full history of how each character evolves.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>character_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → project_characters</td>
+            </tr>
+            <tr>
+              <td><code>state_type</code></td>
+              <td><code>enum</code></td>
+              <td><code>emotional</code> | <code>physical</code> | <code>relationship</code> | <code>knowledge</code> | <code>ability</code> | <code>location</code> | <code>goal</code></td>
+            </tr>
+            <tr>
+              <td><code>state_value</code></td>
+              <td><code>jsonb</code></td>
+              <td>Structured state data e.g. <code>{"mood": "determined", "intensity": 0.8}</code></td>
+            </tr>
+            <tr>
+              <td><code>trigger_event</code></td>
+              <td><code>text</code></td>
+              <td>What caused this state change</td>
+            </tr>
+            <tr>
+              <td><code>cost</code></td>
+              <td><code>text</code></td>
+              <td>What was irreversibly lost (Change Authorization requirement)</td>
+            </tr>
+            <tr>
+              <td><code>new_constraints</code></td>
+              <td><code>text[]</code></td>
+              <td>New narrative constraints imposed by this change</td>
+            </tr>
+            <tr>
+              <td><code>previous_state_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → character_states (self-referencing chain)</td>
+            </tr>
+            <tr>
+              <td><code>episode_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → episodes</td>
+            </tr>
+            <tr>
+              <td><code>created_at</code></td>
+              <td><code>timestamptz</code></td>
+              <td>When this state was recorded</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>3. <code>narrative_threads</code></h3>
+        <p>Tracks every ongoing storyline — open mysteries, character arcs, romantic subplots. Each thread records its <strong>promises</strong> (what was set up) and <strong>payoffs</strong> (what was resolved), preventing dangling plotlines.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>project_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → projects</td>
+            </tr>
+            <tr>
+              <td><code>thread_name</code></td>
+              <td><code>text</code></td>
+              <td>e.g. "Mystery of the Golden Key"</td>
+            </tr>
+            <tr>
+              <td><code>thread_type</code></td>
+              <td><code>enum</code></td>
+              <td><code>plot</code> | <code>character</code> | <code>mystery</code> | <code>romantic</code> | <code>conflict</code> | <code>thematic</code></td>
+            </tr>
+            <tr>
+              <td><code>status</code></td>
+              <td><code>enum</code></td>
+              <td><code>open</code> | <code>progressed</code> | <code>resolved</code> | <code>abandoned</code></td>
+            </tr>
+            <tr>
+              <td><code>promises</code></td>
+              <td><code>text[]</code></td>
+              <td>Setup elements that need eventual payoff</td>
+            </tr>
+            <tr>
+              <td><code>payoffs</code></td>
+              <td><code>text[]</code></td>
+              <td>Resolved promises with episode references</td>
+            </tr>
+            <tr>
+              <td><code>episodes_touched</code></td>
+              <td><code>integer[]</code></td>
+              <td>Episode numbers where this thread appears</td>
+            </tr>
+            <tr>
+              <td><code>created_at</code></td>
+              <td><code>timestamptz</code></td>
+              <td>When the thread was created</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>4. <code>world_states</code></h3>
+        <p>Captures the current state of the story world — where things are, what time it is, what conflicts are active. Updated after each episode.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>project_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → projects</td>
+            </tr>
+            <tr>
+              <td><code>location</code></td>
+              <td><code>text</code></td>
+              <td>Primary location for this world state</td>
+            </tr>
+            <tr>
+              <td><code>time_period</code></td>
+              <td><code>text</code></td>
+              <td>In-universe timeline e.g. "3 months after the fire"</td>
+            </tr>
+            <tr>
+              <td><code>active_conflicts</code></td>
+              <td><code>text[]</code></td>
+              <td>Currently unresolved world-level tensions</td>
+            </tr>
+            <tr>
+              <td><code>atmosphere</code></td>
+              <td><code>text</code></td>
+              <td>Overall mood/tone of the world right now</td>
+            </tr>
+            <tr>
+              <td><code>constraints</code></td>
+              <td><code>text[]</code></td>
+              <td>Hard restrictions on what can happen</td>
+            </tr>
+            <tr>
+              <td><code>episode_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → episodes (snapshot per episode)</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>5. <code>episode_summaries</code></h3>
+        <p>Compressed summaries of each episode, used by the memory context builder to give the LLM a "previously on…" window without exceeding the token budget.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>episode_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → episodes</td>
+            </tr>
+            <tr>
+              <td><code>plot_summary</code></td>
+              <td><code>text</code></td>
+              <td>2–3 sentence plot overview</td>
+            </tr>
+            <tr>
+              <td><code>key_events</code></td>
+              <td><code>text[]</code></td>
+              <td>Major plot points affecting future episodes</td>
+            </tr>
+            <tr>
+              <td><code>character_changes</code></td>
+              <td><code>jsonb</code></td>
+              <td>Map of character → state changes this episode</td>
+            </tr>
+            <tr>
+              <td><code>sentiment_score</code></td>
+              <td><code>float</code></td>
+              <td>Emotional tone 0.0 (dark) → 1.0 (uplifting)</td>
+            </tr>
+            <tr>
+              <td><code>created_at</code></td>
+              <td><code>timestamptz</code></td>
+              <td>When this summary was generated</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>6. <code>state_deltas</code></h3>
+        <p>The audit trail. Every change to character or world state generates a delta record that captures the before/after and the reason. This enables debugging "why did the AI think X was true?"</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Column</th>
+              <th>Type</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>id</code></td>
+              <td><code>uuid</code></td>
+              <td>Primary key</td>
+            </tr>
+            <tr>
+              <td><code>entity_type</code></td>
+              <td><code>enum</code></td>
+              <td><code>character</code> | <code>world</code> | <code>thread</code></td>
+            </tr>
+            <tr>
+              <td><code>entity_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → the changed entity</td>
+            </tr>
+            <tr>
+              <td><code>before_state</code></td>
+              <td><code>jsonb</code></td>
+              <td>Snapshot of the entity before the change</td>
+            </tr>
+            <tr>
+              <td><code>after_state</code></td>
+              <td><code>jsonb</code></td>
+              <td>Snapshot of the entity after the change</td>
+            </tr>
+            <tr>
+              <td><code>change_reason</code></td>
+              <td><code>text</code></td>
+              <td>Why this change happened (links to trigger event)</td>
+            </tr>
+            <tr>
+              <td><code>episode_id</code></td>
+              <td><code>uuid</code></td>
+              <td>FK → episodes</td>
+            </tr>
+            <tr>
+              <td><code>created_at</code></td>
+              <td><code>timestamptz</code></td>
+              <td>When the delta was recorded</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ═══ Section 4: Memory Context Builder ═══ -->
+        <h2>Memory Context Builder</h2>
+        <p>The Memory Context Builder is the bridge between the database and the LLM prompt. It loads all relevant canon data, compresses it to fit within a strict token budget, and formats it as structured text that the AI can parse reliably.</p>
+
+        <div class="callout warning">
+          <div class="callout-title">⚠️ Token Budget: 6,000 of 40,000</div>
+          <p>Memory context gets exactly <strong>15% of the total 40K token context window</strong> = 6,000 tokens. This is a hard ceiling — exceeding it would crowd out the actual story generation instructions. The budget is distributed across categories to ensure balanced coverage.</p>
+        </div>
+
+        <h3>Token Budget Allocation</h3>
+
+        <!-- SVG: Token Budget Bars -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 250" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <!-- Immutable Events: 35% -->
+            <text x="30" y="35" fill="#fca5a5" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Immutable Events</text>
+            <text x="630" y="35" fill="#fca5a5" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">35% — 2,100 tokens</text>
+            <rect x="30" y="42" width="630" height="16" rx="4" fill="rgba(239,68,68,0.1)" stroke="rgba(239,68,68,0.2)" stroke-width="1"/>
+            <rect x="30" y="42" width="220" height="16" rx="4" fill="rgba(239,68,68,0.5)"/>
+
+            <!-- Character States: 25% -->
+            <text x="30" y="85" fill="#fcd34d" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Character States</text>
+            <text x="630" y="85" fill="#fcd34d" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">25% — 1,500 tokens</text>
+            <rect x="30" y="92" width="630" height="16" rx="4" fill="rgba(245,158,11,0.1)" stroke="rgba(245,158,11,0.2)" stroke-width="1"/>
+            <rect x="30" y="92" width="157" height="16" rx="4" fill="rgba(245,158,11,0.5)"/>
+
+            <!-- Narrative Threads: 15% -->
+            <text x="30" y="135" fill="#a78bfa" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Narrative Threads</text>
+            <text x="630" y="135" fill="#a78bfa" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">15% — 900 tokens</text>
+            <rect x="30" y="142" width="630" height="16" rx="4" fill="rgba(139,92,246,0.1)" stroke="rgba(139,92,246,0.2)" stroke-width="1"/>
+            <rect x="30" y="142" width="95" height="16" rx="4" fill="rgba(139,92,246,0.5)"/>
+
+            <!-- Episode Summaries: 15% -->
+            <text x="30" y="185" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="600" font-size="12">Episode Summaries</text>
+            <text x="630" y="185" fill="#67e8f9" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">15% — 900 tokens</text>
+            <rect x="30" y="192" width="630" height="16" rx="4" fill="rgba(6,182,212,0.1)" stroke="rgba(6,182,212,0.2)" stroke-width="1"/>
+            <rect x="30" y="192" width="95" height="16" rx="4" fill="rgba(6,182,212,0.5)"/>
+
+            <!-- World States: 10% -->
+            <text x="30" y="235" fill="#86efac" font-family="Outfit, sans-serif" font-weight="600" font-size="12">World States</text>
+            <text x="630" y="235" fill="#86efac" font-family="JetBrains Mono, monospace" font-size="11" text-anchor="end">10% — 600 tokens</text>
+            <rect x="30" y="242" width="630" height="16" rx="4" fill="rgba(34,197,94,0.1)" stroke="rgba(34,197,94,0.2)" stroke-width="1"/>
+            <rect x="30" y="242" width="63" height="16" rx="4" fill="rgba(34,197,94,0.5)"/>
+          </svg>
+        </div>
+
+        <h3>How It Works</h3>
+        <p><code>buildMemoryContext()</code> loads all 5 data sources in parallel using <code>Promise.all()</code>, then each category is compressed and truncated to fit its budget slice:</p>
+
+<pre><code><span class="cm">// Simplified implementation</span>
+<span class="kw">async function</span> <span class="fn">buildMemoryContext</span>(projectId: <span class="type">string</span>, episodeNumber: <span class="type">number</span>) {
+  <span class="kw">const</span> [
+    immutableEvents,
+    characterStates,
+    worldStates,
+    narrativeThreads,
+    episodeSummaries
+  ] = <span class="kw">await</span> <span class="fn">Promise.all</span>([
+    <span class="fn">loadImmutableEvents</span>(projectId),
+    <span class="fn">loadLatestCharacterStates</span>(projectId),
+    <span class="fn">loadCurrentWorldState</span>(projectId),
+    <span class="fn">loadActiveThreads</span>(projectId),
+    <span class="fn">loadRecentSummaries</span>(projectId, episodeNumber, <span class="num">5</span>)
+  ]);
+
+  <span class="kw">return</span> <span class="fn">formatMemoryContextForPrompt</span>({
+    immutableEvents,   <span class="cm">// budget: 2,100 tokens</span>
+    characterStates,   <span class="cm">// budget: 1,500 tokens</span>
+    worldStates,       <span class="cm">// budget:   600 tokens</span>
+    narrativeThreads,  <span class="cm">// budget:   900 tokens</span>
+    episodeSummaries   <span class="cm">// budget:   900 tokens</span>
+  });
+}</code></pre>
+
+        <h3>Formatted Output Example</h3>
+        <p><code>formatMemoryContextForPrompt()</code> produces structured markdown that gets injected directly into the LLM system prompt:</p>
+
+        <div class="data-example">
+          <p>For <strong>"Little Detective Dante"</strong> Episode 6, the memory context looks like:</p>
+<pre><code><span class="cm">## IMMUTABLE CANON (Cannot be contradicted)</span>
+- [DEATH] Professor Whiskers died in Episode 5 (S1E5)
+- [WORLD_FACT] Time travel does not exist in this universe
+- [RELATIONSHIP] Dante and Luna are NOT romantically involved
+- [ABILITY_LOSS] Luna lost her ability to read ancient scripts
+
+<span class="cm">## ACTIVE NARRATIVE THREADS</span>
+- Mystery of the Golden Key (plot): <span class="str">open</span>
+  Promises: ["Key was shown in Ep 2", "Glows near old buildings"]
+  Payoffs: []
+- Luna's Search for Her Brother (character): <span class="str">progressed</span>
+  Promises: ["Brother mentioned in Ep 1"]
+  Payoffs: ["Found brother's journal in Ep 4"]
+
+<span class="cm">## CHARACTER STATES</span>
+- <span class="str">Dante</span>: emotional: {mood: "determined", intensity: 0.8}
+  Trigger: "Solved the telescope case, gained confidence"
+- <span class="str">Luna</span>: emotional: {mood: "anxious", intensity: 0.6}
+  Trigger: "Brother's journal mentioned danger"
+- <span class="str">Dante→Luna</span>: relationship: {trust: "high", dynamic: "protective"}
+
+<span class="cm">## WORLD STATE</span>
+Location: Treehouse Lab. Time: After school, autumn.
+Atmosphere: Cozy but tense — the Golden Key mystery looms.
+Active conflicts: ["Golden Key origin unknown", "Strange lights near park"]
+
+<span class="cm">## RECENT EPISODE SUMMARIES</span>
+- Ep5: Dante solved the missing telescope case. Professor Whiskers
+  died protecting the clue. Sentiment: 0.3 (somber)
+- Ep4: Luna found her brother's journal in the library clock tower.
+  The journal mentions "the key that opens everything." Sentiment: 0.6
+- Ep3: The Great Lunchbox Swap — lighthearted mystery. Sentiment: 0.9</code></pre>
+        </div>
+
+        <!-- ═══ Section 5: Content-Type Memory Strategies ═══ -->
+        <h2>Content-Type Memory Strategies</h2>
+        <p>Different content types demand different memory approaches. A 12-episode series needs deep continuity tracking; a standalone ad only needs a single scene's context. The system adapts automatically based on the project's content type.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Content Type</th>
+              <th>Memory Horizon</th>
+              <th>Decay Pattern</th>
+              <th>Focus</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Short Film</strong></td>
+              <td>Single episode</td>
+              <td>No decay — everything retained</td>
+              <td>Internal consistency only; no cross-episode tracking</td>
+            </tr>
+            <tr>
+              <td><strong>Series</strong></td>
+              <td>Full season + previous season summaries</td>
+              <td>Gradual — older episodes compressed more aggressively</td>
+              <td>Character arcs, plot threads, immutable events</td>
+            </tr>
+            <tr>
+              <td><strong>Documentary</strong></td>
+              <td>Full project</td>
+              <td>No decay — factual accuracy critical</td>
+              <td>Facts, dates, names, source attributions</td>
+            </tr>
+            <tr>
+              <td><strong>Educational</strong></td>
+              <td>Current module + prerequisites</td>
+              <td>Module-boundary decay — old modules summarized</td>
+              <td>Concept dependencies, learning progression, terminology consistency</td>
+            </tr>
+            <tr>
+              <td><strong>Ad</strong></td>
+              <td>Single scene</td>
+              <td>N/A — no history</td>
+              <td>Brand voice, product facts, legal constraints</td>
+            </tr>
+            <tr>
+              <td><strong>News</strong></td>
+              <td>24-hour window</td>
+              <td>Aggressive — stale news replaced entirely</td>
+              <td>Breaking facts, corrections, source freshness</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ═══ Section 6: Continuity Validator ═══ -->
+        <h2>Continuity Validator</h2>
+        <p>The Continuity Validator runs <strong>after every LLM generation</strong>, scanning the output for canon violations before the content is stored. It operates as a rule engine with 9 validation rules, each targeting a specific class of continuity error.</p>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ Errors Block Output — Warnings Flag for Review</div>
+          <p>If any <code>error</code>-level rule fires, the generated content is <strong>rejected</strong> and the LLM is re-prompted with the violation details. <code>warning</code> rules flag content for human review. <code>info</code> rules are logged for analytics only.</p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Rule ID</th>
+              <th>Name</th>
+              <th>Severity</th>
+              <th>Detects</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>CANON_001</code></td>
+              <td>Resurrection</td>
+              <td><span style="color: #ef4444; font-weight: 600;">error</span></td>
+              <td>Dead character appears alive or acts in the scene</td>
+            </tr>
+            <tr>
+              <td><code>CANON_002</code></td>
+              <td>State Reversal</td>
+              <td><span style="color: #ef4444; font-weight: 600;">error</span></td>
+              <td>Character state reverts to a previous value without authorization</td>
+            </tr>
+            <tr>
+              <td><code>CANON_003</code></td>
+              <td>Knowledge Violation</td>
+              <td><span style="color: #f59e0b; font-weight: 600;">warning</span></td>
+              <td>Character knows something they haven't learned yet</td>
+            </tr>
+            <tr>
+              <td><code>CANON_004</code></td>
+              <td>Auth Missing</td>
+              <td><span style="color: #f59e0b; font-weight: 600;">warning</span></td>
+              <td>State change lacks Change Authorization (cause + cost + constraint)</td>
+            </tr>
+            <tr>
+              <td><code>CANON_005</code></td>
+              <td>World Contradiction</td>
+              <td><span style="color: #ef4444; font-weight: 600;">error</span></td>
+              <td>Content contradicts established world facts (e.g., using time travel in a no-time-travel world)</td>
+            </tr>
+            <tr>
+              <td><code>CANON_006</code></td>
+              <td>Reference Violation</td>
+              <td><span style="color: #f59e0b; font-weight: 600;">warning</span></td>
+              <td>References a resolved thread as still open, or an abandoned thread as active</td>
+            </tr>
+            <tr>
+              <td><code>CANON_007</code></td>
+              <td>Connectivity Failure</td>
+              <td><span style="color: #3b82f6; font-weight: 600;">info</span></td>
+              <td>Episode doesn't reference or advance any existing narrative thread</td>
+            </tr>
+            <tr>
+              <td><code>CANON_008</code></td>
+              <td>Escalation Overflow</td>
+              <td><span style="color: #f59e0b; font-weight: 600;">warning</span></td>
+              <td>Stakes escalate beyond what the world-state supports (e.g., "alien invasion" in a grounded show)</td>
+            </tr>
+            <tr>
+              <td><code>CANON_009</code></td>
+              <td>Tone Drift</td>
+              <td><span style="color: #3b82f6; font-weight: 600;">info</span></td>
+              <td>Sentiment score deviates more than 0.4 from recent episode average</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="deep-dive">
+          <p>The validator works by comparing the generated content against all loaded memory context. For each rule, it runs a specialized check function:</p>
+
+<pre><code><span class="cm">// Simplified validator pipeline</span>
+<span class="kw">async function</span> <span class="fn">validateContinuity</span>(
+  generatedContent: <span class="type">GeneratedStory</span>,
+  memoryContext: <span class="type">MemoryContext</span>
+): <span class="type">Promise&lt;ValidationResult&gt;</span> {
+  <span class="kw">const</span> violations = [];
+
+  <span class="cm">// Error-level rules — block on failure</span>
+  violations.push(...<span class="fn">checkResurrection</span>(generatedContent, memoryContext.immutableEvents));
+  violations.push(...<span class="fn">checkStateReversal</span>(generatedContent, memoryContext.characterStates));
+  violations.push(...<span class="fn">checkWorldContradiction</span>(generatedContent, memoryContext.worldStates));
+
+  <span class="cm">// Warning-level rules — flag for review</span>
+  violations.push(...<span class="fn">checkKnowledgeViolation</span>(generatedContent, memoryContext.characterStates));
+  violations.push(...<span class="fn">checkAuthMissing</span>(generatedContent));
+  violations.push(...<span class="fn">checkReferenceViolation</span>(generatedContent, memoryContext.narrativeThreads));
+  violations.push(...<span class="fn">checkEscalationOverflow</span>(generatedContent, memoryContext.worldStates));
+
+  <span class="cm">// Info-level rules — log only</span>
+  violations.push(...<span class="fn">checkConnectivity</span>(generatedContent, memoryContext.narrativeThreads));
+  violations.push(...<span class="fn">checkToneDrift</span>(generatedContent, memoryContext.episodeSummaries));
+
+  <span class="kw">const</span> hasErrors = violations.some(v => v.severity === <span class="str">'error'</span>);
+
+  <span class="kw">return</span> {
+    passed: !hasErrors,
+    violations,
+    <span class="cm">// If failed, include violation details for re-prompting</span>
+    repromptContext: hasErrors ? <span class="fn">buildRepromptContext</span>(violations) : <span class="kw">null</span>
+  };
+}</code></pre>
+        </div>
+
+        <!-- ═══ Section 7: LLM Role Orchestrator ═══ -->
+        <h2>LLM Role Orchestrator</h2>
+        <p>Content doesn't flow through a single LLM call. Instead, the system uses a <strong>4-role pipeline</strong> where each role has distinct permissions over canon data. This mirrors a real writers' room: the writer drafts, the editor checks facts, the stylist polishes tone.</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">🗺️</div>
+            <div class="flow-step-title">Planner</div>
+            <div class="flow-step-desc">Outlines structure & arc</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">✍️</div>
+            <div class="flow-step-title">Writer</div>
+            <div class="flow-step-desc">Generates narrative</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔍</div>
+            <div class="flow-step-title">Editor</div>
+            <div class="flow-step-desc">Validates canon</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🎨</div>
+            <div class="flow-step-title">Stylist</div>
+            <div class="flow-step-desc">Polishes tone & voice</div>
+          </div>
+        </div>
+
+        <h3>Role Permissions</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Role</th>
+              <th>Read Canon</th>
+              <th>Write Canon</th>
+              <th>Modify Story</th>
+              <th>Reject Output</th>
+              <th>Responsibility</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>🗺️ Planner</strong></td>
+              <td>✅ Full</td>
+              <td>❌</td>
+              <td>Structure only</td>
+              <td>❌</td>
+              <td>Decides scene order, pacing, arc placement, thread advancement</td>
+            </tr>
+            <tr>
+              <td><strong>✍️ Writer</strong></td>
+              <td>✅ Full</td>
+              <td>✅ Proposes</td>
+              <td>✅ Full</td>
+              <td>❌</td>
+              <td>Generates dialogue, descriptions, action — proposes new canon entries</td>
+            </tr>
+            <tr>
+              <td><strong>🔍 Editor</strong></td>
+              <td>✅ Full</td>
+              <td>✅ Approves/Rejects</td>
+              <td>❌ Read-only</td>
+              <td>✅</td>
+              <td>Runs continuity validator, approves or rejects proposed canon changes</td>
+            </tr>
+            <tr>
+              <td><strong>🎨 Stylist</strong></td>
+              <td>✅ Layer C only</td>
+              <td>❌</td>
+              <td>Surface text only</td>
+              <td>❌</td>
+              <td>Adjusts word choice, sentence rhythm, age-appropriateness — never changes facts</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why Separate Roles?</div>
+          <p>A single LLM call that tries to be creative <em>and</em> fact-check itself performs poorly at both. By splitting responsibilities, each call has a focused objective and a constrained set of permissions. The Editor can't accidentally rewrite the story; the Writer can't approve its own canon changes.</p>
+        </div>
+
+        <!-- ═══ Section 8: Sequel System ═══ -->
+        <h2>Sequel System</h2>
+        <p>When a project is marked as a sequel (e.g., "Dante Movie 2"), it inherits canon from its parent project. This enables franchise-level continuity without duplicating data.</p>
+
+        <!-- SVG: Sequel Inheritance -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 200" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="seqGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.2)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="seqGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.2)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Parent Movie -->
+            <rect x="30" y="50" width="250" height="100" rx="12" fill="url(#seqGrad1)" stroke="rgba(139,92,246,0.4)" stroke-width="1.5"/>
+            <text x="155" y="82" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="13" text-anchor="middle">PARENT PROJECT</text>
+            <text x="155" y="102" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11" text-anchor="middle">"Dante Movie 1"</text>
+            <text x="155" y="120" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">immutable_events: 12 rows</text>
+            <text x="155" y="135" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">character_states: 45 rows</text>
+
+            <!-- Arrow -->
+            <path d="M 290 100 L 400 100" stroke="rgba(139,92,246,0.5)" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrowhead)"/>
+            <text x="345" y="90" fill="#a78bfa" font-family="Outfit, sans-serif" font-weight="600" font-size="10" text-anchor="middle">INHERITS</text>
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="rgba(139,92,246,0.5)"/>
+              </marker>
+            </defs>
+
+            <!-- Sequel Movie -->
+            <rect x="410" y="50" width="250" height="100" rx="12" fill="url(#seqGrad2)" stroke="rgba(6,182,212,0.4)" stroke-width="1.5"/>
+            <text x="535" y="82" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="13" text-anchor="middle">SEQUEL PROJECT</text>
+            <text x="535" y="102" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11" text-anchor="middle">"Dante Movie 2"</text>
+            <text x="535" y="120" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">Parent canon + own canon</text>
+            <text x="535" y="135" fill="#6b6880" font-family="JetBrains Mono, monospace" font-size="10" text-anchor="middle">Merged at build time</text>
+          </svg>
+        </div>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">📥</div>
+              <div>
+                <div class="card-title">What's Inherited</div>
+                <div class="card-subtitle">From parent project</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>All Layer A events</strong> — deaths, world facts (immutable)</li>
+              <li><strong>Final character states</strong> — latest state of each character</li>
+              <li><strong>Open narrative threads</strong> — unresolved plotlines carry forward</li>
+              <li><strong>World state snapshot</strong> — the world as it was at the end</li>
+            </ul>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🚫</div>
+              <div>
+                <div class="card-title">What's NOT Inherited</div>
+                <div class="card-subtitle">Stays with parent</div>
+              </div>
+            </div>
+            <ul>
+              <li><strong>Episode summaries</strong> — sequel starts fresh episode tracking</li>
+              <li><strong>State deltas</strong> — audit trail stays with originating project</li>
+              <li><strong>Resolved threads</strong> — no need to track completed arcs</li>
+              <li><strong>Layer C details</strong> — ephemeral data doesn't transfer</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- ═══ Section 9: Change Authorization ═══ -->
+        <h2>Change Authorization</h2>
+        <p>Not every state change is allowed. The system enforces a <strong>three-part authorization test</strong> for any Layer B (soft canon) modification. A state change must satisfy <em>all three</em> criteria or it's rejected by the Editor role.</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🔗</div>
+              <div>
+                <div class="card-title">(a) Caused by Prior Event</div>
+              </div>
+            </div>
+            <p>The change must be <strong>traceable</strong> to a specific event that happened in a previous or current episode. No spontaneous character transformations.</p>
+            <div class="callout info" style="margin-top: 0.75rem;">
+              <p><strong>✅ Valid:</strong> "Dante becomes distrustful" → caused by betrayal in Ep 4</p>
+              <p><strong>❌ Invalid:</strong> "Dante is suddenly confident" → no triggering event</p>
+            </div>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">💰</div>
+              <div>
+                <div class="card-title">(b) Costs Something Irreversible</div>
+              </div>
+            </div>
+            <p>Every meaningful change must have a <strong>permanent cost</strong>. This prevents "free" character growth and ensures narrative weight.</p>
+            <div class="callout info" style="margin-top: 0.75rem;">
+              <p><strong>✅ Valid:</strong> "Dante gains confidence" → cost: "lost his naivety, sees danger everywhere"</p>
+              <p><strong>❌ Invalid:</strong> "Dante gains confidence" → cost: none specified</p>
+            </div>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🔮</div>
+              <div>
+                <div class="card-title">(c) Alters Future Constraints</div>
+              </div>
+            </div>
+            <p>The change must <strong>create new narrative constraints</strong> that affect future episodes. This ensures changes have lasting consequences.</p>
+            <div class="callout info" style="margin-top: 0.75rem;">
+              <p><strong>✅ Valid:</strong> "Luna learns the truth" → constraint: "Can no longer pretend ignorance around adults"</p>
+              <p><strong>❌ Invalid:</strong> "Luna learns the truth" → no future impact specified</p>
+            </div>
+          </div>
+        </div>
+
+<pre><code><span class="cm">// Change Authorization check in the Editor role</span>
+<span class="kw">interface</span> <span class="type">ChangeAuthorization</span> {
+  triggerEvent: <span class="type">string</span>;     <span class="cm">// (a) What caused this?</span>
+  cost: <span class="type">string</span>;              <span class="cm">// (b) What was permanently lost?</span>
+  newConstraints: <span class="type">string[]</span>;  <span class="cm">// (c) What new rules does this create?</span>
+}
+
+<span class="kw">function</span> <span class="fn">isChangeAuthorized</span>(auth: <span class="type">ChangeAuthorization</span>): <span class="type">boolean</span> {
+  <span class="kw">return</span> (
+    auth.triggerEvent.length > <span class="num">0</span> &&
+    auth.cost.length > <span class="num">0</span> &&
+    auth.newConstraints.length > <span class="num">0</span>
+  );
+}</code></pre>
+
+        <!-- ═══ Section 10: Data Example ═══ -->
+        <h2>Data Example: Little Detective Dante — Episode 6</h2>
+        <p>Here's a complete snapshot of what the memory system looks like for Episode 6 of our example series, showing real data across all tables.</p>
+
+        <div class="data-example">
+          <h4>Immutable Events (5 rows by Episode 6)</h4>
+<pre><code>[
+  {
+    <span class="json-key">"event_type"</span>: <span class="json-string">"death"</span>,
+    <span class="json-key">"event_key"</span>: <span class="json-string">"character:professor_whiskers:death"</span>,
+    <span class="json-key">"description"</span>: <span class="json-string">"Professor Whiskers sacrificed himself to protect the Golden Key clue"</span>,
+    <span class="json-key">"season"</span>: <span class="json-number">1</span>,
+    <span class="json-key">"episode_number"</span>: <span class="json-number">5</span>
+  },
+  {
+    <span class="json-key">"event_type"</span>: <span class="json-string">"world_fact"</span>,
+    <span class="json-key">"event_key"</span>: <span class="json-string">"world:no_time_travel"</span>,
+    <span class="json-key">"description"</span>: <span class="json-string">"Time travel does not exist in this universe"</span>,
+    <span class="json-key">"season"</span>: <span class="json-number">1</span>,
+    <span class="json-key">"episode_number"</span>: <span class="json-number">1</span>
+  },
+  {
+    <span class="json-key">"event_type"</span>: <span class="json-string">"relationship"</span>,
+    <span class="json-key">"event_key"</span>: <span class="json-string">"rel:dante_luna:not_romantic"</span>,
+    <span class="json-key">"description"</span>: <span class="json-string">"Dante and Luna are best friends — the show does not feature romantic arcs"</span>,
+    <span class="json-key">"season"</span>: <span class="json-number">1</span>,
+    <span class="json-key">"episode_number"</span>: <span class="json-number">1</span>
+  },
+  {
+    <span class="json-key">"event_type"</span>: <span class="json-string">"ability_loss"</span>,
+    <span class="json-key">"event_key"</span>: <span class="json-string">"character:luna:lost_script_reading"</span>,
+    <span class="json-key">"description"</span>: <span class="json-string">"Luna can no longer read the ancient scripts after the library fire"</span>,
+    <span class="json-key">"season"</span>: <span class="json-number">1</span>,
+    <span class="json-key">"episode_number"</span>: <span class="json-number">4</span>
+  },
+  {
+    <span class="json-key">"event_type"</span>: <span class="json-string">"timeline"</span>,
+    <span class="json-key">"event_key"</span>: <span class="json-string">"timeline:school_year_start"</span>,
+    <span class="json-key">"description"</span>: <span class="json-string">"The series begins on the first day of school — all episodes are within the same school year"</span>,
+    <span class="json-key">"season"</span>: <span class="json-number">1</span>,
+    <span class="json-key">"episode_number"</span>: <span class="json-number">1</span>
+  }
+]</code></pre>
+        </div>
+
+        <div class="data-example">
+          <h4>Character States — Dante (latest state at Episode 6)</h4>
+<pre><code>{
+  <span class="json-key">"character"</span>: <span class="json-string">"Dante"</span>,
+  <span class="json-key">"states"</span>: [
+    {
+      <span class="json-key">"state_type"</span>: <span class="json-string">"emotional"</span>,
+      <span class="json-key">"state_value"</span>: { <span class="json-key">"mood"</span>: <span class="json-string">"determined"</span>, <span class="json-key">"intensity"</span>: <span class="json-number">0.8</span>, <span class="json-key">"grief"</span>: <span class="json-string">"processing"</span> },
+      <span class="json-key">"trigger_event"</span>: <span class="json-string">"Professor Whiskers' death in Ep 5 — Dante channeling grief into solving the case"</span>,
+      <span class="json-key">"cost"</span>: <span class="json-string">"Lost his carefree innocence; now carries weight of responsibility"</span>,
+      <span class="json-key">"new_constraints"</span>: [<span class="json-string">"Cannot be written as carefree/naive anymore"</span>, <span class="json-string">"Must reference Whiskers in moments of doubt"</span>]
+    },
+    {
+      <span class="json-key">"state_type"</span>: <span class="json-string">"knowledge"</span>,
+      <span class="json-key">"state_value"</span>: { <span class="json-key">"knows_golden_key_exists"</span>: <span class="json-number">true</span>, <span class="json-key">"knows_key_location"</span>: <span class="json-number">false</span> },
+      <span class="json-key">"trigger_event"</span>: <span class="json-string">"Found reference to Golden Key in Whiskers' final clue (Ep 5)"</span>
+    },
+    {
+      <span class="json-key">"state_type"</span>: <span class="json-string">"goal"</span>,
+      <span class="json-key">"state_value"</span>: { <span class="json-key">"primary"</span>: <span class="json-string">"Find the Golden Key"</span>, <span class="json-key">"secondary"</span>: <span class="json-string">"Honor Whiskers' memory"</span> },
+      <span class="json-key">"trigger_event"</span>: <span class="json-string">"Whiskers' dying clue pointed to the Key"</span>
+    }
+  ]
+}</code></pre>
+        </div>
+
+        <div class="data-example">
+          <h4>Narrative Threads (active at Episode 6)</h4>
+<pre><code>[
+  {
+    <span class="json-key">"thread_name"</span>: <span class="json-string">"Mystery of the Golden Key"</span>,
+    <span class="json-key">"thread_type"</span>: <span class="json-string">"plot"</span>,
+    <span class="json-key">"status"</span>: <span class="json-string">"open"</span>,
+    <span class="json-key">"promises"</span>: [
+      <span class="json-string">"Key was shown glowing in Ep 2 background"</span>,
+      <span class="json-string">"Whiskers died protecting a clue about it"</span>,
+      <span class="json-string">"Key glows near buildings older than 100 years"</span>
+    ],
+    <span class="json-key">"payoffs"</span>: [],
+    <span class="json-key">"episodes_touched"</span>: [<span class="json-number">2</span>, <span class="json-number">5</span>]
+  },
+  {
+    <span class="json-key">"thread_name"</span>: <span class="json-string">"Luna's Search for Her Brother"</span>,
+    <span class="json-key">"thread_type"</span>: <span class="json-string">"character"</span>,
+    <span class="json-key">"status"</span>: <span class="json-string">"progressed"</span>,
+    <span class="json-key">"promises"</span>: [<span class="json-string">"Brother mentioned as missing since before series start"</span>],
+    <span class="json-key">"payoffs"</span>: [<span class="json-string">"Found brother's journal in the library clock tower (Ep 4)"</span>],
+    <span class="json-key">"episodes_touched"</span>: [<span class="json-number">1</span>, <span class="json-number">3</span>, <span class="json-number">4</span>]
+  },
+  {
+    <span class="json-key">"thread_name"</span>: <span class="json-string">"Dante's Grief Journey"</span>,
+    <span class="json-key">"thread_type"</span>: <span class="json-string">"character"</span>,
+    <span class="json-key">"status"</span>: <span class="json-string">"open"</span>,
+    <span class="json-key">"promises"</span>: [<span class="json-string">"Dante must process the loss of his mentor"</span>],
+    <span class="json-key">"payoffs"</span>: [],
+    <span class="json-key">"episodes_touched"</span>: [<span class="json-number">5</span>]
+  }
+]</code></pre>
+        </div>
+
+        <div class="data-example">
+          <h4>World State (snapshot at Episode 6 start)</h4>
+<pre><code>{
+  <span class="json-key">"location"</span>: <span class="json-string">"Willowbrook — Treehouse Lab partially damaged from Ep 4 fire"</span>,
+  <span class="json-key">"time_period"</span>: <span class="json-string">"Mid-autumn, 6 weeks into the school year"</span>,
+  <span class="json-key">"active_conflicts"</span>: [
+    <span class="json-string">"Golden Key origin unknown"</span>,
+    <span class="json-string">"Strange lights seen near the old park bridge"</span>,
+    <span class="json-string">"Luna's brother still missing"</span>
+  ],
+  <span class="json-key">"atmosphere"</span>: <span class="json-string">"Somber but resolute — the team is grieving but motivated"</span>,
+  <span class="json-key">"constraints"</span>: [
+    <span class="json-string">"Treehouse Lab has limited equipment (fire damage)"</span>,
+    <span class="json-string">"Professor Whiskers cannot appear"</span>,
+    <span class="json-string">"Luna cannot read ancient scripts"</span>
+  ]
+}</code></pre>
+        </div>
+
+        <div class="data-example">
+          <h4>Episode Summaries (last 3 episodes)</h4>
+<pre><code>[
+  {
+    <span class="json-key">"episode_number"</span>: <span class="json-number">5</span>,
+    <span class="json-key">"plot_summary"</span>: <span class="json-string">"Dante solved the missing telescope case, but Professor Whiskers sacrificed himself to protect the final clue — a reference to the Golden Key."</span>,
+    <span class="json-key">"key_events"</span>: [<span class="json-string">"Whiskers dies"</span>, <span class="json-string">"Golden Key clue revealed"</span>, <span class="json-string">"Dante vows to find the Key"</span>],
+    <span class="json-key">"character_changes"</span>: { <span class="json-key">"Dante"</span>: <span class="json-string">"carefree → determined"</span>, <span class="json-key">"Luna"</span>: <span class="json-string">"supportive → anxious"</span> },
+    <span class="json-key">"sentiment_score"</span>: <span class="json-number">0.3</span>
+  },
+  {
+    <span class="json-key">"episode_number"</span>: <span class="json-number">4</span>,
+    <span class="json-key">"plot_summary"</span>: <span class="json-string">"Luna found her brother's journal hidden in the library clock tower. A fire broke out, damaging the Treehouse Lab and destroying Luna's ability to read the ancient scripts."</span>,
+    <span class="json-key">"key_events"</span>: [<span class="json-string">"Journal found"</span>, <span class="json-string">"Library fire"</span>, <span class="json-string">"Luna's script reading lost"</span>],
+    <span class="json-key">"character_changes"</span>: { <span class="json-key">"Luna"</span>: <span class="json-string">"hopeful → shaken"</span> },
+    <span class="json-key">"sentiment_score"</span>: <span class="json-number">0.4</span>
+  },
+  {
+    <span class="json-key">"episode_number"</span>: <span class="json-number">3</span>,
+    <span class="json-key">"plot_summary"</span>: <span class="json-string">"The Great Lunchbox Swap — a lighthearted mystery where lunches keep getting mixed up. Turns out it was a new student trying to make friends."</span>,
+    <span class="json-key">"key_events"</span>: [<span class="json-string">"New student introduced"</span>, <span class="json-string">"Luna mentions brother for second time"</span>],
+    <span class="json-key">"character_changes"</span>: {},
+    <span class="json-key">"sentiment_score"</span>: <span class="json-number">0.9</span>
+  }
+]</code></pre>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="shots.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Shot Generation</span>
+          </a>
+          <a href="prompts.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Prompt Engine</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

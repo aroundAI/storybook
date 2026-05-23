@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ideation Stage — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / <a href="pipeline-overview.html">Pipeline</a> / Ideation</div>
+          <h1 class="page-title">💡 Ideation Stage</h1>
+          <p class="page-subtitle">
+            The first stage of the content pipeline. Transform a single-sentence premise into multiple scored story concepts — complete with viral potential analysis, thematic depth, and visual hooks.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            You give the app one sentence — like <strong>"Dante solves a mystery at the zoo."</strong> The app then comes up with 3 different story ideas based on that sentence, each with a catchy title, a summary, and a score for how likely it is to go viral!
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: What Goes In ═══ -->
+        <h2>What Goes In</h2>
+        <p>The ideation stage accepts a minimal explicit input from the user, but enriches it heavily with project context behind the scenes.</p>
+
+        <h3>Explicit User Input</h3>
+        <p>The user provides three fields via the Ideation form:</p>
+<pre><code><span class="cm">// IdeationInput schema</span>
+{
+  <span class="json-key">episodeId</span>: <span class="type">string</span>;        <span class="cm">// Links to the episode being created</span>
+  <span class="json-key">premise</span>: <span class="type">string</span>;          <span class="cm">// 10–500 characters — the seed idea</span>
+  <span class="json-key">numberOfIdeas</span>: <span class="type">number</span>;    <span class="cm">// 1–5, defaults to 3</span>
+}</code></pre>
+
+        <h3>Implicit Context Injection</h3>
+        <p>Before the LLM call fires, the system loads rich context from the project's metadata tables. This is what makes the AI "know" your show:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👥</div>
+              <div>
+                <div class="card-title">Characters</div>
+                <div class="card-subtitle">From project_characters table</div>
+              </div>
+            </div>
+            <p>Full character registry — names, roles, physical descriptions, personality traits, relationships. The AI can only use characters that exist here.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">📍</div>
+              <div>
+                <div class="card-title">Locations</div>
+                <div class="card-subtitle">From project_locations table</div>
+              </div>
+            </div>
+            <p>All available settings — Dante's Treehouse Lab, the School hallway, the Park. The AI must ground stories in these locations.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📺</div>
+              <div>
+                <div class="card-title">Previous Episodes</div>
+                <div class="card-subtitle">From episodes table (SCORE summaries)</div>
+              </div>
+            </div>
+            <p>Titles and summaries of past episodes, so the AI avoids repeating plot points and maintains series continuity.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">🔁</div>
+              <div>
+                <div class="card-title">Recurring Elements</div>
+                <div class="card-subtitle">From projects metadata</div>
+              </div>
+            </div>
+            <p>Signature moments with specific placement rules — "The Clue Board" (throughout), "The Deduction Dance" (end of episode).</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🎭</div>
+              <div>
+                <div class="card-title">Genre &amp; Audience</div>
+                <div class="card-subtitle">From projects metadata</div>
+              </div>
+            </div>
+            <p>Genre (e.g., "Children's Mystery"), target audience (e.g., "Children 4–8"), and content style preferences that shape tone and complexity.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🎨</div>
+              <div>
+                <div class="card-title">Visual Style</div>
+                <div class="card-subtitle">From projects metadata</div>
+              </div>
+            </div>
+            <p>The aesthetic style (e.g., "3D Pixar/DreamWorks cartoon") that informs visual potential descriptions in each idea.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 3: The Ideation Prompt ═══ -->
+        <h2>The Ideation Prompt</h2>
+        <p>The system prompt is constructed from three distinct layers, each with a specific purpose. This layered architecture makes prompts modular and testable.</p>
+
+        <!-- SVG Diagram: 3-Layer Prompt -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 380" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <!-- Background layers -->
+            <defs>
+              <linearGradient id="layerGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="layerGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="layerGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.15)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Layer 1: Role -->
+            <rect x="30" y="20" width="640" height="100" rx="12" fill="url(#layerGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="52" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 1 — ROLE DEFINITION</text>
+            <text x="60" y="75" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">"You are an expert story consultant for children's content.</text>
+            <text x="60" y="93" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">You specialize in creating engaging, viral-worthy story concepts."</text>
+
+            <!-- Layer 2: Viral Scoring -->
+            <rect x="30" y="140" width="640" height="120" rx="12" fill="url(#layerGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="172" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 2 — VIRAL SCORING SYSTEM</text>
+            <text x="60" y="197" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Score each idea 1–10 on three dimensions:</text>
+            <text x="80" y="218" fill="#c792ea" font-family="JetBrains Mono, monospace" font-size="11">CURIOSITY GAP</text>
+            <text x="232" y="218" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ "I NEED to know what happens next"</text>
+            <text x="80" y="237" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">EMOTIONAL ANCHOR</text>
+            <text x="252" y="237" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Universal feeling anyone can relate to</text>
+            <text x="80" y="256" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">SHAREABILITY</text>
+            <text x="222" y="256" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ "You HAVE to see what Dante discovers..."</text>
+
+            <!-- Layer 3: Format -->
+            <rect x="30" y="280" width="640" height="80" rx="12" fill="url(#layerGrad3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="60" y="312" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="14">LAYER 3 — OUTPUT FORMAT</text>
+            <text x="60" y="337" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">Respond with valid JSON matching the IdeaOutput schema.</text>
+            <text x="60" y="352" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">Uses generateObject() for guaranteed structured output.</text>
+
+            <!-- Connecting arrows -->
+            <path d="M350 120 L350 140" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <path d="M350 260 L350 280" stroke="rgba(59,130,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+          </svg>
+        </div>
+
+        <h3>Layer 1 — Role Definition</h3>
+        <p>Sets the AI persona. The system prompt opens with:</p>
+<pre><code><span class="str">"You are an expert story consultant specializing in children's content
+creation. You generate creative, engaging story concepts that are
+optimized for visual storytelling and audience engagement."</span></code></pre>
+        <p>This framing ensures the model responds as a domain expert rather than a generic assistant. The persona primes it for creative, structured output.</p>
+
+        <h3>Layer 2 — Viral Scoring Framework</h3>
+        <p>This is the secret sauce. The prompt defines a proprietary scoring rubric that forces the model to evaluate each idea's potential to spread:</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🎯</div>
+              <div><div class="card-title">Curiosity Gap</div></div>
+            </div>
+            <p>Does the concept create a "I <em>need</em> to know what happens" tension? Scored 1–10.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">❤️</div>
+              <div><div class="card-title">Emotional Anchor</div></div>
+            </div>
+            <p>Is there a universal feeling — wonder, fear, joy — that anyone can connect to? Scored 1–10.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🚀</div>
+              <div><div class="card-title">Shareability</div></div>
+            </div>
+            <p>Can the concept be described in one "you gotta see this" sentence? Scored 1–10.</p>
+          </div>
+        </div>
+
+        <h3>Layer 3 — Output Format Constraint</h3>
+        <p>The final layer instructs the model to respond in a strict JSON format. Under the hood, the platform uses <code>generateObject()</code> from the Vercel AI SDK, which enforces schema compliance at the API level — not just in the prompt text.</p>
+
+        <!-- ═══ Section 4: User Prompt Variables ═══ -->
+        <h2>User Prompt Variables</h2>
+        <p>The user prompt template contains placeholder variables that get injected at runtime. Here's every variable, where it comes from, and a real example:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Variable</th>
+              <th>Source</th>
+              <th>Example Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>premise</code></td>
+              <td>User input</td>
+              <td>"Dante investigates a missing zoo animal"</td>
+            </tr>
+            <tr>
+              <td><code>number_of_ideas</code></td>
+              <td>User input</td>
+              <td>3</td>
+            </tr>
+            <tr>
+              <td><code>characters</code></td>
+              <td>Project metadata</td>
+              <td>"Dante: A curious 7-year-old who uses science to solve mysteries…"</td>
+            </tr>
+            <tr>
+              <td><code>locations</code></td>
+              <td>Project metadata</td>
+              <td>"Dante's Treehouse Lab, School, The Park"</td>
+            </tr>
+            <tr>
+              <td><code>previous_episodes</code></td>
+              <td>Episode history</td>
+              <td>"Ep 1: The Case of the Vanishing Cookies, Ep 2: …"</td>
+            </tr>
+            <tr>
+              <td><code>recurring_element</code></td>
+              <td>Project metadata</td>
+              <td>"The Clue Board (throughout), The Deduction Dance (end)"</td>
+            </tr>
+            <tr>
+              <td><code>genre</code></td>
+              <td>Project metadata</td>
+              <td>"Children's Mystery"</td>
+            </tr>
+            <tr>
+              <td><code>target_audience</code></td>
+              <td>Project metadata</td>
+              <td>"Children 4–8"</td>
+            </tr>
+            <tr>
+              <td><code>visual_style</code></td>
+              <td>Project metadata</td>
+              <td>"3D Pixar/DreamWorks cartoon"</td>
+            </tr>
+            <tr>
+              <td><code>season_context</code></td>
+              <td>Season data</td>
+              <td>"Season 1, Episode 5"</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="data-example">
+          <p>For <strong>"Little Detective Dante"</strong>, the assembled user prompt looks something like:</p>
+<pre><code>Generate <span class="num">3</span> story ideas for the premise:
+<span class="str">"Dante investigates a missing zoo animal"</span>
+
+<span class="cm">## Characters Available</span>
+- <span class="str">Dante</span>: A curious 7-year-old who uses science to solve mysteries
+- <span class="str">Luna</span>: Dante's best friend, artistic and observant
+- <span class="str">Professor Whiskers</span>: Dante's cat who seems to understand clues
+
+<span class="cm">## Locations Available</span>
+- Dante's Treehouse Lab
+- Willowbrook Elementary School
+- Willowbrook City Zoo (new!)
+
+<span class="cm">## Previous Episodes</span>
+1. "The Case of the Vanishing Cookies"
+2. "The Phantom of the Playground"
+3. "The Great Lunchbox Swap"
+4. "The Secret of the Library Clock"
+
+<span class="cm">## Recurring Elements</span>
+- The Clue Board (placement: throughout)
+- The Deduction Dance (placement: end)
+
+<span class="cm">## Context</span>
+Genre: Children's Mystery | Audience: Children 4-8
+Visual Style: 3D Pixar/DreamWorks cartoon
+Season 1, Episode 5</code></pre>
+        </div>
+
+        <!-- ═══ Section 5: What Comes Out ═══ -->
+        <h2>What Comes Out</h2>
+        <p>The LLM responds with a structured JSON object containing the requested number of story ideas. Each idea includes metadata designed for both human review and downstream pipeline consumption:</p>
+
+        <div class="json-viewer">
+{
+  <span class="json-key">"ideas"</span>: [
+    {
+      <span class="json-key">"title"</span>: <span class="json-string">"The Case of the Missing Macaw"</span>,
+      <span class="json-key">"logline"</span>: <span class="json-string">"When the zoo's star macaw vanishes on the morning of the big bird show, Dante must follow a trail of rainbow feathers — and discover the bird was trying to protect something precious."</span>,
+      <span class="json-key">"themes"</span>: [<span class="json-string">"friendship"</span>, <span class="json-string">"responsibility"</span>],
+      <span class="json-key">"hook"</span>: <span class="json-string">"The macaw left behind a trail of colored feathers, each one pointing to a different part of the zoo — but the trail doesn't lead to the exit. It leads deeper inside."</span>,
+      <span class="json-key">"visualPotential"</span>: <span class="json-string">"Vibrant zoo environments with tropical bird habitats, dramatic close-ups of feather clues under Dante's magnifying glass, and a heartwarming reveal scene."</span>,
+      <span class="json-key">"viralPotential"</span>: {
+        <span class="json-key">"score"</span>: <span class="json-number">8</span>,
+        <span class="json-key">"curiosityGap"</span>: <span class="json-string">"Why did the macaw leave clues behind — and what is it protecting?"</span>,
+        <span class="json-key">"emotionalAnchor"</span>: <span class="json-string">"A child protecting an animal friend who can't speak for itself"</span>,
+        <span class="json-key">"shareability"</span>: <span class="json-string">"You have to see what Dante discovers at the end of the feather trail..."</span>
+      }
+    },
+    {
+      <span class="json-key">"title"</span>: <span class="json-string">"The Midnight Howler"</span>,
+      <span class="json-key">"logline"</span>: <span class="json-string">"Strange howling sounds at night are scaring visitors away from the zoo. Dante suspects it's not an animal at all..."</span>,
+      <span class="json-key">"themes"</span>: [<span class="json-string">"courage"</span>, <span class="json-string">"empathy"</span>],
+      <span class="json-key">"hook"</span>: <span class="json-string">"The howling only happens when the moon is full — and it's coming from the one enclosure that's supposed to be empty."</span>,
+      <span class="json-key">"visualPotential"</span>: <span class="json-string">"Atmospheric nighttime zoo scenes, moonlit silhouettes, dramatic sound-tracking sequences with Dante's homemade listening device."</span>,
+      <span class="json-key">"viralPotential"</span>: {
+        <span class="json-key">"score"</span>: <span class="json-number">7</span>,
+        <span class="json-key">"curiosityGap"</span>: <span class="json-string">"What's making sounds in an empty enclosure?"</span>,
+        <span class="json-key">"emotionalAnchor"</span>: <span class="json-string">"Overcoming fear to help someone who's scared and alone"</span>,
+        <span class="json-key">"shareability"</span>: <span class="json-string">"Wait until you find out what was REALLY making those sounds..."</span>
+      }
+    }
+  ]
+}
+        </div>
+
+        <p>The user sees these ideas as interactive cards in the Ideation UI. They pick one (or edit it), and that becomes the input to the <a href="story.html">Story Generation</a> stage.</p>
+
+        <!-- ═══ Section 6: Critical Constraints ═══ -->
+        <h2>Critical Constraints</h2>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ Hard Rules — Breaking These Fails the Pipeline</div>
+          <ul>
+            <li><strong>Characters are locked.</strong> The AI must use ONLY characters defined in the project's character registry. It cannot invent new characters during ideation.</li>
+            <li><strong>Locations are locked.</strong> Stories can only take place in locations from the project's location list. No new settings.</li>
+            <li><strong>No plot recycling.</strong> The AI must not repeat plot points, conflicts, or resolutions from previous episodes. SCORE summaries are injected to enforce this.</li>
+            <li><strong>Recurring elements are mandatory.</strong> If "The Clue Board" is marked as <code>placement: throughout</code>, every idea must naturally incorporate it. If "The Deduction Dance" is <code>placement: end</code>, it must appear at the episode's conclusion.</li>
+          </ul>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why So Strict?</div>
+          <p>These constraints exist because later pipeline stages (Story → Screenplay → Visual Studio) trust the ideation output as canon. If ideation invents a character that doesn't exist in the registry, downstream shot generation will try to render them — but there's no physical description to reference. The constraint chain prevents cascading failures.</p>
+        </div>
+
+        <!-- ═══ Section 7: LLM Model Used ═══ -->
+        <h2>LLM Configuration</h2>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon purple">🤖</div>
+            <div>
+              <div class="card-title">Model Configuration</div>
+              <div class="card-subtitle">Optimized for creative ideation</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Model</strong></td>
+                <td><code>gemini-3.1-flash-lite</code></td>
+                <td>Fast, cost-effective for creative generation — ideation doesn't need the precision of larger models</td>
+              </tr>
+              <tr>
+                <td><strong>Temperature</strong></td>
+                <td><code>0.8</code></td>
+                <td>High creativity — we <em>want</em> diverse, surprising ideas. Lower temps produce repetitive concepts.</td>
+              </tr>
+              <tr>
+                <td><strong>Max Tokens</strong></td>
+                <td><code>8000</code></td>
+                <td>Generous budget for 3–5 detailed ideas with full viral scoring breakdowns</td>
+              </tr>
+              <tr>
+                <td><strong>Output Mode</strong></td>
+                <td><code>generateObject()</code></td>
+                <td>Guarantees valid JSON output matching the Zod schema — no parsing needed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>This is the <em>lightest</em> model used in the entire pipeline. Later stages like Screenplay and Shot Generation use more powerful models (e.g., <code>gemini-2.5-flash</code>) because they require precise adherence to complex formatting rules.</p>
+
+        <!-- ═══ Section 8: Deep Dive — Viral Scoring ═══ -->
+        <h2>Deep Dive: The Viral Scoring System</h2>
+
+        <div class="deep-dive">
+          <p>The viral scoring system isn't just a gimmick — it's a structured framework for evaluating whether a story concept has the properties that make content spread on social platforms. Each dimension targets a different psychological mechanism:</p>
+
+          <h4>🎯 Curiosity Gap (Weight: High)</h4>
+          <p>Based on George Loewenstein's "information gap" theory. The best content creates a gap between what you know and what you <em>want</em> to know. In practice, this means the idea's hook should raise a question that feels urgent to answer.</p>
+          <p><strong>Scoring guide:</strong></p>
+          <ul>
+            <li><strong>1–3:</strong> Predictable outcome ("Dante finds the missing toy") — no tension</li>
+            <li><strong>4–6:</strong> Mild surprise ("Dante finds the toy, but it's in a strange place") — some pull</li>
+            <li><strong>7–10:</strong> Irresistible mystery ("The toy was never missing — it was hiding on purpose") — compulsive engagement</li>
+          </ul>
+
+          <h4>❤️ Emotional Anchor (Weight: High)</h4>
+          <p>Content spreads when it triggers a <strong>universal emotion</strong> — not a niche feeling, but something everyone has experienced: protecting a friend, being afraid of the dark, the joy of discovery. The emotional anchor is the "why should I care?" factor.</p>
+          <p><strong>Scoring guide:</strong></p>
+          <ul>
+            <li><strong>1–3:</strong> Abstract or intellectual theme only — hard to feel</li>
+            <li><strong>4–6:</strong> Relatable but not visceral — "that's nice"</li>
+            <li><strong>7–10:</strong> Gut-level connection — makes you think of your own childhood</li>
+          </ul>
+
+          <h4>🚀 Shareability (Weight: Medium)</h4>
+          <p>Can the concept be compressed into a single sentence that makes someone say "you HAVE to watch this"? This tests the concept's <strong>word-of-mouth potential</strong>. If it takes a paragraph to explain why it's interesting, it won't spread.</p>
+          <p><strong>Scoring guide:</strong></p>
+          <ul>
+            <li><strong>1–3:</strong> Requires full context to understand appeal</li>
+            <li><strong>4–6:</strong> Can be summarized but doesn't create urgency</li>
+            <li><strong>7–10:</strong> One-sentence pitch that creates immediate "I need to see this"</li>
+          </ul>
+
+          <h4>📊 The Combined Score</h4>
+          <p>The final <code>viralPotential.score</code> is a weighted composite of all three dimensions. It's not a simple average — curiosity gap and emotional anchor are weighted more heavily because they're stronger predictors of engagement than shareability alone:</p>
+<pre><code><span class="cm">// Approximate weighting (internal to the prompt)</span>
+<span class="kw">score</span> = (
+  <span class="fn">curiosityGap</span> × <span class="num">0.4</span> +
+  <span class="fn">emotionalAnchor</span> × <span class="num">0.4</span> +
+  <span class="fn">shareability</span> × <span class="num">0.2</span>
+) / <span class="num">1.0</span></code></pre>
+          <p>Ideas scoring <strong>7+</strong> are visually highlighted in the UI with a "🔥 High Potential" badge. Ideas below 5 get a subtle warning indicator, encouraging the user to refine the premise.</p>
+        </div>
+
+        <!-- Flow: Where does this go next? -->
+        <h3>Where Does the Chosen Idea Go?</h3>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">💡</div>
+            <div class="flow-step-title">Ideation</div>
+            <div class="flow-step-desc">User picks an idea</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">📖</div>
+            <div class="flow-step-title">Story Gen</div>
+            <div class="flow-step-desc">Title + logline → full narrative</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🎬</div>
+            <div class="flow-step-title">Screenplay</div>
+            <div class="flow-step-desc">Narrative → scenes &amp; dialogue</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📸</div>
+            <div class="flow-step-title">Visual Studio</div>
+            <div class="flow-step-desc">Scenes → VEO 3.1 shots</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔊</div>
+            <div class="flow-step-title">Audio Studio</div>
+            <div class="flow-step-desc">TTS, music &amp; SFX</div>
+          </div>
+        </div>
+
+        <p>The selected idea's <code>title</code>, <code>logline</code>, <code>themes</code>, and <code>hook</code> feed directly into the <a href="story.html">Story Generation</a> stage's prompt, where they're expanded into a full narrative with 3-act structure and duration-based scaling.</p>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="pipeline-overview.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Pipeline Overview</span>
+          </a>
+          <a href="story.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Story Generation</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

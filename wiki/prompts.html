@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prompt Engine — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / Prompt Engine</div>
+          <h1 class="page-title">✨ Prompt Engine</h1>
+          <p class="page-subtitle">
+            The JSON-based LLM prompt management system: templates, variable injection, layered system prompts, output schemas, and the complete template inventory.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            Think of prompts like <strong>recipe cards</strong> for the AI. Each card tells the AI exactly what role to play, what to think about, what format to answer in, and what variables to fill in. The Prompt Engine is the box that holds all <strong>26 recipe cards</strong> and makes sure the AI follows each one perfectly.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: JSON Template Structure ═══ -->
+        <h2>JSON Template Structure</h2>
+        <p>Every prompt template is a standalone <code>.json</code> file stored in <code>packages/features/prompt-engine/src/prompts/</code>. Here's the anatomy of a template:</p>
+
+<pre><code>{
+  <span class="json-key">"slug"</span>: <span class="json-string">"story-generation"</span>,
+  <span class="json-key">"name"</span>: <span class="json-string">"Story Generation"</span>,
+  <span class="json-key">"version"</span>: <span class="json-number">2</span>,
+  <span class="json-key">"category"</span>: <span class="json-string">"story-generation"</span>,
+  <span class="json-key">"llm"</span>: {
+    <span class="json-key">"provider"</span>: <span class="json-string">"gemini"</span>,
+    <span class="json-key">"model"</span>: <span class="json-string">"gemini-3.1-flash-lite"</span>,
+    <span class="json-key">"max_tokens"</span>: <span class="json-number">16000</span>,
+    <span class="json-key">"temperature"</span>: <span class="json-number">0.65</span>
+  },
+  <span class="json-key">"system_prompts"</span>: [
+    { <span class="json-key">"slug"</span>: <span class="json-string">"role"</span>,   <span class="json-key">"content"</span>: <span class="json-string">"..."</span>, <span class="json-key">"layer_type"</span>: <span class="json-string">"role"</span>,        <span class="json-key">"order"</span>: <span class="json-number">1</span> },
+    { <span class="json-key">"slug"</span>: <span class="json-string">"craft"</span>,  <span class="json-key">"content"</span>: <span class="json-string">"..."</span>, <span class="json-key">"layer_type"</span>: <span class="json-string">"constraints"</span>, <span class="json-key">"order"</span>: <span class="json-number">2</span> }
+  ],
+  <span class="json-key">"user_prompt"</span>: <span class="json-string">"Write a story based on: {{premise}}\nCharacters: {{characters}}"</span>,
+  <span class="json-key">"variables"</span>: {
+    <span class="json-key">"premise"</span>: { <span class="json-key">"type"</span>: <span class="json-string">"text"</span>, <span class="json-key">"required"</span>: <span class="json-number">true</span> }
+  },
+  <span class="json-key">"output"</span>: {
+    <span class="json-key">"schema"</span>: { <span class="json-key">"type"</span>: <span class="json-string">"zod"</span>, <span class="json-key">"definition"</span>: <span class="json-string">"z.object({...})"</span> }
+  }
+}</code></pre>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🏷️</div>
+              <div><div class="card-title">Identity</div></div>
+            </div>
+            <p><code>slug</code>, <code>name</code>, <code>version</code>, <code>category</code> — uniquely identify and organize each template. The slug is used for lookup at runtime.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🤖</div>
+              <div><div class="card-title">LLM Config</div></div>
+            </div>
+            <p>Each template declares its own model, temperature, and token budget. Creative tasks use higher temperatures; analytical tasks use lower.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📐</div>
+              <div><div class="card-title">Output Schema</div></div>
+            </div>
+            <p>A Zod schema definition that validates the LLM's response. If the output doesn't match, the engine retries automatically.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 3: Execution Flow ═══ -->
+        <h2>Execution Flow</h2>
+        <p>When any pipeline stage calls the Prompt Engine, the request flows through this 7-step pipeline:</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">📥</div>
+            <div class="flow-step-title">executeLLM()</div>
+            <div class="flow-step-desc">slug + vars</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📄</div>
+            <div class="flow-step-title">loadAndRender</div>
+            <div class="flow-step-desc">Template + interpolation</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">🤖</div>
+            <div class="flow-step-title">LLM Client</div>
+            <div class="flow-step-desc">Provider dispatch</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔁</div>
+            <div class="flow-step-title">executeWithRetry</div>
+            <div class="flow-step-desc">Up to 3 attempts</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">🔍</div>
+            <div class="flow-step-title">extractJSON</div>
+            <div class="flow-step-desc">Parse response</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">✅</div>
+            <div class="flow-step-title">Zod Validate</div>
+            <div class="flow-step-desc">Schema check</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📊</div>
+            <div class="flow-step-title">logLLMUsage</div>
+            <div class="flow-step-desc">Track tokens &amp; cost</div>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Retry Logic</div>
+          <p>If the LLM response fails Zod validation, the engine automatically retries up to 3 times with the same prompt. Each retry is logged with its failure reason. If all attempts fail, the error bubbles up to the calling action with a structured error message.</p>
+        </div>
+
+        <!-- ═══ Section 4: Complete Template Inventory ═══ -->
+        <h2>Complete Template Inventory</h2>
+        <p>The platform ships with <strong>26 prompt templates</strong> organized across <strong>7 categories</strong>. Each template is a standalone JSON file with its own model configuration, system prompts, and output schema.</p>
+
+        <h3>Story Generation <span class="badge purple">7 templates</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>story-ideation</code></td>
+              <td>Generate scored story concepts from a premise</td>
+              <td><code>gemini-3.1-flash-lite</code></td>
+              <td>0.80</td>
+            </tr>
+            <tr>
+              <td><code>story-generation</code></td>
+              <td>Expand a chosen idea into a full narrative</td>
+              <td><code>gemini-3.1-flash-lite</code></td>
+              <td>0.65</td>
+            </tr>
+            <tr>
+              <td><code>screenplay-conversion</code></td>
+              <td>Convert narrative into scene-by-scene screenplay</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.50</td>
+            </tr>
+            <tr>
+              <td><code>scene-shot-generation</code></td>
+              <td>Generate VEO 3.1 shot prompts per scene</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.45</td>
+            </tr>
+            <tr>
+              <td><code>shot-list-generation</code></td>
+              <td>Legacy monolithic shot list (deprecated)</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.45</td>
+            </tr>
+            <tr>
+              <td><code>season-outline</code></td>
+              <td>Generate a multi-episode season arc</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.70</td>
+            </tr>
+            <tr>
+              <td><code>season-generation</code></td>
+              <td>Expand season outline into episode summaries</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.65</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Analytics <span class="badge blue">2 templates</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>insights-generation</code></td>
+              <td>Generate platform performance insights from metrics</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.40</td>
+            </tr>
+            <tr>
+              <td><code>language-insights</code></td>
+              <td>Analyze language-specific audience engagement</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.40</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Audio <span class="badge cyan">2 templates</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dialogue-translation</code></td>
+              <td>Translate dialogue lines for multilingual TTS</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.30</td>
+            </tr>
+            <tr>
+              <td><code>scene-audio-refinement</code></td>
+              <td>Refine audio cues and SFX descriptions per scene</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.40</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Canon <span class="badge green">5 templates</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>canon-extraction</code></td>
+              <td>Extract canonical facts from completed episodes</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.30</td>
+            </tr>
+            <tr>
+              <td><code>canon-role-character</code></td>
+              <td>Character consistency validation</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.25</td>
+            </tr>
+            <tr>
+              <td><code>canon-role-location</code></td>
+              <td>Location continuity verification</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.25</td>
+            </tr>
+            <tr>
+              <td><code>canon-role-timeline</code></td>
+              <td>Timeline and event ordering checks</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.25</td>
+            </tr>
+            <tr>
+              <td><code>canon-role-rules</code></td>
+              <td>World-building rules enforcement</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.25</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Publishing <span class="badge amber">2 templates</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>batch-translate-metadata</code></td>
+              <td>Translate titles, descriptions for multi-language publishing</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.30</td>
+            </tr>
+            <tr>
+              <td><code>magic-clips</code></td>
+              <td>Identify best moments for short-form clip extraction</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.50</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Quality <span class="badge rose">4 templates</span></h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>story-quality</code></td>
+              <td>Score a story across 7 quality dimensions</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.30</td>
+            </tr>
+            <tr>
+              <td><code>screenplay-quality</code></td>
+              <td>Evaluate screenplay structure and dialogue</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.30</td>
+            </tr>
+            <tr>
+              <td><code>shot-quality</code></td>
+              <td>Validate VEO prompt completeness and consistency</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.25</td>
+            </tr>
+            <tr>
+              <td><code>reel-scout</code></td>
+              <td>Identify high-potential reel/shorts candidates</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.40</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Uncategorized <span class="badge" style="background: rgba(148,163,184,0.15); color: #94a3b8;">4 templates</span></h3>
+        <p>Additional utility templates that span multiple categories:</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Template Slug</th>
+              <th>Purpose</th>
+              <th>Model</th>
+              <th>Temp</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>score-generation</code></td>
+              <td>Generate SCORE framework data for episode continuity</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.30</td>
+            </tr>
+            <tr>
+              <td><code>character-enrichment</code></td>
+              <td>Expand character profiles with visual details</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.50</td>
+            </tr>
+            <tr>
+              <td><code>location-enrichment</code></td>
+              <td>Expand location descriptions for visual rendering</td>
+              <td><code>gemini-2.5-flash</code></td>
+              <td>0.50</td>
+            </tr>
+            <tr>
+              <td><code>premise-expansion</code></td>
+              <td>Expand a short premise into a richer description</td>
+              <td><code>gemini-3.1-flash-lite</code></td>
+              <td>0.70</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ═══ Section 5: System Prompt Layer Types ═══ -->
+        <h2>System Prompt Layer Types</h2>
+        <p>System prompts are composed of ordered layers. Each layer has a <code>layer_type</code> that defines its purpose. Layers are concatenated in <code>order</code> to form the complete system prompt sent to the LLM.</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🎭</div>
+              <div><div class="card-title">role</div></div>
+            </div>
+            <p>Defines the AI's persona and expertise. Always <code>order: 1</code>. Sets the foundational identity that shapes all subsequent responses.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">⚖️</div>
+              <div><div class="card-title">constraints</div></div>
+            </div>
+            <p>Hard rules the AI must follow — character locks, location restrictions, content policies. Violations cause pipeline failures.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📐</div>
+              <div><div class="card-title">format</div></div>
+            </div>
+            <p>Output structure requirements — JSON schemas, field names, required properties. Works alongside the Zod validation layer.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">📋</div>
+              <div><div class="card-title">context</div></div>
+            </div>
+            <p>Dynamic project context — character registries, location data, episode history. Injected at runtime from the database.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">👤</div>
+              <div><div class="card-title">persona</div></div>
+            </div>
+            <p>Tone and voice modifiers — \"write like a showrunner\", \"use age-appropriate language\". Shapes stylistic output without changing factual content.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">⚙️</div>
+              <div><div class="card-title">system</div></div>
+            </div>
+            <p>Low-level engine instructions — retry behavior, error format, fallback handling. Rarely modified by prompt authors.</p>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Layer Composition</div>
+          <p>Layers are concatenated with double newlines between them. A template with layers <code>[role, constraints, format]</code> produces a single system prompt string: <code>role_content + "\n\n" + constraints_content + "\n\n" + format_content</code>. This modular approach lets you swap or update individual layers without touching the rest.</p>
+        </div>
+
+        <!-- ═══ Section 6: Variable Interpolation ═══ -->
+        <h2>Variable Interpolation</h2>
+        <p>Templates use <code>{{variable_name}}</code> mustache-style placeholders that are replaced at runtime. Variables come from four sources:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👤</div>
+              <div>
+                <div class="card-title">User Input</div>
+                <div class="card-subtitle">Direct from the UI form</div>
+              </div>
+            </div>
+            <p><code>{{premise}}</code>, <code>{{number_of_ideas}}</code>, <code>{{target_duration}}</code> — values the user explicitly provides when triggering a pipeline stage.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🗄️</div>
+              <div>
+                <div class="card-title">Project Metadata</div>
+                <div class="card-subtitle">From database tables</div>
+              </div>
+            </div>
+            <p><code>{{characters}}</code>, <code>{{locations}}</code>, <code>{{genre}}</code>, <code>{{visual_style}}</code> — automatically loaded from the project's metadata tables.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🔢</div>
+              <div>
+                <div class="card-title">Calculated Values</div>
+                <div class="card-subtitle">From content scaling</div>
+              </div>
+            </div>
+            <p><code>{{target_word_count}}</code>, <code>{{scene_count}}</code>, <code>{{dialogue_lines}}</code> — computed by <code>calculateContentScaling()</code> based on target duration.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">📚</div>
+              <div>
+                <div class="card-title">Canon Context</div>
+                <div class="card-subtitle">From episode history</div>
+              </div>
+            </div>
+            <p><code>{{previous_episodes}}</code>, <code>{{season_context}}</code>, <code>{{canon_facts}}</code> — continuity data ensuring the AI doesn't contradict established story elements.</p>
+          </div>
+        </div>
+
+<pre><code><span class="cm">// Variable interpolation at runtime</span>
+<span class="kw">const</span> rendered = template.user_prompt
+  .<span class="fn">replace</span>(<span class="str">/\{\{(\w+)\}\}/g</span>, (_, key) =&gt; vars[key] ?? <span class="str">""</span>);
+
+<span class="cm">// Example:</span>
+<span class="cm">// "Write a story based on: {{premise}}"</span>
+<span class="cm">// → "Write a story based on: Dante investigates a missing zoo animal"</span></code></pre>
+
+        <!-- ═══ Section 7: Quality Gates Deep-Dive ═══ -->
+        <h2>Quality Gates</h2>
+        <p>Quality gate templates score content across multiple weighted dimensions. The most complex gate is <code>story-quality</code>, which evaluates stories on 7 dimensions:</p>
+
+        <!-- SVG Diagram: Quality Gate Dimensions -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 300" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="qgGrad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <rect x="30" y="15" width="640" height="270" rx="12" fill="url(#qgGrad)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="45" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STORY-QUALITY SCORING RUBRIC</text>
+
+            <!-- Dimension bars -->
+            <text x="60" y="80" fill="#c792ea" font-family="JetBrains Mono, monospace" font-size="11">Hook Strength</text>
+            <rect x="230" y="68" width="280" height="14" rx="4" fill="rgba(139,92,246,0.25)" stroke="rgba(139,92,246,0.4)" stroke-width="1"/>
+            <rect x="230" y="68" width="280" height="14" rx="4" fill="rgba(139,92,246,0.5)"/>
+            <text x="520" y="80" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">20%</text>
+
+            <text x="60" y="108" fill="#c3e88d" font-family="JetBrains Mono, monospace" font-size="11">Curiosity Gap</text>
+            <rect x="230" y="96" width="280" height="14" rx="4" fill="rgba(195,232,141,0.25)" stroke="rgba(195,232,141,0.4)" stroke-width="1"/>
+            <rect x="230" y="96" width="280" height="14" rx="4" fill="rgba(195,232,141,0.5)"/>
+            <text x="520" y="108" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">20%</text>
+
+            <text x="60" y="136" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="11">Setup-Payoff</text>
+            <rect x="230" y="124" width="280" height="14" rx="4" fill="rgba(130,170,255,0.25)" stroke="rgba(130,170,255,0.4)" stroke-width="1"/>
+            <rect x="230" y="124" width="280" height="14" rx="4" fill="rgba(130,170,255,0.5)"/>
+            <text x="520" y="136" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">20%</text>
+
+            <text x="60" y="164" fill="#f78c6c" font-family="JetBrains Mono, monospace" font-size="11">Emotional Arc</text>
+            <rect x="230" y="152" width="210" height="14" rx="4" fill="rgba(247,140,108,0.25)" stroke="rgba(247,140,108,0.4)" stroke-width="1"/>
+            <rect x="230" y="152" width="210" height="14" rx="4" fill="rgba(247,140,108,0.5)"/>
+            <text x="450" y="164" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">15%</text>
+
+            <text x="60" y="192" fill="#ffcb6b" font-family="JetBrains Mono, monospace" font-size="11">Dialogue Subtext</text>
+            <rect x="230" y="180" width="140" height="14" rx="4" fill="rgba(255,203,107,0.25)" stroke="rgba(255,203,107,0.4)" stroke-width="1"/>
+            <rect x="230" y="180" width="140" height="14" rx="4" fill="rgba(255,203,107,0.5)"/>
+            <text x="380" y="192" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">10%</text>
+
+            <text x="60" y="220" fill="#89ddff" font-family="JetBrains Mono, monospace" font-size="11">Loopability</text>
+            <rect x="230" y="208" width="140" height="14" rx="4" fill="rgba(137,221,255,0.25)" stroke="rgba(137,221,255,0.4)" stroke-width="1"/>
+            <rect x="230" y="208" width="140" height="14" rx="4" fill="rgba(137,221,255,0.5)"/>
+            <text x="380" y="220" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">10%</text>
+
+            <text x="60" y="248" fill="#ff5370" font-family="JetBrains Mono, monospace" font-size="11">Memorable Moment</text>
+            <rect x="230" y="236" width="70" height="14" rx="4" fill="rgba(255,83,112,0.25)" stroke="rgba(255,83,112,0.4)" stroke-width="1"/>
+            <rect x="230" y="236" width="70" height="14" rx="4" fill="rgba(255,83,112,0.5)"/>
+            <text x="310" y="248" fill="#9a97b0" font-family="Inter, sans-serif" font-size="11">5%</text>
+          </svg>
+        </div>
+
+        <h3>Score Thresholds</h3>
+        <p>The weighted composite score determines the verdict:</p>
+
+        <div class="grid-3">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">✅</div>
+              <div><div class="card-title">Pass ≥ 0.65</div></div>
+            </div>
+            <p>Story meets quality bar. Proceed to the next pipeline stage (Screenplay Conversion) without changes.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">⚠️</div>
+              <div><div class="card-title">Revise 0.50 – 0.64</div></div>
+            </div>
+            <p>Story has potential but needs targeted improvements. The quality report highlights which dimensions are dragging the score down.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">🔴</div>
+              <div><div class="card-title">Major Rewrite &lt; 0.50</div></div>
+            </div>
+            <p>Fundamental issues. The user should return to the Story stage and regenerate with a refined premise or different concept.</p>
+          </div>
+        </div>
+
+<pre><code><span class="cm">// Quality score formula</span>
+<span class="kw">const</span> score =
+  hook       × <span class="num">0.20</span> +
+  curiosity  × <span class="num">0.20</span> +
+  setupPayoff × <span class="num">0.20</span> +
+  emotional  × <span class="num">0.15</span> +
+  dialogue   × <span class="num">0.10</span> +
+  loopability × <span class="num">0.10</span> +
+  memorable  × <span class="num">0.05</span>;
+
+<span class="cm">// Verdict mapping</span>
+<span class="kw">if</span> (score &gt;= <span class="num">0.65</span>) <span class="kw">return</span> <span class="str">"pass"</span>;
+<span class="kw">if</span> (score &gt;= <span class="num">0.50</span>) <span class="kw">return</span> <span class="str">"revise"</span>;
+<span class="kw">return</span> <span class="str">"major_rewrite"</span>;</code></pre>
+
+        <!-- ═══ Section 8: SQS Job Queue ═══ -->
+        <h2>SQS Job Queue</h2>
+        <p>All LLM prompt executions are dispatched via AWS SQS to decouple the UI from long-running AI tasks. The platform defines <strong>14 job types</strong> that flow through the queue:</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Job Type</th>
+              <th>Queue Priority</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>STORY_IDEATION</code></td>
+              <td>Standard</td>
+              <td>Generate scored story concepts from a premise</td>
+            </tr>
+            <tr>
+              <td><code>STORY_GENERATION</code></td>
+              <td>Standard</td>
+              <td>Expand a chosen idea into a full narrative</td>
+            </tr>
+            <tr>
+              <td><code>SCREENPLAY_CONVERSION</code></td>
+              <td>Standard</td>
+              <td>Convert story to scene-by-scene screenplay</td>
+            </tr>
+            <tr>
+              <td><code>SHOT_LIST_GENERATION</code></td>
+              <td>Standard</td>
+              <td>Generate VEO 3.1 prompts per scene</td>
+            </tr>
+            <tr>
+              <td><code>STORY_QUALITY_CHECK</code></td>
+              <td>High</td>
+              <td>Score a story across 7 quality dimensions</td>
+            </tr>
+            <tr>
+              <td><code>SCREENPLAY_QUALITY_CHECK</code></td>
+              <td>High</td>
+              <td>Evaluate screenplay structure and dialogue</td>
+            </tr>
+            <tr>
+              <td><code>SHOT_QUALITY_CHECK</code></td>
+              <td>High</td>
+              <td>Validate shot prompt completeness</td>
+            </tr>
+            <tr>
+              <td><code>CANON_EXTRACTION</code></td>
+              <td>Low</td>
+              <td>Extract canonical facts after episode completion</td>
+            </tr>
+            <tr>
+              <td><code>INSIGHTS_GENERATION</code></td>
+              <td>Low</td>
+              <td>Generate platform performance analytics</td>
+            </tr>
+            <tr>
+              <td><code>DIALOGUE_TRANSLATION</code></td>
+              <td>Standard</td>
+              <td>Translate dialogue for multilingual TTS</td>
+            </tr>
+            <tr>
+              <td><code>AUDIO_REFINEMENT</code></td>
+              <td>Standard</td>
+              <td>Refine audio cues and SFX descriptions</td>
+            </tr>
+            <tr>
+              <td><code>BATCH_TRANSLATE</code></td>
+              <td>Low</td>
+              <td>Translate metadata for multi-language publishing</td>
+            </tr>
+            <tr>
+              <td><code>SEASON_OUTLINE</code></td>
+              <td>Standard</td>
+              <td>Generate multi-episode season arc</td>
+            </tr>
+            <tr>
+              <td><code>MAGIC_CLIPS</code></td>
+              <td>Low</td>
+              <td>Identify best moments for short-form clips</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout danger">
+          <div class="callout-title">⛔ Queue Ordering Matters</div>
+          <p><strong>High-priority</strong> quality check jobs are always processed before standard generation jobs. This prevents a backlog of unchecked content from accumulating. The SQS FIFO queue uses message group IDs keyed to <code>projectId</code>, ensuring jobs for the same project execute in order.</p>
+        </div>
+
+        <div class="deep-dive">
+          <h4>📊 Queue Architecture</h4>
+          <p>Each job message includes the template slug, interpolated variables, and a callback URL. When the Lambda worker processes a job, it:</p>
+          <ol>
+            <li>Loads the JSON template by slug</li>
+            <li>Interpolates variables into the user prompt</li>
+            <li>Assembles system prompt layers in order</li>
+            <li>Calls the LLM provider with retry logic</li>
+            <li>Validates the response against the Zod schema</li>
+            <li>Writes the result to the database</li>
+            <li>Sends a Realtime notification to the UI via WebSocket</li>
+          </ol>
+          <p>Average processing time: <strong>3–8 seconds</strong> for simple prompts, <strong>15–45 seconds</strong> for complex multi-scene shot generation.</p>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="memory.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Memory &amp; Continuity</span>
+          </a>
+          <a href="llm.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">LLM Integration</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

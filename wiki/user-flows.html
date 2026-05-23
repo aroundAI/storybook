@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Flows &amp; UI — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / User Flows &amp; UI</div>
+          <h1 class="page-title">👤 User Flows &amp; UI</h1>
+          <p class="page-subtitle">
+            User journey from login to publishing. Studio pages, navigation, and UI decisions.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            Using the app is like going on a guided adventure. First you sign up, then you create a project (like naming your show), then you add episodes. For each episode, you go through 5 rooms (Ideation → Story → Screenplay → Visual Studio → Audio Studio) and each room helps you build the next piece.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: User Journey ═══ -->
+        <h2>User Journey</h2>
+        <p>The complete user journey from first visit to published content follows a linear progression with branching at the team/personal account level:</p>
+
+        <!-- SVG Diagram: User Journey -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 700 340" xmlns="http://www.w3.org/2000/svg" style="max-width: 680px;">
+            <defs>
+              <linearGradient id="ujGrad1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="ujGrad2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.15)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="ujGrad3" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(6,182,212,0.15)"/>
+                <stop offset="100%" stop-color="rgba(6,182,212,0.05)"/>
+              </linearGradient>
+              <linearGradient id="ujGrad4" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(34,197,94,0.15)"/>
+                <stop offset="100%" stop-color="rgba(34,197,94,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Row 1: Auth Flow -->
+            <rect x="30" y="20" width="130" height="60" rx="10" fill="url(#ujGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="55" y="45" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="11">Sign Up</text>
+            <text x="55" y="62" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Email / OAuth</text>
+
+            <path d="M165 50 L195 50" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+
+            <rect x="200" y="20" width="130" height="60" rx="10" fill="url(#ujGrad1)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="220" y="45" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="11">Onboarding</text>
+            <text x="220" y="62" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Profile setup</text>
+
+            <path d="M335 50 L365 50" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+
+            <rect x="370" y="20" width="140" height="60" rx="10" fill="url(#ujGrad2)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="390" y="45" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="11">Create Team</text>
+            <text x="390" y="62" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Or use personal acct</text>
+
+            <path d="M515 50 L545 50" stroke="rgba(59,130,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+
+            <rect x="550" y="20" width="120" height="60" rx="10" fill="url(#ujGrad3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="565" y="45" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="11">Create Project</text>
+            <text x="565" y="62" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Name your show</text>
+
+            <!-- Arrow down -->
+            <path d="M610 85 L610 115" stroke="rgba(6,182,212,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+
+            <!-- Row 2: Project Setup -->
+            <rect x="370" y="120" width="300" height="60" rx="10" fill="url(#ujGrad3)" stroke="rgba(6,182,212,0.3)" stroke-width="1.5"/>
+            <text x="390" y="145" fill="#67e8f9" font-family="Outfit, sans-serif" font-weight="700" font-size="11">Configure Project</text>
+            <text x="390" y="162" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Characters, Locations, Genre, Visual Style, Recurring Elements</text>
+
+            <path d="M520 185 L520 215" stroke="rgba(6,182,212,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+
+            <!-- Row 3: Episode + 5-Stage Studio -->
+            <rect x="30" y="220" width="130" height="60" rx="10" fill="url(#ujGrad4)" stroke="rgba(34,197,94,0.3)" stroke-width="1.5"/>
+            <text x="48" y="245" fill="#86efac" font-family="Outfit, sans-serif" font-weight="700" font-size="11">Add Episode</text>
+            <text x="48" y="262" fill="#9a97b0" font-family="Inter, sans-serif" font-size="9">Title + premise</text>
+
+            <path d="M165 250 L195 250" stroke="rgba(34,197,94,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+
+            <!-- 5-stage mini pipeline -->
+            <rect x="200" y="220" width="75" height="60" rx="8" fill="rgba(139,92,246,0.08)" stroke="rgba(139,92,246,0.25)" stroke-width="1"/>
+            <text x="215" y="245" fill="#c4b5fd" font-family="Inter, sans-serif" font-weight="600" font-size="10">💡 Ideation</text>
+
+            <rect x="280" y="220" width="75" height="60" rx="8" fill="rgba(59,130,246,0.08)" stroke="rgba(59,130,246,0.25)" stroke-width="1"/>
+            <text x="300" y="245" fill="#93c5fd" font-family="Inter, sans-serif" font-weight="600" font-size="10">📖 Story</text>
+
+            <rect x="360" y="220" width="95" height="60" rx="8" fill="rgba(6,182,212,0.08)" stroke="rgba(6,182,212,0.25)" stroke-width="1"/>
+            <text x="370" y="245" fill="#67e8f9" font-family="Inter, sans-serif" font-weight="600" font-size="10">🎬 Screenplay</text>
+
+            <rect x="460" y="220" width="95" height="60" rx="8" fill="rgba(34,197,94,0.08)" stroke="rgba(34,197,94,0.25)" stroke-width="1"/>
+            <text x="470" y="245" fill="#86efac" font-family="Inter, sans-serif" font-weight="600" font-size="10">📸 Visual</text>
+
+            <rect x="560" y="220" width="95" height="60" rx="8" fill="rgba(251,146,60,0.08)" stroke="rgba(251,146,60,0.25)" stroke-width="1"/>
+            <text x="575" y="245" fill="#fdba74" font-family="Inter, sans-serif" font-weight="600" font-size="10">🔊 Audio</text>
+
+            <!-- Flow arrows between stages -->
+            <text x="275" y="255" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">→</text>
+            <text x="355" y="255" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">→</text>
+            <text x="455" y="255" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">→</text>
+            <text x="555" y="255" fill="#6b6880" font-family="Inter, sans-serif" font-size="10">→</text>
+
+            <!-- Bottom label -->
+            <rect x="200" y="290" width="455" height="30" rx="6" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+            <text x="310" y="310" fill="#9a97b0" font-family="Inter, sans-serif" font-size="10">← The 5-Stage Content Pipeline (each episode goes through all 5 stages) →</text>
+          </svg>
+        </div>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">🔐</div>
+              <div>
+                <div class="card-title">Authentication</div>
+                <div class="card-subtitle">Supabase Auth</div>
+              </div>
+            </div>
+            <p>Users sign up via email/password or OAuth (Google, GitHub). Supabase Auth handles session management, JWT issuance, and MFA. After signup, a personal account is automatically created with matching <code>auth.users.id</code> = <code>accounts.id</code>.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">👥</div>
+              <div>
+                <div class="card-title">Account Selection</div>
+                <div class="card-subtitle">Personal vs Team</div>
+              </div>
+            </div>
+            <p>After login, users land on the account selector. They choose their personal account or a team workspace. The selected account determines the URL namespace: <code>/home/(user)/</code> for personal, <code>/home/[account]/</code> for teams.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 3: Studio Pages ═══ -->
+        <h2>Studio Pages</h2>
+        <p>Each episode's content is created through five studio pages, accessible via a tabbed interface. The route structure follows a consistent pattern:</p>
+
+<pre><code><span class="cm">// Studio route pattern</span>
+/home/[account]/studio/[projectId]/episodes/[episodeId]/
+  ├── <span class="str">/ideation</span>         <span class="cm">// 💡 Concept generation</span>
+  ├── <span class="str">/story</span>            <span class="cm">// 📖 Full narrative authoring</span>
+  ├── <span class="str">/screenplay</span>       <span class="cm">// 🎬 Scene-by-scene screenplay</span>
+  ├── <span class="str">/visual-studio</span>    <span class="cm">// 📸 Shot list & VEO 3.1 prompts</span>
+  └── <span class="str">/audio-studio</span>     <span class="cm">// 🔊 TTS, music & SFX timeline</span></code></pre>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>Input</th>
+              <th>Output</th>
+              <th>AI Model</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Ideation</strong></td>
+              <td>Premise (1 sentence)</td>
+              <td>3–5 scored story concepts</td>
+              <td><code>gemini-3.1-flash-lite</code></td>
+            </tr>
+            <tr>
+              <td><strong>Story</strong></td>
+              <td>Selected concept</td>
+              <td>Full narrative with 3-act structure</td>
+              <td><code>gemini-2.5-flash</code></td>
+            </tr>
+            <tr>
+              <td><strong>Screenplay</strong></td>
+              <td>Narrative text</td>
+              <td>Scene list with dialogue &amp; directions</td>
+              <td><code>gemini-2.5-flash</code></td>
+            </tr>
+            <tr>
+              <td><strong>Visual Studio</strong></td>
+              <td>Scenes + characters</td>
+              <td>Shot list with VEO 3.1 prompts</td>
+              <td><code>gemini-2.5-flash</code></td>
+            </tr>
+            <tr>
+              <td><strong>Audio Studio</strong></td>
+              <td>Dialogue lines + scenes</td>
+              <td>TTS audio, music, SFX timeline</td>
+              <td>ElevenLabs + Suno AI</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- ═══ Section 4: Navigation ═══ -->
+        <h2>Navigation</h2>
+        <p>The studio uses a tab-based navigation bar that persists across all five stages. Each tab shows the stage name, an icon, and a status indicator:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon green">✅</div>
+              <div>
+                <div class="card-title">Completed Stage</div>
+                <div class="card-subtitle">Green checkmark badge</div>
+              </div>
+            </div>
+            <p>When a stage has been completed (e.g., the user has selected an idea in Ideation), the tab shows a green checkmark. Users can navigate back to completed stages to review or edit content.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🔄</div>
+              <div>
+                <div class="card-title">In-Progress Stage</div>
+                <div class="card-subtitle">Pulsing dot indicator</div>
+              </div>
+            </div>
+            <p>The currently active stage shows a pulsing blue dot. If an AI generation is in progress, the dot animates with a spinning loader to indicate work is happening.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🔒</div>
+              <div>
+                <div class="card-title">Locked Stage</div>
+                <div class="card-subtitle">Greyed out, not clickable</div>
+              </div>
+            </div>
+            <p>Stages that can't be accessed yet (because their prerequisite stage isn't complete) appear greyed out with a lock icon. You can't generate a screenplay until you have a story.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">⚠️</div>
+              <div>
+                <div class="card-title">Error State</div>
+                <div class="card-subtitle">Red warning badge</div>
+              </div>
+            </div>
+            <p>If a generation fails (API error, timeout), the tab shows a red warning badge. Users can click to review the error and retry the generation.</p>
+          </div>
+        </div>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Tab Persistence</div>
+          <p>The active tab state is persisted in the URL (via Next.js App Router routes), not in local state. This means refreshing the page or sharing the URL preserves the exact studio position. Deep links like <code>/episodes/abc/screenplay</code> work directly.</p>
+        </div>
+
+        <!-- ═══ Section 5: Real-time Feedback ═══ -->
+        <h2>Real-time Feedback</h2>
+        <p>AI generation is asynchronous — some stages take 5–30 seconds. The UI provides continuous feedback so users never wonder "is it working?":</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">📡</div>
+              <div>
+                <div class="card-title">WebSocket Notifications</div>
+                <div class="card-subtitle">Instant completion alerts</div>
+              </div>
+            </div>
+            <p>When a generation job completes, the server pushes a WebSocket message to all connected clients viewing that episode. The UI instantly transitions from "generating" to "complete" without polling. See <a href="realtime.html">Real-time &amp; WebSocket</a> for the full architecture.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">⏳</div>
+              <div>
+                <div class="card-title">Loading States</div>
+                <div class="card-subtitle">Skeleton UI + progress indicators</div>
+              </div>
+            </div>
+            <p>While generating, the UI shows skeleton loaders shaped like the expected output (cards for ideation, text blocks for story, scene cards for screenplay). A progress bar estimates completion based on average generation times for each stage.</p>
+          </div>
+        </div>
+
+        <h3>Generation Progress Flow</h3>
+
+        <div class="flow-diagram">
+          <div class="flow-step">
+            <div class="flow-step-icon">🖱️</div>
+            <div class="flow-step-title">User Clicks</div>
+            <div class="flow-step-desc">"Generate" button</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step" style="border-color: var(--accent-purple);">
+            <div class="flow-step-icon">⏳</div>
+            <div class="flow-step-title">Loading UI</div>
+            <div class="flow-step-desc">Skeleton + progress bar</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">📡</div>
+            <div class="flow-step-title">WebSocket</div>
+            <div class="flow-step-desc">Server pushes result</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="flow-step-icon">✨</div>
+            <div class="flow-step-title">Content Appears</div>
+            <div class="flow-step-desc">Animated reveal</div>
+          </div>
+        </div>
+
+        <!-- ═══ Section 6: Multi-tenant ═══ -->
+        <h2>Multi-tenant Architecture</h2>
+        <p>The platform supports two account types, each with different capabilities and isolation boundaries:</p>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">👤</div>
+              <div>
+                <div class="card-title">Personal Accounts</div>
+                <div class="card-subtitle">Individual creators</div>
+              </div>
+            </div>
+            <p>Every user gets a personal account automatically on signup. This account is for solo creators who don't need collaboration. Projects and episodes are private to the user. Route: <code>/home/(user)/</code>.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👥</div>
+              <div>
+                <div class="card-title">Team Accounts</div>
+                <div class="card-subtitle">Collaborative workspaces</div>
+              </div>
+            </div>
+            <p>Team accounts are shared workspaces where multiple members collaborate on projects. Members have roles (owner, admin, member) that control permissions. Route: <code>/home/[account]/</code>.</p>
+          </div>
+        </div>
+
+        <h3>Data Isolation</h3>
+        <p>All data is scoped to accounts via foreign keys. Row Level Security (RLS) policies in Supabase ensure users can only access data belonging to accounts they're members of:</p>
+
+<pre><code><span class="cm">-- RLS policy example: projects table</span>
+<span class="kw">CREATE POLICY</span> <span class="str">"Users can view projects in their accounts"</span>
+<span class="kw">ON</span> public.projects
+<span class="kw">FOR SELECT</span>
+<span class="kw">USING</span> (
+  account_id <span class="kw">IN</span> (
+    <span class="kw">SELECT</span> account_id <span class="kw">FROM</span> public.accounts_memberships
+    <span class="kw">WHERE</span> user_id = auth.uid()
+  )
+  <span class="kw">OR</span>
+  account_id = auth.uid()  <span class="cm">-- personal account</span>
+);</code></pre>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Shared Projects</div>
+          <p>When a team member creates a project, it belongs to the team account — not the individual. If the creator leaves the team, the project remains accessible to all other team members. This prevents data loss when team composition changes.</p>
+        </div>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="realtime.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Real-time &amp; WebSocket</span>
+          </a>
+          <a href="decisions.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Product Decisions</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

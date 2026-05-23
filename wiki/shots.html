@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shot Generation (Visual Studio) — Storybook Wiki</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb"><a href="index.html">Wiki</a> / <a href="pipeline-overview.html">Pipeline</a> / Shots</div>
+          <h1 class="page-title">📸 Shot Generation (Visual Studio)</h1>
+          <p class="page-subtitle">
+            Scene-by-scene VEO 3.1 prompt generation with 7-component structure, timeline events, reference images, and shorts/reel scoring.
+          </p>
+        </header>
+
+        <!-- ═══ Section 1: ELI10 ═══ -->
+        <div class="eli10">
+          <p>
+            Now we have a movie script. But a camera operator needs to know: <strong>How close should the camera be? Should it pan left? What's in the background?</strong> The Shot Generator creates detailed instructions for each camera shot — like a recipe for an AI video generator (VEO 3.1) to create the actual video clips.
+          </p>
+        </div>
+
+        <!-- ═══ Section 2: The Scene-by-Scene Pipeline ═══ -->
+        <h2>The Scene-by-Scene Pipeline</h2>
+        <p>Shot generation doesn't process the entire screenplay at once. Instead, it uses a <strong>scene-by-scene pipeline</strong> that builds context once, then processes each scene independently — yielding massive token savings.</p>
+
+        <!-- SVG Flow Diagram -->
+        <div class="svg-diagram">
+          <svg viewBox="0 0 720 520" xmlns="http://www.w3.org/2000/svg" style="max-width: 700px;">
+            <defs>
+              <linearGradient id="step1Grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(139,92,246,0.18)"/>
+                <stop offset="100%" stop-color="rgba(139,92,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="step2Grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(59,130,246,0.18)"/>
+                <stop offset="100%" stop-color="rgba(59,130,246,0.05)"/>
+              </linearGradient>
+              <linearGradient id="step3Grad" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="rgba(16,185,129,0.18)"/>
+                <stop offset="100%" stop-color="rgba(16,185,129,0.05)"/>
+              </linearGradient>
+            </defs>
+
+            <!-- Step 1: Build Global Context -->
+            <rect x="30" y="20" width="660" height="130" rx="14" fill="url(#step1Grad)" stroke="rgba(139,92,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="48" fill="#c4b5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 1 — BUILD GLOBAL CONTEXT (once)</text>
+            <text x="60" y="72" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">buildGlobalShotContext()</text>
+            <text x="60" y="100" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Character Registry (15+ attributes: age, ethnicity, hair, eyes, build, clothing)</text>
+            <text x="60" y="120" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Location Registry (all scene-level settings with visual descriptions)</text>
+
+            <!-- Arrow 1→2 -->
+            <path d="M360 150 L360 180" stroke="rgba(139,92,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <polygon points="354,178 360,190 366,178" fill="rgba(139,92,246,0.4)"/>
+
+            <!-- Step 2: For Each Scene -->
+            <rect x="30" y="190" width="660" height="155" rx="14" fill="url(#step2Grad)" stroke="rgba(59,130,246,0.3)" stroke-width="1.5"/>
+            <text x="60" y="218" fill="#93c5fd" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 2 — FOR EACH SCENE</text>
+            <text x="60" y="245" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">filterContextForScene()</text>
+            <text x="325" y="245" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Extract only scene-relevant characters &amp; locations</text>
+            <text x="60" y="270" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">executeLLM('scene-shot-generation')</text>
+            <text x="370" y="270" fill="#6b6880" font-family="Inter, sans-serif" font-size="11">→ Generate VEO 3.1 shots for this scene</text>
+
+            <!-- Token savings badge -->
+            <rect x="60" y="295" width="260" height="32" rx="16" fill="rgba(16,185,129,0.15)" stroke="rgba(16,185,129,0.3)" stroke-width="1"/>
+            <text x="80" y="316" fill="#34d399" font-family="Outfit, sans-serif" font-weight="700" font-size="13">⚡ Result: 50–80% TOKEN SAVINGS</text>
+
+            <!-- Loop indicator -->
+            <rect x="580" y="210" width="90" height="28" rx="14" fill="rgba(59,130,246,0.15)" stroke="rgba(59,130,246,0.3)" stroke-width="1"/>
+            <text x="598" y="229" fill="#93c5fd" font-family="JetBrains Mono, monospace" font-weight="600" font-size="10">∀ scenes</text>
+
+            <!-- Arrow 2→3 -->
+            <path d="M360 345 L360 375" stroke="rgba(59,130,246,0.4)" stroke-width="2" stroke-dasharray="4,4"/>
+            <polygon points="354,373 360,385 366,373" fill="rgba(59,130,246,0.4)"/>
+
+            <!-- Step 3: Aggregate -->
+            <rect x="30" y="385" width="660" height="115" rx="14" fill="url(#step3Grad)" stroke="rgba(16,185,129,0.3)" stroke-width="1.5"/>
+            <text x="60" y="413" fill="#6ee7b7" font-family="Outfit, sans-serif" font-weight="700" font-size="14">STEP 3 — AGGREGATE RESULTS</text>
+            <text x="60" y="440" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">aggregateSceneResults()</text>
+            <text x="300" y="440" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Assign global sequence numbers across all scenes</text>
+            <text x="60" y="465" fill="#82aaff" font-family="JetBrains Mono, monospace" font-size="12">batchCreateShotsAction()</text>
+            <text x="300" y="465" fill="#9a97b0" font-family="Inter, sans-serif" font-size="12">→ Store all shots in the database</text>
+          </svg>
+        </div>
+
+        <h3>Step 1 — Build Global Context</h3>
+        <p>Called <strong>once per generation run</strong>. The function <code>buildGlobalShotContext()</code> queries the project's character and location registries, building a comprehensive context object that includes:</p>
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">👥</div>
+              <div>
+                <div class="card-title">Character Registry</div>
+                <div class="card-subtitle">15+ physical attributes per character</div>
+              </div>
+            </div>
+            <p>Age, ethnicity, hair color &amp; style, eye color, build, clothing, accessories, distinguishing features. This ensures every shot prompt describes characters with <em>exact</em> visual consistency.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">📍</div>
+              <div>
+                <div class="card-title">Location Registry</div>
+                <div class="card-subtitle">Visual descriptions for every setting</div>
+              </div>
+            </div>
+            <p>Interior/exterior flags, lighting conditions, key props, color palette, mood descriptors. Used to generate the <strong>Scene</strong> component of VEO 3.1 prompts.</p>
+          </div>
+        </div>
+
+        <h3>Step 2 — Process Each Scene</h3>
+        <p>For each scene in the screenplay, <code>filterContextForScene()</code> extracts <em>only</em> the characters and locations that appear in that scene. This filtered context is sent to the LLM alongside the scene's dialogue and action lines, producing a list of shots tailored to that scene.</p>
+        <p>Because each scene only receives its own slice of context — not the entire project registry — token usage drops by <strong>50–80%</strong> compared to a monolithic approach.</p>
+
+        <h3>Step 3 — Aggregate &amp; Persist</h3>
+        <p><code>aggregateSceneResults()</code> takes all per-scene shot arrays and assigns globally sequential shot numbers (e.g., Scene 1 shots 1–6, Scene 2 shots 7–12). Then <code>batchCreateShotsAction()</code> writes them to the <code>shots</code> table in a single batch insert.</p>
+
+        <!-- ═══ Section 3: 7-Component VEO 3.1 Prompt ═══ -->
+        <h2>The 7-Component VEO 3.1 Prompt</h2>
+        <p>Every shot produces a structured prompt with <strong>seven distinct components</strong>. This structure was optimized through iterative testing against VEO 3.1's rendering engine to maximize visual fidelity and minimize artifacts.</p>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Component</th>
+              <th>Description</th>
+              <th>Example</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Subject</strong></td>
+              <td>15+ character attributes</td>
+              <td><code>"DANTE (7, curly black hair, brown eyes, red detective coat)"</code></td>
+            </tr>
+            <tr>
+              <td><strong>Action</strong></td>
+              <td>Movements, micro-expressions</td>
+              <td><code>"Peers through magnifying glass, eyes widen"</code></td>
+            </tr>
+            <tr>
+              <td><strong>Scene</strong></td>
+              <td>Environment, props, lighting</td>
+              <td><code>"Cozy treehouse lab, cork boards, warm sunlight"</code></td>
+            </tr>
+            <tr>
+              <td><strong>Style</strong></td>
+              <td>Camera shot, angle, movement</td>
+              <td><code>"Medium close-up, eye-level, slight dolly-in"</code></td>
+            </tr>
+            <tr>
+              <td><strong>Dialogue</strong></td>
+              <td>Colon syntax prevents subtitles</td>
+              <td><code>"Dante: 'The footprints are backwards!' (Tone: excited)"</code></td>
+            </tr>
+            <tr>
+              <td><strong>Sounds</strong></td>
+              <td>Ambient + effects</td>
+              <td><code>"Birdsong, magnifying glass clinking"</code></td>
+            </tr>
+            <tr>
+              <td><strong>Negative</strong></td>
+              <td>Exclusion instructions</td>
+              <td><code>"No subtitles, no captions, no watermarks"</code></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="callout info">
+          <div class="callout-title">💡 Why Colon Syntax for Dialogue?</div>
+          <p>VEO 3.1 interprets quoted text as subtitles to burn into the video. Using <code>Name: 'text'</code> (colon syntax) instead of <code>"text"</code> tells VEO to generate the <em>speech audio</em> without rendering on-screen text. This single formatting trick eliminates one of the most common VEO artifacts.</p>
+        </div>
+
+        <div class="data-example">
+          <p>A complete VEO 3.1 prompt for a single shot might look like:</p>
+<pre><code><span class="cm">// Assembled VEO 3.1 prompt</span>
+<span class="str">"DANTE (7, curly black hair, brown eyes, olive skin,
+slim build, red detective coat, magnifying glass)
+peers through magnifying glass at muddy footprints,
+eyes widen with excitement, slight gasp.
+Cozy treehouse lab interior, cork boards covered
+in pinned clues, warm golden sunlight through window.
+Medium close-up, eye-level, slight dolly-in.
+Dante: 'The footprints are backwards!' (Tone: excited discovery)
+Birdsong outside, magnifying glass clinking on wood.
+No subtitles, no captions, no watermarks, no text overlay."</span></code></pre>
+        </div>
+
+        <!-- ═══ Section 4: The 9-Layer System Prompt ═══ -->
+        <h2>The 9-Layer System Prompt</h2>
+        <p>The shot generation system prompt is the most complex in the entire pipeline — a <strong>9-layer architecture</strong> that gives the LLM comprehensive directorial authority.</p>
+
+        <div class="pipeline">
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 1 — Role</h4>
+              <p>Sets the persona: <em>"You are a VEO 3.1 Director specializing in AI-generated video production."</em> Establishes expertise in both filmmaking craft and AI video model behavior.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 2 — Cinematic Authority</h4>
+              <p>Grants lens specificity (<strong>24mm–100mm</strong> range) and establishes the principle that <em>camera = emotion</em>. Wide shots (24mm) for establishing mood, tight close-ups (85mm+) for emotional beats. The LLM must justify camera choices based on narrative intent.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 3 — Scene Shorts / Reel Scoring</h4>
+              <p>Each scene receives a <code>sceneViralScore</code> (1–10) evaluating its potential as a standalone short or reel. High-scoring scenes get flagged as <code>shortsCandidate: true</code> with metadata for platform-specific formatting.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 4 — Format</h4>
+              <p>Enforces timestamp format <code>[00:00–03:00]</code> for each shot, with a hard <strong>max 8 seconds per shot</strong>. This constraint aligns with VEO 3.1's optimal generation window — longer shots degrade in quality.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 5 — Context / Reference Images</h4>
+              <p>Instructs the LLM to <strong>reference images by name, not describe them</strong>. If a character has a reference image uploaded, the prompt says <code>"See: dante_ref.png"</code> rather than re-describing the character. VEO 3.1 can accept image references directly.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 6 — Audio Cues</h4>
+              <p>Specifies SFX, music, and ambient sound per shot. Separating audio into its own layer prevents audio hallucinations — VEO 3.1 sometimes generates phantom sounds if audio isn't explicitly declared.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 7 — Transition Intelligence</h4>
+              <p>Defines transition types between shots:</p>
+              <div class="stats-row">
+                <div class="stat-card">
+                  <div class="stat-value" style="font-size: 16px; color: var(--accent-purple);">continuation</div>
+                  <div class="stat-label">Same scene, next beat</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" style="font-size: 16px; color: var(--accent-blue);">cut</div>
+                  <div class="stat-label">Hard scene break</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" style="font-size: 16px; color: var(--accent-cyan);">match_cut</div>
+                  <div class="stat-label">Visual rhyme</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" style="font-size: 16px; color: var(--accent-green);">j_cut</div>
+                  <div class="stat-label">Audio leads video</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-value" style="font-size: 16px; color: var(--accent-amber);">l_cut</div>
+                  <div class="stat-label">Video leads audio</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 8 — Frame Descriptions</h4>
+              <p>Each shot includes <code>firstFrameDescription</code> and <code>lastFrameDescription</code> — prose descriptions of the opening and closing frames. These serve as <strong>visual anchors</strong> for VEO 3.1, improving temporal consistency within the generated clip.</p>
+            </div>
+          </div>
+
+          <div class="pipeline-stage">
+            <div class="pipeline-marker">
+              <div class="pipeline-dot"></div>
+              <div class="pipeline-line"></div>
+            </div>
+            <div class="pipeline-content">
+              <h4>Layer 9 — Location Specificity</h4>
+              <p>Goes beyond generic location names. Each shot specifies <code>locationArea</code> (e.g., "treehouse lab — window nook") plus a prose <code>description</code> of that specific area. This prevents VEO from rendering generic versions of named locations.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- ═══ Section 5: Timeline Events ═══ -->
+        <h2>Timeline Events</h2>
+        <p>Each shot contains an array of <strong>timeline events</strong> — micro-level actions happening within the shot's time window. These events drive the audio studio's dialogue placement and the visual studio's animation timing.</p>
+
+<pre><code><span class="cm">// TimelineEvent interface</span>
+<span class="kw">interface</span> <span class="type">TimelineEvent</span> {
+  <span class="json-key">startTime</span>: <span class="type">string</span>;    <span class="cm">// '00:00'</span>
+  <span class="json-key">endTime</span>: <span class="type">string</span>;      <span class="cm">// '03:00'</span>
+  <span class="json-key">type</span>: <span class="str">'action'</span> | <span class="str">'dialogue'</span> | <span class="str">'transition'</span> | <span class="str">'reaction'</span>;
+  <span class="json-key">character</span>?: <span class="type">string</span>;
+  <span class="json-key">content</span>: <span class="type">string</span>;
+  <span class="json-key">emotion</span>?: <span class="type">string</span>;
+}</code></pre>
+
+        <p>A single shot might contain multiple overlapping events:</p>
+
+        <div class="json-viewer">
+{
+  <span class="json-key">"timelineEvents"</span>: [
+    {
+      <span class="json-key">"startTime"</span>: <span class="json-string">"00:00"</span>,
+      <span class="json-key">"endTime"</span>: <span class="json-string">"02:00"</span>,
+      <span class="json-key">"type"</span>: <span class="json-string">"action"</span>,
+      <span class="json-key">"character"</span>: <span class="json-string">"Dante"</span>,
+      <span class="json-key">"content"</span>: <span class="json-string">"Leans in close to examine muddy footprints"</span>,
+      <span class="json-key">"emotion"</span>: <span class="json-string">"focused"</span>
+    },
+    {
+      <span class="json-key">"startTime"</span>: <span class="json-string">"02:00"</span>,
+      <span class="json-key">"endTime"</span>: <span class="json-string">"04:00"</span>,
+      <span class="json-key">"type"</span>: <span class="json-string">"dialogue"</span>,
+      <span class="json-key">"character"</span>: <span class="json-string">"Dante"</span>,
+      <span class="json-key">"content"</span>: <span class="json-string">"The footprints are backwards!"</span>,
+      <span class="json-key">"emotion"</span>: <span class="json-string">"excited discovery"</span>
+    },
+    {
+      <span class="json-key">"startTime"</span>: <span class="json-string">"04:00"</span>,
+      <span class="json-key">"endTime"</span>: <span class="json-string">"05:00"</span>,
+      <span class="json-key">"type"</span>: <span class="json-string">"reaction"</span>,
+      <span class="json-key">"character"</span>: <span class="json-string">"Luna"</span>,
+      <span class="json-key">"content"</span>: <span class="json-string">"Gasps and looks at Dante with wide eyes"</span>,
+      <span class="json-key">"emotion"</span>: <span class="json-string">"surprised"</span>
+    }
+  ]
+}
+        </div>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon amber">🎬</div>
+              <div>
+                <div class="card-title">action</div>
+                <div class="card-subtitle">Physical movements &amp; gestures</div>
+              </div>
+            </div>
+            <p>Character performs a visible action — walking, examining, pointing. Drives VEO's motion generation.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">💬</div>
+              <div>
+                <div class="card-title">dialogue</div>
+                <div class="card-subtitle">Spoken lines with emotion tags</div>
+              </div>
+            </div>
+            <p>Maps directly to TTS generation in the Audio Studio. The <code>emotion</code> field controls voice inflection.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🔄</div>
+              <div>
+                <div class="card-title">transition</div>
+                <div class="card-subtitle">Scene or beat changes</div>
+              </div>
+            </div>
+            <p>Marks where one narrative beat ends and another begins within a single shot. Used for editing decisions.</p>
+          </div>
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon rose">😲</div>
+              <div>
+                <div class="card-title">reaction</div>
+                <div class="card-subtitle">Facial expressions &amp; responses</div>
+              </div>
+            </div>
+            <p>Secondary character reactions — gasps, smiles, nods. Critical for multi-character scenes where the camera isn't on the speaker.</p>
+          </div>
+        </div>
+
+        <!-- ═══ Section 6: Shot Metadata ═══ -->
+        <h2>Shot Metadata</h2>
+        <p>Beyond the VEO prompt itself, each shot carries rich metadata used by the Visual Studio UI, the Audio Studio, and the export pipeline.</p>
+
+        <h3>Shot Type (22 enum values)</h3>
+        <p>The <code>shotType</code> field classifies the camera framing. The full enum:</p>
+<pre><code><span class="kw">type</span> <span class="type">ShotType</span> =
+  | <span class="str">'extreme_wide'</span>    | <span class="str">'wide'</span>            | <span class="str">'full'</span>
+  | <span class="str">'medium_wide'</span>     | <span class="str">'cowboy'</span>          | <span class="str">'medium'</span>
+  | <span class="str">'medium_close'</span>    | <span class="str">'close_up'</span>        | <span class="str">'extreme_close'</span>
+  | <span class="str">'insert'</span>          | <span class="str">'cutaway'</span>         | <span class="str">'pov'</span>
+  | <span class="str">'over_shoulder'</span>   | <span class="str">'two_shot'</span>        | <span class="str">'group'</span>
+  | <span class="str">'establishing'</span>    | <span class="str">'aerial'</span>          | <span class="str">'dutch_angle'</span>
+  | <span class="str">'low_angle'</span>       | <span class="str">'high_angle'</span>      | <span class="str">'birds_eye'</span>
+  | <span class="str">'worms_eye'</span>;</code></pre>
+
+        <h3>Transition Type</h3>
+        <p>How this shot connects to the next:</p>
+<pre><code><span class="kw">type</span> <span class="type">TransitionType</span> =
+  | <span class="str">'continuation'</span>  <span class="cm">// Same scene, next beat</span>
+  | <span class="str">'cut'</span>           <span class="cm">// Hard break</span>
+  | <span class="str">'match_cut'</span>     <span class="cm">// Visual rhyme between shots</span>
+  | <span class="str">'j_cut'</span>         <span class="cm">// Audio of next shot starts early</span>
+  | <span class="str">'l_cut'</span>;        <span class="cm">// Audio of current shot continues</span></code></pre>
+
+        <h3>Frame Strategy &amp; Descriptions</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Field</th>
+              <th>Type</th>
+              <th>Purpose</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>frameStrategy</code></td>
+              <td><span class="tag purple">string</span></td>
+              <td>Composition approach: "rule of thirds", "centered", "leading space", etc.</td>
+            </tr>
+            <tr>
+              <td><code>primarySubject</code></td>
+              <td><span class="tag blue">string</span></td>
+              <td>Which character or object the camera focuses on</td>
+            </tr>
+            <tr>
+              <td><code>firstFrameDescription</code></td>
+              <td><span class="tag cyan">string</span></td>
+              <td>Prose description of the opening frame — used as VEO anchor</td>
+            </tr>
+            <tr>
+              <td><code>lastFrameDescription</code></td>
+              <td><span class="tag green">string</span></td>
+              <td>Prose description of the closing frame — ensures smooth transitions</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Shorts Candidate &amp; Metadata</h3>
+        <p>Shots flagged as <code>shortsCandidate: true</code> include additional metadata for social media formatting:</p>
+
+<pre><code><span class="kw">interface</span> <span class="type">ShortsMetadata</span> {
+  <span class="json-key">shortsCandidate</span>: <span class="type">boolean</span>;
+  <span class="json-key">shortsMetadata</span>?: {
+    <span class="json-key">hookLine</span>: <span class="type">string</span>;         <span class="cm">// First 3-second attention grab</span>
+    <span class="json-key">viralScore</span>: <span class="type">number</span>;       <span class="cm">// 1–10 standalone potential</span>
+    <span class="json-key">suggestedCaption</span>: <span class="type">string</span>; <span class="cm">// Platform-ready caption</span>
+    <span class="json-key">aspectRatio</span>: <span class="str">'9:16'</span> | <span class="str">'1:1'</span>;
+  };
+}</code></pre>
+
+        <!-- ═══ Section 7: Token Savings Callout ═══ -->
+        <div class="callout success">
+          <div class="callout-title">⚡ 50–80% Token Savings vs Monolithic</div>
+          <p>The monolithic approach sends the <em>entire</em> screenplay + <em>all</em> characters + <em>all</em> locations in a single LLM call. For a 7-scene episode with 12 characters and 8 locations, that's ~15,000 tokens of context repeated for every shot.</p>
+          <p>The scene-by-scene pipeline sends only the 2–3 characters and 1–2 locations relevant to each scene. A typical scene uses ~3,000 tokens of context — an <strong>80% reduction</strong>. Over an entire episode, this compounds into massive cost savings without sacrificing output quality.</p>
+        </div>
+
+        <!-- ═══ Section 8: LLM Configuration ═══ -->
+        <h2>LLM Configuration</h2>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-icon purple">🤖</div>
+            <div>
+              <div class="card-title">Model Configuration</div>
+              <div class="card-subtitle">Optimized for precise cinematic direction</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Value</th>
+                <th>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Model</strong></td>
+                <td><code>gemini-3.1-flash-lite</code></td>
+                <td>Fast and cost-effective — handles structured prompt assembly well at scale</td>
+              </tr>
+              <tr>
+                <td><strong>Temperature</strong></td>
+                <td><code>0.4</code></td>
+                <td>Lower than ideation (0.8) — shots need <em>precision</em> over creativity. Camera angles and timing must be consistent.</td>
+              </tr>
+              <tr>
+                <td><strong>Max Tokens</strong></td>
+                <td><code>16000</code></td>
+                <td>Large budget for multi-shot scenes with detailed 7-component prompts and timeline events</td>
+              </tr>
+              <tr>
+                <td><strong>Output Mode</strong></td>
+                <td><code>generateObject()</code></td>
+                <td>Guarantees valid JSON matching the shot schema — no parsing needed</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p>Compared to other pipeline stages, shot generation uses a <strong>lower temperature</strong> (0.4 vs 0.8 for ideation) because camera directions need to be technically precise — there's less room for creative latitude in lens choices and timing than in story concepts. The higher token budget (16000 vs 8000) accommodates the verbose 7-component prompt structure multiplied across multiple shots per scene.</p>
+
+        <!-- Page Navigation -->
+        <div class="page-nav">
+          <a href="screenplay.html" class="page-nav-link">
+            <span class="page-nav-label">Previous</span>
+            <span class="page-nav-title">Screenplay Conversion</span>
+          </a>
+          <a href="memory.html" class="page-nav-link next">
+            <span class="page-nav-label">Next</span>
+            <span class="page-nav-title">Memory &amp; Continuity</span>
+          </a>
+        </div>
+
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>

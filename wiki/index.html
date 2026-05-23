@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storybook Platform Wiki — Home</title>
+  <meta name="description" content="Comprehensive documentation for the Storybook AI-powered content creation platform. Architecture, pipeline, infrastructure, and product decisions.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <button class="mobile-toggle" aria-label="Toggle navigation">☰</button>
+  <div class="scroll-progress"><div class="scroll-progress-bar"></div></div>
+
+  <div class="wiki-layout">
+    <aside class="sidebar"></aside>
+
+    <main class="main-content">
+      <div class="content-wrapper">
+
+        <!-- Page Header -->
+        <header class="page-header">
+          <div class="page-breadcrumb">📚 Wiki</div>
+          <h1 class="page-title">Storybook Platform Wiki</h1>
+          <p class="page-subtitle">
+            The complete guide to how Storybook turns a simple idea into a fully produced AI-generated video — from concept to shots to audio, with memory across episodes.
+          </p>
+        </header>
+
+        <!-- ELI10 -->
+        <div class="eli10">
+          <p>
+            <strong>Imagine you want to make a cartoon show.</strong> You type in one sentence like "A 7-year-old detective solves mysteries using science." Then, the app writes the whole story for you, breaks it into scenes like a movie script, creates camera instructions for every shot, and even writes the sound effects and music. And the best part? It <em>remembers</em> everything from past episodes — so characters don't come back from the dead and plot lines stay consistent!
+          </p>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-row">
+          <div class="stat-card animate-in">
+            <div class="stat-value">5</div>
+            <div class="stat-label">Pipeline Stages</div>
+          </div>
+          <div class="stat-card animate-in">
+            <div class="stat-value">7</div>
+            <div class="stat-label">Lambda Workers</div>
+          </div>
+          <div class="stat-card animate-in">
+            <div class="stat-value">9</div>
+            <div class="stat-label">Canon Rules</div>
+          </div>
+          <div class="stat-card animate-in">
+            <div class="stat-value">15+</div>
+            <div class="stat-label">DB Tables</div>
+          </div>
+          <div class="stat-card animate-in">
+            <div class="stat-value">6</div>
+            <div class="stat-label">Content Types</div>
+          </div>
+        </div>
+
+        <!-- The Pipeline Overview -->
+        <h2>The Content Creation Pipeline</h2>
+        <p>Every piece of content flows through a 5-stage pipeline, from raw idea to production-ready output:</p>
+
+        <div class="flow-diagram">
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">💡</div>
+            <div class="flow-step-title">Ideation</div>
+            <div class="flow-step-desc">Generate story ideas from a premise</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">📖</div>
+            <div class="flow-step-title">Story</div>
+            <div class="flow-step-desc">Full narrative with characters & arcs</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">🎬</div>
+            <div class="flow-step-title">Screenplay</div>
+            <div class="flow-step-desc">Scenes, dialogue & audio cues</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">📸</div>
+            <div class="flow-step-title">Visual Studio</div>
+            <div class="flow-step-desc">VEO 3.1 shot prompts</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step animate-in">
+            <div class="flow-step-icon">🔊</div>
+            <div class="flow-step-title">Audio Studio</div>
+            <div class="flow-step-desc">TTS, music & sound effects</div>
+          </div>
+        </div>
+
+        <!-- How It Knows Your Show's Style -->
+        <h2>How Does It Know Your Show's "Style"?</h2>
+        
+        <div class="data-example">
+          <p>Take <strong>"Little Detective Dante"</strong> — a science-based detective show for kids. The user never hardcodes "science detective" into the app. Instead, when they create the project, metadata is stored in the <code>projects</code> table:</p>
+          <pre><code>{
+  "name": "Little Detective Dante",
+  "projectAestheticStyle": "3D Pixar/DreamWorks cartoon",
+  "recurringElements": [
+    {
+      "name": "The Clue Board",
+      "placement": "throughout",
+      "purpose": "Dante organizes clues visually on his magnetic clue board"
+    },
+    {
+      "name": "The Deduction Dance",
+      "placement": "end",
+      "purpose": "Dante does a silly celebration dance when he solves the case"
+    }
+  ],
+  "characters": [
+    { "name": "Dante", "role": "protagonist", 
+      "description": "A curious 7-year-old who uses science to solve mysteries" }
+  ]
+}</code></pre>
+          <p>This metadata is <strong>injected into every LLM prompt</strong> as context variables. The AI doesn't need to be told the style — it reads it from the project configuration, ensuring consistency across all episodes.</p>
+        </div>
+
+        <!-- Architecture Quick Look -->
+        <h2>Architecture at a Glance</h2>
+
+        <div class="grid-2">
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon blue">🌐</div>
+              <div>
+                <div class="card-title">Next.js 15 + React 19</div>
+                <div class="card-subtitle">App Router, Server Actions</div>
+              </div>
+            </div>
+            <p>The frontend and server-side rendering layer. Uses TypeScript, Tailwind CSS 4, and Shadcn UI for a premium design system.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-icon green">🗄️</div>
+            <div>
+                <div class="card-title">Supabase PostgreSQL</div>
+                <div class="card-subtitle">Database + Auth</div>
+              </div>
+            </div>
+            <p>Relational data with Row-Level Security, connection pooling, and built-in OAuth/MFA authentication.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon purple">⚡</div>
+              <div>
+                <div class="card-title">AWS Lambda + SQS</div>
+                <div class="card-subtitle">Background Processing</div>
+              </div>
+            </div>
+            <p>7 Lambda functions process LLM jobs, email, video rendering, and publishing via 4 SQS queues with dead-letter queues.</p>
+          </div>
+
+          <div class="card animate-in">
+            <div class="card-header">
+              <div class="card-icon cyan">🧠</div>
+              <div>
+                <div class="card-title">Canon Memory System</div>
+                <div class="card-subtitle">Continuity Engine</div>
+              </div>
+            </div>
+            <p>Token-budgeted memory context with immutable events, character states, narrative threads, and episode summaries.</p>
+          </div>
+        </div>
+
+        <!-- The Tech Stack -->
+        <h2>Technology Stack</h2>
+
+        <table>
+          <thead>
+            <tr><th>Layer</th><th>Technology</th><th>Why</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><strong>Frontend</strong></td><td>Next.js 15 + React 19</td><td>App Router, Server Components, streaming</td></tr>
+            <tr><td><strong>Styling</strong></td><td>Tailwind CSS 4 + Shadcn UI</td><td>Rapid, accessible component library</td></tr>
+            <tr><td><strong>Language</strong></td><td>TypeScript (strict)</td><td>End-to-end type safety</td></tr>
+            <tr><td><strong>Database</strong></td><td>Supabase PostgreSQL</td><td>RLS, real-time, connection pooling</td></tr>
+            <tr><td><strong>Auth</strong></td><td>Supabase Auth</td><td>OAuth, MFA, magic links built-in</td></tr>
+            <tr><td><strong>Hosting</strong></td><td>AWS Lambda (SST + OpenNext)</td><td>Serverless, scales to zero, $37/mo hybrid</td></tr>
+            <tr><td><strong>Queues</strong></td><td>AWS SQS</td><td>4 queues + 4 DLQs, reliable async processing</td></tr>
+            <tr><td><strong>Storage</strong></td><td>AWS S3 + Cloudflare R2</td><td>R2 for zero-egress media files</td></tr>
+            <tr><td><strong>CDN</strong></td><td>AWS CloudFront</td><td>Global edge caching</td></tr>
+            <tr><td><strong>Email</strong></td><td>Resend / AWS SES</td><td>Resend free tier for dev, SES for production</td></tr>
+            <tr><td><strong>Cache</strong></td><td>Upstash Redis</td><td>Serverless, 10K cmds/day free</td></tr>
+            <tr><td><strong>Real-time</strong></td><td>AWS API Gateway WebSocket</td><td>Collaborative editing, job notifications</td></tr>
+            <tr><td><strong>LLM</strong></td><td>Gemini (primary), OpenAI, Anthropic</td><td>Provider-agnostic via <code>@kit/llm</code></td></tr>
+            <tr><td><strong>IaC</strong></td><td>SST (Serverless Stack)</td><td>Single <code>sst.config.ts</code> for all AWS infra</td></tr>
+            <tr><td><strong>Monorepo</strong></td><td>Turborepo + pnpm</td><td>Parallel builds, shared packages</td></tr>
+          </tbody>
+        </table>
+
+        <!-- Explore the Wiki -->
+        <h2>Explore the Wiki</h2>
+
+        <div class="link-card-grid">
+          <a href="architecture.html" class="link-card">
+            <div class="link-card-emoji">🏗️</div>
+            <div class="link-card-title">System Architecture</div>
+            <div class="link-card-desc">Monorepo structure, package relationships, deployment architecture, and how all the pieces fit together.</div>
+          </a>
+          <a href="pipeline-overview.html" class="link-card">
+            <div class="link-card-emoji">🔄</div>
+            <div class="link-card-title">Pipeline Overview</div>
+            <div class="link-card-desc">The complete 5-stage content pipeline: what data flows in and out of each stage, with real examples.</div>
+          </a>
+          <a href="ideation.html" class="link-card">
+            <div class="link-card-emoji">💡</div>
+            <div class="link-card-title">Ideation Stage</div>
+            <div class="link-card-desc">How ideas are generated from a premise. Viral scoring, concept variations, and the ideation prompt.</div>
+          </a>
+          <a href="story.html" class="link-card">
+            <div class="link-card-emoji">📖</div>
+            <div class="link-card-title">Story Generation</div>
+            <div class="link-card-desc">Full narrative generation with 3-act structure, SCORE framework, and duration-based scaling.</div>
+          </a>
+          <a href="screenplay.html" class="link-card">
+            <div class="link-card-emoji">🎬</div>
+            <div class="link-card-title">Screenplay Conversion</div>
+            <div class="link-card-desc">Converting stories to professional screenplays with scenes, dialogue, ElevenLabs audio tags, and viral hooks.</div>
+          </a>
+          <a href="shots.html" class="link-card">
+            <div class="link-card-emoji">📸</div>
+            <div class="link-card-title">Shot Generation</div>
+            <div class="link-card-desc">Scene-by-scene VEO 3.1 prompt generation with 7-component structure and reference images.</div>
+          </a>
+          <a href="memory.html" class="link-card">
+            <div class="link-card-emoji">🧠</div>
+            <div class="link-card-title">Memory & Continuity</div>
+            <div class="link-card-desc">The Canon Management System: immutable events, character states, narrative threads, and memory context builder.</div>
+          </a>
+          <a href="prompts.html" class="link-card">
+            <div class="link-card-emoji">✨</div>
+            <div class="link-card-title">Prompt Engine</div>
+            <div class="link-card-desc">JSON-based prompt templates, variable injection, layered system prompts, and output schemas.</div>
+          </a>
+          <a href="infrastructure.html" class="link-card">
+            <div class="link-card-emoji">☁️</div>
+            <div class="link-card-title">AWS & Supabase Infrastructure</div>
+            <div class="link-card-desc">Why AWS + Supabase, all Lambda functions, SQS queues, SST config, and vendor-agnostic deployment.</div>
+          </a>
+          <a href="database.html" class="link-card">
+            <div class="link-card-emoji">🗄️</div>
+            <div class="link-card-title">Database Schema</div>
+            <div class="link-card-desc">All tables, relationships, RLS policies, multi-tenancy, and the episode pipeline data model.</div>
+          </a>
+          <a href="llm.html" class="link-card">
+            <div class="link-card-emoji">🤖</div>
+            <div class="link-card-title">LLM Integration</div>
+            <div class="link-card-desc">Provider abstraction, structured output, generateObject patterns, and model configurations.</div>
+          </a>
+          <a href="user-flows.html" class="link-card">
+            <div class="link-card-emoji">👤</div>
+            <div class="link-card-title">User Flows & UI</div>
+            <div class="link-card-desc">User journey from login to publishing. Studio pages, navigation, and UI component architecture.</div>
+          </a>
+        </div>
+
+        <!-- Footer -->
+        <footer class="wiki-footer">
+          <p>Storybook Platform Wiki · Built with 💜 · Last updated 2026</p>
+        </footer>
+      </div>
+    </main>
+  </div>
+
+  <script src="nav.js"></script>
+</body>
+</html>
