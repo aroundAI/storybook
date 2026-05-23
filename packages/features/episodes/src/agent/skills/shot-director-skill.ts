@@ -261,6 +261,20 @@ const generateShotsTool = createTool({
       return toolError(`Shot Director failed: ${message}`);
     }
   },
+
+  // OPT-2: Drop the massive shots array from history, keep only counts
+  // Full shot data is preserved in the step trace (AgentStep.toolResult)
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    return {
+      success: true,
+      totalShots: d.totalShots,
+      scenesProcessed: d.scenesProcessed,
+      reelCandidatesOptimized: d.reelCandidatesOptimized,
+      summary: d.summary,
+    };
+  },
 });
 
 export const shotDirectorSkill: Skill = {

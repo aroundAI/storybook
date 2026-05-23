@@ -81,6 +81,19 @@ const buildMemoryContextTool = createTool({
       );
     }
   },
+
+  // OPT-2: Drop full event/thread data from history, keep counts + character names
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    const chars = d.characterStates as Array<{ name: string }> | undefined;
+    return {
+      success: true,
+      summary: d.summary,
+      characterNames: chars?.map((c) => c.name) ?? [],
+      tokensUsed: d.tokensUsed,
+    };
+  },
 });
 
 /**

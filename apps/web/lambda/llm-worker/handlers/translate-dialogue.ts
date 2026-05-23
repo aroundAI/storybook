@@ -2,6 +2,9 @@
  * Translate Dialogue Handler
  *
  * Translates English dialogue lines to target language.
+ * Uses the Translation Orchestrator for quality-verified translation:
+ *   translateDialogue → verifyTranslation → re-translate divergent lines (max 1 cycle)
+ *
  * WRITES TO DATABASE: Inserts new dialogue_lines rows
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -30,6 +33,9 @@ interface TranslateDialogueResult {
   success: boolean;
   data: {
     translatedCount: number;
+    orchestratorSteps?: number;
+    verificationScore?: number;
+    verdict?: string;
   };
 }
 
@@ -53,7 +59,7 @@ export async function processTranslateDialogue(
   const data = payload as TranslateDialoguePayload;
 
   console.log(
-    `[Translate Dialogue] Processing for episode ${data.episodeId} to ${data.targetLanguage}`,
+    `[Translate Dialogue] Starting AGENTIC pipeline for episode ${data.episodeId} to ${data.targetLanguage}`,
   );
 
   // 1. Fetch English dialogue lines
@@ -101,11 +107,10 @@ export async function processTranslateDialogue(
     return { success: true, data: { translatedCount: 0 } };
   }
 
-  // 3. Translate using LLM
+  // 3. Prepare formatted dialogue text for orchestrator
   const targetLangName =
     LANGUAGE_NAMES[data.targetLanguage] || data.targetLanguage;
 
-  // Build dialogue text for LLM
   const linesText = linesToTranslate
     .map((l, i) => {
       const timing =
@@ -116,30 +121,33 @@ export async function processTranslateDialogue(
     })
     .join('\n');
 
-  const { executeLLM } = await import('@kit/prompt-engine/server');
-
-  const result = await executeLLM<string>({
-    templateSlug: 'dialogue-translation',
-    variables: {
-      target_language: targetLangName,
-      dialogue_lines: linesText,
-      preserve_timing: data.preserveTiming,
-    },
-    context: {
-      name: 'translate-dialogue',
-      accountId: data.accountId,
-      userId: data.userId,
-    },
-    supabaseClient: supabase,
-  });
-
-  // Parse translations from numbered output
-  const translations = parseNumberedTranslations(
-    result.data,
-    linesToTranslate.length,
+  // 4. Run the Translation Orchestrator
+  const { runTranslationOrchestrator } = await import(
+    '@kit/episodes/agent/translation-orchestrator'
   );
 
-  // 4. INSERT translated lines
+  const orchestratorResult = await runTranslationOrchestrator(
+    {
+      episodeId: data.episodeId,
+      targetLanguage: data.targetLanguage,
+      targetLanguageName: targetLangName,
+      preserveTiming: data.preserveTiming,
+      accountId: data.accountId,
+      dialogueLines: linesText,
+      lineCount: linesToTranslate.length,
+    },
+    supabase,
+  );
+
+  if (!orchestratorResult.success) {
+    throw new Error(
+      `Translation Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+    );
+  }
+
+  const translations = orchestratorResult.translations;
+
+  // 5. INSERT translated lines
   const newLines = linesToTranslate.map((line, index) => ({
     episode_id: line.episode_id,
     character_asset_id: line.character_asset_id,
@@ -163,34 +171,17 @@ export async function processTranslateDialogue(
   }
 
   console.log(
-    `[Translate Dialogue] Inserted ${newLines.length} translated lines`,
+    `[Translate Dialogue] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, ` +
+      `Lines: ${newLines.length}, Score: ${orchestratorResult.verificationScore?.toFixed(2) ?? 'N/A'}`,
   );
 
   return {
     success: true,
-    data: { translatedCount: newLines.length },
+    data: {
+      translatedCount: newLines.length,
+      orchestratorSteps: orchestratorResult.orchestratorSteps,
+      verificationScore: orchestratorResult.verificationScore,
+      verdict: orchestratorResult.verdict,
+    },
   };
-}
-
-function parseNumberedTranslations(
-  content: string,
-  expectedCount: number,
-): string[] {
-  const lines = content.split('\n').filter((l) => l.trim());
-  const translations: string[] = [];
-
-  for (const line of lines) {
-    const match = line.match(/^\d+[.:)]\s*["']?(.+?)["']?\s*$/);
-    if (match?.[1]) {
-      translations.push(match[1].trim());
-    } else if (!line.match(/^\d+[.:]/) && translations.length < expectedCount) {
-      translations.push(line.trim().replace(/^["']|["']$/g, ''));
-    }
-  }
-
-  while (translations.length < expectedCount) {
-    translations.push('');
-  }
-
-  return translations.slice(0, expectedCount);
 }

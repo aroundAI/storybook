@@ -54,8 +54,7 @@ export * from './fact-actions';
 // OpenClaw Shot Intelligence (Transition Analysis & Frame Chain)
 export * from './transition-analyzer';
 
-// NOTE: Server-only canon functions (buildMemoryContext, runRolePipeline) must be imported directly:
+// NOTE: Server-only canon functions must be imported directly:
 // import { buildMemoryContext } from '@kit/episodes/lib/canon/memory-context-builder';
-// import { runRolePipeline } from '@kit/episodes/lib/canon/llm-role-orchestrator';
 // NOTE: Context aggregator must be imported directly:
 // import { getContextAggregator } from '@kit/episodes/lib/server/services/context-aggregator';

@@ -87,6 +87,16 @@ export const MEMORY_ALLOCATIONS: Record<ProjectType, MemoryAllocation> = {
     sourcesCitations: 0,
   },
 
+  movie: {
+    immutableEvents: 30,
+    characterStates: 30,
+    worldStates: 15,
+    narrativeThreads: 15,
+    episodeSummaries: 10,
+    parentContext: 0,
+    sourcesCitations: 0,
+  },
+
   documentary: {
     immutableEvents: 10,
     characterStates: 5,
@@ -150,6 +160,10 @@ export function getDecayFactor(
   episodeDistance: number,
 ): number {
   switch (projectType) {
+    case 'movie':
+      // No decay within acts — full context preserved across act boundaries
+      return 1.0;
+
     case 'short-film':
       // Linear decay clamped at 0.3
       return Math.max(0.3, 1 - episodeDistance * 0.1);

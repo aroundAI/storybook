@@ -382,9 +382,51 @@ export async function runAgent<T = unknown>(
   for (let stepIdx = 0; stepIdx < resolved.maxSteps; stepIdx++) {
     const stepStartTime = Date.now();
 
+    // OPT-4: Pre-step budget check — estimate if the next step would
+    // exceed the token budget. Uses a rough estimate based on current
+    // conversation history size + expected output tokens.
+    const estimatedInputTokens = Math.ceil(
+      (systemPrompt.length +
+        conversationHistory.reduce((sum, m) => sum + m.content.length, 0)) /
+        4,
+    );
+    const estimatedStepTokens =
+      estimatedInputTokens + (resolved.maxTokensPerStep ?? 4000);
+
+    if (budget.wouldExceed(estimatedStepTokens)) {
+      console.warn(
+        `[Agent:${config.name}] Step ${stepIdx + 1} — Pre-step budget check: ` +
+          `estimated ${estimatedStepTokens} tokens would exceed remaining ` +
+          `${budget.remainingTokens()} tokens. Terminating early.`,
+      );
+
+      // Return the last successful tool result as the final answer
+      const lastToolStep = steps.findLast(
+        (s) => s.type === 'tool_call' && s.toolResult?.success,
+      );
+      if (lastToolStep?.toolResult?.data) {
+        return {
+          success: true,
+          data: lastToolStep.toolResult.data as T,
+          budget: budget.getState(),
+          steps,
+          error: 'Early termination: budget would be exceeded by next step',
+        };
+      }
+
+      return {
+        success: false,
+        error: `Budget would be exceeded: estimated ${estimatedStepTokens} tokens, remaining ${budget.remainingTokens()}`,
+        budget: budget.getState(),
+        steps,
+      };
+    }
+
     console.log(
       `[Agent:${config.name}] Step ${stepIdx + 1}/${resolved.maxSteps} — ` +
-        `calling LLM with ${conversationHistory.length} messages`,
+        `calling LLM with ${conversationHistory.length} messages ` +
+        `(~${estimatedInputTokens} estimated input tokens, ` +
+        `${budget.remainingTokens()} remaining budget)`,
     );
 
     try {
@@ -548,11 +590,19 @@ export async function runAgent<T = unknown>(
         });
 
         // Add to conversation history for next iteration
+        // OPT-2: Use summarizeResult when available to reduce history token growth.
+        // The full result is preserved in the step trace (above) for debugging.
+        const historyResult =
+          tool.summarizeResult && toolResult?.success
+            ? tool.summarizeResult(toolResult)
+            : toolResult;
+
+        // OPT-1: Use compact JSON (no pretty-printing) to save ~15% tokens
         conversationHistory.push(
           { role: 'assistant', content: responseContent },
           {
             role: 'user',
-            content: `Tool "${parsed.toolName}" returned:\n${JSON.stringify(toolResult, null, 2)}`,
+            content: `Tool "${parsed.toolName}" returned:\n${JSON.stringify(historyResult)}`,
           },
         );
       } else {

@@ -21,10 +21,6 @@ import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-ref
 // Canon Roles Prompts
 // =============================================================================
 import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
-import editorRole from '../../prompts/canon-roles/editor-role.json';
-import plannerRole from '../../prompts/canon-roles/planner-role.json';
-import stylistRole from '../../prompts/canon-roles/stylist-role.json';
-import writerRole from '../../prompts/canon-roles/writer-role.json';
 // =============================================================================
 // Documentary Prompts
 // =============================================================================
@@ -45,7 +41,7 @@ import batchTranslateMetadata from '../../prompts/publishing/batch-translate-met
 // =============================================================================
 // Publishing Prompts
 // =============================================================================
-import magicClips from '../../prompts/publishing/magic-clips.json';
+
 // =============================================================================
 // Quality Evaluation Prompts
 // =============================================================================
@@ -57,7 +53,6 @@ import sceneShotGeneration from '../../prompts/story-generation/scene-shot-gener
 import screenplayConversion from '../../prompts/story-generation/screenplay-conversion.json';
 import seasonGeneration from '../../prompts/story-generation/season-generation.json';
 import seasonOutline from '../../prompts/story-generation/season-outline.json';
-import shotListGeneration from '../../prompts/story-generation/shot-list-generation.json';
 // =============================================================================
 // Story Generation Prompts
 // =============================================================================
@@ -77,7 +72,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'season-generation': seasonGeneration as unknown as PromptTemplate,
   'season-outline': seasonOutline as unknown as PromptTemplate,
   'screenplay-conversion': screenplayConversion as unknown as PromptTemplate,
-  'shot-list-generation': shotListGeneration as unknown as PromptTemplate,
+
   'scene-shot-generation': sceneShotGeneration as unknown as PromptTemplate,
   'story-ideation': storyIdeation as unknown as PromptTemplate,
 
@@ -92,7 +87,6 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   // Publishing
   'batch-translate-metadata':
     batchTranslateMetadata as unknown as PromptTemplate,
-  'magic-clips': magicClips as unknown as PromptTemplate,
 
   // Quality Evaluation (used by agent skills: Viral Analyst, Reel Scout)
   'quality-evaluation/reel-scout': reelScout as unknown as PromptTemplate,
@@ -103,10 +97,6 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
   // Canon Roles
   'canon-extraction': canonExtraction as unknown as PromptTemplate,
-  'canon-roles/editor-role': editorRole as unknown as PromptTemplate,
-  'canon-roles/planner-role': plannerRole as unknown as PromptTemplate,
-  'canon-roles/stylist-role': stylistRole as unknown as PromptTemplate,
-  'canon-roles/writer-role': writerRole as unknown as PromptTemplate,
 
   // Documentary
   'documentary/fact-checker-role': factCheckerRole as unknown as PromptTemplate,

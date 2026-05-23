@@ -5,10 +5,11 @@
  * Evaluates scenes for Reel/Shorts candidacy, then generates VEO 3.1 shots.
  *
  * Skills:
- *   - Reel Scout    (analyzeScenes)       — identify viral short-form candidates
- *   - Shot Director (generateShots)       — generate VEO 3.1 optimized shot list
+ *   - Reel Scout         (analyzeScenes)          — identify viral short-form candidates
+ *   - Shot Director      (generateShots)          — generate VEO 3.1 optimized shot list
+ *   - Shot Quality       (evaluateShotQuality)    — post-generation quality gate
  *
- * maxSteps: 16 — analyzeScenes(1) + generateShots(1–2 for large episode) = 3 worst case.
+ * maxSteps: 16 — analyzeScenes(1) + generateShots(1–2) + evaluateShotQuality(1) = 4 typical.
  * Large budget to give Shot Director room if it needs to batch large scene sets.
  *
  * After this stage:
@@ -20,6 +21,7 @@ import type { AgentRunResult } from '@kit/agent';
 
 import { reelScoutSkill } from './skills/reel-scout-skill';
 import { shotDirectorSkill } from './skills/shot-director-skill';
+import { shotQualitySkill } from './skills/shot-quality-skill';
 
 export interface ShotOrchestratorScene {
   number: number;
@@ -107,6 +109,10 @@ export interface ShotOrchestratorResult {
   reelCandidateScenes: number[];
   /** Full per-scene Reel Scout analysis — viralScore, hookType, whyThisWorksAsReel, etc. */
   sceneAnalyses: ReelSceneAnalysis[];
+  /** Shot quality evaluation score (0-1). >= 0.8 = production-ready */
+  shotQualityScore?: number;
+  /** Shot quality decision: 'pass' | 'revise' | 'rework' */
+  shotQualityDecision?: string;
   orchestratorSteps: number;
   error?: string;
 }
@@ -140,7 +146,7 @@ export async function runShotOrchestrator(
         name: 'shot-orchestrator',
         systemPrompt: SHOT_SYSTEM_PROMPT,
         tools: [],
-        skills: [reelScoutSkill, shotDirectorSkill],
+        skills: [reelScoutSkill, shotDirectorSkill, shotQualitySkill],
         maxSteps: 16,
         // 32000 output tokens — required because the generateShots tool_call
         // params include all scene scenes as JSON. At 4000 (default) the
@@ -265,18 +271,47 @@ export async function runShotOrchestrator(
       `Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
   );
 
+  // Extract shot quality evaluation results
+  type EvaluateShotQualityResult = {
+    overallScore?: number;
+    decision?: string;
+  };
+
+  const qualityStep = result.steps.find(
+    (s) =>
+      s.type === 'tool_call' &&
+      s.toolName === 'evaluateShotQuality' &&
+      s.toolResult?.success,
+  );
+  const qualityData = qualityStep?.toolResult?.data as
+    | EvaluateShotQualityResult
+    | undefined;
+
+  if (qualityData) {
+    console.log(
+      `[Shot Orchestrator] Shot Quality: score=${qualityData.overallScore}, ` +
+        `decision=${qualityData.decision}`,
+    );
+  } else {
+    console.log(
+      `[Shot Orchestrator] Shot Quality evaluation was not run or failed`,
+    );
+  }
+
   return {
     success: true,
     shots,
     reelCandidateScenes,
     sceneAnalyses,
+    shotQualityScore: qualityData?.overallScore,
+    shotQualityDecision: qualityData?.decision,
     orchestratorSteps: result.steps.length,
   };
 }
 
 const SHOT_SYSTEM_PROMPT = `You are the Shot Pipeline Director.
 
-Your job: produce a complete VEO 3.1 optimized shot list for all screenplay scenes.
+Your job: produce a complete, production-quality VEO 3.1 shot list for all screenplay scenes.
 
 ## Your Steps
 
@@ -284,8 +319,13 @@ Your job: produce a complete VEO 3.1 optimized shot list for all screenplay scen
 2. Call generateShots (Shot Director) with ALL scenes plus the reelCandidateScenes list from step 1.
    - The Shot Director will generate hook-optimized shots for reel candidate scenes.
    - Pass the VEO character and location context verbatim.
-3. If analyzeScenes returns an error or fails for any reason, do NOT stop — immediately call generateShots with reelCandidateScenes set to []. Shot generation is the primary goal; reel analysis is optional enrichment that improves quality but is not required.
-4. STOP after generateShots completes, unless the Shot Director explicitly requests batching for a very large episode (>12 scenes).
+3. Call evaluateShotQuality (Shot Quality) with the generated shots JSON to score production-readiness.
+   - If decision is 'pass' (>= 0.8): Report success and include the quality score.
+   - If decision is 'revise' (0.6-0.79): Note the issues in completionNote but do NOT regenerate — the handler will address individual shots.
+   - If decision is 'rework' (< 0.6): Report the systematic issues — the handler may request re-generation.
+4. If analyzeScenes returns an error, do NOT stop — skip to step 2 with reelCandidateScenes set to [].
+5. If evaluateShotQuality fails, still return the shots — quality scoring is a bonus, not a blocker.
+6. STOP after evaluateShotQuality completes (or after generateShots if quality eval fails).
 
 ## CRITICAL CONSTRAINTS
 - Pass VEO character context verbatim — character visual identities are non-negotiable.
@@ -299,7 +339,9 @@ Your job: produce a complete VEO 3.1 optimized shot list for all screenplay scen
 Return a JSON object with:
 - totalShotsGenerated: number of shots produced
 - reelCandidates: scene numbers identified by Reel Scout (empty array if Reel Scout failed)
-- completionNote: one sentence confirming completion`;
+- shotQualityScore: the overall quality score from evaluateShotQuality (null if not run)
+- shotQualityDecision: 'pass', 'revise', or 'rework' (null if not run)
+- completionNote: one sentence confirming completion and quality status`;
 
 function buildShotPrompt(input: ShotOrchestratorInput): string {
   return `Generate a complete VEO 3.1 shot list for this episode.

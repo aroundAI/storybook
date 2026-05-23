@@ -40,6 +40,15 @@ export interface AgentTool<
     params: z.infer<TParams>,
     context: AgentRunContext,
   ) => Promise<ToolResult<TResult>>;
+  /**
+   * Optional function to produce a compact summary of the tool result
+   * for the agent's conversation history. When provided, the runner stores
+   * the summary instead of the full result, significantly reducing token
+   * usage on subsequent LLM calls.
+   *
+   * The full result is still recorded in the step trace for debugging.
+   */
+  summarizeResult?: (result: ToolResult<TResult>) => unknown;
 }
 
 /**

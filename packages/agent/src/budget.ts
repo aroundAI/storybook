@@ -13,6 +13,10 @@ export interface BudgetTracker {
   isExceeded(): BudgetCheckResult;
   /** Get current budget consumption state */
   getState(): BudgetState;
+  /** Get remaining token budget */
+  remainingTokens(): number;
+  /** Check if adding the estimated tokens would exceed the budget */
+  wouldExceed(estimatedTokens: number): boolean;
 }
 
 /**
@@ -74,6 +78,14 @@ export function createBudgetTracker(limits: BudgetLimits): BudgetTracker {
 
     getState(): BudgetState {
       return { ...state };
+    },
+
+    remainingTokens(): number {
+      return Math.max(0, limits.maxTotalTokens - state.totalTokens);
+    },
+
+    wouldExceed(estimatedTokens: number): boolean {
+      return state.totalTokens + estimatedTokens >= limits.maxTotalTokens;
     },
   };
 }

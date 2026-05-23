@@ -100,6 +100,20 @@ const analyzeScenesTool = createTool({
       );
     }
   },
+
+  // OPT-2: Drop per-scene analyses from history, keep only candidate list + counts
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    return {
+      success: true,
+      topReelCandidates: d.topReelCandidates,
+      candidateCount: d.candidateCount,
+      nonCandidateCount: d.nonCandidateCount,
+      summary: d.summary,
+      orchestratorNote: d.orchestratorNote,
+    };
+  },
 });
 
 export const reelScoutSkill: Skill = {

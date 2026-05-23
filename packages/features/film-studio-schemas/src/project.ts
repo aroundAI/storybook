@@ -6,6 +6,7 @@ import { UUIDSchema } from './common';
 export const ProjectTypeSchema = z.enum([
   'short-film',
   'series',
+  'movie',
   'documentary',
   'ad',
   'educational',

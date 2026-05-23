@@ -225,6 +225,35 @@ const generateStoryTool = createTool({
       return toolError(`Story Director failed: ${(error as Error).message}`);
     }
   },
+
+  // OPT-2: Compact summary for conversation history
+  // Replaces ~2000-4000 tokens of full story data with ~100 tokens
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    return {
+      success: true,
+      title: d.title,
+      wordCount:
+        typeof d.storyText === 'string'
+          ? (d.storyText as string).split(/\s+/).length
+          : 0,
+      estimatedSceneCount: d.estimatedSceneCount,
+      themes: d.themes,
+      tone: d.tone,
+      wasRevision: d.wasRevision,
+      episodeSummary: d.episodeSummary,
+      viralStructure: d.viralStructure
+        ? {
+            openingHook: (d.viralStructure as Record<string, string>)
+              .openingHook,
+            curiosityGap: (d.viralStructure as Record<string, string>)
+              .curiosityGap,
+          }
+        : undefined,
+      summary: d.summary,
+    };
+  },
 });
 
 export const storyDirectorSkill: Skill = {

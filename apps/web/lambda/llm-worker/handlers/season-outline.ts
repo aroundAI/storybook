@@ -2,7 +2,10 @@
  * Season Outline Handler
  *
  * Generates episode outlines for a season.
- * No database writes - returns outlines to frontend for preview.
+ * Uses the Season Orchestrator for quality-gated outline generation:
+ *   generateSeasonOutline → evaluateSeasonArc → revise weak episodes (max 1 cycle)
+ *
+ * No database writes — returns outlines to frontend for preview via WebSocket.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -40,6 +43,9 @@ interface SeasonOutlineResult {
       costCents: number;
       tokensUsed: number;
       generatedAt: string;
+      orchestratorSteps?: number;
+      arcScore?: number;
+      arcSummary?: string;
     };
   };
 }
@@ -50,7 +56,9 @@ export async function processSeasonOutline(
 ): Promise<SeasonOutlineResult> {
   const data = payload as SeasonOutlinePayload;
 
-  console.log(`[Season Outline] Generating ${data.episodeCount} episodes`);
+  console.log(
+    `[Season Outline] Starting AGENTIC pipeline for ${data.episodeCount} episodes`,
+  );
 
   // Fetch project context
   const { data: project } = await supabase
@@ -92,57 +100,73 @@ export async function processSeasonOutline(
   const characters = charactersResult.data || [];
   const locations = locationsResult.data || [];
 
-  // Build prompt variables
-  const variables = {
-    season_premise: data.seasonPremise,
-    episode_count: data.episodeCount,
-    starting_number: data.startingNumber,
-    genre: data.genre || projectMetadata.genre || 'general',
-    style: data.style || 'cinematic',
-    existing_characters:
-      characters.length > 0
-        ? characters
-            .map((c) => `- ${c.name}: ${c.description || ''}`)
-            .join('\n')
-        : 'No characters defined yet.',
-    existing_locations:
-      locations.length > 0
-        ? locations.map((l) => `- ${l.name}: ${l.description || ''}`).join('\n')
-        : 'No locations defined yet.',
-    recurring_element: recurringElementFormatted,
-  };
+  const existingCharacters =
+    characters.length > 0
+      ? characters
+          .map(
+            (c: { name: string; description?: string }) =>
+              `- ${c.name}: ${c.description || ''}`,
+          )
+          .join('\n')
+      : 'No characters defined yet.';
 
-  // Execute LLM
-  const { executeLLM } = await import('@kit/prompt-engine/server');
+  const existingLocations =
+    locations.length > 0
+      ? locations
+          .map(
+            (l: { name: string; description?: string }) =>
+              `- ${l.name}: ${l.description || ''}`,
+          )
+          .join('\n')
+      : 'No locations defined yet.';
 
-  const result = await executeLLM<{ episodes: EpisodeOutline[] }>({
-    templateSlug: 'season-outline',
-    variables,
-    context: {
-      name: 'season-outline',
+  // Run the Season Orchestrator
+  const { runSeasonOrchestrator } = await import(
+    '@kit/episodes/agent/season-orchestrator'
+  );
+
+  const orchestratorResult = await runSeasonOrchestrator(
+    {
+      projectId: data.projectId,
+      seasonPremise: data.seasonPremise,
+      episodeCount: data.episodeCount,
+      startingNumber: data.startingNumber,
+      genre: data.genre || (projectMetadata.genre as string) || 'general',
+      style: data.style || 'cinematic',
       accountId: data.accountId,
-      userId: data.userId,
+      existingCharacters,
+      existingLocations,
+      recurringElements: recurringElementFormatted,
     },
-    supabaseClient: supabase,
-  });
+    supabase,
+  );
 
-  const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
+  if (!orchestratorResult.success) {
+    throw new Error(
+      `Season Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+    );
+  }
+
   const generatedAt = new Date().toISOString();
 
   console.log(
-    `[Season Outline] Generated ${result.data.episodes.length} outlines`,
+    `[Season Outline] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, ` +
+      `Episodes: ${orchestratorResult.episodes.length}, Arc score: ${orchestratorResult.arcScore?.toFixed(2) ?? 'N/A'}`,
   );
 
   return {
     success: true,
     data: {
-      episodes: result.data.episodes,
+      episodes: orchestratorResult.episodes,
       metadata: {
-        provider: result.metadata.provider,
-        model: result.metadata.model,
-        costCents,
-        tokensUsed: result.metadata.tokens,
+        provider: 'orchestrator',
+        model: 'multi-agent',
+        costCents: 0,
+        tokensUsed: 0,
         generatedAt,
+        orchestratorSteps: orchestratorResult.orchestratorSteps,
+        arcScore: orchestratorResult.arcScore,
+        arcSummary: orchestratorResult.arcSummary,
       },
     },
   };

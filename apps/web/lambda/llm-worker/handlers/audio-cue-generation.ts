@@ -2,7 +2,11 @@
  * Audio Cue Generation Handler
  *
  * Dedicated pipeline for generating coherent audio cues from visual shots.
+ * Uses the Audio Cue Orchestrator for quality-gated cue generation:
+ *   generateAudioCues → evaluateAudioCues (coverage/gaps/overlaps) → revise (max 1 cycle)
+ *
  * Runs AFTER shot generation to ensure music/SFX flow across shot boundaries.
+ * WRITES TO DATABASE: Inserts audio_cues rows
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -34,15 +38,6 @@ interface ShotData {
   };
 }
 
-interface GeneratedAudioCue {
-  type: 'music' | 'sfx' | 'ambient';
-  prompt: string;
-  startShotSequence: number;
-  startOffsetInShot: number;
-  durationSeconds: number;
-  reasoning?: string;
-}
-
 export async function processAudioCueGeneration(
   payload: Record<string, unknown>,
   supabase: SupabaseClient,
@@ -50,7 +45,9 @@ export async function processAudioCueGeneration(
   const data = AudioCueGenerationPayloadSchema.parse(payload);
   const { episodeId } = data;
 
-  console.log(`[Audio Generation] Processing for episode ${episodeId}`);
+  console.log(
+    `[Audio Generation] Starting AGENTIC pipeline for episode ${episodeId}`,
+  );
   await markJobProcessing(supabase, episodeId, 'audio_cue_generation');
 
   try {
@@ -70,12 +67,7 @@ export async function processAudioCueGeneration(
       );
     }
 
-    // 2. Prepare context for LLM
-    // We group shots into scenes based on discontinuities or just process the whole batch if small enough.
-    // For now, let's process the whole episode flow to ensure maximum coherence,
-    // but typically we should split by scene (if scene_number was reliable in shots table).
-    // The prompt template expects a JSON array of shots.
-
+    // 2. Prepare shot data for orchestrator
     const shotsJson = shots.map((s: ShotData) => ({
       seq: s.sequence_number,
       duration: s.duration_seconds,
@@ -84,41 +76,47 @@ export async function processAudioCueGeneration(
       action: s.generation_metadata?.action || s.scene_description,
     }));
 
-    // 3. Execute LLM
-    const { executeLLM } = await import('@kit/prompt-engine/server');
+    // Calculate total episode duration
+    const totalDurationSeconds = shots.reduce(
+      (sum: number, s: ShotData) => sum + s.duration_seconds,
+      0,
+    );
 
-    console.log(`[Audio Generation] Generating cues for ${shots.length} shots`);
-
-    // We might need to chunk this if the episode is very long.
-    // Assuming standard episode < 50 shots for now.
     if (shots.length > 50) {
       console.warn(
-        `[Audio Generation] Episode has ${shots.length} shots. Context window limit may be reached. Consider implementing chunking.`,
+        `[Audio Generation] Episode has ${shots.length} shots. Context window limit may be reached.`,
       );
     }
 
-    const result = await executeLLM<{ cues: GeneratedAudioCue[] }>({
-      templateSlug: 'scene-audio-refinement',
-      variables: {
-        scene_heading: 'Full Episode Sequence', // or derive from first shot
-        shots_json: JSON.stringify(shotsJson),
-      },
-      context: {
-        name: `audio-refinement-${episodeId}`,
-        accountId: data.accountId,
-        userId: 'system',
-      },
-      temperature: 0.2, // Low temp for strict logic
-      supabaseClient: supabase,
-    });
+    // 3. Run the Audio Cue Orchestrator
+    const { runAudioCueOrchestrator } = await import(
+      '@kit/episodes/agent/audio-cue-orchestrator'
+    );
 
-    const generatedCues = result.data.cues;
-    console.log(`[Audio Generation] Generated ${generatedCues.length} cues`);
+    const orchestratorResult = await runAudioCueOrchestrator(
+      {
+        episodeId,
+        accountId: data.accountId,
+        shotsJson: JSON.stringify(shotsJson),
+        totalDurationSeconds,
+      },
+      supabase,
+    );
+
+    if (!orchestratorResult.success) {
+      throw new Error(
+        `Audio Cue Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+      );
+    }
+
+    const generatedCues = orchestratorResult.cues;
+    console.log(
+      `[Audio Generation] Orchestrator complete. Steps: ${orchestratorResult.orchestratorSteps}, ` +
+        `Cues: ${generatedCues.length}, Coverage: ${orchestratorResult.coveragePercent ?? 'N/A'}%`,
+    );
 
     // 4. Transform to DB inserts
-    // We need to map (startShotSequence + offset) -> absolute start_offset_seconds in the timeline
-
-    // Build a map of Shot Sequence -> Start Time
+    // Build a map of Shot Sequence → Start Time
     const shotStartTimes = new Map<number, number>();
     let currentTime = 0;
     for (const shot of shots) {
@@ -128,10 +126,9 @@ export async function processAudioCueGeneration(
 
     // Create scene map from initial shots fetch
     const sceneMap = new Map(
-      shots.map((s) => [s.sequence_number, s.scene_number]),
+      shots.map((s: ShotData) => [s.sequence_number, s.scene_number]),
     );
 
-    // Correct mapping loop
     const finalInserts = generatedCues
       .map((cue) => {
         const shotStartTime = shotStartTimes.get(cue.startShotSequence);
@@ -180,6 +177,9 @@ export async function processAudioCueGeneration(
 
     await markJobCompleted(supabase, episodeId, 'audio_cue_generation', {
       cuesCreated: finalInserts.length,
+      mode: 'agentic',
+      orchestratorSteps: orchestratorResult.orchestratorSteps,
+      coveragePercent: orchestratorResult.coveragePercent,
     });
 
     return { success: true, cuesCreated: finalInserts.length };
