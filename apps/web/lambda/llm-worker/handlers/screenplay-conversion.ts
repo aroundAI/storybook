@@ -126,23 +126,27 @@ export async function processScreenplayConversion(
       episodeContext.recurringElements,
     );
 
-    // Extract structured story metadata for screenplay context enrichment
-    // These fields are always present for new episodes; legacy fallback for pre-existing episodes
-    const actBreakdown = (storyData.actBreakdown as {
-      act1: string;
-      act2: string;
-      act3: string;
-    }) ?? { act1: '', act2: '', act3: '' };
+    // Validate and extract structured story metadata using Zod for runtime safety.
+    // storyData is a JSONB column — treat it as untrusted data at this boundary.
+    const { z } = await import('zod');
 
-    const tone = (storyData.tone as string) ?? '';
-    const themes = (storyData.themes as string[]) ?? [];
-    const storyCharacters =
-      (storyData.characters as Array<{
-        name: string;
-        role: string;
-        arc: string;
-      }>) ?? [];
-    const keyEvents = (storyData.keyEvents as string[]) ?? [];
+    const actBreakdownSchema = z
+      .object({ act1: z.string(), act2: z.string(), act3: z.string() })
+      .catch({ act1: '', act2: '', act3: '' });
+
+    const storyCharacterSchema = z.array(
+      z.object({
+        name: z.string(),
+        role: z.string(),
+        arc: z.string(),
+      }),
+    ).catch([]);
+
+    const actBreakdown = actBreakdownSchema.parse(storyData.actBreakdown);
+    const tone = z.string().catch('').parse(storyData.tone);
+    const themes = z.array(z.string()).catch([]).parse(storyData.themes);
+    const storyCharacters = storyCharacterSchema.parse(storyData.characters);
+    const keyEvents = z.array(z.string()).catch([]).parse(storyData.keyEvents);
 
     if (!storyData.tone || !storyData.actBreakdown) {
       console.warn(

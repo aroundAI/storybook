@@ -321,9 +321,17 @@ const generateScreenplayToolStatic = createTool({
               ? { act1: actBreakdownText, act2: '', act3: '' }
               : { act1: '', act2: '', act3: '' },
             tone: toneText ?? '',
-            themes: themesText ? themesText.split(', ') : [],
+            themes: themesText
+              ? themesText
+                  .split(',')
+                  .map((t) => t.trim())
+                  .filter(Boolean)
+              : [],
             keyEvents: keyEventsText
-              ? keyEventsText.split('\n- ').filter(Boolean)
+              ? keyEventsText
+                  .split('\n')
+                  .map((s) => s.replace(/^[-\s*]+/, '').trim())
+                  .filter(Boolean)
               : [],
           },
         ),
