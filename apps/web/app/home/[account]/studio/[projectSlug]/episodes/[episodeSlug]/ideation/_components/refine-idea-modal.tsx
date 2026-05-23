@@ -51,8 +51,6 @@ const RefineIdeaSchema = z.object({
   visualPotential: z.string().max(500).optional().default(''),
 });
 
-type RefineIdeaFormData = z.infer<typeof RefineIdeaSchema>;
-
 // ============================================================
 // Props
 // ============================================================

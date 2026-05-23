@@ -21,6 +21,26 @@ import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-ref
 // Canon Roles Prompts
 // =============================================================================
 import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
+import editorRole from '../../prompts/canon-roles/editor-role.json';
+import plannerRole from '../../prompts/canon-roles/planner-role.json';
+import stylistRole from '../../prompts/canon-roles/stylist-role.json';
+import writerRole from '../../prompts/canon-roles/writer-role.json';
+// =============================================================================
+// Documentary Prompts
+// =============================================================================
+import factCheckerRole from '../../prompts/documentary/fact-checker-role.json';
+import researcherRole from '../../prompts/documentary/researcher-role.json';
+// =============================================================================
+// Movie Prompts
+// =============================================================================
+import actContextExtraction from '../../prompts/movie/act-context-extraction.json';
+// =============================================================================
+// News Generation Prompts
+// =============================================================================
+import anchorRole from '../../prompts/news-generation/anchor-role.json';
+import entityExtraction from '../../prompts/news-generation/entity-extraction.json';
+import producerRole from '../../prompts/news-generation/producer-role.json';
+import topicSummary from '../../prompts/news-generation/topic-summary.json';
 import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
 // =============================================================================
 // Publishing Prompts
@@ -83,6 +103,25 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
   // Canon Roles
   'canon-extraction': canonExtraction as unknown as PromptTemplate,
+  'canon-roles/editor-role': editorRole as unknown as PromptTemplate,
+  'canon-roles/planner-role': plannerRole as unknown as PromptTemplate,
+  'canon-roles/stylist-role': stylistRole as unknown as PromptTemplate,
+  'canon-roles/writer-role': writerRole as unknown as PromptTemplate,
+
+  // Documentary
+  'documentary/fact-checker-role': factCheckerRole as unknown as PromptTemplate,
+  'documentary/researcher-role': researcherRole as unknown as PromptTemplate,
+
+  // Movie
+  'movie/act-context-extraction':
+    actContextExtraction as unknown as PromptTemplate,
+
+  // News Generation
+  'news-generation/anchor-role': anchorRole as unknown as PromptTemplate,
+  'news-generation/entity-extraction':
+    entityExtraction as unknown as PromptTemplate,
+  'news-generation/producer-role': producerRole as unknown as PromptTemplate,
+  'news-generation/topic-summary': topicSummary as unknown as PromptTemplate,
 };
 
 /**
