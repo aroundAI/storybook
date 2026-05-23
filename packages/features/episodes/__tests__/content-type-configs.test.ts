@@ -7,7 +7,7 @@ import {
 
 describe('Content Type Configs (FILM-1110)', () => {
   describe('CONTENT_TYPE_CONFIGS', () => {
-    it('should define configs for all 6 project types', () => {
+    it('should define configs for all 7 project types', () => {
       const types = Object.keys(CONTENT_TYPE_CONFIGS);
       expect(types).toEqual(
         expect.arrayContaining([
@@ -17,9 +17,10 @@ describe('Content Type Configs (FILM-1110)', () => {
           'ad',
           'educational',
           'news',
+          'movie',
         ]),
       );
-      expect(types).toHaveLength(6);
+      expect(types).toHaveLength(7);
     });
 
     it('should have allocations that sum to 100 for each type', () => {

@@ -39,7 +39,10 @@ const translateDialogueTool = createTool({
       ),
   }),
 
-  execute: async ({ dialogueLines, targetLanguage, preserveTiming }) => {
+  execute: async (
+    { dialogueLines, targetLanguage, preserveTiming },
+    context,
+  ) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -52,7 +55,7 @@ const translateDialogueTool = createTool({
         },
         context: {
           name: 'agent.translation.translateDialogue',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

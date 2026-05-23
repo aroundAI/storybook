@@ -126,18 +126,15 @@ export async function processTranslateDialogue(
     '@kit/episodes/agent/translation-orchestrator'
   );
 
-  const orchestratorResult = await runTranslationOrchestrator(
-    {
-      episodeId: data.episodeId,
-      targetLanguage: data.targetLanguage,
-      targetLanguageName: targetLangName,
-      preserveTiming: data.preserveTiming,
-      accountId: data.accountId,
-      dialogueLines: linesText,
-      lineCount: linesToTranslate.length,
-    },
-    supabase,
-  );
+  const orchestratorResult = await runTranslationOrchestrator({
+    episodeId: data.episodeId,
+    targetLanguage: data.targetLanguage,
+    targetLanguageName: targetLangName,
+    preserveTiming: data.preserveTiming,
+    accountId: data.accountId,
+    dialogueLines: linesText,
+    lineCount: linesToTranslate.length,
+  });
 
   if (!orchestratorResult.success) {
     throw new Error(

@@ -47,7 +47,7 @@ const evaluateSeasonArcTool = createTool({
       .describe('The overarching season premise for context'),
   }),
 
-  execute: async ({ episodes, genre, seasonPremise }) => {
+  execute: async ({ episodes, genre, seasonPremise }, context) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -60,7 +60,7 @@ const evaluateSeasonArcTool = createTool({
         },
         context: {
           name: 'agent.seasonArcEvaluator.evaluateSeasonArc',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

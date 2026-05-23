@@ -47,7 +47,7 @@ const generateAudioCuesTool = createTool({
         'Scene heading for context. Defaults to "Full Episode Sequence" when generating cues for the entire episode.',
       ),
   }),
-  execute: async ({ shotsJson, sceneHeading }) => {
+  execute: async ({ shotsJson, sceneHeading }, context) => {
     console.log(
       `[Audio Cue Director] Generating audio cues for: "${sceneHeading}"`,
     );
@@ -64,7 +64,7 @@ const generateAudioCuesTool = createTool({
         temperature: 0.2,
         context: {
           name: 'agent.audioCueDirector.generateAudioCues',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

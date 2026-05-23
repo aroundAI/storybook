@@ -125,21 +125,18 @@ export async function processSeasonOutline(
     '@kit/episodes/agent/season-orchestrator'
   );
 
-  const orchestratorResult = await runSeasonOrchestrator(
-    {
-      projectId: data.projectId,
-      seasonPremise: data.seasonPremise,
-      episodeCount: data.episodeCount,
-      startingNumber: data.startingNumber,
-      genre: data.genre || (projectMetadata.genre as string) || 'general',
-      style: data.style || 'cinematic',
-      accountId: data.accountId,
-      existingCharacters,
-      existingLocations,
-      recurringElements: recurringElementFormatted,
-    },
-    supabase,
-  );
+  const orchestratorResult = await runSeasonOrchestrator({
+    projectId: data.projectId,
+    seasonPremise: data.seasonPremise,
+    episodeCount: data.episodeCount,
+    startingNumber: data.startingNumber,
+    genre: data.genre || (projectMetadata.genre as string) || 'general',
+    style: data.style || 'cinematic',
+    accountId: data.accountId,
+    existingCharacters,
+    existingLocations,
+    recurringElements: recurringElementFormatted,
+  });
 
   if (!orchestratorResult.success) {
     throw new Error(

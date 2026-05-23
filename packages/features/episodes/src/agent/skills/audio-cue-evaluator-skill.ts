@@ -44,11 +44,25 @@ const evaluateAudioCuesTool = createTool({
       .describe('Total episode duration in seconds.'),
   }),
   execute: async ({ cuesJson, shotsJson, totalDurationSeconds }) => {
-    const cues = JSON.parse(cuesJson) as GeneratedAudioCue[];
-    const shots = JSON.parse(shotsJson) as Array<{
-      seq: number;
-      duration: number;
-    }>;
+    let cues: GeneratedAudioCue[];
+    let shots: Array<{ seq: number; duration: number }>;
+
+    try {
+      cues = JSON.parse(cuesJson) as GeneratedAudioCue[];
+      shots = JSON.parse(shotsJson) as Array<{
+        seq: number;
+        duration: number;
+      }>;
+    } catch (parseError) {
+      return toolSuccess({
+        coveragePercent: 0,
+        silentGaps: [],
+        overlaps: [],
+        musicCoveragePercent: 0,
+        verdict: 'revise' as const,
+        issues: [`Invalid JSON input: ${(parseError as Error).message}`],
+      });
+    }
 
     console.log(
       `[Audio Cue Evaluator] Evaluating ${cues.length} cues against ` +
@@ -84,7 +98,10 @@ const evaluateAudioCuesTool = createTool({
         coveredSeconds.add(s);
       }
     }
-    const coveragePercent = (coveredSeconds.size / totalDurationSeconds) * 100;
+    const coveragePercent =
+      totalDurationSeconds > 0
+        ? (coveredSeconds.size / totalDurationSeconds) * 100
+        : 0;
 
     // Find silent gaps > 3 seconds
     const silentGaps: Array<{
@@ -123,11 +140,13 @@ const evaluateAudioCuesTool = createTool({
 
     // Music density — what % of the timeline is covered by music cues
     const musicCoverage =
-      (resolvedCues
-        .filter((c) => c.type === 'music')
-        .reduce((sum, c) => sum + c.durationSeconds, 0) /
-        totalDurationSeconds) *
-      100;
+      totalDurationSeconds > 0
+        ? (resolvedCues
+            .filter((c) => c.type === 'music')
+            .reduce((sum, c) => sum + c.durationSeconds, 0) /
+            totalDurationSeconds) *
+          100
+        : 0;
 
     // Verdict: pass if coverage ≥70%, ≤2 silent gaps, and 0 overlaps
     const verdict =

@@ -50,7 +50,7 @@ const factCheckContentTool = createTool({
       .optional()
       .describe('Claims that must be present in the content'),
   }),
-  execute: async ({ content, verifiedFacts, requiredClaims }) => {
+  execute: async ({ content, verifiedFacts, requiredClaims }, context) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -63,7 +63,7 @@ const factCheckContentTool = createTool({
         },
         context: {
           name: 'agent.factChecker.factCheckContent',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

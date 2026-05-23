@@ -77,25 +77,22 @@ export async function processStoryIdeation(
     '@kit/episodes/agent/ideation-orchestrator'
   );
 
-  const orchestratorResult = await runIdeationOrchestrator(
-    {
-      episodeId: data.episodeId,
-      premise: data.premise || episodeContext.premise,
-      numberOfIdeas: data.numberOfIdeas || 3,
-      genre: episodeContext.genre ?? 'general',
-      targetAudience: episodeContext.targetAudience ?? 'general',
-      accountId: data.accountId,
-      charactersContext: formatCharactersForPrompt(episodeContext.characters),
-      locationsContext: formatLocationsForPrompt(episodeContext.locations),
-      seasonContext,
-      previousEpisodesContext,
-      visualStyle: episodeContext.visualStyle,
-      recurringElementsContext: formatRecurringElementsForPrompt(
-        episodeContext.recurringElements,
-      ),
-    },
-    supabase,
-  );
+  const orchestratorResult = await runIdeationOrchestrator({
+    episodeId: data.episodeId,
+    premise: data.premise || episodeContext.premise,
+    numberOfIdeas: data.numberOfIdeas || 3,
+    genre: episodeContext.genre ?? 'general',
+    targetAudience: episodeContext.targetAudience ?? 'general',
+    accountId: data.accountId,
+    charactersContext: formatCharactersForPrompt(episodeContext.characters),
+    locationsContext: formatLocationsForPrompt(episodeContext.locations),
+    seasonContext,
+    previousEpisodesContext,
+    visualStyle: episodeContext.visualStyle,
+    recurringElementsContext: formatRecurringElementsForPrompt(
+      episodeContext.recurringElements,
+    ),
+  });
 
   if (!orchestratorResult.success) {
     throw new Error(

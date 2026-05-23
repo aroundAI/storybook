@@ -104,11 +104,7 @@ Return a JSON object with:
  */
 export async function runSeasonOrchestrator(
   input: SeasonOrchestratorInput,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: { from: (table: string) => any },
 ): Promise<SeasonOrchestratorResult> {
-  void supabase; // reserved for future DB persistence
-
   console.log(
     `[Season Orchestrator] Starting for project ${input.projectId} — ` +
       `${input.episodeCount} episodes from #${input.startingNumber}`,

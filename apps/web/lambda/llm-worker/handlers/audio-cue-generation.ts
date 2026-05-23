@@ -93,15 +93,12 @@ export async function processAudioCueGeneration(
       '@kit/episodes/agent/audio-cue-orchestrator'
     );
 
-    const orchestratorResult = await runAudioCueOrchestrator(
-      {
-        episodeId,
-        accountId: data.accountId,
-        shotsJson: JSON.stringify(shotsJson),
-        totalDurationSeconds,
-      },
-      supabase,
-    );
+    const orchestratorResult = await runAudioCueOrchestrator({
+      episodeId,
+      accountId: data.accountId,
+      shotsJson: JSON.stringify(shotsJson),
+      totalDurationSeconds,
+    });
 
     if (!orchestratorResult.success) {
       throw new Error(

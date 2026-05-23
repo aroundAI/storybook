@@ -72,16 +72,19 @@ const generateSeasonOutlineTool = createTool({
       ),
   }),
 
-  execute: async ({
-    seasonPremise,
-    episodeCount,
-    startingNumber,
-    genre,
-    style,
-    existingCharacters,
-    existingLocations,
-    recurringElements,
-  }) => {
+  execute: async (
+    {
+      seasonPremise,
+      episodeCount,
+      startingNumber,
+      genre,
+      style,
+      existingCharacters,
+      existingLocations,
+      recurringElements,
+    },
+    context,
+  ) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -99,7 +102,7 @@ const generateSeasonOutlineTool = createTool({
         },
         context: {
           name: 'agent.seasonOutliner.generateSeasonOutline',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

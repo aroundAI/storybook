@@ -52,12 +52,10 @@ const verifyTranslationTool = createTool({
       .describe('Whether timing constraints apply for lip-sync'),
   }),
 
-  execute: async ({
-    originalLines,
-    translatedLines,
-    targetLanguage,
-    preserveTiming,
-  }) => {
+  execute: async (
+    { originalLines, translatedLines, targetLanguage, preserveTiming },
+    context,
+  ) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -87,7 +85,7 @@ const verifyTranslationTool = createTool({
         },
         context: {
           name: 'agent.translation.verifyTranslation',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

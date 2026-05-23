@@ -81,19 +81,22 @@ const generateIdeasTool = createTool({
       ),
   }),
 
-  execute: async ({
-    premise,
-    numberOfIdeas,
-    genre,
-    targetAudience,
-    charactersContext,
-    locationsContext,
-    seasonContext,
-    previousEpisodes,
-    visualStyle,
-    recurringElements,
-    weakIndices,
-  }) => {
+  execute: async (
+    {
+      premise,
+      numberOfIdeas,
+      genre,
+      targetAudience,
+      charactersContext,
+      locationsContext,
+      seasonContext,
+      previousEpisodes,
+      visualStyle,
+      recurringElements,
+      weakIndices,
+    },
+    context,
+  ) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -115,7 +118,7 @@ const generateIdeasTool = createTool({
         },
         context: {
           name: 'agent.ideationDirector.generateIdeas',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

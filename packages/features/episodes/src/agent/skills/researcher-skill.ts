@@ -50,7 +50,7 @@ const identifyResearchNeedsTool = createTool({
       .optional()
       .describe('Specific claims the content wants to make'),
   }),
-  execute: async ({ topic, premise, existingFacts, targetClaims }) => {
+  execute: async ({ topic, premise, existingFacts, targetClaims }, context) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -64,7 +64,7 @@ const identifyResearchNeedsTool = createTool({
         },
         context: {
           name: 'agent.researcher.identifyResearchNeeds',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

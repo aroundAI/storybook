@@ -13,9 +13,9 @@ describe('Memory Strategies (FILM-1111)', () => {
   // ===========================================================================
 
   describe('MEMORY_ALLOCATIONS', () => {
-    it('should define allocations for all 6 project types', () => {
+    it('should define allocations for all 7 project types', () => {
       const types = Object.keys(MEMORY_ALLOCATIONS);
-      expect(types).toHaveLength(6);
+      expect(types).toHaveLength(7);
       expect(types).toEqual(
         expect.arrayContaining([
           'short-film',
@@ -24,6 +24,7 @@ describe('Memory Strategies (FILM-1111)', () => {
           'ad',
           'educational',
           'news',
+          'movie',
         ]),
       );
     });

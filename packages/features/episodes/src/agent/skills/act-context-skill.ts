@@ -48,7 +48,7 @@ const extractActContextTool = createTool({
     actNumber: z.number().describe('Which act number (1, 2, or 3)'),
     actContent: z.string().describe('The full text of the completed act'),
   }),
-  execute: async ({ actNumber, actContent }) => {
+  execute: async ({ actNumber, actContent }, context) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -60,7 +60,7 @@ const extractActContextTool = createTool({
         },
         context: {
           name: 'agent.actContext.extractActContext',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

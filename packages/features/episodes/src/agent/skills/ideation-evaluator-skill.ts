@@ -53,7 +53,7 @@ const evaluateIdeasTool = createTool({
       .describe('Target audience for relevance scoring'),
   }),
 
-  execute: async ({ ideas, genre, targetAudience }) => {
+  execute: async ({ ideas, genre, targetAudience }, context) => {
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
@@ -66,7 +66,7 @@ const evaluateIdeasTool = createTool({
         },
         context: {
           name: 'agent.ideationEvaluator.evaluateIdeas',
-          accountId: '',
+          accountId: context.accountId,
         },
       });
 

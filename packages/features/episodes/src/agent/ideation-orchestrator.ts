@@ -70,11 +70,7 @@ interface IdeationOrchestratorOutput {
  */
 export async function runIdeationOrchestrator(
   input: IdeationOrchestratorInput,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  supabase: { from: (table: string) => any },
 ): Promise<IdeationOrchestratorResult> {
-  void supabase; // Reserved for future DB writes
-
   console.log(
     `[Ideation Orchestrator] Starting for episode ${input.episodeId}`,
   );
