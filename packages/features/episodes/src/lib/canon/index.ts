@@ -3,7 +3,7 @@
  * Phase 10: FILM-1001 to FILM-1006
  *
  * Re-exports all canon types, services, and utilities.
- * NOTE: Server-only exports (buildMemoryContext, runRolePipeline) are in server/index.ts
+ * NOTE: Server-only exports (buildMemoryContext) are in server/index.ts
  */
 
 // Types (client-safe)

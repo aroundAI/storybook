@@ -173,6 +173,20 @@ export function createScreenplayDirectorSkill(
         );
       }
     },
+
+    // OPT-2: Drop full scenes array from history, keep counts
+    summarizeResult: (result) => {
+      if (!result.success || !result.data) return result;
+      const d = result.data as Record<string, unknown>;
+      return {
+        success: true,
+        title: d.title,
+        sceneCount: d.sceneCount,
+        totalDialogueLines: d.totalDialogueLines,
+        estimatedDuration: d.estimatedDuration,
+        summary: d.summary,
+      };
+    },
   });
 
   return {
@@ -230,6 +244,20 @@ const generateScreenplayToolStatic = createTool({
         `Screenplay Director failed: ${(error as Error).message}`,
       );
     }
+  },
+
+  // OPT-2: Drop full scenes array from history, keep counts
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    return {
+      success: true,
+      title: d.title,
+      sceneCount: d.sceneCount,
+      totalDialogueLines: d.totalDialogueLines,
+      estimatedDuration: d.estimatedDuration,
+      summary: d.summary,
+    };
   },
 });
 

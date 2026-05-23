@@ -93,6 +93,23 @@ export const CONTENT_TYPE_CONFIGS: Record<ProjectType, ContentTypeConfig> = {
     roles: ['planner', 'writer', 'editor', 'stylist'],
   },
 
+  movie: {
+    memoryHorizon: 3,
+    decayFunction: 'none',
+    contextWindowPercent: 20,
+    allocations: {
+      events: 30,
+      characters: 30,
+      world: 15,
+      threads: 15,
+      summaries: 10,
+    },
+    enforcement: 'strict',
+    requiresFacts: false,
+    requiresExternalContext: false,
+    roles: ['planner', 'writer', 'editor', 'stylist'],
+  },
+
   documentary: {
     memoryHorizon: 5,
     decayFunction: 'topic_match',

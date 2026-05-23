@@ -29,6 +29,10 @@
     "./agent/story-orchestrator": "./src/agent/story-orchestrator.ts",
     "./agent/screenplay-orchestrator": "./src/agent/screenplay-orchestrator.ts",
     "./agent/shot-orchestrator": "./src/agent/shot-orchestrator.ts",
+    "./agent/ideation-orchestrator": "./src/agent/ideation-orchestrator.ts",
+    "./agent/season-orchestrator": "./src/agent/season-orchestrator.ts",
+    "./agent/translation-orchestrator": "./src/agent/translation-orchestrator.ts",
+    "./agent/audio-cue-orchestrator": "./src/agent/audio-cue-orchestrator.ts",
     "./lib/openclaw-manifest": "./src/lib/openclaw-manifest.ts",
     "./lib/fcpxml-generator": "./src/lib/fcpxml-generator.ts",
     "./server/transition-analyzer": "./src/server/transition-analyzer.ts"

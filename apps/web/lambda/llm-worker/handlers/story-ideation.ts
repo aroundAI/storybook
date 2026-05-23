@@ -2,8 +2,11 @@
  * Story Ideation Handler
  *
  * Generates story ideas based on a premise.
+ * Uses the Ideation Orchestrator for quality-gated idea generation:
+ *   generateIdeas → evaluateIdeas → regenerate weak (max 1 cycle)
+ *
  * Uses buildEpisodeContext for rich context (same as local server action).
- * No database writes - just returns ideas to frontend.
+ * No database writes — returns ideas to frontend via WebSocket.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -29,6 +32,7 @@ interface StoryIdea {
   conflict: string;
   themes: string[];
   visualPotential: string;
+  qualityScore?: number;
 }
 
 interface StoryIdeationResult {
@@ -41,6 +45,7 @@ interface StoryIdeationResult {
       costCents: number;
       tokensUsed: number;
       generatedAt: string;
+      orchestratorSteps?: number;
     };
   };
 }
@@ -51,62 +56,67 @@ export async function processStoryIdeation(
 ): Promise<StoryIdeationResult> {
   const data = payload as StoryIdeationPayload;
 
-  console.log(`[Story Ideation] Processing for episode ${data.episodeId}`);
+  console.log(
+    `[Story Ideation] Starting AGENTIC pipeline for episode ${data.episodeId}`,
+  );
 
   // 1. Build rich context using shared context-builder (matches local server action)
   const episodeContext = await buildEpisodeContext(data.episodeId, supabase);
 
-  // 2. Prepare variables for prompt template (same logic as local server action)
-  const variables = {
+  const seasonContext = episodeContext.seasonPremise
+    ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
+    : undefined;
+
+  const previousEpisodesContext =
+    episodeContext.previousEpisodes.length > 0
+      ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
+      : undefined;
+
+  // 2. Run the Ideation Orchestrator
+  const { runIdeationOrchestrator } = await import(
+    '@kit/episodes/agent/ideation-orchestrator'
+  );
+
+  const orchestratorResult = await runIdeationOrchestrator({
+    episodeId: data.episodeId,
     premise: data.premise || episodeContext.premise,
-    number_of_ideas: data.numberOfIdeas || 3,
-    characters: formatCharactersForPrompt(episodeContext.characters),
-    locations: formatLocationsForPrompt(episodeContext.locations),
-    season_context: episodeContext.seasonPremise
-      ? `This is Episode ${episodeContext.episodeNumber}${episodeContext.seasonNumber ? ` of Season ${episodeContext.seasonNumber}` : ''}. Season Premise: ${episodeContext.seasonPremise}`
-      : '',
-    previous_episodes:
-      episodeContext.previousEpisodes.length > 0
-        ? `Previous episodes in this season: ${episodeContext.previousEpisodes.map((ep) => `Ep${ep.number}: "${ep.title}"`).join(', ')}`
-        : '',
-    genre: episodeContext.genre,
-    target_audience: episodeContext.targetAudience,
-    visual_style: episodeContext.visualStyle,
-    style: 'balanced',
-    recurring_element: formatRecurringElementsForPrompt(
+    numberOfIdeas: data.numberOfIdeas || 3,
+    genre: episodeContext.genre ?? 'general',
+    targetAudience: episodeContext.targetAudience ?? 'general',
+    accountId: data.accountId,
+    charactersContext: formatCharactersForPrompt(episodeContext.characters),
+    locationsContext: formatLocationsForPrompt(episodeContext.locations),
+    seasonContext,
+    previousEpisodesContext,
+    visualStyle: episodeContext.visualStyle,
+    recurringElementsContext: formatRecurringElementsForPrompt(
       episodeContext.recurringElements,
     ),
-  };
-
-  // 3. Execute LLM
-  const { executeLLM } = await import('@kit/prompt-engine/server');
-
-  const result = await executeLLM<{ ideas: StoryIdea[] }>({
-    templateSlug: 'story-ideation',
-    variables,
-    context: {
-      name: 'story-ideation',
-      accountId: data.accountId,
-      userId: data.userId,
-    },
-    supabaseClient: supabase, // Required for Lambda execution
   });
 
-  const costCents = Math.ceil((result.metadata.cost ?? 0) * 100);
+  if (!orchestratorResult.success) {
+    throw new Error(
+      `Ideation Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+    );
+  }
+
   const generatedAt = new Date().toISOString();
 
-  console.log(`[Story Ideation] Generated ${result.data.ideas.length} ideas`);
+  console.log(
+    `[Story Ideation] Agentic pipeline complete. Steps: ${orchestratorResult.orchestratorSteps}, Ideas: ${orchestratorResult.ideas.length}`,
+  );
 
   return {
     success: true,
     data: {
-      ideas: result.data.ideas,
+      ideas: orchestratorResult.ideas,
       metadata: {
-        provider: result.metadata.provider,
-        model: result.metadata.model,
-        costCents,
-        tokensUsed: result.metadata.tokens,
+        provider: 'orchestrator',
+        model: 'multi-agent',
+        costCents: 0,
+        tokensUsed: 0,
         generatedAt,
+        orchestratorSteps: orchestratorResult.orchestratorSteps,
       },
     },
   };

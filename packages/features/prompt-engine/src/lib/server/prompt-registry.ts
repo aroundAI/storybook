@@ -21,11 +21,27 @@ import sceneAudioRefinement from '../../prompts/audio-generation/scene-audio-ref
 // Canon Roles Prompts
 // =============================================================================
 import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
+// =============================================================================
+// Documentary Prompts
+// =============================================================================
+import factCheckerRole from '../../prompts/documentary/fact-checker-role.json';
+import researcherRole from '../../prompts/documentary/researcher-role.json';
+// =============================================================================
+// Movie Prompts
+// =============================================================================
+import actContextExtraction from '../../prompts/movie/act-context-extraction.json';
+// =============================================================================
+// News Generation Prompts
+// =============================================================================
+import anchorRole from '../../prompts/news-generation/anchor-role.json';
+import entityExtraction from '../../prompts/news-generation/entity-extraction.json';
+import producerRole from '../../prompts/news-generation/producer-role.json';
+import topicSummary from '../../prompts/news-generation/topic-summary.json';
 import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
 // =============================================================================
 // Publishing Prompts
 // =============================================================================
-import magicClips from '../../prompts/publishing/magic-clips.json';
+
 // =============================================================================
 // Quality Evaluation Prompts
 // =============================================================================
@@ -37,7 +53,6 @@ import sceneShotGeneration from '../../prompts/story-generation/scene-shot-gener
 import screenplayConversion from '../../prompts/story-generation/screenplay-conversion.json';
 import seasonGeneration from '../../prompts/story-generation/season-generation.json';
 import seasonOutline from '../../prompts/story-generation/season-outline.json';
-import shotListGeneration from '../../prompts/story-generation/shot-list-generation.json';
 // =============================================================================
 // Story Generation Prompts
 // =============================================================================
@@ -57,7 +72,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'season-generation': seasonGeneration as unknown as PromptTemplate,
   'season-outline': seasonOutline as unknown as PromptTemplate,
   'screenplay-conversion': screenplayConversion as unknown as PromptTemplate,
-  'shot-list-generation': shotListGeneration as unknown as PromptTemplate,
+
   'scene-shot-generation': sceneShotGeneration as unknown as PromptTemplate,
   'story-ideation': storyIdeation as unknown as PromptTemplate,
 
@@ -72,7 +87,6 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   // Publishing
   'batch-translate-metadata':
     batchTranslateMetadata as unknown as PromptTemplate,
-  'magic-clips': magicClips as unknown as PromptTemplate,
 
   // Quality Evaluation (used by agent skills: Viral Analyst, Reel Scout)
   'quality-evaluation/reel-scout': reelScout as unknown as PromptTemplate,
@@ -83,6 +97,21 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
   // Canon Roles
   'canon-extraction': canonExtraction as unknown as PromptTemplate,
+
+  // Documentary
+  'documentary/fact-checker-role': factCheckerRole as unknown as PromptTemplate,
+  'documentary/researcher-role': researcherRole as unknown as PromptTemplate,
+
+  // Movie
+  'movie/act-context-extraction':
+    actContextExtraction as unknown as PromptTemplate,
+
+  // News Generation
+  'news-generation/anchor-role': anchorRole as unknown as PromptTemplate,
+  'news-generation/entity-extraction':
+    entityExtraction as unknown as PromptTemplate,
+  'news-generation/producer-role': producerRole as unknown as PromptTemplate,
+  'news-generation/topic-summary': topicSummary as unknown as PromptTemplate,
 };
 
 /**

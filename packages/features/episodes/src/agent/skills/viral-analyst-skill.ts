@@ -93,6 +93,19 @@ const evaluateContentTool = createTool({
       return toolError(`Viral analysis failed: ${(error as Error).message}`);
     }
   },
+
+  // OPT-2: Keep score + decision + priorities, drop verbose feedback text
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    return {
+      success: true,
+      overallScore: d.overallScore,
+      decision: d.decision,
+      topPriorities: d.topPriorities,
+      dimensionScores: d.dimensionScores,
+    };
+  },
 });
 
 export const viralAnalystSkill: Skill = {

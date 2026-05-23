@@ -68,6 +68,11 @@ const PROJECT_TYPES = [
     description: 'Multi-episode content',
   },
   {
+    value: 'movie',
+    label: 'Movie',
+    description: 'Multi-act feature-length content',
+  },
+  {
     value: 'documentary',
     label: 'Documentary',
     description: 'Non-fiction storytelling',

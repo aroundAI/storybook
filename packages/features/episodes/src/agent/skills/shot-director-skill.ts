@@ -38,18 +38,20 @@ const generateShotsTool = createTool({
       .array(
         z.object({
           number: z.number(),
-          heading: z.string(),
-          location: z.string(),
-          timeOfDay: z.string(),
-          description: z.string(),
-          action: z.array(z.string()),
-          dialogue: z.array(
-            z.object({
-              character: z.string(),
-              text: z.string(),
-              parenthetical: z.string().optional(),
-            }),
-          ),
+          heading: z.string().optional(),
+          location: z.string().optional(),
+          timeOfDay: z.string().optional(),
+          description: z.string().optional(),
+          action: z.array(z.string()).optional(),
+          dialogue: z
+            .array(
+              z.object({
+                character: z.string(),
+                text: z.string(),
+                parenthetical: z.string().optional(),
+              }),
+            )
+            .optional(),
           estimatedDuration: z.number().optional(),
         }),
       )
@@ -78,7 +80,7 @@ const generateShotsTool = createTool({
     reelCandidateScenes,
     tone,
     recurringElements,
-  }) => {
+  }, context) => {
     console.log(
       `[Shot Director] Starting shot generation for "${episodeTitle}". ` +
         `Scenes: ${scenes.length}, Reel candidates: ${reelCandidateScenes.join(', ') || 'none'}`,
@@ -86,6 +88,15 @@ const generateShotsTool = createTool({
 
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
+
+      // Merge LLM-provided sparse scenes with full context data
+      const fullScenes = context?._scenesContext ?? scenes;
+      const mergedScenes = scenes.map((s) => {
+        const full = (fullScenes as typeof scenes).find(
+          (f) => f.number === s.number,
+        );
+        return full ?? s;
+      });
 
       console.log(`[Shot Director] executeLLM imported successfully`);
 
@@ -117,10 +128,10 @@ const generateShotsTool = createTool({
         locationEnvironmentDescription?: string | null;
       }> = [];
 
-      for (let i = 0; i < scenes.length; i += CONCURRENCY) {
-        const batch = scenes.slice(i, i + CONCURRENCY);
+      for (let i = 0; i < mergedScenes.length; i += CONCURRENCY) {
+        const batch = mergedScenes.slice(i, i + CONCURRENCY);
         const batchNum = Math.floor(i / CONCURRENCY) + 1;
-        const totalBatches = Math.ceil(scenes.length / CONCURRENCY);
+        const totalBatches = Math.ceil(mergedScenes.length / CONCURRENCY);
 
         console.log(
           `[Shot Director] Processing batch ${batchNum}/${totalBatches} ` +
@@ -260,6 +271,20 @@ const generateShotsTool = createTool({
       );
       return toolError(`Shot Director failed: ${message}`);
     }
+  },
+
+  // OPT-2: Drop the massive shots array from history, keep only counts
+  // Full shot data is preserved in the step trace (AgentStep.toolResult)
+  summarizeResult: (result) => {
+    if (!result.success || !result.data) return result;
+    const d = result.data as Record<string, unknown>;
+    return {
+      success: true,
+      totalShots: d.totalShots,
+      scenesProcessed: d.scenesProcessed,
+      reelCandidatesOptimized: d.reelCandidatesOptimized,
+      summary: d.summary,
+    };
   },
 });
 

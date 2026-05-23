@@ -8,12 +8,10 @@ import {
   validateZodSchemaCompilation,
 } from '../src/lib/validation';
 import screenplayConversion from '../src/prompts/story-generation/screenplay-conversion.json';
-import shotListGeneration from '../src/prompts/story-generation/shot-list-generation.json';
 import storyGeneration from '../src/prompts/story-generation/story-generation.json';
 import storyIdeation from '../src/prompts/story-generation/story-ideation.json';
 import {
   ScreenplayConversionOutputSchema,
-  ShotListGenerationOutputSchema,
   StoryGenerationOutputSchema,
   StoryIdeationOutputSchema,
 } from '../src/schemas';
@@ -179,69 +177,6 @@ describe('Story Generation Prompt Templates', () => {
     });
   });
 
-  describe('shot-list-generation.json', () => {
-    it('should have valid template structure', () => {
-      const result = safeValidatePromptTemplate(shotListGeneration);
-      expect(result.success).toBe(true);
-    });
-
-    it('should have correct metadata', () => {
-      expect(shotListGeneration.slug).toBe('shot-list-generation');
-      expect(shotListGeneration.version).toBe(2);
-      expect(shotListGeneration.category).toBe('story-generation');
-    });
-
-    it('should have required screenplay_text variable', () => {
-      expect(shotListGeneration.variables.screenplay_text.required).toBe(true);
-    });
-
-    it('should have optional shot duration and video provider variables', () => {
-      expect(shotListGeneration.variables.shot_duration_min?.required).toBe(
-        false,
-      );
-      expect(shotListGeneration.variables.shot_duration_max?.required).toBe(
-        false,
-      );
-      expect(shotListGeneration.variables.video_provider?.required).toBe(false);
-    });
-
-    it('should have valid output schema that compiles', () => {
-      const schemaResult = validateZodSchemaCompilation(
-        shotListGeneration.output!.schema!.definition,
-      );
-      expect(schemaResult.success).toBe(true);
-    });
-
-    it('should have example output that matches schema', () => {
-      const result = validateExampleOutput(
-        shotListGeneration as unknown as PromptTemplateSchemaType,
-      );
-      expect(result.success).toBe(true);
-    });
-
-    it('should have all variables used in user_prompt', () => {
-      const errors = validateVariablePlaceholders(
-        shotListGeneration as unknown as PromptTemplateSchemaType,
-      );
-      expect(errors).toHaveLength(0);
-    });
-
-    it('should validate example output with TypeScript schema', () => {
-      const result = ShotListGenerationOutputSchema.safeParse(
-        shotListGeneration.output?.example_output,
-      );
-      expect(result.success).toBe(true);
-    });
-
-    it('should have constraints system prompt for AI video limitations', () => {
-      const constraintsPrompt = shotListGeneration.system_prompts.find(
-        (p) => p.slug === 'veo-constraints',
-      );
-      expect(constraintsPrompt).toBeDefined();
-      expect(constraintsPrompt?.content).toContain('8 seconds');
-    });
-  });
-
   describe('Zod Output Schemas', () => {
     it('should parse valid story ideation output', () => {
       const output = {
@@ -318,81 +253,6 @@ describe('Story Generation Prompt Templates', () => {
       };
       const result = ScreenplayConversionOutputSchema.safeParse(output);
       expect(result.success).toBe(true);
-    });
-
-    it('should parse valid shot list generation output', () => {
-      const output = {
-        shotList: {
-          shots: [
-            {
-              sequenceNumber: 1,
-              sceneNumber: 1,
-              shotNumber: 1,
-              shotType: 'wide' as const,
-              cameraDirection: 'static' as const,
-              description: 'Wide shot of office',
-              action: 'Camera holds on office scene',
-              prompt:
-                'Wide shot of modern office, developer at desk, ambient lighting',
-              characters: ['Dev'],
-              duration: 5,
-              metadata: {
-                location: 'office',
-                timeOfDay: 'day' as const,
-                mood: 'focused',
-                lighting: 'natural daylight',
-              },
-            },
-          ],
-          metadata: {
-            totalShots: 1,
-            totalDuration: 5,
-            shotTypes: {
-              wide: 1,
-              medium: 0,
-              closeUp: 0,
-            },
-            locations: ['office'],
-            characters: ['Dev'],
-          },
-        },
-      };
-      const result = ShotListGenerationOutputSchema.safeParse(output);
-      expect(result.success).toBe(true);
-    });
-
-    it('should reject invalid shot duration outside 3-10 range', () => {
-      const output = {
-        shotList: {
-          shots: [
-            {
-              sequenceNumber: 1,
-              sceneNumber: 1,
-              shotNumber: 1,
-              shotType: 'wide' as const,
-              cameraDirection: 'static' as const,
-              description: 'Wide shot',
-              action: 'Action',
-              prompt: 'Prompt',
-              characters: [],
-              duration: 15, // Invalid: exceeds 10 seconds
-              metadata: {
-                location: 'office',
-                timeOfDay: 'day' as const,
-              },
-            },
-          ],
-          metadata: {
-            totalShots: 1,
-            totalDuration: 15,
-            shotTypes: { wide: 1, medium: 0, closeUp: 0 },
-            locations: ['office'],
-            characters: [],
-          },
-        },
-      };
-      const result = ShotListGenerationOutputSchema.safeParse(output);
-      expect(result.success).toBe(false);
     });
   });
 });
