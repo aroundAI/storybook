@@ -4,7 +4,7 @@
     "description": "Editor role for Canon Management System. Refines dialogue and prose for consistency, pacing, and clarity. Cannot change structure or length significantly.",
     "model": {
         "provider": "gemini",
-        "model": "gemini-3.1-flash-lite",
+        "model": "gemini-3-flash-preview",
         "temperature": 0.4,
         "max_tokens": 8192
     },
