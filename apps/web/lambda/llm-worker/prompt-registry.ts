@@ -14,17 +14,13 @@ import languageInsights from '../../../../packages/features/prompt-engine/src/pr
 import dialogueTranslation from '../../../../packages/features/prompt-engine/src/prompts/audio-generation/dialogue-translation.json';
 // Canon Role Prompts (FILM-1101)
 import canonExtraction from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/canon-extraction.json';
-import editorRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/editor-role.json';
-import plannerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/planner-role.json';
-import stylistRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/stylist-role.json';
-import writerRole from '../../../../packages/features/prompt-engine/src/prompts/canon-roles/writer-role.json';
 // Publishing Prompts
 import batchTranslateMetadata from '../../../../packages/features/prompt-engine/src/prompts/publishing/batch-translate-metadata.json';
 import sceneShot from '../../../../packages/features/prompt-engine/src/prompts/story-generation/scene-shot-generation.json';
 import screenplay from '../../../../packages/features/prompt-engine/src/prompts/story-generation/screenplay-conversion.json';
 import season from '../../../../packages/features/prompt-engine/src/prompts/story-generation/season-generation.json';
 import seasonOutline from '../../../../packages/features/prompt-engine/src/prompts/story-generation/season-outline.json';
-import shotList from '../../../../packages/features/prompt-engine/src/prompts/story-generation/shot-list-generation.json';
+
 import storyGen from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-generation.json';
 import storyIdeation from '../../../../packages/features/prompt-engine/src/prompts/story-generation/story-ideation.json';
 
@@ -78,7 +74,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'story-ideation': storyIdeation as PromptTemplate,
   'story-generation': storyGen as PromptTemplate,
   'screenplay-conversion': screenplay as PromptTemplate,
-  'shot-list-generation': shotList as PromptTemplate,
+
   'scene-shot-generation': sceneShot as PromptTemplate,
   // Nested slug aliases (story-generation/xyz)
   'story-generation/season-generation': season as PromptTemplate,
@@ -86,7 +82,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'story-generation/story-ideation': storyIdeation as PromptTemplate,
   'story-generation/story-generation': storyGen as PromptTemplate,
   'story-generation/screenplay-conversion': screenplay as PromptTemplate,
-  'story-generation/shot-list-generation': shotList as PromptTemplate,
+
   'story-generation/scene-shot-generation': sceneShot as PromptTemplate,
   // Analytics
   'insights-generation': insightsGeneration as PromptTemplate,
@@ -104,16 +100,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   'audio-generation/dialogue-translation':
     dialogueTranslation as PromptTemplate,
   // Canon Roles (FILM-1101)
-  'planner-role': plannerRole as PromptTemplate,
-  'writer-role': writerRole as PromptTemplate,
-  'editor-role': editorRole as PromptTemplate,
-  'stylist-role': stylistRole as PromptTemplate,
   'canon-extraction': canonExtraction as PromptTemplate,
-  // Nested aliases
-  'canon-roles/planner-role': plannerRole as PromptTemplate,
-  'canon-roles/writer-role': writerRole as PromptTemplate,
-  'canon-roles/editor-role': editorRole as PromptTemplate,
-  'canon-roles/stylist-role': stylistRole as PromptTemplate,
   'canon-roles/canon-extraction': canonExtraction as PromptTemplate,
 };
 
