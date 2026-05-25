@@ -13,9 +13,12 @@ import {
 import { toast } from '@kit/ui/sonner';
 
 import { useAssets } from '../hooks/use-assets';
+import { useCharacterAssets } from '../hooks/use-character-assets';
+import { useCharacterFilters } from '../hooks/use-character-filters';
 import { getCharacterAction } from '../lib/server/character.mutations';
 import type { Asset, CharacterWithDetails } from '../lib/types';
 import { AssetCard } from './asset-card';
+import { AssetFilterToolbar } from './asset-filter-toolbar';
 import { AssetGrid } from './asset-grid';
 import { AssetSearchBar } from './asset-search-bar';
 import { AssetTabs } from './asset-tabs';
@@ -33,6 +36,9 @@ interface AssetGalleryProps {
   onCreateAsset?: (type: TabType) => void;
 }
 
+const MAIN_ROLES = ['protagonist', 'deuteragonist'];
+const SUPPORTING_ROLES = ['supporting', 'narrator'];
+
 export function AssetGallery({
   projectId,
   accountId,
@@ -42,61 +48,91 @@ export function AssetGallery({
 }: AssetGalleryProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams() ?? new URLSearchParams();
+  const rawSearchParams = useSearchParams();
+  const searchParams = useMemo(
+    () => rawSearchParams ?? new URLSearchParams(),
+    [rawSearchParams],
+  );
 
-  // Get active tab from URL or use initial
   const activeTab = (searchParams.get('tab') as TabType) ?? initialTab;
 
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
 
-  // Fetch assets for active tab
-  const { assets, isLoading, deleteAsset, fetchAssets } = useAssets({
+  // Character data (with details — voice, image, role, etc.)
+  const {
+    characters,
+    total: characterTotal,
+    isLoading: isCharacterLoading,
+    deleteCharacter,
+    fetchCharacters,
+  } = useCharacterAssets({ projectId });
+
+  // Character filters
+  const {
+    filters,
+    setFilter,
+    toggleRole,
+    clearFilters,
+    activeFilterCount,
+    filteredCharacters,
+  } = useCharacterFilters({ characters });
+
+  // Location data (simple assets, no join needed)
+  const {
+    assets: locationAssets,
+    isLoading: isLocationLoading,
+    deleteAsset: deleteLocationAsset,
+    fetchAssets: fetchLocationAssets,
+  } = useAssets({
     projectId,
-    type: activeTab,
+    type: 'location',
   });
 
-  // Load assets when tab changes
+  // Load data when tab changes
   useEffect(() => {
-    void fetchAssets();
-  }, [fetchAssets]);
+    if (activeTab === 'character') {
+      void fetchCharacters();
+    } else {
+      void fetchLocationAssets();
+    }
+  }, [activeTab, fetchCharacters, fetchLocationAssets]);
 
-  // Filter assets by search query
-  const filteredAssets = useMemo(() => {
-    if (!searchQuery) return assets;
-
-    const query = searchQuery.toLowerCase();
-    return assets.filter(
+  // Filter location assets by search
+  const filteredLocationAssets = useMemo(() => {
+    if (!locationSearchQuery) return locationAssets;
+    const query = locationSearchQuery.toLowerCase();
+    return locationAssets.filter(
       (asset) =>
         asset.name.toLowerCase().includes(query) ||
         asset.description?.toLowerCase().includes(query),
     );
-  }, [assets, searchQuery]);
+  }, [locationAssets, locationSearchQuery]);
 
-  // Handle tab change
   const handleTabChange = useCallback(
     (tab: TabType) => {
       const params = new URLSearchParams(searchParams.toString());
       params.set('tab', tab);
       router.replace(`${pathname}?${params.toString()}`);
-      setSearchQuery(''); // Clear search when switching tabs
+      setLocationSearchQuery('');
+      clearFilters();
     },
-    [pathname, router, searchParams],
+    [pathname, router, searchParams, clearFilters],
   );
 
-  // Handle delete with confirmation
   const handleDelete = useCallback(
     async (asset: Asset) => {
-      await deleteAsset(asset.id);
+      if (activeTab === 'character') {
+        await deleteCharacter(asset.id);
+      } else {
+        await deleteLocationAsset(asset.id);
+      }
     },
-    [deleteAsset],
+    [activeTab, deleteCharacter, deleteLocationAsset],
   );
 
-  // Handle edit
   const handleEdit = useCallback(
     async (asset: Asset) => {
-      // For characters, we need to fetch full details including joined tables
       if (asset.type === 'character') {
         const toastId = toast.loading('Loading character details...');
         try {
@@ -113,10 +149,8 @@ export function AssetGallery({
           toast.dismiss(toastId);
         }
       } else {
-        // For other assets, metadata is already included
         setEditingAsset(asset);
       }
-
       onAssetSelect?.(asset);
     },
     [onAssetSelect],
@@ -125,55 +159,41 @@ export function AssetGallery({
   const handleEditSuccess = useCallback(() => {
     setEditingAsset(null);
     router.refresh();
-    void fetchAssets();
-  }, [router, fetchAssets]);
+    if (activeTab === 'character') {
+      void fetchCharacters();
+    } else {
+      void fetchLocationAssets();
+    }
+  }, [router, activeTab, fetchCharacters, fetchLocationAssets]);
 
-  // Handle create
   const handleCreate = useCallback(() => {
     onCreateAsset?.(activeTab);
   }, [activeTab, onCreateAsset]);
 
   const renderCharacterGroups = () => {
-    const mainRolePatterns = [
-      'Protagonist',
-      'Antagonist',
-      'Sidekick',
-      'Main Character',
-    ];
-    const supportRolePatterns = ['Supporting', 'Minor Character'];
+    const isMain = (c: CharacterWithDetails) => MAIN_ROLES.includes(c.role);
+    const isSupporting = (c: CharacterWithDetails) =>
+      SUPPORTING_ROLES.includes(c.role);
+    const isOther = (c: CharacterWithDetails) => !isMain(c) && !isSupporting(c);
 
-    // Helper to check role
-    const hasRole = (a: Asset, roles: string[]) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const role = (a.metadata as any)?.role;
-      return role && roles.some((r) => role.includes(r));
-    };
-
-    const isMain = (a: Asset) => hasRole(a, mainRolePatterns);
-    const isSupporting = (a: Asset) => hasRole(a, supportRolePatterns);
-    const isOther = (a: Asset) => !isMain(a) && !isSupporting(a);
-
-    const mainCast = filteredAssets.filter(isMain);
-    const supportingCast = filteredAssets.filter(isSupporting);
-    const others = filteredAssets.filter(isOther);
-    const hasCreatures = others.some(
-      (a) =>
-        (a.metadata as Record<string, unknown> | null)?.role === 'Creature',
-    );
+    const mainCast = filteredCharacters.filter(isMain);
+    const supportingCast = filteredCharacters.filter(isSupporting);
+    const others = filteredCharacters.filter(isOther);
+    const hasCreatures = others.some((c) => c.role === 'creature');
 
     return (
       <div className="space-y-12">
-        {/* Main Cast */}
         {mainCast.length > 0 && (
           <div className="space-y-4">
             <h3 className="border-l-4 border-orange-500 pl-3 text-xl font-bold tracking-tight text-orange-900/70 dark:text-orange-100/70">
               Main Cast
             </h3>
             <AssetGrid>
-              {mainCast.map((asset) => (
+              {mainCast.map((character) => (
                 <AssetCard
-                  key={asset.id}
-                  asset={asset}
+                  key={character.id}
+                  asset={character as unknown as Asset}
+                  characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
@@ -182,17 +202,17 @@ export function AssetGallery({
           </div>
         )}
 
-        {/* Supporting Cast */}
         {supportingCast.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-muted-foreground border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight">
               Supporting Cast
             </h3>
             <AssetGrid>
-              {supportingCast.map((asset) => (
+              {supportingCast.map((character) => (
                 <AssetCard
-                  key={asset.id}
-                  asset={asset}
+                  key={character.id}
+                  asset={character as unknown as Asset}
+                  characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
@@ -201,17 +221,17 @@ export function AssetGallery({
           </div>
         )}
 
-        {/* Other Characters / Creatures */}
         {others.length > 0 && (
           <div className="space-y-4">
             <h3 className="text-muted-foreground border-l-4 border-transparent pl-3 text-lg font-semibold tracking-tight">
               {hasCreatures ? 'Creatures & Others' : 'Other Characters'}
             </h3>
             <AssetGrid>
-              {others.map((asset) => (
+              {others.map((character) => (
                 <AssetCard
-                  key={asset.id}
-                  asset={asset}
+                  key={character.id}
+                  asset={character as unknown as Asset}
+                  characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                 />
@@ -223,18 +243,48 @@ export function AssetGallery({
     );
   };
 
+  const isLoading =
+    activeTab === 'character' ? isCharacterLoading : isLocationLoading;
+
+  const currentAssets =
+    activeTab === 'character' ? filteredCharacters : filteredLocationAssets;
+
+  const hasActiveFilters =
+    activeTab === 'character' ? activeFilterCount > 0 : !!locationSearchQuery;
+
   return (
     <div className="space-y-6">
       {/* Tabs */}
       <AssetTabs activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* Search Bar */}
-      <AssetSearchBar value={searchQuery} onChange={setSearchQuery} />
+      {/* Search / Filter Bar */}
+      {activeTab === 'character' ? (
+        <AssetFilterToolbar
+          filters={filters}
+          activeFilterCount={activeFilterCount}
+          resultCount={filteredCharacters.length}
+          totalCount={characterTotal}
+          onSearchChange={(value) => setFilter('search', value)}
+          onRoleToggle={toggleRole}
+          onVoiceStatusChange={(status) => setFilter('voiceStatus', status)}
+          onImageStatusChange={(status) => setFilter('imageStatus', status)}
+          onElementPromptStatusChange={(status) =>
+            setFilter('elementPromptStatus', status)
+          }
+          onSortChange={(sort) => setFilter('sortBy', sort)}
+          onClearFilters={clearFilters}
+        />
+      ) : (
+        <AssetSearchBar
+          value={locationSearchQuery}
+          onChange={setLocationSearchQuery}
+        />
+      )}
 
       {/* Grid or Empty State */}
       {isLoading ? (
         <AssetGrid isLoading={true}>{null}</AssetGrid>
-      ) : filteredAssets.length > 0 ? (
+      ) : currentAssets.length > 0 ? (
         activeTab === 'character' ? (
           renderCharacterGroups()
         ) : (
@@ -245,7 +295,7 @@ export function AssetGallery({
                 : undefined
             }
           >
-            {filteredAssets.map((asset) => (
+            {filteredLocationAssets.map((asset) => (
               <AssetCard
                 key={asset.id}
                 asset={asset}
@@ -255,11 +305,19 @@ export function AssetGallery({
             ))}
           </AssetGrid>
         )
-      ) : searchQuery ? (
+      ) : hasActiveFilters ? (
         <div className="py-12 text-center">
           <p className="text-muted-foreground">
-            No assets found matching &quot;{searchQuery}&quot;
+            No characters match the current filters
           </p>
+          {activeTab === 'character' && (
+            <button
+              onClick={clearFilters}
+              className="text-primary mt-2 text-sm underline underline-offset-4"
+            >
+              Clear all filters
+            </button>
+          )}
         </div>
       ) : (
         <EmptyAssetState assetType={activeTab} onCreate={handleCreate} />

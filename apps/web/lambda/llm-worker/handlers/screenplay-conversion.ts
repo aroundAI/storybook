@@ -134,13 +134,15 @@ export async function processScreenplayConversion(
       .object({ act1: z.string(), act2: z.string(), act3: z.string() })
       .catch({ act1: '', act2: '', act3: '' });
 
-    const storyCharacterSchema = z.array(
-      z.object({
-        name: z.string(),
-        role: z.string(),
-        arc: z.string(),
-      }),
-    ).catch([]);
+    const storyCharacterSchema = z
+      .array(
+        z.object({
+          name: z.string(),
+          role: z.string(),
+          arc: z.string(),
+        }),
+      )
+      .catch([]);
 
     const actBreakdown = actBreakdownSchema.parse(storyData.actBreakdown);
     const tone = z.string().catch('').parse(storyData.tone);

@@ -11,3 +11,14 @@ export { useAutoSave } from './use-auto-save';
 
 // Unsaved changes warning hook
 export { useUnsavedChanges, hasFormChanges } from './use-unsaved-changes';
+
+// Character-specific hooks
+export { useCharacterAssets } from './use-character-assets';
+export {
+  useCharacterFilters,
+  type CharacterFilters,
+  type VoiceStatus,
+  type ImageStatus,
+  type ElementPromptStatus,
+  type SortOption,
+} from './use-character-filters';
