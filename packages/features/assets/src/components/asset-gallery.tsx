@@ -32,6 +32,11 @@ interface AssetGalleryProps {
   projectId: string;
   accountId: string;
   initialTab?: TabType;
+  initialCharacters?: {
+    characters: CharacterWithDetails[];
+    total: number;
+    hasMore: boolean;
+  };
   onAssetSelect?: (asset: Asset) => void;
   onCreateAsset?: (type: TabType) => void;
 }
@@ -43,6 +48,7 @@ export function AssetGallery({
   projectId,
   accountId,
   initialTab = 'character',
+  initialCharacters,
   onAssetSelect,
   onCreateAsset,
 }: AssetGalleryProps) {
@@ -66,7 +72,7 @@ export function AssetGallery({
     isLoading: isCharacterLoading,
     deleteCharacter,
     fetchCharacters,
-  } = useCharacterAssets({ projectId });
+  } = useCharacterAssets({ projectId, initialData: initialCharacters });
 
   // Character filters
   const {
@@ -89,14 +95,13 @@ export function AssetGallery({
     type: 'location',
   });
 
-  // Load data when tab changes
+  // Load location data when switching to location tab
+  // Character data is loaded via initialData or auto-fetched by the hook
   useEffect(() => {
-    if (activeTab === 'character') {
-      void fetchCharacters();
-    } else {
+    if (activeTab === 'location') {
       void fetchLocationAssets();
     }
-  }, [activeTab, fetchCharacters, fetchLocationAssets]);
+  }, [activeTab, fetchLocationAssets]);
 
   // Filter location assets by search
   const filteredLocationAssets = useMemo(() => {

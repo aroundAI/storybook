@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useState, useTransition } from 'react';
 
 import { toast } from '@kit/ui/sonner';
 
@@ -14,6 +14,11 @@ import type { Asset, CharacterWithDetails } from '../lib/types';
 interface UseCharacterAssetsOptions {
   projectId: string;
   limit?: number;
+  initialData?: {
+    characters: CharacterWithDetails[];
+    total: number;
+    hasMore: boolean;
+  };
 }
 
 interface UseCharacterAssetsReturn {
@@ -31,13 +36,17 @@ interface UseCharacterAssetsReturn {
 export function useCharacterAssets({
   projectId,
   limit = 100,
+  initialData,
 }: UseCharacterAssetsOptions): UseCharacterAssetsReturn {
-  const [characters, setCharacters] = useState<CharacterWithDetails[]>([]);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+  const [characters, setCharacters] = useState<CharacterWithDetails[]>(
+    initialData?.characters ?? [],
+  );
+  const [total, setTotal] = useState(initialData?.total ?? 0);
+  const [hasMore, setHasMore] = useState(initialData?.hasMore ?? false);
   const [error, setError] = useState<Error | null>(null);
   const [isLoading, startLoadTransition] = useTransition();
   const [isDeleting, startDeleteTransition] = useTransition();
+  const [hasFetched, setHasFetched] = useState(!!initialData);
 
   const fetchCharacters = useCallback(async () => {
     startLoadTransition(async () => {
@@ -66,14 +75,13 @@ export function useCharacterAssets({
               setCharacters(payload.characters);
               setTotal(payload.total);
               setHasMore(payload.hasMore);
+              setHasFetched(true);
               return;
             }
           }
         } catch (primaryErr) {
-          // If listCharactersAction fails (e.g. redirect, auth issue),
-          // fall back to getProjectAssetsAction which is proven to work
           console.warn(
-            '[useCharacterAssets] listCharactersAction failed, falling back to getProjectAssetsAction:',
+            '[useCharacterAssets] listCharactersAction failed, falling back:',
             primaryErr,
           );
         }
@@ -86,7 +94,6 @@ export function useCharacterAssets({
           offset: 0,
         });
 
-        // Map Asset[] to CharacterWithDetails[] with defaults
         const mapped: CharacterWithDetails[] = fallbackResponse.assets.map(
           (asset: Asset) => ({
             ...asset,
@@ -108,20 +115,28 @@ export function useCharacterAssets({
         setCharacters(mapped);
         setTotal(fallbackResponse.total);
         setHasMore(fallbackResponse.hasMore);
+        setHasFetched(true);
       } catch (err) {
         const error =
           err instanceof Error ? err : new Error('Failed to fetch characters');
 
-        // Don't treat Next.js redirects as errors
         if (error.message?.includes('NEXT_REDIRECT')) {
           return;
         }
 
         setError(error);
         toast.error(error.message);
+        setHasFetched(true);
       }
     });
   }, [projectId, limit]);
+
+  // Only auto-fetch if no initial data was provided
+  useEffect(() => {
+    if (!hasFetched) {
+      void fetchCharacters();
+    }
+  }, [hasFetched, fetchCharacters]);
 
   const deleteCharacter = useCallback(
     async (assetId: string) => {
@@ -162,7 +177,7 @@ export function useCharacterAssets({
     characters,
     total,
     hasMore,
-    isLoading,
+    isLoading: !hasFetched || isLoading,
     isDeleting,
     error,
     fetchCharacters,

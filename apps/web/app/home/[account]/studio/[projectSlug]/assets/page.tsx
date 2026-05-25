@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 
 import { ArrowLeft } from 'lucide-react';
 
+import { listCharacters } from '@kit/assets/character/queries';
 import { AssetGallery } from '@kit/assets/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
@@ -105,6 +106,27 @@ async function AssetLibraryPage({
     description = 'Locations and settings where your story takes place';
   }
 
+  // Fetch initial character data server-side (no client-side loading freeze)
+  let initialCharacters:
+    | {
+        characters: Awaited<ReturnType<typeof listCharacters>>['characters'];
+        total: number;
+        hasMore: boolean;
+      }
+    | undefined;
+
+  if (activeTab === 'character') {
+    try {
+      initialCharacters = await listCharacters(project.id, { limit: 100 });
+    } catch (err) {
+      console.error(
+        '[AssetLibraryPage] Failed to fetch initial characters:',
+        err,
+      );
+      // If server-side fetch fails, the client-side hook will retry
+    }
+  }
+
   return (
     <>
       {/* Back Link */}
@@ -131,6 +153,7 @@ async function AssetLibraryPage({
           projectId={project.id}
           accountId={accountResult.id}
           initialTab={tab ?? 'character'}
+          initialCharacters={initialCharacters}
         />
       </PageBody>
     </>
