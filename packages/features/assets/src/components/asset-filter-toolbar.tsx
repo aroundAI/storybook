@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { SlidersHorizontal, X } from 'lucide-react';
 
@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kit/ui/select';
-import { ToggleGroup, ToggleGroupItem } from '@kit/ui/toggle-group';
 import { cn } from '@kit/ui/utils';
 
 import type {
@@ -56,6 +55,54 @@ interface AssetFilterToolbarProps {
   onElementPromptStatusChange: (status: ElementPromptStatus) => void;
   onSortChange: (sort: SortOption) => void;
   onClearFilters: () => void;
+}
+
+type StatusFilterValue = VoiceStatus | ImageStatus | ElementPromptStatus;
+
+function StatusFilter<T extends StatusFilterValue>({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: T;
+  onChange: (val: T) => void;
+  options: { value: T; label: string }[];
+}) {
+  const handleClick = useCallback(
+    (optionValue: T) => {
+      if (optionValue !== value) {
+        onChange(optionValue);
+      }
+    },
+    [value, onChange],
+  );
+
+  return (
+    <div className="space-y-2">
+      <label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
+        {label}
+      </label>
+      <div className="flex items-center gap-1">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => handleClick(option.value)}
+            className={cn(
+              'rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors',
+              value === option.value
+                ? 'bg-accent text-accent-foreground'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function AssetFilterToolbar({
@@ -128,6 +175,7 @@ export function AssetFilterToolbar({
               {ALL_ROLES.map(({ value, label }) => (
                 <button
                   key={value}
+                  type="button"
                   onClick={() => onRoleToggle(value)}
                   className={cn(
                     'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
@@ -144,96 +192,36 @@ export function AssetFilterToolbar({
 
           {/* Status Filters Row */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {/* Voice Status */}
-            <div className="space-y-2">
-              <label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Voice
-              </label>
-              <ToggleGroup
-                type="single"
-                value={filters.voiceStatus}
-                onValueChange={(val) =>
-                  val && onVoiceStatusChange(val as VoiceStatus)
-                }
-                className="justify-start"
-              >
-                <ToggleGroupItem value="all" size="sm" className="text-xs">
-                  All
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="has-voice"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Has Voice
-                </ToggleGroupItem>
-                <ToggleGroupItem value="no-voice" size="sm" className="text-xs">
-                  No Voice
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            {/* Image Status */}
-            <div className="space-y-2">
-              <label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                Image
-              </label>
-              <ToggleGroup
-                type="single"
-                value={filters.imageStatus}
-                onValueChange={(val) =>
-                  val && onImageStatusChange(val as ImageStatus)
-                }
-                className="justify-start"
-              >
-                <ToggleGroupItem value="all" size="sm" className="text-xs">
-                  All
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="has-image"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Has Image
-                </ToggleGroupItem>
-                <ToggleGroupItem value="no-image" size="sm" className="text-xs">
-                  No Image
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            {/* Element Prompt Status */}
-            <div className="space-y-2">
-              <label className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
-                VEO Ready
-              </label>
-              <ToggleGroup
-                type="single"
-                value={filters.elementPromptStatus}
-                onValueChange={(val) =>
-                  val && onElementPromptStatusChange(val as ElementPromptStatus)
-                }
-                className="justify-start"
-              >
-                <ToggleGroupItem value="all" size="sm" className="text-xs">
-                  All
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="has-prompt"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Ready
-                </ToggleGroupItem>
-                <ToggleGroupItem
-                  value="no-prompt"
-                  size="sm"
-                  className="text-xs"
-                >
-                  Missing
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+            <StatusFilter<VoiceStatus>
+              label="Voice"
+              value={filters.voiceStatus}
+              onChange={onVoiceStatusChange}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'has-voice', label: 'Has Voice' },
+                { value: 'no-voice', label: 'No Voice' },
+              ]}
+            />
+            <StatusFilter<ImageStatus>
+              label="Image"
+              value={filters.imageStatus}
+              onChange={onImageStatusChange}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'has-image', label: 'Has Image' },
+                { value: 'no-image', label: 'No Image' },
+              ]}
+            />
+            <StatusFilter<ElementPromptStatus>
+              label="VEO Ready"
+              value={filters.elementPromptStatus}
+              onChange={onElementPromptStatusChange}
+              options={[
+                { value: 'all', label: 'All' },
+                { value: 'has-prompt', label: 'Ready' },
+                { value: 'no-prompt', label: 'Missing' },
+              ]}
+            />
           </div>
 
           {/* Sort + Result Count */}
