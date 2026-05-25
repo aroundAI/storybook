@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 
@@ -28,6 +28,9 @@ import { LocationEditor } from './location-editor';
 
 type TabType = 'character' | 'location';
 
+const MAIN_ROLES = ['protagonist', 'deuteragonist'] as const;
+const SUPPORTING_ROLES = ['supporting', 'narrator'] as const;
+
 interface AssetGalleryProps {
   projectId: string;
   accountId: string;
@@ -41,9 +44,6 @@ interface AssetGalleryProps {
   onCreateAsset?: (type: TabType) => void;
 }
 
-const MAIN_ROLES = ['protagonist', 'deuteragonist'];
-const SUPPORTING_ROLES = ['supporting', 'narrator'];
-
 export function AssetGallery({
   projectId,
   accountId,
@@ -54,13 +54,13 @@ export function AssetGallery({
 }: AssetGalleryProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const rawSearchParams = useSearchParams();
-  const searchParams = useMemo(
-    () => rawSearchParams ?? new URLSearchParams(),
-    [rawSearchParams],
-  );
+  const searchParams = useSearchParams();
 
-  const activeTab = (searchParams.get('tab') as TabType) ?? initialTab;
+  // Use refs for values needed in callbacks to avoid dependency instability
+  const searchParamsRef = useRef(searchParams);
+  searchParamsRef.current = searchParams;
+
+  const activeTab = (searchParams?.get('tab') as TabType) ?? initialTab;
 
   const [locationSearchQuery, setLocationSearchQuery] = useState('');
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
@@ -95,13 +95,16 @@ export function AssetGallery({
     type: 'location',
   });
 
+  // Ref for fetchLocationAssets to avoid effect dependency instability
+  const fetchLocationAssetsRef = useRef(fetchLocationAssets);
+  fetchLocationAssetsRef.current = fetchLocationAssets;
+
   // Load location data when switching to location tab
-  // Character data is loaded via initialData or auto-fetched by the hook
   useEffect(() => {
     if (activeTab === 'location') {
-      void fetchLocationAssets();
+      void fetchLocationAssetsRef.current();
     }
-  }, [activeTab, fetchLocationAssets]);
+  }, [activeTab]);
 
   // Filter location assets by search
   const filteredLocationAssets = useMemo(() => {
@@ -114,15 +117,18 @@ export function AssetGallery({
     );
   }, [locationAssets, locationSearchQuery]);
 
+  // Tab change: uses ref for searchParams to keep callback stable
   const handleTabChange = useCallback(
     (tab: TabType) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(
+        searchParamsRef.current?.toString() ?? '',
+      );
       params.set('tab', tab);
       router.replace(`${pathname}?${params.toString()}`);
       setLocationSearchQuery('');
       clearFilters();
     },
-    [pathname, router, searchParams, clearFilters],
+    [pathname, router, clearFilters],
   );
 
   const handleDelete = useCallback(
@@ -167,18 +173,51 @@ export function AssetGallery({
     if (activeTab === 'character') {
       void fetchCharacters();
     } else {
-      void fetchLocationAssets();
+      void fetchLocationAssetsRef.current();
     }
-  }, [router, activeTab, fetchCharacters, fetchLocationAssets]);
+  }, [router, activeTab, fetchCharacters]);
 
   const handleCreate = useCallback(() => {
     onCreateAsset?.(activeTab);
   }, [activeTab, onCreateAsset]);
 
+  // Memoize filter callbacks to avoid creating new functions on every render
+  const handleSearchChange = useCallback(
+    (value: string) => setFilter('search', value),
+    [setFilter],
+  );
+  const handleVoiceStatusChange = useCallback(
+    (status: 'all' | 'has-voice' | 'no-voice') =>
+      setFilter('voiceStatus', status),
+    [setFilter],
+  );
+  const handleImageStatusChange = useCallback(
+    (status: 'all' | 'has-image' | 'no-image') =>
+      setFilter('imageStatus', status),
+    [setFilter],
+  );
+  const handleElementPromptStatusChange = useCallback(
+    (status: 'all' | 'has-prompt' | 'no-prompt') =>
+      setFilter('elementPromptStatus', status),
+    [setFilter],
+  );
+  const handleSortChange = useCallback(
+    (
+      sort:
+        | 'name-asc'
+        | 'name-desc'
+        | 'role-priority'
+        | 'created-desc'
+        | 'updated-desc',
+    ) => setFilter('sortBy', sort),
+    [setFilter],
+  );
+
   const renderCharacterGroups = () => {
-    const isMain = (c: CharacterWithDetails) => MAIN_ROLES.includes(c.role);
+    const isMain = (c: CharacterWithDetails) =>
+      MAIN_ROLES.includes(c.role as (typeof MAIN_ROLES)[number]);
     const isSupporting = (c: CharacterWithDetails) =>
-      SUPPORTING_ROLES.includes(c.role);
+      SUPPORTING_ROLES.includes(c.role as (typeof SUPPORTING_ROLES)[number]);
     const isOther = (c: CharacterWithDetails) => !isMain(c) && !isSupporting(c);
 
     const mainCast = filteredCharacters.filter(isMain);
@@ -269,14 +308,12 @@ export function AssetGallery({
           activeFilterCount={activeFilterCount}
           resultCount={filteredCharacters.length}
           totalCount={characterTotal}
-          onSearchChange={(value) => setFilter('search', value)}
+          onSearchChange={handleSearchChange}
           onRoleToggle={toggleRole}
-          onVoiceStatusChange={(status) => setFilter('voiceStatus', status)}
-          onImageStatusChange={(status) => setFilter('imageStatus', status)}
-          onElementPromptStatusChange={(status) =>
-            setFilter('elementPromptStatus', status)
-          }
-          onSortChange={(sort) => setFilter('sortBy', sort)}
+          onVoiceStatusChange={handleVoiceStatusChange}
+          onImageStatusChange={handleImageStatusChange}
+          onElementPromptStatusChange={handleElementPromptStatusChange}
+          onSortChange={handleSortChange}
           onClearFilters={clearFilters}
         />
       ) : (
