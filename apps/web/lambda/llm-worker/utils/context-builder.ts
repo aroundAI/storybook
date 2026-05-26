@@ -188,6 +188,7 @@ export async function buildEpisodeContext(
   const metadata =
     (episode.metadata as {
       character_ids?: string[];
+      character_names?: string[];
       location_ids?: string[];
       season_premise?: string;
     }) ?? {};
@@ -223,9 +224,26 @@ export async function buildEpisodeContext(
       };
     }) ?? {};
 
-  // 2. Fetch tagged characters
+  // 2. Fetch tagged characters (expand "All Characters" wildcard)
   const characterIds = metadata.character_ids ?? [];
-  const characters = await fetchCharactersByIds(characterIds, supabase);
+  const characterNames = metadata.character_names ?? [];
+  const hasAllCharactersWildcard = characterNames.some(
+    (name) => name.toLowerCase() === 'all characters',
+  );
+
+  let characters: EpisodeContext['characters'];
+
+  if (hasAllCharactersWildcard && episode.project?.id) {
+    console.log(
+      `[buildEpisodeContext] "All Characters" wildcard detected — fetching all project characters`,
+    );
+    characters = await fetchAllProjectCharacters(
+      episode.project.id,
+      supabase,
+    );
+  } else {
+    characters = await fetchCharactersByIds(characterIds, supabase);
+  }
 
   // 3. Fetch tagged locations
   const locationIds = metadata.location_ids ?? [];
@@ -342,6 +360,54 @@ export async function buildEpisodeContext(
       return undefined;
     })(),
   };
+}
+
+/**
+ * Fetch ALL character assets for a project (used when "All Characters" wildcard is tagged)
+ * Filters out the dummy "All Characters" placeholder asset.
+ */
+export async function fetchAllProjectCharacters(
+  projectId: string,
+  supabase: SupabaseClient,
+): Promise<EpisodeContext['characters']> {
+  const { data, error } = await supabase
+    .from('assets')
+    .select(
+      `
+      id,
+      name,
+      description,
+      file_url,
+      thumbnail_url,
+      metadata
+    `,
+    )
+    .eq('project_id', projectId)
+    .eq('type', 'character')
+    .is('deleted_at', null);
+
+  if (error) {
+    throw new Error(`Failed to fetch project characters: ${error.message}`);
+  }
+
+  return (data ?? [])
+    .filter((asset) => asset.name.toLowerCase() !== 'all characters')
+    .map((asset) => {
+      const metadata = (asset.metadata as CharacterMetadata) ?? {};
+
+      return {
+        id: asset.id,
+        name: asset.name,
+        role: metadata.role ?? 'character',
+        description: asset.description ?? '',
+        personality: metadata.personality,
+        imageUrl: asset.file_url ?? undefined,
+        thumbnailUrl: asset.thumbnail_url ?? undefined,
+        physicalAttributes: metadata.physicalAttributes,
+        clothingStyle: metadata.clothingStyle,
+        elementPrompt: metadata.elementPrompt,
+      };
+    });
 }
 
 /**
