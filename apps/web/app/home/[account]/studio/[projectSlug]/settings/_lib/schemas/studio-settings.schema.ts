@@ -27,7 +27,7 @@ const RecurringElementSchema = z.object({
   location: z.string().max(200).optional(),
   purpose: z.string().max(500).optional(),
   placement: RecurringElementPlacementSchema.default('end'),
-  dialogueHints: z.string().max(500).optional(),
+  dialogueHints: z.string().max(1500).optional(),
 });
 
 /**

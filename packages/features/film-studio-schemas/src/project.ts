@@ -96,7 +96,7 @@ export const StudioProjectSettingsSchema = z.object({
         .enum(['beginning', 'middle', 'end', 'throughout'])
         .default('end'),
       // Specific dialogue patterns or phrases
-      dialogueHints: z.string().max(500).optional(), // e.g., "Use phrases like 'You know what I learned...'"
+      dialogueHints: z.string().max(1500).optional(), // e.g., "Use phrases like 'You know what I learned...'"
     })
     .optional(),
   // Cover image for project cards in studio view
