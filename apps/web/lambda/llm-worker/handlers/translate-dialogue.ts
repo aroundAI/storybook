@@ -142,11 +142,16 @@ export async function processTranslateDialogue(
     );
   }
 
-  const translations = orchestratorResult.translations;
+  // 5. Clean translations — strip numbered prefixes (e.g. "1. ", "23. ")
+  //    The prompt asks the LLM to return "numbered to match the input" but
+  //    those numbers must not be stored in the dialogue text.
+  const cleanedTranslations = orchestratorResult.translations.map((t) =>
+    t.replace(/^\d+\.\s*/, '').replace(/^["']|["']$/g, ''),
+  );
 
   // 5. Validate translations before insert — refuse to save English as target language
   const missingOrIdentical = linesToTranslate.filter(
-    (line, i) => !translations[i] || translations[i] === line.text,
+    (line, i) => !cleanedTranslations[i] || cleanedTranslations[i] === line.text,
   ).length;
 
   if (missingOrIdentical > linesToTranslate.length * 0.5) {
@@ -167,7 +172,7 @@ export async function processTranslateDialogue(
     episode_id: line.episode_id,
     character_asset_id: line.character_asset_id,
     shot_id: line.shot_id,
-    text: translations[index] || line.text,
+    text: cleanedTranslations[index] || line.text,
     sequence_number: line.sequence_number,
     scene_number: line.scene_number,
     timeline_start_seconds: line.timeline_start_seconds,
