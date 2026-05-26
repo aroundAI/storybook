@@ -71,12 +71,16 @@ const translateDialogueTool = createTool({
     }
   },
 
-  // OPT-2: Keep count + notes, drop full translations array
+  // Keep translations in summary — they are the core output data.
+  // Previously dropped to save context tokens, but this caused Hindi/CJK
+  // translations to silently fall back to English (Devanagari tokens are
+  // too expensive for the agent LLM to reproduce in its final answer).
   summarizeResult: (result) => {
     if (!result.success || !result.data) return result;
     const d = result.data as Record<string, unknown>;
     return {
       success: true,
+      translations: d.translations,
       count: d.count,
       notes: d.notes,
     };

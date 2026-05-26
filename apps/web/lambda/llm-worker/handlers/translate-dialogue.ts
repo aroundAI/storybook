@@ -144,7 +144,25 @@ export async function processTranslateDialogue(
 
   const translations = orchestratorResult.translations;
 
-  // 5. INSERT translated lines
+  // 5. Validate translations before insert — refuse to save English as target language
+  const missingOrIdentical = linesToTranslate.filter(
+    (line, i) => !translations[i] || translations[i] === line.text,
+  ).length;
+
+  if (missingOrIdentical > linesToTranslate.length * 0.5) {
+    throw new Error(
+      `Translation validation failed: ${missingOrIdentical}/${linesToTranslate.length} lines are missing or identical to English. ` +
+        `Refusing to save untranslated text as ${targetLangName}.`,
+    );
+  }
+
+  if (missingOrIdentical > 0) {
+    console.warn(
+      `[Translate Dialogue] ${missingOrIdentical}/${linesToTranslate.length} lines fell back to English — proceeding with partial translation`,
+    );
+  }
+
+  // 6. INSERT translated lines
   const newLines = linesToTranslate.map((line, index) => ({
     episode_id: line.episode_id,
     character_asset_id: line.character_asset_id,
