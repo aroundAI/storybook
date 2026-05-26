@@ -24,8 +24,8 @@ const RecurringElementSchema = z.object({
   id: z.string(),
   name: z.string().max(100),
   enabled: z.boolean().default(false),
-  location: z.string().max(200).optional(),
-  purpose: z.string().max(500).optional(),
+  location: z.string().max(500).optional(),
+  purpose: z.string().max(1500).optional(),
   placement: RecurringElementPlacementSchema.default('end'),
   dialogueHints: z.string().max(1500).optional(),
 });
@@ -50,7 +50,7 @@ export const UpdateStudioSettingsSchema = z.object({
    * Used to ensure visual consistency across all generated content.
    * Example: "Noir-inspired with saturated colors, dramatic shadows, and whimsical undertones"
    */
-  projectAestheticStyle: z.string().max(500).optional(),
+  projectAestheticStyle: z.string().max(1500).optional(),
 });
 
 export type UpdateStudioSettingsInput = z.infer<

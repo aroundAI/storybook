@@ -273,7 +273,7 @@ export function StudioSettingsForm({
                   <FormControl>
                     <Textarea
                       placeholder="Describe your project..."
-                      className="resize-none"
+                      className="resize-y [field-sizing:content]"
                       rows={3}
                       {...field}
                     />
@@ -507,7 +507,7 @@ export function StudioSettingsForm({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., Noir-inspired with saturated colors, dramatic shadows, and whimsical undertones"
-                      className="resize-none"
+                      className="resize-y [field-sizing:content]"
                       rows={3}
                       {...field}
                     />
@@ -714,8 +714,10 @@ function RecurringElementCard({
                     Location / Context
                   </FormLabel>
                   <FormControl>
-                    <Input
+                    <Textarea
                       placeholder="e.g., The family dinner table"
+                      className="resize-y [field-sizing:content]"
+                      rows={1}
                       {...field}
                     />
                   </FormControl>
@@ -737,7 +739,7 @@ function RecurringElementCard({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., The character reflects on their day and shares what they learned"
-                      className="resize-none"
+                      className="resize-y [field-sizing:content]"
                       rows={2}
                       {...field}
                     />
@@ -754,17 +756,19 @@ function RecurringElementCard({
               name={`recurringElements.${index}.dialogueHints`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Dialogue Hints (Optional)</FormLabel>
+                  <FormLabel>Character Voice Reference (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="e.g., Use phrases like 'You know what I learned today...'"
-                      className="resize-none"
+                      placeholder="e.g., show examples of how the character speaks, thinks, and emotes — the AI will internalize the tone and generate original dialogue"
+                      className="resize-y [field-sizing:content]"
                       rows={2}
                       {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    Specific phrases or dialogue patterns to use.
+                    Examples showing how characters speak and think.
+                    The AI will learn the tone, cadence, and personality
+                    — never copy lines verbatim.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

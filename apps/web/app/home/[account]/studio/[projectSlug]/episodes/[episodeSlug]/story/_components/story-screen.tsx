@@ -68,6 +68,9 @@ export function StoryScreen({
   } = useLlmJob<{ success: boolean }>('story-generation');
 
   // Handle async screenplay-conversion result
+  // NOTE: Navigation is handled immediately on queue (see handleConvertToScreenplay).
+  // The screenplay page has its own WebSocket handler + GeneratingState to detect completion.
+  // This handler only needs to refetch if the user is still on this page when it completes.
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
       // llmResult is already the result object from message.result (contains {success, data})
@@ -78,7 +81,6 @@ export function StoryScreen({
           `Screenplay generated with ${resultData.screenplay.scenes.length} scenes`,
         );
         refetchEpisode();
-        onScreenplayComplete();
       }
     } else if (llmStatus === 'error') {
       setIsGenerating(false); // Reset on error
@@ -89,7 +91,6 @@ export function StoryScreen({
     llmResult,
     llmError,
     refetchEpisode,
-    onScreenplayComplete,
     setIsGenerating,
   ]);
 
@@ -122,9 +123,11 @@ export function StoryScreen({
         onScreenplayComplete();
         return { success: true, data: result.data };
       }
-      // If queued, return queued flag (WebSocket will deliver result)
+      // If queued, navigate immediately — the screenplay page has its own
+      // GeneratingState + WebSocket handler to detect completion and auto-refresh
       if (result?.queued) {
         toast.info('Converting to screenplay in background...');
+        onScreenplayComplete();
         return { success: true, queued: true };
       }
       setIsGenerating(false); // Reset on synchronous error

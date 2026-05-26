@@ -646,9 +646,16 @@ export function formatRecurringElementsForPrompt(
 
     if (el.dialogueHints) {
       lines.push(
-        "**Dialogue templates** (adapt to this episode's events — do not copy verbatim):",
+        '**Character voice & tone reference** (study the patterns below to understand HOW these characters think, speak, and emote — then generate COMPLETELY ORIGINAL dialogue that captures the same cadence, vocabulary level, and emotional texture):',
+        '',
+        el.dialogueHints,
+        '',
+        '⚠️ The above are CHARACTER VOICE REFERENCES, not templates. ' +
+          'NEVER reproduce or closely paraphrase any specific line from these references. ' +
+          'Instead, internalize the speech patterns, emotional register, ' +
+          'and personality traits demonstrated across ALL examples, ' +
+          "then write fresh dialogue that sounds authentically like these characters in THIS episode's unique situation.",
       );
-      lines.push(el.dialogueHints);
       lines.push('');
     }
 
