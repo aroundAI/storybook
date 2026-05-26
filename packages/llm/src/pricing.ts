@@ -89,7 +89,7 @@ export const GEMINI_PRICING: Record<string, ModelPricing> = {
   'gemini-3.1-flash-lite-preview': { prompt: 0.25, completion: 1.5 },
 
   // Gemini 3 (active preview — frontier class, restrictive rate limits)
-  'gemini-3-flash-preview': { prompt: 0.5, completion: 3 },
+  'gemini-3.5-flash': { prompt: 0.5, completion: 3 },
 
   // Gemini 2.5 (stable GA — recommended for production)
   'gemini-2.5-flash': { prompt: 0.3, completion: 2.5 },
