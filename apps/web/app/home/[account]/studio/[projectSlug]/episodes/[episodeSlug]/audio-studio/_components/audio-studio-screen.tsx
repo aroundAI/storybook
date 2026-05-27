@@ -299,11 +299,9 @@ export function AudioStudioScreen({
   // Handle audio-cue-generation result (refresh to show generated cues)
   useEffect(() => {
     if (audioCueGenStatus === 'success' && audioCueGenResult) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const resultData = audioCueGenResult as any;
-      if (resultData?.success) {
+      if (audioCueGenResult.success) {
         toast.success(
-          `Audio cues generated: ${resultData.cuesCreated ?? 0} cue(s) created`,
+          `Audio cues generated: ${audioCueGenResult.cuesCreated ?? 0} cue(s) created`,
         );
         setIsGeneratingCues(false);
         refetchEpisode();

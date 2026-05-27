@@ -129,11 +129,13 @@ export async function processAudioCueGeneration(
     } else {
       // Large episode: batch by scene to stay within token budget
       // Group shots by scene_number, then process each scene independently
+      const shotToSceneMap = new Map<number, number>(
+        shots.map((s: ShotData) => [s.sequence_number, s.scene_number]),
+      );
+
       const sceneGroups = new Map<number, typeof shotsJson>();
       for (const shot of shotsJson) {
-        const sceneNum =
-          shots.find((s: ShotData) => s.sequence_number === shot.seq)
-            ?.scene_number ?? 0;
+        const sceneNum = shotToSceneMap.get(shot.seq) ?? 0;
         if (!sceneGroups.has(sceneNum)) {
           sceneGroups.set(sceneNum, []);
         }
@@ -145,6 +147,8 @@ export async function processAudioCueGeneration(
       );
 
       generatedCues = [];
+      let totalWeightedCoverage = 0;
+      let totalEvaluatedDuration = 0;
 
       for (const [sceneNum, sceneShots] of sceneGroups) {
         const sceneDuration = sceneShots.reduce(
@@ -172,11 +176,20 @@ export async function processAudioCueGeneration(
           continue;
         }
 
+        if (sceneResult.coveragePercent !== undefined) {
+          totalWeightedCoverage += sceneResult.coveragePercent * sceneDuration;
+          totalEvaluatedDuration += sceneDuration;
+        }
+
         console.log(
           `[Audio Generation] Scene ${sceneNum}: ${sceneResult.cues.length} cues generated`,
         );
         generatedCues.push(...sceneResult.cues);
       }
+
+      overallCoveragePercent = totalEvaluatedDuration > 0
+        ? Math.round(totalWeightedCoverage / totalEvaluatedDuration)
+        : 0;
 
       if (generatedCues.length === 0) {
         throw new Error(
