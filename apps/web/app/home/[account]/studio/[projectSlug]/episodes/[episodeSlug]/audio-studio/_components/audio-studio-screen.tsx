@@ -159,6 +159,36 @@ export function AudioStudioScreen({
       setInitialAudioTracks(bulkData.audioTracks.tracks);
       setInitialAudioCues(bulkData.audioCues);
 
+      // Compute music stats from bulk data (so tab counts show immediately)
+      {
+        // Music tracks (user-created)
+        const musicTracks = bulkData.audioTracks.tracks.filter((t) => t.type === 'music');
+        // Music cues (auto-generated, not yet placed)
+        const musicCueRows = (bulkData.audioCues as Array<{ cue_type: string; status: string | null }>)
+          .filter((c) => c.cue_type === 'music')
+          .filter((c) => c.status !== 'placed' && c.status !== 'matched');
+
+        const mTotal = musicTracks.length + musicCueRows.length;
+        const mCompleted = musicTracks.filter((t) => t.status === 'completed').length;
+        const mPending = musicTracks.filter((t) => t.status === 'pending').length + musicCueRows.filter((c) => c.status === 'pending').length;
+        const mProcessing = musicTracks.filter((t) => t.status === 'processing').length + musicCueRows.filter((c) => c.status === 'generating').length;
+        const mFailed = musicTracks.filter((t) => t.status === 'failed').length + musicCueRows.filter((c) => c.status === 'failed').length;
+        setMusicStats({ total: mTotal, completed: mCompleted, pending: mPending, processing: mProcessing, failed: mFailed });
+      }
+
+      // Compute SFX stats from bulk data
+      {
+        const sfxCueRows = (bulkData.audioCues as Array<{ cue_type: string; status: string | null }>)
+          .filter((c) => c.cue_type === 'sfx' || c.cue_type === 'ambient');
+
+        const sTotal = sfxCueRows.length;
+        const sCompleted = sfxCueRows.filter((c) => c.status === 'placed' || c.status === 'matched').length;
+        const sPending = sfxCueRows.filter((c) => c.status === 'pending').length;
+        const sProcessing = sfxCueRows.filter((c) => c.status === 'generating').length;
+        const sFailed = sfxCueRows.filter((c) => c.status === 'failed').length;
+        setSfxStats({ total: sTotal, completed: sCompleted, pending: sPending, processing: sProcessing, failed: sFailed });
+      }
+
       // Stale reset notification (fire-and-forget on server, just inform user)
       if (bulkData.staleResetCount > 0) {
         toast.info(
