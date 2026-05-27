@@ -939,3 +939,72 @@ export const updateDialogueTimingAction = enhanceAction(
     }),
   },
 );
+
+/**
+ * Clear all generated voices for an episode
+ *
+ * Resets all dialogue lines back to 'pending' status and clears audio URLs.
+ * Does NOT delete the R2 storage files (orphan cleanup handled separately).
+ */
+export const clearAllVoicesAction = enhanceAction(
+  async (data: { episodeId: string }): Promise<{
+    success: boolean;
+    clearedCount: number;
+    error?: string;
+  }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'dialogue.clearAllVoices',
+      episodeId: data.episodeId,
+    };
+
+    logger.info(ctx, 'Clearing all generated voices for episode');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized clear voices attempt');
+      throw new Error('Authentication required');
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updated, error } = await (client as any)
+        .from('dialogue_lines')
+        .update({
+          audio_url: null,
+          status: 'pending',
+          generation_metadata: null,
+        })
+        .eq('episode_id', data.episodeId)
+        .not('audio_url', 'is', null)
+        .select('id');
+
+      if (error) {
+        logger.error({ ...ctx, error }, 'Failed to clear voices');
+        throw new Error(`Failed to clear voices: ${error.message}`);
+      }
+
+      const clearedCount = updated?.length ?? 0;
+
+      logger.info(
+        { ...ctx, clearedCount },
+        'Cleared all generated voices for episode',
+      );
+
+      revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
+
+      return { success: true, clearedCount };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error({ ...ctx, error: message }, 'Clear voices failed');
+      return { success: false, clearedCount: 0, error: message };
+    }
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+    }),
+  },
+);

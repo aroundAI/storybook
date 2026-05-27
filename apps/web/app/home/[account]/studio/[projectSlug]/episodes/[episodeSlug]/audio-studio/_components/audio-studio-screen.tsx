@@ -9,7 +9,7 @@ import {
   useTransition,
 } from 'react';
 
-import { Download, Loader2, Minus, Play, Plus } from 'lucide-react';
+import { Download, Loader2, Minus, Play, Plus, Trash2 } from 'lucide-react';
 
 import type {
   CharacterAsset,
@@ -17,6 +17,7 @@ import type {
   ProjectAudioSettings,
 } from '@kit/audio-generation/lib';
 import {
+  clearAllVoicesAction,
   getAvailableLanguagesAction,
   getCharactersForEpisodeAction,
   getDialogueLinesAction,
@@ -292,6 +293,35 @@ export function AudioStudioScreen({
     });
   };
 
+  const handleClearAllVoices = () => {
+    if (
+      !window.confirm(
+        `Clear all ${stats.completed} generated voice(s)? This will reset them back to pending so you can regenerate.`,
+      )
+    ) {
+      return;
+    }
+
+    startTransition(async () => {
+      try {
+        const result = await clearAllVoicesAction({
+          episodeId: episode.id,
+        });
+
+        if (result.success) {
+          toast.success(`Cleared ${result.clearedCount} voice(s)`);
+          void refreshAll();
+        } else {
+          toast.error(result.error ?? 'Failed to clear voices');
+        }
+      } catch (error) {
+        toast.error(
+          error instanceof Error ? error.message : 'Failed to clear voices',
+        );
+      }
+    });
+  };
+
   /**
    * Helper to fetch audio as blob
    */
@@ -532,6 +562,17 @@ export function AudioStudioScreen({
           <div className="min-w-4 flex-1" />
 
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={handleClearAllVoices}
+              disabled={isPending || stats.completed === 0}
+              size="sm"
+              className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear All Voices
+            </Button>
+
             <Button
               onClick={handleGenerateAll}
               disabled={isPending || stats.pending === 0}
