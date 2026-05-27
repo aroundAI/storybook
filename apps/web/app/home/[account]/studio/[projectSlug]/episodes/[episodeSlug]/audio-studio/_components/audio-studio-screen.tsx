@@ -129,6 +129,7 @@ export function AudioStudioScreen({
     AudioTrack[] | null
   >(null);
    
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [initialAudioCues, setInitialAudioCues] = useState<Array<
     Record<string, any>
   > | null>(null);
