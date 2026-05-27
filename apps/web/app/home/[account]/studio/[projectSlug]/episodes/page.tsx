@@ -130,16 +130,17 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
     throw new Error('Failed to load episodes');
   }
 
-  // Fetch available languages per episode (single query for all episodes)
+  // Fetch available languages per episode using distinct query
+  // (raw dialogue_lines can have 30+ rows per episode×language, so we
+  //  query distinct pairs to avoid hitting row limits)
   const languageMap = new Map<string, string[]>();
   const episodeIds = (episodes ?? []).map((e) => e.id);
 
   if (episodeIds.length > 0) {
-    const { data: langRows } = await client
-      .from('dialogue_lines')
-      .select('episode_id, language')
-      .in('episode_id', episodeIds)
-      .limit(500);
+    const { data: langRows } = await client.rpc(
+      'get_episode_languages' as never,
+      { p_episode_ids: episodeIds } as never,
+    );
 
     if (langRows) {
       for (const row of langRows as Array<{
@@ -148,9 +149,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
       }>) {
         const existing = languageMap.get(row.episode_id);
         if (existing) {
-          if (!existing.includes(row.language)) {
-            existing.push(row.language);
-          }
+          existing.push(row.language);
         } else {
           languageMap.set(row.episode_id, [row.language]);
         }
