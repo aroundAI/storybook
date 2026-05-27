@@ -19,6 +19,7 @@ import {
   Plus,
   Square,
   Trash2,
+  Wand2,
   XCircle,
 } from 'lucide-react';
 
@@ -31,6 +32,7 @@ import {
   batchGenerateDialogueAction,
   cancelBatchAction,
   clearAllVoicesAction,
+  generateAudioCuesAction,
   getActiveBatchForEpisodeAction,
   getAudioStudioBulkDataAction,
   getBatchStatusAction,
@@ -108,6 +110,9 @@ export function AudioStudioScreen({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [initialAudioCues, setInitialAudioCues] = useState<Array<Record<string, any>> | null>(null);
 
+  // Audio cue generation state
+  const [isGeneratingCues, setIsGeneratingCues] = useState(false);
+
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
   const {
     status: shotGenStatus,
@@ -121,6 +126,13 @@ export function AudioStudioScreen({
     result: translateResult,
     error: translateError,
   } = useLlmJob<{ success: boolean }>('translate-dialogue');
+
+  // WebSocket for audio-cue-generation results
+  const {
+    status: audioCueGenStatus,
+    result: audioCueGenResult,
+    error: audioCueGenError,
+  } = useLlmJob<{ success: boolean; cuesCreated: number }>('audio-cue-generation');
 
   // Bulk-load ALL audio studio data on mount (replaces 5+ separate server actions)
   const fetchInitialData = useCallback(async () => {
@@ -280,6 +292,29 @@ export function AudioStudioScreen({
     translateStatus,
     translateResult,
     translateError,
+    refetchEpisode,
+    refreshAll,
+  ]);
+
+  // Handle audio-cue-generation result (refresh to show generated cues)
+  useEffect(() => {
+    if (audioCueGenStatus === 'success' && audioCueGenResult) {
+      if (audioCueGenResult.success) {
+        toast.success(
+          `Audio cues generated: ${audioCueGenResult.cuesCreated ?? 0} cue(s) created`,
+        );
+        setIsGeneratingCues(false);
+        refetchEpisode();
+        void refreshAll();
+      }
+    } else if (audioCueGenStatus === 'error') {
+      setIsGeneratingCues(false);
+      toast.error(audioCueGenError || 'Failed to generate audio cues');
+    }
+  }, [
+    audioCueGenStatus,
+    audioCueGenResult,
+    audioCueGenError,
     refetchEpisode,
     refreshAll,
   ]);
@@ -527,6 +562,35 @@ export function AudioStudioScreen({
   const isGenerating =
     batchStatus?.status === 'queued' ||
     batchStatus?.status === 'processing';
+
+  const hasNoCues = musicStats.total === 0 && sfxStats.total === 0;
+
+  const handleGenerateAudioCues = () => {
+    setIsGeneratingCues(true);
+    startTransition(async () => {
+      try {
+        const result = await generateAudioCuesAction({
+          episodeId: episode.id,
+        });
+
+        if (result.queued) {
+          toast.info(
+            'Generating audio cues in background... This may take a minute.',
+          );
+        } else {
+          setIsGeneratingCues(false);
+          toast.error(result.error ?? 'Failed to generate audio cues');
+        }
+      } catch (error) {
+        setIsGeneratingCues(false);
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to generate audio cues',
+        );
+      }
+    });
+  };
 
 
 
@@ -844,27 +908,71 @@ export function AudioStudioScreen({
             )}
 
             {activeTab === 'music' && (
-              <Button
-                onClick={() => musicTimelineRef.current?.generateAll()}
-                disabled={musicStats.pending === 0}
-                size="sm"
-                className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-              >
-                <Play className="h-4 w-4" />
-                Generate All Pending ({musicStats.pending})
-              </Button>
+              <>
+                {hasNoCues && (
+                  <Button
+                    onClick={handleGenerateAudioCues}
+                    disabled={isPending || isGeneratingCues}
+                    size="sm"
+                    className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm hover:from-violet-700 hover:to-purple-700"
+                  >
+                    {isGeneratingCues ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating Cues…
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" />
+                        Generate Audio Cues
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  onClick={() => musicTimelineRef.current?.generateAll()}
+                  disabled={musicStats.pending === 0}
+                  size="sm"
+                  className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  <Play className="h-4 w-4" />
+                  Generate All Pending ({musicStats.pending})
+                </Button>
+              </>
             )}
 
             {activeTab === 'sfx' && (
-              <Button
-                onClick={() => sfxTimelineRef.current?.generateAll()}
-                disabled={sfxStats.pending === 0}
-                size="sm"
-                className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-              >
-                <Play className="h-4 w-4" />
-                Generate All Pending ({sfxStats.pending})
-              </Button>
+              <>
+                {hasNoCues && (
+                  <Button
+                    onClick={handleGenerateAudioCues}
+                    disabled={isPending || isGeneratingCues}
+                    size="sm"
+                    className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-sm hover:from-violet-700 hover:to-purple-700"
+                  >
+                    {isGeneratingCues ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating Cues…
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-4 w-4" />
+                        Generate Audio Cues
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  onClick={() => sfxTimelineRef.current?.generateAll()}
+                  disabled={sfxStats.pending === 0}
+                  size="sm"
+                  className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  <Play className="h-4 w-4" />
+                  Generate All Pending ({sfxStats.pending})
+                </Button>
+              </>
             )}
 
             <Button
