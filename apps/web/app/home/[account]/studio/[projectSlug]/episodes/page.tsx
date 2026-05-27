@@ -130,6 +130,34 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
     throw new Error('Failed to load episodes');
   }
 
+  // Fetch available languages per episode (single query for all episodes)
+  const languageMap = new Map<string, string[]>();
+  const episodeIds = (episodes ?? []).map((e) => e.id);
+
+  if (episodeIds.length > 0) {
+    const { data: langRows } = await client
+      .from('dialogue_lines')
+      .select('episode_id, language')
+      .in('episode_id', episodeIds)
+      .limit(500);
+
+    if (langRows) {
+      for (const row of langRows as Array<{
+        episode_id: string;
+        language: string;
+      }>) {
+        const existing = languageMap.get(row.episode_id);
+        if (existing) {
+          if (!existing.includes(row.language)) {
+            existing.push(row.language);
+          }
+        } else {
+          languageMap.set(row.episode_id, [row.language]);
+        }
+      }
+    }
+  }
+
   // Group episodes by season
   const episodesBySeason = groupEpisodesBySeason(episodes ?? [], seasons ?? []);
   const hasSeasons = (seasons?.length ?? 0) > 0;
@@ -182,6 +210,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       account={account}
                       projectSlug={project.slug ?? project.id}
                       analytics={null}
+                      languageMap={languageMap}
                     />
                   ),
                 )}
@@ -205,6 +234,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                             episode={mapEpisode(episode)}
                             account={account}
                             projectSlug={project.slug ?? project.id}
+                            availableLanguages={languageMap.get(episode.id)}
                             isFirst={index === 0}
                             isLast={index === unassignedEpisodes.length - 1}
                           />
@@ -224,6 +254,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       episode={mapEpisode(episode)}
                       account={account}
                       projectSlug={project.slug ?? project.id}
+                      availableLanguages={languageMap.get(episode.id)}
                       isFirst={index === 0}
                       isLast={index === episodes.length - 1}
                     />

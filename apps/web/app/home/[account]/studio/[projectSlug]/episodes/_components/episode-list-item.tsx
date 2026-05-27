@@ -7,10 +7,25 @@ import { ChevronRight, Pencil } from 'lucide-react';
 import type { Episode } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
 
+const LANG_FLAGS: Record<string, { flag: string }> = {
+  en: { flag: '🇺🇸' },
+  hi: { flag: '🇮🇳' },
+  es: { flag: '🇪🇸' },
+  pt: { flag: '🇧🇷' },
+  fr: { flag: '🇫🇷' },
+  de: { flag: '🇩🇪' },
+  ja: { flag: '🇯🇵' },
+  ko: { flag: '🇰🇷' },
+  zh: { flag: '🇨🇳' },
+  ar: { flag: '🇸🇦' },
+  bn: { flag: '🇧🇩' },
+};
+
 interface EpisodeListItemProps {
   episode: Episode;
   account: string;
   projectSlug: string;
+  availableLanguages?: string[];
   isFirst?: boolean;
   isLast?: boolean;
 }
@@ -86,6 +101,7 @@ export function EpisodeListItem({
   episode,
   account,
   projectSlug,
+  availableLanguages,
   isFirst: _isFirst = false,
   isLast: _isLast = false,
 }: EpisodeListItemProps) {
@@ -127,6 +143,26 @@ export function EpisodeListItem({
                     {getStatusLabel(stage, stages[stage])}
                   </span>
                 ))}
+
+                {/* Language flags */}
+                {availableLanguages && availableLanguages.length > 0 && (
+                  <>
+                    <div className="h-4 w-px self-center bg-white/10" />
+                    {availableLanguages.sort().map((lang) => {
+                      const info = LANG_FLAGS[lang];
+                      if (!info) return null;
+                      return (
+                        <span
+                          key={lang}
+                          className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-slate-500"
+                        >
+                          <span>{info.flag}</span>
+                          <span className="uppercase">{lang}</span>
+                        </span>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </div>
 

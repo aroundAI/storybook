@@ -46,7 +46,8 @@ export const getAvailableLanguagesAction = enhanceAction(
     const { data: rows, error } = await (client as any)
       .from('dialogue_lines')
       .select('language')
-      .eq('episode_id', data.episodeId);
+      .eq('episode_id', data.episodeId)
+      .limit(200);
 
     if (error) {
       throw new Error('Failed to fetch languages');

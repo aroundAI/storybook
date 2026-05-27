@@ -63,6 +63,9 @@ export function AudioStudioScreen({
     SupportedLanguage[]
   >(['en']);
 
+  // Client-side dialogue cache: avoids re-fetching when switching back to a language
+  const dialogueCache = useRef<Map<string, DialogueLine[]>>(new Map());
+
   // Timeline zoom state (pixels per second)
   const [pixelsPerSecond, setPixelsPerSecond] = useState(2);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
@@ -81,25 +84,15 @@ export function AudioStudioScreen({
     error: translateError,
   } = useLlmJob<{ success: boolean }>('translate-dialogue');
 
-  // Fetch dialogue lines and characters on mount
-  const fetchData = useCallback(async () => {
-    setIsLoading(true);
+  // Fetch static data once on mount (characters, settings, languages)
+  const fetchStaticData = useCallback(async () => {
     try {
-      const [dialogueResult, chars, settings, languages] = await Promise.all([
-        getDialogueLinesAction({
-          episodeId: episode.id,
-          language: selectedLanguage,
-        }),
+      const [chars, settings, languages] = await Promise.all([
         getCharactersForEpisodeAction({ episodeId: episode.id }),
         getProjectAudioSettings(episode.projectId),
         getAvailableLanguagesAction({ episodeId: episode.id }),
       ]);
 
-      const allLines = Array.isArray(dialogueResult?.lines)
-        ? dialogueResult.lines
-        : [];
-
-      setDialogueLines(allLines);
       setCharacters(Array.isArray(chars) ? chars : []);
       setAudioSettings(settings);
 
@@ -113,14 +106,56 @@ export function AudioStudioScreen({
         setAvailableLanguages(langArray);
       }
     } catch (error) {
-      console.error('Failed to fetch audio studio data:', error);
-      toast.error('Failed to load dialogue data');
-      setDialogueLines([]);
+      console.error('Failed to fetch audio studio static data:', error);
+      toast.error('Failed to load audio studio data');
       setCharacters([]);
-    } finally {
-      setIsLoading(false);
     }
-  }, [episode.id, episode.projectId, selectedLanguage]);
+  }, [episode.id, episode.projectId]);
+
+  // Fetch dialogue lines for a specific language (with cache)
+  const fetchDialogueForLanguage = useCallback(
+    async (lang: SupportedLanguage, skipCache = false) => {
+      // Check cache first
+      if (!skipCache) {
+        const cached = dialogueCache.current.get(lang);
+        if (cached) {
+          setDialogueLines(cached);
+          return;
+        }
+      }
+
+      setIsLoading(true);
+      try {
+        const dialogueResult = await getDialogueLinesAction({
+          episodeId: episode.id,
+          language: lang,
+        });
+
+        const allLines = Array.isArray(dialogueResult?.lines)
+          ? dialogueResult.lines
+          : [];
+
+        dialogueCache.current.set(lang, allLines);
+        setDialogueLines(allLines);
+      } catch (error) {
+        console.error('Failed to fetch dialogue lines:', error);
+        toast.error('Failed to load dialogue data');
+        setDialogueLines([]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [episode.id],
+  );
+
+  // Combined refresh: clears cache and reloads everything
+  const refreshAll = useCallback(async () => {
+    dialogueCache.current.clear();
+    await Promise.all([
+      fetchStaticData(),
+      fetchDialogueForLanguage(selectedLanguage, true),
+    ]);
+  }, [fetchStaticData, fetchDialogueForLanguage, selectedLanguage]);
 
   // Handle shot-generation result (refresh to show updated episode)
   useEffect(() => {
@@ -130,12 +165,12 @@ export function AudioStudioScreen({
       if (resultData?.success) {
         toast.success('Shot list generated successfully');
         refetchEpisode();
-        void fetchData();
+        void refreshAll();
       }
     } else if (shotGenStatus === 'error') {
       toast.error(shotGenError || 'Failed to generate shot list');
     }
-  }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode, fetchData]);
+  }, [shotGenStatus, shotGenResult, shotGenError, refetchEpisode, refreshAll]);
 
   // Handle translate-dialogue result (refresh to show translated dialogue)
   useEffect(() => {
@@ -145,7 +180,7 @@ export function AudioStudioScreen({
       if (resultData?.success) {
         toast.success('Dialogue translated successfully');
         refetchEpisode();
-        void fetchData();
+        void refreshAll();
       }
     } else if (translateStatus === 'error') {
       toast.error(translateError || 'Failed to translate dialogue');
@@ -155,12 +190,17 @@ export function AudioStudioScreen({
     translateResult,
     translateError,
     refetchEpisode,
-    fetchData,
+    refreshAll,
   ]);
 
+  // Initial load: static data once, dialogue for current language
   useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+    void fetchStaticData();
+  }, [fetchStaticData]);
+
+  useEffect(() => {
+    void fetchDialogueForLanguage(selectedLanguage);
+  }, [fetchDialogueForLanguage, selectedLanguage]);
 
   // Zoom presets
   const ZOOM_LEVELS = [2, 5, 10, 20, 40, 60, 80, 120, 160, 200];
@@ -240,7 +280,7 @@ export function AudioStudioScreen({
         if (result.success) {
           toast.success('Audio generation started');
           refetchEpisode();
-          void fetchData(); // Refresh dialogue data
+          void refreshAll();
         } else {
           toast.error(result.error ?? 'Failed to generate audio');
         }
@@ -435,7 +475,7 @@ export function AudioStudioScreen({
                   availableLanguages={availableLanguages}
                   selectedLanguage={selectedLanguage}
                   onLanguageChange={setSelectedLanguage}
-                  onLanguageAdded={fetchData}
+                  onLanguageAdded={refreshAll}
                 />
               </>
             )}
@@ -530,7 +570,7 @@ export function AudioStudioScreen({
               dialogueLines={dialogueLines}
               characters={characters}
               isLoading={isLoading}
-              onRefresh={fetchData}
+              onRefresh={refreshAll}
               pixelsPerSecond={pixelsPerSecond}
               audioSettings={audioSettings}
             />
@@ -541,7 +581,7 @@ export function AudioStudioScreen({
               episodeId={episode.id}
               totalDuration={totalDuration}
               scenes={scenes}
-              onRefresh={fetchData}
+              onRefresh={refreshAll}
               pixelsPerSecond={pixelsPerSecond}
               audioSettings={audioSettings}
             />
@@ -552,7 +592,7 @@ export function AudioStudioScreen({
               episodeId={episode.id}
               totalDuration={totalDuration}
               pixelsPerSecond={pixelsPerSecond}
-              onRefresh={fetchData}
+              onRefresh={refreshAll}
               audioSettings={audioSettings}
             />
           )}
