@@ -130,47 +130,28 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
     throw new Error('Failed to load episodes');
   }
 
-  // Fetch available languages per episode using distinct query
-  // (raw dialogue_lines can have 30+ rows per episode×language, so we
-  //  query distinct pairs to avoid hitting row limits)
+  // Fetch distinct languages per episode via DB-level RPC
+  // (SELECT DISTINCT returns ~50 rows vs 1700+ raw dialogue_lines)
   const languageMap = new Map<string, string[]>();
   const episodeIds = (episodes ?? []).map((e) => e.id);
 
   if (episodeIds.length > 0) {
-    interface LangRow { episode_id: string; language: string }
-
-    // Try RPC first (efficient DISTINCT), fall back to raw query
-    let langRows: LangRow[] = [];
-
-    const { data: rpcData, error: rpcError } = await client.rpc(
+    const { data: langRows } = await client.rpc(
       'get_episode_languages' as never,
       { p_episode_ids: episodeIds } as never,
     );
 
-    if (!rpcError && rpcData) {
-      langRows = rpcData as LangRow[];
-    } else {
-      // Fallback: raw query (handles case where RPC doesn't exist yet)
-      console.warn('[episodes/page] RPC fallback:', rpcError?.message);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: rawRows } = await (client as any)
-        .from('dialogue_lines')
-        .select('episode_id, language')
-        .in('episode_id', episodeIds)
-        .limit(5000);
-      langRows = (rawRows ?? []) as LangRow[];
-    }
-
-    const seen = new Set<string>();
-    for (const row of langRows) {
-      const key = `${row.episode_id}:${row.language}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const existing = languageMap.get(row.episode_id);
-      if (existing) {
-        existing.push(row.language);
-      } else {
-        languageMap.set(row.episode_id, [row.language]);
+    if (langRows) {
+      for (const row of langRows as Array<{
+        episode_id: string;
+        language: string;
+      }>) {
+        const existing = languageMap.get(row.episode_id);
+        if (existing) {
+          existing.push(row.language);
+        } else {
+          languageMap.set(row.episode_id, [row.language]);
+        }
       }
     }
   }
