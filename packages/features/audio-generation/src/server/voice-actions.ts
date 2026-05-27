@@ -851,9 +851,9 @@ export const updateDialogueTextAction = enhanceAction(
       text: data.text,
     };
 
-    // If audio exists, set status to 'text_modified' to indicate regeneration needed
+    // If audio exists, reset status to 'pending' to indicate regeneration needed
     if (dialogueLine.audio_url) {
-      updatePayload.status = 'text_modified';
+      updatePayload.status = 'pending';
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
