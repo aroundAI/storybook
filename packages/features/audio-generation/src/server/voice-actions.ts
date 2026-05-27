@@ -2,8 +2,6 @@
 
 import 'server-only';
 
-
-
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
 
@@ -358,8 +356,6 @@ export const generateDialogueVoiceAction = enhanceAction(
         { ...ctx, audioUrl, duration: result.duration },
         'Dialogue voice generation completed',
       );
-
-
 
       return {
         dialogueLineId: data.dialogueLineId,
@@ -880,8 +876,6 @@ export const updateDialogueTextAction = enhanceAction(
 
     logger.info(ctx, 'Dialogue text updated successfully');
 
-
-
     return {
       success: true,
       dialogueLineId: data.dialogueLineId,
@@ -939,7 +933,6 @@ export const updateDialogueTimingAction = enhanceAction(
       throw new Error('Failed to update dialogue timing');
     }
 
-
     return { success: true, dialogueLineId: data.dialogueLineId };
   },
   {
@@ -958,7 +951,9 @@ export const updateDialogueTimingAction = enhanceAction(
  * Does NOT delete the R2 storage files (orphan cleanup handled separately).
  */
 export const clearAllVoicesAction = enhanceAction(
-  async (data: { episodeId: string }): Promise<{
+  async (data: {
+    episodeId: string;
+  }): Promise<{
     success: boolean;
     clearedCount: number;
     error?: string;
@@ -1003,8 +998,6 @@ export const clearAllVoicesAction = enhanceAction(
         { ...ctx, clearedCount },
         'Cleared all generated voices for episode',
       );
-
-
 
       return { success: true, clearedCount };
     } catch (error) {

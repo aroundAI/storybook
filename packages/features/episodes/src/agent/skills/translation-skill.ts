@@ -106,8 +106,11 @@ const translateDialogueTool = createTool({
 
       // Look up language-specific style guide
       const langCode = LANGUAGE_CODE_MAP[targetLanguage.toLowerCase()] ?? '';
-      const styleGuide = LANGUAGE_STYLE_GUIDES[langCode] ?? LANGUAGE_STYLE_GUIDES._default!;
-      const targetDemographic = (context as Record<string, unknown>).targetAudience as string || 'children and young teens (ages 6-15)';
+      const styleGuide =
+        LANGUAGE_STYLE_GUIDES[langCode] ?? LANGUAGE_STYLE_GUIDES._default!;
+      const targetDemographic =
+        ((context as Record<string, unknown>).targetAudience as string) ||
+        'children and young teens (ages 6-15)';
 
       const result = await executeLLM<string>({
         templateSlug: 'dialogue-translation',

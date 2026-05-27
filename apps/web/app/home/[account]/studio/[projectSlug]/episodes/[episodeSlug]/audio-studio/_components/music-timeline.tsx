@@ -20,7 +20,10 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import type { AudioTrack, ProjectAudioSettings } from '@kit/audio-generation/lib';
+import type {
+  AudioTrack,
+  ProjectAudioSettings,
+} from '@kit/audio-generation/lib';
 import {
   deleteAudioTrackAction,
   generateAudioForCueAction,
@@ -105,17 +108,23 @@ function getMarkerInterval(pps: number): number {
   return 15; // Every 15 seconds when zoomed out
 }
 
-export const MusicTimeline = React.forwardRef<MusicTimelineHandle, MusicTimelineProps>(function MusicTimeline({
-  episodeId,
-  totalDuration,
-  scenes,
-  onRefresh,
-  pixelsPerSecond,
-  audioSettings,
-  onStatsChange,
-  initialTracks: initialTracksProp,
-  initialCues: initialCuesProp,
-}, ref) {
+export const MusicTimeline = React.forwardRef<
+  MusicTimelineHandle,
+  MusicTimelineProps
+>(function MusicTimeline(
+  {
+    episodeId,
+    totalDuration,
+    scenes,
+    onRefresh,
+    pixelsPerSecond,
+    audioSettings,
+    onStatsChange,
+    initialTracks: initialTracksProp,
+    initialCues: initialCuesProp,
+  },
+  ref,
+) {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
@@ -238,20 +247,22 @@ export const MusicTimeline = React.forwardRef<MusicTimelineHandle, MusicTimeline
         }));
 
       // Process pre-loaded cues (filter to music type only)
-      const musicCues: MusicTrack[] = (initialCuesProp as Array<{
-        id: string;
-        cue_type: string;
-        prompt: string;
-        scene_number: number;
-        start_offset_seconds: number | null;
-        duration_seconds: number | null;
-        status: string | null;
-        audio_assets: {
+      const musicCues: MusicTrack[] = (
+        initialCuesProp as Array<{
           id: string;
-          file_url: string | null;
+          cue_type: string;
+          prompt: string;
+          scene_number: number;
+          start_offset_seconds: number | null;
           duration_seconds: number | null;
-        } | null;
-      }>)
+          status: string | null;
+          audio_assets: {
+            id: string;
+            file_url: string | null;
+            duration_seconds: number | null;
+          } | null;
+        }>
+      )
         .filter((c) => c.cue_type === 'music')
         .filter((c) => c.status !== 'placed' && c.status !== 'matched')
         .map((c) => ({
@@ -362,7 +373,9 @@ export const MusicTimeline = React.forwardRef<MusicTimelineHandle, MusicTimeline
       return;
     }
 
-    toast.info(`Queuing ${pendingTracks.length} music track(s) for generation...`);
+    toast.info(
+      `Queuing ${pendingTracks.length} music track(s) for generation...`,
+    );
 
     for (const track of pendingTracks) {
       if (track.id.startsWith('cue-')) {
@@ -392,9 +405,13 @@ export const MusicTimeline = React.forwardRef<MusicTimelineHandle, MusicTimeline
   }, [tracks, audioSettings, episodeId]);
 
   // Expose generateAll via ref
-  useImperativeHandle(ref, () => ({
-    generateAll: () => void handleGenerateAllPending(),
-  }), [handleGenerateAllPending]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      generateAll: () => void handleGenerateAllPending(),
+    }),
+    [handleGenerateAllPending],
+  );
 
   // Time markers
   const timeMarkers = useMemo(() => {

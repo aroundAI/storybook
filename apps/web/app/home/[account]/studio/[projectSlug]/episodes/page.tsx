@@ -136,14 +136,17 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const episodeIds = (episodes ?? []).map((e) => e.id);
 
   // Audio stats map: dialogue/music/sfx counts per episode
-  const audioStatsMap = new Map<string, {
-    dialogueTotal: number;
-    dialogueCompleted: number;
-    musicTotal: number;
-    musicCompleted: number;
-    sfxTotal: number;
-    sfxCompleted: number;
-  }>();
+  const audioStatsMap = new Map<
+    string,
+    {
+      dialogueTotal: number;
+      dialogueCompleted: number;
+      musicTotal: number;
+      musicCompleted: number;
+      sfxTotal: number;
+      sfxCompleted: number;
+    }
+  >();
 
   if (episodeIds.length > 0) {
     // Fetch languages
@@ -244,6 +247,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       seasonName={season.name ?? `Season ${season.number}`}
                       episodes={seasonEpisodes.map(mapEpisode)}
                       account={account}
+                      projectId={project.id}
                       projectSlug={project.slug ?? project.id}
                       analytics={null}
                       languageMap={languageMap}

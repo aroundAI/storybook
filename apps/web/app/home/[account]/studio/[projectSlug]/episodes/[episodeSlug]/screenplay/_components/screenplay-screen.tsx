@@ -85,13 +85,7 @@ export function ScreenplayScreen({
       setIsGenerating(false); // Reset on error
       toast.error(llmError || 'Failed to generate shot list');
     }
-  }, [
-    llmStatus,
-    llmResult,
-    llmError,
-    refetchEpisode,
-    setIsGenerating,
-  ]);
+  }, [llmStatus, llmResult, llmError, refetchEpisode, setIsGenerating]);
 
   // Handle screenplay-conversion result (refresh to show generated screenplay)
   useEffect(() => {

@@ -237,10 +237,7 @@ export async function buildEpisodeContext(
     console.log(
       `[buildEpisodeContext] "All Characters" wildcard detected — fetching all project characters`,
     );
-    characters = await fetchAllProjectCharacters(
-      episode.project.id,
-      supabase,
-    );
+    characters = await fetchAllProjectCharacters(episode.project.id, supabase);
   } else {
     characters = await fetchCharactersByIds(characterIds, supabase);
   }

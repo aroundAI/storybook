@@ -174,38 +174,49 @@ export function EpisodeListItem({
                 )}
               </div>
 
-                {/* Audio generation progress */}
-                {audioStats && (audioStats.dialogueTotal > 0 || audioStats.musicTotal > 0 || audioStats.sfxTotal > 0) && (
+              {/* Audio generation progress */}
+              {audioStats &&
+                (audioStats.dialogueTotal > 0 ||
+                  audioStats.musicTotal > 0 ||
+                  audioStats.sfxTotal > 0) && (
                   <div className="mt-2 flex items-center gap-3 text-[10px]">
                     {audioStats.dialogueTotal > 0 && (
-                      <span className={cn(
-                        'flex items-center gap-1 tabular-nums',
-                        audioStats.dialogueCompleted === audioStats.dialogueTotal
-                          ? 'text-green-400'
-                          : 'text-slate-500',
-                      )}>
+                      <span
+                        className={cn(
+                          'flex items-center gap-1 tabular-nums',
+                          audioStats.dialogueCompleted ===
+                            audioStats.dialogueTotal
+                            ? 'text-green-400'
+                            : 'text-slate-500',
+                        )}
+                      >
                         <Mic className="h-3 w-3" />
-                        {audioStats.dialogueCompleted}/{audioStats.dialogueTotal}
+                        {audioStats.dialogueCompleted}/
+                        {audioStats.dialogueTotal}
                       </span>
                     )}
                     {audioStats.musicTotal > 0 && (
-                      <span className={cn(
-                        'flex items-center gap-1 tabular-nums',
-                        audioStats.musicCompleted === audioStats.musicTotal
-                          ? 'text-green-400'
-                          : 'text-slate-500',
-                      )}>
+                      <span
+                        className={cn(
+                          'flex items-center gap-1 tabular-nums',
+                          audioStats.musicCompleted === audioStats.musicTotal
+                            ? 'text-green-400'
+                            : 'text-slate-500',
+                        )}
+                      >
                         <Music className="h-3 w-3" />
                         {audioStats.musicCompleted}/{audioStats.musicTotal}
                       </span>
                     )}
                     {audioStats.sfxTotal > 0 && (
-                      <span className={cn(
-                        'flex items-center gap-1 tabular-nums',
-                        audioStats.sfxCompleted === audioStats.sfxTotal
-                          ? 'text-green-400'
-                          : 'text-slate-500',
-                      )}>
+                      <span
+                        className={cn(
+                          'flex items-center gap-1 tabular-nums',
+                          audioStats.sfxCompleted === audioStats.sfxTotal
+                            ? 'text-green-400'
+                            : 'text-slate-500',
+                        )}
+                      >
                         <Volume2 className="h-3 w-3" />
                         {audioStats.sfxCompleted}/{audioStats.sfxTotal}
                       </span>

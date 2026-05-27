@@ -36,6 +36,13 @@ import { generateSfxAction } from './sfx-actions';
  * and trigger generation for SFX/ambient, display prompts for music.
  */
 
+/**
+ * Audio Cue Actions
+ *
+ * Process audioCues from screenplay scenes into audio_cues table
+ * and trigger generation for SFX/ambient, display prompts for music.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================
@@ -441,7 +448,11 @@ export const generateAudioCuesAction = enhanceAction(
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
-      return { success: false, queued: false, error: 'Authentication required' };
+      return {
+        success: false,
+        queued: false,
+        error: 'Authentication required',
+      };
     }
 
     // Validate episode exists and has shots
@@ -471,7 +482,8 @@ export const generateAudioCuesAction = enhanceAction(
       return {
         success: false,
         queued: false,
-        error: 'Episode must have shots generated before audio cues can be created',
+        error:
+          'Episode must have shots generated before audio cues can be created',
       };
     }
 
@@ -488,18 +500,16 @@ export const generateAudioCuesAction = enhanceAction(
       const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
       // Create generation job entry for tracking
-      const { error: jobError } = await client
-        .from('generation_jobs')
-        .insert({
-          reference_type: 'episode',
-          reference_id: data.episodeId,
-          job_type: 'audio_cue_generation',
-          status: 'queued',
-          account_id: accountId,
-          project_id: episode.project_id,
-          idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
-          input_data: { episodeId: data.episodeId },
-        });
+      const { error: jobError } = await client.from('generation_jobs').insert({
+        reference_type: 'episode',
+        reference_id: data.episodeId,
+        job_type: 'audio_cue_generation',
+        status: 'queued',
+        account_id: accountId,
+        project_id: episode.project_id,
+        idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
+        input_data: { episodeId: data.episodeId },
+      });
 
       if (jobError) {
         console.error(
@@ -533,6 +543,146 @@ export const generateAudioCuesAction = enhanceAction(
   {
     schema: z.object({
       episodeId: z.string().uuid(),
+    }),
+  },
+);
+
+// =============================================================================
+// Season-level audio summary
+// =============================================================================
+
+interface SeasonEpisodeAudioSummary {
+  episodeId: string;
+  episodeNumber: number;
+  title: string;
+  slug: string | null;
+  hasAudioCues: boolean;
+  audioCueCount: number;
+  dialogue: { total: number; completed: number; pending: number };
+  music: { total: number; completed: number; pending: number };
+  sfx: { total: number; completed: number; pending: number };
+}
+
+/**
+ * Fetch detailed audio status for every episode in a season.
+ *
+ * Used by the "Generate All Sound" modal to show per-episode breakdowns
+ * and determine which episodes / steps still need generation.
+ */
+export const getSeasonAudioSummaryAction = enhanceAction(
+  async (data): Promise<{ episodes: SeasonEpisodeAudioSummary[] }> => {
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // 1. Fetch episodes for the season
+    const { data: episodes, error: epError } = await client
+      .from('episodes')
+      .select('id, number, title, slug, season_id')
+      .eq('season_id', data.seasonId)
+      .is('deleted_at', null)
+      .order('number', { ascending: true });
+
+    if (epError || !episodes) {
+      throw new Error('Failed to fetch episodes for season');
+    }
+
+    if (episodes.length === 0) {
+      return { episodes: [] };
+    }
+
+    const episodeIds = episodes.map((e) => e.id);
+
+    // 2. Use the same RPC as the episode list page — aggregates server-side
+    //    so we avoid Supabase client's default 1000-row limit.
+    const { data: statsRows } = await client.rpc(
+      'get_episode_audio_stats' as never,
+      { p_episode_ids: episodeIds } as never,
+    );
+
+    // Build a lookup from the RPC results
+    const statsMap = new Map<
+      string,
+      {
+        dialogue_total: number;
+        dialogue_completed: number;
+        music_total: number;
+        music_completed: number;
+        sfx_total: number;
+        sfx_completed: number;
+      }
+    >();
+
+    if (statsRows) {
+      for (const row of statsRows as Array<{
+        episode_id: string;
+        dialogue_total: number;
+        dialogue_completed: number;
+        music_total: number;
+        music_completed: number;
+        sfx_total: number;
+        sfx_completed: number;
+      }>) {
+        statsMap.set(row.episode_id, row);
+      }
+    }
+
+    // 3. Check which episodes have any audio cues (count-only, no row limit)
+    const { data: cueCountRows } = await client
+      .from('audio_cues')
+      .select('episode_id', { count: 'exact' })
+      .in('episode_id', episodeIds);
+
+    const cueEpisodeIds = new Set(
+      (cueCountRows ?? []).map((r) => r.episode_id),
+    );
+
+    // 4. Build per-episode summary
+    const result: SeasonEpisodeAudioSummary[] = episodes.map((ep) => {
+      const stats = statsMap.get(ep.id);
+      const dialogueTotal = stats?.dialogue_total ?? 0;
+      const dialogueCompleted = stats?.dialogue_completed ?? 0;
+      const musicTotal = stats?.music_total ?? 0;
+      const musicCompleted = stats?.music_completed ?? 0;
+      const sfxTotal = stats?.sfx_total ?? 0;
+      const sfxCompleted = stats?.sfx_completed ?? 0;
+
+      const hasAudioCues = cueEpisodeIds.has(ep.id);
+      const audioCueCount = musicTotal + sfxTotal;
+
+      return {
+        episodeId: ep.id,
+        episodeNumber: ep.number,
+        title: ep.title,
+        slug: ep.slug,
+        hasAudioCues,
+        audioCueCount,
+        dialogue: {
+          total: dialogueTotal,
+          completed: dialogueCompleted,
+          pending: dialogueTotal - dialogueCompleted,
+        },
+        music: {
+          total: musicTotal,
+          completed: musicCompleted,
+          pending: musicTotal - musicCompleted,
+        },
+        sfx: {
+          total: sfxTotal,
+          completed: sfxCompleted,
+          pending: sfxTotal - sfxCompleted,
+        },
+      };
+    });
+
+    return { episodes: result };
+  },
+  {
+    schema: z.object({
+      seasonId: z.string().uuid(),
     }),
   },
 );

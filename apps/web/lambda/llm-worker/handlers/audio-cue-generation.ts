@@ -187,9 +187,10 @@ export async function processAudioCueGeneration(
         generatedCues.push(...sceneResult.cues);
       }
 
-      overallCoveragePercent = totalEvaluatedDuration > 0
-        ? Math.round(totalWeightedCoverage / totalEvaluatedDuration)
-        : 0;
+      overallCoveragePercent =
+        totalEvaluatedDuration > 0
+          ? Math.round(totalWeightedCoverage / totalEvaluatedDuration)
+          : 0;
 
       if (generatedCues.length === 0) {
         throw new Error(
