@@ -117,9 +117,9 @@ export const autoStitchAction = enhanceAction(
           .from('audio_tracks')
           .select(
             `
-            id, episode_id, track_type, audio_url, duration_seconds,
-            start_seconds, volume, fade_in_seconds, fade_out_seconds,
-            name, metadata, created_at, updated_at
+            id, episode_id, type, file_url, duration_seconds,
+            timeline_start_seconds, volume,
+            name, metadata, created_at
           `,
           )
           .eq('episode_id', input.episodeId),
