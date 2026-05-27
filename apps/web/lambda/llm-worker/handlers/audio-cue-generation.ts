@@ -82,34 +82,112 @@ export async function processAudioCueGeneration(
       0,
     );
 
-    if (shots.length > 50) {
-      console.warn(
-        `[Audio Generation] Episode has ${shots.length} shots. Context window limit may be reached.`,
-      );
-    }
-
     // 3. Run the Audio Cue Orchestrator
+    // For large episodes (>50 shots), batch by scene to avoid token budget exhaustion.
+    // The orchestrator's 40K token budget can't handle 70+ shots in a single pass.
     const { runAudioCueOrchestrator } = await import(
       '@kit/episodes/agent/audio-cue-orchestrator'
     );
 
-    const orchestratorResult = await runAudioCueOrchestrator({
-      episodeId,
-      accountId: data.accountId,
-      shotsJson: JSON.stringify(shotsJson),
-      totalDurationSeconds,
-    });
-
-    if (!orchestratorResult.success) {
-      throw new Error(
-        `Audio Cue Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
-      );
+    interface GeneratedCue {
+      type: 'music' | 'sfx' | 'ambient';
+      prompt: string;
+      startShotSequence: number;
+      startOffsetInShot: number;
+      durationSeconds: number;
+      reasoning?: string;
     }
 
-    const generatedCues = orchestratorResult.cues;
+    let generatedCues: GeneratedCue[];
+    let totalOrchestratorSteps = 0;
+    let overallCoveragePercent: number | undefined;
+
+    const BATCH_THRESHOLD = 50;
+
+    if (shots.length <= BATCH_THRESHOLD) {
+      // Small episode: single pass (original behavior)
+      console.log(
+        `[Audio Generation] Single-pass mode: ${shots.length} shots, ${totalDurationSeconds}s`,
+      );
+
+      const orchestratorResult = await runAudioCueOrchestrator({
+        episodeId,
+        accountId: data.accountId,
+        shotsJson: JSON.stringify(shotsJson),
+        totalDurationSeconds,
+      });
+
+      if (!orchestratorResult.success) {
+        throw new Error(
+          `Audio Cue Orchestrator failed: ${orchestratorResult.error ?? 'Unknown error'}`,
+        );
+      }
+
+      generatedCues = orchestratorResult.cues;
+      totalOrchestratorSteps = orchestratorResult.orchestratorSteps;
+      overallCoveragePercent = orchestratorResult.coveragePercent;
+    } else {
+      // Large episode: batch by scene to stay within token budget
+      // Group shots by scene_number, then process each scene independently
+      const sceneGroups = new Map<number, typeof shotsJson>();
+      for (const shot of shotsJson) {
+        const sceneNum =
+          shots.find((s: ShotData) => s.sequence_number === shot.seq)
+            ?.scene_number ?? 0;
+        if (!sceneGroups.has(sceneNum)) {
+          sceneGroups.set(sceneNum, []);
+        }
+        sceneGroups.get(sceneNum)!.push(shot);
+      }
+
+      console.log(
+        `[Audio Generation] Scene-batch mode: ${shots.length} shots across ${sceneGroups.size} scenes, ${totalDurationSeconds}s total`,
+      );
+
+      generatedCues = [];
+
+      for (const [sceneNum, sceneShots] of sceneGroups) {
+        const sceneDuration = sceneShots.reduce(
+          (sum: number, s: { duration: number }) => sum + s.duration,
+          0,
+        );
+
+        console.log(
+          `[Audio Generation] Processing scene ${sceneNum}: ${sceneShots.length} shots, ${sceneDuration}s`,
+        );
+
+        const sceneResult = await runAudioCueOrchestrator({
+          episodeId,
+          accountId: data.accountId,
+          shotsJson: JSON.stringify(sceneShots),
+          totalDurationSeconds: sceneDuration,
+        });
+
+        totalOrchestratorSteps += sceneResult.orchestratorSteps;
+
+        if (!sceneResult.success) {
+          console.warn(
+            `[Audio Generation] Scene ${sceneNum} failed: ${sceneResult.error}. Continuing with remaining scenes.`,
+          );
+          continue;
+        }
+
+        console.log(
+          `[Audio Generation] Scene ${sceneNum}: ${sceneResult.cues.length} cues generated`,
+        );
+        generatedCues.push(...sceneResult.cues);
+      }
+
+      if (generatedCues.length === 0) {
+        throw new Error(
+          `Audio Cue Orchestrator produced 0 cues across all ${sceneGroups.size} scenes`,
+        );
+      }
+    }
+
     console.log(
-      `[Audio Generation] Orchestrator complete. Steps: ${orchestratorResult.orchestratorSteps}, ` +
-        `Cues: ${generatedCues.length}, Coverage: ${orchestratorResult.coveragePercent ?? 'N/A'}%`,
+      `[Audio Generation] Orchestrator complete. Steps: ${totalOrchestratorSteps}, ` +
+        `Cues: ${generatedCues.length}, Coverage: ${overallCoveragePercent ?? 'N/A'}%`,
     );
 
     // 4. Transform to DB inserts
@@ -175,8 +253,9 @@ export async function processAudioCueGeneration(
     await markJobCompleted(supabase, episodeId, 'audio_cue_generation', {
       cuesCreated: finalInserts.length,
       mode: 'agentic',
-      orchestratorSteps: orchestratorResult.orchestratorSteps,
-      coveragePercent: orchestratorResult.coveragePercent,
+      orchestratorSteps: totalOrchestratorSteps,
+      coveragePercent: overallCoveragePercent,
+      batchedByScene: shots.length > BATCH_THRESHOLD,
     });
 
     return { success: true, cuesCreated: finalInserts.length };

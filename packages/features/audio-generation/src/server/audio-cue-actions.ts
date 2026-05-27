@@ -416,3 +416,123 @@ export const updateAudioCueAction = enhanceAction(
     }),
   },
 );
+
+/**
+ * Generate audio cues for an episode (ASYNC)
+ *
+ * Queues an audio-cue-generation job to SQS for background processing.
+ * This replicates the same pipeline that runs after shot generation,
+ * but can be triggered independently from the Audio Studio UI.
+ *
+ * The handler fetches shots, runs the Audio Cue Orchestrator LLM,
+ * and inserts cues into the audio_cues table.
+ *
+ * Results are delivered via WebSocket when processing completes.
+ */
+export const generateAudioCuesAction = enhanceAction(
+  async (
+    data,
+  ): Promise<{
+    success: boolean;
+    queued: boolean;
+    error?: string;
+  }> => {
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      return { success: false, queued: false, error: 'Authentication required' };
+    }
+
+    // Validate episode exists and has shots
+    const { data: episode, error: episodeError } = await client
+      .from('episodes')
+      .select('id, project_id, season_id')
+      .eq('id', data.episodeId)
+      .is('deleted_at', null)
+      .single();
+
+    if (episodeError || !episode) {
+      return {
+        success: false,
+        queued: false,
+        error: 'Episode not found',
+      };
+    }
+
+    // Check that the episode has shots (audio cue generation depends on them)
+    const { count: shotCount } = await client
+      .from('shots')
+      .select('id', { count: 'exact', head: true })
+      .eq('episode_id', data.episodeId)
+      .is('deleted_at', null);
+
+    if (!shotCount || shotCount === 0) {
+      return {
+        success: false,
+        queued: false,
+        error: 'Episode must have shots generated before audio cues can be created',
+      };
+    }
+
+    // Get project for account context
+    const { data: project } = await client
+      .from('projects')
+      .select('account_id')
+      .eq('id', episode.project_id)
+      .single();
+
+    const accountId = project?.account_id ?? 'unknown';
+
+    try {
+      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+
+      // Create generation job entry for tracking
+      const { error: jobError } = await client
+        .from('generation_jobs')
+        .insert({
+          reference_type: 'episode',
+          reference_id: data.episodeId,
+          job_type: 'audio_cue_generation',
+          status: 'queued',
+          account_id: accountId,
+          project_id: episode.project_id,
+          idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
+          input_data: { episodeId: data.episodeId },
+        });
+
+      if (jobError) {
+        console.error(
+          '[generateAudioCuesAction] Failed to create generation job:',
+          jobError,
+        );
+      }
+
+      await queueLlmJob({
+        jobType: 'audio-cue-generation',
+        userId: user.id,
+        payload: {
+          episodeId: data.episodeId,
+          projectId: episode.project_id,
+          accountId,
+        },
+      });
+
+      return { success: true, queued: true };
+    } catch (error) {
+      return {
+        success: false,
+        queued: false,
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Failed to queue audio cue generation',
+      };
+    }
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+    }),
+  },
+);
