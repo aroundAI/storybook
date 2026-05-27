@@ -129,10 +129,11 @@ export function AudioStudioScreen({
     AudioTrack[] | null
   >(null);
    
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  /* eslint-disable @typescript-eslint/no-explicit-any */
   const [initialAudioCues, setInitialAudioCues] = useState<Array<
     Record<string, any>
   > | null>(null);
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 
   // Audio cue generation state
   const [isGeneratingCues, setIsGeneratingCues] = useState(false);
