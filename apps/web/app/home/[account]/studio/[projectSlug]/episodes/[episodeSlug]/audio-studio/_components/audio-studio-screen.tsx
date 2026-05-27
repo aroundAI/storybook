@@ -31,12 +31,12 @@ import {
   batchGenerateDialogueAction,
   cancelBatchAction,
   clearAllVoicesAction,
-  getAvailableLanguagesAction,
+  getActiveBatchForEpisodeAction,
+  getAudioStudioBulkDataAction,
   getBatchStatusAction,
-  getCharactersForEpisodeAction,
   getDialogueLinesAction,
-  getProjectAudioSettings,
 } from '@kit/audio-generation/server';
+import type { AudioStudioBulkData } from '@kit/audio-generation/server';
 
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
@@ -45,8 +45,9 @@ import { toast } from '@kit/ui/sonner';
 
 import { DialogueTimeline } from './dialogue-timeline';
 import { LanguageTabBar, type SupportedLanguage } from './language-tab-bar';
-import { MusicTimeline } from './music-timeline';
-import { SfxTimeline } from './sfx-timeline';
+import type { AudioTrack } from '@kit/audio-generation/lib';
+import { MusicTimeline, type MusicTimelineHandle, type MusicTimelineStats } from './music-timeline';
+import { SfxTimeline, type SfxTimelineHandle, type SfxTimelineStats } from './sfx-timeline';
 
 interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
@@ -96,6 +97,18 @@ export function AudioStudioScreen({
   const [pixelsPerSecond, setPixelsPerSecond] = useState(2);
   const timelineContainerRef = useRef<HTMLDivElement>(null);
 
+  // Music & SFX stats (reported from child timelines)
+  const [musicStats, setMusicStats] = useState<MusicTimelineStats>({ total: 0, completed: 0, pending: 0, processing: 0, failed: 0 });
+  const [sfxStats, setSfxStats] = useState<SfxTimelineStats>({ total: 0, completed: 0, pending: 0, processing: 0, failed: 0 });
+  const musicTimelineRef = useRef<MusicTimelineHandle>(null);
+  const sfxTimelineRef = useRef<SfxTimelineHandle>(null);
+
+  // Pre-loaded audio tracks and cues from bulk action (passed to music/sfx timelines)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [initialAudioTracks, setInitialAudioTracks] = useState<AudioTrack[] | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [initialAudioCues, setInitialAudioCues] = useState<Array<Record<string, any>> | null>(null);
+
   // WebSocket for shot-generation results (when shot list is generated while on this tab)
   const {
     status: shotGenStatus,
@@ -110,20 +123,30 @@ export function AudioStudioScreen({
     error: translateError,
   } = useLlmJob<{ success: boolean }>('translate-dialogue');
 
-  // Fetch static data once on mount (characters, settings, languages)
-  const fetchStaticData = useCallback(async () => {
+  // Bulk-load ALL audio studio data on mount (replaces 5+ separate server actions)
+  const fetchInitialData = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const [chars, settings, languages] = await Promise.all([
-        getCharactersForEpisodeAction({ episodeId: episode.id }),
-        getProjectAudioSettings(episode.projectId),
-        getAvailableLanguagesAction({ episodeId: episode.id }),
-      ]);
+      const bulkData: AudioStudioBulkData = await getAudioStudioBulkDataAction({
+        episodeId: episode.id,
+        projectId: episode.projectId,
+        language: selectedLanguage,
+      });
 
-      setCharacters(Array.isArray(chars) ? chars : []);
-      setAudioSettings(settings);
+      // Dialogue lines
+      const allLines = bulkData.dialogue.lines;
+      dialogueCache.current.set(selectedLanguage, allLines);
+      setDialogueLines(allLines);
 
-      if (Array.isArray(languages) && languages.length > 0) {
-        const langArray = [...languages].sort((a, b) => {
+      // Characters
+      setCharacters(bulkData.characters);
+
+      // Audio settings
+      setAudioSettings(bulkData.audioSettings);
+
+      // Languages
+      if (bulkData.languages.length > 0) {
+        const langArray = [...bulkData.languages].sort((a, b) => {
           return (
             PREFERRED_LANGUAGE_ORDER.indexOf(a) -
             PREFERRED_LANGUAGE_ORDER.indexOf(b)
@@ -131,11 +154,25 @@ export function AudioStudioScreen({
         });
         setAvailableLanguages(langArray);
       }
+
+      // Pre-load audio tracks and cues for music/sfx timelines
+      setInitialAudioTracks(bulkData.audioTracks.tracks);
+      setInitialAudioCues(bulkData.audioCues);
+
+      // Stale reset notification (fire-and-forget on server, just inform user)
+      if (bulkData.staleResetCount > 0) {
+        toast.info(
+          `Recovered ${bulkData.staleResetCount} stuck dialogue line(s) from a previous failed batch.`,
+        );
+      }
     } catch (error) {
-      console.error('Failed to fetch audio studio static data:', error);
+      console.error('Failed to fetch audio studio data:', error);
       toast.error('Failed to load audio studio data');
       setCharacters([]);
+    } finally {
+      setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode.id, episode.projectId]);
 
   // Fetch dialogue lines for a specific language (with cache)
@@ -177,11 +214,10 @@ export function AudioStudioScreen({
   // Combined refresh: clears cache and reloads everything
   const refreshAll = useCallback(async () => {
     dialogueCache.current.clear();
-    await Promise.all([
-      fetchStaticData(),
-      fetchDialogueForLanguage(selectedLanguage, true),
-    ]);
-  }, [fetchStaticData, fetchDialogueForLanguage, selectedLanguage]);
+    setInitialAudioTracks(null);
+    setInitialAudioCues(null);
+    await fetchInitialData();
+  }, [fetchInitialData]);
 
   // Handle shot-generation result (refresh to show updated episode)
   useEffect(() => {
@@ -219,12 +255,18 @@ export function AudioStudioScreen({
     refreshAll,
   ]);
 
-  // Initial load: static data once, dialogue for current language
+  // Initial load: fetch everything in one bulk action
   useEffect(() => {
-    void fetchStaticData();
-  }, [fetchStaticData]);
+    void fetchInitialData();
+  }, [fetchInitialData]);
 
+  // Language switch: fetch dialogue for the new language (uses individual action)
+  const isInitialMount = useRef(true);
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     void fetchDialogueForLanguage(selectedLanguage);
   }, [fetchDialogueForLanguage, selectedLanguage]);
 
@@ -307,12 +349,13 @@ export function AudioStudioScreen({
           percentage: status.progress.percentage,
         });
 
-        // Refresh dialogue lines to show updated statuses
-        void refreshAll();
+        // Refresh only dialogue lines (not all static data) for performance
+        void fetchDialogueForLanguage(selectedLanguage, true);
 
         // Stop polling when done
         if (
           status.status === 'completed' ||
+          status.status === 'completed_with_errors' ||
           status.status === 'failed' ||
           status.status === 'cancelled'
         ) {
@@ -323,14 +366,15 @@ export function AudioStudioScreen({
 
           if (status.status === 'completed') {
             toast.success(
-              `Generated ${status.progress.completed} voice(s)` +
-                (status.progress.failed > 0
-                  ? ` (${status.progress.failed} failed)`
-                  : ''),
+              `All ${status.progress.completed} voice(s) generated successfully!`,
+            );
+          } else if (status.status === 'completed_with_errors') {
+            toast.warning(
+              `${status.progress.completed} voice(s) generated, ${status.progress.failed} failed.`,
             );
           } else if (status.status === 'failed') {
             toast.error(
-              `Generation failed. ${status.progress.completed} completed, ${status.progress.failed} failed.`,
+              `Generation failed for all ${status.progress.total} line(s).`,
             );
           } else {
             toast.info('Generation cancelled');
@@ -346,17 +390,48 @@ export function AudioStudioScreen({
         }
       }
     },
-    [refreshAll, refetchEpisode],
+    [fetchDialogueForLanguage, selectedLanguage, refetchEpisode],
   );
 
-  // Cleanup polling on unmount
+  // Resume polling if an active batch job exists (e.g. after page refresh)
   useEffect(() => {
+    const checkActiveBatch = async () => {
+      try {
+        const activeBatch = await getActiveBatchForEpisodeAction({
+          episodeId: episode.id,
+        });
+
+        if (activeBatch) {
+          setBatchJobId(activeBatch.batchJobId);
+          setBatchStatus({
+            status: activeBatch.status,
+            total: activeBatch.progress.total,
+            completed: activeBatch.progress.completed,
+            failed: activeBatch.progress.failed,
+            percentage: activeBatch.progress.percentage,
+          });
+
+          if (batchPollRef.current) {
+            clearInterval(batchPollRef.current);
+          }
+          batchPollRef.current = setInterval(() => {
+            void pollBatchStatus(activeBatch.batchJobId);
+          }, 3000);
+        }
+      } catch {
+        // Non-critical — just means we won't auto-resume polling
+      }
+    };
+
+    void checkActiveBatch();
+
+    // Cleanup polling on unmount
     return () => {
       if (batchPollRef.current) {
         clearInterval(batchPollRef.current);
       }
     };
-  }, []);
+  }, [episode.id, pollBatchStatus]);
 
   const handleGenerateAll = () => {
     startTransition(async () => {
@@ -423,6 +498,12 @@ export function AudioStudioScreen({
   const isGenerating =
     batchStatus?.status === 'queued' ||
     batchStatus?.status === 'processing';
+
+  const isBatchDone =
+    batchStatus?.status === 'completed' ||
+    batchStatus?.status === 'completed_with_errors' ||
+    batchStatus?.status === 'failed' ||
+    batchStatus?.status === 'cancelled';
 
   const handleClearAllVoices = () => {
     if (
@@ -613,7 +694,10 @@ export function AudioStudioScreen({
                     : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
                 }`}
               >
-                Music
+                Music{' '}
+                <span className="ml-1 font-normal text-gray-400">
+                  {musicStats.total}
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('sfx')}
@@ -623,7 +707,10 @@ export function AudioStudioScreen({
                     : 'text-gray-500 hover:text-gray-800 dark:text-[#A3A3A3] dark:hover:text-white'
                 }`}
               >
-                SFX
+                SFX{' '}
+                <span className="ml-1 font-normal text-gray-400">
+                  {sfxStats.total}
+                </span>
               </button>
             </div>
 
@@ -643,13 +730,13 @@ export function AudioStudioScreen({
 
             <div className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
 
-            {/* Status badges - compact */}
+            {/* Status badges - context-aware per tab */}
             <div className="flex items-center gap-1.5">
               <span className="rounded-md border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-                {stats.completed}
+                {activeTab === 'dialogue' ? stats.completed : activeTab === 'music' ? musicStats.completed : sfxStats.completed}
               </span>
               <span className="rounded-md border border-orange-100 bg-orange-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                {stats.pending}
+                {activeTab === 'dialogue' ? stats.pending : activeTab === 'music' ? musicStats.pending : sfxStats.pending}
               </span>
             </div>
 
@@ -693,37 +780,65 @@ export function AudioStudioScreen({
           <div className="min-w-4 flex-1" />
 
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={handleClearAllVoices}
-              disabled={isPending || isGenerating || stats.completed === 0}
-              size="sm"
-              className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear All Voices
-            </Button>
-
-            {isGenerating ? (
+            {activeTab === 'dialogue' && (
               <Button
-                onClick={handleCancelBatch}
-                disabled={isPending}
-                size="sm"
                 variant="outline"
-                className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
+                onClick={handleClearAllVoices}
+                disabled={isPending || isGenerating || stats.completed === 0}
+                size="sm"
+                className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
               >
-                <Square className="h-3.5 w-3.5" />
-                Cancel
+                <Trash2 className="h-4 w-4" />
+                Clear All Voices
               </Button>
-            ) : (
+            )}
+
+            {activeTab === 'dialogue' && (
+              isGenerating ? (
+                <Button
+                  onClick={handleCancelBatch}
+                  disabled={isPending}
+                  size="sm"
+                  variant="outline"
+                  className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  Cancel
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleGenerateAll}
+                  disabled={isPending || stats.pending + stats.generating + stats.failed === 0}
+                  size="sm"
+                  className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  <Play className="h-4 w-4" />
+                  Generate All Pending
+                </Button>
+              )
+            )}
+
+            {activeTab === 'music' && (
               <Button
-                onClick={handleGenerateAll}
-                disabled={isPending || stats.pending === 0}
+                onClick={() => musicTimelineRef.current?.generateAll()}
+                disabled={musicStats.pending === 0}
                 size="sm"
                 className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
               >
                 <Play className="h-4 w-4" />
-                Generate All Pending
+                Generate All Pending ({musicStats.pending})
+              </Button>
+            )}
+
+            {activeTab === 'sfx' && (
+              <Button
+                onClick={() => sfxTimelineRef.current?.generateAll()}
+                disabled={sfxStats.pending === 0}
+                size="sm"
+                className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              >
+                <Play className="h-4 w-4" />
+                Generate All Pending ({sfxStats.pending})
               </Button>
             )}
 
@@ -748,6 +863,8 @@ export function AudioStudioScreen({
                 <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
               ) : batchStatus.status === 'completed' ? (
                 <CheckCircle className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+              ) : batchStatus.status === 'completed_with_errors' ? (
+                <AlertCircle className="h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-400" />
               ) : batchStatus.status === 'failed' ? (
                 <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
               ) : batchStatus.status === 'cancelled' ? (
@@ -759,12 +876,14 @@ export function AudioStudioScreen({
                 {isGenerating
                   ? `Generating voices... ${batchStatus.completed}/${batchStatus.total}`
                   : batchStatus.status === 'completed'
-                    ? `Completed: ${batchStatus.completed}/${batchStatus.total} generated`
-                    : batchStatus.status === 'failed'
-                      ? `Failed: ${batchStatus.completed} completed, ${batchStatus.failed} failed`
-                      : batchStatus.status === 'cancelled'
-                        ? `Cancelled: ${batchStatus.completed} completed`
-                        : `${batchStatus.status}`}
+                    ? `✓ All ${batchStatus.completed} voice(s) generated`
+                    : batchStatus.status === 'completed_with_errors'
+                      ? `⚠ ${batchStatus.completed} generated, ${batchStatus.failed} failed`
+                      : batchStatus.status === 'failed'
+                        ? `✗ Failed: ${batchStatus.completed} completed, ${batchStatus.failed} failed`
+                        : batchStatus.status === 'cancelled'
+                          ? `Cancelled: ${batchStatus.completed} completed`
+                          : `${batchStatus.status}`}
                 {batchStatus.failed > 0 && isGenerating && (
                   <span className="ml-1 text-red-600 dark:text-red-400">
                     ({batchStatus.failed} failed)
@@ -829,22 +948,29 @@ export function AudioStudioScreen({
 
           {activeTab === 'music' && (
             <MusicTimeline
+              ref={musicTimelineRef}
               episodeId={episode.id}
               totalDuration={totalDuration}
               scenes={scenes}
               onRefresh={refreshAll}
               pixelsPerSecond={pixelsPerSecond}
               audioSettings={audioSettings}
+              onStatsChange={setMusicStats}
+              initialTracks={initialAudioTracks}
+              initialCues={initialAudioCues}
             />
           )}
 
           {activeTab === 'sfx' && (
             <SfxTimeline
+              ref={sfxTimelineRef}
               episodeId={episode.id}
               totalDuration={totalDuration}
               pixelsPerSecond={pixelsPerSecond}
               onRefresh={refreshAll}
               audioSettings={audioSettings}
+              onStatsChange={setSfxStats}
+              initialCues={initialAudioCues}
             />
           )}
         </div>

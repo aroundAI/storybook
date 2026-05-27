@@ -135,7 +135,18 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
   const languageMap = new Map<string, string[]>();
   const episodeIds = (episodes ?? []).map((e) => e.id);
 
+  // Audio stats map: dialogue/music/sfx counts per episode
+  const audioStatsMap = new Map<string, {
+    dialogueTotal: number;
+    dialogueCompleted: number;
+    musicTotal: number;
+    musicCompleted: number;
+    sfxTotal: number;
+    sfxCompleted: number;
+  }>();
+
   if (episodeIds.length > 0) {
+    // Fetch languages
     const { data: langRows } = await client.rpc(
       'get_episode_languages' as never,
       { p_episode_ids: episodeIds } as never,
@@ -152,6 +163,33 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
         } else {
           languageMap.set(row.episode_id, [row.language]);
         }
+      }
+    }
+
+    // Fetch audio stats (dialogue/music/sfx counts)
+    const { data: statsRows } = await client.rpc(
+      'get_episode_audio_stats' as never,
+      { p_episode_ids: episodeIds } as never,
+    );
+
+    if (statsRows) {
+      for (const row of statsRows as Array<{
+        episode_id: string;
+        dialogue_total: number;
+        dialogue_completed: number;
+        music_total: number;
+        music_completed: number;
+        sfx_total: number;
+        sfx_completed: number;
+      }>) {
+        audioStatsMap.set(row.episode_id, {
+          dialogueTotal: row.dialogue_total,
+          dialogueCompleted: row.dialogue_completed,
+          musicTotal: row.music_total,
+          musicCompleted: row.music_completed,
+          sfxTotal: row.sfx_total,
+          sfxCompleted: row.sfx_completed,
+        });
       }
     }
   }
@@ -209,6 +247,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       projectSlug={project.slug ?? project.id}
                       analytics={null}
                       languageMap={languageMap}
+                      audioStatsMap={audioStatsMap}
                     />
                   ),
                 )}
@@ -233,6 +272,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                             account={account}
                             projectSlug={project.slug ?? project.id}
                             availableLanguages={languageMap.get(episode.id)}
+                            audioStats={audioStatsMap.get(episode.id)}
                             isFirst={index === 0}
                             isLast={index === unassignedEpisodes.length - 1}
                           />
@@ -253,6 +293,7 @@ async function EpisodesPage({ params }: EpisodesPageProps) {
                       account={account}
                       projectSlug={project.slug ?? project.id}
                       availableLanguages={languageMap.get(episode.id)}
+                      audioStats={audioStatsMap.get(episode.id)}
                       isFirst={index === 0}
                       isLast={index === episodes.length - 1}
                     />

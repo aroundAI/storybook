@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 
-import { Edit3, Loader2, Play, RefreshCw, Volume2 } from 'lucide-react';
+import { Edit3, Loader2, Pause, Play, RefreshCw, Volume2 } from 'lucide-react';
 
 import { ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
@@ -16,12 +16,27 @@ import { Skeleton } from '@kit/ui/skeleton';
 import { toast } from '@kit/ui/sonner';
 import { cn } from '@kit/ui/utils';
 
+export interface SfxTimelineStats {
+  total: number;
+  completed: number;
+  pending: number;
+  processing: number;
+  failed: number;
+}
+
+export interface SfxTimelineHandle {
+  generateAll: () => void;
+}
+
 interface SfxTimelineProps {
   episodeId: string;
   totalDuration: number;
   pixelsPerSecond: number;
   onRefresh?: () => void;
   audioSettings: ProjectAudioSettings | null;
+  onStatsChange?: (stats: SfxTimelineStats) => void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialCues?: Array<Record<string, any>> | null;
 }
 
 interface AudioCue {
@@ -55,13 +70,15 @@ function getMarkerInterval(pps: number): number {
   return 15;
 }
 
-export function SfxTimeline({
+export const SfxTimeline = React.forwardRef<SfxTimelineHandle, SfxTimelineProps>(function SfxTimeline({
   episodeId,
   totalDuration,
   pixelsPerSecond,
   onRefresh,
   audioSettings,
-}: SfxTimelineProps) {
+  onStatsChange,
+  initialCues: initialCuesProp,
+}, ref) {
   const [cues, setCues] = useState<AudioCue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
@@ -70,6 +87,8 @@ export function SfxTimeline({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // WebSocket hook for audio-file-generation results
   const {
@@ -100,9 +119,25 @@ export function SfxTimeline({
     }
   }, [episodeId]);
 
+  // Use initial data from bulk action if available, otherwise fetch
+  const hasUsedInitialData = useRef(false);
   useEffect(() => {
-    void fetchCues();
-  }, [fetchCues]);
+    if (!hasUsedInitialData.current && initialCuesProp) {
+      hasUsedInitialData.current = true;
+      // Filter to only sfx and ambient cues from pre-loaded data
+      const sfxCues = (initialCuesProp as AudioCue[])
+        .filter((c) => c.cue_type === 'sfx' || c.cue_type === 'ambient')
+        .sort(
+          (a, b) =>
+            (a.start_offset_seconds ?? 0) - (b.start_offset_seconds ?? 0),
+        );
+      setCues(sfxCues);
+      setIsLoading(false);
+    } else if (!hasUsedInitialData.current) {
+      void fetchCues();
+      hasUsedInitialData.current = true;
+    }
+  }, [initialCuesProp, fetchCues]);
 
   // Handle WebSocket audio generation result
   useEffect(() => {
@@ -123,6 +158,18 @@ export function SfxTimeline({
       void fetchCues();
     }
   }, [audioGenStatus, audioGenResult, audioGenError, fetchCues, onRefresh]);
+
+  // Report stats to parent
+  useEffect(() => {
+    if (!onStatsChange) return;
+    const total = cues.length;
+    const completed = cues.filter((c) => c.status === 'placed' || c.status === 'matched').length;
+    const pending = cues.filter((c) => c.status === 'pending').length;
+    const processing = cues.filter((c) => c.status === 'generating').length;
+    const failed = cues.filter((c) => c.status === 'failed').length;
+    onStatsChange({ total, completed, pending, processing, failed });
+  }, [cues, onStatsChange]);
+
 
   const handleCueClick = (cue: AudioCue, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -191,14 +238,36 @@ export function SfxTimeline({
     }
   };
 
-  const handlePlay = (cue: AudioCue) => {
+  const handlePlay = (cue: AudioCue, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     const url = cue.audio_assets?.file_url;
     if (!url) {
       toast.error('No audio available');
       return;
     }
+
+    // If same cue is playing, pause it
+    if (playingId === cue.id && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPlayingId(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
     const audio = new Audio(url);
+    audio.onended = () => {
+      setPlayingId(null);
+      audioRef.current = null;
+    };
     audio.play();
+    audioRef.current = audio;
+    setPlayingId(cue.id);
   };
 
   const handleGenerateAll = async () => {
@@ -221,6 +290,11 @@ export function SfxTimeline({
     }
     // completion notifications come via WebSocket
   };
+
+  // Expose generateAll via ref
+  useImperativeHandle(ref, () => ({
+    generateAll: () => void handleGenerateAll(),
+  }), [handleGenerateAll]);
 
   if (isLoading) {
     return (
@@ -343,11 +417,21 @@ export function SfxTimeline({
                       style={{ left: `${leftPx}px`, width: `${widthPx}px` }}
                       onClick={(e) => handleCueClick(cue, e)}
                     >
-                      {/* Status/action icon */}
-                      {isGenerating ? (
+                      {/* Play/Pause button for completed cues */}
+                      {isPlaced && cue.audio_assets?.file_url ? (
+                        <button
+                          onClick={(e) => handlePlay(cue, e)}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white dark:bg-black/30 dark:hover:bg-black/50"
+                          aria-label={playingId === cue.id ? 'Pause' : 'Play'}
+                        >
+                          {playingId === cue.id ? (
+                            <Pause className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                          )}
+                        </button>
+                      ) : isGenerating ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
-                      ) : isPlaced ? (
-                        <Play className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
                       ) : isPending ? (
                         <RefreshCw className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
                       ) : (
@@ -457,4 +541,4 @@ export function SfxTimeline({
       </div>
     </div>
   );
-}
+});

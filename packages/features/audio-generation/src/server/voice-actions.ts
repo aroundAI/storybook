@@ -2,7 +2,7 @@
 
 import 'server-only';
 
-import { revalidatePath } from 'next/cache';
+
 
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -258,6 +258,18 @@ export const generateDialogueVoiceAction = enhanceAction(
     try {
       // 10. Create provider and generate audio - use project TTS model
       const ttsModel = await getProjectTTSModel(projectId);
+
+      logger.info(
+        {
+          ...ctx,
+          voiceId,
+          textLength: dialogueData.text.length,
+          modelId: ttsModel,
+          characterAssetId: dialogueData.character_asset_id,
+        },
+        'Generating voice with resolved settings',
+      );
+
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 60000,
@@ -347,7 +359,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         'Dialogue voice generation completed',
       );
 
-      revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
 
       return {
         dialogueLineId: data.dialogueLineId,
@@ -538,29 +550,28 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
         .update({ status: 'generating' })
         .eq('id', data.dialogueLineId);
 
-      // 6. Enqueue LLM job for background processing
-      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+      // 6. Enqueue voice job for background processing via dedicated voice queue
+      const { queueVoiceJob } = await import(
+        '@kit/audio-generation/server/voice-queue-helper'
+      );
 
-      await queueLlmJob({
-        jobType: 'dialogue-voice-generation',
-        userId: user.id,
-        payload: {
-          dialogueLineId: data.dialogueLineId,
-          projectId,
-          episodeId,
-          accountId,
-          text: dialogueText,
-          voiceId,
-          ttsModel,
-          voiceSettings: {
-            stability: voiceSettings.stability,
-            similarityBoost: voiceSettings.similarityBoost,
-            style: voiceSettings.style,
-            speed: voiceSettings.speed,
-          },
-          overwriteExisting: data.overwriteExisting ?? false,
-          characterAssetId: dialogueData.character_asset_id,
+      await queueVoiceJob({
+        dialogueLineId: data.dialogueLineId,
+        batchJobId: null, // single-line generation, no batch tracking
+        episodeId,
+        accountId,
+        voiceId,
+        ttsModel,
+        voiceSettings: {
+          stability: voiceSettings.stability ?? 0.5,
+          similarityBoost: voiceSettings.similarityBoost ?? 0.75,
+          style: voiceSettings.style,
+          speed: voiceSettings.speed,
         },
+        text: dialogueText,
+        characterAssetId: dialogueData.character_asset_id ?? undefined,
+        userId: user.id,
+        overwriteExisting: data.overwriteExisting ?? false,
       });
 
       logger.info(ctx, 'Dialogue voice generation job queued successfully');
@@ -869,7 +880,7 @@ export const updateDialogueTextAction = enhanceAction(
 
     logger.info(ctx, 'Dialogue text updated successfully');
 
-    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
 
     return {
       success: true,
@@ -928,7 +939,7 @@ export const updateDialogueTimingAction = enhanceAction(
       throw new Error('Failed to update dialogue timing');
     }
 
-    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
     return { success: true, dialogueLineId: data.dialogueLineId };
   },
   {
@@ -993,7 +1004,7 @@ export const clearAllVoicesAction = enhanceAction(
         'Cleared all generated voices for episode',
       );
 
-      revalidatePath('/home/[account]/studio/[projectSlug]/episodes', 'page');
+
 
       return { success: true, clearedCount };
     } catch (error) {

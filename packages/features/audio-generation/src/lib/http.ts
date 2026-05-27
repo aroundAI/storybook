@@ -42,8 +42,17 @@ export async function fetchWithRetry<T>(
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        // ElevenLabs uses { detail: { message: "..." } } or { detail: "string" }
+        const detail = (errorData as Record<string, unknown>)?.detail;
+        const message =
+          typeof detail === 'object' && detail !== null
+            ? (detail as Record<string, unknown>)?.message
+            : typeof detail === 'string'
+              ? detail
+              : (errorData as Record<string, unknown>)?.message ??
+                response.statusText;
         throw new Error(
-          `API error: ${(errorData as { message?: string }).message ?? response.statusText}`,
+          `API error (${response.status}): ${String(message)}`,
         );
       }
 
@@ -58,6 +67,11 @@ export async function fetchWithRetry<T>(
 
       // Don't retry on validation errors
       if (lastError.message.includes('Invalid request')) {
+        throw lastError;
+      }
+
+      // Don't retry on client errors (4xx) — they're permanent
+      if (/API error \(4\d\d\)/.test(lastError.message)) {
         throw lastError;
       }
 

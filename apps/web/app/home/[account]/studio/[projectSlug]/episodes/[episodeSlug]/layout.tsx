@@ -1,3 +1,5 @@
+import { cache } from 'react';
+
 import type { Metadata } from 'next';
 
 import { notFound } from 'next/navigation';
@@ -24,6 +26,16 @@ import { withI18n } from '~/lib/i18n/with-i18n';
 import { EpisodeContextProvider } from './_components/episode-context-provider';
 import { EpisodeWorkspaceHeader } from './_components/episode-workspace-header';
 import { EpisodeWorkspaceTabs } from './_components/episode-workspace-tabs';
+
+const getProjectBySlug = cache(async (slug: string) => {
+  const client = getSupabaseServerClient();
+
+  return client
+    .from('projects')
+    .select('id, name, slug, account_id, metadata')
+    .eq('slug', slug)
+    .single();
+});
 
 // Local interface extending the Supabase query result with joined relations
 interface EpisodeDataWithRelations {
@@ -73,12 +85,8 @@ export async function generateMetadata({
   const { projectSlug, episodeSlug } = await params;
   const client = getSupabaseServerClient();
 
-  // First get project by slug
-  const { data: project } = await client
-    .from('projects')
-    .select('id')
-    .eq('slug', projectSlug)
-    .single();
+  // Use cached project query (shared with layout body)
+  const { data: project } = await getProjectBySlug(projectSlug);
 
   if (!project) {
     return { title: 'Episode Not Found' };
@@ -112,12 +120,9 @@ async function EpisodeWorkspaceLayout({
   const { account, projectSlug, episodeSlug } = await params;
   const client = getSupabaseServerClient();
 
-  // First fetch the project by slug to get its ID
-  const { data: project, error: projectError } = await client
-    .from('projects')
-    .select('id, name, slug, account_id, metadata')
-    .eq('slug', projectSlug)
-    .single();
+  // Use cached project query (shared with generateMetadata)
+  const { data: project, error: projectError } =
+    await getProjectBySlug(projectSlug);
 
   if (projectError || !project) {
     notFound();

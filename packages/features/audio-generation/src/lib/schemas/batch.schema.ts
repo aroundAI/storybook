@@ -65,6 +65,7 @@ export const BatchJobStatusEnum = z.enum([
   'queued',
   'processing',
   'completed',
+  'completed_with_errors',
   'failed',
   'cancelled',
 ]);
