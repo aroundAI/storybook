@@ -277,8 +277,9 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 12. Upload to storage (local or Supabase based on STORAGE_PROVIDER)
-      const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}.mp3`;
+      // 12. Upload to storage (timestamp ensures regeneration bypasses CDN cache)
+      const timestamp = Date.now();
+      const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}_${timestamp}.mp3`;
       const storage = getStorageAdapter(adminClient);
 
       const { url: audioUrl } = await storage.upload(

@@ -191,8 +191,9 @@ export async function processDialogueVoiceGeneration(
     // 4. Get audio buffer
     const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-    // 5. Upload to R2 storage
-    const audioPath = `dialogue/${data.episodeId}/${data.dialogueLineId}.mp3`;
+    // 5. Upload to R2 storage (timestamp ensures regeneration bypasses CDN cache)
+    const timestamp = Date.now();
+    const audioPath = `dialogue/${data.episodeId}/${data.dialogueLineId}_${timestamp}.mp3`;
     const { url: audioUrl } = await uploadToR2(
       'audio',
       audioPath,
