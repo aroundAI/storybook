@@ -596,62 +596,84 @@ export const getSeasonAudioSummaryAction = enhanceAction(
 
     const episodeIds = episodes.map((e) => e.id);
 
-    // 2. Fetch audio cue counts per episode (grouped)
-    const { data: cueRows } = await client
+    // 2. Use the same RPC as the episode list page — aggregates server-side
+    //    so we avoid Supabase client's default 1000-row limit.
+    const { data: statsRows } = await client.rpc(
+      'get_episode_audio_stats' as never,
+      { p_episode_ids: episodeIds } as never,
+    );
+
+    // Build a lookup from the RPC results
+    const statsMap = new Map<
+      string,
+      {
+        dialogue_total: number;
+        dialogue_completed: number;
+        music_total: number;
+        music_completed: number;
+        sfx_total: number;
+        sfx_completed: number;
+      }
+    >();
+
+    if (statsRows) {
+      for (const row of statsRows as Array<{
+        episode_id: string;
+        dialogue_total: number;
+        dialogue_completed: number;
+        music_total: number;
+        music_completed: number;
+        sfx_total: number;
+        sfx_completed: number;
+      }>) {
+        statsMap.set(row.episode_id, row);
+      }
+    }
+
+    // 3. Check which episodes have any audio cues (count-only, no row limit)
+    const { data: cueCountRows } = await client
       .from('audio_cues')
-      .select('id, episode_id, cue_type, status')
+      .select('episode_id', { count: 'exact' })
       .in('episode_id', episodeIds);
 
-    // 3. Fetch dialogue line counts per episode
-    const { data: dialogueRows } = await client
-      .from('dialogue_lines')
-      .select('id, episode_id, status, audio_url')
-      .in('episode_id', episodeIds);
+    const cueEpisodeIds = new Set(
+      (cueCountRows ?? []).map((r) => r.episode_id),
+    );
 
     // 4. Build per-episode summary
     const result: SeasonEpisodeAudioSummary[] = episodes.map((ep) => {
-      const epCues = (cueRows ?? []).filter((c) => c.episode_id === ep.id);
-      const epDialogue = (dialogueRows ?? []).filter(
-        (d) => d.episode_id === ep.id,
-      );
+      const stats = statsMap.get(ep.id);
+      const dialogueTotal = stats?.dialogue_total ?? 0;
+      const dialogueCompleted = stats?.dialogue_completed ?? 0;
+      const musicTotal = stats?.music_total ?? 0;
+      const musicCompleted = stats?.music_completed ?? 0;
+      const sfxTotal = stats?.sfx_total ?? 0;
+      const sfxCompleted = stats?.sfx_completed ?? 0;
 
-      const musicCues = epCues.filter((c) => c.cue_type === 'music');
-      const sfxCues = epCues.filter(
-        (c) => c.cue_type === 'sfx' || c.cue_type === 'ambient',
-      );
-
-      const musicCompleted = musicCues.filter(
-        (c) => c.status === 'placed' || c.status === 'matched',
-      ).length;
-      const sfxCompleted = sfxCues.filter(
-        (c) => c.status === 'placed' || c.status === 'matched',
-      ).length;
-
-      const dialogueCompleted = epDialogue.filter(
-        (d) => d.audio_url && d.status === 'completed',
-      ).length;
+      const hasAudioCues = cueEpisodeIds.has(ep.id);
+      const audioCueCount = musicTotal + sfxTotal;
 
       return {
         episodeId: ep.id,
         episodeNumber: ep.number,
         title: ep.title,
         slug: ep.slug,
-        hasAudioCues: epCues.length > 0,
-        audioCueCount: epCues.length,
+        hasAudioCues,
+        audioCueCount,
         dialogue: {
-          total: epDialogue.length,
+          total: dialogueTotal,
           completed: dialogueCompleted,
-          pending: epDialogue.length - dialogueCompleted,
+          pending: dialogueTotal - dialogueCompleted,
         },
         music: {
-          total: musicCues.length,
+          total: musicTotal,
           completed: musicCompleted,
-          pending: musicCues.length - musicCompleted,
+          pending: musicTotal - musicCompleted,
         },
         sfx: {
-          total: sfxCues.length,
+          total: sfxTotal,
           completed: sfxCompleted,
-          pending: sfxCues.length - sfxCompleted,
+          pending: sfxTotal - sfxCompleted,
         },
       };
     });
