@@ -662,22 +662,48 @@ export function GenerateAllSoundModal({
               c.status !== 'matched',
           );
 
-          let completed = 0;
+          // Phase A: Dispatch all cues to SQS (with rate-limit delays)
+          const dispatchedCueIds = new Set<string>();
           for (const cue of pendingMusic) {
             if (cancelledRef.current) break;
             try {
               await generateAudioForCueAction({ cueId: cue.id });
-              completed++;
-              dispatch({
-                type: 'STEP_PROGRESS',
-                episodeId: ep.episodeId,
-                step: 'music',
-                progress: completed,
-              });
-              // Delay between requests to respect rate limits (20 req/min for music)
+              dispatchedCueIds.add(cue.id);
+              // 3s delay between dispatches (20 req/min for music)
               await delay(3000);
             } catch {
-              // Individual cue failure — continue with next
+              // Individual dispatch failure — continue with next
+            }
+          }
+
+          // Phase B: Poll until all dispatched cues finish generating
+          if (dispatchedCueIds.size > 0 && !cancelledRef.current) {
+            let pollAttempts = 0;
+            const maxPollAttempts = 120; // ~10 min with 5s intervals
+            while (pollAttempts < maxPollAttempts && !cancelledRef.current) {
+              await delay(5000);
+              pollAttempts++;
+              try {
+                const updated = await getAudioCuesAction({
+                  episodeId: ep.episodeId,
+                });
+                const doneCount = (updated?.cues ?? []).filter(
+                  (c) =>
+                    dispatchedCueIds.has(c.id) &&
+                    (c.status === 'placed' ||
+                      c.status === 'matched' ||
+                      c.status === 'failed'),
+                ).length;
+                dispatch({
+                  type: 'STEP_PROGRESS',
+                  episodeId: ep.episodeId,
+                  step: 'music',
+                  progress: doneCount,
+                });
+                if (doneCount >= dispatchedCueIds.size) break;
+              } catch {
+                // poll error — retry
+              }
             }
           }
 
@@ -723,22 +749,48 @@ export function GenerateAllSoundModal({
               c.status !== 'matched',
           );
 
-          let completed = 0;
+          // Phase A: Dispatch all cues to SQS (with rate-limit delays)
+          const dispatchedCueIds = new Set<string>();
           for (const cue of pendingSfx) {
             if (cancelledRef.current) break;
             try {
               await generateAudioForCueAction({ cueId: cue.id });
-              completed++;
-              dispatch({
-                type: 'STEP_PROGRESS',
-                episodeId: ep.episodeId,
-                step: 'sfx',
-                progress: completed,
-              });
-              // Delay between requests to respect rate limits (30 req/min for SFX)
+              dispatchedCueIds.add(cue.id);
+              // 2s delay between dispatches (30 req/min for SFX)
               await delay(2000);
             } catch {
-              // Individual cue failure — continue
+              // Individual dispatch failure — continue
+            }
+          }
+
+          // Phase B: Poll until all dispatched cues finish generating
+          if (dispatchedCueIds.size > 0 && !cancelledRef.current) {
+            let pollAttempts = 0;
+            const maxPollAttempts = 120; // ~10 min with 5s intervals
+            while (pollAttempts < maxPollAttempts && !cancelledRef.current) {
+              await delay(5000);
+              pollAttempts++;
+              try {
+                const updated = await getAudioCuesAction({
+                  episodeId: ep.episodeId,
+                });
+                const doneCount = (updated?.cues ?? []).filter(
+                  (c) =>
+                    dispatchedCueIds.has(c.id) &&
+                    (c.status === 'placed' ||
+                      c.status === 'matched' ||
+                      c.status === 'failed'),
+                ).length;
+                dispatch({
+                  type: 'STEP_PROGRESS',
+                  episodeId: ep.episodeId,
+                  step: 'sfx',
+                  progress: doneCount,
+                });
+                if (doneCount >= dispatchedCueIds.size) break;
+              } catch {
+                // poll error — retry
+              }
             }
           }
 
