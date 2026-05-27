@@ -14,11 +14,6 @@ import { z } from 'zod';
 import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
 
-interface TranslationResult {
-  translations: string[];
-  notes?: string;
-}
-
 const translateDialogueTool = createTool({
   name: 'translateDialogue',
   description:
@@ -46,7 +41,7 @@ const translateDialogueTool = createTool({
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
-      const result = await executeLLM<TranslationResult>({
+      const result = await executeLLM<string>({
         templateSlug: 'dialogue-translation',
         variables: {
           dialogue_lines: dialogueLines,
@@ -59,12 +54,19 @@ const translateDialogueTool = createTool({
         },
       });
 
-      const translations = result.data.translations;
+      // executeLLM returns raw string for output.type="text" prompts
+      // Parse numbered lines: "1. [serious] सुबह...\n2. [alert] यिप!..."
+      const rawText = result.data;
+
+      const translations = rawText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .map((line) => line.replace(/^\d+\.\s*/, ''));
 
       return toolSuccess({
         translations,
         count: translations.length,
-        notes: result.data.notes,
       });
     } catch (error) {
       return toolError(`Translation failed: ${(error as Error).message}`);
