@@ -45,8 +45,7 @@ export type LlmJobType =
   | 'language-insights'
   | 'translate-dialogue'
   | 'audio-cue-generation'
-  | 'audio-file-generation'
-  | 'dialogue-voice-generation';
+  | 'audio-file-generation';
 
 /**
  * Queue an LLM job for background processing

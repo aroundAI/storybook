@@ -2,7 +2,7 @@
 
 import 'server-only';
 
-import { revalidatePath } from 'next/cache';
+
 
 import { v4 as uuidv4 } from 'uuid';
 import { z } from 'zod';
@@ -258,6 +258,18 @@ export const generateDialogueVoiceAction = enhanceAction(
     try {
       // 10. Create provider and generate audio - use project TTS model
       const ttsModel = await getProjectTTSModel(projectId);
+
+      logger.info(
+        {
+          ...ctx,
+          voiceId,
+          textLength: dialogueData.text.length,
+          modelId: ttsModel,
+          characterAssetId: dialogueData.character_asset_id,
+        },
+        'Generating voice with resolved settings',
+      );
+
       const provider = new ElevenLabsProvider({
         apiKey,
         timeout: 60000,
@@ -277,8 +289,9 @@ export const generateDialogueVoiceAction = enhanceAction(
         throw new Error('Voice generation did not return audio data');
       }
 
-      // 12. Upload to storage (local or Supabase based on STORAGE_PROVIDER)
-      const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}.mp3`;
+      // 12. Upload to storage (timestamp ensures regeneration bypasses CDN cache)
+      const timestamp = Date.now();
+      const audioPath = `dialogue/${episodeId}/${data.dialogueLineId}_${timestamp}.mp3`;
       const storage = getStorageAdapter(adminClient);
 
       const { url: audioUrl } = await storage.upload(
@@ -346,7 +359,7 @@ export const generateDialogueVoiceAction = enhanceAction(
         'Dialogue voice generation completed',
       );
 
-      revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
 
       return {
         dialogueLineId: data.dialogueLineId,
@@ -537,29 +550,28 @@ export const generateDialogueVoiceAsyncAction = enhanceAction(
         .update({ status: 'generating' })
         .eq('id', data.dialogueLineId);
 
-      // 6. Enqueue LLM job for background processing
-      const { queueLlmJob } = await import('@kit/prompt-engine/server');
+      // 6. Enqueue voice job for background processing via dedicated voice queue
+      const { queueVoiceJob } = await import(
+        '@kit/audio-generation/server/voice-queue-helper'
+      );
 
-      await queueLlmJob({
-        jobType: 'dialogue-voice-generation',
-        userId: user.id,
-        payload: {
-          dialogueLineId: data.dialogueLineId,
-          projectId,
-          episodeId,
-          accountId,
-          text: dialogueText,
-          voiceId,
-          ttsModel,
-          voiceSettings: {
-            stability: voiceSettings.stability,
-            similarityBoost: voiceSettings.similarityBoost,
-            style: voiceSettings.style,
-            speed: voiceSettings.speed,
-          },
-          overwriteExisting: data.overwriteExisting ?? false,
-          characterAssetId: dialogueData.character_asset_id,
+      await queueVoiceJob({
+        dialogueLineId: data.dialogueLineId,
+        batchJobId: null, // single-line generation, no batch tracking
+        episodeId,
+        accountId,
+        voiceId,
+        ttsModel,
+        voiceSettings: {
+          stability: voiceSettings.stability ?? 0.5,
+          similarityBoost: voiceSettings.similarityBoost ?? 0.75,
+          style: voiceSettings.style,
+          speed: voiceSettings.speed,
         },
+        text: dialogueText,
+        characterAssetId: dialogueData.character_asset_id ?? undefined,
+        userId: user.id,
+        overwriteExisting: data.overwriteExisting ?? false,
       });
 
       logger.info(ctx, 'Dialogue voice generation job queued successfully');
@@ -850,9 +862,9 @@ export const updateDialogueTextAction = enhanceAction(
       text: data.text,
     };
 
-    // If audio exists, set status to 'text_modified' to indicate regeneration needed
+    // If audio exists, reset status to 'pending' to indicate regeneration needed
     if (dialogueLine.audio_url) {
-      updatePayload.status = 'text_modified';
+      updatePayload.status = 'pending';
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -868,7 +880,7 @@ export const updateDialogueTextAction = enhanceAction(
 
     logger.info(ctx, 'Dialogue text updated successfully');
 
-    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
 
     return {
       success: true,
@@ -927,7 +939,7 @@ export const updateDialogueTimingAction = enhanceAction(
       throw new Error('Failed to update dialogue timing');
     }
 
-    revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+
     return { success: true, dialogueLineId: data.dialogueLineId };
   },
   {
@@ -935,6 +947,75 @@ export const updateDialogueTimingAction = enhanceAction(
       dialogueLineId: z.string().uuid(),
       timelineStartSeconds: z.number().min(0).optional(),
       durationSeconds: z.number().positive().optional(),
+    }),
+  },
+);
+
+/**
+ * Clear all generated voices for an episode
+ *
+ * Resets all dialogue lines back to 'pending' status and clears audio URLs.
+ * Does NOT delete the R2 storage files (orphan cleanup handled separately).
+ */
+export const clearAllVoicesAction = enhanceAction(
+  async (data: { episodeId: string }): Promise<{
+    success: boolean;
+    clearedCount: number;
+    error?: string;
+  }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'dialogue.clearAllVoices',
+      episodeId: data.episodeId,
+    };
+
+    logger.info(ctx, 'Clearing all generated voices for episode');
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      logger.warn(ctx, 'Unauthorized clear voices attempt');
+      throw new Error('Authentication required');
+    }
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: updated, error } = await (client as any)
+        .from('dialogue_lines')
+        .update({
+          audio_url: null,
+          status: 'pending',
+          generation_metadata: null,
+        })
+        .eq('episode_id', data.episodeId)
+        .not('audio_url', 'is', null)
+        .select('id');
+
+      if (error) {
+        logger.error({ ...ctx, error }, 'Failed to clear voices');
+        throw new Error(`Failed to clear voices: ${error.message}`);
+      }
+
+      const clearedCount = updated?.length ?? 0;
+
+      logger.info(
+        { ...ctx, clearedCount },
+        'Cleared all generated voices for episode',
+      );
+
+
+
+      return { success: true, clearedCount };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      logger.error({ ...ctx, error: message }, 'Clear voices failed');
+      return { success: false, clearedCount: 0, error: message };
+    }
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
     }),
   },
 );

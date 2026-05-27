@@ -188,6 +188,7 @@ export async function buildEpisodeContext(
   const metadata =
     (episode.metadata as {
       character_ids?: string[];
+      character_names?: string[];
       location_ids?: string[];
       season_premise?: string;
     }) ?? {};
@@ -223,9 +224,26 @@ export async function buildEpisodeContext(
       };
     }) ?? {};
 
-  // 2. Fetch tagged characters
+  // 2. Fetch tagged characters (expand "All Characters" wildcard)
   const characterIds = metadata.character_ids ?? [];
-  const characters = await fetchCharactersByIds(characterIds, supabase);
+  const characterNames = metadata.character_names ?? [];
+  const hasAllCharactersWildcard = characterNames.some(
+    (name) => name.toLowerCase() === 'all characters',
+  );
+
+  let characters: EpisodeContext['characters'];
+
+  if (hasAllCharactersWildcard && episode.project?.id) {
+    console.log(
+      `[buildEpisodeContext] "All Characters" wildcard detected — fetching all project characters`,
+    );
+    characters = await fetchAllProjectCharacters(
+      episode.project.id,
+      supabase,
+    );
+  } else {
+    characters = await fetchCharactersByIds(characterIds, supabase);
+  }
 
   // 3. Fetch tagged locations
   const locationIds = metadata.location_ids ?? [];
@@ -342,6 +360,54 @@ export async function buildEpisodeContext(
       return undefined;
     })(),
   };
+}
+
+/**
+ * Fetch ALL character assets for a project (used when "All Characters" wildcard is tagged)
+ * Filters out the dummy "All Characters" placeholder asset.
+ */
+export async function fetchAllProjectCharacters(
+  projectId: string,
+  supabase: SupabaseClient,
+): Promise<EpisodeContext['characters']> {
+  const { data, error } = await supabase
+    .from('assets')
+    .select(
+      `
+      id,
+      name,
+      description,
+      file_url,
+      thumbnail_url,
+      metadata
+    `,
+    )
+    .eq('project_id', projectId)
+    .eq('type', 'character')
+    .is('deleted_at', null);
+
+  if (error) {
+    throw new Error(`Failed to fetch project characters: ${error.message}`);
+  }
+
+  return (data ?? [])
+    .filter((asset) => asset.name.toLowerCase() !== 'all characters')
+    .map((asset) => {
+      const metadata = (asset.metadata as CharacterMetadata) ?? {};
+
+      return {
+        id: asset.id,
+        name: asset.name,
+        role: metadata.role ?? 'character',
+        description: asset.description ?? '',
+        personality: metadata.personality,
+        imageUrl: asset.file_url ?? undefined,
+        thumbnailUrl: asset.thumbnail_url ?? undefined,
+        physicalAttributes: metadata.physicalAttributes,
+        clothingStyle: metadata.clothingStyle,
+        elementPrompt: metadata.elementPrompt,
+      };
+    });
 }
 
 /**
@@ -646,9 +712,16 @@ export function formatRecurringElementsForPrompt(
 
     if (el.dialogueHints) {
       lines.push(
-        "**Dialogue templates** (adapt to this episode's events — do not copy verbatim):",
+        '**Character voice & tone reference** (study the patterns below to understand HOW these characters think, speak, and emote — then generate COMPLETELY ORIGINAL dialogue that captures the same cadence, vocabulary level, and emotional texture):',
+        '',
+        el.dialogueHints,
+        '',
+        '⚠️ The above are CHARACTER VOICE REFERENCES, not templates. ' +
+          'NEVER reproduce or closely paraphrase any specific line from these references. ' +
+          'Instead, internalize the speech patterns, emotional register, ' +
+          'and personality traits demonstrated across ALL examples, ' +
+          "then write fresh dialogue that sounds authentically like these characters in THIS episode's unique situation.",
       );
-      lines.push(el.dialogueHints);
       lines.push('');
     }
 

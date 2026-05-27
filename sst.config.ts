@@ -437,6 +437,36 @@ export default $config({
       `✓ Render queue configured with 15-minute visibility timeout`,
     );
 
+    // Dead Letter Queue for failed voice generation jobs
+    const voiceDLQ = new sst.aws.Queue('StorybookVoiceDLQ', {
+      fifo: false,
+      transform: {
+        queue: {
+          // Retain messages in DLQ for 14 days for investigation
+          messageRetentionPeriodSeconds: 1209600, // 14 days
+        },
+      },
+    });
+
+    // AWS SQS queue for voice generation (TTS) processing
+    const voiceQueue = new sst.aws.Queue('StorybookVoiceQueue', {
+      fifo: false,
+      transform: {
+        queue: (args) => {
+          // Visibility timeout must be >= Lambda timeout (5 minutes)
+          args.visibilityTimeoutSeconds = 300; // 5 minutes
+
+          // Configure Dead Letter Queue
+          // After 3 failed attempts, move message to DLQ for investigation
+          args.redrivePolicy = $interpolate`{"deadLetterTargetArn":"${voiceDLQ.arn}","maxReceiveCount":3}`;
+        },
+      },
+    });
+
+    console.log(
+      `✓ Voice queue configured with 5-minute visibility timeout`,
+    );
+
     // DynamoDB table for WebSocket connection tracking
     const connectionsTable = new sst.aws.Dynamo(
       'StorybookWebSocketConnections',
@@ -856,6 +886,85 @@ export default $config({
 
     console.log(`✓ Render Worker Lambda configured with 15-minute timeout`);
 
+    // Voice Worker Lambda - Processes TTS voice generation jobs from SQS
+    // Handles both batch (one message per dialogue line) and single-line generation
+    // Replaces fire-and-forget pattern with reliable queue-based processing
+    const voiceWorker = voiceQueue.subscribe({
+      handler: 'apps/web/lambda/voice-worker/index.handler',
+      timeout: '5 minutes', // 5 minutes per voice generation
+      memory: '512 MB',
+      architecture: 'arm64',
+      link: [connectionsTable, websocket, voiceQueue],
+      permissions: [
+        {
+          // Permission to send WebSocket messages to users
+          actions: ['execute-api:ManageConnections'],
+          resources: ['*'],
+        },
+        {
+          actions: ['kms:Decrypt'],
+          resources: [kmsKey.arn],
+        },
+      ],
+      transform: {
+        function: {
+          kmsKeyArn: kmsKey.arn,
+        },
+        eventSourceMapping: {
+          // Process 1 message per invocation to avoid ElevenLabs rate limits
+          batchSize: 1,
+          // Cap at 3 concurrent Lambda invocations to avoid ElevenLabs 429 rate limits
+          // ElevenLabs plan allows 5 concurrent requests; reserve 2 for single-line UI calls
+          scalingConfig: {
+            maximumConcurrency: 3,
+          },
+        },
+      },
+      environment: {
+        // Supabase configuration
+        NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+
+        // Security - needed for API key decryption
+        ...(process.env.ENCRYPTION_KEY && {
+          ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+        }),
+
+        // R2 Storage configuration (for audio uploads)
+        ...(process.env.R2_ACCOUNT_ID && {
+          R2_ACCOUNT_ID: process.env.R2_ACCOUNT_ID,
+        }),
+        ...(process.env.R2_ACCESS_KEY_ID && {
+          R2_ACCESS_KEY_ID: process.env.R2_ACCESS_KEY_ID,
+        }),
+        ...(process.env.R2_SECRET_ACCESS_KEY && {
+          R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
+        }),
+        ...(process.env.R2_BUCKET_NAME && {
+          R2_BUCKET_NAME: process.env.R2_BUCKET_NAME,
+        }),
+        ...(process.env.R2_PUBLIC_URL && {
+          R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
+        }),
+
+        // WebSocket configuration
+        CONNECTIONS_TABLE_NAME: connectionsTable.name,
+        WEBSOCKET_ENDPOINT: websocket.managementEndpoint,
+      },
+      nodejs: {
+        install: [
+          '@supabase/supabase-js',
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+          '@aws-sdk/client-apigatewaymanagementapi',
+          '@aws-sdk/client-s3',
+          'ws',
+        ],
+      },
+    });
+
+    console.log(`✓ Voice Worker Lambda configured with 5-minute timeout`);
+
     // Deploy Next.js application
     const web = new sst.aws.Nextjs('StorybookWeb', {
       path: 'apps/web',
@@ -877,6 +986,7 @@ export default $config({
         llmJobsQueue,
         publishQueue,
         renderQueue,
+        voiceQueue,
         connectionsTable,
         websocket,
       ],
@@ -975,6 +1085,7 @@ export default $config({
         AWS_SQS_QUEUE_URL: queue.url,
         PUBLISH_QUEUE_URL: publishQueue.url,
         RENDER_QUEUE_URL: renderQueue.url,
+        VOICE_QUEUE_URL: voiceQueue.url,
         AWS_WEBSOCKET_ENDPOINT: websocket.url,
         CONNECTIONS_TABLE_NAME: connectionsTable.name,
 
@@ -1081,7 +1192,7 @@ export default $config({
           {
             Effect: 'Allow',
             Action: 'sqs:SendMessage',
-            Resource: [queue.arn, renderQueue.arn],
+            Resource: [queue.arn, renderQueue.arn, voiceQueue.arn],
           },
         ],
       }),

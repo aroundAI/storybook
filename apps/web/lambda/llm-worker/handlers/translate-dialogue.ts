@@ -87,6 +87,15 @@ export async function processTranslateDialogue(
     return { success: true, data: { translatedCount: 0 } };
   }
 
+  // Fetch target audience from episode metadata
+  const { data: episodeData } = await supabase
+    .from('episodes')
+    .select('metadata')
+    .eq('id', data.episodeId)
+    .single();
+
+  const targetAudience = (episodeData?.metadata as Record<string, unknown>)?.target_audience as string || '';
+
   // 2. Check existing translations
   const { data: existing } = await supabase
     .from('dialogue_lines')
@@ -134,6 +143,7 @@ export async function processTranslateDialogue(
     accountId: data.accountId,
     dialogueLines: linesText,
     lineCount: linesToTranslate.length,
+    targetAudience,
   });
 
   if (!orchestratorResult.success) {
@@ -142,14 +152,37 @@ export async function processTranslateDialogue(
     );
   }
 
-  const translations = orchestratorResult.translations;
+  // 5. Clean translations — strip numbered prefixes (e.g. "1. ", "23. ")
+  //    The prompt asks the LLM to return "numbered to match the input" but
+  //    those numbers must not be stored in the dialogue text.
+  const cleanedTranslations = orchestratorResult.translations.map((t) =>
+    t.replace(/^\d+\.\s*/, '').replace(/^["']|["']$/g, ''),
+  );
 
-  // 5. INSERT translated lines
+  // 5. Validate translations before insert — refuse to save English as target language
+  const missingOrIdentical = linesToTranslate.filter(
+    (line, i) => !cleanedTranslations[i] || cleanedTranslations[i] === line.text,
+  ).length;
+
+  if (missingOrIdentical > linesToTranslate.length * 0.5) {
+    throw new Error(
+      `Translation validation failed: ${missingOrIdentical}/${linesToTranslate.length} lines are missing or identical to English. ` +
+        `Refusing to save untranslated text as ${targetLangName}.`,
+    );
+  }
+
+  if (missingOrIdentical > 0) {
+    console.warn(
+      `[Translate Dialogue] ${missingOrIdentical}/${linesToTranslate.length} lines fell back to English — proceeding with partial translation`,
+    );
+  }
+
+  // 6. INSERT translated lines
   const newLines = linesToTranslate.map((line, index) => ({
     episode_id: line.episode_id,
     character_asset_id: line.character_asset_id,
     shot_id: line.shot_id,
-    text: translations[index] || line.text,
+    text: cleanedTranslations[index] || line.text,
     sequence_number: line.sequence_number,
     scene_number: line.scene_number,
     timeline_start_seconds: line.timeline_start_seconds,

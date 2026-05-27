@@ -2,7 +2,9 @@
  * Dialogue Voice Generation Handler
  *
  * Processes TTS voice generation jobs for dialogue lines.
- * Called from LLM Worker Lambda via SQS queue.
+ * Called from Voice Worker Lambda via SQS queue.
+ *
+ * Reuses job-tracking and r2-storage utilities from the LLM worker.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -12,15 +14,15 @@ import {
   markJobCompleted,
   markJobFailed,
   markJobProcessing,
-} from '../utils/job-tracking';
-import { uploadToR2 } from '../utils/r2-storage';
+} from '../llm-worker/utils/job-tracking';
+import { uploadToR2 } from '../llm-worker/utils/r2-storage';
 
 const DialogueVoiceGenerationPayloadSchema = z.object({
   dialogueLineId: z.string().uuid(),
-  projectId: z.string().uuid(),
+  projectId: z.string().uuid().optional(),
   episodeId: z.string().uuid(),
   accountId: z.string().uuid(),
-  text: z.string().min(1),
+  text: z.string(),
   voiceId: z.string(),
   ttsModel: z.string(),
   voiceSettings: z.object({
@@ -117,6 +119,15 @@ async function getAccountElevenLabsApiKey(
 }
 
 // =============================================================================
+// Stage Direction Handling
+// =============================================================================
+
+// Generic filler for stage-direction-only lines (e.g. [deep breath], [suspicious])
+// ElevenLabs strips brackets/parens, leaving empty text → 400 error.
+// A short filler generates a brief audio clip in the character's voice.
+const STAGE_DIRECTION_FILLER = 'Hmm.';
+
+// =============================================================================
 // Handler
 // =============================================================================
 
@@ -144,10 +155,27 @@ export async function processDialogueVoiceGeneration(
   );
 
   try {
-    // 1. Validate text is not empty (safety check - validation also done in action)
-    const text = data.text?.trim();
-    if (!text) {
-      throw new Error('Dialogue text is empty or whitespace-only');
+    // 1. Check if text has speakable content after stripping stage directions
+    // Stage directions like [deep breath], [suspicious], (pause) etc. get stripped
+    // by ElevenLabs, resulting in a 400 error for empty text
+    const textWithoutDirections = data.text
+      ?.replace(/\[.*?\]/g, '') // Remove [bracketed text]
+      .replace(/\(.*?\)/g, '') // Remove (parenthesized text)
+      .replace(/\*.*?\*/g, '') // Remove *asterisk text*
+      .trim();
+
+    let text: string;
+
+    if (!textWithoutDirections) {
+      // Pure stage direction — use a short generic filler so ElevenLabs
+      // generates a brief audio clip in the character's voice
+      text = STAGE_DIRECTION_FILLER;
+
+      console.log(
+        `[Dialogue Voice Gen] Stage direction only: "${data.text}" → filler: "${text}"`,
+      );
+    } else {
+      text = data.text.trim();
     }
 
     // 2. Get API key from external_api_keys
@@ -159,7 +187,7 @@ export async function processDialogueVoiceGeneration(
       .update({ status: 'generating' })
       .eq('id', data.dialogueLineId);
 
-    // 3. Generate voice using ElevenLabs TTS API
+    // 4. Generate voice using ElevenLabs TTS API
     const response = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${data.voiceId}`,
       {
@@ -188,10 +216,10 @@ export async function processDialogueVoiceGeneration(
       );
     }
 
-    // 4. Get audio buffer
+    // 5. Get audio buffer
     const audioBuffer = Buffer.from(await response.arrayBuffer());
 
-    // 5. Upload to R2 storage (timestamp ensures regeneration bypasses CDN cache)
+    // 6. Upload to R2 storage (timestamp ensures regeneration bypasses CDN cache)
     const timestamp = Date.now();
     const audioPath = `dialogue/${data.episodeId}/${data.dialogueLineId}_${timestamp}.mp3`;
     const { url: audioUrl } = await uploadToR2(
@@ -201,11 +229,11 @@ export async function processDialogueVoiceGeneration(
       'audio/mpeg',
     );
 
-    // 6. Calculate duration estimate (rough: ~150 words per minute)
+    // 7. Calculate duration estimate (rough: ~150 words per minute)
     const wordCount = data.text.split(/\s+/).length;
     const estimatedDuration = Math.max(1, Math.ceil((wordCount / 150) * 60));
 
-    // 7. Prepare metadata
+    // 8. Prepare metadata
     const metadata = {
       provider: 'elevenlabs',
       voiceId: data.voiceId,
@@ -216,7 +244,7 @@ export async function processDialogueVoiceGeneration(
       characterCount: data.text.length,
     };
 
-    // 8. Update dialogue line with audio URL and completed status
+    // 9. Update dialogue line with audio URL and completed status
     await supabase
       .from('dialogue_lines')
       .update({

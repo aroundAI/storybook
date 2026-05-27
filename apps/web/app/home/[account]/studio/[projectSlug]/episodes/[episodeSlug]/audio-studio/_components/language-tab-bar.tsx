@@ -2,10 +2,24 @@
 
 import { useEffect, useState, useTransition } from 'react';
 
-import { Globe, Loader2, Plus } from 'lucide-react';
+import { Globe, Loader2, Plus, X } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/audio-generation/lib';
-import { translateDialogueToLanguageAction } from '@kit/audio-generation/server';
+import {
+  deleteLanguageTranslationAction,
+  translateDialogueToLanguageAction,
+} from '@kit/audio-generation/server';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@kit/ui/alert-dialog';
 import { Button } from '@kit/ui/button';
 import {
   DropdownMenu,
@@ -51,6 +65,9 @@ export function LanguageTabBar({
 }: LanguageTabBarProps) {
   const [isTranslating, _startTransition] = useTransition();
   const [translatingTo, setTranslatingTo] = useState<SupportedLanguage | null>(
+    null,
+  );
+  const [deletingLang, setDeletingLang] = useState<SupportedLanguage | null>(
     null,
   );
 
@@ -127,22 +144,84 @@ export function LanguageTabBar({
     });
   };
 
+  const handleDeleteLanguage = async (lang: SupportedLanguage) => {
+    setDeletingLang(lang);
+    try {
+      const result = await deleteLanguageTranslationAction({
+        episodeId,
+        language: lang,
+      });
+      toast.success(
+        `Deleted ${result.deletedCount} ${LANG_INFO[lang].name} translations`,
+      );
+      if (selectedLanguage === lang) {
+        onLanguageChange('en');
+      }
+      onLanguageAdded?.();
+    } catch (error) {
+      toast.error(
+        `Failed to delete: ${(error as Error).message}`,
+      );
+    } finally {
+      setDeletingLang(null);
+    }
+  };
+
   return (
     <div className="flex items-center gap-1">
       {/* Language Tabs */}
       {availableLanguages.map((lang) => (
-        <button
-          key={lang}
-          onClick={() => onLanguageChange(lang)}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
-            selectedLanguage === lang
-              ? 'bg-indigo-600 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-          }`}
-        >
-          <span>{LANG_INFO[lang].flag}</span>
-          <span>{LANG_INFO[lang].name}</span>
-        </button>
+        <div key={lang} className="group/tab relative flex items-center">
+          <button
+            onClick={() => onLanguageChange(lang)}
+            className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+              selectedLanguage === lang
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+            }`}
+          >
+            <span>{LANG_INFO[lang].flag}</span>
+            <span>{LANG_INFO[lang].name}</span>
+          </button>
+
+          {/* Delete button for non-English languages */}
+          {lang !== 'en' && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <button
+                  className="-ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/0 text-transparent opacity-0 transition-all hover:bg-red-500/20 hover:text-red-400 group-hover/tab:opacity-100 group-hover/tab:text-red-400/60"
+                  title={`Delete ${LANG_INFO[lang].name} translation`}
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Delete {LANG_INFO[lang].name} Translation?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all {LANG_INFO[lang].name}{' '}
+                    dialogue lines for this episode. You can re-translate later.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDeleteLanguage(lang)}
+                    className="bg-red-600 hover:bg-red-700"
+                    disabled={deletingLang === lang}
+                  >
+                    {deletingLang === lang ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       ))}
 
       {/* Translating Status Badge */}

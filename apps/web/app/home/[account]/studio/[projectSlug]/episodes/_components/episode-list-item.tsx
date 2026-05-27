@@ -2,15 +2,38 @@
 
 import Link from 'next/link';
 
-import { ChevronRight, Pencil } from 'lucide-react';
+import { ChevronRight, Mic, Music, Pencil, Volume2 } from 'lucide-react';
 
 import type { Episode } from '@kit/episodes/types';
 import { cn } from '@kit/ui/utils';
+
+const LANG_FLAGS: Record<string, { flag: string }> = {
+  en: { flag: '🇺🇸' },
+  hi: { flag: '🇮🇳' },
+  es: { flag: '🇪🇸' },
+  pt: { flag: '🇧🇷' },
+  fr: { flag: '🇫🇷' },
+  de: { flag: '🇩🇪' },
+  ja: { flag: '🇯🇵' },
+  ko: { flag: '🇰🇷' },
+  zh: { flag: '🇨🇳' },
+  ar: { flag: '🇸🇦' },
+  bn: { flag: '🇧🇩' },
+};
 
 interface EpisodeListItemProps {
   episode: Episode;
   account: string;
   projectSlug: string;
+  availableLanguages?: string[];
+  audioStats?: {
+    dialogueTotal: number;
+    dialogueCompleted: number;
+    musicTotal: number;
+    musicCompleted: number;
+    sfxTotal: number;
+    sfxCompleted: number;
+  };
   isFirst?: boolean;
   isLast?: boolean;
 }
@@ -86,6 +109,8 @@ export function EpisodeListItem({
   episode,
   account,
   projectSlug,
+  availableLanguages,
+  audioStats,
   isFirst: _isFirst = false,
   isLast: _isLast = false,
 }: EpisodeListItemProps) {
@@ -127,7 +152,66 @@ export function EpisodeListItem({
                     {getStatusLabel(stage, stages[stage])}
                   </span>
                 ))}
+
+                {/* Language flags */}
+                {availableLanguages && availableLanguages.length > 0 && (
+                  <>
+                    <div className="h-4 w-px self-center bg-white/10" />
+                    {availableLanguages.sort().map((lang) => {
+                      const info = LANG_FLAGS[lang];
+                      if (!info) return null;
+                      return (
+                        <span
+                          key={lang}
+                          className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.03] px-2 py-0.5 text-slate-500"
+                        >
+                          <span>{info.flag}</span>
+                          <span className="uppercase">{lang}</span>
+                        </span>
+                      );
+                    })}
+                  </>
+                )}
               </div>
+
+                {/* Audio generation progress */}
+                {audioStats && (audioStats.dialogueTotal > 0 || audioStats.musicTotal > 0 || audioStats.sfxTotal > 0) && (
+                  <div className="mt-2 flex items-center gap-3 text-[10px]">
+                    {audioStats.dialogueTotal > 0 && (
+                      <span className={cn(
+                        'flex items-center gap-1 tabular-nums',
+                        audioStats.dialogueCompleted === audioStats.dialogueTotal
+                          ? 'text-green-400'
+                          : 'text-slate-500',
+                      )}>
+                        <Mic className="h-3 w-3" />
+                        {audioStats.dialogueCompleted}/{audioStats.dialogueTotal}
+                      </span>
+                    )}
+                    {audioStats.musicTotal > 0 && (
+                      <span className={cn(
+                        'flex items-center gap-1 tabular-nums',
+                        audioStats.musicCompleted === audioStats.musicTotal
+                          ? 'text-green-400'
+                          : 'text-slate-500',
+                      )}>
+                        <Music className="h-3 w-3" />
+                        {audioStats.musicCompleted}/{audioStats.musicTotal}
+                      </span>
+                    )}
+                    {audioStats.sfxTotal > 0 && (
+                      <span className={cn(
+                        'flex items-center gap-1 tabular-nums',
+                        audioStats.sfxCompleted === audioStats.sfxTotal
+                          ? 'text-green-400'
+                          : 'text-slate-500',
+                      )}>
+                        <Volume2 className="h-3 w-3" />
+                        {audioStats.sfxCompleted}/{audioStats.sfxTotal}
+                      </span>
+                    )}
+                  </div>
+                )}
             </div>
 
             {/* Actions */}

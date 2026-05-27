@@ -34,7 +34,8 @@ import {
 } from '@kit/ui/dropdown-menu';
 import { cn } from '@kit/ui/utils';
 
-import type { Asset, AssetType } from '../lib/types';
+import type { Asset, AssetType, CharacterWithDetails } from '../lib/types';
+import { CharacterStatusBadges } from './character-status-badges';
 
 const ASSET_ICONS: Record<
   AssetType,
@@ -137,11 +138,17 @@ const COLOR_SCHEMES: Record<
 
 interface AssetCardProps {
   asset: Asset;
+  characterDetails?: CharacterWithDetails;
   onEdit?: (asset: Asset) => void;
   onDelete?: (asset: Asset) => void;
 }
 
-export function AssetCard({ asset, onEdit, onDelete }: AssetCardProps) {
+export function AssetCard({
+  asset,
+  characterDetails,
+  onEdit,
+  onDelete,
+}: AssetCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const Icon = ASSET_ICONS[asset.type] || User;
@@ -279,6 +286,16 @@ export function AssetCard({ asset, onEdit, onDelete }: AssetCardProps) {
                 <p className="text-muted-foreground mt-3 line-clamp-2 text-xs leading-relaxed">
                   {asset.description}
                 </p>
+              )}
+
+              {/* Character Status Badges */}
+              {characterDetails && (
+                <CharacterStatusBadges
+                  hasVoice={!!characterDetails.voiceAssetId}
+                  hasImage={!!(asset.fileUrl || asset.thumbnailUrl)}
+                  hasElementPrompt={!!characterDetails.elementPrompt}
+                  className="mt-3"
+                />
               )}
             </div>
           </div>

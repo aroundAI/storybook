@@ -46,7 +46,8 @@ export const getAvailableLanguagesAction = enhanceAction(
     const { data: rows, error } = await (client as any)
       .from('dialogue_lines')
       .select('language')
-      .eq('episode_id', data.episodeId);
+      .eq('episode_id', data.episodeId)
+      .limit(200);
 
     if (error) {
       throw new Error('Failed to fetch languages');
@@ -65,6 +66,47 @@ export const getAvailableLanguagesAction = enhanceAction(
   },
   {
     schema: z.object({ episodeId: z.string().uuid() }),
+  },
+);
+
+/**
+ * Delete all translated dialogue lines for a specific language
+ * Guards against deleting English (source) dialogue
+ */
+export const deleteLanguageTranslationAction = enhanceAction(
+  async (data: {
+    episodeId: string;
+    language: string;
+  }): Promise<{ deletedCount: number }> => {
+    if (data.language === 'en') {
+      throw new Error('Cannot delete English source dialogue');
+    }
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error, count } = await (client as any)
+      .from('dialogue_lines')
+      .delete({ count: 'exact' })
+      .eq('episode_id', data.episodeId)
+      .eq('language', data.language);
+
+    if (error) {
+      throw new Error(`Failed to delete translations: ${error.message}`);
+    }
+
+    return { deletedCount: count ?? 0 };
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+      language: z.string().min(2).max(5),
+    }),
   },
 );
 

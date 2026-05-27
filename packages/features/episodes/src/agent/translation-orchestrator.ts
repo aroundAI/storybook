@@ -29,6 +29,7 @@ export interface TranslationOrchestratorInput {
   /** Pre-formatted numbered dialogue lines */
   dialogueLines: string;
   lineCount: number;
+  targetAudience?: string;
 }
 
 interface TranslationOrchestratorOutput {
@@ -75,7 +76,7 @@ export async function runTranslationOrchestrator(
       {
         userPrompt: buildTranslationPrompt(input),
       },
-      { accountId: input.accountId },
+      { accountId: input.accountId, targetAudience: input.targetAudience || 'children and young teens (ages 6-15)' },
     );
 
   if (!result.success || !result.data) {

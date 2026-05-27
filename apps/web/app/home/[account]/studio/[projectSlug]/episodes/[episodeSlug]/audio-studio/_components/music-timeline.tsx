@@ -1,18 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 import {
   Edit3,
   Loader2,
   Music,
+  Pause,
   Play,
   Plus,
   RefreshCw,
   Trash2,
 } from 'lucide-react';
 
-import type { ProjectAudioSettings } from '@kit/audio-generation/lib';
+import type { AudioTrack, ProjectAudioSettings } from '@kit/audio-generation/lib';
 import {
   deleteAudioTrackAction,
   generateAudioForCueAction,
@@ -33,6 +41,18 @@ import { cn } from '@kit/ui/utils';
 import { AddMusicCueDialog } from './add-music-cue-dialog';
 import { GenerateSceneMusicDialog } from './generate-scene-music-dialog';
 
+export interface MusicTimelineStats {
+  total: number;
+  completed: number;
+  pending: number;
+  processing: number;
+  failed: number;
+}
+
+export interface MusicTimelineHandle {
+  generateAll: () => void;
+}
+
 interface MusicTimelineProps {
   episodeId: string;
   totalDuration: number;
@@ -44,6 +64,10 @@ interface MusicTimelineProps {
   onRefresh?: () => void;
   pixelsPerSecond: number;
   audioSettings: ProjectAudioSettings | null;
+  onStatsChange?: (stats: MusicTimelineStats) => void;
+  initialTracks?: AudioTrack[] | null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialCues?: Array<Record<string, any>> | null;
 }
 
 interface MusicTrack {
@@ -81,14 +105,17 @@ function getMarkerInterval(pps: number): number {
   return 15; // Every 15 seconds when zoomed out
 }
 
-export function MusicTimeline({
+export const MusicTimeline = React.forwardRef<MusicTimelineHandle, MusicTimelineProps>(function MusicTimeline({
   episodeId,
   totalDuration,
   scenes,
   onRefresh,
   pixelsPerSecond,
   audioSettings,
-}: MusicTimelineProps) {
+  onStatsChange,
+  initialTracks: initialTracksProp,
+  initialCues: initialCuesProp,
+}, ref) {
   const [tracks, setTracks] = useState<MusicTrack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
@@ -100,6 +127,8 @@ export function MusicTimeline({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editPrompt, setEditPrompt] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   // WebSocket hook for audio-file-generation results
   const {
@@ -188,9 +217,77 @@ export function MusicTimeline({
     }
   }, [episodeId]);
 
+  // Use initial data from bulk action if available, otherwise fetch
+  const hasUsedInitialData = useRef(false);
   useEffect(() => {
-    void fetchTracks();
-  }, [fetchTracks]);
+    if (!hasUsedInitialData.current && initialTracksProp && initialCuesProp) {
+      hasUsedInitialData.current = true;
+
+      // Process pre-loaded tracks (filter to music type only)
+      const userTracks: MusicTrack[] = initialTracksProp
+        .filter((t) => t.type === 'music')
+        .map((t) => ({
+          id: t.id,
+          name: t.name,
+          fileUrl: t.fileUrl,
+          durationSeconds: t.durationSeconds,
+          timelineStartSeconds: t.timelineStartSeconds,
+          volume: t.volume,
+          status: t.status,
+          metadata: t.metadata as MusicTrack['metadata'],
+        }));
+
+      // Process pre-loaded cues (filter to music type only)
+      const musicCues: MusicTrack[] = (initialCuesProp as Array<{
+        id: string;
+        cue_type: string;
+        prompt: string;
+        scene_number: number;
+        start_offset_seconds: number | null;
+        duration_seconds: number | null;
+        status: string | null;
+        audio_assets: {
+          id: string;
+          file_url: string | null;
+          duration_seconds: number | null;
+        } | null;
+      }>)
+        .filter((c) => c.cue_type === 'music')
+        .filter((c) => c.status !== 'placed' && c.status !== 'matched')
+        .map((c) => ({
+          id: `cue-${c.id}`,
+          name: c.prompt.substring(0, 50),
+          fileUrl: c.audio_assets?.file_url ?? null,
+          durationSeconds:
+            c.audio_assets?.duration_seconds ?? c.duration_seconds ?? 30,
+          timelineStartSeconds: c.start_offset_seconds ?? 0,
+          volume: 1,
+          status:
+            c.status === 'placed' || c.status === 'matched'
+              ? 'completed'
+              : c.status === 'pending'
+                ? 'pending'
+                : c.status === 'generating'
+                  ? 'processing'
+                  : ('failed' as const),
+          metadata: {
+            sceneNumber: c.scene_number,
+            prompt: c.prompt,
+            isCue: true,
+          },
+        }));
+
+      const combined = [...userTracks, ...musicCues].sort(
+        (a, b) => a.timelineStartSeconds - b.timelineStartSeconds,
+      );
+
+      setTracks(combined);
+      setIsLoading(false);
+    } else if (!hasUsedInitialData.current) {
+      void fetchTracks();
+      hasUsedInitialData.current = true;
+    }
+  }, [initialTracksProp, initialCuesProp, fetchTracks]);
 
   // Handle WebSocket audio generation result
   useEffect(() => {
@@ -241,6 +338,64 @@ export function MusicTimeline({
     return () => clearInterval(pollInterval);
   }, [tracks, fetchTracks, onRefresh]);
 
+  // Report stats to parent
+  useEffect(() => {
+    if (!onStatsChange) return;
+    const total = tracks.length;
+    const completed = tracks.filter((t) => t.status === 'completed').length;
+    const pending = tracks.filter((t) => t.status === 'pending').length;
+    const processing = tracks.filter((t) => t.status === 'processing').length;
+    const failed = tracks.filter((t) => t.status === 'failed').length;
+    onStatsChange({ total, completed, pending, processing, failed });
+  }, [tracks, onStatsChange]);
+
+  // Generate all pending music cues
+  const handleGenerateAllPending = useCallback(async () => {
+    if (!audioSettings?.elevenlabs?.music_model) {
+      toast.error('Music model not selected in project settings');
+      return;
+    }
+
+    const pendingTracks = tracks.filter((t) => t.status === 'pending');
+    if (pendingTracks.length === 0) {
+      toast.info('No pending music tracks to generate');
+      return;
+    }
+
+    toast.info(`Queuing ${pendingTracks.length} music track(s) for generation...`);
+
+    for (const track of pendingTracks) {
+      if (track.id.startsWith('cue-')) {
+        const cueId = track.id.replace('cue-', '');
+        try {
+          await generateAudioForCueAction({ cueId });
+        } catch {
+          toast.error(`Failed to queue: ${track.name ?? 'music cue'}`);
+        }
+      } else {
+        try {
+          await generateMusicCueAction({
+            episodeId,
+            prompt: track.metadata?.prompt ?? 'Music',
+            duration: track.durationSeconds ?? 30,
+            timelineStartSeconds: track.timelineStartSeconds,
+            name: track.name ?? undefined,
+            genre: track.metadata?.genre,
+            mood: track.metadata?.mood,
+            instrumentalOnly: track.metadata?.instrumentalOnly,
+          });
+        } catch {
+          toast.error(`Failed to queue: ${track.name ?? 'music track'}`);
+        }
+      }
+    }
+  }, [tracks, audioSettings, episodeId]);
+
+  // Expose generateAll via ref
+  useImperativeHandle(ref, () => ({
+    generateAll: () => void handleGenerateAllPending(),
+  }), [handleGenerateAllPending]);
+
   // Time markers
   const timeMarkers = useMemo(() => {
     const total = totalDuration > 0 ? totalDuration : 90;
@@ -276,13 +431,35 @@ export function MusicTimeline({
     setSelectedTrack(track);
   };
 
-  const handlePlayTrack = (track: MusicTrack) => {
+  const handlePlayTrack = (track: MusicTrack, e?: React.MouseEvent) => {
+    e?.stopPropagation();
     if (!track.fileUrl) {
       toast.error('No audio available');
       return;
     }
+
+    // If same track is playing, pause it
+    if (playingId === track.id && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPlayingId(null);
+      return;
+    }
+
+    // Stop any currently playing audio
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
     const audio = new Audio(track.fileUrl);
+    audio.onended = () => {
+      setPlayingId(null);
+      audioRef.current = null;
+    };
     audio.play();
+    audioRef.current = audio;
+    setPlayingId(track.id);
   };
 
   const handleEdit = () => {
@@ -581,11 +758,21 @@ export function MusicTimeline({
                       }}
                       onClick={(e) => handleTrackClick(track, e)}
                     >
-                      {/* Status icon */}
-                      {track.status === 'processing' ? (
+                      {/* Play/Pause button for completed tracks */}
+                      {track.status === 'completed' && track.fileUrl ? (
+                        <button
+                          onClick={(e) => handlePlayTrack(track, e)}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/80 shadow-sm transition-colors hover:bg-white dark:bg-black/30 dark:hover:bg-black/50"
+                          aria-label={playingId === track.id ? 'Pause' : 'Play'}
+                        >
+                          {playingId === track.id ? (
+                            <Pause className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                          ) : (
+                            <Play className="h-3.5 w-3.5 text-green-700 dark:text-green-400" />
+                          )}
+                        </button>
+                      ) : track.status === 'processing' ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-500" />
-                      ) : track.status === 'completed' ? (
-                        <Music className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
                       ) : track.status === 'failed' ? (
                         <RefreshCw className="h-4 w-4 shrink-0 text-red-500" />
                       ) : (
@@ -718,4 +905,4 @@ export function MusicTimeline({
       />
     </div>
   );
-}
+});

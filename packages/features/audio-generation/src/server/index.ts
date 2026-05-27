@@ -20,5 +20,7 @@ export * from './audio-cue-actions';
 export * from './elevenlabs-connection.actions';
 // Project Audio Settings
 export * from './project-audio-settings';
+// Bulk data loader for Audio Studio
+export * from './audio-studio-bulk-action';
 // Constants (for UI dropdowns)
 export { ELEVENLABS } from '../lib/constants';

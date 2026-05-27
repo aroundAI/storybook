@@ -30,3 +30,7 @@ export { VoicePreview } from './voice-preview';
 
 // Image Uploader (FILM-207)
 export * from './image-uploader';
+
+// Character status indicators & filter toolbar
+export { CharacterStatusBadges } from './character-status-badges';
+export { AssetFilterToolbar } from './asset-filter-toolbar';

@@ -2,7 +2,8 @@
 
 import 'server-only';
 
-import { revalidatePath } from 'next/cache';
+
+import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
@@ -28,7 +29,7 @@ import {
   RetryFailedDialogueSchema,
 } from '../lib/schemas/batch.schema';
 import { estimateVoiceCost } from '../lib/voice-utils';
-import { generateDialogueVoiceAction } from './voice-actions';
+import { queueVoiceJobs } from './voice-queue-helper';
 import {
   checkAccountBudget,
   getVoiceIdForCharacter,
@@ -119,159 +120,12 @@ async function buildVoiceAssignments(
 }
 
 /**
- * Options for background batch processing
+ * Get TTS model for a project
+ * Imports lazily to avoid circular dependency
  */
-interface ProcessBatchOptions {
-  /** Initial completed count (for retry scenarios) */
-  initialCompleted?: number;
-  /** Initial cost (for retry scenarios) */
-  initialCost?: number;
-  /** Previous errors to preserve (for retry scenarios) */
-  previousErrors?: BatchError[];
-}
-
-/**
- * Process batch in background (non-blocking)
- * Note: In production, this should be moved to a queue system (BullMQ, Inngest, etc.)
- */
-async function processBatchInBackground(
-  batchJobId: string,
-  dialogueLines: DialogueLineForBatch[],
-  voiceAssignments: Record<string, VoiceAssignment>,
-  concurrency: number,
-  options: ProcessBatchOptions = {},
-): Promise<void> {
-  const logger = await getLogger();
-  const ctx = {
-    name: 'batch.process',
-    batchJobId,
-    totalLines: dialogueLines.length,
-    concurrency,
-  };
-
-  logger.info(ctx, 'Starting batch processing');
-
-  const client = getSupabaseServerClient();
-
-  // Update status to processing
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client as any)
-    .from('batch_generation_jobs')
-    .update({
-      status: 'processing',
-      started_at: new Date().toISOString(),
-    })
-    .eq('id', batchJobId);
-
-  // Initialize counters - preserve previous progress for retries
-  let completed = options.initialCompleted ?? 0;
-  let failed = 0;
-  let actualCost = options.initialCost ?? 0;
-  const errors: BatchError[] = [...(options.previousErrors ?? [])];
-
-  // Process in batches with concurrency limit
-  for (let i = 0; i < dialogueLines.length; i += concurrency) {
-    // Check if cancelled before processing next batch
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: currentJob } = await (client as any)
-      .from('batch_generation_jobs')
-      .select('status')
-      .eq('id', batchJobId)
-      .single();
-
-    if (currentJob?.status === 'cancelled') {
-      logger.info({ ...ctx, completed, failed }, 'Batch cancelled by user');
-      break;
-    }
-
-    const batch = dialogueLines.slice(i, i + concurrency);
-
-    const results = await Promise.allSettled(
-      batch.map(async (line) => {
-        const assignment = line.character_asset_id
-          ? voiceAssignments[line.character_asset_id]
-          : null;
-
-        if (!assignment) {
-          throw new Error(
-            `No voice assignment for character: ${line.character_asset_id}`,
-          );
-        }
-
-        return generateDialogueVoiceAction({
-          dialogueLineId: line.id,
-          voiceId: assignment.voiceId,
-          settings: assignment.settings,
-          overwriteExisting: true,
-        });
-      }),
-    );
-
-    // Process results
-    results.forEach((result, index) => {
-      const line = batch[index];
-      if (!line) return;
-
-      if (result.status === 'fulfilled') {
-        if (result.value.status === 'completed') {
-          completed++;
-          actualCost += result.value.cost;
-        } else {
-          // generateDialogueVoiceAction returns failure result instead of throwing
-          failed++;
-          errors.push({
-            dialogueLineId: line.id,
-            error: result.value.error ?? 'Generation failed',
-            timestamp: new Date().toISOString(),
-          });
-        }
-      } else {
-        failed++;
-        errors.push({
-          dialogueLineId: line.id,
-          error: result.reason?.message ?? 'Unknown error',
-          timestamp: new Date().toISOString(),
-        });
-      }
-    });
-
-    // Update progress after each batch
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any)
-      .from('batch_generation_jobs')
-      .update({
-        completed_lines: completed,
-        failed_lines: failed,
-        actual_cost: actualCost,
-        errors,
-      })
-      .eq('id', batchJobId);
-
-    logger.info(
-      { ...ctx, completed, failed, batch: Math.floor(i / concurrency) + 1 },
-      'Batch progress updated',
-    );
-  }
-
-  // Mark as completed
-  const finalStatus = failed === dialogueLines.length ? 'failed' : 'completed';
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (client as any)
-    .from('batch_generation_jobs')
-    .update({
-      status: finalStatus,
-      completed_at: new Date().toISOString(),
-    })
-    .eq('id', batchJobId);
-
-  logger.info(
-    { ...ctx, status: finalStatus, completed, failed, actualCost },
-    'Batch processing completed',
-  );
-
-  // Revalidate the episodes page
-  revalidatePath('/home/[account]/studio/[projectId]/episodes', 'page');
+async function getProjectTTSModelForBatch(projectId: string): Promise<string> {
+  const { getProjectTTSModel } = await import('./project-audio-settings');
+  return getProjectTTSModel(projectId);
 }
 
 /**
@@ -282,7 +136,10 @@ async function processBatchInBackground(
  * 2. Building voice assignments from user input or character profiles
  * 3. Estimating total cost and checking budget
  * 4. Creating a batch job record for tracking
- * 5. Starting background processing
+ * 5. Dispatching dialogue lines to the voice SQS queue
+ *
+ * Each dialogue line is processed independently by a Voice Worker Lambda.
+ * Progress is tracked atomically via the `increment_batch_progress` RPC.
  *
  * @throws {Error} If episode not found, budget insufficient, or missing voice assignments
  */
@@ -292,14 +149,12 @@ export const batchGenerateDialogueAction = enhanceAction(
   ): Promise<BatchGenerateDialogueResult> => {
     // Apply defaults
     const overwriteExisting = data.overwriteExisting ?? false;
-    const concurrency = data.concurrency ?? 5;
 
     const logger = await getLogger();
     const ctx = {
       name: 'batch.generateDialogue',
       episodeId: data.episodeId,
       overwriteExisting,
-      concurrency,
     };
 
     logger.info(ctx, 'Starting batch dialogue generation');
@@ -327,8 +182,7 @@ export const batchGenerateDialogueAction = enhanceAction(
 
     const episodeData = episode as EpisodeResponse;
     const accountId = episodeData.projects?.account_id;
-    // projectId available for future use (e.g., cost tracking per project)
-    const _projectId = episodeData.project_id;
+    const projectId = episodeData.project_id;
 
     if (!accountId) {
       throw new Error('Could not determine account for episode');
@@ -418,14 +272,17 @@ export const batchGenerateDialogueAction = enhanceAction(
       );
     }
 
-    // 7. Create batch job
+    // 7. Get TTS model for the project
+    const ttsModel = await getProjectTTSModelForBatch(projectId);
+
+    // 8. Create batch job
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: batchJob, error: jobError } = await (client as any)
       .from('batch_generation_jobs')
       .insert({
         episode_id: data.episodeId,
         account_id: accountId,
-        status: 'queued',
+        status: 'processing',
         total_lines: linesToProcess.length,
         completed_lines: 0,
         failed_lines: 0,
@@ -433,6 +290,7 @@ export const batchGenerateDialogueAction = enhanceAction(
         actual_cost: 0,
         voice_assignments: voiceAssignments,
         errors: [],
+        started_at: new Date().toISOString(),
       })
       .select()
       .single();
@@ -446,21 +304,44 @@ export const batchGenerateDialogueAction = enhanceAction(
 
     logger.info(
       { ...ctx, batchJobId: job.id, estimatedCost },
-      'Batch job created',
+      'Batch job created, dispatching to voice queue',
     );
 
-    // 8. Start background processing (fire and forget)
-    // Note: Using void to explicitly ignore the promise for background processing
-    void processBatchInBackground(
-      job.id,
-      linesToProcess,
-      voiceAssignments,
-      concurrency,
+    // 9. Dispatch all lines to the voice SQS queue
+    const voiceJobs = linesToProcess.map((line) => {
+      const assignment = line.character_asset_id
+        ? voiceAssignments[line.character_asset_id]
+        : null;
+
+      return {
+        dialogueLineId: line.id,
+        batchJobId: job.id,
+        episodeId: data.episodeId,
+        accountId,
+        voiceId: assignment?.voiceId ?? '',
+        ttsModel,
+        voiceSettings: {
+          stability: assignment?.settings?.stability ?? 0.5,
+          similarityBoost: assignment?.settings?.similarityBoost ?? 0.75,
+          style: assignment?.settings?.style,
+          speed: assignment?.settings?.speed,
+        },
+        text: line.text,
+        characterAssetId: line.character_asset_id ?? undefined,
+        userId: user.id,
+        overwriteExisting: true,
+      };
+    });
+
+    await queueVoiceJobs(voiceJobs);
+
+    logger.info(
+      { ...ctx, batchJobId: job.id, queuedCount: voiceJobs.length },
+      'All dialogue lines dispatched to voice queue',
     );
 
-    // 9. Return batch job info immediately
-    const estimatedDuration =
-      Math.ceil(linesToProcess.length / concurrency) * 10;
+    // 10. Return batch job info immediately
+    const estimatedDuration = Math.ceil(linesToProcess.length / 5) * 10;
 
     return {
       batchJobId: job.id,
@@ -524,7 +405,11 @@ export const getBatchStatusAction = enhanceAction(
       jobData.total_lines - jobData.completed_lines - jobData.failed_lines;
     const percentage =
       jobData.total_lines > 0
-        ? Math.round((jobData.completed_lines / jobData.total_lines) * 100)
+        ? Math.round(
+            ((jobData.completed_lines + jobData.failed_lines) /
+              jobData.total_lines) *
+              100,
+          )
         : 0;
 
     // Estimate completion time based on current progress
@@ -640,29 +525,63 @@ export const retryFailedDialogueAction = enhanceAction(
       'Found failed lines to retry',
     );
 
-    // 3. Reset job status for retry (preserve completed_lines and actual_cost)
+    // 3. Get the episode's project ID for TTS model
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: episode } = await (client as any)
+      .from('episodes')
+      .select('project_id')
+      .eq('id', jobData.episode_id)
+      .single();
+
+    const ttsModel = episode?.project_id
+      ? await getProjectTTSModelForBatch(episode.project_id as string)
+      : 'eleven_multilingual_v2';
+
+    // 4. Reset job status for retry (reset failed count, preserve completed)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client as any)
       .from('batch_generation_jobs')
       .update({
         status: 'processing',
+        failed_lines: 0,
+        total_lines: jobData.completed_lines + linesToRetry.length,
         started_at: new Date().toISOString(),
         completed_at: null,
+        errors: [],
       })
       .eq('id', data.batchJobId);
 
-    // 4. Start background processing for failed lines
-    // Pass existing progress to preserve it during retry
-    void processBatchInBackground(
-      jobData.id,
-      linesToRetry,
-      jobData.voice_assignments,
-      5, // Default concurrency for retries
-      {
-        initialCompleted: jobData.completed_lines,
-        initialCost: jobData.actual_cost,
-        previousErrors: jobData.errors,
-      },
+    // 5. Dispatch failed lines to voice queue
+    const voiceJobs = linesToRetry.map((line) => {
+      const assignment = line.character_asset_id
+        ? jobData.voice_assignments[line.character_asset_id]
+        : null;
+
+      return {
+        dialogueLineId: line.id,
+        batchJobId: jobData.id,
+        episodeId: jobData.episode_id,
+        accountId: jobData.account_id,
+        voiceId: assignment?.voiceId ?? '',
+        ttsModel,
+        voiceSettings: {
+          stability: assignment?.settings?.stability ?? 0.5,
+          similarityBoost: assignment?.settings?.similarityBoost ?? 0.75,
+          style: assignment?.settings?.style,
+          speed: assignment?.settings?.speed,
+        },
+        text: line.text,
+        characterAssetId: line.character_asset_id ?? undefined,
+        userId: user.id,
+        overwriteExisting: true,
+      };
+    });
+
+    await queueVoiceJobs(voiceJobs);
+
+    logger.info(
+      { ...ctx, queuedCount: voiceJobs.length },
+      'Failed lines dispatched to voice queue for retry',
     );
 
     return {
@@ -734,5 +653,172 @@ export const cancelBatchAction = enhanceAction(
   },
   {
     schema: CancelBatchSchema,
+  },
+);
+
+/**
+ * Reset stale 'generating' dialogue lines back to 'pending'
+ * Called on audio studio mount to recover from crashes/stale state
+ */
+export const resetStaleGeneratingLinesAction = enhanceAction(
+  async (data: {
+    episodeId: string;
+  }): Promise<{ resetCount: number }> => {
+    const logger = await getLogger();
+    const ctx = {
+      name: 'batch.resetStale',
+      episodeId: data.episodeId,
+    };
+
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Check for active batch jobs before resetting — don't kill running batches
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: activeJob } = await (client as any)
+      .from('batch_generation_jobs')
+      .select('id, started_at')
+      .eq('episode_id', data.episodeId)
+      .in('status', ['queued', 'processing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    // Only reset if no active job, or job is stale (>5 minutes without progress)
+    if (activeJob?.started_at) {
+      const elapsed =
+        Date.now() - new Date(activeJob.started_at as string).getTime();
+      const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+
+      if (elapsed < STALE_THRESHOLD_MS) {
+        logger.info(
+          { ...ctx, activeJobId: activeJob.id },
+          'Active batch job found, skipping stale reset',
+        );
+        return { resetCount: 0 };
+      }
+    }
+
+    // Reset any dialogue lines stuck in 'generating' status back to 'pending'
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: updated, error } = await (client as any)
+      .from('dialogue_lines')
+      .update({ status: 'pending' })
+      .eq('episode_id', data.episodeId)
+      .eq('status', 'generating')
+      .select('id');
+
+    if (error) {
+      logger.error({ ...ctx, error }, 'Failed to reset stale generating lines');
+      return { resetCount: 0 };
+    }
+
+    const resetCount = updated?.length ?? 0;
+
+    if (resetCount > 0) {
+      logger.info(
+        { ...ctx, resetCount },
+        'Reset stale generating lines to pending',
+      );
+
+      // Also mark any stuck batch jobs as failed
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (client as any)
+        .from('batch_generation_jobs')
+        .update({
+          status: 'failed',
+          completed_at: new Date().toISOString(),
+        })
+        .eq('episode_id', data.episodeId)
+        .in('status', ['queued', 'processing']);
+    }
+
+    return { resetCount };
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+    }),
+  },
+);
+
+/**
+ * Check for an active or recently completed batch job for an episode.
+ * Used on mount to resume polling if a batch is in progress.
+ */
+export const getActiveBatchForEpisodeAction = enhanceAction(
+  async (data: {
+    episodeId: string;
+  }): Promise<BatchJobStatus | null> => {
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // Find the most recent active batch job for this episode
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: job } = await (client as any)
+      .from('batch_generation_jobs')
+      .select(
+        `
+        id, episode_id, account_id, status, total_lines,
+        completed_lines, failed_lines, estimated_cost, actual_cost,
+        voice_assignments, errors, started_at, completed_at,
+        created_at, updated_at
+      `,
+      )
+      .eq('episode_id', data.episodeId)
+      .in('status', ['queued', 'processing'])
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (!job) {
+      return null;
+    }
+
+    const jobData = job as BatchJobResponse;
+
+    const pending =
+      jobData.total_lines - jobData.completed_lines - jobData.failed_lines;
+    const percentage =
+      jobData.total_lines > 0
+        ? Math.round(
+            ((jobData.completed_lines + jobData.failed_lines) /
+              jobData.total_lines) *
+              100,
+          )
+        : 0;
+
+    return {
+      batchJobId: jobData.id,
+      status: jobData.status as BatchJobStatus['status'],
+      progress: {
+        total: jobData.total_lines,
+        completed: jobData.completed_lines,
+        failed: jobData.failed_lines,
+        pending,
+        percentage,
+      },
+      cost: {
+        estimated: jobData.estimated_cost,
+        actual: jobData.actual_cost,
+      },
+      errors: jobData.errors ?? [],
+      startedAt: jobData.started_at,
+      completedAt: jobData.completed_at,
+      estimatedCompletionAt: null,
+    };
+  },
+  {
+    schema: z.object({
+      episodeId: z.string().uuid(),
+    }),
   },
 );

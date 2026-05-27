@@ -70,16 +70,16 @@ export function ScreenplayScreen({
   } = useLlmJob<{ success: boolean }>('screenplay-conversion');
 
   // Handle shot-generation async result
+  // NOTE: Navigation is handled immediately on queue (see handleGenerateShotList).
+  // The visual-studio page has its own WebSocket handler + GeneratingState to detect completion.
+  // This handler only needs to refetch if the user is still on this page when it completes.
   useEffect(() => {
     if (llmStatus === 'success' && llmResult) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const resultData = llmResult as any;
       if (resultData?.success) {
-        // Don't show count in toast - let UI refresh show actual count
-        // This avoids confusing "0 shots" message due to timing issues
         toast.success('Shot list generated successfully');
         refetchEpisode();
-        onShotListComplete();
       }
     } else if (llmStatus === 'error') {
       setIsGenerating(false); // Reset on error
@@ -90,7 +90,6 @@ export function ScreenplayScreen({
     llmResult,
     llmError,
     refetchEpisode,
-    onShotListComplete,
     setIsGenerating,
   ]);
 
@@ -156,12 +155,14 @@ export function ScreenplayScreen({
         shotDurationMax: 8,
         videoProvider: 'kling',
       });
-      // If queued, return queued flag (WebSocket will deliver result)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((result as any)?.queued) {
         toast.info(
           'Generating shot list in background... This may take a few minutes.',
         );
+        // Navigate immediately — the visual-studio page has its own
+        // GeneratingState + WebSocket handler to detect completion and auto-refresh
+        onShotListComplete();
         return { queued: true };
       }
       // If local dev (synchronous), process immediately

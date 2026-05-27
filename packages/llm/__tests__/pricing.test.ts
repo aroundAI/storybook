@@ -111,7 +111,7 @@ describe('LLM Pricing', () => {
     it('should have pricing for Gemini 3.x models', () => {
       expect(GEMINI_PRICING['gemini-3.1-pro-preview']).toBeDefined();
       expect(GEMINI_PRICING['gemini-3.1-flash-lite']).toBeDefined();
-      expect(GEMINI_PRICING['gemini-3-flash-preview']).toBeDefined();
+      expect(GEMINI_PRICING['gemini-3.5-flash']).toBeDefined();
     });
 
     it('should have pricing for Gemini 2.5 models', () => {

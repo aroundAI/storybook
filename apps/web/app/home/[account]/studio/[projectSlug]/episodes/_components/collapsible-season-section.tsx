@@ -20,6 +20,15 @@ interface CollapsibleSeasonSectionProps {
   account: string;
   projectSlug: string;
   analytics: SeasonAnalyticsSummary | null;
+  languageMap?: Map<string, string[]>;
+  audioStatsMap?: Map<string, {
+    dialogueTotal: number;
+    dialogueCompleted: number;
+    musicTotal: number;
+    musicCompleted: number;
+    sfxTotal: number;
+    sfxCompleted: number;
+  }>;
 }
 
 export function CollapsibleSeasonSection({
@@ -30,6 +39,8 @@ export function CollapsibleSeasonSection({
   account,
   projectSlug,
   analytics,
+  languageMap,
+  audioStatsMap,
 }: CollapsibleSeasonSectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
@@ -63,6 +74,8 @@ export function CollapsibleSeasonSection({
               episode={episode}
               account={account}
               projectSlug={projectSlug}
+              availableLanguages={languageMap?.get(episode.id)}
+              audioStats={audioStatsMap?.get(episode.id)}
               isFirst={index === 0}
               isLast={index === episodes.length - 1}
             />
