@@ -56,10 +56,10 @@ export async function loadAndRenderPrompt(
   // Interpolate variables in user prompt
   const userPrompt = interpolateVariables(template.user_prompt, variables);
 
-  // Compose system prompts (sort by order, then concatenate)
+  // Compose system prompts (sort by order, interpolate variables, then concatenate)
   const systemPrompt = template.system_prompts
     .sort((a, b) => a.order - b.order)
-    .map((sp) => sp.content)
+    .map((sp) => interpolateVariables(sp.content, variables))
     .join('\n\n');
 
   // Return rendered prompt
