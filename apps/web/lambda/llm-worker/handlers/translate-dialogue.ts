@@ -87,6 +87,15 @@ export async function processTranslateDialogue(
     return { success: true, data: { translatedCount: 0 } };
   }
 
+  // Fetch target audience from episode metadata
+  const { data: episodeData } = await supabase
+    .from('episodes')
+    .select('metadata')
+    .eq('id', data.episodeId)
+    .single();
+
+  const targetAudience = (episodeData?.metadata as Record<string, unknown>)?.target_audience as string || '';
+
   // 2. Check existing translations
   const { data: existing } = await supabase
     .from('dialogue_lines')
@@ -134,6 +143,7 @@ export async function processTranslateDialogue(
     accountId: data.accountId,
     dialogueLines: linesText,
     lineCount: linesToTranslate.length,
+    targetAudience,
   });
 
   if (!orchestratorResult.success) {

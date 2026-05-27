@@ -14,6 +14,49 @@ import { z } from 'zod';
 import type { Skill } from '@kit/agent';
 import { createTool, toolError, toolSuccess } from '@kit/agent';
 
+const LANGUAGE_CODE_MAP: Record<string, string> = {
+  hindi: 'hi',
+  spanish: 'es',
+  portuguese: 'pt',
+  french: 'fr',
+  german: 'de',
+  japanese: 'ja',
+  korean: 'ko',
+  chinese: 'zh',
+  arabic: 'ar',
+  bengali: 'bn',
+};
+
+const LANGUAGE_STYLE_GUIDES: Record<string, string> = {
+  hi: `HINDI STYLE: Hinglish for young Indian audience.
+
+VOCABULARY RULES:
+- Use Devanagari script for Hindi portions, Roman for English words kept as-is
+- Grammar and sentence structure should be Hindi, with English nouns/verbs mixed in naturally
+- Common Hindi words are FINE — रहस्य, जाँच-पड़ताल, कहानी, दोस्त, etc.
+- REPLACE only formal/bureaucratic Hindi that kids wouldn't naturally use:
+  ❌ गश्त → ✅ patrol
+  ❌ संदिग्ध → ✅ suspect
+  ❌ प्रमाण → ✅ evidence
+  ❌ आक्रमण → ✅ attack
+  ❌ सैनिक → ✅ soldier
+  ❌ अभियान → ✅ mission
+  ❌ संकेत → ✅ signal
+- Keep commonly-understood English words that Indian kids use daily:
+  team, plan, cool, awesome, perfect, ready, start, stop, sorry, thanks, okay, actually, basically
+- Translate naturally — if a Hindi word feels natural for a kid, use it. If it feels like a textbook, use English.`,
+
+  bn: `BENGALI STYLE: Banglish for young Bengali audience.
+Similar to Hinglish — urban Bengali youth naturally mix English words.
+Keep commonly-understood English nouns. Use Bengali script for Bengali portions.
+Grammar should be Bengali with English words mixed in naturally.`,
+
+  _default: `TRANSLATION STYLE: Full translation to target language.
+Use MODERN COLLOQUIAL language — how young speakers actually talk TODAY.
+Avoid formal/literary vocabulary. Use the everyday register.
+Translate ALL content words (except proper nouns and audio tags).`,
+};
+
 const translateDialogueTool = createTool({
   name: 'translateDialogue',
   description:
@@ -41,12 +84,19 @@ const translateDialogueTool = createTool({
     try {
       const { executeLLM } = await import('@kit/prompt-engine/server');
 
+      // Look up language-specific style guide
+      const langCode = LANGUAGE_CODE_MAP[targetLanguage.toLowerCase()] ?? '';
+      const styleGuide = LANGUAGE_STYLE_GUIDES[langCode] ?? LANGUAGE_STYLE_GUIDES._default!;
+      const targetDemographic = (context as Record<string, unknown>).targetAudience as string || 'children and young teens (ages 6-15)';
+
       const result = await executeLLM<string>({
         templateSlug: 'dialogue-translation',
         variables: {
           dialogue_lines: dialogueLines,
           target_language: targetLanguage,
           preserve_timing: preserveTiming,
+          language_style_guide: styleGuide,
+          target_demographic: targetDemographic,
         },
         context: {
           name: 'agent.translation.translateDialogue',

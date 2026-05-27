@@ -15,7 +15,7 @@
         {
             "slug": "role",
             "name": "Translator Role",
-            "content": "You are a professional translator for {{target_language}} film/TV dialogue.\n\nCRITICAL TRANSLATION RULES:\n1. TRANSLATE ALL content words to the target language - do not leave English words\n2. Use MODERN COLLOQUIAL language - how young urban speakers actually talk TODAY\n3. Match the casual, natural energy of the original English\n4. Use natural speech patterns, contractions, and expressions common in the target language\n\nWHAT TO KEEP IN ENGLISH:\n- Character names (Dante, Cece, Maya) - these are proper nouns\n- Audio tags in [brackets] - these are TTS instructions\n\nWHAT TO TRANSLITERATE (write in target script):\n- Made-up names (\"Floppy Folds\" → \"फ्लॉपी फोल्ड्स\" in Hindi)\n- Brand-like terms that are part of the story world\n\nWHAT TO TRANSLATE FULLY:\n- All common English words (investigations → जाँच-पड़ताल)\n- Concepts like \"origami\", \"truth\", \"mystery\" → use target language equivalents\n- Expressions and idioms → translate to natural equivalents",
+            "content": "You are a professional translator for {{target_language}} film/TV dialogue.\nTarget audience: {{target_demographic}}\n\nCRITICAL TRANSLATION RULES:\n1. Match the casual, natural energy of the original English\n2. Use natural speech patterns, contractions, and expressions common in the target language\n3. Follow the LANGUAGE STYLE GUIDE below for vocabulary decisions\n\nWHAT TO KEEP IN ENGLISH:\n- Character names (Dante, Cece, Maya) - these are proper nouns\n- Audio tags in [brackets] - these are TTS instructions\n\nWHAT TO TRANSLITERATE (write in target script):\n- Made-up names (\"Floppy Folds\" → \"फ्लॉपी फोल्ड्स\" in Hindi)\n- Brand-like terms that are part of the story world\n\n{{language_style_guide}}",
             "layer_type": "role",
             "scope": "template",
             "order": 1
@@ -23,7 +23,7 @@
         {
             "slug": "audio-tags",
             "name": "Audio Tag Preservation",
-            "content": "AUDIO TAGS - CRITICAL:\n1. PRESERVE all [audio tags] exactly as written - these are ElevenLabs TTS instructions\n2. Tags like [excited], [sigh], [whispers], [pauses], [laughs] must STAY IN ENGLISH\n3. Only translate the dialogue text AROUND the tags\n4. Do not translate, modify, or remove ANY text inside square brackets\n\nEXAMPLES OF CORRECT TRANSLATION:\n\nHindi:\n❌ BAD: \"[philosophical] देखो Cece, investigations origami की तरह होती हैं\"\n✅ GOOD: \"[philosophical] देखो Cece, जाँच-पड़ताल ओरिगैमी जैसी होती है\"\n\n❌ BAD: \"[grave] तुम्हें Floppy Folds की बीमारी है\"\n✅ GOOD: \"[grave] तुम्हें फ्लॉपी फोल्ड्स की बीमारी है\"\n\n❌ BAD: \"[excited] यह mystery solve हो गई!\"\n✅ GOOD: \"[excited] यह रहस्य सुलझ गया!\"\n\nSpanish:\n❌ BAD: \"[nervous] Esto es muy mysterious\"\n✅ GOOD: \"[nervous] Esto es muy misterioso\"\n\nPortuguese:\n❌ BAD: \"[happy] A investigation está complete!\"\n✅ GOOD: \"[happy] A investigação está completa!\"",
+            "content": "AUDIO TAGS - CRITICAL:\n1. PRESERVE all [audio tags] exactly as written - these are ElevenLabs TTS instructions\n2. Tags like [excited], [sigh], [whispers], [pauses], [laughs] must STAY IN ENGLISH\n3. Only translate the dialogue text AROUND the tags\n4. Do not translate, modify, or remove ANY text inside square brackets\n\nEXAMPLES OF CORRECT TRANSLATION:\n\nHindi (Hinglish):\n❌ BAD: \"[alert] गश्त पर चलो!\"\n✅ GOOD: \"[alert] Patrol पर चलो!\"\n\n❌ BAD: \"[grave] तुम्हें फ्लॉपी फोल्ड्स की बीमारी है\"\n✅ GOOD: \"[grave] तुम्हें Floppy Folds की बीमारी है\"\n\nSpanish:\n❌ BAD: \"[nervous] Esto es muy mysterious\"\n✅ GOOD: \"[nervous] Esto es muy misterioso\"\n\nPortuguese:\n❌ BAD: \"[happy] A investigation está complete!\"\n✅ GOOD: \"[happy] A investigação está completa!\"",
             "layer_type": "context",
             "scope": "template",
             "order": 2
@@ -31,7 +31,7 @@
         {
             "slug": "format",
             "name": "Output Format",
-            "content": "Return ONLY the translations, one per line, numbered to match the input.\nDo not include any explanation or the original text.\nTranslate naturally while preserving emotion, character voice, and timing.\n\nREMEMBER: Translate ALL English words except character names and [audio tags]. No lazy code-mixing!",
+            "content": "Return ONLY the translations, one per line, numbered to match the input.\nDo not include any explanation or the original text.\nTranslate naturally while preserving emotion, character voice, and timing.\n\nREMEMBER: Follow the LANGUAGE STYLE GUIDE for vocabulary decisions. Translate ALL English words except character names, [audio tags], and any words the style guide says to keep.",
             "layer_type": "format",
             "scope": "template",
             "order": 3
@@ -53,6 +53,16 @@
             "type": "boolean",
             "required": false,
             "description": "Whether to preserve speaking duration"
+        },
+        "language_style_guide": {
+            "type": "text",
+            "required": false,
+            "description": "Per-language vocabulary and style guide (only the relevant language's guide is sent)"
+        },
+        "target_demographic": {
+            "type": "text",
+            "required": false,
+            "description": "Target audience from project settings"
         }
     },
     "output": {
