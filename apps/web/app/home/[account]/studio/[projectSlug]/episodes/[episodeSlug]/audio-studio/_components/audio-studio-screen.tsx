@@ -28,6 +28,7 @@ import type {
   DialogueLine,
   ProjectAudioSettings,
 } from '@kit/audio-generation/lib';
+import type { AudioTrack } from '@kit/audio-generation/lib';
 import {
   batchGenerateDialogueAction,
   cancelBatchAction,
@@ -39,7 +40,6 @@ import {
   getDialogueLinesAction,
 } from '@kit/audio-generation/server';
 import type { AudioStudioBulkData } from '@kit/audio-generation/server';
-
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
@@ -47,9 +47,16 @@ import { toast } from '@kit/ui/sonner';
 
 import { DialogueTimeline } from './dialogue-timeline';
 import { LanguageTabBar, type SupportedLanguage } from './language-tab-bar';
-import type { AudioTrack } from '@kit/audio-generation/lib';
-import { MusicTimeline, type MusicTimelineHandle, type MusicTimelineStats } from './music-timeline';
-import { SfxTimeline, type SfxTimelineHandle, type SfxTimelineStats } from './sfx-timeline';
+import {
+  MusicTimeline,
+  type MusicTimelineHandle,
+  type MusicTimelineStats,
+} from './music-timeline';
+import {
+  SfxTimeline,
+  type SfxTimelineHandle,
+  type SfxTimelineStats,
+} from './sfx-timeline';
 
 interface AudioStudioScreenProps {
   episode: EpisodeWithShots;
@@ -100,15 +107,31 @@ export function AudioStudioScreen({
   const timelineContainerRef = useRef<HTMLDivElement>(null);
 
   // Music & SFX stats (reported from child timelines)
-  const [musicStats, setMusicStats] = useState<MusicTimelineStats>({ total: 0, completed: 0, pending: 0, processing: 0, failed: 0 });
-  const [sfxStats, setSfxStats] = useState<SfxTimelineStats>({ total: 0, completed: 0, pending: 0, processing: 0, failed: 0 });
+  const [musicStats, setMusicStats] = useState<MusicTimelineStats>({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    processing: 0,
+    failed: 0,
+  });
+  const [sfxStats, setSfxStats] = useState<SfxTimelineStats>({
+    total: 0,
+    completed: 0,
+    pending: 0,
+    processing: 0,
+    failed: 0,
+  });
   const musicTimelineRef = useRef<MusicTimelineHandle>(null);
   const sfxTimelineRef = useRef<SfxTimelineHandle>(null);
 
   // Pre-loaded audio tracks and cues from bulk action (passed to music/sfx timelines)
-  const [initialAudioTracks, setInitialAudioTracks] = useState<AudioTrack[] | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [initialAudioCues, setInitialAudioCues] = useState<Array<Record<string, any>> | null>(null);
+  const [initialAudioTracks, setInitialAudioTracks] = useState<
+    AudioTrack[] | null
+  >(null);
+   
+  const [initialAudioCues, setInitialAudioCues] = useState<Array<
+    Record<string, any>
+  > | null>(null);
 
   // Audio cue generation state
   const [isGeneratingCues, setIsGeneratingCues] = useState(false);
@@ -132,7 +155,9 @@ export function AudioStudioScreen({
     status: audioCueGenStatus,
     result: audioCueGenResult,
     error: audioCueGenError,
-  } = useLlmJob<{ success: boolean; cuesCreated: number }>('audio-cue-generation');
+  } = useLlmJob<{ success: boolean; cuesCreated: number }>(
+    'audio-cue-generation',
+  );
 
   // Bulk-load ALL audio studio data on mount (replaces 5+ separate server actions)
   const fetchInitialData = useCallback(async () => {
@@ -173,31 +198,68 @@ export function AudioStudioScreen({
       // Compute music stats from bulk data (so tab counts show immediately)
       {
         // Music tracks (user-created)
-        const musicTracks = bulkData.audioTracks.tracks.filter((t) => t.type === 'music');
+        const musicTracks = bulkData.audioTracks.tracks.filter(
+          (t) => t.type === 'music',
+        );
         // Music cues (auto-generated, not yet placed)
-        const musicCueRows = (bulkData.audioCues as Array<{ cue_type: string; status: string | null }>)
+        const musicCueRows = (
+          bulkData.audioCues as Array<{
+            cue_type: string;
+            status: string | null;
+          }>
+        )
           .filter((c) => c.cue_type === 'music')
           .filter((c) => c.status !== 'placed' && c.status !== 'matched');
 
         const mTotal = musicTracks.length + musicCueRows.length;
-        const mCompleted = musicTracks.filter((t) => t.status === 'completed').length;
-        const mPending = musicTracks.filter((t) => t.status === 'pending').length + musicCueRows.filter((c) => c.status === 'pending').length;
-        const mProcessing = musicTracks.filter((t) => t.status === 'processing').length + musicCueRows.filter((c) => c.status === 'generating').length;
-        const mFailed = musicTracks.filter((t) => t.status === 'failed').length + musicCueRows.filter((c) => c.status === 'failed').length;
-        setMusicStats({ total: mTotal, completed: mCompleted, pending: mPending, processing: mProcessing, failed: mFailed });
+        const mCompleted = musicTracks.filter(
+          (t) => t.status === 'completed',
+        ).length;
+        const mPending =
+          musicTracks.filter((t) => t.status === 'pending').length +
+          musicCueRows.filter((c) => c.status === 'pending').length;
+        const mProcessing =
+          musicTracks.filter((t) => t.status === 'processing').length +
+          musicCueRows.filter((c) => c.status === 'generating').length;
+        const mFailed =
+          musicTracks.filter((t) => t.status === 'failed').length +
+          musicCueRows.filter((c) => c.status === 'failed').length;
+        setMusicStats({
+          total: mTotal,
+          completed: mCompleted,
+          pending: mPending,
+          processing: mProcessing,
+          failed: mFailed,
+        });
       }
 
       // Compute SFX stats from bulk data
       {
-        const sfxCueRows = (bulkData.audioCues as Array<{ cue_type: string; status: string | null }>)
-          .filter((c) => c.cue_type === 'sfx' || c.cue_type === 'ambient');
+        const sfxCueRows = (
+          bulkData.audioCues as Array<{
+            cue_type: string;
+            status: string | null;
+          }>
+        ).filter((c) => c.cue_type === 'sfx' || c.cue_type === 'ambient');
 
         const sTotal = sfxCueRows.length;
-        const sCompleted = sfxCueRows.filter((c) => c.status === 'placed' || c.status === 'matched').length;
-        const sPending = sfxCueRows.filter((c) => c.status === 'pending').length;
-        const sProcessing = sfxCueRows.filter((c) => c.status === 'generating').length;
+        const sCompleted = sfxCueRows.filter(
+          (c) => c.status === 'placed' || c.status === 'matched',
+        ).length;
+        const sPending = sfxCueRows.filter(
+          (c) => c.status === 'pending',
+        ).length;
+        const sProcessing = sfxCueRows.filter(
+          (c) => c.status === 'generating',
+        ).length;
         const sFailed = sfxCueRows.filter((c) => c.status === 'failed').length;
-        setSfxStats({ total: sTotal, completed: sCompleted, pending: sPending, processing: sProcessing, failed: sFailed });
+        setSfxStats({
+          total: sTotal,
+          completed: sCompleted,
+          pending: sPending,
+          processing: sProcessing,
+          failed: sFailed,
+        });
       }
 
       // Stale reset notification (fire-and-forget on server, just inform user)
@@ -213,7 +275,7 @@ export function AudioStudioScreen({
     } finally {
       setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [episode.id, episode.projectId]);
 
   // Fetch dialogue lines for a specific language (with cache)
@@ -560,8 +622,7 @@ export function AudioStudioScreen({
   };
 
   const isGenerating =
-    batchStatus?.status === 'queued' ||
-    batchStatus?.status === 'processing';
+    batchStatus?.status === 'queued' || batchStatus?.status === 'processing';
 
   const hasNoCues = musicStats.total === 0 && sfxStats.total === 0;
 
@@ -591,8 +652,6 @@ export function AudioStudioScreen({
       }
     });
   };
-
-
 
   const handleClearAllVoices = () => {
     if (
@@ -822,10 +881,18 @@ export function AudioStudioScreen({
             {/* Status badges - context-aware per tab */}
             <div className="flex items-center gap-1.5">
               <span className="rounded-md border border-green-100 bg-green-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-400">
-                {activeTab === 'dialogue' ? stats.completed : activeTab === 'music' ? musicStats.completed : sfxStats.completed}
+                {activeTab === 'dialogue'
+                  ? stats.completed
+                  : activeTab === 'music'
+                    ? musicStats.completed
+                    : sfxStats.completed}
               </span>
               <span className="rounded-md border border-orange-100 bg-orange-50 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-orange-700 dark:border-orange-800 dark:bg-orange-900/20 dark:text-orange-400">
-                {activeTab === 'dialogue' ? stats.pending : activeTab === 'music' ? musicStats.pending : sfxStats.pending}
+                {activeTab === 'dialogue'
+                  ? stats.pending
+                  : activeTab === 'music'
+                    ? musicStats.pending
+                    : sfxStats.pending}
               </span>
             </div>
 
@@ -882,8 +949,8 @@ export function AudioStudioScreen({
               </Button>
             )}
 
-            {activeTab === 'dialogue' && (
-              isGenerating ? (
+            {activeTab === 'dialogue' &&
+              (isGenerating ? (
                 <Button
                   onClick={handleCancelBatch}
                   disabled={isPending}
@@ -897,15 +964,17 @@ export function AudioStudioScreen({
               ) : (
                 <Button
                   onClick={handleGenerateAll}
-                  disabled={isPending || stats.pending + stats.generating + stats.failed === 0}
+                  disabled={
+                    isPending ||
+                    stats.pending + stats.generating + stats.failed === 0
+                  }
                   size="sm"
                   className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 >
                   <Play className="h-4 w-4" />
                   Generate All Pending
                 </Button>
-              )
-            )}
+              ))}
 
             {activeTab === 'music' && (
               <>
@@ -1045,7 +1114,7 @@ export function AudioStudioScreen({
               </div>
 
               {/* Percentage */}
-              <span className="text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-400">
+              <span className="text-xs font-semibold text-gray-600 tabular-nums dark:text-gray-400">
                 {batchStatus.percentage}%
               </span>
 

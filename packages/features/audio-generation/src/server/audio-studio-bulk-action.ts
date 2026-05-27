@@ -120,8 +120,7 @@ function transformDialogueLine(row: DialogueLineRow): DialogueLine {
             (row.generation_metadata.durationSeconds as number) ?? undefined,
           error: (row.generation_metadata.error as string) ?? undefined,
           provider: (row.generation_metadata.provider as string) ?? undefined,
-          costCents:
-            (row.generation_metadata.costCents as number) ?? undefined,
+          costCents: (row.generation_metadata.costCents as number) ?? undefined,
           voiceId: (row.generation_metadata.voiceId as string) ?? undefined,
           generatedAt:
             (row.generation_metadata.generatedAt as string) ?? undefined,

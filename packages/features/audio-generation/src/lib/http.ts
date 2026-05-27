@@ -49,11 +49,9 @@ export async function fetchWithRetry<T>(
             ? (detail as Record<string, unknown>)?.message
             : typeof detail === 'string'
               ? detail
-              : (errorData as Record<string, unknown>)?.message ??
-                response.statusText;
-        throw new Error(
-          `API error (${response.status}): ${String(message)}`,
-        );
+              : ((errorData as Record<string, unknown>)?.message ??
+                response.statusText);
+        throw new Error(`API error (${response.status}): ${String(message)}`);
       }
 
       if (binary) {

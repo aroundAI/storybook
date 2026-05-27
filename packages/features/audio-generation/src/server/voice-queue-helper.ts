@@ -84,9 +84,7 @@ export async function queueVoiceJob(params: VoiceJobMessage): Promise<void> {
     );
   }
 
-  console.log(
-    `[SQS] Queuing voice job for dialogue ${params.dialogueLineId}`,
-  );
+  console.log(`[SQS] Queuing voice job for dialogue ${params.dialogueLineId}`);
 
   await sqs.send(
     new SendMessageCommand({

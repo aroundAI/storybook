@@ -36,6 +36,13 @@ import { generateSfxAction } from './sfx-actions';
  * and trigger generation for SFX/ambient, display prompts for music.
  */
 
+/**
+ * Audio Cue Actions
+ *
+ * Process audioCues from screenplay scenes into audio_cues table
+ * and trigger generation for SFX/ambient, display prompts for music.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================
@@ -441,7 +448,11 @@ export const generateAudioCuesAction = enhanceAction(
     const { data: user, error: authError } = await requireUser(client);
 
     if (authError || !user) {
-      return { success: false, queued: false, error: 'Authentication required' };
+      return {
+        success: false,
+        queued: false,
+        error: 'Authentication required',
+      };
     }
 
     // Validate episode exists and has shots
@@ -471,7 +482,8 @@ export const generateAudioCuesAction = enhanceAction(
       return {
         success: false,
         queued: false,
-        error: 'Episode must have shots generated before audio cues can be created',
+        error:
+          'Episode must have shots generated before audio cues can be created',
       };
     }
 
@@ -488,18 +500,16 @@ export const generateAudioCuesAction = enhanceAction(
       const { queueLlmJob } = await import('@kit/prompt-engine/server');
 
       // Create generation job entry for tracking
-      const { error: jobError } = await client
-        .from('generation_jobs')
-        .insert({
-          reference_type: 'episode',
-          reference_id: data.episodeId,
-          job_type: 'audio_cue_generation',
-          status: 'queued',
-          account_id: accountId,
-          project_id: episode.project_id,
-          idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
-          input_data: { episodeId: data.episodeId },
-        });
+      const { error: jobError } = await client.from('generation_jobs').insert({
+        reference_type: 'episode',
+        reference_id: data.episodeId,
+        job_type: 'audio_cue_generation',
+        status: 'queued',
+        account_id: accountId,
+        project_id: episode.project_id,
+        idempotency_key: `audio-cues-${data.episodeId}-${Date.now()}`,
+        input_data: { episodeId: data.episodeId },
+      });
 
       if (jobError) {
         console.error(
@@ -533,6 +543,124 @@ export const generateAudioCuesAction = enhanceAction(
   {
     schema: z.object({
       episodeId: z.string().uuid(),
+    }),
+  },
+);
+
+// =============================================================================
+// Season-level audio summary
+// =============================================================================
+
+interface SeasonEpisodeAudioSummary {
+  episodeId: string;
+  episodeNumber: number;
+  title: string;
+  slug: string | null;
+  hasAudioCues: boolean;
+  audioCueCount: number;
+  dialogue: { total: number; completed: number; pending: number };
+  music: { total: number; completed: number; pending: number };
+  sfx: { total: number; completed: number; pending: number };
+}
+
+/**
+ * Fetch detailed audio status for every episode in a season.
+ *
+ * Used by the "Generate All Sound" modal to show per-episode breakdowns
+ * and determine which episodes / steps still need generation.
+ */
+export const getSeasonAudioSummaryAction = enhanceAction(
+  async (data): Promise<{ episodes: SeasonEpisodeAudioSummary[] }> => {
+    const client = getSupabaseServerClient();
+    const { data: user, error: authError } = await requireUser(client);
+
+    if (authError || !user) {
+      throw new Error('Authentication required');
+    }
+
+    // 1. Fetch episodes for the season
+    const { data: episodes, error: epError } = await client
+      .from('episodes')
+      .select('id, number, title, slug, season_id')
+      .eq('season_id', data.seasonId)
+      .is('deleted_at', null)
+      .order('number', { ascending: true });
+
+    if (epError || !episodes) {
+      throw new Error('Failed to fetch episodes for season');
+    }
+
+    if (episodes.length === 0) {
+      return { episodes: [] };
+    }
+
+    const episodeIds = episodes.map((e) => e.id);
+
+    // 2. Fetch audio cue counts per episode (grouped)
+    const { data: cueRows } = await client
+      .from('audio_cues')
+      .select('id, episode_id, cue_type, status')
+      .in('episode_id', episodeIds);
+
+    // 3. Fetch dialogue line counts per episode
+    const { data: dialogueRows } = await client
+      .from('dialogue_lines')
+      .select('id, episode_id, status, audio_url')
+      .in('episode_id', episodeIds);
+
+    // 4. Build per-episode summary
+    const result: SeasonEpisodeAudioSummary[] = episodes.map((ep) => {
+      const epCues = (cueRows ?? []).filter((c) => c.episode_id === ep.id);
+      const epDialogue = (dialogueRows ?? []).filter(
+        (d) => d.episode_id === ep.id,
+      );
+
+      const musicCues = epCues.filter((c) => c.cue_type === 'music');
+      const sfxCues = epCues.filter(
+        (c) => c.cue_type === 'sfx' || c.cue_type === 'ambient',
+      );
+
+      const musicCompleted = musicCues.filter(
+        (c) => c.status === 'placed' || c.status === 'matched',
+      ).length;
+      const sfxCompleted = sfxCues.filter(
+        (c) => c.status === 'placed' || c.status === 'matched',
+      ).length;
+
+      const dialogueCompleted = epDialogue.filter(
+        (d) => d.audio_url && d.status === 'completed',
+      ).length;
+
+      return {
+        episodeId: ep.id,
+        episodeNumber: ep.number,
+        title: ep.title,
+        slug: ep.slug,
+        hasAudioCues: epCues.length > 0,
+        audioCueCount: epCues.length,
+        dialogue: {
+          total: epDialogue.length,
+          completed: dialogueCompleted,
+          pending: epDialogue.length - dialogueCompleted,
+        },
+        music: {
+          total: musicCues.length,
+          completed: musicCompleted,
+          pending: musicCues.length - musicCompleted,
+        },
+        sfx: {
+          total: sfxCues.length,
+          completed: sfxCompleted,
+          pending: sfxCues.length - sfxCompleted,
+        },
+      };
+    });
+
+    return { episodes: result };
+  },
+  {
+    schema: z.object({
+      seasonId: z.string().uuid(),
     }),
   },
 );

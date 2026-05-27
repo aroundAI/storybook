@@ -12,23 +12,26 @@ interface SeasonAnalyticsSummary {
   avgEngagementRate: number;
 }
 
+interface AudioStats {
+  dialogueTotal: number;
+  dialogueCompleted: number;
+  musicTotal: number;
+  musicCompleted: number;
+  sfxTotal: number;
+  sfxCompleted: number;
+}
+
 interface CollapsibleSeasonSectionProps {
   seasonId: string;
   seasonNumber: number;
   seasonName: string;
   episodes: Episode[];
   account: string;
+  projectId: string;
   projectSlug: string;
   analytics: SeasonAnalyticsSummary | null;
   languageMap?: Map<string, string[]>;
-  audioStatsMap?: Map<string, {
-    dialogueTotal: number;
-    dialogueCompleted: number;
-    musicTotal: number;
-    musicCompleted: number;
-    sfxTotal: number;
-    sfxCompleted: number;
-  }>;
+  audioStatsMap?: Map<string, AudioStats>;
 }
 
 export function CollapsibleSeasonSection({
@@ -37,6 +40,7 @@ export function CollapsibleSeasonSection({
   seasonName,
   episodes,
   account,
+  projectId,
   projectSlug,
   analytics,
   languageMap,
@@ -55,11 +59,15 @@ export function CollapsibleSeasonSection({
   return (
     <div key={seasonId} className="space-y-3">
       <SeasonHeader
+        seasonId={seasonId}
         seasonNumber={seasonNumber}
         seasonName={seasonName}
         totalEpisodes={episodes.length}
         completedEpisodes={completedEpisodes}
         inProgressEpisodes={inProgressEpisodes}
+        projectId={projectId}
+        episodes={episodes}
+        audioStatsMap={audioStatsMap}
         analytics={analytics}
         isCollapsed={isCollapsed}
         onToggleCollapse={() => setIsCollapsed(!isCollapsed)}

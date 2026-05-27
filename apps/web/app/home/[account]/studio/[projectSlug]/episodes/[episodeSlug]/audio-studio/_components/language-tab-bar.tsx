@@ -159,9 +159,7 @@ export function LanguageTabBar({
       }
       onLanguageAdded?.();
     } catch (error) {
-      toast.error(
-        `Failed to delete: ${(error as Error).message}`,
-      );
+      toast.error(`Failed to delete: ${(error as Error).message}`);
     } finally {
       setDeletingLang(null);
     }
@@ -189,7 +187,7 @@ export function LanguageTabBar({
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
-                  className="-ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/0 text-transparent opacity-0 transition-all hover:bg-red-500/20 hover:text-red-400 group-hover/tab:opacity-100 group-hover/tab:text-red-400/60"
+                  className="-ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500/0 text-transparent opacity-0 transition-all group-hover/tab:text-red-400/60 group-hover/tab:opacity-100 hover:bg-red-500/20 hover:text-red-400"
                   title={`Delete ${LANG_INFO[lang].name} translation`}
                 >
                   <X className="h-3 w-3" />

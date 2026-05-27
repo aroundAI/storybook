@@ -273,7 +273,7 @@ export function StudioSettingsForm({
                   <FormControl>
                     <Textarea
                       placeholder="Describe your project..."
-                      className="resize-y [field-sizing:content]"
+                      className="[field-sizing:content] resize-y"
                       rows={3}
                       {...field}
                     />
@@ -507,7 +507,7 @@ export function StudioSettingsForm({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., Noir-inspired with saturated colors, dramatic shadows, and whimsical undertones"
-                      className="resize-y [field-sizing:content]"
+                      className="[field-sizing:content] resize-y"
                       rows={3}
                       {...field}
                     />
@@ -716,7 +716,7 @@ function RecurringElementCard({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., The family dinner table"
-                      className="resize-y [field-sizing:content] min-h-[38px]"
+                      className="[field-sizing:content] min-h-[38px] resize-y"
                       rows={1}
                       {...field}
                     />
@@ -739,7 +739,7 @@ function RecurringElementCard({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., The character reflects on their day and shares what they learned"
-                      className="resize-y [field-sizing:content]"
+                      className="[field-sizing:content] resize-y"
                       rows={2}
                       {...field}
                     />
@@ -760,15 +760,15 @@ function RecurringElementCard({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., show examples of how the character speaks, thinks, and emotes — the AI will internalize the tone and generate original dialogue"
-                      className="resize-y [field-sizing:content]"
+                      className="[field-sizing:content] resize-y"
                       rows={2}
                       {...field}
                     />
                   </FormControl>
                   <FormDescription>
-                    Examples showing how characters speak and think.
-                    The AI will learn the tone, cadence, and personality
-                    — never copy lines verbatim.
+                    Examples showing how characters speak and think. The AI will
+                    learn the tone, cadence, and personality — never copy lines
+                    verbatim.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

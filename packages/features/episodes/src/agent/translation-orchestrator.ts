@@ -76,7 +76,11 @@ export async function runTranslationOrchestrator(
       {
         userPrompt: buildTranslationPrompt(input),
       },
-      { accountId: input.accountId, targetAudience: input.targetAudience || 'children and young teens (ages 6-15)' },
+      {
+        accountId: input.accountId,
+        targetAudience:
+          input.targetAudience || 'children and young teens (ages 6-15)',
+      },
     );
 
   if (!result.success || !result.data) {

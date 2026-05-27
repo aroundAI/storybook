@@ -94,7 +94,9 @@ export async function processTranslateDialogue(
     .eq('id', data.episodeId)
     .single();
 
-  const targetAudience = (episodeData?.metadata as Record<string, unknown>)?.target_audience as string || '';
+  const targetAudience =
+    ((episodeData?.metadata as Record<string, unknown>)
+      ?.target_audience as string) || '';
 
   // 2. Check existing translations
   const { data: existing } = await supabase
@@ -161,7 +163,8 @@ export async function processTranslateDialogue(
 
   // 5. Validate translations before insert — refuse to save English as target language
   const missingOrIdentical = linesToTranslate.filter(
-    (line, i) => !cleanedTranslations[i] || cleanedTranslations[i] === line.text,
+    (line, i) =>
+      !cleanedTranslations[i] || cleanedTranslations[i] === line.text,
   ).length;
 
   if (missingOrIdentical > linesToTranslate.length * 0.5) {

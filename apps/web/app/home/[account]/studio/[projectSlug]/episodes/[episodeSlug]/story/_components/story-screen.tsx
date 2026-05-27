@@ -86,13 +86,7 @@ export function StoryScreen({
       setIsGenerating(false); // Reset on error
       toast.error(llmError || 'Failed to convert to screenplay');
     }
-  }, [
-    llmStatus,
-    llmResult,
-    llmError,
-    refetchEpisode,
-    setIsGenerating,
-  ]);
+  }, [llmStatus, llmResult, llmError, refetchEpisode, setIsGenerating]);
 
   // Handle story-generation result (refresh to show generated story)
   useEffect(() => {

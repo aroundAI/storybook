@@ -2,7 +2,6 @@
 
 import 'server-only';
 
-
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -29,12 +28,12 @@ import {
   RetryFailedDialogueSchema,
 } from '../lib/schemas/batch.schema';
 import { estimateVoiceCost } from '../lib/voice-utils';
-import { queueVoiceJobs } from './voice-queue-helper';
 import {
   checkAccountBudget,
   getVoiceIdForCharacter,
   getVoiceSettings,
 } from './voice-queries';
+import { queueVoiceJobs } from './voice-queue-helper';
 
 // Note: These actions use type assertions because the film studio tables
 // (batch_generation_jobs, dialogue_lines, episodes) are not yet in the generated
@@ -661,9 +660,7 @@ export const cancelBatchAction = enhanceAction(
  * Called on audio studio mount to recover from crashes/stale state
  */
 export const resetStaleGeneratingLinesAction = enhanceAction(
-  async (data: {
-    episodeId: string;
-  }): Promise<{ resetCount: number }> => {
+  async (data: { episodeId: string }): Promise<{ resetCount: number }> => {
     const logger = await getLogger();
     const ctx = {
       name: 'batch.resetStale',
@@ -751,9 +748,7 @@ export const resetStaleGeneratingLinesAction = enhanceAction(
  * Used on mount to resume polling if a batch is in progress.
  */
 export const getActiveBatchForEpisodeAction = enhanceAction(
-  async (data: {
-    episodeId: string;
-  }): Promise<BatchJobStatus | null> => {
+  async (data: { episodeId: string }): Promise<BatchJobStatus | null> => {
     const client = getSupabaseServerClient();
     const { data: user, error: authError } = await requireUser(client);
 

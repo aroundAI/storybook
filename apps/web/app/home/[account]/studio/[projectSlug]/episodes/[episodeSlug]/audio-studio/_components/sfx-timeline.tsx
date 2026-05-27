@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from 'react';
 
 import { Edit3, Loader2, Pause, Play, RefreshCw, Volume2 } from 'lucide-react';
 
@@ -70,15 +76,21 @@ function getMarkerInterval(pps: number): number {
   return 15;
 }
 
-export const SfxTimeline = React.forwardRef<SfxTimelineHandle, SfxTimelineProps>(function SfxTimeline({
-  episodeId,
-  totalDuration,
-  pixelsPerSecond,
-  onRefresh,
-  audioSettings,
-  onStatsChange,
-  initialCues: initialCuesProp,
-}, ref) {
+export const SfxTimeline = React.forwardRef<
+  SfxTimelineHandle,
+  SfxTimelineProps
+>(function SfxTimeline(
+  {
+    episodeId,
+    totalDuration,
+    pixelsPerSecond,
+    onRefresh,
+    audioSettings,
+    onStatsChange,
+    initialCues: initialCuesProp,
+  },
+  ref,
+) {
   const [cues, setCues] = useState<AudioCue[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
@@ -163,13 +175,14 @@ export const SfxTimeline = React.forwardRef<SfxTimelineHandle, SfxTimelineProps>
   useEffect(() => {
     if (!onStatsChange) return;
     const total = cues.length;
-    const completed = cues.filter((c) => c.status === 'placed' || c.status === 'matched').length;
+    const completed = cues.filter(
+      (c) => c.status === 'placed' || c.status === 'matched',
+    ).length;
     const pending = cues.filter((c) => c.status === 'pending').length;
     const processing = cues.filter((c) => c.status === 'generating').length;
     const failed = cues.filter((c) => c.status === 'failed').length;
     onStatsChange({ total, completed, pending, processing, failed });
   }, [cues, onStatsChange]);
-
 
   const handleCueClick = (cue: AudioCue, event: React.MouseEvent) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -292,9 +305,13 @@ export const SfxTimeline = React.forwardRef<SfxTimelineHandle, SfxTimelineProps>
   };
 
   // Expose generateAll via ref
-  useImperativeHandle(ref, () => ({
-    generateAll: () => void handleGenerateAll(),
-  }), [handleGenerateAll]);
+  useImperativeHandle(
+    ref,
+    () => ({
+      generateAll: () => void handleGenerateAll(),
+    }),
+    [handleGenerateAll],
+  );
 
   if (isLoading) {
     return (
