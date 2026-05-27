@@ -716,7 +716,7 @@ function RecurringElementCard({
                   <FormControl>
                     <Textarea
                       placeholder="e.g., The family dinner table"
-                      className="resize-y [field-sizing:content]"
+                      className="resize-y [field-sizing:content] min-h-[38px]"
                       rows={1}
                       {...field}
                     />

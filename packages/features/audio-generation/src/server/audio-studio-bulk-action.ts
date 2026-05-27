@@ -438,7 +438,7 @@ export const getAudioStudioBulkDataAction = enhanceAction(
     // Fire-and-forget: stale reset logic
     // -------------------------------------------------------------------------
 
-    let staleResetCount = 0;
+    const staleResetCount = 0;
 
     const shouldReset =
       !activeJob ||

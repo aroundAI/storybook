@@ -236,7 +236,7 @@ export function AssetGallery({
               {mainCast.map((character) => (
                 <AssetCard
                   key={character.id}
-                  asset={character as unknown as Asset}
+                  asset={character}
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
@@ -255,7 +255,7 @@ export function AssetGallery({
               {supportingCast.map((character) => (
                 <AssetCard
                   key={character.id}
-                  asset={character as unknown as Asset}
+                  asset={character}
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
@@ -274,7 +274,7 @@ export function AssetGallery({
               {others.map((character) => (
                 <AssetCard
                   key={character.id}
-                  asset={character as unknown as Asset}
+                  asset={character}
                   characterDetails={character}
                   onEdit={handleEdit}
                   onDelete={handleDelete}

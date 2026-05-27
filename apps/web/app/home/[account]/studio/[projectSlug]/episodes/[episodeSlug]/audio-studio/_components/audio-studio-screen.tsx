@@ -104,7 +104,6 @@ export function AudioStudioScreen({
   const sfxTimelineRef = useRef<SfxTimelineHandle>(null);
 
   // Pre-loaded audio tracks and cues from bulk action (passed to music/sfx timelines)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [initialAudioTracks, setInitialAudioTracks] = useState<AudioTrack[] | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [initialAudioCues, setInitialAudioCues] = useState<Array<Record<string, any>> | null>(null);
@@ -529,11 +528,7 @@ export function AudioStudioScreen({
     batchStatus?.status === 'queued' ||
     batchStatus?.status === 'processing';
 
-  const isBatchDone =
-    batchStatus?.status === 'completed' ||
-    batchStatus?.status === 'completed_with_errors' ||
-    batchStatus?.status === 'failed' ||
-    batchStatus?.status === 'cancelled';
+
 
   const handleClearAllVoices = () => {
     if (
