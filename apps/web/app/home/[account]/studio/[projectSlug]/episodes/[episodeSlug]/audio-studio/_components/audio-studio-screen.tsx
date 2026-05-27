@@ -9,7 +9,18 @@ import {
   useTransition,
 } from 'react';
 
-import { Download, Loader2, Minus, Play, Plus, Trash2 } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle,
+  Download,
+  Loader2,
+  Minus,
+  Play,
+  Plus,
+  Square,
+  Trash2,
+  XCircle,
+} from 'lucide-react';
 
 import type {
   CharacterAsset,
@@ -17,13 +28,16 @@ import type {
   ProjectAudioSettings,
 } from '@kit/audio-generation/lib';
 import {
+  batchGenerateDialogueAction,
+  cancelBatchAction,
   clearAllVoicesAction,
   getAvailableLanguagesAction,
+  getBatchStatusAction,
   getCharactersForEpisodeAction,
   getDialogueLinesAction,
   getProjectAudioSettings,
 } from '@kit/audio-generation/server';
-import { autoStitchAction } from '@kit/episodes/server';
+
 import type { EpisodeWithShots } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
 import { useLlmJob } from '@kit/ui/hooks';
@@ -56,6 +70,17 @@ export function AudioStudioScreen({
   const [audioSettings, setAudioSettings] =
     useState<ProjectAudioSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Batch generation state
+  const [batchJobId, setBatchJobId] = useState<string | null>(null);
+  const [batchStatus, setBatchStatus] = useState<{
+    status: string;
+    total: number;
+    completed: number;
+    failed: number;
+    percentage: number;
+  } | null>(null);
+  const batchPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Language selection state
   const [selectedLanguage, setSelectedLanguage] =
@@ -269,29 +294,135 @@ export function AudioStudioScreen({
     return episode.durationSeconds ?? 90;
   }, [scenes, episode.durationSeconds]);
 
+  // Poll batch job status
+  const pollBatchStatus = useCallback(
+    async (jobId: string) => {
+      try {
+        const status = await getBatchStatusAction({ batchJobId: jobId });
+        setBatchStatus({
+          status: status.status,
+          total: status.progress.total,
+          completed: status.progress.completed,
+          failed: status.progress.failed,
+          percentage: status.progress.percentage,
+        });
+
+        // Refresh dialogue lines to show updated statuses
+        void refreshAll();
+
+        // Stop polling when done
+        if (
+          status.status === 'completed' ||
+          status.status === 'failed' ||
+          status.status === 'cancelled'
+        ) {
+          if (batchPollRef.current) {
+            clearInterval(batchPollRef.current);
+            batchPollRef.current = null;
+          }
+
+          if (status.status === 'completed') {
+            toast.success(
+              `Generated ${status.progress.completed} voice(s)` +
+                (status.progress.failed > 0
+                  ? ` (${status.progress.failed} failed)`
+                  : ''),
+            );
+          } else if (status.status === 'failed') {
+            toast.error(
+              `Generation failed. ${status.progress.completed} completed, ${status.progress.failed} failed.`,
+            );
+          } else {
+            toast.info('Generation cancelled');
+          }
+
+          refetchEpisode();
+        }
+      } catch {
+        // If polling fails, stop polling
+        if (batchPollRef.current) {
+          clearInterval(batchPollRef.current);
+          batchPollRef.current = null;
+        }
+      }
+    },
+    [refreshAll, refetchEpisode],
+  );
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (batchPollRef.current) {
+        clearInterval(batchPollRef.current);
+      }
+    };
+  }, []);
+
   const handleGenerateAll = () => {
     startTransition(async () => {
       try {
-        const result = await autoStitchAction({
+        const result = await batchGenerateDialogueAction({
           episodeId: episode.id,
-          mode: 'audio-only',
-          gapFillStrategy: 'ignore',
         });
 
-        if (result.success) {
-          toast.success('Audio generation started');
-          refetchEpisode();
-          void refreshAll();
-        } else {
-          toast.error(result.error ?? 'Failed to generate audio');
+        setBatchJobId(result.batchJobId);
+        setBatchStatus({
+          status: 'queued',
+          total: result.totalLines,
+          completed: 0,
+          failed: 0,
+          percentage: 0,
+        });
+
+        toast.success(
+          `Generating voices for ${result.totalLines} dialogue line(s)...`,
+        );
+
+        // Start polling every 3 seconds
+        if (batchPollRef.current) {
+          clearInterval(batchPollRef.current);
         }
+        batchPollRef.current = setInterval(() => {
+          void pollBatchStatus(result.batchJobId);
+        }, 3000);
       } catch (error) {
         toast.error(
-          error instanceof Error ? error.message : 'Failed to generate audio',
+          error instanceof Error ? error.message : 'Failed to start generation',
         );
       }
     });
   };
+
+  const handleCancelBatch = () => {
+    if (!batchJobId) return;
+
+    startTransition(async () => {
+      try {
+        await cancelBatchAction({ batchJobId });
+        toast.info('Generation cancelled');
+
+        if (batchPollRef.current) {
+          clearInterval(batchPollRef.current);
+          batchPollRef.current = null;
+        }
+
+        setBatchStatus((prev) =>
+          prev ? { ...prev, status: 'cancelled' } : null,
+        );
+        void refreshAll();
+      } catch (error) {
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : 'Failed to cancel generation',
+        );
+      }
+    });
+  };
+
+  const isGenerating =
+    batchStatus?.status === 'queued' ||
+    batchStatus?.status === 'processing';
 
   const handleClearAllVoices = () => {
     if (
@@ -565,7 +696,7 @@ export function AudioStudioScreen({
             <Button
               variant="outline"
               onClick={handleClearAllVoices}
-              disabled={isPending || stats.completed === 0}
+              disabled={isPending || isGenerating || stats.completed === 0}
               size="sm"
               className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
             >
@@ -573,24 +704,28 @@ export function AudioStudioScreen({
               Clear All Voices
             </Button>
 
-            <Button
-              onClick={handleGenerateAll}
-              disabled={isPending || stats.pending === 0}
-              size="sm"
-              className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-            >
-              {isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4" />
-                  Generate All Pending
-                </>
-              )}
-            </Button>
+            {isGenerating ? (
+              <Button
+                onClick={handleCancelBatch}
+                disabled={isPending}
+                size="sm"
+                variant="outline"
+                className="gap-2 border-orange-200 text-orange-600 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
+              >
+                <Square className="h-3.5 w-3.5" />
+                Cancel
+              </Button>
+            ) : (
+              <Button
+                onClick={handleGenerateAll}
+                disabled={isPending || stats.pending === 0}
+                size="sm"
+                className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+              >
+                <Play className="h-4 w-4" />
+                Generate All Pending
+              </Button>
+            )}
 
             <Button
               variant="default"
@@ -603,6 +738,81 @@ export function AudioStudioScreen({
             </Button>
           </div>
         </div>
+
+        {/* Batch Generation Progress Bar */}
+        {batchStatus && (
+          <div className="border-b border-gray-200/50 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 px-4 py-2.5 backdrop-blur-xl dark:border-white/5 dark:from-blue-950/30 dark:to-indigo-950/30">
+            <div className="flex items-center gap-3">
+              {/* Status icon */}
+              {isGenerating ? (
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-blue-600 dark:text-blue-400" />
+              ) : batchStatus.status === 'completed' ? (
+                <CheckCircle className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+              ) : batchStatus.status === 'failed' ? (
+                <XCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
+              ) : batchStatus.status === 'cancelled' ? (
+                <AlertCircle className="h-4 w-4 shrink-0 text-orange-600 dark:text-orange-400" />
+              ) : null}
+
+              {/* Progress text */}
+              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                {isGenerating
+                  ? `Generating voices... ${batchStatus.completed}/${batchStatus.total}`
+                  : batchStatus.status === 'completed'
+                    ? `Completed: ${batchStatus.completed}/${batchStatus.total} generated`
+                    : batchStatus.status === 'failed'
+                      ? `Failed: ${batchStatus.completed} completed, ${batchStatus.failed} failed`
+                      : batchStatus.status === 'cancelled'
+                        ? `Cancelled: ${batchStatus.completed} completed`
+                        : `${batchStatus.status}`}
+                {batchStatus.failed > 0 && isGenerating && (
+                  <span className="ml-1 text-red-600 dark:text-red-400">
+                    ({batchStatus.failed} failed)
+                  </span>
+                )}
+              </span>
+
+              {/* Progress bar */}
+              <div className="h-2 min-w-[120px] flex-1 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+                <div className="flex h-full">
+                  <div
+                    className="h-full rounded-l-full bg-green-500 transition-all duration-500 dark:bg-green-400"
+                    style={{
+                      width: `${batchStatus.total > 0 ? (batchStatus.completed / batchStatus.total) * 100 : 0}%`,
+                    }}
+                  />
+                  {batchStatus.failed > 0 && (
+                    <div
+                      className="h-full bg-red-500 transition-all duration-500 dark:bg-red-400"
+                      style={{
+                        width: `${(batchStatus.failed / batchStatus.total) * 100}%`,
+                      }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* Percentage */}
+              <span className="text-xs font-semibold tabular-nums text-gray-600 dark:text-gray-400">
+                {batchStatus.percentage}%
+              </span>
+
+              {/* Dismiss button (when not generating) */}
+              {!isGenerating && (
+                <button
+                  onClick={() => {
+                    setBatchStatus(null);
+                    setBatchJobId(null);
+                  }}
+                  className="ml-1 rounded-md p-0.5 text-gray-400 transition-colors hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+                  title="Dismiss"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Timeline Content */}
         <div ref={timelineContainerRef} className="flex-1 overflow-hidden">
