@@ -28,23 +28,43 @@ const LANGUAGE_CODE_MAP: Record<string, string> = {
 };
 
 const LANGUAGE_STYLE_GUIDES: Record<string, string> = {
-  hi: `HINDI STYLE: Hinglish for young Indian audience.
+  hi: `HINDI STYLE: Natural spoken Hinglish in Devanagari script.
 
-VOCABULARY RULES:
-- Use Devanagari script for Hindi portions, Roman for English words kept as-is
-- Grammar and sentence structure should be Hindi, with English nouns/verbs mixed in naturally
-- Common Hindi words are FINE — रहस्य, जाँच-पड़ताल, कहानी, दोस्त, etc.
-- REPLACE only formal/bureaucratic Hindi that kids wouldn't naturally use:
-  ❌ गश्त → ✅ patrol
-  ❌ संदिग्ध → ✅ suspect
-  ❌ प्रमाण → ✅ evidence
-  ❌ आक्रमण → ✅ attack
-  ❌ सैनिक → ✅ soldier
-  ❌ अभियान → ✅ mission
-  ❌ संकेत → ✅ signal
-- Keep commonly-understood English words that Indian kids use daily:
-  team, plan, cool, awesome, perfect, ready, start, stop, sorry, thanks, okay, actually, basically
-- Translate naturally — if a Hindi word feels natural for a kid, use it. If it feels like a textbook, use English.`,
+TARGET TONE: How a 10-year-old Indian kid actually talks at home — mixing Hindi and English naturally.
+Write EVERYTHING in Devanagari script (including English loanwords → transliterate them).
+
+CORE PRINCIPLE: If an Indian kid would say it that way in real life, it's correct.
+
+USE COMMON HINDI WORDS (everyone knows these):
+  दोपहर, सुबह, रात, खाना, पानी, दोस्त, कहानी, रास्ता, जगह, आवाज़,
+  चुपचाप, अंधेरा, डर, हिम्मत, मज़ा, तैयार, ज़रूर, सच में, पक्का
+
+REPLACE FORMAL/TEXTBOOK HINDI WITH ENGLISH LOANWORDS (Indians use these daily):
+  ❌ गश्त → ✅ पैट्रोलिंग
+  ❌ संदिग्ध → ✅ सस्पेक्ट
+  ❌ प्रमाण → ✅ एविडेंस
+  ❌ आक्रमण → ✅ अटैक
+  ❌ सैनिक → ✅ सोल्जर
+  ❌ अभियान → ✅ मिशन
+  ❌ संकेत → ✅ सिग्नल
+  ❌ निरीक्षण → ✅ चेक
+  ❌ योजना → ✅ प्लान
+  ❌ समस्या → ✅ प्रॉब्लम
+
+ENGLISH WORDS TO TRANSLITERATE (write in Devanagari):
+  team → टीम, cool → कूल, perfect → परफेक्ट, ready → रेडी,
+  sorry → सॉरी, thanks → थैंक्स, okay → ओके, actually → एक्चुअली
+
+EXAMPLE TRANSLATIONS:
+  ❌ "दोपहर की गश्त बहुत शांत है" (textbook Hindi)
+  ❌ "Afternoon patrol बहुत शांत है" (unnecessary English)
+  ✅ "दोपहर की पैट्रोलिंग आज बहुत शांत है" (natural Hinglish)
+
+  ❌ "यह बहुत संदिग्ध लग रहा है" (formal)
+  ✅ "ये बहुत सस्पिशस लग रहा है" (how kids actually talk)
+
+  ❌ "हमें एक योजना बनानी होगी" (formal)
+  ✅ "हमें एक प्लान बनाना होगा" (natural)`,
 
   bn: `BENGALI STYLE: Banglish for young Bengali audience.
 Similar to Hinglish — urban Bengali youth naturally mix English words.
