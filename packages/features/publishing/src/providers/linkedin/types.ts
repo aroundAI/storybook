@@ -80,6 +80,22 @@ export interface LinkedInPostMetrics {
 
 export type LinkedInUploadProgress = (progress: number) => void;
 
+export interface LinkedInTextPostInput {
+  /** Post text/commentary (max 3000 characters) */
+  text: string;
+  /** Visibility for the post */
+  visibility: 'PUBLIC' | 'CONNECTIONS';
+  /** Author URN (person or organization) */
+  authorUrn: string;
+}
+
+export interface LinkedInTextPostResult {
+  /** LinkedIn post URN */
+  postUrn: string;
+  /** URL to the post on LinkedIn */
+  postUrl: string;
+}
+
 /**
  * LinkedIn Video and Post Constraints
  */
@@ -109,5 +125,7 @@ export const LINKEDIN_CONSTRAINTS = {
     maxLength: 3000,
     /** Maximum number of hashtags */
     maxHashtags: 30,
+    /** Characters visible before 'See more' cutoff */
+    hookMaxLength: 210,
   },
 } as const;

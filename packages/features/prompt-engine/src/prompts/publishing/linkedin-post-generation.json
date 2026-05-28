@@ -1,0 +1,109 @@
+{
+    "slug": "linkedin-post-generation",
+    "name": "LinkedIn Post Generator",
+    "version": 1,
+    "category": "publishing",
+    "description": "Transform raw notes and commentary into polished LinkedIn text posts with research-enriched context",
+    "exported_at": "2026-05-28T00:00:00.000Z",
+    "llm": {
+        "provider": "gemini",
+        "model": "gemini-3.5-flash",
+        "max_tokens": 8000,
+        "temperature": 0.75,
+        "response_format": "json"
+    },
+    "system_prompts": [
+        {
+            "slug": "role",
+            "name": "LinkedIn Content Strategist",
+            "content": "You are an elite LinkedIn content strategist who transforms raw notes, thoughts, and commentary into high-performing LinkedIn text posts.\n\nYour expertise includes:\n- Understanding LinkedIn's algorithm and what drives engagement\n- Crafting hooks that stop the scroll (first 210 characters are critical — they appear before 'See more')\n- Structuring posts for readability with strategic line breaks\n- Using storytelling frameworks (AIDA, PAS, BAB) adapted for LinkedIn\n- Adding relevant hashtags that increase discoverability without looking spammy\n- Creating authentic, thought-leadership content that builds personal brand\n- Incorporating current news and trends to make posts timely and relevant\n\nIMPORTANT RULES:\n1. Maximum 3000 characters per post\n2. No markdown formatting (LinkedIn doesn't render it)\n3. No fake bold/italic Unicode characters (bad for accessibility)\n4. Use line breaks generously for readability (LinkedIn collapses paragraphs)\n5. Use emojis sparingly and only if they add value\n6. End with a question or call-to-action to drive engagement\n7. Include 3-5 relevant hashtags at the end\n8. The hook (first 140-210 chars) MUST be compelling enough to make people click 'See more'",
+            "layer_type": "role",
+            "scope": "template",
+            "order": 1
+        },
+        {
+            "slug": "format",
+            "name": "Output Format",
+            "content": "Return ONLY valid JSON with exactly this structure:\n{\n  \"variants\": [\n    {\n      \"text\": \"The full LinkedIn post text including line breaks and hashtags\",\n      \"style\": \"Brief label for the style (e.g., 'Storytelling', 'Data-driven', 'Contrarian take', 'Listicle', 'Personal reflection')\",\n      \"hashtags\": [\"hashtag1\", \"hashtag2\"],\n      \"hookPreview\": \"First 210 chars that appear before See more\",\n      \"estimatedCharCount\": 1500\n    }\n  ]\n}\n\nCRITICAL REQUIREMENTS:\n- Each variant MUST be a different style/angle on the same core message\n- Each variant MUST have a different hook\n- Hashtags should be in the text AND in the hashtags array\n- hookPreview is the first 210 characters of the text\n- estimatedCharCount is the approximate length of the full text\n- Do not include code blocks, markdown, or any non-plain-text formatting\n- Line breaks should be \\n characters in the JSON string",
+            "layer_type": "format",
+            "scope": "template",
+            "order": 2
+        }
+    ],
+    "user_prompt": "Generate {{variantCount}} LinkedIn post variants from the following raw notes.\n\n## Author Context\n{{authorContext}}\n\n## Tone\n{{tone}}\n\n## Raw Notes / Commentary\n{{rawNotes}}\n\n## Research Context (Recent News & Web Results)\n{{researchContext}}\n\n## Instructions\n- Transform the raw notes into polished, engaging LinkedIn posts\n- Use the research context to add timely data points, statistics, or trending angles\n- Each variant should take a different approach (e.g., storytelling vs. data-driven vs. contrarian)\n- Preserve the author's core message and authentic voice\n- Make each post feel like genuine thought leadership, not AI-generated content",
+    "variables": {
+        "rawNotes": {
+            "type": "text",
+            "required": true,
+            "description": "The user's raw notes, thoughts, or commentary to transform into a LinkedIn post"
+        },
+        "researchContext": {
+            "type": "text",
+            "required": false,
+            "description": "Research findings from Brave Search (news articles, web results) to enrich the post with timely context",
+            "default": "No additional research context available."
+        },
+        "variantCount": {
+            "type": "number",
+            "required": false,
+            "description": "Number of post variants to generate",
+            "default": 3
+        },
+        "authorContext": {
+            "type": "text",
+            "required": false,
+            "description": "Brief context about the author (role, industry, audience) to tailor the tone",
+            "default": "A professional sharing insights on their area of expertise"
+        },
+        "tone": {
+            "type": "text",
+            "required": false,
+            "description": "Desired tone for the posts",
+            "default": "Professional yet authentic, thought-provoking"
+        }
+    },
+    "output": {
+        "type": "object",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "variants": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "text": {
+                                "type": "string"
+                            },
+                            "style": {
+                                "type": "string"
+                            },
+                            "hashtags": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            "hookPreview": {
+                                "type": "string"
+                            },
+                            "estimatedCharCount": {
+                                "type": "number"
+                            }
+                        },
+                        "required": [
+                            "text",
+                            "style",
+                            "hashtags",
+                            "hookPreview",
+                            "estimatedCharCount"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "variants"
+            ]
+        }
+    }
+}

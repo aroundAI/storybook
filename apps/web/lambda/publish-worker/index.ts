@@ -29,6 +29,7 @@ import type {
   DeleteJobMessage,
   JobMessage,
   PublishJobMessage,
+  SocialTextPostJobMessage,
 } from '@kit/publishing/lib/job-types';
 
 // Initialize DynamoDB client
@@ -418,6 +419,84 @@ async function processDelete(job: DeleteJobMessage): Promise<void> {
 }
 
 /**
+ * Process a social text post job (LinkedIn text-only post)
+ */
+async function processSocialTextPost(job: SocialTextPostJobMessage): Promise<void> {
+  console.log(`[Publish Worker] Processing social text post ${job.socialPostId}`);
+
+  // 1. Get valid access token
+  const tokenResult = await ensureValidToken(job.platformConnectionId, supabase);
+  if (!tokenResult.valid) {
+    throw new Error(tokenResult.error || 'Failed to get access token');
+  }
+
+  // 2. Create text-only LinkedIn post
+  const LINKEDIN_REST_VERSION = '202401';
+  const response = await fetch('https://api.linkedin.com/v2/posts', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${tokenResult.accessToken}`,
+      'Content-Type': 'application/json',
+      'X-Restli-Protocol-Version': '2.0.0',
+      'LinkedIn-Version': LINKEDIN_REST_VERSION,
+    },
+    body: JSON.stringify({
+      author: job.authorUrn,
+      commentary: job.text,
+      visibility: job.visibility,
+      distribution: {
+        feedDistribution: 'MAIN_FEED',
+        targetEntities: [],
+        thirdPartyDistributionChannels: [],
+      },
+      lifecycleState: 'PUBLISHED',
+      isReshareDisabledByAuthor: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`LinkedIn text post creation failed: ${error}`);
+  }
+
+  // Get post URN from response header or body
+  let postUrn = response.headers.get('x-restli-id') || '';
+  if (!postUrn) {
+    try {
+      const data = await response.json();
+      postUrn = data.id || '';
+    } catch {
+      // Response may be empty
+    }
+  }
+
+  const postUrl = postUrn ? `https://www.linkedin.com/feed/update/${postUrn}` : '';
+
+  // 3. Update social_posts table
+  await supabase
+    .from('social_posts')
+    .update({
+      status: 'published',
+      platform_post_id: postUrn,
+      platform_url: postUrl,
+      published_at: new Date().toISOString(),
+    })
+    .eq('id', job.socialPostId);
+
+  // 4. Notify user via WebSocket
+  await sendToUser(job.userId, {
+    type: 'social-post-published',
+    jobType: 'publish-status',
+    socialPostId: job.socialPostId,
+    platform: job.platform,
+    url: postUrl,
+    timestamp: new Date().toISOString(),
+  });
+
+  console.log(`[Publish Worker] Social text post SUCCESS: ${job.socialPostId} → ${postUrl}`);
+}
+
+/**
  * Main Lambda handler
  * Processes batch of SQS messages containing publish or delete jobs
  */
@@ -433,7 +512,9 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         // Default to 'publish' type for backward compatibility
         const jobType = 'type' in job ? job.type : 'publish';
 
-        if (jobType === 'delete') {
+        if (jobType === 'social_text_post') {
+          await processSocialTextPost(job as SocialTextPostJobMessage);
+        } else if (jobType === 'delete') {
           await processDelete(job as DeleteJobMessage);
         } else {
           await processPublish(job as PublishJobMessage);
@@ -454,9 +535,42 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         if (job) {
           try {
             const isDelete = 'type' in job && job.type === 'delete';
-            const type = isDelete ? 'delete-error' : 'publish-error';
+            const isSocialTextPost = 'type' in job && job.type === 'social_text_post';
+            const type = isSocialTextPost
+              ? 'social-post-error'
+              : isDelete
+                ? 'delete-error'
+                : 'publish-error';
 
-            if (!isDelete) {
+            if (isSocialTextPost) {
+              const socialPostId = (job as SocialTextPostJobMessage).socialPostId;
+
+              const { data: existingPost } = await supabase
+                .from('social_posts')
+                .select('metadata')
+                .eq('id', socialPostId)
+                .single();
+
+              const existingMetadata =
+                existingPost?.metadata &&
+                typeof existingPost.metadata === 'object' &&
+                !Array.isArray(existingPost.metadata)
+                  ? (existingPost.metadata as Record<string, unknown>)
+                  : {};
+
+              await supabase
+                .from('social_posts')
+                .update({
+                  status: 'failed',
+                  metadata: {
+                    ...existingMetadata,
+                    error: errorMessage,
+                    errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
+                    failedAt: new Date().toISOString(),
+                  },
+                })
+                .eq('id', socialPostId);
+            } else if (!isDelete) {
               // Only update status for publish jobs, delete jobs are just retried or failed
               await updatePublishStatus(
                 (job as PublishJobMessage).publishId,
@@ -469,14 +583,22 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
               );
             }
 
-            await sendToUser(job.userId, {
+            // Build notification payload based on job type
+            const notificationPayload: Record<string, unknown> = {
               type,
               jobType: 'publish-status',
-              publishId: job.publishId, // Both types have publishId
               platform: job.platform as string,
               error: errorMessage,
               timestamp: new Date().toISOString(),
-            });
+            };
+
+            if (isSocialTextPost) {
+              notificationPayload.socialPostId = (job as SocialTextPostJobMessage).socialPostId;
+            } else {
+              notificationPayload.publishId = (job as PublishJobMessage | DeleteJobMessage).publishId;
+            }
+
+            await sendToUser(job.userId, notificationPayload);
           } catch (notifyError) {
             console.error(
               `[Publish Worker] Failed to update status or notify user:`,
