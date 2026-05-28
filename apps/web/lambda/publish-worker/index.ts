@@ -543,17 +543,33 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
                 : 'publish-error';
 
             if (isSocialTextPost) {
+              const socialPostId = (job as SocialTextPostJobMessage).socialPostId;
+
+              const { data: existingPost } = await supabase
+                .from('social_posts')
+                .select('metadata')
+                .eq('id', socialPostId)
+                .single();
+
+              const existingMetadata =
+                existingPost?.metadata &&
+                typeof existingPost.metadata === 'object' &&
+                !Array.isArray(existingPost.metadata)
+                  ? (existingPost.metadata as Record<string, unknown>)
+                  : {};
+
               await supabase
                 .from('social_posts')
                 .update({
                   status: 'failed',
                   metadata: {
+                    ...existingMetadata,
                     error: errorMessage,
                     errorStack: errorStack?.split('\n').slice(0, 5).join('\n'),
                     failedAt: new Date().toISOString(),
                   },
                 })
-                .eq('id', (job as SocialTextPostJobMessage).socialPostId);
+                .eq('id', socialPostId);
             } else if (!isDelete) {
               // Only update status for publish jobs, delete jobs are just retried or failed
               await updatePublishStatus(

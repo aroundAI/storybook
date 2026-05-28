@@ -130,6 +130,11 @@ export const createSocialPostAction = enhanceAction(
         },
         'Failed to generate post variants',
       );
+      throw new Error(
+        `Failed to generate LinkedIn post variants: ${
+          error instanceof Error ? error.message : 'Unknown error'
+        }`,
+      );
     }
 
     // 3. Create the social post record
@@ -539,7 +544,7 @@ export const regenerateVariantsAction = enhanceAction(
     const firstVariant = generatedVariants[0] as PostVariant | undefined;
 
     // Update the post
-    const { data: updated, error: updateError } = await client
+    const { data: _updated, error: updateError } = await client
       .from('social_posts')
       .update({
         generated_variants: generatedVariants as unknown as Json,

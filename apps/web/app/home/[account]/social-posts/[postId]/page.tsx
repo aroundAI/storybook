@@ -1,7 +1,5 @@
 import { Suspense } from 'react';
 
-import { notFound } from 'next/navigation';
-
 import { AppBreadcrumbs } from '@kit/ui/app-breadcrumbs';
 import { PageBody } from '@kit/ui/page';
 import { Trans } from '@kit/ui/trans';

@@ -45,7 +45,7 @@ export function SocialPostsDashboard({
   initialPosts = [],
 }: SocialPostsDashboardProps) {
   const router = useRouter();
-  const [posts, setPosts] = useState(initialPosts);
+  const [posts] = useState(initialPosts);
   const [publishingIds, setPublishingIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 

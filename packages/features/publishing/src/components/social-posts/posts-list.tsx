@@ -18,7 +18,7 @@ import {
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
+import { Card, CardContent } from '@kit/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -143,9 +143,8 @@ export function PostsList({
       {posts.map((post) => {
         const statusConfig = getStatusConfig(post.status);
         const isPublishing = publishingIds.has(post.id);
-        const previewText =
-          post.final_text?.substring(0, 200) ??
-          post.raw_notes.substring(0, 200);
+        const text = post.final_text || post.raw_notes;
+        const previewText = text.substring(0, 200);
 
         return (
           <Card
@@ -178,8 +177,7 @@ export function PostsList({
                   {/* Preview text */}
                   <p className="line-clamp-3 text-sm leading-relaxed">
                     {previewText}
-                    {(post.final_text?.length ?? post.raw_notes.length) >
-                      200 && '...'}
+                    {text.length > 200 && '...'}
                   </p>
 
                   {/* Hashtags */}

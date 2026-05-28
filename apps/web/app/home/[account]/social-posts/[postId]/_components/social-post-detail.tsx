@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { useRouter } from 'next/navigation';
 
@@ -105,9 +105,12 @@ export function SocialPostDetail({
   >([]);
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load post data on mount
-  if (!isLoaded) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (isLoaded) return;
     startTransition(async () => {
       try {
         const [postData, connectionsData] = await Promise.all([
@@ -135,7 +138,8 @@ export function SocialPostDetail({
       }
       setIsLoaded(true);
     });
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSelectVariant = useCallback(
     (index: number) => {
@@ -161,10 +165,13 @@ export function SocialPostDetail({
   const handleEditText = useCallback(
     (text: string) => {
       if (!post) return;
-      setPost({ ...post, final_text: text });
+      setPost((prev) => (prev ? { ...prev, final_text: text } : null));
 
-      // Debounced save
-      const timeout = setTimeout(() => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(() => {
         startTransition(async () => {
           try {
             await updateSocialPostAction({
@@ -176,8 +183,6 @@ export function SocialPostDetail({
           }
         });
       }, 1000);
-
-      return () => clearTimeout(timeout);
     },
     [post],
   );

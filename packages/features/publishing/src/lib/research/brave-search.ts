@@ -108,25 +108,29 @@ export class BraveSearchClient {
   async research(rawNotes: string): Promise<ResearchContext> {
     const queries = this.extractSearchQueries(rawNotes);
 
-    const results: ResearchResult[] = [];
-
-    for (const query of queries.slice(0, 3)) {
+    const resultsPromises = queries.slice(0, 3).map(async (query) => {
       try {
         const [webResults, newsResults] = await Promise.all([
           this.searchWeb({ query, count: 5, freshness: 'pw' }),
           this.searchNews({ query, count: 5, freshness: 'pw' }),
         ]);
 
-        results.push({
+        return {
           query,
           webResults,
           newsResults,
           searchedAt: new Date().toISOString(),
-        });
+        };
       } catch (error) {
         console.error(`Research query failed for "${query}":`, error);
+        return null;
       }
-    }
+    });
+
+    const resolvedResults = await Promise.all(resultsPromises);
+    const results = resolvedResults.filter(
+      (r): r is ResearchResult => r !== null,
+    );
 
     const summary = this.buildResearchSummary(results);
 
