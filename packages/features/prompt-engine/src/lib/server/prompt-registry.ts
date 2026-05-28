@@ -38,6 +38,7 @@ import entityExtraction from '../../prompts/news-generation/entity-extraction.js
 import producerRole from '../../prompts/news-generation/producer-role.json';
 import topicSummary from '../../prompts/news-generation/topic-summary.json';
 import batchTranslateMetadata from '../../prompts/publishing/batch-translate-metadata.json';
+import linkedinPostGeneration from '../../prompts/publishing/linkedin-post-generation.json';
 // =============================================================================
 // Publishing Prompts
 // =============================================================================
@@ -87,6 +88,8 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
   // Publishing
   'batch-translate-metadata':
     batchTranslateMetadata as unknown as PromptTemplate,
+  'linkedin-post-generation':
+    linkedinPostGeneration as unknown as PromptTemplate,
 
   // Quality Evaluation (used by agent skills: Viral Analyst, Reel Scout)
   'quality-evaluation/reel-scout': reelScout as unknown as PromptTemplate,

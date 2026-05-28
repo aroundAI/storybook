@@ -79,7 +79,9 @@
     "application": "Application",
     "projects": "Projects",
     "analytics": "Analytics",
-    "publicProfile": "Public Profile"
+    "publicProfile": "Public Profile",
+    "socialPosts": "Social Posts",
+    "socialPostDetail": "Post Detail"
   },
   "roles": {
     "owner": {

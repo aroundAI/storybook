@@ -35,12 +35,18 @@
     "./token-refresh": "./src/lib/token-refresh.ts",
     "./jobs": "./src/jobs/index.ts",
     "./lib/constants": "./src/lib/constants.ts",
-    "./lib/url-validation": "./src/lib/url-validation.ts"
+    "./lib/url-validation": "./src/lib/url-validation.ts",
+    "./research": "./src/lib/research/index.ts",
+    "./server/social-posts": "./src/server/social-post-actions.ts",
+    "./lib/schemas/social-post": "./src/lib/schemas/social-post.schema.ts",
+    "./components/social-posts": "./src/components/social-posts/index.ts",
+    "./lib/job-types": "./src/lib/job-types.ts"
   },
   "dependencies": {
     "@aws-sdk/client-sqs": "^3.968.0",
     "@kit/clickhouse": "workspace:*",
     "@kit/next": "workspace:*",
+    "@kit/prompt-engine": "workspace:*",
     "@kit/shared": "workspace:*",
     "@kit/supabase": "workspace:*",
     "@kit/ui": "workspace:*",

@@ -3,6 +3,8 @@ import { promises as fsPromises } from 'fs';
 import type {
   LinkedInOrganization,
   LinkedInPostMetrics,
+  LinkedInTextPostInput,
+  LinkedInTextPostResult,
   LinkedInUploadInit,
   LinkedInUploadInput,
   LinkedInUploadProgress,
@@ -77,6 +79,64 @@ export class LinkedInProvider {
     return {
       postUrn,
       status: 'AVAILABLE',
+      postUrl: `https://www.linkedin.com/feed/update/${postUrn}`,
+    };
+  }
+
+  /**
+   * Creates a text-only post on LinkedIn (no media attachment)
+   */
+  async createTextPost(
+    input: LinkedInTextPostInput,
+  ): Promise<LinkedInTextPostResult> {
+    if (input.text.length > LINKEDIN_CONSTRAINTS.post.maxLength) {
+      throw new Error(
+        `Post text exceeds maximum length of ${LINKEDIN_CONSTRAINTS.post.maxLength} characters`,
+      );
+    }
+
+    const response = await fetch(`${LINKEDIN_API_BASE}/posts`, {
+      method: 'POST',
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        author: input.authorUrn,
+        commentary: input.text,
+        visibility: input.visibility,
+        distribution: {
+          feedDistribution: 'MAIN_FEED',
+          targetEntities: [],
+          thirdPartyDistributionChannels: [],
+        },
+        lifecycleState: 'PUBLISHED',
+        isReshareDisabledByAuthor: false,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`LinkedIn text post creation failed: ${error}`);
+    }
+
+    // LinkedIn returns the post URN in the x-restli-id header
+    let postUrn = response.headers.get('x-restli-id') || '';
+
+    if (!postUrn) {
+      try {
+        const data = await response.json();
+        postUrn = data.id || '';
+      } catch {
+        // Response may be empty for 201 Created
+      }
+    }
+
+    if (!postUrn) {
+      throw new Error(
+        'LinkedIn text post creation succeeded but no post ID returned',
+      );
+    }
+
+    return {
+      postUrn,
       postUrl: `https://www.linkedin.com/feed/update/${postUrn}`,
     };
   }

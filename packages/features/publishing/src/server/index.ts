@@ -47,3 +47,14 @@ export {
   deleteGlobalOAuthAppAction,
   type GlobalOAuthApp,
 } from './global-oauth-actions';
+
+export {
+  createSocialPostAction,
+  getSocialPostsAction,
+  getSocialPostAction,
+  updateSocialPostAction,
+  deleteSocialPostAction,
+  approveSocialPostAction,
+  publishSocialPostAction,
+  regenerateVariantsAction,
+} from './social-post-actions';

@@ -1,6 +1,8 @@
 export type {
   LinkedInOrganization,
   LinkedInPostMetrics,
+  LinkedInTextPostInput,
+  LinkedInTextPostResult,
   LinkedInUploadInit,
   LinkedInUploadInput,
   LinkedInUploadProgress,
