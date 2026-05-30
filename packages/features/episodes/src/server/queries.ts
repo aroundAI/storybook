@@ -1,5 +1,7 @@
 import 'server-only';
 
+import { cache } from 'react';
+
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
 import type { Episode, EpisodeWithShots, Shot } from '../lib/types';
@@ -27,7 +29,8 @@ export async function getEpisodesByProject(projectId: string) {
     )
     .eq('project_id', projectId)
     .is('deleted_at', null)
-    .order('number', { ascending: true });
+    .order('number', { ascending: true })
+    .limit(100);
 
   if (error) {
     return { data: null, error };
@@ -46,7 +49,7 @@ export async function getEpisodesByProject(projectId: string) {
  * LIGHTWEIGHT: Excludes large JSON blobs (story_data, screenplay_data, shot_list)
  * Use this for list views to reduce data transfer by 90%+
  */
-export async function getEpisodeMetadataByProject(projectId: string) {
+export const getEpisodeMetadataByProject = cache(async function getEpisodeMetadataByProject(projectId: string) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -74,7 +77,7 @@ export async function getEpisodeMetadataByProject(projectId: string) {
     >[],
     error: null,
   };
-}
+});
 
 /**
  * Get a single episode by ID (excluding soft-deleted)
@@ -229,7 +232,8 @@ export async function getShotsByEpisode(episodeId: string) {
     `,
     )
     .eq('episode_id', episodeId)
-    .order('sequence_number', { ascending: true });
+    .order('sequence_number', { ascending: true })
+    .limit(200);
 
   if (error) {
     return { data: null, error };

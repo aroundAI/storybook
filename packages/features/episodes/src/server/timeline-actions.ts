@@ -260,26 +260,39 @@ export const planTimelineAction = enhanceAction(
       }
     }
 
-    // 5. Update dialogue_lines with timing data
+    // 5. Batch update dialogue_lines with timing data via RPC
     let updatedCount = 0;
-    for (const update of updates) {
+    if (updates.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { error: updateError } = await (client as any)
-        .from('dialogue_lines')
-        .update({
-          shot_id: update.shotId,
-          timeline_start_seconds: update.timelineStartSeconds,
-          estimated_duration_seconds: update.estimatedDurationSeconds,
-        })
-        .eq('id', update.id);
+      const { data: batchResult, error: batchError } = await (client as any)
+        .rpc('plan_dialogue_timeline', {
+          p_updates: JSON.stringify(updates),
+        });
 
-      if (updateError) {
+      if (batchError) {
         logger.warn(
-          { ...ctx, dialogueId: update.id, error: updateError },
-          'Failed to update dialogue line timing',
+          { ...ctx, error: batchError, updateCount: updates.length },
+          'Batch dialogue timeline update failed, falling back to individual updates',
         );
+
+        // Fallback: individual updates if RPC fails (e.g., migration not applied yet)
+        for (const update of updates) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { error: updateError } = await (client as any)
+            .from('dialogue_lines')
+            .update({
+              shot_id: update.shotId,
+              timeline_start_seconds: update.timelineStartSeconds,
+              estimated_duration_seconds: update.estimatedDurationSeconds,
+            })
+            .eq('id', update.id);
+
+          if (!updateError) {
+            updatedCount++;
+          }
+        }
       } else {
-        updatedCount++;
+        updatedCount = (batchResult as number) ?? updates.length;
       }
     }
 

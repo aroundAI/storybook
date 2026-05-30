@@ -3,7 +3,12 @@
 /**
  * EditSuiteProvider — React context wrapping the edit suite state.
  *
- * Provides:
+ * Provides 3 split contexts to minimize re-renders:
+ * - PlaybackContext (high-frequency — 60fps during playback)
+ * - DataContext (medium-frequency — user edits)
+ * - CommandContext (low-frequency — stable references)
+ *
+ * Also provides:
  * - useReducer-based state management
  * - UndoManager for undo/redo
  * - Auto-save (debounced 2s after last dirty change)
@@ -25,6 +30,14 @@ import type { Dispatch, MutableRefObject, ReactNode } from 'react';
 import { useEditSuiteWebSocket } from '../hooks/use-edit-suite-websocket';
 import type { AudioEngine } from '../lib/audio-engine';
 import type { PlaybackEngine } from '../lib/playback-engine';
+import type {
+  DialogueSyncGroup,
+  EditClip,
+  EditKeyframe,
+  EditProject,
+  EditTrack,
+  EditTransition,
+} from '../lib/types';
 import {
   DeleteClipCommand,
   SplitClipCommand,
@@ -32,60 +45,70 @@ import {
 } from '../state/edit-commands';
 import type { EditCommand } from '../state/edit-commands';
 import { editReducer } from '../state/edit-reducer';
-import type { EditAction, EditSuiteState } from '../state/types';
+import type { EditAction, EditSuiteState, SaveStatus } from '../state/types';
 import { createInitialState } from '../state/types';
 
 // ──────────────────────────────────────────
-// Context shape
+// Context types
 // ──────────────────────────────────────────
 
 export type AssemblyStatus = 'idle' | 'assembling' | 'done' | 'error';
 
-interface EditSuiteContextValue {
-  state: EditSuiteState;
+/** High-frequency context — changes at 60fps during playback */
+export interface PlaybackContextValue {
+  playheadMs: number;
+  isPlaying: boolean;
   dispatch: Dispatch<EditAction>;
+}
 
-  /** Execute a command with undo/redo support */
-  executeCommand: (command: EditCommand) => void;
+/** Medium-frequency context — changes on user edits */
+export interface DataContextValue {
+  project: EditProject | null;
+  tracks: EditTrack[];
+  clips: EditClip[];
+  keyframes: EditKeyframe[];
+  transitions: EditTransition[];
+  syncGroups: DialogueSyncGroup[];
+  selectedClipIds: Set<string>;
+  selectedTrackId: string | null;
+  zoom: number;
+  scrollLeft: number;
+  snapEnabled: boolean;
+  activeLanguage: string;
+  saveStatus: SaveStatus;
+  renderStatus: EditSuiteState['renderStatus'];
+  renderUrl: string | null;
+  renderError: string | null;
+  renderProgress: number;
+  remoteCursors: EditSuiteState['remoteCursors'];
+  activeEditors: EditSuiteState['activeEditors'];
+  dispatch: Dispatch<EditAction>;
+}
 
-  /** Record a command for undo without executing it (state was already applied via dispatches) */
-  recordCommand: (command: EditCommand) => void;
-
-  /** Undo the last command */
+/** Low-frequency context — stable references */
+export interface CommandContextValue {
+  executeCommand: (cmd: EditCommand) => void;
+  recordCommand: (cmd: EditCommand) => void;
   undo: () => void;
-
-  /** Redo the last undone command */
   redo: () => void;
-
-  /** Whether undo is available */
   canUndo: boolean;
-
-  /** Whether redo is available */
   canRedo: boolean;
-
-  /** Force an immediate save */
   forceSave: () => void;
-
-  /** Auto-assembly status */
   assemblyStatus: AssemblyStatus;
-
-  /** Run auto-assembly for an episode */
   runAutoAssembly: (episodeId: string) => void;
-
-  /** Episode ID from route context (available before project creation) */
   episodeId: string | undefined;
-
-  /** Ref for PlaybackEngine — set by PreviewPanel, read by keyboard shortcuts */
   playbackEngineRef: MutableRefObject<PlaybackEngine | null>;
-
-  /** Ref for AudioEngine — set by PreviewPanel, shared for waveform rendering */
   audioEngineRef: MutableRefObject<AudioEngine | null>;
-
-  /** Derived list of available languages from clips */
   availableLanguages: string[];
 }
 
-const EditSuiteContext = createContext<EditSuiteContextValue | null>(null);
+// ──────────────────────────────────────────
+// Contexts
+// ──────────────────────────────────────────
+
+const PlaybackContext = createContext<PlaybackContextValue | null>(null);
+const DataContext = createContext<DataContextValue | null>(null);
+const CommandContext = createContext<CommandContextValue | null>(null);
 
 // ──────────────────────────────────────────
 // Provider
@@ -157,7 +180,6 @@ export function EditSuiteProvider({
           });
         }
       } catch (err) {
-        // No existing project — that's fine, user will click Auto-Assemble
         console.debug('No existing edit project for episode:', err);
       }
     }
@@ -198,7 +220,6 @@ export function EditSuiteProvider({
     dispatch({ type: 'MARK_SAVING' });
 
     try {
-      // Import server action lazily to avoid SSR issues
       const { batchSaveAction } = await import('../server/batch-actions');
 
       await batchSaveAction({
@@ -332,7 +353,6 @@ export function EditSuiteProvider({
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // Skip if typing in an input/textarea
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
 
@@ -377,7 +397,6 @@ export function EditSuiteProvider({
 
       // S: Split clip at playhead
       if (e.key.toLowerCase() === 's' && !isMeta) {
-        // Find clips that overlap the playhead
         const clipsAtPlayhead = state.clips.filter(
           (c) => c.startMs < state.playheadMs && c.endMs > state.playheadMs,
         );
@@ -385,7 +404,6 @@ export function EditSuiteProvider({
         if (clipsAtPlayhead.length === 0) return;
         e.preventDefault();
 
-        // If we have selected clips, only split those at the playhead
         const toSplit =
           state.selectedClipIds.size > 0
             ? clipsAtPlayhead.filter((c) => state.selectedClipIds.has(c.id))
@@ -505,11 +523,9 @@ export function EditSuiteProvider({
       setAssemblyStatus('assembling');
 
       try {
-        // Import and run the assembly algorithm
         const { autoAssemble } = await import('../lib/auto-assemble');
         const result = await autoAssemble({ episodeId });
 
-        // Load the created project into state
         const { getEditProjectAction } = await import(
           '../server/edit-project-actions'
         );
@@ -560,12 +576,66 @@ export function EditSuiteProvider({
     return [...langs].sort();
   }, [state.clips, state.activeLanguage]);
 
-  // ── Context value ──
+  // ── Memoized context values ──
 
-  const value = useMemo<EditSuiteContextValue>(
+  const playbackValue = useMemo<PlaybackContextValue>(
     () => ({
-      state,
+      playheadMs: state.playheadMs,
+      isPlaying: state.isPlaying,
       dispatch,
+    }),
+    [state.playheadMs, state.isPlaying, dispatch],
+  );
+
+  const dataValue = useMemo<DataContextValue>(
+    () => ({
+      project: state.project,
+      tracks: state.tracks,
+      clips: state.clips,
+      keyframes: state.keyframes,
+      transitions: state.transitions,
+      syncGroups: state.syncGroups,
+      selectedClipIds: state.selectedClipIds,
+      selectedTrackId: state.selectedTrackId,
+      zoom: state.zoom,
+      scrollLeft: state.scrollLeft,
+      snapEnabled: state.snapEnabled,
+      activeLanguage: state.activeLanguage,
+      saveStatus: state.saveStatus,
+      renderStatus: state.renderStatus,
+      renderUrl: state.renderUrl,
+      renderError: state.renderError,
+      renderProgress: state.renderProgress,
+      remoteCursors: state.remoteCursors,
+      activeEditors: state.activeEditors,
+      dispatch,
+    }),
+    [
+      state.project,
+      state.tracks,
+      state.clips,
+      state.keyframes,
+      state.transitions,
+      state.syncGroups,
+      state.selectedClipIds,
+      state.selectedTrackId,
+      state.zoom,
+      state.scrollLeft,
+      state.snapEnabled,
+      state.activeLanguage,
+      state.saveStatus,
+      state.renderStatus,
+      state.renderUrl,
+      state.renderError,
+      state.renderProgress,
+      state.remoteCursors,
+      state.activeEditors,
+      dispatch,
+    ],
+  );
+
+  const commandValue = useMemo<CommandContextValue>(
+    () => ({
       executeCommand,
       recordCommand,
       undo,
@@ -581,7 +651,6 @@ export function EditSuiteProvider({
       availableLanguages,
     }),
     [
-      state,
       executeCommand,
       recordCommand,
       undo,
@@ -595,20 +664,60 @@ export function EditSuiteProvider({
   );
 
   return (
-    <EditSuiteContext.Provider value={value}>
-      {children}
-    </EditSuiteContext.Provider>
+    <CommandContext.Provider value={commandValue}>
+      <DataContext.Provider value={dataValue}>
+        <PlaybackContext.Provider value={playbackValue}>
+          {children}
+        </PlaybackContext.Provider>
+      </DataContext.Provider>
+    </CommandContext.Provider>
   );
 }
 
 // ──────────────────────────────────────────
-// Hook
+// Hooks
 // ──────────────────────────────────────────
 
-export function useEditSuite(): EditSuiteContextValue {
-  const ctx = useContext(EditSuiteContext);
+export function usePlayback(): PlaybackContextValue {
+  const ctx = useContext(PlaybackContext);
   if (!ctx) {
-    throw new Error('useEditSuite must be used within EditSuiteProvider');
+    throw new Error('usePlayback must be used within EditSuiteProvider');
   }
   return ctx;
+}
+
+export function useEditData(): DataContextValue {
+  const ctx = useContext(DataContext);
+  if (!ctx) {
+    throw new Error('useEditData must be used within EditSuiteProvider');
+  }
+  return ctx;
+}
+
+export function useEditCommands(): CommandContextValue {
+  const ctx = useContext(CommandContext);
+  if (!ctx) {
+    throw new Error('useEditCommands must be used within EditSuiteProvider');
+  }
+  return ctx;
+}
+
+/**
+ * @deprecated Use usePlayback(), useEditData(), or useEditCommands() instead.
+ * Kept temporarily for backward compatibility.
+ */
+export function useEditSuite() {
+  const playback = usePlayback();
+  const data = useEditData();
+  const commands = useEditCommands();
+
+  return {
+    state: {
+      ...data,
+      playheadMs: playback.playheadMs,
+      isPlaying: playback.isPlaying,
+    },
+    dispatch: playback.dispatch,
+    ...commands,
+  };
 }

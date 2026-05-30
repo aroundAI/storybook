@@ -7,7 +7,7 @@
  * Right side: ClipLane where clips are rendered and assets can be dropped.
  */
 import type { Dispatch } from 'react';
-import { useMemo } from 'react';
+import { memo, useMemo } from 'react';
 
 import type { DragClipData } from '../../hooks/use-media-bin';
 import type {
@@ -20,6 +20,8 @@ import type { EditAction } from '../../state/types';
 import { DRAG_CLIP_MIME } from '../media-bin/asset-item';
 import { ClipBlock } from './clip-block';
 import { TransitionHandle } from './transition-handle';
+
+const EMPTY_KEYFRAMES: EditKeyframe[] = [];
 
 // ──────────────────────────────────────────
 // Track type colors
@@ -165,7 +167,7 @@ interface TrackRowProps {
   dispatch: Dispatch<EditAction>;
 }
 
-export function TrackRow({
+export const TrackRow = memo(function TrackRow({
   track,
   clips,
   allClips,
@@ -192,6 +194,16 @@ export function TrackRow({
     }
     return map;
   }, [transitions]);
+
+  const keyframesByClip = useMemo(() => {
+    const map = new Map<string, EditKeyframe[]>();
+    for (const kf of keyframes) {
+      const list = map.get(kf.clipId) ?? [];
+      list.push(kf);
+      map.set(kf.clipId, list);
+    }
+    return map;
+  }, [keyframes]);
 
   const handleDragOver = (e: React.DragEvent) => {
     if (track.isLocked) return;
@@ -297,7 +309,7 @@ export function TrackRow({
             trackType={track.type}
             allClips={allClips}
             playheadMs={playheadMs}
-            clipKeyframes={keyframes.filter((kf) => kf.clipId === clip.id)}
+            clipKeyframes={keyframesByClip.get(clip.id) ?? EMPTY_KEYFRAMES}
           />
         ))}
 
@@ -322,4 +334,16 @@ export function TrackRow({
       </div>
     </div>
   );
-}
+}, (prev, next) => {
+  return (
+    prev.track === next.track &&
+    prev.clips === next.clips &&
+    prev.allClips === next.allClips &&
+    prev.transitions === next.transitions &&
+    prev.keyframes === next.keyframes &&
+    prev.zoom === next.zoom &&
+    prev.playheadMs === next.playheadMs &&
+    prev.selectedClipIds === next.selectedClipIds &&
+    prev.dispatch === next.dispatch
+  );
+});

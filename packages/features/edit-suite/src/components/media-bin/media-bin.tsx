@@ -15,17 +15,18 @@
 import { useMemo, useState } from 'react';
 
 import { useMediaBin } from '../../hooks/use-media-bin';
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditCommands, useEditData } from '../edit-suite-provider';
 import { AssetGroup } from './asset-group';
 import { AssetItem } from './asset-item';
 
 export function MediaBin() {
-  const { state, episodeId: episodeIdFromContext } = useEditSuite();
+  const data = useEditData();
+  const { episodeId: episodeIdFromContext } = useEditCommands();
   const episodeId =
-    episodeIdFromContext ?? state.project?.episodeId ?? undefined;
+    episodeIdFromContext ?? data.project?.episodeId ?? undefined;
   const { sections, isLoading, error, refetch } = useMediaBin(
     episodeId,
-    state.clips,
+    data.clips,
   );
   const [search, setSearch] = useState('');
   const [dubbedLanguageFilter, setDubbedLanguageFilter] = useState<

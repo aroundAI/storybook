@@ -10,7 +10,7 @@
  * - Edge drag to trim (left = adjust start, right = adjust end)
  * - Alt+Drag to duplicate
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch } from 'react';
 
 import type { TrackType } from '../../lib/schemas';
@@ -21,7 +21,7 @@ import {
   TrimClipCommand,
 } from '../../state/edit-commands';
 import type { EditAction } from '../../state/types';
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditCommands } from '../edit-suite-provider';
 import { ThumbnailStrip } from './thumbnail-strip';
 import { Waveform } from './waveform';
 
@@ -76,7 +76,7 @@ const KF_PROPERTY_COLORS: Record<string, string> = {
 // Component
 // ──────────────────────────────────────────
 
-export function ClipBlock({
+export const ClipBlock = memo(function ClipBlock({
   clip,
   zoom,
   isSelected,
@@ -87,7 +87,7 @@ export function ClipBlock({
   playheadMs = 0,
   clipKeyframes = [],
 }: ClipBlockProps) {
-  const { executeCommand, recordCommand, audioEngineRef } = useEditSuite();
+  const { executeCommand, recordCommand, audioEngineRef } = useEditCommands();
   const blockRef = useRef<HTMLDivElement>(null);
   const [dragMode, setDragMode] = useState<DragMode>('none');
   const showWaveform = AUDIO_TRACK_TYPES.has(trackType) && !!clip.mediaUrl;
@@ -548,4 +548,14 @@ export function ClipBlock({
       )}
     </>
   );
-}
+}, (prev, next) => {
+  return (
+    prev.clip === next.clip &&
+    prev.zoom === next.zoom &&
+    prev.isSelected === next.isSelected &&
+    prev.colorClass === next.colorClass &&
+    prev.trackType === next.trackType &&
+    prev.clipKeyframes === next.clipKeyframes &&
+    prev.playheadMs === next.playheadMs
+  );
+});

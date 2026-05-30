@@ -11,7 +11,7 @@ import { useCallback, useState } from 'react';
 import { cn } from '@kit/ui/utils';
 
 import { DEFAULT_TEXT_CLIP_PROPS } from '../lib/types';
-import { useEditSuite } from './edit-suite-provider';
+import { useEditCommands, useEditData, usePlayback } from './edit-suite-provider';
 import { ExportDialog } from './export/export-dialog';
 
 // ──────────────────────────────────────────
@@ -38,9 +38,10 @@ const LANGUAGE_LABELS: Record<string, string> = {
 // ──────────────────────────────────────────
 
 export function Toolbar() {
+  const { playheadMs } = usePlayback();
+  const data = useEditData();
+  const { dispatch } = data;
   const {
-    state,
-    dispatch,
     undo,
     redo,
     canUndo,
@@ -50,7 +51,7 @@ export function Toolbar() {
     runAutoAssembly,
     episodeId,
     availableLanguages,
-  } = useEditSuite();
+  } = useEditCommands();
   const [exportOpen, setExportOpen] = useState(false);
 
   const hasMultipleLanguages = availableLanguages.length > 1;
@@ -58,16 +59,16 @@ export function Toolbar() {
   // Add a title clip at the playhead position
   const handleAddTitle = useCallback(() => {
     // Find or create a title track
-    let titleTrack = state.tracks.find((t) => t.type === 'title');
+    let titleTrack = data.tracks.find((t) => t.type === 'title');
 
     if (!titleTrack) {
       const newTrackId = crypto.randomUUID();
       titleTrack = {
         id: newTrackId,
-        editProjectId: state.project?.id ?? '',
+        editProjectId: data.project?.id ?? '',
         type: 'title' as const,
         name: 'Titles',
-        sortOrder: state.tracks.length,
+        sortOrder: data.tracks.length,
         volume: 1,
         isMuted: false,
         isSolo: false,
@@ -81,7 +82,7 @@ export function Toolbar() {
 
     // Create a default title clip (3 seconds at playhead)
     const clipId = crypto.randomUUID();
-    const startMs = state.playheadMs;
+    const startMs = playheadMs;
     const durationMs = 3000;
 
     dispatch({
@@ -119,7 +120,7 @@ export function Toolbar() {
 
     // Select the new clip
     dispatch({ type: 'SELECT_CLIPS', payload: { clipIds: [clipId] } });
-  }, [state.tracks, state.project?.id, state.playheadMs, dispatch]);
+  }, [data.tracks, data.project?.id, playheadMs, dispatch]);
 
   return (
     <div className="flex min-h-[40px] items-center justify-between gap-3 bg-zinc-900 px-3 py-1.5">
@@ -143,7 +144,7 @@ export function Toolbar() {
         {hasMultipleLanguages ? (
           <select
             className="rounded-md border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-xs text-zinc-300 outline-none focus:border-violet-500"
-            value={state.activeLanguage}
+            value={data.activeLanguage}
             onChange={(e) =>
               dispatch({
                 type: 'SET_LANGUAGE',
@@ -160,8 +161,8 @@ export function Toolbar() {
           </select>
         ) : (
           <span className="px-1 text-xs text-zinc-400">
-            {LANGUAGE_LABELS[state.activeLanguage] ??
-              state.activeLanguage.toUpperCase()}
+            {LANGUAGE_LABELS[data.activeLanguage] ??
+              data.activeLanguage.toUpperCase()}
           </span>
         )}
 
@@ -169,18 +170,18 @@ export function Toolbar() {
 
         <ToolbarButton
           onClick={() =>
-            dispatch({ type: 'SET_ZOOM', payload: { zoom: state.zoom - 10 } })
+            dispatch({ type: 'SET_ZOOM', payload: { zoom: data.zoom - 10 } })
           }
           title="Zoom out (-)"
         >
           −
         </ToolbarButton>
         <span className="min-w-[52px] text-center text-xs text-zinc-400">
-          {Math.round(state.zoom)}px/s
+          {Math.round(data.zoom)}px/s
         </span>
         <ToolbarButton
           onClick={() =>
-            dispatch({ type: 'SET_ZOOM', payload: { zoom: state.zoom + 10 } })
+            dispatch({ type: 'SET_ZOOM', payload: { zoom: data.zoom + 10 } })
           }
           title="Zoom in (+)"
         >
@@ -190,7 +191,7 @@ export function Toolbar() {
         <div className="mx-1 h-5 w-px bg-zinc-700" />
 
         <ToolbarButton
-          active={state.snapEnabled}
+          active={data.snapEnabled}
           onClick={() => dispatch({ type: 'TOGGLE_SNAP' })}
           title="Toggle snap to grid"
         >
@@ -201,7 +202,7 @@ export function Toolbar() {
       {/* Right: Assembly + Save status + Export */}
       <div className="flex items-center gap-1.5">
         {/* Auto-Assemble — shown when no project is loaded */}
-        {!state.project && episodeId && (
+        {!data.project && episodeId && (
           <ToolbarButton
             variant="primary"
             disabled={assemblyStatus === 'assembling'}
@@ -223,19 +224,19 @@ export function Toolbar() {
         <span
           className={cn(
             'rounded px-2 py-0.5 text-[11px]',
-            state.saveStatus === 'saved' && 'text-green-400',
-            state.saveStatus === 'dirty' && 'text-amber-400',
-            state.saveStatus === 'saving' && 'text-blue-400',
-            state.saveStatus === 'error' && 'text-red-400',
+            data.saveStatus === 'saved' && 'text-green-400',
+            data.saveStatus === 'dirty' && 'text-amber-400',
+            data.saveStatus === 'saving' && 'text-blue-400',
+            data.saveStatus === 'error' && 'text-red-400',
           )}
         >
-          {state.saveStatus === 'saved' && '✓ Saved'}
-          {state.saveStatus === 'dirty' && '● Unsaved'}
-          {state.saveStatus === 'saving' && '⟳ Saving...'}
-          {state.saveStatus === 'error' && '✕ Save failed'}
+          {data.saveStatus === 'saved' && '✓ Saved'}
+          {data.saveStatus === 'dirty' && '● Unsaved'}
+          {data.saveStatus === 'saving' && '⟳ Saving...'}
+          {data.saveStatus === 'error' && '✕ Save failed'}
         </span>
 
-        {(state.saveStatus === 'dirty' || state.saveStatus === 'error') && (
+        {(data.saveStatus === 'dirty' || data.saveStatus === 'error') && (
           <ToolbarButton
             onClick={() => void forceSave()}
             title="Save now (Cmd+S)"

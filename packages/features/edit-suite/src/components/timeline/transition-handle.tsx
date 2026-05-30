@@ -6,7 +6,7 @@
  * Renders a small icon in the gap/overlap zone between two clips.
  * Click opens the TransitionPicker to set/change the transition type and duration.
  */
-import { type Dispatch, useMemo, useState } from 'react';
+import { type Dispatch, memo, useMemo, useState } from 'react';
 
 import type { TransitionType } from '../../lib/schemas';
 import type { EditClip, EditTransition } from '../../lib/types';
@@ -45,7 +45,7 @@ interface TransitionHandleProps {
   dispatch: Dispatch<EditAction>;
 }
 
-export function TransitionHandle({
+export const TransitionHandle = memo(function TransitionHandle({
   fromClip,
   toClip,
   transition,
@@ -144,4 +144,12 @@ export function TransitionHandle({
       )}
     </div>
   );
-}
+}, (prev, next) => {
+  return (
+    prev.fromClip === next.fromClip &&
+    prev.toClip === next.toClip &&
+    prev.transition === next.transition &&
+    prev.zoom === next.zoom &&
+    prev.dispatch === next.dispatch
+  );
+});
