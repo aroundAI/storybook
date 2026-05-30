@@ -139,6 +139,16 @@ export const MusicTimeline = React.forwardRef<
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   // WebSocket hook for audio-file-generation results
   const {
     status: audioGenStatus,
@@ -474,7 +484,7 @@ export const MusicTimeline = React.forwardRef<
       setPlayingId(null);
       audioRef.current = null;
     };
-    audio.play();
+    audio.play().catch(() => {});
     audioRef.current = audio;
     setPlayingId(track.id);
   };

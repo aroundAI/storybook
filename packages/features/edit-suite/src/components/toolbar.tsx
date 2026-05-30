@@ -11,7 +11,11 @@ import { useCallback, useState } from 'react';
 import { cn } from '@kit/ui/utils';
 
 import { DEFAULT_TEXT_CLIP_PROPS } from '../lib/types';
-import { useEditCommands, useEditData, usePlayback } from './edit-suite-provider';
+import {
+  useEditCommands,
+  useEditData,
+  usePlayback,
+} from './edit-suite-provider';
 import { ExportDialog } from './export/export-dialog';
 
 // ──────────────────────────────────────────

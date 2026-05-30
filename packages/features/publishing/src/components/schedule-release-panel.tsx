@@ -281,7 +281,7 @@ export function ScheduleReleasePanel({
         }
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [minTime]);
 
   // Get user's local timezone

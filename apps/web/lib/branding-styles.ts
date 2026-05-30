@@ -179,9 +179,9 @@ export function generateLogoStyle(config: BrandingConfig): React.CSSProperties {
       if (config.logo.glow.animate) {
         if (styles.animation) {
           // Combine animations
-          styles.animation = `${styles.animation}, glow-pulse 2s ease-in-out infinite`;
+          styles.animation = `${styles.animation}, glow-pulse-logo 2s ease-in-out infinite`;
         } else {
-          styles.animation = 'glow-pulse 2s ease-in-out infinite';
+          styles.animation = 'glow-pulse-logo 2s ease-in-out infinite';
         }
       }
     }

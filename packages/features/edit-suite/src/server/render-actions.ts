@@ -1,7 +1,8 @@
 'use server';
 
-import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { revalidatePath } from 'next/cache';
+
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -164,7 +165,10 @@ export const enqueueRenderAction = enhanceAction(
 
     logger.info(ctx, 'Render job enqueued');
 
-    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
 
     return { success: true, status: 'queued' as const };
   },
@@ -249,7 +253,10 @@ export const enqueueMultiLanguageRenderAction = enhanceAction(
       'Multi-language render jobs enqueued',
     );
 
-    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
 
     return {
       success: true,

@@ -4,7 +4,7 @@ import 'server-only';
 
 import { revalidatePath } from 'next/cache';
 
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -80,6 +80,11 @@ async function generatePostVariants(params: {
  */
 export const createSocialPostAction = enhanceAction(
   async (input, user) => {
+    checkRateLimit(user.id, 'createSocialPost', {
+      maxRequests: 5,
+      windowMs: 60_000,
+    });
+
     const logger = await getLogger();
     const ctx = { name: 'socialPost.create', accountId: input.accountId };
     logger.info(ctx, 'Creating social post from notes');
@@ -226,7 +231,9 @@ export const getSocialPostAction = enhanceAction(
 
     const { data: post, error } = await client
       .from('social_posts')
-      .select('*')
+      .select(
+        'id, account_id, platform_connection_id, raw_notes, research_context, generated_variants, selected_variant_index, final_text, hashtags, status, visibility, platform, platform_post_id, platform_url, published_at, metadata, created_by, created_at, updated_at',
+      )
       .eq('id', input.postId)
       .single();
 
@@ -384,6 +391,11 @@ export const approveSocialPostAction = enhanceAction(
  */
 export const publishSocialPostAction = enhanceAction(
   async (input, _user) => {
+    checkRateLimit(_user.id, 'publishSocialPost', {
+      maxRequests: 5,
+      windowMs: 60_000,
+    });
+
     const logger = await getLogger();
     const ctx = { name: 'socialPost.publish', postId: input.postId };
     logger.info(ctx, 'Publishing social post');
@@ -393,7 +405,7 @@ export const publishSocialPostAction = enhanceAction(
     // Get the post
     const { data: post, error: fetchError } = await client
       .from('social_posts')
-      .select('*')
+      .select('id, final_text, platform_connection_id, visibility, metadata')
       .eq('id', input.postId)
       .single();
 
@@ -439,8 +451,7 @@ export const publishSocialPostAction = enhanceAction(
       const provider = createLinkedInProvider(tokenResult.accessToken);
       const result = await provider.createTextPost({
         text: post.final_text,
-        visibility:
-          (post.visibility as 'PUBLIC' | 'CONNECTIONS') ?? 'PUBLIC',
+        visibility: (post.visibility as 'PUBLIC' | 'CONNECTIONS') ?? 'PUBLIC',
         authorUrn: connection.platform_account_id,
       });
 
@@ -502,6 +513,11 @@ export const publishSocialPostAction = enhanceAction(
  */
 export const regenerateVariantsAction = enhanceAction(
   async (input, user) => {
+    checkRateLimit(user.id, 'regenerateVariants', {
+      maxRequests: 10,
+      windowMs: 60_000,
+    });
+
     const logger = await getLogger();
     const client = getSupabaseServerClient();
 

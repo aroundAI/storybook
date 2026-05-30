@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import {
   BarChart3,
   Calendar,
@@ -117,7 +119,7 @@ export function CompanyDashboard({
 /**
  * Production Status Card
  */
-function ProductionStatusCard({
+const ProductionStatusCard = React.memo(function ProductionStatusCard({
   status,
 }: {
   status: AccountDashboardData['productionStatus'];
@@ -167,7 +169,7 @@ function ProductionStatusCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 function StatusRow({
   icon,
@@ -192,7 +194,7 @@ function StatusRow({
 /**
  * Platform Breakdown Card
  */
-function PlatformBreakdownCard({
+const PlatformBreakdownCard = React.memo(function PlatformBreakdownCard({
   breakdown,
 }: {
   breakdown: AccountDashboardData['platformBreakdown'];
@@ -244,12 +246,12 @@ function PlatformBreakdownCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 /**
  * Top Content Card
  */
-function TopContentCard({
+const TopContentCard = React.memo(function TopContentCard({
   content,
 }: {
   content: AccountDashboardData['topContent'];
@@ -305,12 +307,12 @@ function TopContentCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 /**
  * Summary Card
  */
-function SummaryCard({
+const SummaryCard = React.memo(function SummaryCard({
   icon,
   title,
   value,
@@ -330,7 +332,7 @@ function SummaryCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 /**
  * Skeleton for loading state

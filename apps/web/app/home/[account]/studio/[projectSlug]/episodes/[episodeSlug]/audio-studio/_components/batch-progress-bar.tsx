@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  CheckCircle,
-  Loader2,
-  XCircle,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, XCircle } from 'lucide-react';
 
 import type { BatchStatus } from './use-batch-generation';
 

@@ -178,9 +178,7 @@ export function useBatchGeneration(
         }, 3000);
       } catch (error) {
         toast.error(
-          error instanceof Error
-            ? error.message
-            : 'Failed to start generation',
+          error instanceof Error ? error.message : 'Failed to start generation',
         );
       }
     });

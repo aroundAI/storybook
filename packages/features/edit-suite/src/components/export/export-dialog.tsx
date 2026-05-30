@@ -185,8 +185,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       try {
         await enqueueRenderAction({
           editProjectId: data.project!.id,
-          language:
-            selectedLang === 'all' ? data.activeLanguage : selectedLang,
+          language: selectedLang === 'all' ? data.activeLanguage : selectedLang,
         });
       } catch (err) {
         setServerError(

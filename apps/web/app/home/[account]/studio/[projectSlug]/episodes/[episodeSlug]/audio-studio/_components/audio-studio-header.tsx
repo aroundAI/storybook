@@ -148,10 +148,7 @@ export function AudioStudioHeader({
         {activeTab === 'dialogue' && (
           <>
             <div className="h-5 w-px shrink-0 bg-gray-200 dark:bg-gray-700" />
-            <LanguageTabBar
-              episodeId={episodeId}
-              {...languageTabBarProps}
-            />
+            <LanguageTabBar episodeId={episodeId} {...languageTabBarProps} />
           </>
         )}
 
@@ -211,7 +208,9 @@ export function AudioStudioHeader({
           <Button
             variant="outline"
             onClick={onClearAllVoices}
-            disabled={isPending || isGenerating || dialogueStats.completed === 0}
+            disabled={
+              isPending || isGenerating || dialogueStats.completed === 0
+            }
             size="sm"
             className="gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950 dark:hover:text-red-300"
           >
@@ -237,7 +236,10 @@ export function AudioStudioHeader({
               onClick={onGenerateAll}
               disabled={
                 isPending ||
-                dialogueStats.pending + dialogueStats.generating + dialogueStats.failed === 0
+                dialogueStats.pending +
+                  dialogueStats.generating +
+                  dialogueStats.failed ===
+                  0
               }
               size="sm"
               className="gap-2 bg-gray-900 text-white shadow-sm hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"

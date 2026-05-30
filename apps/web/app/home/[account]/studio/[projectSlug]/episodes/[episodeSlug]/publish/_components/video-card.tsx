@@ -2,12 +2,7 @@
 
 import Image from 'next/image';
 
-import {
-  Check,
-  Film,
-  Loader2,
-  Upload,
-} from 'lucide-react';
+import { Check, Film, Loader2, Upload } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { LANG_INFO } from '@kit/publishing/lib/constants';
@@ -62,9 +57,7 @@ export const VideoCard = ({
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-lg">{LANG_INFO[lang]?.flag}</span>
-            <span className="text-sm font-medium">
-              {LANG_INFO[lang]?.name}
-            </span>
+            <span className="text-sm font-medium">{LANG_INFO[lang]?.name}</span>
             <Check className="h-4 w-4 text-green-500" />
           </div>
           <Button
@@ -74,7 +67,21 @@ export const VideoCard = ({
             disabled={isPending}
             className="text-red-500 opacity-0 transition-opacity group-hover:opacity-100"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 6h18" />
+              <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+              <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+            </svg>
           </Button>
         </div>
 

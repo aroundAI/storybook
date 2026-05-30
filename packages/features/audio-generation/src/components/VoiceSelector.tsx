@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Check, Pause, Play, Search } from 'lucide-react';
 
@@ -82,6 +82,16 @@ export function VoiceSelector({
 }: VoiceSelectorProps) {
   const [playingVoiceId, setPlayingVoiceId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   const handlePlayPreview = (voice: VoiceOption, e: React.MouseEvent) => {
     e.stopPropagation();

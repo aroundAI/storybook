@@ -1,11 +1,4 @@
-import {
-  AlertCircle,
-  Facebook,
-  Instagram,
-  Youtube,
-} from 'lucide-react';
-
-
+import { AlertCircle, Facebook, Instagram, Youtube } from 'lucide-react';
 
 // Platform icons and configurations - with light/dark mode compatible colors
 export const PLATFORM_CONFIG: Record<
@@ -73,7 +66,12 @@ export type PlatformUploadStatus = {
 };
 
 // Delete progress types
-export type DeleteStage = 'idle' | 'confirm' | 'deleting' | 'complete' | 'error';
+export type DeleteStage =
+  | 'idle'
+  | 'confirm'
+  | 'deleting'
+  | 'complete'
+  | 'error';
 
 export type DeleteItemStatus = {
   publishId: string;

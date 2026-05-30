@@ -2,14 +2,7 @@
 
 import { useState } from 'react';
 
-import {
-  AlertCircle,
-  Check,
-  Copy,
-  Hash,
-  Linkedin,
-  Type,
-} from 'lucide-react';
+import { AlertCircle, Check, Copy, Hash, Linkedin, Type } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';

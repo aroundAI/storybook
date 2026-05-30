@@ -9,6 +9,11 @@ import { useEffect, useState } from 'react';
 
 import dynamic from 'next/dynamic';
 
+import { PageBody, PageHeader } from '@kit/ui/page';
+import { Skeleton } from '@kit/ui/skeleton';
+
+import { useEpisodeContext } from '../_components/episode-context-provider';
+
 const EpisodeAnalytics = dynamic(
   () =>
     import('@kit/content-analytics/components').then((mod) => ({
@@ -24,10 +29,6 @@ const EpisodeAnalytics = dynamic(
     ),
   },
 );
-import { PageBody, PageHeader } from '@kit/ui/page';
-import { Skeleton } from '@kit/ui/skeleton';
-
-import { useEpisodeContext } from '../_components/episode-context-provider';
 
 export default function EpisodeAnalyticsPage() {
   const { episode } = useEpisodeContext();

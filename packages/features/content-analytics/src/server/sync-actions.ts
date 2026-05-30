@@ -3,6 +3,7 @@
 import 'server-only';
 
 import { revalidatePath } from 'next/cache';
+
 import { z } from 'zod';
 
 import { enhanceAction } from '@kit/next/actions';
@@ -63,7 +64,10 @@ export const manualSyncAction = enhanceAction(
 
     const result = await syncSinglePublishById(data.publishId);
 
-    revalidatePath(`/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`, 'page');
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
 
     return result;
   },

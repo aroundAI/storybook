@@ -1,12 +1,8 @@
 'use client';
 
-import {
-  Loader2,
-  Upload,
-  Video,
-  X,
-} from 'lucide-react';
 import { useCallback, useState } from 'react';
+
+import { Loader2, Upload, Video, X } from 'lucide-react';
 import { useDropzone } from 'react-dropzone';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
@@ -136,8 +132,7 @@ export function UploadVideoDialog({
               ))}
               {channelsForLanguage.length === 0 && (
                 <p className="text-sm text-amber-600">
-                  No channels connected for{' '}
-                  {LANG_INFO[selectedLanguage].name}.
+                  No channels connected for {LANG_INFO[selectedLanguage].name}.
                   <a
                     href={`/home/${accountSlug}/settings/platforms`}
                     className="ml-1 underline"
@@ -185,8 +180,8 @@ export function UploadVideoDialog({
                     Drag & drop, or click to select
                   </p>
                   <p className="mt-1 text-xs text-gray-400">
-                    {uploadType === 'full' ? '16:9' : '9:16'} • MP4, MOV,
-                    WebM • Max 500MB
+                    {uploadType === 'full' ? '16:9' : '9:16'} • MP4, MOV, WebM •
+                    Max 500MB
                   </p>
                 </div>
               )}

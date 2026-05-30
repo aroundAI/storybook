@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 import {
   AlertCircle,
   Clock,
@@ -79,12 +81,12 @@ const SIZE_CLASSES = {
   sm: 'col-span-1 min-h-[200px]',
 };
 
-export function ShotCard({
+const ShotCardInner = ({
   shot,
   isSelected,
   onClick,
   size = 'md',
-}: ShotCardProps) {
+}: ShotCardProps) => {
   const characters = extractCharacters(shot);
 
   return (
@@ -265,4 +267,7 @@ export function ShotCard({
       </div>
     </div>
   );
-}
+};
+
+export const ShotCard = React.memo(ShotCardInner);
+ShotCard.displayName = 'ShotCard';

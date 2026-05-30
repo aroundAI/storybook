@@ -138,8 +138,6 @@ export function ContentTable({
     );
   }
 
-
-
   return (
     <div className="rounded-md border">
       <Table>
@@ -153,7 +151,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Views
-                <SortIcon field="views" sortField={sortField} sortDirection={sortDirection} />
+                <SortIcon
+                  field="views"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -162,7 +164,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Likes
-                <SortIcon field="likes" sortField={sortField} sortDirection={sortDirection} />
+                <SortIcon
+                  field="likes"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -171,7 +177,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Comments
-                <SortIcon field="comments" sortField={sortField} sortDirection={sortDirection} />
+                <SortIcon
+                  field="comments"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -180,7 +190,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Engagement
-                <SortIcon field="engagementRate" sortField={sortField} sortDirection={sortDirection} />
+                <SortIcon
+                  field="engagementRate"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -189,7 +203,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Published
-                <SortIcon field="publishedAt" sortField={sortField} sortDirection={sortDirection} />
+                <SortIcon
+                  field="publishedAt"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
           </TableRow>

@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 
 import { Download } from 'lucide-react';
@@ -46,7 +47,7 @@ interface PerformanceChartProps {
   height?: number;
 }
 
-export function PerformanceChart({
+export const PerformanceChart = React.memo(function PerformanceChart({
   data,
   platforms,
   height = 350,
@@ -277,7 +278,7 @@ export function PerformanceChart({
       </ResponsiveContainer>
     </div>
   );
-}
+});
 
 interface TooltipProps {
   active?: boolean;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import { google } from 'googleapis';
+import { youtube as youtubeApi } from '@googleapis/youtube';
+import { OAuth2Client } from 'google-auth-library';
 
 import {
   YOUTUBE_OAUTH_CONFIG,
@@ -114,9 +115,9 @@ export async function GET(request: NextRequest) {
   }
 
   // Get ALL channels (including brand channels) using googleapis
-  const oauth2Client = new google.auth.OAuth2();
+  const oauth2Client = new OAuth2Client();
   oauth2Client.setCredentials({ access_token: tokens.access_token });
-  const youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+  const youtube = youtubeApi({ version: 'v3', auth: oauth2Client });
 
   interface ChannelInfo {
     id: string;

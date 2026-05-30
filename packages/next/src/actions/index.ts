@@ -11,6 +11,8 @@ import { JWTUserData } from '@kit/supabase/types';
 
 import { zodParseFactory } from '../utils';
 
+export { checkRateLimit } from './rate-limiter';
+
 /**
  * @name enhanceAction
  * @description Enhance an action with captcha, schema and auth checks

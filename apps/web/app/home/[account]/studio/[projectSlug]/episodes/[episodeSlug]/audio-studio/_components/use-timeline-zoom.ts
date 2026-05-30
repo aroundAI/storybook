@@ -30,16 +30,13 @@ export function useTimelineZoom(): TimelineZoomControls {
     }
   }, [pixelsPerSecond]);
 
-  const fitToWindow = useCallback(
-    (totalDuration: number) => {
-      const containerWidth = timelineContainerRef.current?.clientWidth ?? 800;
-      // Leave some padding (280px for sidebar, 60px for margins)
-      const availableWidth = containerWidth - 60;
-      const newPPS = Math.floor(availableWidth / totalDuration);
-      setPixelsPerSecond(Math.max(20, Math.min(200, newPPS)));
-    },
-    [],
-  );
+  const fitToWindow = useCallback((totalDuration: number) => {
+    const containerWidth = timelineContainerRef.current?.clientWidth ?? 800;
+    // Leave some padding (280px for sidebar, 60px for margins)
+    const availableWidth = containerWidth - 60;
+    const newPPS = Math.floor(availableWidth / totalDuration);
+    setPixelsPerSecond(Math.max(20, Math.min(200, newPPS)));
+  }, []);
 
   return {
     pixelsPerSecond,

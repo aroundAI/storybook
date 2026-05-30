@@ -10,9 +10,7 @@ import type { Metadata } from 'next';
 
 import { notFound } from 'next/navigation';
 
-import {
-  AnalyticsDashboardSkeleton,
-} from '@kit/content-analytics/components';
+import { AnalyticsDashboardSkeleton } from '@kit/content-analytics/components';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 import { PageBody, PageHeader } from '@kit/ui/page';
 
@@ -66,7 +64,10 @@ export default async function ProjectAnalyticsPage({ params }: PageParams) {
       />
       <PageBody>
         <Suspense fallback={<AnalyticsDashboardSkeleton />}>
-          <LazyAnalyticsDashboard projectId={project.id} accountSlug={account} />
+          <LazyAnalyticsDashboard
+            projectId={project.id}
+            accountSlug={account}
+          />
         </Suspense>
       </PageBody>
     </>

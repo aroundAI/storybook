@@ -58,7 +58,13 @@ export default async function RootLayout({
           href="https://fonts.gstatic.com"
           crossOrigin="anonymous"
         />
-        <link rel="stylesheet" href={googleFontsUrl} />
+        {googleFontsUrl && (
+          <link
+            rel="stylesheet"
+            href={googleFontsUrl}
+            crossOrigin="anonymous"
+          />
+        )}
         {customFontUrl && <link rel="stylesheet" href={customFontUrl} />}
         <style dangerouslySetInnerHTML={{ __html: brandingStyles }} />
 

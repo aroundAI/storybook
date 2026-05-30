@@ -1,18 +1,13 @@
 'use client';
 
-import {
-  ChevronRight,
-  Film,
-  Plus,
-  Upload,
-} from 'lucide-react';
+import { ChevronRight, Film, Plus, Upload } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
-import { VideoCard } from './video-card';
 import { PLATFORM_CONFIG, type PlatformConnection } from './publish-types';
+import { VideoCard } from './video-card';
 
 interface FullVideosSectionProps {
   uploadedFullLanguages: SupportedLanguage[];
@@ -85,9 +80,7 @@ export function FullVideosSection({
             className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50"
           >
             <Upload className="h-8 w-8" />
-            <span className="font-medium">
-              Upload Full Video (16:9)
-            </span>
+            <span className="font-medium">Upload Full Video (16:9)</span>
           </button>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
@@ -111,9 +104,7 @@ export function FullVideosSection({
                 className="flex aspect-video w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-indigo-400 hover:bg-indigo-50 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-indigo-500 dark:hover:bg-gray-700/50 dark:hover:text-indigo-400"
               >
                 <Plus className="h-6 w-6" />
-                <span className="text-sm font-medium">
-                  Add Language
-                </span>
+                <span className="text-sm font-medium">Add Language</span>
               </button>
             )}
           </div>

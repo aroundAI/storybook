@@ -15,7 +15,11 @@ import { cn } from '@kit/ui/utils';
 
 import { AudioEngine } from '../../lib/audio-engine';
 import { PlaybackEngine } from '../../lib/playback-engine';
-import { useEditCommands, useEditData, usePlayback } from '../edit-suite-provider';
+import {
+  useEditCommands,
+  useEditData,
+  usePlayback,
+} from '../edit-suite-provider';
 import { PreviewCanvas } from './preview-canvas';
 
 // ──────────────────────────────────────────

@@ -9,7 +9,7 @@
 
 import { z } from 'zod';
 
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -20,6 +20,13 @@ import {
   updateAudioAssetAction,
 } from './audio-asset-actions';
 import { getProjectElevenLabsApiKey } from './project-audio-settings';
+
+/**
+ * SFX Generation Actions
+ *
+ * Server actions for generating sound effects using ElevenLabs.
+ * Includes asset library integration for reuse.
+ */
 
 /**
  * SFX Generation Actions
@@ -137,6 +144,11 @@ export const generateSfxAction = enhanceAction(
     if (authError || !user) {
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'generateSfx', {
+      maxRequests: 10,
+      windowMs: 60_000,
+    });
 
     // 1. Check if asset exists (deduplication)
     const { asset, isNew } = await findOrCreateAudioAsset({
@@ -282,6 +294,19 @@ export const generateSfxAction = enhanceAction(
  */
 export const generateSfxBatchAction = enhanceAction(
   async (data): Promise<{ results: GenerateSfxResult[] }> => {
+    const client = getSupabaseServerClient();
+    const { data: batchUser, error: batchAuthError } =
+      await requireUser(client);
+
+    if (batchAuthError || !batchUser) {
+      throw new Error('Authentication required');
+    }
+
+    checkRateLimit(batchUser.id, 'generateSfxBatch', {
+      maxRequests: 3,
+      windowMs: 60_000,
+    });
+
     const logger = await getLogger();
     const ctx = {
       name: 'sfx.generateBatch',

@@ -264,10 +264,11 @@ export const planTimelineAction = enhanceAction(
     let updatedCount = 0;
     if (updates.length > 0) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: batchResult, error: batchError } = await (client as any)
-        .rpc('plan_dialogue_timeline', {
-          p_updates: JSON.stringify(updates),
-        });
+      const { data: batchResult, error: batchError } = await (
+        client as any
+      ).rpc('plan_dialogue_timeline', {
+        p_updates: JSON.stringify(updates),
+      });
 
       if (batchError) {
         logger.warn(

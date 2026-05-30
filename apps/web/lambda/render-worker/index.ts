@@ -187,9 +187,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
   // 2. Fetch tracks, clips, transitions, keyframes
   const { data: tracks } = await supabase
     .from('edit_tracks')
-    .select(
-      'id, edit_project_id, type, sort_order, is_muted, name, volume',
-    )
+    .select('id, edit_project_id, type, sort_order, is_muted, name, volume')
     .eq('edit_project_id', editProjectId)
     .order('sort_order');
 

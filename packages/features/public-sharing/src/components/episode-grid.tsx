@@ -56,7 +56,8 @@ export function EpisodeGrid({
       .map(Number)
       .sort((a, b) => a - b);
     const showHeaders =
-      sortedSeasons.length > 1 || (sortedSeasons[0] !== undefined && sortedSeasons[0] > 1);
+      sortedSeasons.length > 1 ||
+      (sortedSeasons[0] !== undefined && sortedSeasons[0] > 1);
 
     return {
       groupedBySeason: grouped,

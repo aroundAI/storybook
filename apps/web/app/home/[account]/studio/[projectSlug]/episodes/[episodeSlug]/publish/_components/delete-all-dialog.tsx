@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  Loader2,
-  Trash2,
-} from 'lucide-react';
+import { AlertCircle, Loader2, Trash2 } from 'lucide-react';
 
 import { deleteEpisodePublishesAction } from '@kit/publishing/server';
 import { Button } from '@kit/ui/button';
@@ -34,10 +30,7 @@ export function DeleteAllDialog({
   onDeleted,
 }: DeleteAllDialogProps) {
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(o) => !isDeletingAll && onOpenChange(o)}
-    >
+    <Dialog open={open} onOpenChange={(o) => !isDeletingAll && onOpenChange(o)}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">

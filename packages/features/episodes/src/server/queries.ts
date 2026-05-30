@@ -13,7 +13,9 @@ import type { Episode, EpisodeWithShots, Shot } from '../lib/types';
  * NOTE: This fetches FULL episode data including large JSON blobs.
  * For list views, prefer getEpisodeMetadataByProject() instead.
  */
-export const getEpisodesByProject = cache(async function getEpisodesByProject(projectId: string) {
+export const getEpisodesByProject = cache(async function getEpisodesByProject(
+  projectId: string,
+) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -49,35 +51,37 @@ export const getEpisodesByProject = cache(async function getEpisodesByProject(pr
  * LIGHTWEIGHT: Excludes large JSON blobs (story_data, screenplay_data, shot_list)
  * Use this for list views to reduce data transfer by 90%+
  */
-export const getEpisodeMetadataByProject = cache(async function getEpisodeMetadataByProject(projectId: string) {
-  const client = getSupabaseServerClient();
+export const getEpisodeMetadataByProject = cache(
+  async function getEpisodeMetadataByProject(projectId: string) {
+    const client = getSupabaseServerClient();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (client as any)
-    .from('episodes')
-    .select(
-      `
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data, error } = await (client as any)
+      .from('episodes')
+      .select(
+        `
       id, slug, project_id, season_id, number, title, description,
       status, duration_seconds, thumbnail_url, final_video_url,
       localized_videos, metadata, version, created_at, updated_at, deleted_at
     `,
-    )
-    .eq('project_id', projectId)
-    .is('deleted_at', null)
-    .order('number', { ascending: true });
+      )
+      .eq('project_id', projectId)
+      .is('deleted_at', null)
+      .order('number', { ascending: true });
 
-  if (error) {
-    return { data: null, error };
-  }
+    if (error) {
+      return { data: null, error };
+    }
 
-  return {
-    data: data as Omit<
-      Episode,
-      'story_data' | 'screenplay_data' | 'shot_list'
-    >[],
-    error: null,
-  };
-});
+    return {
+      data: data as Omit<
+        Episode,
+        'story_data' | 'screenplay_data' | 'shot_list'
+      >[],
+      error: null,
+    };
+  },
+);
 
 /**
  * Get a single episode by ID (excluding soft-deleted)
@@ -113,7 +117,9 @@ export const getEpisode = cache(async function getEpisode(episodeId: string) {
 /**
  * Get episode with all related shots and season info
  */
-export const getEpisodeWithShots = cache(async function getEpisodeWithShots(episodeId: string) {
+export const getEpisodeWithShots = cache(async function getEpisodeWithShots(
+  episodeId: string,
+) {
   const client = getSupabaseServerClient();
 
   // Fetch episode with season info
@@ -194,7 +200,9 @@ export async function getNextEpisodeNumber(projectId: string) {
 /**
  * Get episode count for a project (excluding soft-deleted)
  */
-export const getEpisodeCount = cache(async function getEpisodeCount(projectId: string) {
+export const getEpisodeCount = cache(async function getEpisodeCount(
+  projectId: string,
+) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -217,7 +225,9 @@ export const getEpisodeCount = cache(async function getEpisodeCount(projectId: s
 /**
  * Get all shots for an episode (ordered by sequence)
  */
-export const getShotsByEpisode = cache(async function getShotsByEpisode(episodeId: string) {
+export const getShotsByEpisode = cache(async function getShotsByEpisode(
+  episodeId: string,
+) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -278,7 +288,10 @@ export const getShot = cache(async function getShot(shotId: string) {
 /**
  * Get shots by scene number within an episode
  */
-export const getShotsByScene = cache(async function getShotsByScene(episodeId: string, sceneNumber: number) {
+export const getShotsByScene = cache(async function getShotsByScene(
+  episodeId: string,
+  sceneNumber: number,
+) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

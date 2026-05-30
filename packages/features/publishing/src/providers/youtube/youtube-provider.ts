@@ -1,7 +1,8 @@
 import 'server-only';
 
+import { youtube as youtubeApi } from '@googleapis/youtube';
 import { createReadStream, promises as fsPromises } from 'fs';
-import { google } from 'googleapis';
+import { OAuth2Client } from 'google-auth-library';
 import { Readable } from 'stream';
 
 import type {
@@ -22,9 +23,9 @@ export class YouTubeProvider {
   private youtube;
 
   constructor(accessToken: string) {
-    const oauth2Client = new google.auth.OAuth2();
+    const oauth2Client = new OAuth2Client();
     oauth2Client.setCredentials({ access_token: accessToken });
-    this.youtube = google.youtube({ version: 'v3', auth: oauth2Client });
+    this.youtube = youtubeApi({ version: 'v3', auth: oauth2Client });
   }
 
   /**

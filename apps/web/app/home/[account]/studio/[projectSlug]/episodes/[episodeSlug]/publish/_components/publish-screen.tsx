@@ -10,9 +10,7 @@ import {
 } from 'react';
 
 import { useQuery } from '@tanstack/react-query';
-import {
-  Share2,
-} from 'lucide-react';
+import { Share2 } from 'lucide-react';
 
 import {
   batchTranslateMetadataAction,
@@ -58,7 +56,6 @@ import { FullVideosSection } from './full-videos-section';
 import { MasterAssetManager } from './master-asset-manager';
 import { PublishProgressDialog } from './publish-progress-dialog';
 import { PublishSettingsSidebar } from './publish-settings-sidebar';
-import { PublishedContentSection } from './published-content-section';
 import type {
   DeleteItemStatus,
   DeleteStage,
@@ -69,6 +66,7 @@ import type {
   TranslationResult,
   VideoType,
 } from './publish-types';
+import { PublishedContentSection } from './published-content-section';
 import { ShortsSection } from './shorts-section';
 import { UnpublishDialog } from './unpublish-dialog';
 import { UploadVideoDialog } from './upload-video-dialog';
@@ -529,7 +527,7 @@ export function PublishScreen({
         setPublishStage('error');
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- buildPlatformConfigsAndConfirm receives all reactive data via params; adding it would require useCallback on a 100+ line fn
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildPlatformConfigsAndConfirm receives all reactive data via params; adding it would require useCallback on a 100+ line fn
   }, [
     llmStatus,
     llmResult,
@@ -1440,7 +1438,8 @@ export function PublishScreen({
                 }))}
                 baseMetadata={{
                   title: metadata.title || episode.title,
-                  description: metadata.description || episode.description || '',
+                  description:
+                    metadata.description || episode.description || '',
                 }}
                 onSchedule={handleScheduleRelease}
                 onPublishNow={handlePublish}

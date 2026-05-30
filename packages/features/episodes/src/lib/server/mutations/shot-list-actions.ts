@@ -9,7 +9,7 @@
  * NOTE: The actual LLM processing and database insertion logic has been
  * moved to apps/web/lambda/llm-worker/handlers/shot-generation.ts
  */
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
@@ -41,6 +41,11 @@ export const generateShotListAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized shot list generation attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'generateShotList', {
+      maxRequests: 3,
+      windowMs: 60_000,
+    });
 
     // Fetch episode with screenplay_data for validation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

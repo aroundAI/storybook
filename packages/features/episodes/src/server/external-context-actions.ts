@@ -31,6 +31,20 @@ import { SOURCE_CATEGORIES } from '../types/external-context';
  * Server actions for searching, listing, and managing external content sources.
  */
 
+/**
+ * External Context Server Actions
+ * Phase 11: FILM-1135
+ *
+ * Server actions for searching, listing, and managing external content sources.
+ */
+
+/**
+ * External Context Server Actions
+ * Phase 11: FILM-1135
+ *
+ * Server actions for searching, listing, and managing external content sources.
+ */
+
 // =============================================================================
 // SCHEMAS
 // =============================================================================
@@ -101,7 +115,9 @@ export const listExternalSourcesAction = enhanceAction(
 
     let query = supabase
       .from('external_sources')
-      .select('*')
+      .select(
+        'id, name, slug, description, website_url, api_endpoint, category, provider_type, credibility_tier, is_active, created_at, updated_at',
+      )
       .order('category')
       .order('name');
 
@@ -182,7 +198,9 @@ export const getExternalContentByIdAction = enhanceAction(
 
     const { data: rawRow, error } = await supabase
       .from('external_content')
-      .select('*')
+      .select(
+        'id, external_id, source_id, title, description, content, url, authors, published_at, language, category, topics, entities, doi, journal, citations, peer_reviewed, image_url, credibility_tier, bias_label, fetched_at, cache_expires_at',
+      )
       .eq('id', data.contentId)
       .single();
 
@@ -228,7 +246,7 @@ async function requireAccountOwner() {
 
   const { count } = await supabase
     .from('accounts_memberships')
-    .select('*', { count: 'exact', head: true })
+    .select('id', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .eq('account_role', 'owner');
 
@@ -364,15 +382,15 @@ export const getResearchCountsAction = enhanceAction(
     const [sourcesResult, factsResult, apiSourcesResult] = await Promise.all([
       supabase
         .from('external_sources')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('is_active', true),
       supabase
         .from('verified_facts')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('project_id', data.projectId),
       supabase
         .from('external_sources')
-        .select('*', { count: 'exact', head: true })
+        .select('id', { count: 'exact', head: true })
         .eq('is_active', true)
         .in('provider_type', ['newsapi', 'semantic_scholar', 'custom_api']),
     ]);
@@ -407,6 +425,8 @@ export const getVerifiedFactsAction = enhanceAction(
 
     if (data.limit) {
       query.limit(data.limit);
+    } else {
+      query.limit(200);
     }
 
     const { data: facts, error } = await query;

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  Check,
-  Clock,
-  Loader2,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { AlertCircle, Check, Clock, Loader2, Trash2, X } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
 import {
@@ -113,8 +106,8 @@ export function UnpublishDialog({
 
           {deleteStage === 'confirm' && (
             <p className="text-sm text-gray-500">
-              This will delete the content from the platform and remove it
-              from your records.
+              This will delete the content from the platform and remove it from
+              your records.
             </p>
           )}
 

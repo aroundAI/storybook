@@ -1,12 +1,6 @@
 'use client';
 
-import {
-  Plus,
-  Smartphone,
-  Trash2,
-  Upload,
-  X,
-} from 'lucide-react';
+import { Plus, Smartphone, Trash2, Upload, X } from 'lucide-react';
 
 import type { ShortsGroup } from '@kit/episodes/types';
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
@@ -21,7 +15,9 @@ interface ShortsSectionProps {
   onAddGroup: () => void;
   onUpdateGroupMetadata: (
     groupId: string,
-    updates: Partial<Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name'>>,
+    updates: Partial<
+      Pick<ShortsGroup, 'title' | 'description' | 'tags' | 'name'>
+    >,
   ) => void;
   onDeleteGroup: (groupId: string) => void;
   onDeleteVideoFromGroup: (groupId: string, language: string) => void;
@@ -68,9 +64,7 @@ export function ShortsSection({
             className="flex w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-8 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50"
           >
             <Upload className="h-8 w-8" />
-            <span className="font-medium">
-              Create First Shorts Group
-            </span>
+            <span className="font-medium">Create First Shorts Group</span>
             <span className="text-sm text-gray-400">
               Each group has its own metadata that gets translated
             </span>
@@ -161,16 +155,10 @@ export function ShortsSection({
                           />
                           <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs text-white">
                             <span>
-                              {
-                                LANG_INFO[lang as SupportedLanguage]
-                                  ?.flag
-                              }
+                              {LANG_INFO[lang as SupportedLanguage]?.flag}
                             </span>
                             <span>
-                              {
-                                LANG_INFO[lang as SupportedLanguage]
-                                  ?.name
-                              }
+                              {LANG_INFO[lang as SupportedLanguage]?.name}
                             </span>
                           </div>
                           {/* Delete video button */}
@@ -187,15 +175,11 @@ export function ShortsSection({
                       ),
                   )}
                   <button
-                    onClick={() =>
-                      onOpenUploadDialog('shorts', group.id)
-                    }
+                    onClick={() => onOpenUploadDialog('shorts', group.id)}
                     className="flex aspect-[9/16] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 text-gray-500 transition-colors hover:border-pink-400 hover:bg-pink-50 hover:text-pink-600 dark:border-gray-600 dark:bg-gray-800/50 dark:hover:border-pink-500 dark:hover:bg-gray-700/50 dark:hover:text-pink-400"
                   >
                     <Plus className="h-6 w-6" />
-                    <span className="text-sm font-medium">
-                      Add Language
-                    </span>
+                    <span className="text-sm font-medium">Add Language</span>
                   </button>
                 </div>
               </div>

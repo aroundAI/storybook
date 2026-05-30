@@ -10,7 +10,6 @@ import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
-
 import type {
   AutoAssignVoicesResponse,
   AutoAssignVoicesSchemaType,
@@ -467,7 +466,10 @@ export const autoAssignVoicesAction = enhanceAction(
     let neutralIndex = 0;
 
     // Build voice assignments map for all characters first
-    const voiceMap = new Map<string, { voiceId: string; voiceName: string; reason: string }>();
+    const voiceMap = new Map<
+      string,
+      { voiceId: string; voiceName: string; reason: string }
+    >();
 
     for (const characterAssetId of data.characterAssetIds) {
       const charDetails = charDetailsMap.get(characterAssetId);

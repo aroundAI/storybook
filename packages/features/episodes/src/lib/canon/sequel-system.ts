@@ -226,10 +226,7 @@ export async function buildParentContext(
       .select('location, environment_data')
       .eq('project_id', parentProjectId)
       .order('created_at', { ascending: false }),
-    supabase
-      .from('episodes')
-      .select('id')
-      .eq('project_id', parentProjectId),
+    supabase.from('episodes').select('id').eq('project_id', parentProjectId),
   ]);
 
   const immutableEvents = (rawImmutableEvents ?? []) as ImmutableEventRow[];
@@ -377,7 +374,9 @@ export async function getSequelParentContexts(
   // Fetch cached parent contexts
   const { data } = await supabase
     .from('sequel_parent_contexts')
-    .select('parent_project_id, parent_project_name, parent_summary, parent_immutable_events, parent_final_character_states, parent_resolved_threads, parent_world_facts, character_visual_registry, location_registry')
+    .select(
+      'parent_project_id, parent_project_name, parent_summary, parent_immutable_events, parent_final_character_states, parent_resolved_threads, parent_world_facts, character_visual_registry, location_registry',
+    )
     .eq('sequel_project_id', sequelProjectId)
     .eq('is_stale', false);
 

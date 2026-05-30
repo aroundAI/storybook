@@ -5,17 +5,11 @@ import { useCallback, useRef, useState, useTransition } from 'react';
 import type { EpisodeWithShots } from '@kit/episodes/types';
 
 import { exportAudioData } from './audio-export';
-import { AudioStudioHeader, type ActiveTab } from './audio-studio-header';
+import { type ActiveTab, AudioStudioHeader } from './audio-studio-header';
 import { BatchProgressBar } from './batch-progress-bar';
 import { DialogueTimeline } from './dialogue-timeline';
-import {
-  MusicTimeline,
-  type MusicTimelineHandle,
-} from './music-timeline';
-import {
-  SfxTimeline,
-  type SfxTimelineHandle,
-} from './sfx-timeline';
+import { MusicTimeline, type MusicTimelineHandle } from './music-timeline';
+import { SfxTimeline, type SfxTimelineHandle } from './sfx-timeline';
 import { useAudioStudioData } from './use-audio-studio-data';
 import { useBatchGeneration } from './use-batch-generation';
 import { useTimelineZoom } from './use-timeline-zoom';

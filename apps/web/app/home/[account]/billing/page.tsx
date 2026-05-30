@@ -49,10 +49,7 @@ async function TeamAccountBillingPage({ params }: TeamAccountBillingPageProps) {
 
   const [subscriptionProductPlan, orderProductPlan] = await Promise.all([
     subscription
-      ? getProductPlan(
-          subscription.items[0]?.variant_id,
-          subscription.currency,
-        )
+      ? getProductPlan(subscription.items[0]?.variant_id, subscription.currency)
       : undefined,
     order
       ? getProductPlan(order.items[0]?.variant_id, order.currency)

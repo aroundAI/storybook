@@ -110,8 +110,7 @@ export function PublishProgressDialog({
                     className="flex items-start gap-3 rounded-md bg-gray-50 p-2 dark:bg-gray-800"
                   >
                     <span className="text-xl">
-                      {LANG_INFO[t.language as SupportedLanguage]?.flag ||
-                        '🌐'}
+                      {LANG_INFO[t.language as SupportedLanguage]?.flag || '🌐'}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
@@ -129,9 +128,7 @@ export function PublishProgressDialog({
                           </Badge>
                         )}
                         {t.status === 'pending' && (
-                          <span className="text-xs text-gray-400">
-                            Pending
-                          </span>
+                          <span className="text-xs text-gray-400">Pending</span>
                         )}
                         {t.status === 'translating' && (
                           <Loader2 className="h-3 w-3 animate-spin text-indigo-500" />
@@ -149,9 +146,7 @@ export function PublishProgressDialog({
                         </p>
                       )}
                       {t.error && (
-                        <p className="mt-0.5 text-xs text-red-500">
-                          {t.error}
-                        </p>
+                        <p className="mt-0.5 text-xs text-red-500">{t.error}</p>
                       )}
                     </div>
                   </div>

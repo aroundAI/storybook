@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  AlertCircle,
-  Facebook,
-  Instagram,
-  Youtube,
-} from 'lucide-react';
+import { AlertCircle, Facebook, Instagram, Youtube } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import {

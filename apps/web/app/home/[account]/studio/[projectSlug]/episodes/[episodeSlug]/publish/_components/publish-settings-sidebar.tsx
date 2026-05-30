@@ -2,10 +2,7 @@
 
 import type { ReactNode } from 'react';
 
-import {
-  Loader2,
-  RefreshCw,
-} from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
 import { LANG_INFO } from '@kit/publishing/lib/constants';
@@ -24,7 +21,11 @@ interface PublishSettingsSidebarProps {
     description: string;
     tags: string;
   };
-  onMetadataChange: (metadata: { title: string; description: string; tags: string }) => void;
+  onMetadataChange: (metadata: {
+    title: string;
+    description: string;
+    tags: string;
+  }) => void;
   channelsByLanguage: Record<string, PlatformConnection[]>;
   loadingConnections: boolean;
   connectionsCount: number;
@@ -130,31 +131,24 @@ export function PublishSettingsSidebar({
             </div>
           ) : (
             <div className="space-y-4">
-              {Object.entries(channelsByLanguage).map(
-                ([lang, channels]) => (
-                  <div key={lang}>
-                    <div className="mb-2 flex items-center gap-2">
-                      <span>
-                        {LANG_INFO[lang as SupportedLanguage]?.flag ??
-                          '🌐'}
-                      </span>
-                      <span className="text-sm font-medium">
-                        {LANG_INFO[lang as SupportedLanguage]?.name ??
-                          lang.toUpperCase()}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {channels.map((conn) => (
-                        <ChannelBadge
-                          key={conn.id}
-                          conn={conn}
-                          size="md"
-                        />
-                      ))}
-                    </div>
+              {Object.entries(channelsByLanguage).map(([lang, channels]) => (
+                <div key={lang}>
+                  <div className="mb-2 flex items-center gap-2">
+                    <span>
+                      {LANG_INFO[lang as SupportedLanguage]?.flag ?? '🌐'}
+                    </span>
+                    <span className="text-sm font-medium">
+                      {LANG_INFO[lang as SupportedLanguage]?.name ??
+                        lang.toUpperCase()}
+                    </span>
                   </div>
-                ),
-              )}
+                  <div className="flex flex-wrap gap-2">
+                    {channels.map((conn) => (
+                      <ChannelBadge key={conn.id} conn={conn} size="md" />
+                    ))}
+                  </div>
+                </div>
+              ))}
               <Button
                 variant="outline"
                 size="sm"

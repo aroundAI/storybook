@@ -15,7 +15,6 @@ import {
   Trash2,
 } from 'lucide-react';
 
-
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
@@ -48,7 +47,11 @@ interface PublishedContentSectionProps {
   fetchingPublishes: boolean;
   onRefresh: () => void;
   onDeleteAll: () => void;
-  onUnpublish: (publishId: string, platform: string, channelName: string) => void;
+  onUnpublish: (
+    publishId: string,
+    platform: string,
+    channelName: string,
+  ) => void;
 }
 
 export function PublishedContentSection({
@@ -145,10 +148,7 @@ export function PublishedContentSection({
                       {pub.status}
                     </Badge>
                     {pub.contentType === 'short' && (
-                      <Badge
-                        variant="outline"
-                        className="text-pink-600"
-                      >
+                      <Badge variant="outline" className="text-pink-600">
                         Short
                       </Badge>
                     )}
@@ -170,27 +170,21 @@ export function PublishedContentSection({
                     </div>
                   )}
                   {pub.error && (
-                    <p className="mt-1 text-xs text-red-500">
-                      {pub.error}
-                    </p>
+                    <p className="mt-1 text-xs text-red-500">{pub.error}</p>
                   )}
                   {/* Show scheduled time for scheduled posts */}
-                  {pub.status === 'scheduled' &&
-                    pub.scheduledAt && (
-                      <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
-                        <Clock className="h-3 w-3" />
-                        Scheduled for{' '}
-                        {format(new Date(pub.scheduledAt), 'PPp')}
-                      </p>
-                    )}
+                  {pub.status === 'scheduled' && pub.scheduledAt && (
+                    <p className="text-muted-foreground mt-1 flex items-center gap-1 text-xs">
+                      <Clock className="h-3 w-3" />
+                      Scheduled for {format(new Date(pub.scheduledAt), 'PPp')}
+                    </p>
+                  )}
                   {/* Show published time for published posts */}
-                  {pub.status === 'published' &&
-                    pub.publishedAt && (
-                      <p className="text-muted-foreground mt-1 text-xs">
-                        Published{' '}
-                        {format(new Date(pub.publishedAt), 'PPp')}
-                      </p>
-                    )}
+                  {pub.status === 'published' && pub.publishedAt && (
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Published {format(new Date(pub.publishedAt), 'PPp')}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -198,9 +192,7 @@ export function PublishedContentSection({
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      window.open(pub.platformUrl ?? '', '_blank')
-                    }
+                    onClick={() => window.open(pub.platformUrl ?? '', '_blank')}
                     title="Open on platform"
                   >
                     <ExternalLink className="h-4 w-4" />
@@ -211,11 +203,7 @@ export function PublishedContentSection({
                   size="sm"
                   className="text-red-500 hover:bg-red-50 hover:text-red-700"
                   onClick={() =>
-                    onUnpublish(
-                      pub.id,
-                      pub.platform,
-                      pub.channelName,
-                    )
+                    onUnpublish(pub.id, pub.platform, pub.channelName)
                   }
                   title="Delete from platform"
                 >

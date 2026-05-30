@@ -30,11 +30,7 @@ async function AddFactPage({ params }: AddFactPageProps) {
 
   const [, { data: project, error: projectError }] = await Promise.all([
     loadTeamWorkspace(account),
-    client
-      .from('projects')
-      .select('id')
-      .eq('slug', projectSlug)
-      .single(),
+    client.from('projects').select('id').eq('slug', projectSlug).single(),
   ]);
 
   if (projectError || !project) {

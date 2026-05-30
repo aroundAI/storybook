@@ -421,11 +421,18 @@ async function processDelete(job: DeleteJobMessage): Promise<void> {
 /**
  * Process a social text post job (LinkedIn text-only post)
  */
-async function processSocialTextPost(job: SocialTextPostJobMessage): Promise<void> {
-  console.log(`[Publish Worker] Processing social text post ${job.socialPostId}`);
+async function processSocialTextPost(
+  job: SocialTextPostJobMessage,
+): Promise<void> {
+  console.log(
+    `[Publish Worker] Processing social text post ${job.socialPostId}`,
+  );
 
   // 1. Get valid access token
-  const tokenResult = await ensureValidToken(job.platformConnectionId, supabase);
+  const tokenResult = await ensureValidToken(
+    job.platformConnectionId,
+    supabase,
+  );
   if (!tokenResult.valid) {
     throw new Error(tokenResult.error || 'Failed to get access token');
   }
@@ -470,7 +477,9 @@ async function processSocialTextPost(job: SocialTextPostJobMessage): Promise<voi
     }
   }
 
-  const postUrl = postUrn ? `https://www.linkedin.com/feed/update/${postUrn}` : '';
+  const postUrl = postUrn
+    ? `https://www.linkedin.com/feed/update/${postUrn}`
+    : '';
 
   // 3. Update social_posts table
   await supabase
@@ -493,7 +502,9 @@ async function processSocialTextPost(job: SocialTextPostJobMessage): Promise<voi
     timestamp: new Date().toISOString(),
   });
 
-  console.log(`[Publish Worker] Social text post SUCCESS: ${job.socialPostId} → ${postUrl}`);
+  console.log(
+    `[Publish Worker] Social text post SUCCESS: ${job.socialPostId} → ${postUrl}`,
+  );
 }
 
 /**
@@ -535,7 +546,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
         if (job) {
           try {
             const isDelete = 'type' in job && job.type === 'delete';
-            const isSocialTextPost = 'type' in job && job.type === 'social_text_post';
+            const isSocialTextPost =
+              'type' in job && job.type === 'social_text_post';
             const type = isSocialTextPost
               ? 'social-post-error'
               : isDelete
@@ -543,7 +555,8 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
                 : 'publish-error';
 
             if (isSocialTextPost) {
-              const socialPostId = (job as SocialTextPostJobMessage).socialPostId;
+              const socialPostId = (job as SocialTextPostJobMessage)
+                .socialPostId;
 
               const { data: existingPost } = await supabase
                 .from('social_posts')
@@ -593,9 +606,13 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
             };
 
             if (isSocialTextPost) {
-              notificationPayload.socialPostId = (job as SocialTextPostJobMessage).socialPostId;
+              notificationPayload.socialPostId = (
+                job as SocialTextPostJobMessage
+              ).socialPostId;
             } else {
-              notificationPayload.publishId = (job as PublishJobMessage | DeleteJobMessage).publishId;
+              notificationPayload.publishId = (
+                job as PublishJobMessage | DeleteJobMessage
+              ).publishId;
             }
 
             await sendToUser(job.userId, notificationPayload);

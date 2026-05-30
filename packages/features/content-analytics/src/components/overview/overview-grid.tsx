@@ -77,7 +77,8 @@ export function OverviewGrid({
   }, [dailyData]);
 
   const platforms = useMemo(() => {
-    const totalViews = platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;
+    const totalViews =
+      platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;
     return (
       platformMetrics?.map((p) => ({
         platform: p.platform,

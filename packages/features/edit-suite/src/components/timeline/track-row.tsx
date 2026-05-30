@@ -167,183 +167,186 @@ interface TrackRowProps {
   dispatch: Dispatch<EditAction>;
 }
 
-export const TrackRow = memo(function TrackRow({
-  track,
-  clips,
-  allClips,
-  transitions,
-  keyframes,
-  zoom,
-  playheadMs,
-  selectedClipIds,
-  dispatch,
-}: TrackRowProps) {
-  const colors = TRACK_COLORS[track.type] ?? TRACK_COLORS.video!;
+export const TrackRow = memo(
+  function TrackRow({
+    track,
+    clips,
+    allClips,
+    transitions,
+    keyframes,
+    zoom,
+    playheadMs,
+    selectedClipIds,
+    dispatch,
+  }: TrackRowProps) {
+    const colors = TRACK_COLORS[track.type] ?? TRACK_COLORS.video!;
 
-  // Sort clips by start time to find adjacent pairs for transition handles
-  const sortedClips = useMemo(
-    () => [...clips].sort((a, b) => a.startMs - b.startMs),
-    [clips],
-  );
+    // Sort clips by start time to find adjacent pairs for transition handles
+    const sortedClips = useMemo(
+      () => [...clips].sort((a, b) => a.startMs - b.startMs),
+      [clips],
+    );
 
-  // Build a lookup for transitions between clip pairs
-  const transitionMap = useMemo(() => {
-    const map = new Map<string, EditTransition>();
-    for (const t of transitions) {
-      map.set(`${t.fromClipId}:${t.toClipId}`, t);
-    }
-    return map;
-  }, [transitions]);
+    // Build a lookup for transitions between clip pairs
+    const transitionMap = useMemo(() => {
+      const map = new Map<string, EditTransition>();
+      for (const t of transitions) {
+        map.set(`${t.fromClipId}:${t.toClipId}`, t);
+      }
+      return map;
+    }, [transitions]);
 
-  const keyframesByClip = useMemo(() => {
-    const map = new Map<string, EditKeyframe[]>();
-    for (const kf of keyframes) {
-      const list = map.get(kf.clipId) ?? [];
-      list.push(kf);
-      map.set(kf.clipId, list);
-    }
-    return map;
-  }, [keyframes]);
+    const keyframesByClip = useMemo(() => {
+      const map = new Map<string, EditKeyframe[]>();
+      for (const kf of keyframes) {
+        const list = map.get(kf.clipId) ?? [];
+        list.push(kf);
+        map.set(kf.clipId, list);
+      }
+      return map;
+    }, [keyframes]);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    if (track.isLocked) return;
-    if (e.dataTransfer.types.includes(DRAG_CLIP_MIME)) {
+    const handleDragOver = (e: React.DragEvent) => {
+      if (track.isLocked) return;
+      if (e.dataTransfer.types.includes(DRAG_CLIP_MIME)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
+    const handleDrop = (e: React.DragEvent) => {
+      if (track.isLocked) return;
+      const raw = e.dataTransfer.getData(DRAG_CLIP_MIME);
+      if (!raw) return;
       e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  };
 
-  const handleDrop = (e: React.DragEvent) => {
-    if (track.isLocked) return;
-    const raw = e.dataTransfer.getData(DRAG_CLIP_MIME);
-    if (!raw) return;
-    e.preventDefault();
+      try {
+        const dragData = JSON.parse(raw) as DragClipData;
 
-    try {
-      const dragData = JSON.parse(raw) as DragClipData;
+        // Calculate drop position in ms based on mouse X relative to clip lane
+        const rect = e.currentTarget.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const startMs = Math.max(0, Math.round((offsetX / zoom) * 1000));
 
-      // Calculate drop position in ms based on mouse X relative to clip lane
-      const rect = e.currentTarget.getBoundingClientRect();
-      const offsetX = e.clientX - rect.left;
-      const startMs = Math.max(0, Math.round((offsetX / zoom) * 1000));
-
-      // Create a new clip from the dropped asset
-      const clipId = crypto.randomUUID();
-      dispatch({
-        type: 'ADD_CLIP',
-        payload: {
-          clip: {
-            id: clipId,
-            trackId: track.id,
-            sourceShotId: dragData.type === 'shot' ? dragData.assetId : null,
-            sourceDialogueId:
-              dragData.type === 'dialogue' ? dragData.assetId : null,
-            sourceDubbedDialogueId:
-              dragData.type === 'dubbed' ? dragData.assetId : null,
-            sourceAudioTrackId: ['music', 'sfx', 'ambient'].includes(
-              dragData.type,
-            )
-              ? dragData.assetId
-              : null,
-            sourceUploadUrl:
-              dragData.type === 'upload' ? (dragData.mediaUrl ?? null) : null,
-            mediaUrl: dragData.mediaUrl,
-            thumbnailUrl: dragData.thumbnailUrl,
-            startMs,
-            endMs: startMs + dragData.durationMs,
-            inPointMs: 0,
-            outPointMs: dragData.durationMs,
-            volume: 1,
-            speed: 1,
-            fadeInMs: 0,
-            fadeOutMs: 0,
-            sortOrder: clips.length,
-            syncGroupId: null,
-            language: null,
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            // Text overlay fields (null for non-title clips)
-            text: null,
-            fontFamily: null,
-            fontSize: null,
-            fontColor: null,
-            fontWeight: null,
-            textAlign: null,
-            textPositionX: null,
-            textPositionY: null,
-            textShadowColor: null,
-            textShadowBlur: null,
-            textOutlineColor: null,
-            textOutlineWidth: null,
-            textBackgroundColor: null,
+        // Create a new clip from the dropped asset
+        const clipId = crypto.randomUUID();
+        dispatch({
+          type: 'ADD_CLIP',
+          payload: {
+            clip: {
+              id: clipId,
+              trackId: track.id,
+              sourceShotId: dragData.type === 'shot' ? dragData.assetId : null,
+              sourceDialogueId:
+                dragData.type === 'dialogue' ? dragData.assetId : null,
+              sourceDubbedDialogueId:
+                dragData.type === 'dubbed' ? dragData.assetId : null,
+              sourceAudioTrackId: ['music', 'sfx', 'ambient'].includes(
+                dragData.type,
+              )
+                ? dragData.assetId
+                : null,
+              sourceUploadUrl:
+                dragData.type === 'upload' ? (dragData.mediaUrl ?? null) : null,
+              mediaUrl: dragData.mediaUrl,
+              thumbnailUrl: dragData.thumbnailUrl,
+              startMs,
+              endMs: startMs + dragData.durationMs,
+              inPointMs: 0,
+              outPointMs: dragData.durationMs,
+              volume: 1,
+              speed: 1,
+              fadeInMs: 0,
+              fadeOutMs: 0,
+              sortOrder: clips.length,
+              syncGroupId: null,
+              language: null,
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              // Text overlay fields (null for non-title clips)
+              text: null,
+              fontFamily: null,
+              fontSize: null,
+              fontColor: null,
+              fontWeight: null,
+              textAlign: null,
+              textPositionX: null,
+              textPositionY: null,
+              textShadowColor: null,
+              textShadowBlur: null,
+              textOutlineColor: null,
+              textOutlineWidth: null,
+              textBackgroundColor: null,
+            },
           },
-        },
-      });
-    } catch {
-      console.error('Failed to parse drop data');
-    }
-  };
+        });
+      } catch {
+        console.error('Failed to parse drop data');
+      }
+    };
 
-  return (
-    <div
-      className={`group flex border-b ${colors.border}`}
-      style={{ height: `${track.height}px` }}
-    >
-      <TrackHeader track={track} dispatch={dispatch} />
-
-      {/* Clip lane */}
+    return (
       <div
-        className={`relative flex-1 ${colors.bg}`}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        className={`group flex border-b ${colors.border}`}
+        style={{ height: `${track.height}px` }}
       >
-        {clips.map((clip) => (
-          <ClipBlock
-            key={clip.id}
-            clip={clip}
-            zoom={zoom}
-            isSelected={selectedClipIds.has(clip.id)}
-            colorClass={colors.clip}
-            dispatch={dispatch}
-            trackType={track.type}
-            allClips={allClips}
-            playheadMs={playheadMs}
-            clipKeyframes={keyframesByClip.get(clip.id) ?? EMPTY_KEYFRAMES}
-          />
-        ))}
+        <TrackHeader track={track} dispatch={dispatch} />
 
-        {/* Transition handles between adjacent clips */}
-        {sortedClips.map((clip, i) => {
-          if (i >= sortedClips.length - 1) return null;
-          const nextClip = sortedClips[i + 1]!;
-          const transition =
-            transitionMap.get(`${clip.id}:${nextClip.id}`) ?? null;
-
-          return (
-            <TransitionHandle
-              key={`tr-${clip.id}-${nextClip.id}`}
-              fromClip={clip}
-              toClip={nextClip}
-              transition={transition}
+        {/* Clip lane */}
+        <div
+          className={`relative flex-1 ${colors.bg}`}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {clips.map((clip) => (
+            <ClipBlock
+              key={clip.id}
+              clip={clip}
               zoom={zoom}
+              isSelected={selectedClipIds.has(clip.id)}
+              colorClass={colors.clip}
               dispatch={dispatch}
+              trackType={track.type}
+              allClips={allClips}
+              playheadMs={playheadMs}
+              clipKeyframes={keyframesByClip.get(clip.id) ?? EMPTY_KEYFRAMES}
             />
-          );
-        })}
+          ))}
+
+          {/* Transition handles between adjacent clips */}
+          {sortedClips.map((clip, i) => {
+            if (i >= sortedClips.length - 1) return null;
+            const nextClip = sortedClips[i + 1]!;
+            const transition =
+              transitionMap.get(`${clip.id}:${nextClip.id}`) ?? null;
+
+            return (
+              <TransitionHandle
+                key={`tr-${clip.id}-${nextClip.id}`}
+                fromClip={clip}
+                toClip={nextClip}
+                transition={transition}
+                zoom={zoom}
+                dispatch={dispatch}
+              />
+            );
+          })}
+        </div>
       </div>
-    </div>
-  );
-}, (prev, next) => {
-  return (
-    prev.track === next.track &&
-    prev.clips === next.clips &&
-    prev.allClips === next.allClips &&
-    prev.transitions === next.transitions &&
-    prev.keyframes === next.keyframes &&
-    prev.zoom === next.zoom &&
-    prev.playheadMs === next.playheadMs &&
-    prev.selectedClipIds === next.selectedClipIds &&
-    prev.dispatch === next.dispatch
-  );
-});
+    );
+  },
+  (prev, next) => {
+    return (
+      prev.track === next.track &&
+      prev.clips === next.clips &&
+      prev.allClips === next.allClips &&
+      prev.transitions === next.transitions &&
+      prev.keyframes === next.keyframes &&
+      prev.zoom === next.zoom &&
+      prev.playheadMs === next.playheadMs &&
+      prev.selectedClipIds === next.selectedClipIds &&
+      prev.dispatch === next.dispatch
+    );
+  },
+);
