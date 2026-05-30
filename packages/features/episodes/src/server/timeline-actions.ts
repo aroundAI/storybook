@@ -263,10 +263,11 @@ export const planTimelineAction = enhanceAction(
     // 5. Batch update dialogue_lines with timing data via RPC
     let updatedCount = 0;
     if (updates.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      /* eslint-disable @typescript-eslint/no-explicit-any */
       const { data: batchResult, error: batchError } = await (
         client as any
       ).rpc('plan_dialogue_timeline', {
+        /* eslint-enable @typescript-eslint/no-explicit-any */
         p_updates: JSON.stringify(updates),
       });
 
