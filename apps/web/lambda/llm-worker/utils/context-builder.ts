@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 /** StoryData interface for episode story content */
 export interface StoryData {
@@ -119,6 +120,17 @@ export interface EpisodeContext {
     placement?: 'beginning' | 'middle' | 'end' | 'throughout';
     dialogueHints?: string;
   }>;
+
+  // Genre-aware pipeline fields
+  projectType?: ProjectType;
+  verifiedFacts: Array<{
+    id: string;
+    claim: string;
+    sourceCitation: string;
+    category: string;
+    confidence: number;
+    sourceType: string;
+  }>;
 }
 
 /**
@@ -206,6 +218,7 @@ export async function buildEpisodeContext(
       genre?: string;
       targetAudience?: string;
       videoStyle?: string;
+      projectType?: ProjectType;
       recurringElements?: Array<{
         id?: string;
         name?: string;
@@ -254,7 +267,10 @@ export async function buildEpisodeContext(
       }
     : null;
 
-  // 5. Fetch previous episodes (semantic or sequential)
+  // 5. Fetch verified facts linked to this episode (for factual content types)
+  const verifiedFacts = await fetchEpisodeFacts(episodeId, client);
+
+  // 6. Fetch previous episodes (semantic or sequential)
   let previousEpisodes: EpisodeContext['previousEpisodes'] = [];
 
   if (useSemanticSearch && process.env.VOYAGE_API_KEY && episode.season_id) {
@@ -321,6 +337,10 @@ export async function buildEpisodeContext(
     visualStyle: projectMetadata.videoStyle ?? 'balanced',
     aestheticStyle: projectMetadata.projectAestheticStyle ?? undefined,
 
+    // Genre-aware pipeline
+    projectType: projectMetadata.projectType,
+    verifiedFacts,
+
     // Recurring story elements (with backward compat for single element)
     recurringElements: (() => {
       // New array format
@@ -357,6 +377,100 @@ export async function buildEpisodeContext(
       return undefined;
     })(),
   };
+}
+
+/**
+ * Fetch verified facts linked to an episode via the episode_facts junction table.
+ * Returns facts formatted for the EpisodeContext interface.
+ */
+async function fetchEpisodeFacts(
+  episodeId: string,
+  supabase: SupabaseClient,
+): Promise<EpisodeContext['verifiedFacts']> {
+  const { data, error } = await supabase
+    .from('episode_facts')
+    .select(
+      `
+      fact:verified_facts (
+        id,
+        claim,
+        source_citation,
+        category,
+        confidence_score,
+        source_type
+      )
+    `,
+    )
+    .eq('episode_id', episodeId);
+
+  if (error) {
+    console.warn(
+      `[buildEpisodeContext] Failed to fetch episode facts: ${error.message}`,
+    );
+    return [];
+  }
+
+  return (data ?? [])
+    .map(
+      (row) =>
+        row.fact as {
+          id: string;
+          claim: string;
+          source_citation: string | null;
+          category: string | null;
+          confidence_score: number | null;
+          source_type: string | null;
+        } | null,
+    )
+    .filter(
+      (
+        f,
+      ): f is {
+        id: string;
+        claim: string;
+        source_citation: string | null;
+        category: string | null;
+        confidence_score: number | null;
+        source_type: string | null;
+      } => f !== null,
+    )
+    .map((f) => ({
+      id: f.id,
+      claim: f.claim,
+      sourceCitation: f.source_citation ?? '',
+      category: f.category ?? 'general',
+      confidence: f.confidence_score ?? 0,
+      sourceType: f.source_type ?? 'other',
+    }));
+}
+
+/**
+ * Format verified facts into a prompt-injectable string for factual content types.
+ * Facts become NON-NEGOTIABLE plot event constraints that the protagonist experiences.
+ */
+export function formatVerifiedFactsForPrompt(
+  facts: EpisodeContext['verifiedFacts'],
+): string {
+  if (facts.length === 0) return '';
+
+  const factLines = facts
+    .map(
+      (f, i) =>
+        `FACT ${i + 1} [${f.id}]: ${f.claim}\n  Source: ${f.sourceCitation}\n  Category: ${f.category}`,
+    )
+    .join('\n\n');
+
+  return `## VERIFIED FACTS — NON-NEGOTIABLE story constraints
+Every fact listed below MUST appear in the narrative as an event, discovery,
+or experience the character encounters. Do NOT fabricate additional facts.
+
+${factLines}
+
+RULES:
+- The protagonist must EXPERIENCE or DISCOVER each fact through immersive action
+- Facts dictate WHAT happens. Character personality dictates HOW they react.
+- Do NOT add dates, statistics, or claims not in this list
+- If a fact seems uncertain, frame it as "believed to be" or "evidence suggests"`;
 }
 
 /**

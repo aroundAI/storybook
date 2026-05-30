@@ -25,6 +25,7 @@ import canonExtraction from '../../prompts/canon-roles/canon-extraction.json';
 // Documentary Prompts
 // =============================================================================
 import factCheckerRole from '../../prompts/documentary/fact-checker-role.json';
+import factExtraction from '../../prompts/documentary/fact-extraction.json';
 import researcherRole from '../../prompts/documentary/researcher-role.json';
 // =============================================================================
 // Movie Prompts
@@ -103,6 +104,7 @@ export const PROMPT_REGISTRY: Record<string, PromptTemplate> = {
 
   // Documentary
   'documentary/fact-checker-role': factCheckerRole as unknown as PromptTemplate,
+  'documentary/fact-extraction': factExtraction as unknown as PromptTemplate,
   'documentary/researcher-role': researcherRole as unknown as PromptTemplate,
 
   // Movie
