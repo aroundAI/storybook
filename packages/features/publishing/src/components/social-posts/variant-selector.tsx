@@ -77,7 +77,7 @@ export function VariantSelector({
       <div className="flex gap-2">
         {variants.map((variant, index) => (
           <Button
-            key={index}
+            key={variant.style}
             variant={selectedIndex === index ? 'default' : 'outline'}
             size="sm"
             onClick={() => {

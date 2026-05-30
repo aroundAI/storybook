@@ -95,6 +95,12 @@ export const ClipBlock = memo(function ClipBlock({
   const showTextOverlay = trackType === 'title' && !!clip.text;
   const [snapLineX, setSnapLineX] = useState<number | null>(null);
 
+  const getBuffer = useCallback(
+    (url: string) =>
+      audioEngineRef.current?.getAudioBuffer(url) ?? Promise.resolve(null),
+    [audioEngineRef],
+  );
+
   // Track latest clip state via ref for stale-closure-safe access in mouseup
   const clipRef = useRef(clip);
   useEffect(() => {
@@ -452,10 +458,7 @@ export const ClipBlock = memo(function ClipBlock({
             outPointMs={clip.outPointMs}
             widthPx={widthPx}
             heightPx={40}
-            getBuffer={(url) =>
-              audioEngineRef.current?.getAudioBuffer(url) ??
-              Promise.resolve(null)
-            }
+            getBuffer={getBuffer}
           />
         )}
 

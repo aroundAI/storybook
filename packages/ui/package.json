@@ -1,6 +1,9 @@
 {
   "name": "@kit/ui",
   "private": true,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "version": "0.1.0",
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",

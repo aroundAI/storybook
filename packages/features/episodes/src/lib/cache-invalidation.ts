@@ -2,7 +2,13 @@
  * Episode Cache Keys and Invalidation
  *
  * Cache key patterns and invalidation functions for episode data.
- * Call invalidation functions after any mutation to ensure fresh data.
+ *
+ * TODO(perf): These invalidation functions are currently DEAD CODE.
+ * The corresponding query functions in `server/queries.ts` read directly
+ * from Supabase, not from Redis cache. To activate this caching layer:
+ * 1. Wrap query functions with cache-first reads using these keys/TTLs
+ * 2. Wire invalidation calls into mutation actions (actions.ts)
+ * 3. See @kit/projects/cache-invalidation.ts for the working pattern
  */
 import { createCacheClient } from '@kit/cache';
 

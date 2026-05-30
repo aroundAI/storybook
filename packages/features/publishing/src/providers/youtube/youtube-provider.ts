@@ -1,3 +1,5 @@
+import 'server-only';
+
 import { createReadStream, promises as fsPromises } from 'fs';
 import { google } from 'googleapis';
 import { Readable } from 'stream';

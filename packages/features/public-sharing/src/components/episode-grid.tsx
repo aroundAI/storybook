@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import Link from 'next/link';
 
 import { Play } from 'lucide-react';
@@ -39,6 +41,30 @@ export function EpisodeGrid({
   projectSlug,
   currentEpisodeId,
 }: EpisodeGridProps) {
+  const { groupedBySeason, seasons, showSeasonHeaders } = useMemo(() => {
+    const grouped = episodes.reduce(
+      (acc, ep) => {
+        const season = ep.season_number ?? 1;
+        if (!acc[season]) acc[season] = [];
+        acc[season].push(ep);
+        return acc;
+      },
+      {} as Record<number, Episode[]>,
+    );
+
+    const sortedSeasons = Object.keys(grouped)
+      .map(Number)
+      .sort((a, b) => a - b);
+    const showHeaders =
+      sortedSeasons.length > 1 || (sortedSeasons[0] !== undefined && sortedSeasons[0] > 1);
+
+    return {
+      groupedBySeason: grouped,
+      seasons: sortedSeasons,
+      showSeasonHeaders: showHeaders,
+    };
+  }, [episodes]);
+
   if (episodes.length === 0) {
     return (
       <div className="py-16 text-center text-slate-600 dark:text-slate-400">
@@ -47,23 +73,6 @@ export function EpisodeGrid({
       </div>
     );
   }
-
-  // Group episodes by season for optional season headers
-  const groupedBySeason = episodes.reduce(
-    (acc, ep) => {
-      const season = ep.season_number ?? 1;
-      if (!acc[season]) acc[season] = [];
-      acc[season].push(ep);
-      return acc;
-    },
-    {} as Record<number, Episode[]>,
-  );
-
-  const seasons = Object.keys(groupedBySeason)
-    .map(Number)
-    .sort((a, b) => a - b);
-  const showSeasonHeaders =
-    seasons.length > 1 || (seasons[0] && seasons[0] > 1);
 
   return (
     <div className="space-y-12">

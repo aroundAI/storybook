@@ -1,6 +1,7 @@
 {
   "name": "@kit/prompt-engine",
   "private": true,
+  "sideEffects": false,
   "version": "0.1.0",
   "description": "JSON file-based prompt engine for LLM template management",
   "type": "module",

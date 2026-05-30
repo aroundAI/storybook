@@ -39,15 +39,16 @@ async function FactsPage({ params, searchParams }: FactsPageProps) {
   const { account, projectSlug } = await params;
   const filters = await searchParams;
 
-  await loadTeamWorkspace(account);
-
   const client = getSupabaseServerClient();
 
-  const { data: project, error: projectError } = await client
-    .from('projects')
-    .select('id, name, slug')
-    .eq('slug', projectSlug)
-    .single();
+  const [, { data: project, error: projectError }] = await Promise.all([
+    loadTeamWorkspace(account),
+    client
+      .from('projects')
+      .select('id, name, slug')
+      .eq('slug', projectSlug)
+      .single(),
+  ]);
 
   if (projectError || !project) {
     notFound();

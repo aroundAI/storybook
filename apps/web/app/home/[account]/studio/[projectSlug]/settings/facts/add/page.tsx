@@ -26,15 +26,16 @@ export const generateMetadata = async ({ params }: AddFactPageProps) => {
 async function AddFactPage({ params }: AddFactPageProps) {
   const { account, projectSlug } = await params;
 
-  await loadTeamWorkspace(account);
-
   const client = getSupabaseServerClient();
 
-  const { data: project, error: projectError } = await client
-    .from('projects')
-    .select('id')
-    .eq('slug', projectSlug)
-    .single();
+  const [, { data: project, error: projectError }] = await Promise.all([
+    loadTeamWorkspace(account),
+    client
+      .from('projects')
+      .select('id')
+      .eq('slug', projectSlug)
+      .single(),
+  ]);
 
   if (projectError || !project) {
     notFound();

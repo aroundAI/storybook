@@ -70,9 +70,10 @@ export const generateMetadata = async ({ params }: FactDetailPageProps) => {
 async function FactDetailPage({ params }: FactDetailPageProps) {
   const { account, projectSlug, factId } = await params;
 
-  await loadTeamWorkspace(account);
-
-  const project = await getProjectBySlug(projectSlug);
+  const [, project] = await Promise.all([
+    loadTeamWorkspace(account),
+    getProjectBySlug(projectSlug),
+  ]);
 
   if (!project) {
     notFound();

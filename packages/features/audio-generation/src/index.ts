@@ -4,6 +4,8 @@
  * Audio generation package for voice synthesis and music generation.
  * Provides abstraction layer for ElevenLabs, PlayHT, Suno, and other providers.
  *
+ * Prefer granular subpath imports for better tree-shaking:
+ *
  * @example
  * // Import providers
  * import { ElevenLabsProvider, SunoProvider } from '@kit/audio-generation/providers';
@@ -14,10 +16,15 @@
  *
  * // Import server functions
  * import { getAvailableVoices } from '@kit/audio-generation/server';
+ *
+ * // Import components
+ * import { AudioPlayer } from '@kit/audio-generation/components';
+ *
+ * // Import hooks
+ * import { useAudioPlayer } from '@kit/audio-generation/hooks';
  */
 
-export * from './components';
-export * from './server';
-export * from './providers';
-export * from './lib';
-export * from './hooks';
+// Re-export only types from this barrel to avoid pulling in server/client code together.
+// Use granular subpath imports (e.g. '@kit/audio-generation/server') for implementations.
+export type * from './lib/types';
+export type * from './lib/types/dialogue.types';

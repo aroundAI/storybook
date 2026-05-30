@@ -451,7 +451,7 @@ export const listProjectEpisodesAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
-    // Build query
+    // Build query — lightweight select excludes large JSON blobs
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let query = (client as any)
       .from('episodes')
@@ -459,8 +459,7 @@ export const listProjectEpisodesAction = enhanceAction(
         `
         id, slug, project_id, season_id, number, title, description,
         status, duration_seconds, thumbnail_url, final_video_url,
-        localized_videos, story_data, screenplay_data, shot_list,
-        metadata, version, created_at, updated_at, deleted_at
+        localized_videos, metadata, version, created_at, updated_at, deleted_at
       `,
         { count: 'exact' },
       )

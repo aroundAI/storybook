@@ -177,6 +177,11 @@ function getRemotePatterns() {
     });
   }
 
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: 'images.unsplash.com',
+  });
+
   // Cloudflare R2 public bucket for project assets
   // Allow all R2 public bucket subdomains (pub-*.r2.dev)
   remotePatterns.push({
@@ -249,6 +254,16 @@ async function getHeaders() {
     {
       source: '/api/:path*',
       headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+    },
+    // Security headers
+    {
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'X-XSS-Protection', value: '1; mode=block' },
+      ],
     },
   ];
 }

@@ -13,7 +13,7 @@ import type { Episode, EpisodeWithShots, Shot } from '../lib/types';
  * NOTE: This fetches FULL episode data including large JSON blobs.
  * For list views, prefer getEpisodeMetadataByProject() instead.
  */
-export async function getEpisodesByProject(projectId: string) {
+export const getEpisodesByProject = cache(async function getEpisodesByProject(projectId: string) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,7 +40,7 @@ export async function getEpisodesByProject(projectId: string) {
     data: data as Episode[],
     error: null,
   };
-}
+});
 
 /**
  * Get episode metadata for a project (excluding soft-deleted)
@@ -82,7 +82,7 @@ export const getEpisodeMetadataByProject = cache(async function getEpisodeMetada
 /**
  * Get a single episode by ID (excluding soft-deleted)
  */
-export async function getEpisode(episodeId: string) {
+export const getEpisode = cache(async function getEpisode(episodeId: string) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -108,12 +108,12 @@ export async function getEpisode(episodeId: string) {
     data: data as Episode,
     error: null,
   };
-}
+});
 
 /**
  * Get episode with all related shots and season info
  */
-export async function getEpisodeWithShots(episodeId: string) {
+export const getEpisodeWithShots = cache(async function getEpisodeWithShots(episodeId: string) {
   const client = getSupabaseServerClient();
 
   // Fetch episode with season info
@@ -164,7 +164,7 @@ export async function getEpisodeWithShots(episodeId: string) {
     } as EpisodeWithShots,
     error: null,
   };
-}
+});
 
 /**
  * Get the next episode number for auto-assignment
@@ -194,7 +194,7 @@ export async function getNextEpisodeNumber(projectId: string) {
 /**
  * Get episode count for a project (excluding soft-deleted)
  */
-export async function getEpisodeCount(projectId: string) {
+export const getEpisodeCount = cache(async function getEpisodeCount(projectId: string) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -212,12 +212,12 @@ export async function getEpisodeCount(projectId: string) {
     count: count ?? 0,
     error: null,
   };
-}
+});
 
 /**
  * Get all shots for an episode (ordered by sequence)
  */
-export async function getShotsByEpisode(episodeId: string) {
+export const getShotsByEpisode = cache(async function getShotsByEpisode(episodeId: string) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -243,12 +243,12 @@ export async function getShotsByEpisode(episodeId: string) {
     data: data as Shot[],
     error: null,
   };
-}
+});
 
 /**
  * Get a single shot by ID
  */
-export async function getShot(shotId: string) {
+export const getShot = cache(async function getShot(shotId: string) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -273,12 +273,12 @@ export async function getShot(shotId: string) {
     data: data as Shot,
     error: null,
   };
-}
+});
 
 /**
  * Get shots by scene number within an episode
  */
-export async function getShotsByScene(episodeId: string, sceneNumber: number) {
+export const getShotsByScene = cache(async function getShotsByScene(episodeId: string, sceneNumber: number) {
   const client = getSupabaseServerClient();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -304,4 +304,4 @@ export async function getShotsByScene(episodeId: string, sceneNumber: number) {
     data: data as Shot[],
     error: null,
   };
-}
+});

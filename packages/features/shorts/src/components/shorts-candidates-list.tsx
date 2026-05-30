@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 
 import { Flame, Loader2, Scissors, Star, Zap } from 'lucide-react';
 
@@ -106,8 +106,11 @@ export function ShortsCandidatesList({
     }
 
     // Sort by viral score descending
-    const sortedCandidates = [...candidates].sort(
-        (a, b) => (b.viralScore ?? 0) - (a.viralScore ?? 0),
+    const sortedCandidates = useMemo(
+        () => [...candidates].sort(
+            (a, b) => (b.viralScore ?? 0) - (a.viralScore ?? 0),
+        ),
+        [candidates],
     );
 
     return (

@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 
 import { Pencil, Play } from 'lucide-react';
@@ -46,8 +47,7 @@ export function ProjectBanner({
     <div className="relative mb-6 h-[280px] overflow-hidden rounded-3xl border border-zinc-700/50">
       {/* Background Layer - Real image with gradient overlay */}
       <div className="absolute inset-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={backdrop} alt="" className="h-full w-full object-cover" />
+        <Image src={backdrop} alt="" fill className="object-cover" sizes="100vw" />
         {/* Gradient overlay for text readability */}
         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/70 to-zinc-900/30" />
       </div>
@@ -56,13 +56,8 @@ export function ProjectBanner({
       <div className="relative z-10 flex h-full items-end gap-6 p-6">
         {/* Poster Art (2:3 ratio) */}
         <div className="hidden shrink-0 sm:block">
-          <div className="aspect-[2/3] w-28 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={poster}
-              alt={`${name} poster`}
-              className="h-full w-full object-cover"
-            />
+          <div className="relative aspect-[2/3] w-28 overflow-hidden rounded-xl border border-white/10 shadow-2xl">
+            <Image src={poster} alt={`${name} poster`} fill className="object-cover" sizes="(max-width: 640px) 0px, 112px" />
           </div>
         </div>
 

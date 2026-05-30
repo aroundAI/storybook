@@ -8,6 +8,8 @@
  * - Episode comparison chart
  * - Top/bottom performers
  */
+import { useMemo } from 'react';
+
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 
 import type { SeasonAnalytics as SeasonAnalyticsData } from '../server/aggregation-queries';
@@ -30,7 +32,10 @@ export function SeasonOverview({ data }: SeasonOverviewProps) {
   };
 
   // Sort episodes by views for the bar chart
-  const sortedEpisodes = [...data.episodes].sort((a, b) => b.views - a.views);
+  const sortedEpisodes = useMemo(
+    () => [...data.episodes].sort((a, b) => b.views - a.views),
+    [data.episodes],
+  );
   const maxViews = sortedEpisodes[0]?.views || 1;
 
   return (

@@ -47,16 +47,17 @@ async function TeamAccountBillingPage({ params }: TeamAccountBillingPageProps) {
   const [subscription, order, customerId] =
     await loadTeamAccountBillingPage(accountId);
 
-  const subscriptionProductPlan = subscription
-    ? await getProductPlan(
-        subscription.items[0]?.variant_id,
-        subscription.currency,
-      )
-    : undefined;
-
-  const orderProductPlan = order
-    ? await getProductPlan(order.items[0]?.variant_id, order.currency)
-    : undefined;
+  const [subscriptionProductPlan, orderProductPlan] = await Promise.all([
+    subscription
+      ? getProductPlan(
+          subscription.items[0]?.variant_id,
+          subscription.currency,
+        )
+      : undefined,
+    order
+      ? getProductPlan(order.items[0]?.variant_id, order.currency)
+      : undefined,
+  ]);
 
   const hasBillingData = subscription || order;
 
