@@ -83,10 +83,12 @@ export function SeasonHeader({
 
   const handleSave = () => {
     const trimmed = editValue.trim();
-    setIsEditing(false);
 
     // Skip if unchanged
-    if (trimmed === (seasonName ?? '')) return;
+    if (trimmed === (seasonName ?? '')) {
+      setIsEditing(false);
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -94,9 +96,12 @@ export function SeasonHeader({
           seasonId,
           name: trimmed || `Season ${seasonNumber}`,
         });
+
         toast.success('Season name updated');
+        setIsEditing(false);
       } catch {
         setEditValue(seasonName ?? '');
+        setIsEditing(false);
         toast.error('Failed to update season name');
       }
     });

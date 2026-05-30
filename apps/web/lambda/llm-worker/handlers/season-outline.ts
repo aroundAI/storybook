@@ -129,11 +129,18 @@ export async function processSeasonOutline(
     contentType === 'educational' ||
     contentType === 'factual'
   ) {
-    const { data: factsData } = await supabase
+    const { data: factsData, error: factsError } = await supabase
       .from('verified_facts')
       .select('id, claim, source_citation, category')
       .eq('project_id', data.projectId)
       .limit(100);
+
+    if (factsError) {
+      console.error(
+        '[Season Outline] Failed to fetch verified facts:',
+        factsError,
+      );
+    }
 
     if (factsData && factsData.length > 0) {
       const factLines = factsData

@@ -50,6 +50,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify user has access to the project (RLS enforced)
+    const { data: project, error: projectError } = await client
+      .from('projects')
+      .select('id')
+      .eq('id', projectId)
+      .single();
+
+    if (projectError || !project) {
+      return NextResponse.json(
+        { error: 'Project not found or access denied' },
+        { status: 403 },
+      );
+    }
+
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
@@ -115,7 +129,7 @@ export async function POST(request: Request) {
         });
       }
 
-      factExtractionJobId = `batch-${Date.now()}`;
+      factExtractionJobId = `batch-${crypto.randomUUID()}`;
 
       console.log(
         `[Research Upload] Queued ${chunks.length} fact extraction jobs for "${file.name}"`,

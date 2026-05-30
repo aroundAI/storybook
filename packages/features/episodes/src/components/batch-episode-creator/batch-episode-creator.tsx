@@ -165,10 +165,16 @@ export function BatchEpisodeCreator({
     try {
       // Update season name if provided and seasonId exists
       if (seasonId && seasonName.trim()) {
-        await updateSeasonAction({
-          seasonId,
-          name: seasonName.trim(),
-        });
+        try {
+          await updateSeasonAction({
+            seasonId,
+            name: seasonName.trim(),
+          });
+        } catch {
+          toast.error('Failed to update season name');
+          setIsCreating(false);
+          return;
+        }
       }
 
       const result = await batchCreateEpisodesAction({

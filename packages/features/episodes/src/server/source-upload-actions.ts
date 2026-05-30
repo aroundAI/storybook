@@ -234,6 +234,17 @@ export const extractFactsFromContentAction = enhanceAction(
       throw new Error('Authentication required');
     }
 
+    // Verify user has access to the project (RLS enforced)
+    const { data: project, error: projectError } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('id', data.projectId)
+      .single();
+
+    if (projectError || !project) {
+      throw new Error('Project not found or access denied');
+    }
+
     // For substantial content, use LLM-based extraction via Lambda
     if (data.content.length > 500) {
       const { chunkTextForExtraction } = await import(

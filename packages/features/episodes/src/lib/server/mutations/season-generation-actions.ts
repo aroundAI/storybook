@@ -297,18 +297,20 @@ export const generateSeasonEpisodesAction = enhanceAction(
     }> = [];
 
     if (createdEpisodes && createdEpisodes.length > 0) {
+      const episodesMap = new Map(data.episodes.map((ep) => [ep.number, ep]));
+
       for (const createdEp of createdEpisodes) {
-        const sourceEp = data.episodes.find(
-          (e) => e.number === createdEp.number,
-        );
+        const sourceEp = episodesMap.get(createdEp.number);
 
         if (sourceEp?.fact_ids && sourceEp.fact_ids.length > 0) {
           for (const factId of sourceEp.fact_ids) {
-            factLinkRows.push({
-              episode_id: createdEp.id,
-              fact_id: factId,
-              linked_by: user.id,
-            });
+            if (factId) {
+              factLinkRows.push({
+                episode_id: createdEp.id,
+                fact_id: factId,
+                linked_by: user.id,
+              });
+            }
           }
         }
       }

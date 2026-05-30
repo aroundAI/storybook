@@ -137,10 +137,20 @@ export function UploadSourceDialog({
           body: formData,
         });
 
-        const result = await response.json();
+        let result;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          result = await response.json();
+        }
 
         if (!response.ok) {
-          throw new Error(result.error || 'Extraction failed');
+          throw new Error(
+            result?.error || `Extraction failed with status ${response.status}`,
+          );
+        }
+
+        if (!result) {
+          throw new Error('Invalid response from server');
         }
 
         setFileContent(result.data.text);
