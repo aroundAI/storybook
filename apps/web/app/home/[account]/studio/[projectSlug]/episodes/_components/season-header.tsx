@@ -1,11 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
-import { ChevronDown, ChevronUp, FolderOpen, Volume2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  FolderOpen,
+  Pencil,
+  Volume2,
+} from 'lucide-react';
 
+import { updateSeasonAction } from '@kit/episodes/server';
 import type { Episode } from '@kit/episodes/types';
 import { Button } from '@kit/ui/button';
+import { Input } from '@kit/ui/input';
+import { toast } from '@kit/ui/sonner';
 
 import { GenerateAllSoundModal } from './generate-all-sound-modal';
 
@@ -52,6 +61,56 @@ export function SeasonHeader({
   onToggleCollapse,
 }: SeasonHeaderProps) {
   const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState(seasonName ?? '');
+  const [isPending, startTransition] = useTransition();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sync editValue when seasonName prop changes
+  useEffect(() => {
+    if (!isEditing) {
+      setEditValue(seasonName ?? '');
+    }
+  }, [seasonName, isEditing]);
+
+  // Auto-focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditing]);
+
+  const handleSave = () => {
+    const trimmed = editValue.trim();
+    setIsEditing(false);
+
+    // Skip if unchanged
+    if (trimmed === (seasonName ?? '')) return;
+
+    startTransition(async () => {
+      try {
+        await updateSeasonAction({
+          seasonId,
+          name: trimmed || `Season ${seasonNumber}`,
+        });
+        toast.success('Season name updated');
+      } catch {
+        setEditValue(seasonName ?? '');
+        toast.error('Failed to update season name');
+      }
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      setEditValue(seasonName ?? '');
+      setIsEditing(false);
+    }
+  };
 
   const progressPercent =
     totalEpisodes > 0
@@ -69,10 +128,28 @@ export function SeasonHeader({
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
               Season {seasonNumber}
-              {seasonName && (
-                <span className="ml-2 text-xs font-normal text-gray-500 dark:text-gray-400">
-                  {seasonName}
-                </span>
+              {isEditing ? (
+                <Input
+                  ref={inputRef}
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onBlur={handleSave}
+                  onKeyDown={handleKeyDown}
+                  disabled={isPending}
+                  className="ml-2 inline-block h-6 w-48 text-xs font-normal"
+                  placeholder={`Season ${seasonNumber}`}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="group/rename ml-2 inline-flex items-center gap-1 rounded px-1 py-0.5 transition-colors hover:bg-blue-100 dark:hover:bg-blue-800/50"
+                >
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                    {seasonName || 'Add name...'}
+                  </span>
+                  <Pencil className="h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover/rename:opacity-100 dark:text-gray-500" />
+                </button>
               )}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">

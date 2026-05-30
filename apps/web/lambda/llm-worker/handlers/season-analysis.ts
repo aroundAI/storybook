@@ -3,6 +3,7 @@
  *
  * Processes roadmap analysis LLM calls for season generation.
  * Extracts premise, characters, locations, and episodes from user's roadmap.
+ * When verified facts are provided, assigns them to specific episodes.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -25,6 +26,7 @@ interface ExtractedEpisode {
   characterNames?: string[];
   locationNames?: string[];
   tags?: string[];
+  fact_ids?: string[];
   description?: string; // Legacy support
 }
 
@@ -37,9 +39,36 @@ interface AnalysisResult {
   episodes: ExtractedEpisode[];
 }
 
+interface ExternalFact {
+  id?: string;
+  claim: string;
+  source_citation?: string | null;
+  category?: string | null;
+}
+
 interface SeasonAnalysisPayload {
   projectId: string;
   roadmap: string;
+  externalFacts?: ExternalFact[];
+}
+
+/**
+ * Format verified facts into a prompt-injectable string for season planning.
+ * Each fact gets an ID so the LLM can reference it in episode assignments.
+ */
+function formatFactsForSeasonPrompt(facts: ExternalFact[]): string {
+  if (facts.length === 0) return '';
+
+  const factLines = facts
+    .map((f, i) => {
+      const id = f.id ?? `fact-${i + 1}`;
+      const source = f.source_citation ? ` | Source: ${f.source_citation}` : '';
+      const category = f.category ? ` | Category: ${f.category}` : '';
+      return `FACT [${id}]: ${f.claim}${source}${category}`;
+    })
+    .join('\n');
+
+  return `## VERIFIED FACTS — assign each to an episode\n\n${factLines}\n\nTotal: ${facts.length} facts. Every fact MUST appear in at least one episode's fact_ids array.`;
 }
 
 /**
@@ -50,14 +79,26 @@ export async function processSeasonAnalysis(
   payload: Record<string, unknown>,
   _supabase: SupabaseClient,
 ): Promise<{ success: boolean; data: AnalysisResult }> {
-  const { projectId, roadmap } = payload as SeasonAnalysisPayload;
+  const { projectId, roadmap, externalFacts } =
+    payload as SeasonAnalysisPayload;
 
-  console.log(`[Season Analysis] Processing for project ${projectId}`);
+  console.log(
+    `[Season Analysis] Processing for project ${projectId}, facts: ${externalFacts?.length ?? 0}`,
+  );
+
+  // Format facts for the prompt if provided
+  const verifiedFacts =
+    externalFacts && externalFacts.length > 0
+      ? formatFactsForSeasonPrompt(externalFacts)
+      : '';
 
   // Use Lambda-safe LLM executor
   const { data: result } = await executeLLMForLambda<AnalysisResult>({
     templateSlug: 'season-generation',
-    variables: { roadmap },
+    variables: {
+      roadmap,
+      verified_facts: verifiedFacts,
+    },
   });
 
   // Validate required fields
@@ -81,6 +122,10 @@ export async function processSeasonAnalysis(
     episodeCount: result.episodes.length,
     characterCount: result.characters.length,
     locationCount: result.locations.length,
+    factsAssigned: result.episodes.reduce(
+      (sum, ep) => sum + (ep.fact_ids?.length ?? 0),
+      0,
+    ),
   });
 
   return { success: true, data: result };

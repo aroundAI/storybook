@@ -1,9 +1,9 @@
 {
   "slug": "season-outline",
   "name": "Season Outline Generator",
-  "version": 1,
+  "version": 2,
   "category": "story-generation",
-  "description": "Generate episode outlines for an entire season with proper story structure. Creates 2-24 episode concepts following classic narrative arc.",
+  "description": "Generate episode outlines for an entire season with proper story structure. Creates 2-24 episode concepts following classic narrative arc. Supports fact assignment for documentary/educational content.",
   "exported_at": "2025-01-01T00:00:00.000Z",
   "llm": {
     "provider": "gemini",
@@ -38,6 +38,18 @@
       "layer_type": "format",
       "scope": "template",
       "order": 3
+    },
+    {
+      "slug": "factual-constraints",
+      "name": "Factual Content Constraints for Season Outline",
+      "content": "## FACTUAL CONTENT MODE\n\nVerified facts from research sources are provided. You MUST:\n\n1. DISTRIBUTE FACTS: Assign each fact to the episode where it fits most naturally. Group related facts together.\n2. COVER ALL FACTS: Every fact MUST be assigned to at least one episode.\n3. FACT-DRIVEN PREMISES: Each episode's premise and mainPlot should reflect the facts assigned to it.\n4. OUTPUT FACT_IDS: For each episode, include a `fact_ids` array with the IDs of assigned facts.\n5. COHERENT GROUPING: Group facts that form a narrative arc into the same episode.\n\n{{verified_facts}}",
+      "layer_type": "constraints",
+      "scope": "template",
+      "order": 2.5,
+      "conditional": {
+        "variable": "verified_facts",
+        "operator": "not_empty"
+      }
     }
   ],
   "user_prompt": "Generate {{episode_count}} episode outlines for a season based on this premise:\n\n**Season Premise**: {{season_premise}}\n\n**Genre**: {{genre}}\n**Style**: {{style}}\n\n**Characters**:\n{{characters}}\n\n**Locations**:\n{{locations}}\n\nStarting episode number: {{starting_number}}\n\nFor each episode, provide:\n1. **number**: Episode number (starting from {{starting_number}})\n2. **title**: A compelling, memorable title\n3. **premise**: One-sentence hook (what happens in this episode)\n4. **mainPlot**: 2-3 sentence plot summary\n5. **characterFocus**: Array of character names featured prominently\n6. **arcPosition**: Position in story arc (setup, rising, midpoint, climax, resolution)\n\nEnsure:\n- Each episode title is unique and evocative\n- Episodes build on each other narratively\n- Story structure matches arc positions\n- Character focus is distributed across the season\n- Each episode is visually compelling for video production\n\nReturn JSON matching this structure:\n```json\n{\n  \"episodes\": [\n    {\n      \"number\": 1,\n      \"title\": \"string\",\n      \"premise\": \"string\",\n      \"mainPlot\": \"string\",\n      \"characterFocus\": [\"string\"],\n      \"arcPosition\": \"setup|rising|midpoint|climax|resolution\"\n    }\n  ]\n}\n```",
@@ -76,6 +88,11 @@
       "type": "text",
       "required": false,
       "description": "Formatted list of locations with descriptions"
+    },
+    "verified_facts": {
+      "type": "text",
+      "required": false,
+      "description": "Formatted list of verified facts with IDs from the project research library"
     }
   },
   "output": {
@@ -83,7 +100,7 @@
     "wrapper_key": "episodes",
     "schema": {
       "type": "zod",
-      "definition": "z.object({ episodes: z.array(z.object({ number: z.number().int().positive(), title: z.string().min(1).max(255), premise: z.string().min(10).max(500), mainPlot: z.string().min(20).max(1000), characterFocus: z.array(z.string()).optional(), arcPosition: z.enum(['setup', 'rising', 'midpoint', 'climax', 'resolution']) })) })"
+      "definition": "z.object({ episodes: z.array(z.object({ number: z.number().int().positive(), title: z.string().min(1).max(255), premise: z.string().min(10).max(500), mainPlot: z.string().min(20).max(1000), characterFocus: z.array(z.string()).optional(), arcPosition: z.enum(['setup', 'rising', 'midpoint', 'climax', 'resolution']), fact_ids: z.array(z.string()).optional() })) })"
     },
     "schema_for_llm": "Return JSON: { \"episodes\": [{ \"number\": number, \"title\": \"string\", \"premise\": \"string\", \"mainPlot\": \"string\", \"characterFocus\": [\"string\"], \"arcPosition\": \"setup|rising|midpoint|climax|resolution\" }] }",
     "example_output": {

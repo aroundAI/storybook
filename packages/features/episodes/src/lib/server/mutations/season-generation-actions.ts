@@ -276,9 +276,10 @@ export const generateSeasonEpisodesAction = enhanceAction(
     }
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error: episodeError } = await (client as any)
+    const { data: createdEpisodes, error: episodeError } = await (client as any)
       .from('episodes')
-      .insert(episodesToInsert);
+      .insert(episodesToInsert)
+      .select('id, number');
 
     if (episodeError) {
       logger.error(
@@ -286,6 +287,50 @@ export const generateSeasonEpisodesAction = enhanceAction(
         'Failed to create episodes',
       );
       throw new Error('Failed to create episodes');
+    }
+
+    // 6. Auto-link facts to episodes (if LLM assigned fact_ids)
+    const factLinkRows: Array<{
+      episode_id: string;
+      fact_id: string;
+      linked_by: string;
+    }> = [];
+
+    if (createdEpisodes && createdEpisodes.length > 0) {
+      for (const createdEp of createdEpisodes) {
+        const sourceEp = data.episodes.find(
+          (e) => e.number === createdEp.number,
+        );
+
+        if (sourceEp?.fact_ids && sourceEp.fact_ids.length > 0) {
+          for (const factId of sourceEp.fact_ids) {
+            factLinkRows.push({
+              episode_id: createdEp.id,
+              fact_id: factId,
+              linked_by: user.id,
+            });
+          }
+        }
+      }
+    }
+
+    if (factLinkRows.length > 0) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: factLinkError } = await (client as any)
+        .from('episode_facts')
+        .upsert(factLinkRows, { onConflict: 'episode_id,fact_id' });
+
+      if (factLinkError) {
+        logger.warn(
+          { ...ctx, error: factLinkError },
+          'Failed to auto-link facts to episodes (non-fatal)',
+        );
+      } else {
+        logger.info(
+          { ...ctx, factLinksCreated: factLinkRows.length },
+          'Auto-linked facts to episodes',
+        );
+      }
     }
 
     // Audit Log logic (simplified)

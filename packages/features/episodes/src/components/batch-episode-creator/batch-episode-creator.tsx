@@ -25,6 +25,7 @@ import {
   FormMessage,
 } from '@kit/ui/form';
 import { useLlmJob } from '@kit/ui/hooks';
+import { Input } from '@kit/ui/input';
 import {
   Select,
   SelectContent,
@@ -41,6 +42,7 @@ import {
   type GenerateSeasonOutlineInput,
   GenerateSeasonOutlineSchema,
 } from '../../lib/schemas/batch-episode.schema';
+import { updateSeasonAction } from '../../lib/server/mutations/season-actions';
 import {
   batchCreateEpisodesAction,
   generateSeasonOutlineAction,
@@ -84,6 +86,7 @@ export function BatchEpisodeCreator({
 }: BatchEpisodeCreatorProps) {
   const [isPending, startTransition] = useTransition();
   const [isCreating, setIsCreating] = useState(false);
+  const [seasonName, setSeasonName] = useState('');
   const [episodes, setEpisodes] = useState<EpisodeOutline[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
@@ -160,6 +163,14 @@ export function BatchEpisodeCreator({
 
     setIsCreating(true);
     try {
+      // Update season name if provided and seasonId exists
+      if (seasonId && seasonName.trim()) {
+        await updateSeasonAction({
+          seasonId,
+          name: seasonName.trim(),
+        });
+      }
+
       const result = await batchCreateEpisodesAction({
         projectId,
         seasonId,
@@ -170,6 +181,7 @@ export function BatchEpisodeCreator({
         toast.success(`Created ${result.data.count} episodes`);
         setIsPreviewOpen(false);
         setEpisodes([]);
+        setSeasonName('');
         form.reset({
           projectId,
           seasonId,
@@ -210,6 +222,19 @@ export function BatchEpisodeCreator({
         <CardContent>
           <Form {...form}>
             <form onSubmit={onSubmit} className="space-y-6">
+              {/* Season Name */}
+              <div className="space-y-2">
+                <FormLabel>Season Name</FormLabel>
+                <Input
+                  value={seasonName}
+                  onChange={(e) => setSeasonName(e.target.value)}
+                  placeholder="e.g., History Deep Dives, Science Reels, Season 3"
+                />
+                <FormDescription>
+                  Organize episodes by content type
+                </FormDescription>
+              </div>
+
               <FormField
                 control={form.control}
                 name="seasonPremise"
