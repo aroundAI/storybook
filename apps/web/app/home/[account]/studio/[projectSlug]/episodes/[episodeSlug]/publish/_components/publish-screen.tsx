@@ -62,7 +62,6 @@ import { PublishedContentSection } from './published-content-section';
 import type {
   DeleteItemStatus,
   DeleteStage,
-  Platform,
   PlatformConfig,
   PlatformConnection,
   PlatformUploadStatus,

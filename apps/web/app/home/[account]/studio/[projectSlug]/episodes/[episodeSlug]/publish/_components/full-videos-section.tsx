@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 
 import type { SupportedLanguage } from '@kit/publishing/lib/constants';
-import { LANG_INFO } from '@kit/publishing/lib/constants';
 import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 

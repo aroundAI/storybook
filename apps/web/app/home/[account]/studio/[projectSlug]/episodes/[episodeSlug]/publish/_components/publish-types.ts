@@ -5,7 +5,7 @@ import {
   Youtube,
 } from 'lucide-react';
 
-import type { SupportedLanguage } from '@kit/publishing/lib/constants';
+
 
 // Platform icons and configurations - with light/dark mode compatible colors
 export const PLATFORM_CONFIG: Record<

@@ -15,7 +15,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import type { SupportedLanguage } from '@kit/publishing/lib/constants';
+
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
