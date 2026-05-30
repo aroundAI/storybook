@@ -120,6 +120,7 @@ export function PreviewPanel() {
     } else {
       audio.stopPlayback();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally excludes data.clips, data.tracks, data.keyframes, playheadMs: this effect should only fire on play/pause toggles
   }, [isPlaying, audioEngineRef, playbackEngineRef]);
 
   // Sync audio on playhead tick during playback
@@ -141,6 +142,7 @@ export function PreviewPanel() {
     isPlaying,
     data.clips,
     data.tracks,
+    data.keyframes,
     audioEngineRef,
     playbackEngineRef,
   ]);

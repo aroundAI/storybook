@@ -220,7 +220,7 @@ export const SfxTimeline = React.forwardRef<
     }
   };
 
-  const handleGenerate = async (cue: AudioCue) => {
+  const handleGenerate = useCallback(async (cue: AudioCue) => {
     if (!audioSettings?.elevenlabs?.sfx_model) {
       toast.error('SFX model not selected in project settings');
       return;
@@ -249,7 +249,7 @@ export const SfxTimeline = React.forwardRef<
         return next;
       });
     }
-  };
+  }, [audioSettings?.elevenlabs?.sfx_model]);
 
   const handlePlay = (cue: AudioCue, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -283,7 +283,7 @@ export const SfxTimeline = React.forwardRef<
     setPlayingId(cue.id);
   };
 
-  const handleGenerateAll = async () => {
+  const handleGenerateAll = useCallback(async () => {
     if (!audioSettings?.elevenlabs?.sfx_model) {
       toast.error('SFX model not selected in project settings');
       return;
@@ -302,7 +302,7 @@ export const SfxTimeline = React.forwardRef<
       await handleGenerate(cue);
     }
     // completion notifications come via WebSocket
-  };
+  }, [audioSettings?.elevenlabs?.sfx_model, cues, handleGenerate]);
 
   // Expose generateAll via ref
   useImperativeHandle(

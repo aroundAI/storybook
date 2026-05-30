@@ -529,6 +529,7 @@ export function PublishScreen({
         setPublishStage('error');
       }
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- buildPlatformConfigsAndConfirm receives all reactive data via params; adding it would require useCallback on a 100+ line fn
   }, [
     llmStatus,
     llmResult,

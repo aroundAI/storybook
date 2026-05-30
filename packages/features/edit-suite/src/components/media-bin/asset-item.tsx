@@ -7,6 +7,8 @@
  * Draggable — sets clip data in `dataTransfer` for timeline drops.
  * Shows ✅ indicator for assets already on the timeline.
  */
+import Image from 'next/image';
+
 import type { DragClipData, MediaAsset } from '../../hooks/use-media-bin';
 
 /** Drag data MIME type constant */
@@ -70,11 +72,12 @@ export function AssetItem({ asset, onSelect }: AssetItemProps) {
     >
       {/* Thumbnail or icon */}
       {asset.thumbnailUrl ? (
-        <img
+        <Image
           src={asset.thumbnailUrl}
           alt={asset.name}
+          width={48}
+          height={32}
           className="h-8 w-12 flex-shrink-0 rounded object-cover"
-          loading="lazy"
         />
       ) : (
         <span className="flex h-8 w-12 flex-shrink-0 items-center justify-center rounded bg-zinc-800 text-base">

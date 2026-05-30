@@ -1,5 +1,7 @@
 'use client';
 
+import Image from 'next/image';
+
 import {
   Check,
   Film,
@@ -105,10 +107,12 @@ export const VideoCard = ({
             </div>
 
             {thumbnailUrl ? (
-              <img
+              <Image
                 src={thumbnailUrl}
                 alt={`${LANG_INFO[lang]?.name} thumbnail`}
-                className="h-full w-full object-cover"
+                fill
+                sizes="64px"
+                className="object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-gray-100 dark:bg-gray-700">

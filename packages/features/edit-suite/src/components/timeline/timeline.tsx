@@ -64,6 +64,7 @@ export function Timeline() {
       }
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.tracks and data.clips, not the entire data context
   }, [data.tracks, data.clips]);
 
   // Virtual scrolling: only render clips within the viewport + buffer
@@ -86,6 +87,7 @@ export function Timeline() {
       }
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.tracks, not the entire data context
   }, [data.tracks, visibleClips]);
 
   // Group transitions by track (keyed by fromClipId's track)
@@ -101,6 +103,7 @@ export function Timeline() {
       }
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.clips and data.transitions, not the entire data context
   }, [data.clips, data.transitions]);
 
   // Group keyframes by track (keyed by clip's trackId)
@@ -116,6 +119,7 @@ export function Timeline() {
       }
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.clips and data.keyframes, not the entire data context
   }, [data.clips, data.keyframes]);
 
   // Sort tracks without mutating the original array

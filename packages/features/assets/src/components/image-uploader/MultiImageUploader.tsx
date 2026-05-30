@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import Image from 'next/image';
+
 import { X, ZoomIn } from 'lucide-react';
 
 import { Button } from '@kit/ui/button';
@@ -51,10 +53,12 @@ export function MultiImageUploader({
               className="bg-muted group relative aspect-video overflow-hidden rounded-md border"
             >
               {/* Image */}
-              <img
+              <Image
                 src={url}
                 alt={`Reference ${index + 1}`}
-                className="h-full w-full object-cover"
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                className="object-cover"
               />
 
               {/* Overlay with Actions */}

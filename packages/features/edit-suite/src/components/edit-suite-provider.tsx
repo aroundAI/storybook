@@ -332,6 +332,8 @@ export function EditSuiteProvider({
     state.dirtyKeyframeIds,
     state.deletedClipIds,
     state.deletedKeyframeIds,
+    state.newClipIds,
+    state.newKeyframeIds,
   ]);
 
   // Debounced auto-save effect
