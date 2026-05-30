@@ -7,11 +7,28 @@
  */
 import { useEffect, useState } from 'react';
 
-import { EpisodeAnalytics } from '@kit/content-analytics/components';
+import dynamic from 'next/dynamic';
+
 import { PageBody, PageHeader } from '@kit/ui/page';
 import { Skeleton } from '@kit/ui/skeleton';
 
 import { useEpisodeContext } from '../_components/episode-context-provider';
+
+const EpisodeAnalytics = dynamic(
+  () =>
+    import('@kit/content-analytics/components').then((mod) => ({
+      default: mod.EpisodeAnalytics,
+    })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="animate-pulse p-8">
+        <div className="h-8 w-48 rounded-lg bg-gray-200 dark:bg-[#1A1A1A]" />
+        <div className="mt-4 h-64 rounded-xl bg-gray-100 dark:bg-[#1A1A1A]" />
+      </div>
+    ),
+  },
+);
 
 export default function EpisodeAnalyticsPage() {
   const { episode } = useEpisodeContext();

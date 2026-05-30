@@ -3,7 +3,19 @@
  */
 
 // Provider & Shell
-export { EditSuiteProvider, useEditSuite } from './edit-suite-provider';
+export {
+  EditSuiteProvider,
+  usePlayback,
+  useEditData,
+  useEditCommands,
+  useEditSuite,
+} from './edit-suite-provider';
+export type {
+  PlaybackContextValue,
+  DataContextValue,
+  CommandContextValue,
+  AssemblyStatus,
+} from './edit-suite-provider';
 export { EditSuiteShell } from './edit-suite-shell';
 
 // State

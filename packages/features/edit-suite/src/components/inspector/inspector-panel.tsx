@@ -8,11 +8,11 @@
  * - Keyframe curve editor
  * - Transition picker
  */
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditData } from '../edit-suite-provider';
 
 export function InspectorPanel() {
-  const { state } = useEditSuite();
-  const selectedCount = state.selectedClipIds.size;
+  const { selectedClipIds } = useEditData();
+  const selectedCount = selectedClipIds.size;
 
   return (
     <div className="flex h-full flex-col bg-zinc-900">

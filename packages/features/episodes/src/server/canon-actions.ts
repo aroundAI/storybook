@@ -7,9 +7,11 @@
 
 'use server';
 
+import { revalidatePath } from 'next/cache';
+
 import { z } from 'zod';
 
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import type { Database } from '@kit/supabase/database';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
@@ -27,6 +29,20 @@ import type {
   UpdateCharacterStateInput,
 } from '../lib/canon/types';
 import { DEFAULT_CANON_SETTINGS } from '../lib/canon/types';
+
+/**
+ * Canon Server Actions
+ * Phase 10: FILM-1005
+ *
+ * Server actions for Canon Management System CRUD operations.
+ */
+
+/**
+ * Canon Server Actions
+ * Phase 10: FILM-1005
+ *
+ * Server actions for Canon Management System CRUD operations.
+ */
 
 /**
  * Canon Server Actions
@@ -242,6 +258,11 @@ export const addImmutableEventAction = enhanceAction(
       throw new Error(`Failed to add immutable event: ${error.message}`);
     }
 
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
+
     return mapImmutableEvent(event as ImmutableEventRow);
   },
   {
@@ -258,9 +279,12 @@ export const getImmutableEventsAction = enhanceAction(
 
     const { data: events, error } = await client
       .from('immutable_events')
-      .select('*')
+      .select(
+        'id, project_id, event_type, event_key, established_in, season, episode_number, description, metadata, created_at, created_by',
+      )
       .eq('project_id', data.projectId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(500);
 
     if (error) {
       console.error('Error getting immutable events:', error);
@@ -296,6 +320,11 @@ export const deleteImmutableEventAction = enhanceAction(
       console.error('Error deleting immutable event:', error);
       throw new Error(`Failed to delete immutable event: ${error.message}`);
     }
+
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
 
     return { success: true };
   },
@@ -358,6 +387,11 @@ export const updateCharacterStateAction = enhanceAction(
       change_reason: data.triggerEvent,
     });
 
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
+
     return state;
   },
   {
@@ -372,9 +406,12 @@ export const getCharacterStatesAction = enhanceAction(
   async (data: { characterId: string; limit?: number }) => {
     const client = getSupabaseServerClient();
 
+    // All columns needed — returned directly to the client for character state display
     let query = client
       .from('character_states')
-      .select('*')
+      .select(
+        'id, character_id, episode_id, state_type, state_value, trigger_event, cost, new_constraints, previous_state_id, created_at',
+      )
       .eq('character_id', data.characterId)
       .order('created_at', { ascending: false });
 
@@ -490,6 +527,11 @@ export const createNarrativeThreadAction = enhanceAction(
       throw new Error(`Failed to create narrative thread: ${error.message}`);
     }
 
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
+
     return mapNarrativeThread(thread as NarrativeThreadRow);
   },
   {
@@ -515,7 +557,7 @@ export const updateNarrativeThreadAction = enhanceAction(
     // Get current thread to merge arrays
     const { data: current, error: fetchError } = await client
       .from('narrative_threads')
-      .select('*')
+      .select('id, payoffs, episodes_touched, version')
       .eq('id', data.threadId)
       .single();
 
@@ -575,6 +617,11 @@ export const updateNarrativeThreadAction = enhanceAction(
       console.error('Error updating narrative thread:', error);
       throw new Error(`Failed to update narrative thread: ${error.message}`);
     }
+
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
 
     return mapNarrativeThread(thread as NarrativeThreadRow);
   },
@@ -797,6 +844,11 @@ export const updateCanonSettingsAction = enhanceAction(
       throw new Error(`Failed to update canon settings: ${error.message}`);
     }
 
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
+
     return updatedMetadata.canon as CanonSettings;
   },
   {
@@ -840,7 +892,7 @@ export const validateContentInlineAction = enhanceAction(
     // Get immutable events for this project
     const { data: immutableEvents } = await client
       .from('immutable_events')
-      .select('*')
+      .select('event_type, event_key, description, episode_number')
       .eq('project_id', data.projectId);
 
     const violations: Array<{
@@ -1018,6 +1070,17 @@ export const extractCanonChangesAction = enhanceAction(
       // Fetch active threads for LLM context
       const client = getSupabaseServerClient();
 
+      // Rate limit LLM-based extraction
+      const {
+        data: { user },
+      } = await client.auth.getUser();
+      if (user) {
+        checkRateLimit(user.id, 'extractCanonChanges', {
+          maxRequests: 10,
+          windowMs: 60_000,
+        });
+      }
+
       const { data: activeThreads } = await client
         .from('narrative_threads')
         .select('thread_name, thread_type, status, description, promises')
@@ -1182,93 +1245,126 @@ export const commitCanonChangesAction = enhanceAction(
       throw new Error(`Failed to commit canon changes: ${error.message}`);
     }
 
-    // Commit thread updates
+    // Commit thread updates (batched + parallelized to avoid N+1 queries)
     let threadsUpdated = 0;
 
-    for (const update of data.changes.threadUpdates) {
-      try {
-        if (update.action === 'open') {
-          const { error } = await client.from('narrative_threads').insert({
-            project_id: data.projectId,
-            thread_name: update.threadName,
-            thread_type: update.threadType ?? 'plot',
-            opened_at: data.episodeId,
-            description: update.description,
-            promises: update.promises ?? [],
-            episodes_touched: [data.episodeId],
-            status: 'open',
-          });
-          if (!error) threadsUpdated++;
-        } else if (update.action === 'progress') {
-          const { data: existing } = await client
-            .from('narrative_threads')
-            .select('id, episodes_touched, version')
-            .eq('project_id', data.projectId)
-            .eq('thread_name', update.threadName)
-            .in('status', ['open', 'progressed'])
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+    try {
+      // 1. Separate by action type
+      const openUpdates = data.changes.threadUpdates.filter(
+        (u) => u.action === 'open',
+      );
+      const progressUpdates = data.changes.threadUpdates.filter(
+        (u) => u.action === 'progress',
+      );
+      const resolveUpdates = data.changes.threadUpdates.filter(
+        (u) => u.action === 'resolve',
+      );
 
-          if (existing) {
-            const touched = [
-              ...new Set([
-                ...((existing.episodes_touched as string[]) ?? []),
-                data.episodeId,
-              ]),
-            ];
-            const { error } = await client
-              .from('narrative_threads')
-              .update({
-                status: 'progressed',
-                episodes_touched: touched,
-                description: update.description,
-                version: ((existing.version as number) ?? 1) + 1,
-              })
-              .eq('id', existing.id);
-            if (!error) threadsUpdated++;
-          }
-        } else if (update.action === 'resolve') {
-          const { data: existing } = await client
-            .from('narrative_threads')
-            .select('id, episodes_touched, payoffs, version')
-            .eq('project_id', data.projectId)
-            .eq('thread_name', update.threadName)
-            .in('status', ['open', 'progressed'])
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+      // 2. Batch insert all 'open' threads in a single call
+      if (openUpdates.length > 0) {
+        const rows = openUpdates.map((update) => ({
+          project_id: data.projectId,
+          thread_name: update.threadName,
+          thread_type: update.threadType ?? 'plot',
+          opened_at: data.episodeId,
+          description: update.description,
+          promises: update.promises ?? [],
+          episodes_touched: [data.episodeId],
+          status: 'open',
+        }));
+        const { data: inserted, error: insertError } = await client
+          .from('narrative_threads')
+          .insert(rows)
+          .select('id');
+        if (insertError) {
+          console.warn(
+            '[commitCanonChanges] Batch thread insert failed:',
+            insertError,
+          );
+        } else {
+          threadsUpdated += inserted?.length ?? 0;
+        }
+      }
 
-          if (existing) {
-            const touched = [
-              ...new Set([
-                ...((existing.episodes_touched as string[]) ?? []),
-                data.episodeId,
-              ]),
-            ];
-            const { error } = await client
-              .from('narrative_threads')
-              .update({
-                status: 'resolved',
-                resolved_at: data.episodeId,
-                payoffs: [
-                  ...((existing.payoffs as string[]) ?? []),
-                  update.description,
-                ],
-                episodes_touched: touched,
-                version: ((existing.version as number) ?? 1) + 1,
-              })
-              .eq('id', existing.id);
-            if (!error) threadsUpdated++;
+      // 3. Batch lookup for progress + resolve (single query instead of N)
+      const lookupNames = [...progressUpdates, ...resolveUpdates].map(
+        (u) => u.threadName,
+      );
+
+      if (lookupNames.length > 0) {
+        const { data: existingThreads } = await client
+          .from('narrative_threads')
+          .select('id, thread_name, episodes_touched, payoffs, version')
+          .eq('project_id', data.projectId)
+          .in('thread_name', lookupNames)
+          .in('status', ['open', 'progressed'])
+          .order('created_at', { ascending: false });
+
+        // Build map: threadName -> first matching thread (most recent)
+        const threadMap = new Map<
+          string,
+          NonNullable<typeof existingThreads>[number]
+        >();
+        for (const t of existingThreads ?? []) {
+          if (!threadMap.has(t.thread_name)) {
+            threadMap.set(t.thread_name, t);
           }
         }
-      } catch (threadError) {
-        console.warn(
-          `[commitCanonChanges] Thread update failed for '${update.threadName}':`,
-          threadError,
-        );
+
+        // 4. Parallelize all progress + resolve updates
+        const updatePromises = [...progressUpdates, ...resolveUpdates]
+          .map((update) => {
+            const existing = threadMap.get(update.threadName);
+            if (!existing) return null;
+
+            const touched = [
+              ...new Set([
+                ...((existing.episodes_touched as string[]) ?? []),
+                data.episodeId,
+              ]),
+            ];
+            const newVersion = ((existing.version as number) ?? 1) + 1;
+
+            if (update.action === 'progress') {
+              return client
+                .from('narrative_threads')
+                .update({
+                  status: 'progressed',
+                  episodes_touched: touched,
+                  description: update.description,
+                  version: newVersion,
+                })
+                .eq('id', existing.id);
+            } else {
+              // resolve
+              return client
+                .from('narrative_threads')
+                .update({
+                  status: 'resolved',
+                  resolved_at: data.episodeId,
+                  payoffs: [
+                    ...((existing.payoffs as string[]) ?? []),
+                    update.description,
+                  ],
+                  episodes_touched: touched,
+                  version: newVersion,
+                })
+                .eq('id', existing.id);
+            }
+          })
+          .filter(Boolean);
+
+        const results = await Promise.all(updatePromises);
+        threadsUpdated += results.filter((r) => !r?.error).length;
       }
+    } catch (threadError) {
+      console.warn('[commitCanonChanges] Thread updates failed:', threadError);
     }
+
+    revalidatePath(
+      `/home/[account]/studio/[projectSlug]/episodes/[episodeSlug]`,
+      'page',
+    );
 
     return {
       eventsCreated:
@@ -1346,7 +1442,8 @@ export const getAllThreadsAction = enhanceAction(
         '*, opened_episode:episodes!narrative_threads_opened_at_fkey(id, title, number), resolved_episode:episodes!narrative_threads_resolved_at_fkey(id, title, number)',
       )
       .eq('project_id', data.projectId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(200);
 
     if (data.status) {
       query = query.eq('status', data.status);

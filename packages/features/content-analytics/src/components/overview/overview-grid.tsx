@@ -76,51 +76,65 @@ export function OverviewGrid({
     }));
   }, [dailyData]);
 
+  const platforms = useMemo(() => {
+    const totalViews =
+      platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;
+    return (
+      platformMetrics?.map((p) => ({
+        platform: p.platform,
+        percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
+      })) || []
+    );
+  }, [platformMetrics]);
+
+  const topContent = useMemo(
+    () =>
+      contentList?.slice(0, 2).map((item) => ({
+        id: item.publishId,
+        title: item.publishTitle,
+        thumbnailUrl: item.thumbnailUrl ?? undefined,
+        publishedAt: item.publishedAt,
+        platform: item.platform,
+        views: item.views,
+        engagementRate: item.engagementRate,
+      })) || [],
+    [contentList],
+  );
+
+  const regions = useMemo(
+    () =>
+      audience?.geography
+        ? Object.entries(audience.geography)
+            .map(([country, percentage]) => ({ country, percentage }))
+            .sort((a, b) => b.percentage - a.percentage)
+        : [],
+    [audience?.geography],
+  );
+
+  const genders = useMemo(
+    () =>
+      audience?.demographics?.genders
+        ? {
+            male: audience.demographics.genders['male'] || 0,
+            female: audience.demographics.genders['female'] || 0,
+            other: audience.demographics.genders['other'],
+          }
+        : undefined,
+    [audience?.demographics?.genders],
+  );
+
+  const topCommented = useMemo(
+    () =>
+      contentList?.reduce(
+        (max, item) => (item.comments > (max?.comments || 0) ? item : max),
+        contentList[0],
+      ),
+    [contentList],
+  );
+
   if (isLoading) {
     return <OverviewGridSkeleton />;
   }
-
-  // Calculate platform percentages for Platform Split card
-  const totalViews = platformMetrics?.reduce((sum, p) => sum + p.views, 0) || 0;
-  const platforms =
-    platformMetrics?.map((p) => ({
-      platform: p.platform,
-      percentage: totalViews > 0 ? (p.views / totalViews) * 100 : 0,
-    })) || [];
-
-  // Get top content for card
-  const topContent =
-    contentList?.slice(0, 2).map((item) => ({
-      id: item.publishId,
-      title: item.publishTitle,
-      thumbnailUrl: item.thumbnailUrl ?? undefined,
-      publishedAt: item.publishedAt,
-      platform: item.platform,
-      views: item.views,
-      engagementRate: item.engagementRate,
-    })) || [];
-
-  // Get regions from audience data - no fake fallback data
-  const regions = audience?.geography
-    ? Object.entries(audience.geography)
-        .map(([country, percentage]) => ({ country, percentage }))
-        .sort((a, b) => b.percentage - a.percentage)
-    : [];
-
-  // Get gender from audience data - no fake fallback data
-  const genders = audience?.demographics?.genders
-    ? {
-        male: audience.demographics.genders['male'] || 0,
-        female: audience.demographics.genders['female'] || 0,
-        other: audience.demographics.genders['other'],
-      }
-    : undefined;
-
-  // Find top commented content
-  const topCommented = contentList?.reduce(
-    (max, item) => (item.comments > (max?.comments || 0) ? item : max),
-    contentList[0],
-  );
 
   // Build AI insight summary HTML - only show real data
   const hasData = (totals?.views || 0) > 0;

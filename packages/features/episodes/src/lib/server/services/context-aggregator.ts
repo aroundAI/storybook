@@ -33,14 +33,20 @@ type Json =
 // =============================================================================
 
 /** Map a database row to the application-level ExternalContent model. */
-export function rowToExternalContent(row: ExternalContentRow): ExternalContent {
+export function rowToExternalContent(
+  row: Partial<ExternalContentRow> &
+    Pick<
+      ExternalContentRow,
+      'id' | 'external_id' | 'source_id' | 'title' | 'url' | 'category'
+    >,
+): ExternalContent {
   return {
     id: row.id,
     externalId: row.external_id,
     sourceId: row.source_id,
     title: row.title,
     description: row.description ?? '',
-    content: row.content,
+    content: row.content ?? null,
     url: row.url,
     authors: row.authors ?? [],
     publishedAt: new Date(row.published_at ?? Date.now()),
@@ -91,7 +97,7 @@ export class ExternalContextAggregator {
 
     const { data: sources, error } = await supabase
       .from('external_sources')
-      .select('*')
+      .select('id, category, provider_type, credibility_tier')
       .eq('is_active', true);
 
     if (error) {
@@ -212,7 +218,10 @@ export class ExternalContextAggregator {
   // ---------------------------------------------------------------------------
 
   private createProvider(
-    source: ExternalSourceRow,
+    source: Pick<
+      ExternalSourceRow,
+      'id' | 'provider_type' | 'credibility_tier'
+    >,
   ): ExternalContextProvider | null {
     const tier = (source.credibility_tier ?? 'tier_3') as CredibilityTier;
 
@@ -248,7 +257,9 @@ export class ExternalContextAggregator {
 
     let query = supabase
       .from('external_content')
-      .select('*')
+      .select(
+        'id, external_id, source_id, title, description, content, url, authors, published_at, language, category, topics, entities, doi, journal, citations, peer_reviewed, image_url, credibility_tier, bias_label, fetched_at, cache_expires_at',
+      )
       .in('category', categories)
       .gt('cache_expires_at', new Date().toISOString())
       .order('published_at', { ascending: false });

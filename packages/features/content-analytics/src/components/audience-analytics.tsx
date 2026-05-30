@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import { Globe, Users } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
@@ -17,6 +19,27 @@ export function AudienceAnalytics({
   data,
   isLoading = false,
 }: AudienceAnalyticsProps) {
+  const sortedAgeGroups = useMemo(() => {
+    if (!data?.demographics?.ageGroups) return [];
+    return Object.entries(data.demographics.ageGroups).sort(([a], [b]) =>
+      a.localeCompare(b),
+    );
+  }, [data?.demographics?.ageGroups]);
+
+  const sortedGenders = useMemo(() => {
+    if (!data?.demographics?.genders) return [];
+    return Object.entries(data.demographics.genders).sort(
+      ([, a], [, b]) => b - a,
+    );
+  }, [data?.demographics?.genders]);
+
+  const sortedGeography = useMemo(() => {
+    if (!data?.geography) return [];
+    return Object.entries(data.geography)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10);
+  }, [data?.geography]);
+
   if (isLoading) {
     return <AudienceAnalyticsSkeleton />;
   }
@@ -58,19 +81,17 @@ export function AudienceAnalytics({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(data.demographics.ageGroups)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .map(([ageGroup, percentage]) => (
-                    <div key={ageGroup} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span>{formatAgeGroup(ageGroup)}</span>
-                        <span className="text-muted-foreground">
-                          {percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                      <Progress value={percentage} className="h-2" />
+                {sortedAgeGroups.map(([ageGroup, percentage]) => (
+                  <div key={ageGroup} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span>{formatAgeGroup(ageGroup)}</span>
+                      <span className="text-muted-foreground">
+                        {percentage.toFixed(1)}%
+                      </span>
                     </div>
-                  ))}
+                    <Progress value={percentage} className="h-2" />
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -88,22 +109,20 @@ export function AudienceAnalytics({
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(data.demographics.genders)
-                  .sort(([, a], [, b]) => b - a)
-                  .map(([gender, percentage]) => (
-                    <div key={gender} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="capitalize">{gender}</span>
-                        <span className="text-muted-foreground">
-                          {percentage.toFixed(1)}%
-                        </span>
-                      </div>
-                      <Progress
-                        value={percentage}
-                        className={`h-2 ${getGenderColor(gender)}`}
-                      />
+                {sortedGenders.map(([gender, percentage]) => (
+                  <div key={gender} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="capitalize">{gender}</span>
+                      <span className="text-muted-foreground">
+                        {percentage.toFixed(1)}%
+                      </span>
                     </div>
-                  ))}
+                    <Progress
+                      value={percentage}
+                      className={`h-2 ${getGenderColor(gender)}`}
+                    />
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -120,22 +139,19 @@ export function AudienceAnalytics({
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {Object.entries(data.geography)
-                .sort(([, a], [, b]) => b - a)
-                .slice(0, 10)
-                .map(([country, percentage]) => (
-                  <div key={country} className="space-y-1">
-                    <div className="flex items-center justify-between text-sm">
-                      <span>
-                        {getCountryFlag(country)} {country}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {percentage.toFixed(1)}%
-                      </span>
-                    </div>
-                    <Progress value={percentage} className="h-2" />
+              {sortedGeography.map(([country, percentage]) => (
+                <div key={country} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span>
+                      {getCountryFlag(country)} {country}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {percentage.toFixed(1)}%
+                    </span>
                   </div>
-                ))}
+                  <Progress value={percentage} className="h-2" />
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>

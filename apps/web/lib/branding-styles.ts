@@ -54,13 +54,13 @@ export function generateBrandingStyles(): string {
 }
 
 /**
- * Generate Google Fonts URL for dynamic font loading
- * Includes branding fonts + cinema typography fonts
+ * Generate Google Fonts URL for branding fonts only.
+ * Used in root layout — keeps non-studio pages lightweight.
  */
 export function generateGoogleFontsLink(): string {
   const config = getBrandingConfig();
 
-  // Start with branding config fonts
+  // Only branding config fonts — no cinema fonts
   const fonts = [
     {
       name: config.typography.heading.font,
@@ -70,19 +70,6 @@ export function generateGoogleFontsLink(): string {
       name: config.typography.body.font,
       weights: config.typography.body.weights,
     },
-    // Cinema typography fonts
-    {
-      name: 'Courier Prime',
-      weights: [400, 700], // Regular and bold for screenplays
-    },
-    {
-      name: 'Merriweather',
-      weights: [400, 700], // Regular and bold for reading mode
-    },
-    {
-      name: 'JetBrains Mono',
-      weights: [400, 500], // Regular and medium for data/timecodes
-    },
   ];
 
   // Remove duplicates if heading and body use the same font
@@ -90,7 +77,6 @@ export function generateGoogleFontsLink(): string {
     (acc, font) => {
       const existing = acc.find((f) => f.name === font.name);
       if (existing) {
-        // Merge weights and remove duplicates
         existing.weights = Array.from(
           new Set([...existing.weights, ...font.weights]),
         ).sort();
@@ -103,6 +89,29 @@ export function generateGoogleFontsLink(): string {
   );
 
   return generateGoogleFontsUrl(uniqueFonts);
+}
+
+/**
+ * Generate Google Fonts URL for cinema-specific typography.
+ * Used in studio layout only — screenplay, reading mode, and timecode fonts.
+ */
+export function generateCinemaFontsLink(): string {
+  const cinemaFonts = [
+    {
+      name: 'Courier Prime',
+      weights: [400, 700],
+    },
+    {
+      name: 'Merriweather',
+      weights: [400, 700],
+    },
+    {
+      name: 'JetBrains Mono',
+      weights: [400, 500],
+    },
+  ];
+
+  return generateGoogleFontsUrl(cinemaFonts);
 }
 
 /**
@@ -170,9 +179,9 @@ export function generateLogoStyle(config: BrandingConfig): React.CSSProperties {
       if (config.logo.glow.animate) {
         if (styles.animation) {
           // Combine animations
-          styles.animation = `${styles.animation}, glow-pulse 2s ease-in-out infinite`;
+          styles.animation = `${styles.animation}, glow-pulse-logo 2s ease-in-out infinite`;
         } else {
-          styles.animation = 'glow-pulse 2s ease-in-out infinite';
+          styles.animation = 'glow-pulse-logo 2s ease-in-out infinite';
         }
       }
     }

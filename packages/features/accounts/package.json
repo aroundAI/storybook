@@ -1,6 +1,7 @@
 {
   "name": "@kit/accounts",
   "private": true,
+  "sideEffects": false,
   "version": "0.1.0",
   "scripts": {
     "clean": "git clean -xdf .turbo node_modules",

@@ -43,6 +43,13 @@ import { generateSfxAction } from './sfx-actions';
  * and trigger generation for SFX/ambient, display prompts for music.
  */
 
+/**
+ * Audio Cue Actions
+ *
+ * Process audioCues from screenplay scenes into audio_cues table
+ * and trigger generation for SFX/ambient, display prompts for music.
+ */
+
 // =============================================================================
 // Schemas
 // =============================================================================

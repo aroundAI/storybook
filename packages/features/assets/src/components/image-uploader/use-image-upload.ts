@@ -29,6 +29,13 @@ import type {
  */
 
 /**
+ * useImageUpload Hook (FILM-207)
+ *
+ * Custom hook for handling image uploads with progress tracking.
+ * Uses XMLHttpRequest for upload progress events.
+ */
+
+/**
  * Hook for uploading images with progress tracking
  */
 
@@ -45,7 +52,7 @@ import type {
 export function useImageUpload(
   options: UseImageUploadOptions,
 ): UseImageUploadReturn {
-  const { projectId, assetType, assetId, onUploadComplete } = options;
+  const { projectId, assetType, onUploadComplete } = options;
 
   const [state, setState] = useState<UploadState>('idle');
   const [progress, setProgress] = useState<UploadProgress>({
@@ -225,7 +232,7 @@ export function useImageUpload(
         });
       }
     },
-    [projectId, assetType, assetId, validate, onUploadComplete],
+    [projectId, assetType, validate, onUploadComplete],
   );
 
   /**

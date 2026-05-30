@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import { Globe } from 'lucide-react';
 
 import { AudienceCard } from './audience-card';
@@ -48,10 +50,14 @@ function getCountryFlag(country: string): string {
 
 export function GeographyCard({ geography }: GeographyCardProps) {
   // Sort countries by percentage and take top 7
-  const sortedCountries = Object.entries(geography)
-    .map(([country, percentage]) => ({ country, percentage }))
-    .sort((a, b) => b.percentage - a.percentage)
-    .slice(0, 7);
+  const sortedCountries = useMemo(
+    () =>
+      Object.entries(geography)
+        .map(([country, percentage]) => ({ country, percentage }))
+        .sort((a, b) => b.percentage - a.percentage)
+        .slice(0, 7),
+    [geography],
+  );
 
   // Find the highest percentage for highlighting
   const maxPercentage = sortedCountries[0]?.percentage || 0;
@@ -64,10 +70,10 @@ export function GeographyCard({ geography }: GeographyCardProps) {
       footerInsight="English-speaking regions dominate, but growth in Brazil and Germany indicates localization opportunities."
     >
       <div className="space-y-4">
-        {sortedCountries.map((item, index) => {
+        {sortedCountries.map((item) => {
           const isTop = item.percentage === maxPercentage;
           return (
-            <div key={index} className="flex items-center gap-3">
+            <div key={item.country} className="flex items-center gap-3">
               <div className="w-6 text-xl">{getCountryFlag(item.country)}</div>
               <div className="flex-1">
                 <div className="mb-1 flex justify-between text-xs">

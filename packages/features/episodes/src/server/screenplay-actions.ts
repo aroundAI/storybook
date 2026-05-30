@@ -1,6 +1,6 @@
 'use server';
 
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import type { Screenplay } from '@kit/prompt-engine/schemas';
 import { getLogger } from '@kit/shared/logger';
 import { requireUser } from '@kit/supabase/require-user';
@@ -162,6 +162,11 @@ export const convertToScreenplayAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized screenplay conversion attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'convertToScreenplay', {
+      maxRequests: 3,
+      windowMs: 60_000,
+    });
 
     // Fetch episode with project info
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

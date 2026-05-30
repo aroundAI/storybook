@@ -48,7 +48,7 @@ const LANG_INFO: Record<SupportedLanguage, { name: string; flag: string }> = {
   bn: { name: 'Bengali', flag: '🇧🇩' },
 };
 
-interface LanguageTabBarProps {
+export interface LanguageTabBarProps {
   episodeId: string;
   availableLanguages: SupportedLanguage[];
   selectedLanguage: SupportedLanguage;

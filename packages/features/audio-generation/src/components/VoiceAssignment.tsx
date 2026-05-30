@@ -97,6 +97,16 @@ export function VoiceAssignmentPanel({
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const queryClient = useQueryClient();
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   // Get selected character
   const selectedCharacter = characters.find(
     (c) => c.id === selectedCharacterId,

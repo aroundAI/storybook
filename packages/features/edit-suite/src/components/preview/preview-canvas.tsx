@@ -16,7 +16,7 @@ import {
   renderTransition,
 } from '../../lib/transition-renderer';
 import type { EditClip } from '../../lib/types';
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditData, usePlayback } from '../edit-suite-provider';
 
 // ──────────────────────────────────────────
 // Types
@@ -46,21 +46,22 @@ interface PreviewCanvasProps {
 }
 
 export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
-  const { state } = useEditSuite();
+  const playback = usePlayback();
+  const data = useEditData();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoPoolRef = useRef<Map<string, VideoPoolEntry>>(new Map());
   const rafRef = useRef<number | null>(null);
 
   // Find video clips that overlap the current playhead
   const activeVideoClips = useMemo(() => {
-    const ms = state.playheadMs;
+    const ms = playback.playheadMs;
 
     // Get video track IDs (only composite video tracks)
     const videoTrackIds = new Set(
-      state.tracks.filter((t) => t.type === 'video').map((t) => t.id),
+      data.tracks.filter((t) => t.type === 'video').map((t) => t.id),
     );
 
-    return state.clips
+    return data.clips
       .filter(
         (clip) =>
           videoTrackIds.has(clip.trackId) &&
@@ -71,11 +72,11 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
       )
       .sort((a, b) => {
         // Sort by track sort order (lower = drawn first = background)
-        const trackA = state.tracks.find((t) => t.id === a.trackId);
-        const trackB = state.tracks.find((t) => t.id === b.trackId);
+        const trackA = data.tracks.find((t) => t.id === a.trackId);
+        const trackB = data.tracks.find((t) => t.id === b.trackId);
         return (trackA?.sortOrder ?? 0) - (trackB?.sortOrder ?? 0);
       });
-  }, [state.playheadMs, state.clips, state.tracks]);
+  }, [playback.playheadMs, data.clips, data.tracks]);
 
   // Get or create a video element for a clip
   const getVideo = useCallback(
@@ -139,7 +140,7 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
 
     // Build a transition lookup for overlapping clips
     const transitionMap = new Map(
-      state.transitions.map((t) => [`${t.fromClipId}:${t.toClipId}`, t]),
+      data.transitions.map((t) => [`${t.fromClipId}:${t.toClipId}`, t]),
     );
 
     // Helper to compute draw dimensions for a video
@@ -165,7 +166,7 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
       }
 
       // Calculate the offset within the clip's source media
-      const clipOffsetMs = state.playheadMs - clip.startMs + clip.inPointMs;
+      const clipOffsetMs = playback.playheadMs - clip.startMs + clip.inPointMs;
 
       // Seek if not already at the right position
       const entry = videoPoolRef.current.get(clip.id);
@@ -193,7 +194,7 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
           const transitionStartMs = cutPointMs - halfDuration;
 
           const progress = getTransitionProgress(
-            state.playheadMs,
+            playback.playheadMs,
             transitionStartMs,
             transition.durationMs,
           );
@@ -236,9 +237,9 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
         const dims = getDrawDims(video);
 
         // Apply visual keyframe transforms
-        const clipOffsetForKf = state.playheadMs - clip.startMs;
+        const clipOffsetForKf = playback.playheadMs - clip.startMs;
         const kfValues = getInterpolatedValues(
-          state.keyframes,
+          data.keyframes,
           clip.id,
           clipOffsetForKf,
         );
@@ -294,9 +295,9 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
   }, [
     activeVideoClips,
     getVideo,
-    state.playheadMs,
-    state.transitions,
-    state.keyframes,
+    playback.playheadMs,
+    data.transitions,
+    data.keyframes,
     width,
     height,
   ]);
@@ -308,7 +309,7 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
 
   // Continuous render during playback
   useEffect(() => {
-    if (!state.isPlaying) {
+    if (!playback.isPlaying) {
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -329,7 +330,7 @@ export function PreviewCanvas({ width, height }: PreviewCanvasProps) {
         rafRef.current = null;
       }
     };
-  }, [state.isPlaying, renderFrame]);
+  }, [playback.isPlaying, renderFrame]);
 
   // Cleanup video pool on unmount
   useEffect(() => {

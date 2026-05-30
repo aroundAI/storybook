@@ -38,7 +38,9 @@ interface NotesInputProps {
 export function NotesInput({ onSubmit, disabled = false }: NotesInputProps) {
   const [rawNotes, setRawNotes] = useState('');
   const [enableResearch, setEnableResearch] = useState(true);
-  const [tone, setTone] = useState('Professional yet authentic, thought-provoking');
+  const [tone, setTone] = useState(
+    'Professional yet authentic, thought-provoking',
+  );
   const [authorContext, setAuthorContext] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const [isPending, startTransition] = useTransition();

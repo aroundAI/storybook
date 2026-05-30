@@ -102,6 +102,16 @@ export const SfxTimeline = React.forwardRef<
   const [playingId, setPlayingId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   // WebSocket hook for audio-file-generation results
   const {
     status: audioGenStatus,
@@ -220,36 +230,39 @@ export const SfxTimeline = React.forwardRef<
     }
   };
 
-  const handleGenerate = async (cue: AudioCue) => {
-    if (!audioSettings?.elevenlabs?.sfx_model) {
-      toast.error('SFX model not selected in project settings');
-      return;
-    }
+  const handleGenerate = useCallback(
+    async (cue: AudioCue) => {
+      if (!audioSettings?.elevenlabs?.sfx_model) {
+        toast.error('SFX model not selected in project settings');
+        return;
+      }
 
-    setGeneratingIds((prev) => new Set(prev).add(cue.id));
+      setGeneratingIds((prev) => new Set(prev).add(cue.id));
 
-    try {
-      const result = await generateAudioForCueAction({ cueId: cue.id });
-      if (result.status === 'queued') {
-        toast.info(`Generating: ${cue.prompt.substring(0, 30)}...`);
-        // Don't call fetchCues here - WebSocket will notify when complete
-      } else {
-        toast.error(result.error ?? 'Failed to queue generation');
+      try {
+        const result = await generateAudioForCueAction({ cueId: cue.id });
+        if (result.status === 'queued') {
+          toast.info(`Generating: ${cue.prompt.substring(0, 30)}...`);
+          // Don't call fetchCues here - WebSocket will notify when complete
+        } else {
+          toast.error(result.error ?? 'Failed to queue generation');
+          setGeneratingIds((prev) => {
+            const next = new Set(prev);
+            next.delete(cue.id);
+            return next;
+          });
+        }
+      } catch {
+        toast.error('Failed to start audio generation');
         setGeneratingIds((prev) => {
           const next = new Set(prev);
           next.delete(cue.id);
           return next;
         });
       }
-    } catch {
-      toast.error('Failed to start audio generation');
-      setGeneratingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(cue.id);
-        return next;
-      });
-    }
-  };
+    },
+    [audioSettings?.elevenlabs?.sfx_model],
+  );
 
   const handlePlay = (cue: AudioCue, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -278,12 +291,12 @@ export const SfxTimeline = React.forwardRef<
       setPlayingId(null);
       audioRef.current = null;
     };
-    audio.play();
+    audio.play().catch(() => {});
     audioRef.current = audio;
     setPlayingId(cue.id);
   };
 
-  const handleGenerateAll = async () => {
+  const handleGenerateAll = useCallback(async () => {
     if (!audioSettings?.elevenlabs?.sfx_model) {
       toast.error('SFX model not selected in project settings');
       return;
@@ -302,7 +315,7 @@ export const SfxTimeline = React.forwardRef<
       await handleGenerate(cue);
     }
     // completion notifications come via WebSocket
-  };
+  }, [audioSettings?.elevenlabs?.sfx_model, cues, handleGenerate]);
 
   // Expose generateAll via ref
   useImperativeHandle(

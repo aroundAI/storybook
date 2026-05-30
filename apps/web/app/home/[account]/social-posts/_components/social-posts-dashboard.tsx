@@ -5,16 +5,15 @@ import { useCallback, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Linkedin } from 'lucide-react';
-import { toast } from '@kit/ui/sonner';
 
 import { NotesInput, PostsList } from '@kit/publishing/components/social-posts';
-
 import {
   createSocialPostAction,
   deleteSocialPostAction,
   publishSocialPostAction,
   regenerateVariantsAction,
 } from '@kit/publishing/server/social-posts';
+import { toast } from '@kit/ui/sonner';
 
 interface SocialPostsDashboardProps {
   accountId: string;
@@ -75,13 +74,10 @@ export function SocialPostsDashboard({
         router.refresh();
 
         // Navigate to the new post detail page
-        router.push(
-          `/home/${accountSlug}/social-posts/${result.postId}`,
-        );
+        router.push(`/home/${accountSlug}/social-posts/${result.postId}`);
       } catch (error) {
         toast.error('Failed to create post', {
-          description:
-            error instanceof Error ? error.message : 'Unknown error',
+          description: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     },
@@ -154,9 +150,7 @@ export function SocialPostsDashboard({
       startTransition(async () => {
         try {
           const result = await regenerateVariantsAction({ postId });
-          toast.success(
-            `Regenerated ${result.variantCount} new variants`,
-          );
+          toast.success(`Regenerated ${result.variantCount} new variants`);
           router.refresh();
           router.push(`/home/${accountSlug}/social-posts/${postId}`);
         } catch (error) {

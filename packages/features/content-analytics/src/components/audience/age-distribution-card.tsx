@@ -46,10 +46,10 @@ export function AgeDistributionCard({ ageGroups }: AgeDistributionCardProps) {
       footerInsight="Primary audience is Gen Z and young adults, suggesting high engagement with trend-based content."
     >
       <div className="space-y-4">
-        {normalizedData.map((group, index) => {
+        {normalizedData.map((group) => {
           const isHighest = group.percentage === maxPercentage;
           return (
-            <div key={index}>
+            <div key={group.label}>
               <div className="mb-1.5 flex justify-between text-xs">
                 <span className="font-medium text-gray-900 dark:text-white">
                   {group.label}

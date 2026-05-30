@@ -69,13 +69,11 @@ const config = {
   transpilePackages: INTERNAL_PACKAGES,
   // Enable standalone output for AWS Lambda deployment
   output: process.env.DEPLOY_TARGET === 'lambda' ? 'standalone' : undefined,
+  compress: process.env.DEPLOY_TARGET === 'lambda' ? false : true,
   webpack: (config, { isServer, webpack }) => {
     if (isServer) {
-      // TODO: Investigate and fix build hanging issue
-      // Disabling module concatenation temporarily resolves build hangs on Node.js 24
-      // This may impact bundle size optimization
-      // Related: OpenNext compatibility with Next.js 15 + Node.js 24
-      config.optimization.concatenateModules = false;
+      // Module concatenation re-enabled on Node.js 25+ (was disabled for Node.js 24 build hangs)
+      // If build hangs recur, set config.optimization.concatenateModules = false;
 
       // Replace DEPLOY_TARGET at build time for tree-shaking
       config.plugins.push(
@@ -89,6 +87,7 @@ const config = {
     return config;
   },
   images: {
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: getRemotePatterns(),
   },
   logging: {
@@ -106,6 +105,9 @@ const config = {
     // Local-first job queue packages
     'node-cron',
     'sharp',
+    'bullmq',
+    'ioredis',
+    '@react-pdf/renderer',
   ],
   // needed for supporting dynamic imports for local content
   outputFileTracingIncludes: {
@@ -135,6 +137,22 @@ const config = {
     mdxRs: true,
     reactCompiler: ENABLE_REACT_COMPILER,
     clientSegmentCache: true,
+    optimizePackageImports: [
+      'lucide-react',
+      '@radix-ui/react-icons',
+      'recharts',
+      'date-fns',
+      'react-hook-form',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-tooltip',
+      'radix-ui',
+      '@tanstack/react-table',
+      '@tanstack/react-query',
+      '@supabase/supabase-js',
+      '@dnd-kit/core',
+      '@dnd-kit/sortable',
+    ],
   },
   modularizeImports: {
     lodash: {
@@ -162,6 +180,11 @@ function getRemotePatterns() {
       hostname,
     });
   }
+
+  remotePatterns.push({
+    protocol: 'https',
+    hostname: 'images.unsplash.com',
+  });
 
   // Cloudflare R2 public bucket for project assets
   // Allow all R2 public bucket subdomains (pub-*.r2.dev)
@@ -235,6 +258,16 @@ async function getHeaders() {
     {
       source: '/api/:path*',
       headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+    },
+    // Security headers
+    {
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'X-XSS-Protection', value: '1; mode=block' },
+      ],
     },
   ];
 }

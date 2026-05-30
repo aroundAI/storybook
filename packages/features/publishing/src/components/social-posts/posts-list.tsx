@@ -37,7 +37,11 @@ interface SocialPost {
   platform_url: string | null;
   created_at: string;
   updated_at: string;
-  generated_variants: Array<{ text: string; style: string; hashtags: string[] }>;
+  generated_variants: Array<{
+    text: string;
+    style: string;
+    hashtags: string[];
+  }>;
   selected_variant_index: number;
   visibility: string;
 }
@@ -237,9 +241,7 @@ export function PostsList({
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        window.open(post.platform_url!, '_blank')
-                      }
+                      onClick={() => window.open(post.platform_url!, '_blank')}
                     >
                       <ExternalLink className="mr-1 h-3 w-3" />
                       View
@@ -258,9 +260,7 @@ export function PostsList({
                         View / Edit
                       </DropdownMenuItem>
                       {post.status !== 'published' && (
-                        <DropdownMenuItem
-                          onClick={() => onRegenerate(post.id)}
-                        >
+                        <DropdownMenuItem onClick={() => onRegenerate(post.id)}>
                           <RefreshCw className="mr-2 h-4 w-4" />
                           Regenerate
                         </DropdownMenuItem>

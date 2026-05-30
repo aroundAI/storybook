@@ -166,7 +166,7 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
             </div>
             <ul className="space-y-4">
               {insights.actionItems.map((action, index) => (
-                <li key={index} className="flex gap-3">
+                <li key={action} className="flex gap-3">
                   <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800 dark:bg-amber-800 dark:text-amber-200">
                     {index + 1}
                   </div>
@@ -187,8 +187,8 @@ export function AIInsights({ projectId, analytics }: AIInsightsProps) {
             Why These Videos Performed Well
           </h3>
           <div className="space-y-4">
-            {insights.topPerformers.map((item, index) => (
-              <div key={index} className="flex gap-4">
+            {insights.topPerformers.map((item) => (
+              <div key={item.title} className="flex gap-4">
                 {item.thumbnailUrl && (
                   <div className="relative h-14 w-24 flex-shrink-0 overflow-hidden rounded">
                     <Image
@@ -248,8 +248,8 @@ function InsightCard({
         </h3>
       </div>
       <ul className="space-y-4">
-        {insights.map((insight, index) => (
-          <li key={index} className="flex items-start gap-3">
+        {insights.map((insight) => (
+          <li key={insight} className="flex items-start gap-3">
             <span
               className={`mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full ${bulletColor}`}
             />

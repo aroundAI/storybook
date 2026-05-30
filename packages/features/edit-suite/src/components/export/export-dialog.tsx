@@ -24,7 +24,7 @@ import type {
   ExportClipManifest,
   ExportSettings,
 } from '../../workers/export.worker';
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditCommands, useEditData } from '../edit-suite-provider';
 
 // ──────────────────────────────────────────
 // Constants
@@ -59,9 +59,10 @@ function isSafeUrl(url: string): boolean {
 }
 
 export function ExportDialog({ open, onClose }: ExportDialogProps) {
-  const { state, availableLanguages } = useEditSuite();
+  const data = useEditData();
+  const { availableLanguages } = useEditCommands();
   const [selectedLang, setSelectedLang] = useState<string | 'all'>(
-    state.activeLanguage,
+    data.activeLanguage,
   );
   const [copied, setCopied] = useState(false);
   const { exportState, startExport, cancelExport, downloadResult } =
@@ -73,12 +74,12 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const handleUploadToR2 = useCallback(async () => {
-    if (!exportState.resultBlob || !state.project) return;
+    if (!exportState.resultBlob || !data.project) return;
     setUploadError(null);
     setUploadProgress(0);
 
     try {
-      const projectId = state.project.id;
+      const projectId = data.project.id;
       const timestamp = Date.now();
       const filename =
         selectedLang === 'all'
@@ -98,17 +99,17 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed');
       setUploadProgress(null);
     }
-  }, [exportState.resultBlob, state.project, selectedLang]);
+  }, [exportState.resultBlob, data.project, selectedLang]);
 
   // Build FFmpeg command for the selected language
   const ffmpegResult = useMemo(() => {
-    if (!state.project) return null;
+    if (!data.project) return null;
 
     // Filter clips by selected language
     const exportClips =
       selectedLang === 'all'
-        ? state.clips.filter((c) => c.isActive && c.mediaUrl)
-        : state.clips.filter((c) => {
+        ? data.clips.filter((c) => c.isActive && c.mediaUrl)
+        : data.clips.filter((c) => {
             if (!c.mediaUrl) return false;
             // Non-dialogue clips (no language) are always included
             if (!c.language) return c.isActive;
@@ -122,14 +123,14 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         : `output_${selectedLang}.mp4`;
 
     return buildFFmpegCommand(
-      state.project,
-      state.tracks,
+      data.project,
+      data.tracks,
       exportClips,
-      state.transitions,
-      state.keyframes,
+      data.transitions,
+      data.keyframes,
       outputFile,
     );
-  }, [state, selectedLang]);
+  }, [data, selectedLang]);
 
   const handleCopy = useCallback(async () => {
     if (!ffmpegResult) return;
@@ -139,11 +140,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
   }, [ffmpegResult]);
 
   const handleBrowserExport = useCallback(() => {
-    if (!state.project) return;
+    if (!data.project) return;
 
-    const tracksMap = new Map(state.tracks.map((t) => [t.id, t.type]));
+    const tracksMap = new Map(data.tracks.map((t) => [t.id, t.type]));
 
-    const exportClips: ExportClipManifest[] = state.clips
+    const exportClips: ExportClipManifest[] = data.clips
       .filter((c) => c.isActive && c.mediaUrl)
       .filter((c) => {
         if (selectedLang === 'all') return true;
@@ -168,24 +169,23 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
     startExport(
       exportClips,
       {
-        width: state.project.width,
-        height: state.project.height,
-        fps: state.project.fps,
+        width: data.project.width,
+        height: data.project.height,
+        fps: data.project.fps,
         ...DEFAULT_BROWSER_EXPORT_SETTINGS,
       },
       totalDurationMs,
     );
-  }, [state, selectedLang, startExport]);
+  }, [data, selectedLang, startExport]);
 
   const handleServerRender = useCallback(() => {
-    if (!state.project) return;
+    if (!data.project) return;
     setServerError(null);
     startTransition(async () => {
       try {
         await enqueueRenderAction({
-          editProjectId: state.project!.id,
-          language:
-            selectedLang === 'all' ? state.activeLanguage : selectedLang,
+          editProjectId: data.project!.id,
+          language: selectedLang === 'all' ? data.activeLanguage : selectedLang,
         });
       } catch (err) {
         setServerError(
@@ -193,15 +193,15 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         );
       }
     });
-  }, [state.project, state.activeLanguage, selectedLang, startTransition]);
+  }, [data.project, data.activeLanguage, selectedLang, startTransition]);
 
   const handleExportAllLanguages = useCallback(() => {
-    if (!state.project || availableLanguages.length < 2) return;
+    if (!data.project || availableLanguages.length < 2) return;
     setServerError(null);
     startTransition(async () => {
       try {
         await enqueueMultiLanguageRenderAction({
-          editProjectId: state.project!.id,
+          editProjectId: data.project!.id,
           languages: availableLanguages,
         });
       } catch (err) {
@@ -210,11 +210,11 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
         );
       }
     });
-  }, [state.project, availableLanguages, startTransition]);
+  }, [data.project, availableLanguages, startTransition]);
 
   if (!open) return null;
 
-  const renderStatus = state.renderStatus;
+  const renderStatus = data.renderStatus;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -290,16 +290,16 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               {renderStatus === 'rendering' && (
                 <div className="space-y-2">
                   <span>⟳ Rendering in progress…</span>
-                  {typeof state.renderProgress === 'number' && (
+                  {typeof data.renderProgress === 'number' && (
                     <div className="flex items-center gap-2">
                       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-700">
                         <div
                           className="h-full rounded-full bg-blue-500 transition-all duration-300"
-                          style={{ width: `${state.renderProgress}%` }}
+                          style={{ width: `${data.renderProgress}%` }}
                         />
                       </div>
                       <span className="text-[10px] text-zinc-400">
-                        {state.renderProgress}%
+                        {data.renderProgress}%
                       </span>
                     </div>
                   )}
@@ -308,10 +308,10 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               {renderStatus === 'completed' && (
                 <span>
                   ✓ Render complete
-                  {state.project?.renderUrl &&
-                    isSafeUrl(state.project.renderUrl) && (
+                  {data.project?.renderUrl &&
+                    isSafeUrl(data.project.renderUrl) && (
                       <a
-                        href={state.project.renderUrl}
+                        href={data.project.renderUrl}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="ml-2 underline hover:text-green-200"
@@ -324,8 +324,8 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               {renderStatus === 'failed' && (
                 <span>
                   ✕ Render failed
-                  {state.project?.renderError
-                    ? `: ${state.project.renderError}`
+                  {data.project?.renderError
+                    ? `: ${data.project.renderError}`
                     : ''}
                 </span>
               )}
@@ -367,7 +367,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
               </div>
               <div className="rounded-lg border border-zinc-800 bg-zinc-800/50 py-2">
                 <div className="text-lg font-bold text-white">
-                  {state.project?.width}×{state.project?.height}
+                  {data.project?.width}×{data.project?.height}
                 </div>
                 <div className="text-[10px] text-zinc-500">Resolution</div>
               </div>
@@ -449,7 +449,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
           ) : (
             <button
               className="rounded-md border border-violet-600 bg-violet-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={renderStatus === 'rendering' || !state.project}
+              disabled={renderStatus === 'rendering' || !data.project}
               onClick={handleBrowserExport}
               title="Export video directly in your browser using WebCodecs"
             >
@@ -471,7 +471,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                 isPending ||
                 renderStatus === 'rendering' ||
                 renderStatus === 'queued' ||
-                !state.project
+                !data.project
               }
               onClick={handleServerRender}
               title="Render video on server using FFmpeg (higher quality)"
@@ -485,7 +485,7 @@ export function ExportDialog({ open, onClose }: ExportDialogProps) {
                   isPending ||
                   renderStatus === 'rendering' ||
                   renderStatus === 'queued' ||
-                  !state.project
+                  !data.project
                 }
                 onClick={handleExportAllLanguages}
                 title={`Queue ${availableLanguages.length} render jobs — one per language`}

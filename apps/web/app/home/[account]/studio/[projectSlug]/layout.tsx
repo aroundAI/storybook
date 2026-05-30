@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { getAccountProjects } from '@kit/projects/queries';
 import { getSupabaseServerClient } from '@kit/supabase/server-client';
 
+import { generateCinemaFontsLink } from '~/lib/branding-styles';
 import { requireUserInServerComponent } from '~/lib/server/require-user-in-server-component';
 
 import { loadTeamWorkspace } from '../../_lib/server/team-account-workspace.loader';
@@ -102,8 +103,12 @@ export default async function StudioProjectLayout({
     },
   };
 
+  const cinemaFontsUrl = generateCinemaFontsLink();
+
   return (
     <StudioModeProvider>
+      {/* Cinema typography fonts — only loaded in studio pages */}
+      <link rel="stylesheet" href={cinemaFontsUrl} />
       <div className="flex h-screen flex-col">
         {/* Mobile Header - visible only on mobile */}
         <MobileStudioHeader {...sidebarProps} />

@@ -1,5 +1,7 @@
 'use client';
 
+import { useMemo } from 'react';
+
 import Link from 'next/link';
 
 import { ArrowLeft, Sparkles } from 'lucide-react';
@@ -29,10 +31,13 @@ export function ProjectPage({ project, episodes, baseUrl }: ProjectPageProps) {
   const coverImageUrl = metadata.cover_url || null;
 
   // Get first episode for "Watch Episode 1" CTA
-  const firstEpisode =
-    episodes.length > 0
-      ? episodes.sort((a, b) => (a.number || 0) - (b.number || 0))[0]
-      : null;
+  const firstEpisode = useMemo(
+    () =>
+      episodes.length > 0
+        ? [...episodes].sort((a, b) => (a.number || 0) - (b.number || 0))[0]
+        : null,
+    [episodes],
+  );
 
   return (
     <GradientBackground>

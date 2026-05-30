@@ -13,8 +13,16 @@ import {
   RefreshCw,
   Send,
 } from 'lucide-react';
-import { toast } from '@kit/ui/sonner';
 
+import { VariantSelector } from '@kit/publishing/components/social-posts';
+import { getConnectedPlatformsAction } from '@kit/publishing/server';
+import {
+  approveSocialPostAction,
+  getSocialPostAction,
+  publishSocialPostAction,
+  regenerateVariantsAction,
+  updateSocialPostAction,
+} from '@kit/publishing/server/social-posts';
 import { Button } from '@kit/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@kit/ui/card';
 import {
@@ -24,17 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@kit/ui/select';
-
-import { VariantSelector } from '@kit/publishing/components/social-posts';
-
-import {
-  approveSocialPostAction,
-  getSocialPostAction,
-  publishSocialPostAction,
-  regenerateVariantsAction,
-  updateSocialPostAction,
-} from '@kit/publishing/server/social-posts';
-import { getConnectedPlatformsAction } from '@kit/publishing/server';
+import { toast } from '@kit/ui/sonner';
 
 interface SocialPostDetailProps {
   postId: string;
@@ -80,12 +78,9 @@ function mapPostToState(postData: Record<string, unknown>): SocialPostState {
     platform: (postData.platform as string) ?? 'linkedin',
     status: postData.status as string,
     platform_url: (postData.platform_url as string) ?? null,
-    platform_connection_id:
-      (postData.platform_connection_id as string) ?? null,
-    generated_variants:
-      (postData.generated_variants as PostVariant[]) ?? [],
-    selected_variant_index:
-      (postData.selected_variant_index as number) ?? 0,
+    platform_connection_id: (postData.platform_connection_id as string) ?? null,
+    generated_variants: (postData.generated_variants as PostVariant[]) ?? [],
+    selected_variant_index: (postData.selected_variant_index as number) ?? 0,
     visibility: (postData.visibility as string) ?? 'PUBLIC',
     research_context:
       (postData.research_context as Record<string, unknown>) ?? null,
@@ -100,15 +95,15 @@ export function SocialPostDetail({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [post, setPost] = useState<SocialPostState | null>(null);
-  const [connections, setConnections] = useState<
-    PlatformConnectionDisplay[]
-  >([]);
+  const [connections, setConnections] = useState<PlatformConnectionDisplay[]>(
+    [],
+  );
   const [selectedConnectionId, setSelectedConnectionId] = useState<string>('');
   const [isLoaded, setIsLoaded] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load post data on mount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (isLoaded) return;
     startTransition(async () => {
@@ -129,16 +124,14 @@ export function SocialPostDetail({
         setConnections(linkedInConnections);
 
         setSelectedConnectionId(
-          mappedPost.platform_connection_id ??
-            linkedInConnections[0]?.id ??
-            '',
+          mappedPost.platform_connection_id ?? linkedInConnections[0]?.id ?? '',
         );
       } catch {
         toast.error('Failed to load post');
       }
       setIsLoaded(true);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSelectVariant = useCallback(
@@ -200,8 +193,7 @@ export function SocialPostDetail({
         toast.success('New variants generated');
       } catch (error) {
         toast.error('Failed to regenerate', {
-          description:
-            error instanceof Error ? error.message : 'Unknown error',
+          description: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     });
@@ -236,15 +228,12 @@ export function SocialPostDetail({
 
           const refreshed = await getSocialPostAction({ postId: post.id });
           setPost(
-            mapPostToState(
-              refreshed as unknown as Record<string, unknown>,
-            ),
+            mapPostToState(refreshed as unknown as Record<string, unknown>),
           );
         }
       } catch (error) {
         toast.error('Failed to publish', {
-          description:
-            error instanceof Error ? error.message : 'Unknown error',
+          description: error instanceof Error ? error.message : 'Unknown error',
         });
         // Refresh to get current state
         const refreshed = await getSocialPostAction({ postId: post.id });
@@ -307,11 +296,7 @@ export function SocialPostDetail({
               variant="default"
               size="sm"
               onClick={handleApproveAndPublish}
-              disabled={
-                isPending ||
-                !post.final_text ||
-                !selectedConnectionId
-              }
+              disabled={isPending || !post.final_text || !selectedConnectionId}
             >
               {isPending ? (
                 <Loader2 className="mr-1 h-4 w-4 animate-spin" />
@@ -417,7 +402,7 @@ export function SocialPostDetail({
           <CardTitle className="text-base">Original Notes</CardTitle>
         </CardHeader>
         <CardContent>
-          <pre className="text-muted-foreground max-h-40 overflow-y-auto whitespace-pre-wrap text-sm">
+          <pre className="text-muted-foreground max-h-40 overflow-y-auto text-sm whitespace-pre-wrap">
             {post.raw_notes}
           </pre>
         </CardContent>

@@ -289,7 +289,10 @@ export const getProjectFactsAction = enhanceAction(
 
     let query = client
       .from('verified_facts')
-      .select('*', { count: 'exact' })
+      .select(
+        'id, project_id, claim, simplified_claim, category, subcategory, tags, source_type, source_url, source_citation, source_title, source_authors, source_publication_date, source_doi, source_metadata, verification_status, verified_by, verified_at, verification_notes, confidence_score, times_used, last_used_at, episodes_used_in, created_at, created_by, updated_at, updated_by',
+        { count: 'exact' },
+      )
       .eq('project_id', data.projectId)
       .order('created_at', { ascending: false });
 
@@ -333,7 +336,9 @@ export const getFactByIdAction = enhanceAction(
 
     const { data: fact, error } = await client
       .from('verified_facts')
-      .select('*')
+      .select(
+        'id, project_id, claim, simplified_claim, category, subcategory, tags, source_type, source_url, source_citation, source_title, source_authors, source_publication_date, source_doi, source_metadata, verification_status, verified_by, verified_at, verification_notes, confidence_score, times_used, last_used_at, episodes_used_in, created_at, created_by, updated_at, updated_by',
+      )
       .eq('id', data.factId)
       .eq('project_id', data.projectId)
       .single();

@@ -99,7 +99,7 @@ export function CanonSettingsForm({
         }
       });
     },
-    [projectId],
+    [projectId, form],
   );
 
   return (

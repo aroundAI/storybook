@@ -1,0 +1,110 @@
+'use client';
+
+import { AlertCircle, Facebook, Instagram, Youtube } from 'lucide-react';
+
+import { Avatar, AvatarFallback, AvatarImage } from '@kit/ui/avatar';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@kit/ui/tooltip';
+
+import { PLATFORM_CONFIG, type PlatformConnection } from './publish-types';
+
+// Platform icon component - uses lucide-react SVG icons with colored badges
+export const PlatformIcon = ({
+  platform,
+  size = 'md',
+}: {
+  platform: string;
+  size?: 'sm' | 'md' | 'lg';
+}) => {
+  const config = PLATFORM_CONFIG[platform];
+  const sizeClasses = {
+    sm: 'h-5 w-5',
+    md: 'h-7 w-7',
+    lg: 'h-8 w-8',
+  };
+  const iconSizeClasses = {
+    sm: 'h-2.5 w-2.5',
+    md: 'h-3.5 w-3.5',
+    lg: 'h-4 w-4',
+  };
+
+  const IconComponent = () => {
+    const iconClass = iconSizeClasses[size];
+    switch (platform) {
+      case 'youtube':
+        return <Youtube className={iconClass} />;
+      case 'facebook':
+        return <Facebook className={iconClass} />;
+      case 'instagram':
+        return <Instagram className={iconClass} />;
+      case 'tiktok':
+        // Lucide doesn't have TikTok icon, use text fallback
+        return <span className="text-[9px] font-bold">TT</span>;
+      default:
+        return (
+          <span className="text-[9px] font-bold">
+            {platform.slice(0, 2).toUpperCase()}
+          </span>
+        );
+    }
+  };
+
+  return (
+    <div
+      className={`flex items-center justify-center rounded-lg ${sizeClasses[size]} ${config?.bgColor || 'bg-gray-500'} ${config?.textColor || 'text-white'}`}
+    >
+      <IconComponent />
+    </div>
+  );
+};
+
+// Channel badge component
+export const ChannelBadge = ({
+  conn,
+  size = 'sm',
+}: {
+  conn: PlatformConnection;
+  size?: 'sm' | 'md';
+}) => {
+  const config = PLATFORM_CONFIG[conn.platform];
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div
+            className={`flex items-center gap-1.5 rounded-full border px-2 py-1 ${size === 'md' ? 'px-3 py-1.5' : ''} ${conn.tokenValid ? 'bg-card border-gray-200' : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'}`}
+          >
+            <Avatar className={size === 'md' ? 'h-5 w-5' : 'h-4 w-4'}>
+              <AvatarImage src={conn.avatarUrl ?? undefined} />
+              <AvatarFallback
+                className={`${config?.bgColor} text-[10px] text-white`}
+              >
+                {config?.shortName}
+              </AvatarFallback>
+            </Avatar>
+            <span
+              className={`font-medium ${size === 'md' ? 'text-sm' : 'text-xs'}`}
+            >
+              {conn.platformAccountName}
+            </span>
+            {!conn.tokenValid && (
+              <AlertCircle className="h-3 w-3 text-red-500" />
+            )}
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>
+            {config?.name}: {conn.platformAccountName}
+          </p>
+          {!conn.tokenValid && (
+            <p className="text-red-400">Token expired - needs reconnection</p>
+          )}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};

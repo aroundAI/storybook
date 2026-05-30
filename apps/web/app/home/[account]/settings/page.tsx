@@ -45,12 +45,12 @@ async function TeamAccountSettingsPage(props: TeamAccountSettingsPageProps) {
   const client = getSupabaseServerClient();
   const api = createTeamAccountsApi(client);
   const slug = (await props.params).account;
-  const data = await api.getTeamAccount(slug);
-
-  // Get current user for personal settings
-  const {
-    data: { user },
-  } = await client.auth.getUser();
+  const [
+    data,
+    {
+      data: { user },
+    },
+  ] = await Promise.all([api.getTeamAccount(slug), client.auth.getUser()]);
 
   const account = {
     id: data.id,

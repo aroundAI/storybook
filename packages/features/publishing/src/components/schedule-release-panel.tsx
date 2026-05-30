@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { addMinutes, format, isSameDay } from 'date-fns';
 import { formatInTimeZone } from 'date-fns-tz';
@@ -265,7 +265,7 @@ export function ScheduleReleasePanel({
   }, [date]);
 
   // Ensure selected time is valid when date changes
-  useMemo(() => {
+  useEffect(() => {
     if (minTime) {
       if (
         time.hours < minTime.hours ||
@@ -281,7 +281,8 @@ export function ScheduleReleasePanel({
         }
       }
     }
-  }, [minTime, time]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minTime]);
 
   // Get user's local timezone
   const userTimezone = useMemo(() => {

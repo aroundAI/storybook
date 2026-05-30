@@ -96,44 +96,32 @@ export async function linkAsSequel(
 ): Promise<ParentContext> {
   const supabase = getSupabaseServerClient();
 
-  // Validate both projects exist
-  const { data: sequelProject } = await supabase
-    .from('projects')
-    .select('id, name, metadata')
-    .eq('id', sequelProjectId)
-    .single();
-
-  const { data: parentProject } = await supabase
-    .from('projects')
-    .select('id, name, metadata')
-    .eq('id', parentProjectId)
-    .single();
+  // Validate both projects exist — fetch all needed columns in parallel
+  const [{ data: sequelProject }, { data: parentProject }] = await Promise.all([
+    supabase
+      .from('projects')
+      .select('id, name, metadata, sequel_of')
+      .eq('id', sequelProjectId)
+      .single(),
+    supabase
+      .from('projects')
+      .select('id, name, metadata, sequel_of')
+      .eq('id', parentProjectId)
+      .single(),
+  ]);
 
   if (!sequelProject || !parentProject) {
     throw new Error('Project not found');
   }
 
-  // Read sequel_of from project (column added by migration 20260210041000)
-  const { data: sequelRow } = await supabase
-    .from('projects')
-    .select('sequel_of')
-    .eq('id', sequelProjectId)
-    .single();
-
-  const { data: parentRow } = await supabase
-    .from('projects')
-    .select('sequel_of')
-    .eq('id', parentProjectId)
-    .single();
-
   // Validate not circular (parent is not already a sequel of this project)
-  const parentSequelOf = (parentRow?.sequel_of as string[]) ?? [];
+  const parentSequelOf = (parentProject.sequel_of as string[]) ?? [];
   if (parentSequelOf.includes(sequelProjectId)) {
     throw new Error('Circular sequel reference detected');
   }
 
   // Update sequel_of array on the sequel project
-  const currentSequelOf = (sequelRow?.sequel_of as string[]) ?? [];
+  const currentSequelOf = (sequelProject.sequel_of as string[]) ?? [];
   if (!currentSequelOf.includes(parentProjectId)) {
     await supabase
       .from('projects')
@@ -217,37 +205,36 @@ export async function buildParentContext(
 ): Promise<ParentContext> {
   const supabase = getSupabaseServerClient();
 
-  // Fetch immutable events
-  const { data: rawImmutableEvents } = await supabase
-    .from('immutable_events')
-    .select('event_key, event_type, description')
-    .eq('project_id', parentProjectId);
+  // Fetch all independent project-level data in parallel
+  const [
+    { data: rawImmutableEvents },
+    { data: rawResolvedThreads },
+    { data: rawWorldStates },
+    { data: episodes },
+  ] = await Promise.all([
+    supabase
+      .from('immutable_events')
+      .select('event_key, event_type, description')
+      .eq('project_id', parentProjectId),
+    supabase
+      .from('narrative_threads')
+      .select('thread_name, description')
+      .eq('project_id', parentProjectId)
+      .eq('status', 'resolved'),
+    supabase
+      .from('world_states')
+      .select('location, environment_data')
+      .eq('project_id', parentProjectId)
+      .order('created_at', { ascending: false }),
+    supabase.from('episodes').select('id').eq('project_id', parentProjectId),
+  ]);
+
   const immutableEvents = (rawImmutableEvents ?? []) as ImmutableEventRow[];
-
-  // Fetch resolved narrative threads
-  const { data: rawResolvedThreads } = await supabase
-    .from('narrative_threads')
-    .select('thread_name, description')
-    .eq('project_id', parentProjectId)
-    .eq('status', 'resolved');
   const resolvedThreads = (rawResolvedThreads ?? []) as ResolvedThreadRow[];
-
-  // Fetch world states (latest per location)
-  const { data: rawWorldStates } = await supabase
-    .from('world_states')
-    .select('location, environment_data')
-    .eq('project_id', parentProjectId)
-    .order('created_at', { ascending: false });
   const worldStates = (rawWorldStates ?? []) as WorldStateRow[];
-
-  // Fetch episode IDs for parent
-  const { data: episodes } = await supabase
-    .from('episodes')
-    .select('id')
-    .eq('project_id', parentProjectId);
   const episodeIds = (episodes ?? []).map((e) => e.id);
 
-  // Fetch character states for characters in these episodes
+  // Fetch episode-dependent data in parallel
   let characterStates: CharacterStateRow[] = [];
   if (episodeIds.length > 0) {
     const { data: rawCharStates } = await supabase
@@ -387,7 +374,9 @@ export async function getSequelParentContexts(
   // Fetch cached parent contexts
   const { data } = await supabase
     .from('sequel_parent_contexts')
-    .select('*')
+    .select(
+      'parent_project_id, parent_project_name, parent_summary, parent_immutable_events, parent_final_character_states, parent_resolved_threads, parent_world_facts, character_visual_registry, location_registry',
+    )
     .eq('sequel_project_id', sequelProjectId)
     .eq('is_stale', false);
 

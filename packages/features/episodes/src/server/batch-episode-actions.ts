@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { createAuditLog, extractNetworkContext } from '@kit/audit-logs/server';
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import { getLogger } from '@kit/shared/logger';
 import type { Json } from '@kit/supabase/database';
 import { requireUser } from '@kit/supabase/require-user';
@@ -52,6 +52,11 @@ export const generateSeasonOutlineAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized season outline generation attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'generateSeasonOutline', {
+      maxRequests: 3,
+      windowMs: 60_000,
+    });
 
     // Verify project access and get account ID
     const { data: project, error: projectError } = await client
@@ -120,6 +125,11 @@ export const batchCreateEpisodesAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized batch episode creation attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'batchCreateEpisodes', {
+      maxRequests: 5,
+      windowMs: 60_000,
+    });
 
     // Verify project access and get account ID
     const { data: project, error: projectError } = await client
@@ -265,6 +275,11 @@ export const regenerateEpisodeOutlineAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized episode regeneration attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'regenerateEpisodeOutline', {
+      maxRequests: 5,
+      windowMs: 60_000,
+    });
 
     // Verify project access and get account ID
     const { data: project, error: projectError } = await client

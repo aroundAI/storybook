@@ -15,7 +15,7 @@ import { useDeferredValue } from 'react';
 import { useEffect, useMemo, useRef } from 'react';
 
 import { useVisibleClips } from '../../hooks/use-visible-clips';
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditData, usePlayback } from '../edit-suite-provider';
 import { ActiveEditorsList, CursorPresence } from './cursor-presence';
 import { Playhead } from './playhead';
 import { TimelineRuler } from './timeline-ruler';
@@ -37,44 +37,47 @@ const AUTO_SCROLL_MARGIN = 100; // px from edge to trigger auto-scroll
 // ──────────────────────────────────────────
 
 export function Timeline() {
-  const { state, dispatch } = useEditSuite();
+  const data = useEditData();
+  const playback = usePlayback();
+  const { dispatch } = data;
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Use deferred zoom to prevent jank during rapid zoom slider changes
-  const deferredZoom = useDeferredValue(state.zoom);
+  const deferredZoom = useDeferredValue(data.zoom);
 
   // Compute dynamic timeline duration based on clips
   const durationMs = useMemo(() => {
-    const maxEnd = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
+    const maxEnd = data.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
     return Math.max(MIN_DURATION_MS, Math.round(maxEnd * DURATION_BUFFER));
-  }, [state.clips]);
+  }, [data.clips]);
 
   // Group clips by track
   const clipsByTrack = useMemo(() => {
-    const map = new Map<string, typeof state.clips>();
-    for (const track of state.tracks) {
+    const map = new Map<string, typeof data.clips>();
+    for (const track of data.tracks) {
       map.set(track.id, []);
     }
-    for (const clip of state.clips) {
+    for (const clip of data.clips) {
       const trackClips = map.get(clip.trackId);
       if (trackClips) {
         trackClips.push(clip);
       }
     }
     return map;
-  }, [state.tracks, state.clips]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.tracks and data.clips, not the entire data context
+  }, [data.tracks, data.clips]);
 
   // Virtual scrolling: only render clips within the viewport + buffer
   const { visibleClips } = useVisibleClips({
-    clips: state.clips,
+    clips: data.clips,
     zoom: deferredZoom,
     scrollContainerRef,
   });
 
   // Group VISIBLE clips by track (for rendering)
   const visibleClipsByTrack = useMemo(() => {
-    const map = new Map<string, typeof state.clips>();
-    for (const track of state.tracks) {
+    const map = new Map<string, typeof data.clips>();
+    for (const track of data.tracks) {
       map.set(track.id, []);
     }
     for (const clip of visibleClips) {
@@ -84,19 +87,14 @@ export function Timeline() {
       }
     }
     return map;
-  }, [state.tracks, visibleClips]);
-
-  // Selected clip IDs as a Set for O(1) lookups
-  const selectedClipIds = useMemo(
-    () => new Set(state.selectedClipIds),
-    [state.selectedClipIds],
-  );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.tracks, not the entire data context
+  }, [data.tracks, visibleClips]);
 
   // Group transitions by track (keyed by fromClipId's track)
   const transitionsByTrack = useMemo(() => {
-    const clipTrack = new Map(state.clips.map((c) => [c.id, c.trackId]));
-    const map = new Map<string, typeof state.transitions>();
-    for (const t of state.transitions) {
+    const clipTrack = new Map(data.clips.map((c) => [c.id, c.trackId]));
+    const map = new Map<string, typeof data.transitions>();
+    for (const t of data.transitions) {
       const trackId = clipTrack.get(t.fromClipId);
       if (trackId) {
         const arr = map.get(trackId);
@@ -105,13 +103,14 @@ export function Timeline() {
       }
     }
     return map;
-  }, [state.clips, state.transitions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.clips and data.transitions, not the entire data context
+  }, [data.clips, data.transitions]);
 
   // Group keyframes by track (keyed by clip's trackId)
   const keyframesByTrack = useMemo(() => {
-    const clipTrack = new Map(state.clips.map((c) => [c.id, c.trackId]));
-    const map = new Map<string, typeof state.keyframes>();
-    for (const kf of state.keyframes) {
+    const clipTrack = new Map(data.clips.map((c) => [c.id, c.trackId]));
+    const map = new Map<string, typeof data.keyframes>();
+    for (const kf of data.keyframes) {
       const trackId = clipTrack.get(kf.clipId);
       if (trackId) {
         const arr = map.get(trackId);
@@ -120,15 +119,22 @@ export function Timeline() {
       }
     }
     return map;
-  }, [state.clips, state.keyframes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally depends on data.clips and data.keyframes, not the entire data context
+  }, [data.clips, data.keyframes]);
+
+  // Sort tracks without mutating the original array
+  const sortedTracks = useMemo(
+    () => [...data.tracks].sort((a, b) => a.sortOrder - b.sortOrder),
+    [data.tracks],
+  );
 
   // Auto-scroll to keep playhead visible during playback
   useEffect(() => {
-    if (!state.isPlaying) return;
+    if (!playback.isPlaying) return;
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const playheadPx = (state.playheadMs / 1000) * state.zoom;
+    const playheadPx = (playback.playheadMs / 1000) * data.zoom;
     const visibleLeft = container.scrollLeft;
     const visibleRight = visibleLeft + container.clientWidth;
 
@@ -143,9 +149,9 @@ export function Timeline() {
         playheadPx - (container.clientWidth * 2) / 3,
       );
     }
-  }, [state.isPlaying, state.playheadMs, state.zoom]);
+  }, [playback.isPlaying, playback.playheadMs, data.zoom]);
 
-  const totalWidthPx = (durationMs / 1000) * state.zoom;
+  const totalWidthPx = (durationMs / 1000) * data.zoom;
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#0d0d0f]">
@@ -159,7 +165,7 @@ export function Timeline() {
           {/* Snap toggle */}
           <button
             className={`rounded px-2 py-0.5 text-[10px] font-medium transition-colors ${
-              state.snapEnabled
+              data.snapEnabled
                 ? 'bg-violet-600/30 text-violet-300'
                 : 'text-zinc-500 hover:bg-zinc-800'
             }`}
@@ -175,7 +181,7 @@ export function Timeline() {
             onClick={() =>
               dispatch({
                 type: 'SET_ZOOM',
-                payload: { zoom: state.zoom - ZOOM_STEP },
+                payload: { zoom: data.zoom - ZOOM_STEP },
               })
             }
             title="Zoom out"
@@ -187,7 +193,7 @@ export function Timeline() {
             min={MIN_ZOOM}
             max={MAX_ZOOM}
             step={ZOOM_STEP}
-            value={state.zoom}
+            value={data.zoom}
             onChange={(e) =>
               dispatch({
                 type: 'SET_ZOOM',
@@ -195,21 +201,21 @@ export function Timeline() {
               })
             }
             className="h-1 w-20 cursor-pointer accent-violet-500"
-            title={`Zoom: ${state.zoom}px/s`}
+            title={`Zoom: ${data.zoom}px/s`}
           />
           <button
             className="rounded px-1.5 py-0.5 text-xs text-zinc-400 hover:bg-zinc-800"
             onClick={() =>
               dispatch({
                 type: 'SET_ZOOM',
-                payload: { zoom: state.zoom + ZOOM_STEP },
+                payload: { zoom: data.zoom + ZOOM_STEP },
               })
             }
             title="Zoom in"
           >
             +
           </button>
-          <span className="text-[10px] text-zinc-500">{state.zoom}px/s</span>
+          <span className="text-[10px] text-zinc-500">{data.zoom}px/s</span>
 
           {/* Active collaborators */}
           <ActiveEditorsList />
@@ -237,40 +243,38 @@ export function Timeline() {
           <div className="sticky top-0 z-10">
             <TimelineRuler
               durationMs={durationMs}
-              zoom={state.zoom}
+              zoom={data.zoom}
               dispatch={dispatch}
             />
           </div>
 
           {/* Tracks */}
           <div className="relative">
-            {state.tracks.length === 0 ? (
+            {data.tracks.length === 0 ? (
               <div className="flex items-center justify-center py-12 text-sm text-zinc-500">
                 No tracks. Use Auto-Assembly or drag assets from the Media Bin.
               </div>
             ) : (
-              state.tracks
-                .sort((a, b) => a.sortOrder - b.sortOrder)
-                .map((track) => (
-                  <TrackRow
-                    key={track.id}
-                    track={track}
-                    clips={visibleClipsByTrack.get(track.id) ?? []}
-                    allClips={clipsByTrack.get(track.id) ?? []}
-                    transitions={transitionsByTrack.get(track.id) ?? []}
-                    keyframes={keyframesByTrack.get(track.id) ?? []}
-                    zoom={state.zoom}
-                    playheadMs={state.playheadMs}
-                    selectedClipIds={selectedClipIds}
-                    dispatch={dispatch}
-                  />
-                ))
+              sortedTracks.map((track) => (
+                <TrackRow
+                  key={track.id}
+                  track={track}
+                  clips={visibleClipsByTrack.get(track.id) ?? []}
+                  allClips={clipsByTrack.get(track.id) ?? []}
+                  transitions={transitionsByTrack.get(track.id) ?? []}
+                  keyframes={keyframesByTrack.get(track.id) ?? []}
+                  zoom={data.zoom}
+                  playheadMs={playback.playheadMs}
+                  selectedClipIds={data.selectedClipIds}
+                  dispatch={dispatch}
+                />
+              ))
             )}
 
             {/* Playhead overlay */}
             <Playhead
-              playheadMs={state.playheadMs}
-              zoom={state.zoom}
+              playheadMs={playback.playheadMs}
+              zoom={data.zoom}
               containerRef={scrollContainerRef}
               dispatch={dispatch}
             />

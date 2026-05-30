@@ -15,7 +15,11 @@ import { cn } from '@kit/ui/utils';
 
 import { AudioEngine } from '../../lib/audio-engine';
 import { PlaybackEngine } from '../../lib/playback-engine';
-import { useEditSuite } from '../edit-suite-provider';
+import {
+  useEditCommands,
+  useEditData,
+  usePlayback,
+} from '../edit-suite-provider';
 import { PreviewCanvas } from './preview-canvas';
 
 // ──────────────────────────────────────────
@@ -35,18 +39,20 @@ function formatTimecode(ms: number, fps: number): string {
 // ──────────────────────────────────────────
 
 export function PreviewPanel() {
-  const { state, dispatch, playbackEngineRef, audioEngineRef } = useEditSuite();
+  const { playheadMs, isPlaying, dispatch } = usePlayback();
+  const data = useEditData();
+  const { playbackEngineRef, audioEngineRef } = useEditCommands();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const fps = state.project?.fps ?? 30;
-  const projectWidth = state.project?.width ?? 1920;
-  const projectHeight = state.project?.height ?? 1080;
+  const fps = data.project?.fps ?? 30;
+  const projectWidth = data.project?.width ?? 1920;
+  const projectHeight = data.project?.height ?? 1080;
 
   // Timeline duration for auto-stop
   const durationMs = useMemo(() => {
-    const maxEnd = state.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
+    const maxEnd = data.clips.reduce((max, c) => Math.max(max, c.endMs), 0);
     return Math.max(60_000, Math.round(maxEnd * 1.2));
-  }, [state.clips]);
+  }, [data.clips]);
 
   // Initialize PlaybackEngine
   useEffect(() => {
@@ -96,62 +102,64 @@ export function PreviewPanel() {
     if (!engine || engine.isPlaying) return;
 
     // Only sync when not playing — during playback the engine drives the playhead
-    if (Math.abs(engine.currentMs - state.playheadMs) > 50) {
-      engine.seekTo(state.playheadMs);
+    if (Math.abs(engine.currentMs - playheadMs) > 50) {
+      engine.seekTo(playheadMs);
     }
-  }, [state.playheadMs, playbackEngineRef]);
+  }, [playheadMs, playbackEngineRef]);
 
   // Start/stop audio on play/pause
   useEffect(() => {
     const audio = audioEngineRef.current;
     if (!audio) return;
 
-    if (state.isPlaying) {
+    if (isPlaying) {
       const engine = playbackEngineRef.current;
       void audio.startPlayback(
-        state.playheadMs,
-        state.clips,
-        state.tracks,
+        playheadMs,
+        data.clips,
+        data.tracks,
         engine?.speed ?? 1,
-        state.keyframes,
+        data.keyframes,
       );
     } else {
       audio.stopPlayback();
     }
-  }, [state.isPlaying, audioEngineRef, playbackEngineRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally excludes data.clips, data.tracks, data.keyframes, playheadMs: this effect should only fire on play/pause toggles
+  }, [isPlaying, audioEngineRef, playbackEngineRef]);
 
   // Sync audio on playhead tick during playback
   useEffect(() => {
-    if (!state.isPlaying) return;
+    if (!isPlaying) return;
     const audio = audioEngineRef.current;
     if (!audio) return;
 
     const engine = playbackEngineRef.current;
     void audio.syncToPlayhead(
-      state.playheadMs,
-      state.clips,
-      state.tracks,
+      playheadMs,
+      data.clips,
+      data.tracks,
       engine?.speed ?? 1,
-      state.keyframes,
+      data.keyframes,
     );
   }, [
-    state.playheadMs,
-    state.isPlaying,
-    state.clips,
-    state.tracks,
+    playheadMs,
+    isPlaying,
+    data.clips,
+    data.tracks,
+    data.keyframes,
     audioEngineRef,
     playbackEngineRef,
   ]);
 
   // Update track gain nodes when mute/solo/volume changes
   useEffect(() => {
-    audioEngineRef.current?.updateTracks(state.tracks);
-  }, [state.tracks, audioEngineRef]);
+    audioEngineRef.current?.updateTracks(data.tracks);
+  }, [data.tracks, audioEngineRef]);
 
   // Preload audio buffers when clips change
   useEffect(() => {
-    audioEngineRef.current?.preloadClips(state.clips);
-  }, [state.clips, audioEngineRef]);
+    audioEngineRef.current?.preloadClips(data.clips);
+  }, [data.clips, audioEngineRef]);
 
   // ── Playback control handlers ──
 
@@ -170,11 +178,11 @@ export function PreviewPanel() {
   // Speed indicator for shuttle
   const speedLabel = useMemo(() => {
     const engine = playbackEngineRef.current;
-    if (!engine || !state.isPlaying) return null;
+    if (!engine || !isPlaying) return null;
     const speed = engine.speed;
     if (speed === 1) return null;
     return `${speed}×`;
-  }, [state.isPlaying, playbackEngineRef]);
+  }, [isPlaying, playbackEngineRef]);
 
   return (
     <div
@@ -188,7 +196,7 @@ export function PreviewPanel() {
           className="relative flex max-h-full max-w-full items-center justify-center overflow-hidden rounded-lg border border-zinc-800 bg-black"
           style={{ aspectRatio: `${projectWidth} / ${projectHeight}` }}
         >
-          {state.project ? (
+          {data.project ? (
             <PreviewCanvas width={projectWidth} height={projectHeight} />
           ) : (
             <span className="text-[13px] text-zinc-600">No project loaded</span>
@@ -215,14 +223,14 @@ export function PreviewPanel() {
         <button
           className={cn(
             'inline-flex h-10 w-10 items-center justify-center rounded-full text-base text-white transition-colors',
-            state.isPlaying
+            isPlaying
               ? 'bg-amber-600 hover:bg-amber-700'
               : 'bg-violet-600 hover:bg-violet-700',
           )}
           onClick={handlePlayPause}
-          title={state.isPlaying ? 'Pause (Space)' : 'Play (Space)'}
+          title={isPlaying ? 'Pause (Space)' : 'Play (Space)'}
         >
-          {state.isPlaying ? '⏸' : '▶'}
+          {isPlaying ? '⏸' : '▶'}
         </button>
         <button
           className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-zinc-700 bg-zinc-800 text-sm text-zinc-300 transition-colors hover:bg-zinc-700"
@@ -233,7 +241,7 @@ export function PreviewPanel() {
         </button>
 
         <span className="min-w-[80px] px-2 text-center font-mono text-sm text-zinc-400">
-          {formatTimecode(state.playheadMs, fps)}
+          {formatTimecode(playheadMs, fps)}
         </span>
       </div>
     </div>

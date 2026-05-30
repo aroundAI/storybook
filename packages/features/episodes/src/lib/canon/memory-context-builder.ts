@@ -145,26 +145,43 @@ async function loadCharacterStates(
     .eq('project_id', projectId)
     .eq('asset_type', 'character');
 
-  if (assetsError || !assets) {
+  if (assetsError || !assets || assets.length === 0) {
     console.error('Error loading character assets:', assetsError);
     return [];
+  }
+
+  // Batch-fetch all character states in a single query
+  const assetIds = assets.map((a) => a.id);
+
+  const { data: allStates, error: statesError } = await client
+    .from('character_states')
+    .select('*')
+    .in('character_id', assetIds)
+    .order('created_at', { ascending: false });
+
+  if (statesError) {
+    console.error('Error loading character states:', statesError);
+    return [];
+  }
+
+  // Group states by character_id, keeping at most 10 per character
+  const statesByCharacter = new Map<string, typeof allStates>();
+
+  for (const state of allStates ?? []) {
+    const existing = statesByCharacter.get(state.character_id) ?? [];
+    if (existing.length < 10) {
+      existing.push(state);
+      statesByCharacter.set(state.character_id, existing);
+    }
   }
 
   const characterContexts: CharacterStateContext[] = [];
   let currentTokens = 0;
 
   for (const asset of assets) {
-    // Get latest states for this character
-    const { data: states, error: statesError } = await client
-      .from('character_states')
-      .select('*')
-      .eq('character_id', asset.id)
-      .order('created_at', { ascending: false })
-      .limit(10); // Get last 10 state changes
+    const states = statesByCharacter.get(asset.id) ?? [];
 
-    if (statesError) continue;
-
-    const currentStates: CharacterState[] = (states ?? []).map((row) => ({
+    const currentStates: CharacterState[] = states.map((row) => ({
       id: row.id,
       characterId: row.character_id,
       episodeId: row.episode_id,

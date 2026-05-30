@@ -2,14 +2,7 @@
 
 import { useState } from 'react';
 
-import {
-  AlertCircle,
-  Check,
-  Copy,
-  Hash,
-  Linkedin,
-  Type,
-} from 'lucide-react';
+import { AlertCircle, Check, Copy, Hash, Linkedin, Type } from 'lucide-react';
 
 import { Badge } from '@kit/ui/badge';
 import { Button } from '@kit/ui/button';
@@ -77,7 +70,7 @@ export function VariantSelector({
       <div className="flex gap-2">
         {variants.map((variant, index) => (
           <Button
-            key={index}
+            key={variant.style}
             variant={selectedIndex === index ? 'default' : 'outline'}
             size="sm"
             onClick={() => {

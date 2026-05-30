@@ -29,6 +29,25 @@ type SortField =
   | 'publishedAt';
 type SortDirection = 'asc' | 'desc';
 
+function SortIcon({
+  field,
+  sortField,
+  sortDirection,
+}: {
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+}) {
+  if (sortField !== field) {
+    return <ArrowUpDown className="ml-1 h-3 w-3" />;
+  }
+  return sortDirection === 'desc' ? (
+    <ArrowDown className="ml-1 h-3 w-3" />
+  ) : (
+    <ArrowUp className="ml-1 h-3 w-3" />
+  );
+}
+
 export interface ContentTableProps {
   data: ContentListItem[] | undefined;
   isLoading?: boolean;
@@ -119,17 +138,6 @@ export function ContentTable({
     );
   }
 
-  const SortIcon = ({ field }: { field: SortField }) => {
-    if (sortField !== field) {
-      return <ArrowUpDown className="ml-1 h-3 w-3" />;
-    }
-    return sortDirection === 'desc' ? (
-      <ArrowDown className="ml-1 h-3 w-3" />
-    ) : (
-      <ArrowUp className="ml-1 h-3 w-3" />
-    );
-  };
-
   return (
     <div className="rounded-md border">
       <Table>
@@ -143,7 +151,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Views
-                <SortIcon field="views" />
+                <SortIcon
+                  field="views"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -152,7 +164,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Likes
-                <SortIcon field="likes" />
+                <SortIcon
+                  field="likes"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -161,7 +177,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Comments
-                <SortIcon field="comments" />
+                <SortIcon
+                  field="comments"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -170,7 +190,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Engagement
-                <SortIcon field="engagementRate" />
+                <SortIcon
+                  field="engagementRate"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
             <TableHead
@@ -179,7 +203,11 @@ export function ContentTable({
             >
               <div className="flex items-center">
                 Published
-                <SortIcon field="publishedAt" />
+                <SortIcon
+                  field="publishedAt"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                />
               </div>
             </TableHead>
           </TableRow>

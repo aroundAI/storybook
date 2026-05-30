@@ -8,15 +8,14 @@
  */
 import { useMemo } from 'react';
 
-import { useEditSuite } from '../edit-suite-provider';
+import { useEditData } from '../edit-suite-provider';
 
 // ──────────────────────────────────────────
 // CursorPresence
 // ──────────────────────────────────────────
 
 export function CursorPresence() {
-  const { state } = useEditSuite();
-  const { remoteCursors, zoom, scrollLeft } = state;
+  const { remoteCursors, zoom, scrollLeft } = useEditData();
 
   const cursors = useMemo(
     () => Array.from(remoteCursors.values()),
@@ -74,10 +73,10 @@ export function CursorPresence() {
 // ──────────────────────────────────────────
 
 export function ActiveEditorsList() {
-  const { state } = useEditSuite();
+  const { activeEditors } = useEditData();
   const editors = useMemo(
-    () => Array.from(state.activeEditors.values()),
-    [state.activeEditors],
+    () => Array.from(activeEditors.values()),
+    [activeEditors],
   );
 
   if (editors.length === 0) return null;

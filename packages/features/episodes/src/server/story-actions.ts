@@ -1,6 +1,6 @@
 'use server';
 
-import { enhanceAction } from '@kit/next/actions';
+import { checkRateLimit, enhanceAction } from '@kit/next/actions';
 import type {
   StoryGenerationOutput,
   StoryIdeationOutput,
@@ -64,6 +64,11 @@ export const generateStoryIdeasAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized story ideation attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'generateStoryIdeas', {
+      maxRequests: 5,
+      windowMs: 60_000,
+    });
 
     // Get user's account for cost tracking and authorization
     const { data: accountMemberships } = await client
@@ -146,6 +151,11 @@ export const generateFullStoryAction = enhanceAction(
       logger.warn(ctx, 'Unauthorized story generation attempt');
       throw new Error('Authentication required');
     }
+
+    checkRateLimit(user.id, 'generateFullStory', {
+      maxRequests: 3,
+      windowMs: 60_000,
+    });
 
     // Fetch current episode with project info for validation
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

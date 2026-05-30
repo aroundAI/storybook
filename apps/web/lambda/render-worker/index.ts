@@ -164,33 +164,30 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     `[Render] Starting render for project ${editProjectId}, language: ${language}`,
   );
 
-  // 1. Update status to 'rendering'
-  await supabase
+  // 1. Update status to 'rendering' and fetch project in one round-trip
+  const { data: project, error: projectError } = await supabase
     .from('edit_projects')
     .update({
       render_status: 'rendering',
       render_started_at: new Date().toISOString(),
       render_error: null,
     })
-    .eq('id', editProjectId);
-
-  await sendRenderStatus(userId, editProjectId, 'rendering', { progress: 0 });
-
-  // 2. Fetch all edit project data
-  const { data: project, error: projectError } = await supabase
-    .from('edit_projects')
-    .select('*')
     .eq('id', editProjectId)
+    .select(
+      'id, episode_id, render_status, render_url, metadata, canvas_width, canvas_height, fps, duration_ms',
+    )
     .single();
 
   if (projectError || !project) {
     throw new Error(`Edit project not found: ${editProjectId}`);
   }
 
-  // 3. Fetch tracks, clips, transitions, keyframes
+  await sendRenderStatus(userId, editProjectId, 'rendering', { progress: 0 });
+
+  // 2. Fetch tracks, clips, transitions, keyframes
   const { data: tracks } = await supabase
     .from('edit_tracks')
-    .select('*')
+    .select('id, edit_project_id, type, sort_order, is_muted, name, volume')
     .eq('edit_project_id', editProjectId)
     .order('sort_order');
 
@@ -198,17 +195,26 @@ async function processRender(job: RenderJobMessage): Promise<void> {
 
   const { data: clips } = await supabase
     .from('edit_clips')
-    .select('*')
+    .select(
+      'id, track_id, start_ms, duration_ms, source_url, source_type, volume, is_active, language, params, content_type, trim_start_ms, trim_end_ms, sync_group_id',
+    )
     .in('track_id', trackIds)
     .order('start_ms');
 
-  const { data: transitions } = await supabase
-    .from('edit_transitions')
-    .select('*');
+  const clipIds = (clips ?? []).map((c) => c.id);
 
-  const { data: keyframes } = await supabase.from('edit_keyframes').select('*');
+  const [{ data: transitions }, { data: keyframes }] = await Promise.all([
+    supabase
+      .from('edit_transitions')
+      .select('id, clip_id, type, duration_ms, params')
+      .in('clip_id', clipIds),
+    supabase
+      .from('edit_keyframes')
+      .select('id, clip_id, property, time_ms, value, easing')
+      .in('clip_id', clipIds),
+  ]);
 
-  // 4. Filter clips by language, activation status, and track mute state
+  // 3. Filter clips by language, activation status, and track mute state
   const activeClips = (clips ?? []).filter((clip) => {
     // Skip deactivated clips
     if (!clip.is_active) return false;
@@ -231,7 +237,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     `[Render] Found ${activeClips.length} active clips for language '${language}'`,
   );
 
-  // 5. Import and run FFmpeg render handler
+  // 4. Import and run FFmpeg render handler
   const { processFFmpegRender } = await import('./handlers/ffmpeg-render');
 
   const result = await processFFmpegRender({
@@ -252,7 +258,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     progress: 90,
   });
 
-  // 6. Upload result to R2 using streaming (avoids loading entire video into RAM)
+  // 5. Upload result to R2 using streaming (avoids loading entire video into RAM)
   const { uploadToR2 } = await import('./utils/r2-storage');
   const { createReadStream, statSync } = await import('fs');
   const { createHash } = await import('crypto');
@@ -268,7 +274,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     progress: 92,
   });
 
-  // 6.5 Create master video asset (FILM-716 integration)
+  // 5.5 Create master video asset (FILM-716 integration)
   // Compute SHA-256 hash for dedup, create asset record, link to episode
   try {
     // Stream-based hashing to avoid loading entire video into RAM
@@ -360,7 +366,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     progress: 95,
   });
 
-  // 7. Update DB with completed status
+  // 6. Update DB with completed status
   await supabase
     .from('edit_projects')
     .update({
@@ -370,7 +376,7 @@ async function processRender(job: RenderJobMessage): Promise<void> {
     })
     .eq('id', editProjectId);
 
-  // 8. Send completion via WebSocket
+  // 7. Send completion via WebSocket
   await sendRenderStatus(userId, editProjectId, 'completed', {
     renderUrl: uploadResult.url,
     progress: 100,

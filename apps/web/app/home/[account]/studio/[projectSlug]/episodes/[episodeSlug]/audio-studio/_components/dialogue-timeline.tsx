@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Edit3, Play, RefreshCw, Volume2 } from 'lucide-react';
 
@@ -116,6 +116,17 @@ export function DialogueTimeline({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editText, setEditText] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // WebSocket hook for dialogue-voice-generation results
   const {
@@ -258,8 +269,15 @@ export function DialogueTimeline({
       toast.error('No audio available');
       return;
     }
-    const audio = new Audio(selectedDialogue.audioUrl);
-    audio.play();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    audioRef.current = new Audio(selectedDialogue.audioUrl);
+    audioRef.current.onended = () => {
+      audioRef.current = null;
+    };
+    audioRef.current.play().catch(() => {});
     setSelectedDialogue(null);
   };
 

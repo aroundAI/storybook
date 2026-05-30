@@ -39,19 +39,17 @@ async function AudioLibraryPage({ params }: AudioLibraryPageProps) {
 
   const client = getSupabaseServerClient();
 
-  // Fetch account ID
-  const { data: accountRecord } = await client
-    .from('accounts')
-    .select('id')
-    .eq('slug', account)
-    .single();
-
-  // Fetch project
-  const { data: project, error } = await client
-    .from('projects')
-    .select('id, name, slug')
-    .eq('slug', projectSlug)
-    .single();
+  // Fetch account ID and project in parallel
+  const [{ data: accountRecord }, { data: project, error }] = await Promise.all(
+    [
+      client.from('accounts').select('id').eq('slug', account).single(),
+      client
+        .from('projects')
+        .select('id, name, slug')
+        .eq('slug', projectSlug)
+        .single(),
+    ],
+  );
 
   if (error || !project || !accountRecord) {
     notFound();

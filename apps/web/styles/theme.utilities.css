@@ -8,20 +8,6 @@
   background: radial-gradient(circle, var(--tw-gradient-stops));
 }
 
-@keyframes glow-pulse {
-
-  0%,
-  100% {
-    opacity: 0.4;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.8;
-    transform: scale(1.1);
-  }
-}
-
 @utility animate-glow {
   animation: glow-pulse 3s ease-in-out infinite;
 }
@@ -48,4 +34,9 @@
 
 @utility gradient-text {
   @apply bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent;
+}
+
+@utility content-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 500px;
 }

@@ -307,7 +307,9 @@ export default $config({
                 {
                   allowedHeaders: ['*'],
                   allowedMethods: ['GET', 'PUT', 'POST', 'DELETE', 'HEAD'],
-                  allowedOrigins: ['*'],
+                  allowedOrigins: process.env.NEXT_PUBLIC_SITE_URL
+                    ? [process.env.NEXT_PUBLIC_SITE_URL]
+                    : ['*'],
                   maxAge: 3000,
                 },
               ],
@@ -1176,8 +1178,13 @@ export default $config({
           architecture: 'arm64',
           // Enable KMS encryption for environment variables
           kmsKeyArn: kmsKey.arn,
+          // Explicit timeout for SSR pages
+          timeout: '30 seconds',
         },
       },
+
+      // Lambda warming (keep 1 instance warm in production to eliminate cold starts)
+      warm: stage === 'production' ? 1 : 0,
 
       // OpenNext configuration
       openNextVersion: '3.8.0', // Use latest OpenNext version
