@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 
 import { Check, Loader2, Search } from 'lucide-react';
+import { z } from 'zod';
 
 import {
   getProjectFactsAction,
@@ -63,9 +64,22 @@ export function LinkFactsDialog({
           offset: 0,
         });
 
-        if (result && 'facts' in result) {
+        const resultSchema = z.object({
+          facts: z.array(
+            z.object({
+              id: z.string(),
+              claim: z.string(),
+              simplifiedClaim: z.string().nullable(),
+              sourceCitation: z.string().nullable(),
+              verificationStatus: z.string(),
+              category: z.string().nullable(),
+            }),
+          ),
+        });
+        const parsed = resultSchema.safeParse(result);
+        if (parsed.success) {
           setFacts(
-            result.facts.map((f) => ({
+            parsed.data.facts.map((f) => ({
               id: f.id,
               claim: f.claim,
               simplified_claim: f.simplifiedClaim,

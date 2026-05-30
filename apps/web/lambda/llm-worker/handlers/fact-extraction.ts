@@ -64,7 +64,18 @@ export async function processFactExtraction(
     supabaseClient: supabase,
   });
 
-  const facts = result.data.facts;
+  const facts = result?.data?.facts;
+
+  if (!facts || facts.length === 0) {
+    console.log('[Fact Extraction] No facts extracted.');
+    return {
+      success: true,
+      data: {
+        extractedCount: 0,
+        facts: [],
+      },
+    };
+  }
 
   console.log(
     `[Fact Extraction] Extracted ${facts.length} facts, inserting into verified_facts`,

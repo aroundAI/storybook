@@ -152,25 +152,28 @@ export const getEpisodeFactsAction = enhanceAction(
       throw new Error(`Failed to fetch episode facts: ${error.message}`);
     }
 
-    const facts = (linkedFacts ?? []).map((row) => {
-      const fact = row.verified_facts;
+    const facts = (linkedFacts ?? [])
+      .map((row) => {
+        const fact = row.verified_facts;
+        if (!fact) return null;
 
-      return {
-        id: fact.id,
-        claim: fact.claim,
-        simplifiedClaim: fact.simplified_claim,
-        category: fact.category,
-        sourceType: fact.source_type,
-        sourceCitation: fact.source_citation,
-        sourceTitle: fact.source_title,
-        verificationStatus: fact.verification_status,
-        confidenceScore: fact.confidence_score,
-        tags: fact.tags,
-        linkedAt: row.linked_at,
-        linkedBy: row.linked_by,
-        sceneReference: row.scene_reference,
-      };
-    });
+        return {
+          id: fact.id,
+          claim: fact.claim,
+          simplifiedClaim: fact.simplified_claim,
+          category: fact.category,
+          sourceType: fact.source_type,
+          sourceCitation: fact.source_citation,
+          sourceTitle: fact.source_title,
+          verificationStatus: fact.verification_status,
+          confidenceScore: fact.confidence_score,
+          tags: fact.tags,
+          linkedAt: row.linked_at,
+          linkedBy: row.linked_by,
+          sceneReference: row.scene_reference,
+        };
+      })
+      .filter((f): f is NonNullable<typeof f> => f !== null);
 
     return { facts, totalCount: facts.length };
   },

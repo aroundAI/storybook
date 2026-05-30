@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
 import type { ProjectType } from '@kit/film-studio-schemas/project';
 
 /** StoryData interface for episode story content */
@@ -410,30 +411,23 @@ async function fetchEpisodeFacts(
     return [];
   }
 
+  const factSchema = z.object({
+    id: z.string(),
+    claim: z.string(),
+    source_citation: z.string().nullable().catch(null),
+    category: z.string().nullable().catch(null),
+    confidence_score: z.number().nullable().catch(null),
+    source_type: z.string().nullable().catch(null),
+  });
+
   return (data ?? [])
-    .map(
-      (row) =>
-        row.fact as {
-          id: string;
-          claim: string;
-          source_citation: string | null;
-          category: string | null;
-          confidence_score: number | null;
-          source_type: string | null;
-        } | null,
-    )
-    .filter(
-      (
-        f,
-      ): f is {
-        id: string;
-        claim: string;
-        source_citation: string | null;
-        category: string | null;
-        confidence_score: number | null;
-        source_type: string | null;
-      } => f !== null,
-    )
+    .map((row) => {
+      const fact = row.fact;
+      const singleFact = Array.isArray(fact) ? fact[0] : fact;
+      const parsed = factSchema.safeParse(singleFact);
+      return parsed.success ? parsed.data : null;
+    })
+    .filter((f): f is z.infer<typeof factSchema> => f !== null)
     .map((f) => ({
       id: f.id,
       claim: f.claim,
